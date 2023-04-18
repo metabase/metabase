@@ -217,13 +217,13 @@
       (letfn [(run-query-with-report-timezone [report-timezone]
                 (mt/with-temporary-setting-values [report-timezone report-timezone]
                   (mt/first-row
-                    (qp/process-query
-                     {:database   (mt/id)
-                      :type       :native
-                      :settings   {:report-timezone "UTC"}
-                      :native     {:query         "SELECT cast({{date}} as date)"
-                                   :template-tags {:date {:name "date" :display_name "Date" :type "date"}}}
-                      :parameters [{:type "date/single" :target ["variable" ["template-tag" "date"]] :value "2018-04-18"}]}))))]
+                   (qp/process-query
+                    {:database   (mt/id)
+                     :type       :native
+                     :settings   {:report-timezone "UTC"}
+                     :native     {:query         "SELECT cast({{date}} as date)"
+                                  :template-tags {:date {:name "date" :display_name "Date" :type "date"}}}
+                     :parameters [{:type "date/single" :target ["variable" ["template-tag" "date"]] :value "2018-04-18"}]}))))]
         (testing "date formatting when system-timezone == report-timezone"
           (is (= ["2018-04-18T00:00:00+08:00"]
                  (run-query-with-report-timezone "Asia/Hong_Kong"))))
@@ -261,7 +261,7 @@
   (testing "Do `:ssl` connection details give us the connection spec we'd expect?"
     (is (= (assoc sample-jdbc-spec :useSSL true :serverSslCert "sslCert")
            (sql-jdbc.conn/connection-details->spec :mysql (assoc sample-connection-details :ssl      true
-                                                                                           :ssl-cert "sslCert")))))
+                                                                 :ssl-cert "sslCert")))))
 
   (testing "what about non-SSL connections?"
     (is (= (assoc sample-jdbc-spec :useSSL false)
@@ -269,11 +269,11 @@
 
   (testing "Connections that are `:ssl false` but with `useSSL` in the additional options should be treated as SSL (see #9629)"
     (is (= (assoc sample-jdbc-spec :useSSL  true
-                                   :subname "//localhost:3306/my_db?useSSL=true&trustServerCertificate=true")
+                  :subname "//localhost:3306/my_db?useSSL=true&trustServerCertificate=true")
            (sql-jdbc.conn/connection-details->spec :mysql
-             (assoc sample-connection-details
-                    :ssl false
-                    :additional-options "useSSL=true&trustServerCertificate=true")))))
+                                                   (assoc sample-connection-details
+                                                          :ssl false
+                                                          :additional-options "useSSL=true&trustServerCertificate=true")))))
   (testing "A program_name specified in additional-options is not overwritten by us"
     (let [conn-attrs "connectionAttributes=program_name:my_custom_value"]
       (is (= (-> sample-jdbc-spec
@@ -489,9 +489,9 @@
                     :visibility-type :normal,
                     :nfc-path [:json_bit "title"]}}
                  (sql-jdbc.sync/describe-nested-field-columns
-                   :mysql
-                   (mt/db)
-                   {:name "json"}))))))))
+                  :mysql
+                  (mt/db)
+                  {:name "json"}))))))))
 
 (deftest big-nested-field-column-test
   (mt/test-driver :mysql
@@ -528,11 +528,11 @@
             (sync/sync-table! table)
             (let [field (t2/select-one Field :table_id (u/id table) :name "json_bit → 1234")
                   compile-res (qp/compile
-                               {:database (u/the-id (mt/db))
-                                :type     :query
-                                :query    {:source-table (u/the-id table)
-                                           :aggregation  [[:count]]
-                                           :breakout     [[:field (u/the-id field) nil]]}})]
+                                {:database (u/the-id (mt/db))
+                                 :type     :query
+                                 :query    {:source-table (u/the-id table)
+                                            :aggregation  [[:count]]
+                                            :breakout     [[:field (u/the-id field) nil]]}})]
               (is (= ["SELECT"
                       "  CONVERT(JSON_EXTRACT(`json`.`json_bit`, ?), UNSIGNED) AS `json_bit → 1234`,"
                       "  COUNT(*) AS `count`"
@@ -630,7 +630,7 @@
     (mt/dataset json
       (let [db-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
         (is (thrown-with-msg?
-              Exception
-              #"Killed mysql process id [\d,]+ due to timeout."
-              (#'mysql.ddl/execute-with-timeout! db-spec db-spec 10 ["select sleep(5)"])))
+             Exception
+             #"Killed mysql process id [\d,]+ due to timeout."
+             (#'mysql.ddl/execute-with-timeout! db-spec db-spec 10 ["select sleep(5)"])))
         (is (some? (#'mysql.ddl/execute-with-timeout! db-spec db-spec 5000 ["select sleep(0.1) as val"])))))))

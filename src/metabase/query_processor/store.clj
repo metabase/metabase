@@ -85,7 +85,6 @@
     :name   su/NonBlankString
     s/Any   s/Any}))
 
-
 (def ^:private field-columns-to-fetch
   "Columns to fetch for and Field you want to stash in the Store. These get returned as part of the `:cols` metadata in
   query results. Try to keep this set pared down to just what's needed by the QP and frontend, since it has to be done
@@ -125,7 +124,6 @@
     :nfc_path                           (s/maybe [su/NonBlankString])
     s/Any                               s/Any}))
 
-
 ;;; ------------------------------------------ Saving objects in the Store -------------------------------------------
 
 (s/defn store-database!
@@ -148,7 +146,6 @@
   [field :- FieldInstanceWithRequiredStorekeys]
   (swap! *store* assoc-in [:fields (u/the-id field)] field))
 
-
 ;;; ----------------------- Fetching objects from application DB, and saving them in the store -----------------------
 
 (s/defn ^:private db-id :- su/IntGreaterThanZero
@@ -165,12 +162,12 @@
     ;; if there's already a DB in the Store, double-check it has the same ID as the one that we were asked to fetch
     (when-not (= existing-db-id database-id)
       (throw (ex-info (tru "Attempting to fetch second Database. Queries can only reference one Database.")
-               {:existing-id existing-db-id, :attempted-to-fetch database-id})))
+                      {:existing-id existing-db-id, :attempted-to-fetch database-id})))
     ;; if there's no DB, fetch + save
     (store-database!
      (or (t2/select-one (into [Database] database-columns-to-fetch) :id database-id)
          (throw (ex-info (tru "Database {0} does not exist." (str database-id))
-                  {:database database-id}))))))
+                         {:database database-id}))))))
 
 (def ^:private IDs
   (s/maybe
@@ -186,15 +183,15 @@
   ;; remove any IDs for Tables that have already been fetched
   (when-let [ids-to-fetch (seq (remove (set (keys (:tables @*store*))) table-ids))]
     (let [fetched-tables (t2/select (into [Table] table-columns-to-fetch)
-                           :id    [:in (set ids-to-fetch)]
-                           :db_id (db-id))
+                                    :id    [:in (set ids-to-fetch)]
+                                    :db_id (db-id))
           fetched-ids    (set (map :id fetched-tables))]
       ;; make sure all Tables in table-ids were fetched, or throw an Exception
       (doseq [id ids-to-fetch]
         (when-not (fetched-ids id)
           (throw
            (ex-info (tru "Failed to fetch Table {0}: Table does not exist, or belongs to a different Database." id)
-             {:table id, :database (db-id)}))))
+                    {:table id, :database (db-id)}))))
       ;; ok, now store them all in the Store
       (doseq [table fetched-tables]
         (store-table! table)))))
@@ -226,7 +223,6 @@
       ;; ok, now store them all in the Store
       (doseq [field fetched-fields]
         (store-field! field)))))
-
 
 ;;; ---------------------------------------- Fetching objects from the Store -----------------------------------------
 
@@ -266,7 +262,6 @@
   "Fetch Field with `field-id` from the QP Store. Throws an Exception if valid item is not returned."
   [field-id :- su/IntGreaterThanZero]
   (*field* field-id))
-
 
 ;;; ------------------------------------------ Caching Miscellaneous Values ------------------------------------------
 

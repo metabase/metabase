@@ -21,9 +21,9 @@
   (task-history/with-task-history {:task "task-history-cleanup"}
     (let [deleted-rows? (task-history/cleanup-task-history! history-rows-to-keep)]
       (log/debug
-       (if deleted-rows?
-         (trs "Task history cleanup successful, rows were deleted")
-         (trs "Task history cleanup successful, no rows were deleted"))))))
+        (if deleted-rows?
+          (trs "Task history cleanup successful, rows were deleted")
+          (trs "Task history cleanup successful, no rows were deleted"))))))
 
 (jobs/defjob
   ^{:doc "Delete older TaskHistory rows -- see docstring of `task-history/cleanup-task-history!` for more details."}
@@ -35,12 +35,12 @@
 
 (defmethod task/init! ::TaskHistoryCleanup [_]
   (let [job     (jobs/build
-                 (jobs/of-type TaskHistoryCleanup)
-                 (jobs/with-identity (jobs/key job-key)))
+                  (jobs/of-type TaskHistoryCleanup)
+                  (jobs/with-identity (jobs/key job-key)))
         trigger (triggers/build
-                 (triggers/with-identity (triggers/key trigger-key))
-                 (triggers/start-now)
-                 (triggers/with-schedule
+                  (triggers/with-identity (triggers/key trigger-key))
+                  (triggers/start-now)
+                  (triggers/with-schedule
                    ;; run every day at midnight
-                   (cron/cron-schedule "0 0 0 * * ? *")))]
-      (task/schedule-task! job trigger)))
+                    (cron/cron-schedule "0 0 0 * * ? *")))]
+    (task/schedule-task! job trigger)))

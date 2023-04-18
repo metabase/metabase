@@ -31,10 +31,10 @@
        :ordered_cards
        (map (fn [{:keys [size_y card col row series] :as dashcard}]
               (assoc card
-                :text     (-> dashcard :visualization_settings :text)
-                :series   series
-                :height   size_y
-                :position (+ (* row populate/grid-width) col))))
+                     :text     (-> dashcard :visualization_settings :text)
+                     :series   series
+                     :height   size_y
+                     :position (+ (* row populate/grid-width) col))))
        (sort-by :position)))
 
 (defn- clone-card
@@ -221,9 +221,9 @@
                            :title       (tru "Compare with entire dataset")
                            :description ""}])))
       (as-> related
-          (if (-> related :compare empty?)
-            (dissoc related :compare)
-            related))))
+            (if (-> related :compare empty?)
+              (dissoc related :compare)
+              related))))
 
 (defn- part-vs-whole-comparison?
   [left right]

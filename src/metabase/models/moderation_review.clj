@@ -35,9 +35,9 @@
 (derive ModerationReview ::perms/use-parent-collection-perms)
 
 (mi/define-methods
- ModerationReview
- {:properties (constantly {::mi/timestamped? true})
-  :types      (constantly {:moderated_item_type :keyword})})
+  ModerationReview
+  {:properties (constantly {::mi/timestamped? true})
+   :types      (constantly {:moderated_item_type :keyword})})
 
 (def max-moderation-reviews
   "The amount of moderation reviews we will keep on hand."
@@ -71,8 +71,8 @@
     (s/optional-key :status) Statuses
     (s/optional-key :text)   (s/maybe s/Str)}]
   (t2/with-transaction [_conn]
-   (delete-extra-reviews! (:moderated_item_id params) (:moderated_item_type params))
-   (t2/update! ModerationReview {:moderated_item_id   (:moderated_item_id params)
-                                 :moderated_item_type (:moderated_item_type params)}
-               {:most_recent false})
-   (first (t2/insert-returning-instances! ModerationReview (assoc params :most_recent true)))))
+    (delete-extra-reviews! (:moderated_item_id params) (:moderated_item_type params))
+    (t2/update! ModerationReview {:moderated_item_id   (:moderated_item_id params)
+                                  :moderated_item_type (:moderated_item_type params)}
+                {:most_recent false})
+    (first (t2/insert-returning-instances! ModerationReview (assoc params :most_recent true)))))

@@ -53,13 +53,13 @@
   [stage location target-clause new-clause]
   {:pre [(clause? target-clause)]}
   (m/update-existing
-    stage
-    location
-    #(->> (for [clause %]
-            (if (= (clause-uuid clause) (clause-uuid target-clause))
-              new-clause
-              clause))
-          vec)))
+   stage
+   location
+   #(->> (for [clause %]
+           (if (= (clause-uuid clause) (clause-uuid target-clause))
+             new-clause
+             clause))
+         vec)))
 
 (defn remove-clause
   "Remove the `target-clause` in `stage` `location`.
@@ -97,7 +97,7 @@
   [m legacy-key pMBQL-key]
   (cond-> m
     (contains? m legacy-key) (update legacy-key #(if (and (vector? %)
-                                                       (= (first %) :and))
+                                                          (= (first %) :and))
                                                    (vec (drop 1 %))
                                                    [%]))
     (contains? m legacy-key) (set/rename-keys {legacy-key pMBQL-key})))
@@ -312,7 +312,7 @@
 #?(:clj
    (mu/defn ^:private string-character-at :- [:string {:min 0, :max 1}]
      [s :- :string
-      i :-[:int {:min 0}]]
+      i :- [:int {:min 0}]]
      (str (.charAt ^String s i))))
 
 (mu/defn ^:private truncate-string-to-byte-count :- :string

@@ -21,7 +21,6 @@
 
 (defmethod driver/supports? [:googleanalytics :basic-aggregations] [_ _] false)
 
-
 ;;; ----------------------------------------------- describe-database ------------------------------------------------
 
 (defn- fetch-properties
@@ -53,7 +52,6 @@
                   {:name   table-id
                    :schema nil}))})
 
-
 ;;; ------------------------------------------------- describe-table -------------------------------------------------
 
 (defn- describe-columns [database]
@@ -71,7 +69,6 @@
   {:name   (:name table)
    :schema (:schema table)
    :fields (describe-columns database)})
-
 
 ;;; ----------------------------------------------- _metabase_metadata -----------------------------------------------
 

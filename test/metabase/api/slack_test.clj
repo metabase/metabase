@@ -71,7 +71,6 @@
                (slack/slack-cached-channels-and-usernames)))
         (is (= @#'slack/zoned-time-epoch (slack/slack-channels-and-usernames-last-updated)))))
 
-
     (testing "A non-admin cannot modify the Slack app token or files channel settings"
       (mt/user-http-request :rasta :put 403 "slack/settings"
                             {:slack-app-token "fake-token"})

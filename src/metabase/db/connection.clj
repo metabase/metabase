@@ -15,7 +15,7 @@
 (defonce ^{:doc "Counter for [[unique-identifier]] -- this is a simple counter rather that [[java.util.UUID/randomUUID]]
   so we don't waste precious entropy on launch generating something that doesn't need to be random (it just needs to be
   unique)"}
-  application-db-counter
+ application-db-counter
   (atom 0))
 
 (p/defrecord+ ApplicationDB [^clojure.lang.Keyword db-type
@@ -41,18 +41,18 @@
                              ^ReentrantReadWriteLock lock]
   javax.sql.DataSource
   (getConnection [_]
-    (try
-      (.. lock readLock lock)
-      (.getConnection data-source)
-      (finally
-        (.. lock readLock unlock))))
+                 (try
+                   (.. lock readLock lock)
+                   (.getConnection data-source)
+                   (finally
+                     (.. lock readLock unlock))))
 
   (getConnection [_ user password]
-    (try
-      (.. lock readLock lock)
-      (.getConnection data-source user password)
-      (finally
-        (.. lock readLock unlock)))))
+                 (try
+                   (.. lock readLock lock)
+                   (.getConnection data-source user password)
+                   (finally
+                     (.. lock readLock unlock)))))
 
 (alter-meta! #'->ApplicationDB assoc :private true)
 (alter-meta! #'map->ApplicationDB assoc :private true)

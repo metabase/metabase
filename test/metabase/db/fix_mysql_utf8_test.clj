@@ -13,7 +13,7 @@
 
 (defn- create-test-db! []
   (jdbc/with-db-connection [server-conn (sql-jdbc.conn/connection-details->spec :mysql
-                                          (mt/dbdef->connection-details :mysql :server nil))]
+                                                                                (mt/dbdef->connection-details :mysql :server nil))]
     (doseq [statement ["DROP DATABASE IF EXISTS utf8_test;"
                        "CREATE DATABASE utf8_test;"]]
       (jdbc/execute! server-conn statement))))

@@ -112,7 +112,7 @@
           (is (= :ok
                  (advanced-config.file/initialize!)))
           (let [user (t2/select-one [User :first_name :last_name :email :password_salt :password]
-                       :email "cam+config-file-password-test@metabase.com")]
+                                    :email "cam+config-file-password-test@metabase.com")]
             (is (partial= {:first_name "Cam"
                            :last_name  "Era"
                            :email      "cam+config-file-password-test@metabase.com"}

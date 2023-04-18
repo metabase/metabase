@@ -13,14 +13,11 @@
   #{:card-create
     :card-update})
 
-
 (defonce ^:private ^{:doc "Channel for receiving event notifications we want to subscribe to persist new models"}
-  persisted-info-channel
+ persisted-info-channel
   (a/chan))
 
-
 ;;; ## ---------------------------------------- EVENT PROCESSING ----------------------------------------
-
 
 (defn process-event
   "Handle processing for a single event notification received on the persisted-info-channel"
@@ -37,7 +34,6 @@
       (persisted-info/turn-on-model! (:actor_id card) card))
     (catch Throwable e
       (log/warn (format "Failed to process persisted-info event. %s" (:topic event)) e))))
-
 
 ;;; ## ---------------------------------------- LIFECYLE ----------------------------------------
 

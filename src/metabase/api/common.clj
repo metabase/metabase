@@ -54,7 +54,6 @@
   more information about the Metabase permissions system."
   (atom #{}))
 
-
 ;;; ---------------------------------------- Precondition checking helper fns ----------------------------------------
 
 (defn- check-one [condition code message]
@@ -117,8 +116,8 @@
   "Throw an `ExceptionInfo` that contains information about an invalid API params in the expected format."
   [field-name message]
   (throw (ex-info (tru "Invalid field: {0}" field-name)
-           {:status-code 400
-            :errors      {(keyword field-name) message}})))
+                  {:status-code 400
+                   :errors      {(keyword field-name) message}})))
 
 (defn checkp
   "Assertion mechanism for use inside API functions that validates individual input params.
@@ -134,7 +133,6 @@
   ([tst field-name message]
    (when-not tst
      (throw-invalid-param-exception (str field-name) message))))
-
 
 ;;; ---------------------------------------------- api-let, api->, etc. ----------------------------------------------
 
@@ -158,7 +156,6 @@
            ~@(vec (apply concat (for [[binding test] (partition-all 2 bindings)]
                                   [binding `(check ~test ~response-pair-symb)])))]
        ~@body)))
-
 
 ;;; ### GENERIC RESPONSE HELPERS
 ;; These are basically the same as the `api-` versions but with RESPONSE-PAIR already bound
@@ -218,7 +215,6 @@
 (def generic-204-no-content
   "A 'No Content' response for `DELETE` endpoints to return."
   {:status 204, :body nil})
-
 
 ;;; --------------------------------------- DEFENDPOINT AND RELATED FUNCTIONS ----------------------------------------
 
@@ -280,7 +276,6 @@
       (when (seq extraneous-params)
         (log/warnf "Unexpected parameters at %s: %s\nPlease add them to the schema or remove them from the API client"
                    route (vec extraneous-params))))))
-
 
 (defn method-symbol->keyword
   "Convert Compojure-style HTTP method symbols (PUT, POST, etc.) to the keywords used internally by
@@ -450,7 +445,6 @@
                     e))]
        (raise e)
        (handler request respond raise)))))
-
 
 ;;; ---------------------------------------- PERMISSIONS CHECKING HELPER FNS -----------------------------------------
 

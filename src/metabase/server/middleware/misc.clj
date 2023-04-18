@@ -32,7 +32,6 @@
                (comp respond add-content-type*))
              raise)))
 
-
 ;;; ------------------------------------------------ SETTING SITE-URL ------------------------------------------------
 
 ;; It's important for us to know what the site URL is for things like returning links, etc. this is stored in the
@@ -60,7 +59,6 @@
     (maybe-set-site-url* request)
     (handler request respond raise)))
 
-
 ;;; ------------------------------------------ Disable Streaming Buffering -------------------------------------------
 
 (defn- maybe-add-disable-buffering-header [{:keys [body], :as response}]
@@ -79,7 +77,6 @@
      request
      (comp respond maybe-add-disable-buffering-header)
      raise)))
-
 
 ;;; -------------------------------------------------- Bind request --------------------------------------------------
 

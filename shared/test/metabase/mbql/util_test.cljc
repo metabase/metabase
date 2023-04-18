@@ -494,7 +494,6 @@
     (t/is (= 5
              (mbql.u/join->source-table-id (assoc join :source-query {:source-table 5}))))))
 
-
 ;;; ---------------------------------------------- aggregation-at-index ----------------------------------------------
 
 (def ^:private query-with-some-nesting
@@ -516,7 +515,6 @@
       (t/is (= expected
                (apply mbql.u/aggregation-at-index query-with-some-nesting input))))))
 
-
 ;;; --------------------------------- Unique names & transforming ags to have names ----------------------------------
 
 (t/deftest ^:parallel uniquify-names
@@ -529,7 +527,7 @@
              (mbql.u/uniquify-names ["count" "count" "count_2"]))))
 
   (t/testing (str "for wacky DBMSes like SQL Server that return blank column names sometimes let's make sure we handle "
-                "those without exploding")
+                  "those without exploding")
     (t/is (= ["" "_2"]
              (mbql.u/uniquify-names ["" ""])))))
 
@@ -586,7 +584,6 @@
                   [:aggregation-options [:sum [:field 1 nil]] {:name "sum_2"}]
                   [:min [:field 1 nil]]]))))
 
-
     (t/testing "ok, can we do the same thing as the tests above but make those names *unique* at the same time?"
       (t/is (= [[:aggregation-options [:sum [:field 1 nil]]   {:name "sum"}]
                 [:aggregation-options [:count [:field 1 nil]] {:name "count"}]
@@ -617,7 +614,7 @@
                   [:min [:field 1 nil]]]))))
 
     (t/testing (str "if `:aggregation-options` only specifies `:display-name` it should still a new `:name`. "
-                  "`pre-alias-and-uniquify-aggregations` shouldn't stomp over display name")
+                    "`pre-alias-and-uniquify-aggregations` shouldn't stomp over display name")
       (t/is (= [[:aggregation-options [:sum [:field 1 nil]] {:name "sum"}]
                 [:aggregation-options [:sum [:field 1 nil]] {:name "sum_2"}]
                 [:aggregation-options [:sum [:field 1 nil]] {:display-name "Sum of Field 1", :name "sum_3"}]]
@@ -665,7 +662,6 @@
       (let [f (mbql.u/unique-name-generator :unique-alias-fn (fn [x y] (str y "~~" x)))]
         (t/is (= ["x" "2~~x"]
                  (map f ["x" "x"])))))))
-
 
 ;;; --------------------------------------------- query->max-rows-limit ----------------------------------------------
 

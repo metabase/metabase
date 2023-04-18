@@ -138,10 +138,10 @@
     (t2/with-transaction [_conn]
      ;; Adding a new pulse at `collection_position` could cause other pulses in this collection to change position,
      ;; check that and fix it if needed
-     (api/maybe-reconcile-collection-position! pulse-data)
+      (api/maybe-reconcile-collection-position! pulse-data)
      ;; ok, now create the Pulse
-     (api/check-500
-      (pulse/create-pulse! (map pulse/card->ref cards) channels pulse-data)))))
+      (api/check-500
+       (pulse/create-pulse! (map pulse/card->ref cards) channels pulse-data)))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:id"
@@ -149,11 +149,11 @@
   we still return it but with some sensitive metadata removed."
   [id]
   (api/let-404 [pulse (pulse/retrieve-pulse id)]
-   (api/check-403 (mi/can-read? pulse))
-   (-> pulse
-       maybe-filter-pulse-recipients
-       maybe-strip-sensitive-metadata
-       (hydrate :can_write))))
+    (api/check-403 (mi/can-read? pulse))
+    (-> pulse
+        maybe-filter-pulse-recipients
+        maybe-strip-sensitive-metadata
+        (hydrate :can_write))))
 
 (defn- maybe-add-recipients-for-sandboxed-users
   "Sandboxed users can't read the full recipient list for a pulse, so we need to merge in existing recipients
@@ -187,9 +187,9 @@
    parameters    [su/Map]}
   ;; do various perms checks
   (try
-   (validation/check-has-application-permission :monitoring)
-   (catch clojure.lang.ExceptionInfo _e
-     (validation/check-has-application-permission :subscription false)))
+    (validation/check-has-application-permission :monitoring)
+    (catch clojure.lang.ExceptionInfo _e
+      (validation/check-has-application-permission :subscription false)))
 
   (let [pulse-before-update (api/write-check (pulse/retrieve-pulse id))]
     (check-card-read-permissions cards)
@@ -209,18 +209,18 @@
         (api/check (or api/*is-superuser?*
                        has-subscription-perms?
                        (empty? to-add-recipients))
-                   [403 (tru "Non-admin users without subscription permissions are not allowed to add recipients")])))
+          [403 (tru "Non-admin users without subscription permissions are not allowed to add recipients")])))
 
     (let [pulse-updates (maybe-add-recipients-for-sandboxed-users pulse-updates pulse-before-update)]
       (t2/with-transaction [_conn]
        ;; If the collection or position changed with this update, we might need to fixup the old and/or new collection,
        ;; depending on what changed.
-       (api/maybe-reconcile-collection-position! pulse-before-update pulse-updates)
+        (api/maybe-reconcile-collection-position! pulse-before-update pulse-updates)
        ;; ok, now update the Pulse
-       (pulse/update-pulse!
-        (assoc (select-keys pulse-updates [:name :cards :channels :skip_if_empty :collection_id :collection_position
-                                           :archived :parameters])
-               :id id)))))
+        (pulse/update-pulse!
+         (assoc (select-keys pulse-updates [:name :cards :channels :skip_if_empty :collection_id :collection_position
+                                            :archived :parameters])
+                :id id)))))
   ;; return updated Pulse
   (pulse/retrieve-pulse id))
 

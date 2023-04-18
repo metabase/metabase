@@ -26,7 +26,7 @@
 (defmethod dependency-satisfied? :default [_ {{plugin-name :name} :info} dep]
   (log/error
    (u/format-color 'red
-       (trs "Plugin {0} declares a dependency that Metabase does not understand: {1}" plugin-name dep))
+                   (trs "Plugin {0} declares a dependency that Metabase does not understand: {1}" plugin-name dep))
    (trs "Refer to the plugin manifest reference for a complete list of valid plugin dependencies:")
    "https://github.com/metabase/metabase/wiki/Metabase-Plugin-Manifest-Reference")
   false)
@@ -95,9 +95,8 @@
    (do
      (swap! plugins-with-unsatisfied-deps conj info)
      (log-once (u/format-color 'yellow
-                   (trs "Plugins with unsatisfied deps: {0}" (mapv (comp :name :info) @plugins-with-unsatisfied-deps))))
+                               (trs "Plugins with unsatisfied deps: {0}" (mapv (comp :name :info) @plugins-with-unsatisfied-deps))))
      false)))
-
 
 (defn- remove-plugins-with-satisfied-deps [plugins initialized-plugin-names ready-for-init-atom]
   ;; since `remove-plugins-with-satisfied-deps` could theoretically be called multiple times we need to reset the atom

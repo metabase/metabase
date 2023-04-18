@@ -62,8 +62,8 @@
       (pretty [_]
         (str "\n"
              (u/pprint-to-str 'blue
-               (for [[hash {:keys [created]}] @store]
-                 [hash (u/format-nanoseconds (.getNano (t/duration created (t/instant))))]))))
+                              (for [[hash {:keys [created]}] @store]
+                                [hash (u/format-nanoseconds (.getNano (t/duration created (t/instant))))]))))
 
       CacheContents
       (contents [_]
@@ -282,7 +282,7 @@
         (testing "Cached results should exist"
           (is (= true
                  (i/cached-results cache/*backend* query-hash 100
-                   some?))))
+                                   some?))))
         (i/save-results! cache/*backend* query-hash (byte-array [0 0 0]))
         (testing "Invalid cache entry should be handled gracefully"
           (is (= :not-cached

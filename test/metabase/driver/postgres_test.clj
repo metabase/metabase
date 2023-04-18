@@ -120,11 +120,11 @@
             :sslmode                       "disable"
             :ApplicationName               config/mb-version-and-process-identifier}
            (sql-jdbc.conn/connection-details->spec :postgres
-             {:ssl    false
-              :host   "localhost"
-              :port   5432
-              :dbname "bird_sightings"
-              :user   "camsaul"}))))
+                                                   {:ssl    false
+                                                    :host   "localhost"
+                                                    :port   5432
+                                                    :dbname "bird_sightings"
+                                                    :user   "camsaul"}))))
   (testing "ssl - check that expected params get added"
     (is (= {:classname                     "org.postgresql.Driver"
             :subprotocol                   "postgresql"
@@ -136,11 +136,11 @@
             :sslpassword                   ""
             :ApplicationName               config/mb-version-and-process-identifier}
            (sql-jdbc.conn/connection-details->spec :postgres
-             {:ssl    true
-              :host   "localhost"
-              :port   5432
-              :dbname "bird_sightings"
-              :user   "camsaul"}))))
+                                                   {:ssl    true
+                                                    :host   "localhost"
+                                                    :port   5432
+                                                    :dbname "bird_sightings"
+                                                    :user   "camsaul"}))))
   (testing "make sure connection details w/ extra params work as expected"
     (is (= {:classname                     "org.postgresql.Driver"
             :subprotocol                   "postgresql"
@@ -149,10 +149,10 @@
             :sslmode                       "disable"
             :ApplicationName               config/mb-version-and-process-identifier}
            (sql-jdbc.conn/connection-details->spec :postgres
-             {:host               "localhost"
-              :port               "5432"
-              :dbname             "cool"
-              :additional-options "prepareThreshold=0"}))))
+                                                   {:host               "localhost"
+                                                    :port               "5432"
+                                                    :dbname             "cool"
+                                                    :additional-options "prepareThreshold=0"}))))
   (testing "user-specified SSL options should always take precendence over defaults"
     (is (= {:classname                     "org.postgresql.Driver"
             :subprotocol                   "postgresql"
@@ -168,17 +168,16 @@
             :sslpassword                   ""
             :ApplicationName               config/mb-version-and-process-identifier}
            (sql-jdbc.conn/connection-details->spec :postgres
-             {:ssl         true
-              :host        "localhost"
-              :port        5432
-              :dbname      "bird_sightings"
-              :user        "camsaul"
-              :sslmode     "verify-ca"
-              :sslcert     "my-cert"
-              :sslkey      "my-key"
-              :sslfactory  "myfactoryoverride"
-              :sslrootcert "myrootcert"})))))
-
+                                                   {:ssl         true
+                                                    :host        "localhost"
+                                                    :port        5432
+                                                    :dbname      "bird_sightings"
+                                                    :user        "camsaul"
+                                                    :sslmode     "verify-ca"
+                                                    :sslcert     "my-cert"
+                                                    :sslkey      "my-key"
+                                                    :sslfactory  "myfactoryoverride"
+                                                    :sslrootcert "myrootcert"})))))
 
 ;;; ------------------------------------------- Tests for sync edge cases --------------------------------------------
 
@@ -206,9 +205,9 @@
             (sync!)
             (is (= [["Bird Hat"]]
                    (mt/rows (qp/process-query
-                              {:database (u/the-id database)
-                               :type     :query
-                               :query    {:source-table (t2/select-one-pk Table :name "presents-and-gifts")}}))))))))))
+                             {:database (u/the-id database)
+                              :type     :query
+                              :query    {:source-table (t2/select-one-pk Table :name "presents-and-gifts")}}))))))))))
 
 (mt/defdataset duplicate-names
   [["birds"
@@ -227,8 +226,8 @@
         (is (= {:columns ["name" "name_2"]
                 :rows    [["Cam" "Rasta"]]}
                (mt/rows+column-names
-                 (mt/run-mbql-query people
-                   {:fields [$name $bird_id->birds.name]}))))))))
+                (mt/run-mbql-query people
+                  {:fields [$name $bird_id->birds.name]}))))))))
 
 (defn- default-table-result [table-name]
   {:name table-name, :schema "public", :description nil})
@@ -426,17 +425,17 @@
                                  :metabase.query-processor.util.add-alias-info/position 1}]
                 field-ordinary [:field (u/the-id field) nil]
                 compile-res (qp/compile
-                             {:database (u/the-id database)
-                              :type     :query
-                              :query    {:source-table (u/the-id table)
-                                         :aggregation  [[:count]]
-                                         :breakout     [field-bucketed]
-                                         :order-by     [[:asc field-bucketed]]}})
+                              {:database (u/the-id database)
+                               :type     :query
+                               :query    {:source-table (u/the-id table)
+                                          :aggregation  [[:count]]
+                                          :breakout     [field-bucketed]
+                                          :order-by     [[:asc field-bucketed]]}})
                 only-order  (qp/compile
-                             {:database (u/the-id database)
-                              :type     :query
-                              :query    {:source-table (u/the-id table)
-                                         :order-by     [[:asc field-ordinary]]}})]
+                              {:database (u/the-id database)
+                               :type     :query
+                               :query    {:source-table (u/the-id table)
+                                          :order-by     [[:asc field-ordinary]]}})]
             (is (= ["SELECT"
                     "  DATE_TRUNC("
                     "    'month',"
@@ -611,12 +610,12 @@
                    database
                    {:name "big_json_table"}))))
           (is (str/includes?
-                (get-in (mt/with-log-messages-for-level :warn
-                              (sql-jdbc.sync/describe-nested-field-columns
-                                :postgres
-                                database
-                                {:name "big_json_table"})) [0 2])
-                "More nested field columns detected than maximum.")))))))
+               (get-in (mt/with-log-messages-for-level :warn
+                         (sql-jdbc.sync/describe-nested-field-columns
+                          :postgres
+                          database
+                          {:name "big_json_table"})) [0 2])
+               "More nested field columns detected than maximum.")))))))
 
 (mt/defdataset with-uuid
   [["users"
@@ -655,37 +654,37 @@
       (testing "Check that we can filter by a UUID for SQL Field filters (#7955)"
         (is (= [[1 #uuid "4f01dcfd-13f7-430c-8e6f-e505c0851027"]]
                (mt/rows
-                 (qp/process-query
-                   (assoc (mt/native-query
-                            {:query         "SELECT * FROM users WHERE {{user}}"
-                             :template-tags {:user
-                                             {:name         "user"
-                                              :display_name "User ID"
-                                              :type         "dimension"
-                                              :widget-type  "number"
-                                              :dimension    [:field (mt/id :users :user_id) nil]}}})
-                       :parameters
-                       [{:type   "text"
-                         :target ["dimension" ["template-tag" "user"]]
-                         :value  "4f01dcfd-13f7-430c-8e6f-e505c0851027"}]))))))
+                (qp/process-query
+                 (assoc (mt/native-query
+                          {:query         "SELECT * FROM users WHERE {{user}}"
+                           :template-tags {:user
+                                           {:name         "user"
+                                            :display_name "User ID"
+                                            :type         "dimension"
+                                            :widget-type  "number"
+                                            :dimension    [:field (mt/id :users :user_id) nil]}}})
+                        :parameters
+                        [{:type   "text"
+                          :target ["dimension" ["template-tag" "user"]]
+                          :value  "4f01dcfd-13f7-430c-8e6f-e505c0851027"}]))))))
       (testing "Check that we can filter by multiple UUIDs for SQL Field filters"
         (is (= [[1 #uuid "4f01dcfd-13f7-430c-8e6f-e505c0851027"]
                 [3 #uuid "da1d6ecc-e775-4008-b366-c38e7a2e8433"]]
                (mt/rows
-                 (qp/process-query
-                   (assoc (mt/native-query
-                            {:query         "SELECT * FROM users WHERE {{user}}"
-                             :template-tags {:user
-                                             {:name         "user"
-                                              :display_name "User ID"
-                                              :type         "dimension"
-                                              :widget-type  :number
-                                              :dimension    [:field (mt/id :users :user_id) nil]}}})
-                       :parameters
-                       [{:type   "text"
-                         :target ["dimension" ["template-tag" "user"]]
-                         :value  ["4f01dcfd-13f7-430c-8e6f-e505c0851027"
-                                  "da1d6ecc-e775-4008-b366-c38e7a2e8433"]}])))))))))
+                (qp/process-query
+                 (assoc (mt/native-query
+                          {:query         "SELECT * FROM users WHERE {{user}}"
+                           :template-tags {:user
+                                           {:name         "user"
+                                            :display_name "User ID"
+                                            :type         "dimension"
+                                            :widget-type  :number
+                                            :dimension    [:field (mt/id :users :user_id) nil]}}})
+                        :parameters
+                        [{:type   "text"
+                          :target ["dimension" ["template-tag" "user"]]
+                          :value  ["4f01dcfd-13f7-430c-8e6f-e505c0851027"
+                                   "da1d6ecc-e775-4008-b366-c38e7a2e8433"]}])))))))))
 
 (mt/defdataset ip-addresses
   [["addresses"
@@ -796,7 +795,7 @@
   (mt/test-driver :postgres
     (testing "check that values for enum types get wrapped in appropriate CAST() fn calls in `->honeysql`"
       (is (= (h2x/with-database-type-info [:cast "toucan" (h2x/identifier :type-name "bird type")]
-                                          "bird type")
+               "bird type")
              (sql.qp/->honeysql :postgres [:value "toucan" {:database_type "bird type", :base_type :type/PostgresEnum}]))))
 
     (do-with-enums-db
@@ -860,31 +859,30 @@
   (mt/test-driver :postgres
     (testing "actions with enums"
       (do-with-enums-db
-       (fn [enums-db]
-         (mt/with-db enums-db
-           (mt/with-actions-enabled
-             (mt/with-actions [model {:dataset true
-                                      :dataset_query
-                                      (mt/mbql-query birds)}
-                               {action-id :action-id} {:type :implicit
-                                                       :kind "row/create"}]
-               (testing "Enum fields are a valid implicit parameter target"
-                 (let [columns        (->> model :result_metadata (map :name) set)
-                       action-targets (->> (action/select-action :id action-id)
-                                           :parameters
-                                           (map :id)
-                                           set)]
-                   (is (= columns action-targets))))
-               (testing "Can create new records with an enum value"
-                 (is (= {:created-row
-                         {:name "new bird", :status "good bird", :type "turkey"}}
-                        (mt/user-http-request :crowberto
-                                              :post 200
-                                              (format "action/%s/execute" action-id)
-                                              {:parameters {"name"   "new bird"
-                                                            "status" "good bird"
-                                                            "type"   "turkey"}}))))))))))))
-
+        (fn [enums-db]
+          (mt/with-db enums-db
+            (mt/with-actions-enabled
+              (mt/with-actions [model {:dataset true
+                                       :dataset_query
+                                       (mt/mbql-query birds)}
+                                {action-id :action-id} {:type :implicit
+                                                        :kind "row/create"}]
+                (testing "Enum fields are a valid implicit parameter target"
+                  (let [columns        (->> model :result_metadata (map :name) set)
+                        action-targets (->> (action/select-action :id action-id)
+                                            :parameters
+                                            (map :id)
+                                            set)]
+                    (is (= columns action-targets))))
+                (testing "Can create new records with an enum value"
+                  (is (= {:created-row
+                          {:name "new bird", :status "good bird", :type "turkey"}}
+                         (mt/user-http-request :crowberto
+                                               :post 200
+                                               (format "action/%s/execute" action-id)
+                                               {:parameters {"name"   "new bird"
+                                                             "status" "good bird"
+                                                             "type"   "turkey"}}))))))))))))
 
 ;;; ------------------------------------------------ Timezone-related ------------------------------------------------
 
@@ -939,7 +937,7 @@
                                                      :percent-state  0.0
                                                      :average-length 12.0}}}}
                  (t2/select-fn->fn :name :fingerprint Field
-                   :table_id (t2/select-one-pk Table :db_id (u/the-id database))))))))))
+                                   :table_id (t2/select-one-pk Table :db_id (u/the-id database))))))))))
 
 ;;; ----------------------------------------------------- Other ------------------------------------------------------
 
@@ -987,8 +985,8 @@
     (testing "We should be able to filter a PK column with a String value -- should get parsed automatically (#13263)"
       (is (= [[2 "Stout Burgers & Beers" 11 34.0996 -118.329 2]]
              (mt/rows
-               (mt/run-mbql-query venues
-                 {:filter [:= $id "2"]})))))))
+              (mt/run-mbql-query venues
+                {:filter [:= $id "2"]})))))))
 
 (deftest dont-sync-tables-with-no-select-permissions-test
   (testing "Make sure we only sync databases for which the current user has SELECT permissions"
@@ -1027,11 +1025,11 @@
                                  "FROM \"json_table\";")]
         (mt/with-temp Database [database {:engine :postgres, :details json-db-details}]
           (mt/with-db database (sync/sync-database! database)
-                               (is (= [[true false true]]
-                                      (-> {:query query}
-                                          (mt/native-query)
-                                          (qp/process-query)
-                                          (mt/rows))))))))))
+            (is (= [[true false true]]
+                   (-> {:query query}
+                       (mt/native-query)
+                       (qp/process-query)
+                       (mt/rows))))))))))
 
 (defn- pretty-sql [s]
   (-> s

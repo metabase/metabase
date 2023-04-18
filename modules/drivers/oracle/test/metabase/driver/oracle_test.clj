@@ -293,11 +293,11 @@
             (is (= [[1M "Hello"]
                     [2M nil]]
                    (qp.test/rows
-                     (qp/process-query
-                      {:database (mt/id)
-                       :type     :query
-                       :query    {:source-table (u/the-id table)
-                                  :order-by     [[:asc [:field (u/the-id id-field) nil]]]}}))))))))))
+                    (qp/process-query
+                     {:database (mt/id)
+                      :type     :query
+                      :query    {:source-table (u/the-id table)
+                                 :order-by     [[:asc [:field (u/the-id id-field) nil]]]}}))))))))))
 
 (deftest handle-slashes-test
   (mt/test-driver :oracle

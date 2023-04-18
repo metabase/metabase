@@ -139,12 +139,12 @@
       (with-redefs [sql-jdbc.describe-table/*nested-field-column-max-row-length* 3]
         (is (= {}
                (transduce
-                 #'sql-jdbc.describe-table/describe-json-xform
-                 #'sql-jdbc.describe-table/describe-json-rf [json-map]))))
+                #'sql-jdbc.describe-table/describe-json-xform
+                #'sql-jdbc.describe-table/describe-json-rf [json-map]))))
       (is (= {[:somekey "bob"] java.lang.String}
              (transduce
-               #'sql-jdbc.describe-table/describe-json-xform
-               #'sql-jdbc.describe-table/describe-json-rf [json-map]))))))
+              #'sql-jdbc.describe-table/describe-json-xform
+              #'sql-jdbc.describe-table/describe-json-rf [json-map]))))))
 
 (deftest json-details-only-test
   (testing "fields with base-type=type/JSON should have visibility-type=details-only, unlike other fields."

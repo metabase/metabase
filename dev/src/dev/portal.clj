@@ -2,8 +2,8 @@
   (:require [portal.api :as p]))
 
 (defonce
-  ^{:doc "The handle to portal. Can be used as @p to get the selected item."}
-  p
+ ^{:doc "The handle to portal. Can be used as @p to get the selected item."}
+ p
   (p/open {:port 5678}))
 
 ;; Listen by default.

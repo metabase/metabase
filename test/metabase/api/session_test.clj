@@ -102,7 +102,7 @@
     (testing "Test for password checking"
       (is (= {:errors {:password "did not match stored password"}}
              (mt/client :post 401 "session" (-> (mt/user->credentials :rasta)
-                                             (assoc :password "something else"))))))))
+                                                (assoc :password "something else"))))))))
 
 (deftest login-throttling-test
   (testing (str "Test that people get blocked from attempting to login if they try too many times (Check that"
@@ -373,7 +373,6 @@
         (is (= "Cadena de conexión !"
                (-> (mt/client :get 200 "session/properties" {:request-options {:headers {"X-Metabase-Locale" "es"}}})
                    :engines :h2 :details-fields first :display-name)))))))
-
 
 ;;; ------------------------------------------- TESTS FOR GOOGLE SIGN-IN ---------------------------------------------
 

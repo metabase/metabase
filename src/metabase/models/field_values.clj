@@ -110,7 +110,7 @@
   "Remove all advanced FieldValues for a `field-or-id`."
   [field-or-id]
   (t2/delete! FieldValues :field_id (u/the-id field-or-id)
-                          :type     [:in advanced-field-values-types]))
+              :type     [:in advanced-field-values-types]))
 
 (defn clear-field-values-for-field!
   "Remove all FieldValues for a `field-or-id`, including the advanced fieldvalues."
@@ -136,10 +136,10 @@
                        :status-code 400})))
     ;; if we're updating the values of a Full FieldValues, delete all Advanced FieldValues of this field
     (when (and values
-           (= (or type (t2/select-one-fn :type FieldValues :id id))
-              :full))
-     (clear-advanced-field-values-for-field! (or field_id
-                                                 (t2/select-one-fn :field_id FieldValues :id id))))))
+               (= (or type (t2/select-one-fn :type FieldValues :id id))
+                  :full))
+      (clear-advanced-field-values-for-field! (or field_id
+                                                  (t2/select-one-fn :field_id FieldValues :id id))))))
 
 (defn- post-select [field-values]
   (cond-> field-values
@@ -164,14 +164,14 @@
                                        [])))))
 
 (mi/define-methods
- FieldValues
- {:properties  (constantly {::mi/timestamped? true})
-  :types       (constantly {:human_readable_values :json-no-keywordization
-                            :values                :json
-                            :type                  :keyword})
-  :pre-insert  pre-insert
-  :pre-update  pre-update
-  :post-select post-select})
+  FieldValues
+  {:properties  (constantly {::mi/timestamped? true})
+   :types       (constantly {:human_readable_values :json-no-keywordization
+                             :values                :json
+                             :type                  :keyword})
+   :pre-insert  pre-insert
+   :pre-update  pre-update
+   :post-select post-select})
 
 (defmethod serdes/hash-fields FieldValues
   [_field-values]
@@ -230,12 +230,12 @@
 
   ([max-length coll]
    (lazy-seq
-     (when-let [s (seq coll)]
-       (let [f          (first s)
-             new-length (- max-length (count (str f)))]
-         (when-not (neg? new-length)
-           (cons f (take-by-length new-length
-                                   (rest s)))))))))
+    (when-let [s (seq coll)]
+      (let [f          (first s)
+            new-length (- max-length (count (str f)))]
+        (when-not (neg? new-length)
+          (cons f (take-by-length new-length
+                                  (rest s)))))))))
 
 (defn fixup-human-readable-values
   "Field values and human readable values are lists that are zipped together. If the field values have changes, the
@@ -308,14 +308,14 @@
        :has_more_values (or
                           ;; If the `distinct-values` has more elements than `limited-distinct-values`
                           ;; it means the the `distinct-values` has exceeded our [[*total-max-length*]] limits.
-                          (> (count distinct-values)
-                             (count limited-distinct-values))
+                         (> (count distinct-values)
+                            (count limited-distinct-values))
                           ;; [[metabase.db.metadata-queries/field-distinct-values]] runs a query
                           ;; with limit = [[metabase.db.metadata-queries/absolute-max-distinct-values-limit]].
                           ;; So, if the returned `distinct-values` has length equal to that exact limit,
                           ;; we assume the returned values is just a subset of what we have in DB.
-                          (= (count distinct-values)
-                             @(resolve 'metabase.db.metadata-queries/absolute-max-distinct-values-limit)))})
+                         (= (count distinct-values)
+                            @(resolve 'metabase.db.metadata-queries/absolute-max-distinct-values-limit)))})
     (catch Throwable e
       (log/error e (trs "Error fetching field values"))
       nil)))
@@ -363,9 +363,9 @@
       (do
         (log/debug (trs "Storing updated FieldValues for Field {0}..." field-name))
         (db/update-non-nil-keys! FieldValues (u/the-id field-values)
-          :has_more_values       has_more_values
-          :values                values
-          :human_readable_values (fixup-human-readable-values field-values values))
+                                 :has_more_values       has_more_values
+                                 :values                values
+                                 :human_readable_values (fixup-human-readable-values field-values values))
         ::fv-updated)
 
       ;; if FieldValues object doesn't exist create one
@@ -424,7 +424,7 @@
                                (t2/select-pk->fn :db_id 'Table :id [:in table-ids]))
         db-id->is-on-demand? (when (seq table-id->db-id)
                                (t2/select-pk->fn :is_on_demand 'Database
-                                 :id [:in (set (vals table-id->db-id))]))]
+                                                 :id [:in (set (vals table-id->db-id))]))]
     (into {} (for [table-id table-ids]
                [table-id (-> table-id table-id->db-id db-id->is-on-demand?)]))))
 
@@ -436,13 +436,13 @@
                  (filter field-should-have-field-values?
                          (t2/select ['Field :name :id :base_type :effective_type :coercion_strategy
                                      :semantic_type :visibility_type :table_id :has_field_values]
-                           :id [:in field-ids])))
+                                    :id [:in field-ids])))
         table-id->is-on-demand? (table-ids->table-id->is-on-demand? (map :table_id fields))]
     (doseq [{table-id :table_id, :as field} fields]
       (when (table-id->is-on-demand? table-id)
         (log/debug
-         (trs "Field {0} ''{1}'' should have FieldValues and belongs to a Database with On-Demand FieldValues updating."
-                 (u/the-id field) (:name field)))
+          (trs "Field {0} ''{1}'' should have FieldValues and belongs to a Database with On-Demand FieldValues updating."
+               (u/the-id field) (:name field)))
         (create-or-update-full-field-values! field)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

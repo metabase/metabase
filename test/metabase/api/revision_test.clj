@@ -25,11 +25,11 @@
 
 (defn- create-card-revision [card is-creation? user]
   (revision/push-revision!
-    :object       card
-    :entity       Card
-    :id           (:id card)
-    :user-id      (test.users/user->id user)
-    :is-creation? is-creation?))
+   :object       card
+   :entity       Card
+   :id           (:id card)
+   :user-id      (test.users/user->id user)
+   :is-creation? is-creation?))
 
 ;;; TODO -- seems weird that this fetches the Dashboard while the Card version above does not ?
 (defn- create-dashboard-revision!
@@ -97,13 +97,13 @@
                (create-card-revision card true :rasta)
                (create-card-revision (assoc card :name "something else") false :rasta)
                (t2/insert! Revision
-                 :model        "Card"
-                 :model_id     id
-                 :user_id      (test.users/user->id :rasta)
-                 :object       (revision/serialize-instance Card (:id card) card)
-                 :message      "because i wanted to"
-                 :is_creation  false
-                 :is_reversion true)
+                           :model        "Card"
+                           :model_id     id
+                           :user_id      (test.users/user->id :rasta)
+                           :object       (revision/serialize-instance Card (:id card) card)
+                           :message      "because i wanted to"
+                           :is_creation  false
+                           :is_reversion true)
                (get-revisions :card id)))))))
 
 ;;; # POST /revision/revert

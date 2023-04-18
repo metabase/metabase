@@ -232,7 +232,6 @@
       (finally
         (t2/delete! User :email "ldaptest@metabase.com")))))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            New Group IDs Functions                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -245,10 +244,10 @@
   (mt/with-temp PermissionsGroup [group group-properties]
     (doseq [member group-members]
       (t2/insert! PermissionsGroupMembership
-        {:group_id (u/the-id group)
-         :user_id  (if (keyword? member)
-                     (mt/user->id member)
-                     (u/the-id member))}))
+                  {:group_id (u/the-id group)
+                   :user_id  (if (keyword? member)
+                               (mt/user->id member)
+                               (u/the-id member))}))
     (f group)))
 
 (defmacro ^:private with-groups [[group-binding group-properties members & more-groups] & body]

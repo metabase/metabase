@@ -57,18 +57,18 @@
         (is (= {:referenced-query     card-query
                 :expected-database-id query-db-id}
                (try
-                (#'qp.resolve-referenced/check-query-database-id= card-query query-db-id)
-                (catch ExceptionInfo exc
-                  (ex-data exc)))))
+                 (#'qp.resolve-referenced/check-query-database-id= card-query query-db-id)
+                 (catch ExceptionInfo exc
+                   (ex-data exc)))))
 
         (is (nil? (#'qp.resolve-referenced/check-query-database-id= card-query (mt/id))))
 
         (is (= {:referenced-query     card-query
                 :expected-database-id query-db-id}
                (try
-                (#'qp.resolve-referenced/resolve-referenced-card-resources* query)
-                (catch ExceptionInfo exc
-                  (ex-data exc))))))))
+                 (#'qp.resolve-referenced/resolve-referenced-card-resources* query)
+                 (catch ExceptionInfo exc
+                   (ex-data exc))))))))
 
   (testing "fails on query that references an MBQL query from a different database"
     (mt/with-temp* [Database [outer-query-db]
@@ -87,35 +87,35 @@
         (is (= {:referenced-query     card-query
                 :expected-database-id query-db-id}
                (try
-                (#'qp.resolve-referenced/check-query-database-id= card-query query-db-id)
-                (catch ExceptionInfo exc
-                  (ex-data exc)))))
+                 (#'qp.resolve-referenced/check-query-database-id= card-query query-db-id)
+                 (catch ExceptionInfo exc
+                   (ex-data exc)))))
 
         (is (nil? (#'qp.resolve-referenced/check-query-database-id= card-query (mt/id))))
 
         (is (= {:referenced-query     card-query
                 :expected-database-id query-db-id}
                (try
-                (#'qp.resolve-referenced/resolve-referenced-card-resources* query)
-                (catch ExceptionInfo exc
-                  (ex-data exc)))))))))
+                 (#'qp.resolve-referenced/resolve-referenced-card-resources* query)
+                 (catch ExceptionInfo exc
+                   (ex-data exc)))))))))
 
 (deftest circular-referencing-tags-test
   (testing "fails on query with circular referencing sub-queries"
     (mt/with-temp* [Card [card-1 {:dataset_query (mt/native-query {:query "SELECT 1"})}]
                     Card [card-2 {:dataset_query (mt/native-query
-                                                  {:query         (str "SELECT * FROM {{#" (:id card-1) "}} AS c1")
-                                                   :template-tags (card-template-tags [(:id card-1)])})}]]
+                                                   {:query         (str "SELECT * FROM {{#" (:id card-1) "}} AS c1")
+                                                    :template-tags (card-template-tags [(:id card-1)])})}]]
       ;; Setup circular reference from card-1 to card-2 (card-2 already references card-1)
       (let [card-1-id  (:id card-1)]
         (t2/update! Card (:id card-1) {:dataset_query (mt/native-query
                                                         {:query         (str "SELECT * FROM {{#" (:id card-2) "}} AS c2")
                                                          :template-tags (card-template-tags [(:id card-2)])})})
         (let [entrypoint-query (mt/native-query
-                                {:query (str "SELECT * FROM {{#" (:id card-1) "}}")
-                                 :template-tags (card-template-tags [card-1-id])})]
+                                 {:query (str "SELECT * FROM {{#" (:id card-1) "}}")
+                                  :template-tags (card-template-tags [card-1-id])})]
           (is (= (#'qp.resolve-referenced/circular-ref-error (:id card-2) card-1-id)
                  (try
-                  (#'qp.resolve-referenced/check-for-circular-references! entrypoint-query)
-                  (catch ExceptionInfo e
-                    (.getMessage e))))))))))
+                   (#'qp.resolve-referenced/check-for-circular-references! entrypoint-query)
+                   (catch ExceptionInfo e
+                     (.getMessage e))))))))))

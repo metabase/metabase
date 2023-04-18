@@ -276,8 +276,8 @@
                     (lib/join (-> (lib/join-clause
                                    (meta/table-metadata :categories)
                                    [(lib/=
-                                      (lib/field "VENUES" "CATEGORY_ID")
-                                      (lib/with-join-alias (lib/field "CATEGORIES" "ID") "Cat"))])
+                                     (lib/field "VENUES" "CATEGORY_ID")
+                                     (lib/with-join-alias (lib/field "CATEGORIES" "ID") "Cat"))])
                                   (lib/with-join-alias "Cat")
                                   (lib/with-join-fields :all))))]
       (testing (lib.util/format "Query =\n%s" (u/pprint-to-str query))
@@ -449,8 +449,8 @@
               (lib/join (-> (lib/join-clause
                              (meta/table-metadata :categories)
                              [(lib/=
-                                (lib/field "VENUES" "CATEGORY_ID")
-                                (lib/with-join-alias (lib/field "CATEGORIES" "ID") "Cat"))])
+                               (lib/field "VENUES" "CATEGORY_ID")
+                               (lib/with-join-alias (lib/field "CATEGORIES" "ID") "Cat"))])
                             (lib/with-join-alias "Cat")
                             (lib/with-join-fields :all)))
               (lib/with-fields [(lib/field "VENUES" "ID")
@@ -481,10 +481,10 @@
               :lib/desired-column-alias "Cat__ID"}]
             (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
                 (lib/join (-> (lib/join-clause
-                                (meta/table-metadata :categories)
-                                [(lib/=
-                                   (lib/field "VENUES" "CATEGORY_ID")
-                                   (lib/with-join-alias (lib/field "CATEGORIES" "ID") "Cat"))])
+                               (meta/table-metadata :categories)
+                               [(lib/=
+                                 (lib/field "VENUES" "CATEGORY_ID")
+                                 (lib/with-join-alias (lib/field "CATEGORIES" "ID") "Cat"))])
                               (lib/with-join-alias "Cat")
                               (lib/with-join-fields :all)))
                 (lib/with-fields [(lib/field "VENUES" "ID")
@@ -586,7 +586,7 @@
     (let [query (lib/query-for-table-name meta/metadata-provider "VENUES")
           query (-> query
                     (lib/order-by (m/find-first #(= (:id %) (meta/id :categories :name))
-                                   (lib/orderable-columns query))))]
+                                                (lib/orderable-columns query))))]
       (is (=? {:stages [{:order-by [[:asc {} [:field
                                               {:source-field (meta/id :venues :category-id)}
                                               (meta/id :categories :name)]]]}]}
@@ -646,7 +646,7 @@
                    :order-by    [[:asc {} [:aggregation {:effective-type :type/Float} 0]]]}]}
                 query'))
         (is (=? [[:asc {} [:aggregation {:effective-type :type/Float} 0]]]
-               (lib/order-bys query')))
+                (lib/order-bys query')))
         (is (=? [{:display_name "Average of Price + 1"
                   :direction    :asc}]
                 (map (partial lib/display-info query') (lib/order-bys query'))))

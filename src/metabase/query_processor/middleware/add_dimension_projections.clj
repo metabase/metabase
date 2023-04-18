@@ -61,8 +61,8 @@
   (when-let [field-ids (not-empty (set (mbql.u/match fields [:field (id :guard integer?) _] id)))]
     (letfn [(thunk []
               (m/index-by :field_id (t2/select [Dimension :id :field_id :name :human_readable_field_id]
-                                      :field_id [:in field-ids]
-                                      :type     "external")))]
+                                               :field_id [:in field-ids]
+                                               :type     "external")))]
       (if (qp.store/initialized?)
         (qp.store/cached [::fetch-dimensions field-ids]
           (thunk))
@@ -178,7 +178,7 @@
     ;; fetch remapping column pairs if any exist...
     (if-let [infos (not-empty (remap-column-infos (concat fields breakout)))]
       ;; if they do, update `:fields`, `:order-by` and `:breakout` clauses accordingly and add to the query
-      (let [ ;; make a map of field-id-clause -> fk-clause from the tuples
+      (let [;; make a map of field-id-clause -> fk-clause from the tuples
             original->remapped             (into {} (map (juxt :original-field-clause :new-field-clause)) infos)
             existing-fields                (add-fk-remaps-rewrite-existing-fields infos fields)
             ;; don't add any new entries for fields that already exist. Use [[mbql.u/remove-namespaced-options]] here so
@@ -231,7 +231,6 @@
         ;; convert the remappings to plain maps so we don't have to look at record type nonsense everywhere
         (seq remaps) (assoc ::external-remaps (mapv (partial into {}) remaps))))))
 
-
 ;;;; Post-processing
 
 (def ^:private InternalDimensionInfo
@@ -250,7 +249,6 @@
   {:internal-only-dims (s/maybe [InternalDimensionInfo])
    ;; this is just (map :new-column internal-only-dims)
    :internal-only-cols (s/maybe [su/Map])})
-
 
 ;;;; Metadata
 
@@ -358,9 +356,7 @@
       (merge-metadata-for-internal-remaps internal-cols-info)
       (merge-metadata-for-external-remaps remapping-dimensions)))
 
-
 ;;;; Transform to add additional cols to results
-
 
 (defn- create-remapped-col [col-name remapped-from base-type]
   {:description   nil

@@ -420,8 +420,8 @@
           (do-with-some-validators-disabled
             (fn []
               (let [get-response (client :get 400 "/auth/sso"
-                                   {:request-options {:redirect-strategy :none}}
-                                   :redirect redirect-url)]
+                                         {:request-options {:redirect-strategy :none}}
+                                         :redirect redirect-url)]
                 (is (= "SSO is trying to do an open redirect to an untrusted site" get-response))))))))))
 
 (deftest login-create-account-test
@@ -583,13 +583,13 @@
                        (:RelayState params-map))))
               (testing "\nPOST request should redirect to the original redirect URL"
                 (do-with-some-validators-disabled
-                 (fn []
-                   (let [req-options (saml-post-request-options (saml-test-response)
-                                                                (:RelayState params-map))
-                         response    (client-full-response :post 302 "/auth/sso" req-options)]
-                     (is (successful-login? response))
-                     (is (= redirect-url
-                            (get-in response [:headers "Location"]))))))))))))))
+                  (fn []
+                    (let [req-options (saml-post-request-options (saml-test-response)
+                                                                 (:RelayState params-map))
+                          response    (client-full-response :post 302 "/auth/sso" req-options)]
+                      (is (successful-login? response))
+                      (is (= redirect-url
+                             (get-in response [:headers "Location"]))))))))))))))
 
 (deftest sso-subpath-e2e-test
   (testing "Redirect URL should correcly append the site-url when the redirect is a relative path (#28650)"
@@ -608,10 +608,10 @@
               (testing (format "\nresult =\n%s" (u/pprint-to-str params-map))
                 (testing "\nPOST request should redirect to the original redirect URL with the correct site-url path"
                   (do-with-some-validators-disabled
-                   (fn []
-                     (let [req-options (saml-post-request-options (saml-test-response)
-                                                                  (:RelayState params-map))
-                           response    (client-full-response :post 302 "/auth/sso" req-options)]
-                       (is (successful-login? response))
-                       (is (= (str "http://localhost:3001/path" redirect-url)
-                              (get-in response [:headers "Location"])))))))))))))))
+                    (fn []
+                      (let [req-options (saml-post-request-options (saml-test-response)
+                                                                   (:RelayState params-map))
+                            response    (client-full-response :post 302 "/auth/sso" req-options)]
+                        (is (successful-login? response))
+                        (is (= (str "http://localhost:3001/path" redirect-url)
+                               (get-in response [:headers "Location"])))))))))))))))

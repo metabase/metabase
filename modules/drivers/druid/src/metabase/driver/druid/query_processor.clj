@@ -115,7 +115,6 @@
   [[_ value]]
   (->rvalue value))
 
-
 (defmulti ^:private dimension-or-metric?
   "Is this field clause a `:dimension` or `:metric`?"
   {:arglists '([field-clause])}
@@ -148,14 +147,12 @@
                            :threshold topN-max-results}
      ::groupBy            {:queryType :groupBy})))
 
-
 ;;; ---------------------------------------------- handle-source-table -----------------------------------------------
 
 (defn- handle-source-table
   [_ {source-table-id :source-table} druid-query]
   (let [{source-table-name :name} (qp.store/table source-table-id)]
     (assoc-in druid-query [:query :dataSource] source-table-name)))
-
 
 ;;; ---------------------- handle-filter. See http://druid.io/docs/latest/querying/filters.html ----------------------
 
@@ -448,9 +445,7 @@
         (seq filter)    (assoc-in [:query :filter] filter)
         (seq intervals) (assoc-in [:query :intervals] intervals)))))
 
-
 ;;; ----------------------------------------------- handle-aggregation -----------------------------------------------
-
 
 (defn- expression->field-names
   [[_ & args]]
@@ -747,8 +742,7 @@
                       ;; we should never get here unless our code is B U S T E D
                       _
                       (throw (ex-info (tru "Expected :aggregation-options, constant, or expression.")
-                               {:type :bug, :input arg})))))}))
-
+                                      {:type :bug, :input arg})))))}))
 
 (declare handle-aggregations)
 
@@ -795,7 +789,6 @@
        (handle-aggregation query-type &match druid-query)))
    druid-query
    aggregations))
-
 
 ;;; ------------------------------------------------ handle-breakout -------------------------------------------------
 
@@ -971,7 +964,6 @@
                                        (field-clause->name breakout-field))))))
       (assoc-in [:query :dimensions] (mapv ->dimension-rvalue breakout-fields))))
 
-
 ;;; ------------------------------------------------ handle-order-by -------------------------------------------------
 
 (defmulti ^:private handle-order-by
@@ -982,9 +974,8 @@
   [_ _ druid-query]
   (log/warn
    (u/format-color 'red
-       (tru "Sorting with Druid is only allowed in queries that have one or more breakout columns. Ignoring :order-by clause.")))
+                   (tru "Sorting with Druid is only allowed in queries that have one or more breakout columns. Ignoring :order-by clause.")))
   druid-query)
-
 
 (defmethod handle-order-by ::topN
   [_ {[ag] :aggregation, [breakout-field] :breakout, [[direction field]] :order-by} druid-query]
@@ -1006,10 +997,10 @@
     (when-not sort-by-breakout?
       (assert ag-field))
     (assoc-in druid-query [:query :metric] (match [sort-by-breakout? direction]
-                                               [true  :asc]  {:type :alphaNumeric}
-                                               [true  :desc] {:type :inverted, :metric {:type :alphaNumeric}}
-                                               [false :asc]  {:type :inverted, :metric ag-field}
-                                               [false :desc] ag-field))))
+                                             [true  :asc]  {:type :alphaNumeric}
+                                             [true  :desc] {:type :inverted, :metric {:type :alphaNumeric}}
+                                             [false :asc]  {:type :inverted, :metric ag-field}
+                                             [false :desc] ag-field))))
 
 (defmethod handle-order-by ::groupBy
   [_ {:keys [order-by]} druid-query]
@@ -1051,7 +1042,6 @@
                                             :desc :descending
                                             :asc  :ascending)))))
 
-
 ;;; ------------------------------------------------- handle-fields --------------------------------------------------
 
 (defmulti ^:private handle-fields
@@ -1064,7 +1054,7 @@
     (log/warn
      (u/format-color 'red
          ;; TODO - this is not really true, is it
-         (tru "WARNING: It only makes sense to specify :fields for a query with no aggregation. Ignoring the clause."))))
+                     (tru "WARNING: It only makes sense to specify :fields for a query with no aggregation. Ignoring the clause."))))
   druid-query)
 
 (defmethod handle-fields ::scan
@@ -1091,7 +1081,6 @@
    druid-query
    fields))
 
-
 ;;; -------------------------------------------------- handle-limit --------------------------------------------------
 
 (defmulti ^:private handle-limit
@@ -1116,7 +1105,7 @@
   (when limit
     (log/warn
      (u/format-color 'red
-         (tru "WARNING: Druid does not allow limitSpec in time series queries. Ignoring the LIMIT clause."))))
+                     (tru "WARNING: Druid does not allow limitSpec in time series queries. Ignoring the LIMIT clause."))))
   druid-query)
 
 (defmethod handle-limit ::topN
@@ -1129,7 +1118,6 @@
   (cond-> druid-query
     true  (assoc-in [:query :limitSpec :type]  :default)
     limit (assoc-in [:query :limitSpec :limit] (adjust-limit limit))))
-
 
 ;;; -------------------------------------------------- handle-page ---------------------------------------------------
 
@@ -1144,7 +1132,6 @@
   (when page-clause
     (log/warn (u/format-color 'red "WARNING: 'page' is not yet implemented.")))
   druid-query)
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          Build + Log + Process Query                                           |

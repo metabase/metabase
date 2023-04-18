@@ -97,9 +97,9 @@
     (snowplow/track-event! ::snowplow/new-task-history *current-user-id* (task->snowplow-event <>))))
 
 (mi/define-methods
- TaskHistory
- {:types      (constantly {:task_details :json})
-  :post-insert post-insert})
+  TaskHistory
+  {:types      (constantly {:task_details :json})
+   :post-insert post-insert})
 
 (s/defn all
   "Return all TaskHistory entries, applying `limit` and `offset` if not nil"
@@ -110,7 +110,6 @@
                                   {:limit limit})
                                 (when offset
                                   {:offset offset}))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            with-task-history macro                                             |

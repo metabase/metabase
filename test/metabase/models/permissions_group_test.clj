@@ -49,31 +49,31 @@
       (mt/with-temp User [{user-id :id}]
         (testing "Should be added to All Users group"
           (is (t2/exists? PermissionsGroupMembership
-                :user_id  user-id
-                :group_id (u/the-id (perms-group/all-users)))))
+                          :user_id  user-id
+                          :group_id (u/the-id (perms-group/all-users)))))
         (testing "Should not be added to Admin group"
           (is (not (t2/exists? PermissionsGroupMembership
-                     :user_id  user-id
-                     :group_id (u/the-id (perms-group/admin))))))))
+                               :user_id  user-id
+                               :group_id (u/the-id (perms-group/admin))))))))
 
     (testing "superuser"
       (mt/with-temp User [{user-id :id} {:is_superuser true}]
         (testing "Should be added to All Users group"
           (is (t2/exists? PermissionsGroupMembership
-                :user_id  user-id
-                :group_id (u/the-id (perms-group/all-users)))))
+                          :user_id  user-id
+                          :group_id (u/the-id (perms-group/all-users)))))
         (testing "Should be added to Admin group"
           (is (t2/exists? PermissionsGroupMembership
-                :user_id  user-id
-                :group_id (u/the-id (perms-group/admin)))))))))
+                          :user_id  user-id
+                          :group_id (u/the-id (perms-group/admin)))))))))
 
 (s/defn ^:private group-has-full-access?
   "Does a group have permissions for `object` and *all* of its children?"
   [group-id :- su/IntGreaterThanOrEqualToZero object :- perms/PathSchema]
   ;; e.g. WHERE (object || '%') LIKE '/db/1000/'
   (t2/exists? Permissions
-    :group_id group-id
-    object    [:like (h2x/concat :object (h2x/literal "%"))]))
+              :group_id group-id
+              object    [:like (h2x/concat :object (h2x/literal "%"))]))
 
 (deftest newly-created-databases-test
   (testing "magic groups should have permissions for newly created databases\n"

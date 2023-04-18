@@ -52,8 +52,8 @@
             (respond {:status  400
                       :headers (mw.security/security-headers)
                       :body    (merge
-                                 (Throwable->map e)
-                                 {:message (tru "Error parsing paging parameters: {0}" (ex-message e))})}))
+                                (Throwable->map e)
+                                {:message (tru "Error parsing paging parameters: {0}" (ex-message e))})}))
           (let [{:keys [limit offset]} paging-params
                 request                (with-paging-params request paging-params)]
             (binding [*limit*  limit

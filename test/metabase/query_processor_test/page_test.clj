@@ -15,7 +15,7 @@
                   (mt/with-native-query-testing-context query
                     (is (= expected
                            (mt/formatted-rows [int str]
-                             (qp/process-query query)))))))]
+                                              (qp/process-query query)))))))]
         (testing "get the first page"
           (page-is [[1 "African"]
                     [2 "American"]
@@ -25,9 +25,9 @@
                    1))
 
         (testing "get the second page"
-          (page-is [[ 6 "Bakery"]
-                    [ 7 "Bar"]
-                    [ 8 "Beer Garden"]
-                    [ 9 "Breakfast / Brunch"]
+          (page-is [[6 "Bakery"]
+                    [7 "Bar"]
+                    [8 "Beer Garden"]
+                    [9 "Breakfast / Brunch"]
                     [10 "Brewery"]]
                    2))))))

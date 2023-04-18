@@ -141,10 +141,10 @@
   []
   (validation/check-has-application-permission :setting)
   (let [response (email/send-message!
-                   :subject      "Metabase Test Email"
-                   :recipients   [(:email @api/*current-user*)]
-                   :message-type :text
-                   :message      "Your Metabase emails are working — hooray!")]
+                  :subject      "Metabase Test Email"
+                  :recipients   [(:email @api/*current-user*)]
+                  :message-type :text
+                  :message      "Your Metabase emails are working — hooray!")]
     (if-not (::email/error response)
       {:ok true}
       {:status 400

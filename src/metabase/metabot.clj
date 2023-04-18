@@ -68,9 +68,9 @@
                       (map (fn [{:keys [create_table_ddl] :as model}]
                              (let [{:keys [prompt embedding tokens]} (metabot-client/create-embedding create_table_ddl)]
                                (assoc model
-                                 :prompt prompt
-                                 :embedding embedding
-                                 :tokens tokens)))))]
+                                      :prompt prompt
+                                      :embedding embedding
+                                      :tokens tokens)))))]
       (if-some [{best-mode-name :name
                  best-model-id :id
                  :as model} (metabot-util/best-prompt-object models user_prompt)]

@@ -28,11 +28,10 @@
     (testing ":details-only fields should not be returned in normal queries"
       (tu/with-temp-vals-in-db Field (mt/id :venues :price) {:visibility_type :details-only}
         (is (= (m/index-by :id (for [col (qp.test/expected-cols :venues)]
-                                (if (= (mt/id :venues :price) (u/the-id col))
-                                  (assoc col :visibility_type :details-only)
-                                  col)))
+                                 (if (= (mt/id :venues :price) (u/the-id col))
+                                   (assoc col :visibility_type :details-only)
+                                   col)))
                (m/index-by :id (venues-cols-from-query))))))))
-
 
 ;;; ----------------------------------------------- :sensitive fields ------------------------------------------------
 
@@ -40,15 +39,15 @@
   (mt/test-drivers (mt/normal-drivers)
     (testing "Make sure :sensitive information fields are never returned by the QP"
       (is (= {:cols (qp.test/expected-cols :users [:id :name :last_login])
-              :rows [[ 1 "Plato Yeshua"]
-                     [ 2 "Felipinho Asklepios"]
-                     [ 3 "Kaneonuskatew Eiran"]
-                     [ 4 "Simcha Yan"]
-                     [ 5 "Quentin Sören"]
-                     [ 6 "Shad Ferdynand"]
-                     [ 7 "Conchúr Tihomir"]
-                     [ 8 "Szymon Theutrich"]
-                     [ 9 "Nils Gotam"]
+              :rows [[1 "Plato Yeshua"]
+                     [2 "Felipinho Asklepios"]
+                     [3 "Kaneonuskatew Eiran"]
+                     [4 "Simcha Yan"]
+                     [5 "Quentin Sören"]
+                     [6 "Shad Ferdynand"]
+                     [7 "Conchúr Tihomir"]
+                     [8 "Szymon Theutrich"]
+                     [9 "Nils Gotam"]
                      [10 "Frans Hevel"]
                      [11 "Spiros Teofil"]
                      [12 "Kfir Caj"]
@@ -57,6 +56,6 @@
                      [15 "Rüstem Hebel"]]}
              ;; Filter out the timestamps from the results since they're hard to test :/
              (mt/format-rows-by [int identity]
-               (qp.test/rows-and-cols
-                 (mt/run-mbql-query users
-                   {:order-by [[:asc $id]]}))))))))
+                                (qp.test/rows-and-cols
+                                 (mt/run-mbql-query users
+                                   {:order-by [[:asc $id]]}))))))))

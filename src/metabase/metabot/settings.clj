@@ -56,10 +56,10 @@
                                               (u/lower-case-en id))]
                 (let [version (parse-double v)]
                   (assoc m
-                    :version version
-                    :version-string v
-                    :generation (int version)
-                    :details r)))))
+                         :version version
+                         :version-string v
+                         :generation (int version)
+                         :details r)))))
        ;; Drop anything that doesn't match
        (filter identity)
        ;; Order by generation (asc), version (desc),

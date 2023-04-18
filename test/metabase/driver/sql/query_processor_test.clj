@@ -294,13 +294,13 @@
 (defn- query-on-dataset-with-nils
   [query]
   (mt/rows
-    (qp/process-query
-     {:database (mt/id)
-      :type     :query
-      :query    (merge
-                 {:source-query {:native "select 'foo' as a union select null as a union select 'bar' as a"}
-                  :order-by     [[:asc [:field "A" {:base-type :type/Text}]]]}
-                 query)})))
+   (qp/process-query
+    {:database (mt/id)
+     :type     :query
+     :query    (merge
+                {:source-query {:native "select 'foo' as a union select null as a union select 'bar' as a"}
+                 :order-by     [[:asc [:field "A" {:base-type :type/Text}]]]}
+                query)})))
 
 (deftest ^:parallel correct-for-null-behaviour
   (testing "NULLs should be treated intuitively in filters (SQL has somewhat unintuitive semantics where NULLs get propagated out of expressions)."
@@ -315,12 +315,12 @@
   (testing "Null behaviour correction fix should work with joined fields (#13534)"
     (is (= [[1000]]
            (mt/rows
-             (mt/run-mbql-query checkins
-               {:filter      [:!= &u.users.name "foo"]
-                :aggregation [:count]
-                :joins       [{:source-table $$users
-                               :alias        "u"
-                               :condition    [:= $user_id &u.users.id]}]}))))))
+            (mt/run-mbql-query checkins
+              {:filter      [:!= &u.users.name "foo"]
+               :aggregation [:count]
+               :joins       [{:source-table $$users
+                              :alias        "u"
+                              :condition    [:= $user_id &u.users.id]}]}))))))
 
 (deftest ^:parallel joined-field-clauses-test
   (testing "Should correctly compile `:field` clauses with `:join-alias`"

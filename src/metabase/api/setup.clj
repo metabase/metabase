@@ -94,10 +94,10 @@
         (throw (ex-info msg {:errors {:database {:engine msg}}, :status-code 400}))))
     (first (t2/insert-returning-instances! Database
                                            (merge
-                                             {:name name, :engine driver, :details details, :creator_id creator-id}
-                                             (u/select-non-nil-keys database #{:is_on_demand :is_full_sync :auto_run_queries})
-                                             (when schedules
-                                               (sync.schedules/schedule-map->cron-strings schedules)))))))
+                                            {:name name, :engine driver, :details details, :creator_id creator-id}
+                                            (u/select-non-nil-keys database #{:is_on_demand :is_full_sync :auto_run_queries})
+                                            (when schedules
+                                              (sync.schedules/schedule-map->cron-strings schedules)))))))
 
 (defn- setup-set-settings! [_request {:keys [email site-name site-locale allow-tracking?]}]
   ;; set a couple preferences
@@ -140,22 +140,22 @@
   (letfn [(create! []
             (try
               (t2/with-transaction [_conn]
-               (let [user-info (setup-create-user!
-                                {:email email, :first-name first_name, :last-name last_name, :password password})
-                     db        (setup-create-database! {:name name
-                                                        :driver engine
-                                                        :details details
-                                                        :schedules schedules
-                                                        :database database
-                                                        :creator-id (:user-id user-info)})]
-                 (setup-maybe-create-and-invite-user! {:email invited_email,
-                                                       :first_name invited_first_name,
-                                                       :last_name invited_last_name}
-                                                      {:email email, :first_name first_name})
-                 (setup-set-settings!
-                  request
-                  {:email email, :site-name site_name, :site-locale site_locale, :allow-tracking? allow_tracking})
-                 (assoc user-info :database db)))
+                (let [user-info (setup-create-user!
+                                 {:email email, :first-name first_name, :last-name last_name, :password password})
+                      db        (setup-create-database! {:name name
+                                                         :driver engine
+                                                         :details details
+                                                         :schedules schedules
+                                                         :database database
+                                                         :creator-id (:user-id user-info)})]
+                  (setup-maybe-create-and-invite-user! {:email invited_email,
+                                                        :first_name invited_first_name,
+                                                        :last_name invited_last_name}
+                                                       {:email email, :first_name first_name})
+                  (setup-set-settings!
+                   request
+                   {:email email, :site-name site_name, :site-locale site_locale, :allow-tracking? allow_tracking})
+                  (assoc user-info :database db)))
               (catch Throwable e
                 ;; if the transaction fails, restore the Settings cache from the DB again so any changes made in this
                 ;; endpoint (such as clearing the setup token) are reverted. We can't use `dosync` here to accomplish
@@ -187,7 +187,6 @@
                              {:database engine, :source :setup})
       {:status 400
        :body   error-or-nil})))
-
 
 ;;; Admin Checklist
 

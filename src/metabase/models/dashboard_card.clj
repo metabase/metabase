@@ -48,12 +48,12 @@
     (merge defaults dashcard)))
 
 (mi/define-methods
- DashboardCard
- {:properties (constantly {::mi/timestamped? true
-                           ::mi/entity-id    true})
-  :types      (constantly {:parameter_mappings     :parameters-list
-                           :visualization_settings :visualization-settings})
-  :pre-insert pre-insert})
+  DashboardCard
+  {:properties (constantly {::mi/timestamped? true
+                            ::mi/entity-id    true})
+   :types      (constantly {:parameter_mappings     :parameters-list
+                            :visualization_settings :visualization-settings})
+   :pre-insert pre-insert})
 
 (defn from-parsed-json
   "Convert a map with dashboard-card into a Toucan instance assuming it came from parsed JSON and the map keys have
@@ -86,7 +86,6 @@
    :row :col
    :created_at])
 
-
 ;;; --------------------------------------------------- HYDRATION ----------------------------------------------------
 
 (defn dashboard
@@ -101,10 +100,9 @@
   [{:keys [id]}]
   (t2/select [Card :id :name :description :display :dataset_query :visualization_settings :collection_id]
              (merge
-               (mdb.u/join [Card :id] [DashboardCardSeries :card_id])
-               {:order-by [[(db/qualify DashboardCardSeries :position) :asc]]
-                :where    [:= (db/qualify DashboardCardSeries :dashboardcard_id) id]})))
-
+              (mdb.u/join [Card :id] [DashboardCardSeries :card_id])
+              {:order-by [[(db/qualify DashboardCardSeries :position) :asc]]
+               :where    [:= (db/qualify DashboardCardSeries :dashboardcard_id) id]})))
 
 ;;; ---------------------------------------------------- CRUD FNS ----------------------------------------------------
 
@@ -179,20 +177,20 @@
   [{:keys [id action_id] :as dashboard-card} :- DashboardCardUpdates
    old-dashboard-card                        :- DashboardCardUpdates]
   (t2/with-transaction [_conn]
-   (let [update-ks (cond-> [:action_id :row :col :size_x :size_y
-                            :parameter_mappings :visualization_settings]
+    (let [update-ks (cond-> [:action_id :row :col :size_x :size_y
+                             :parameter_mappings :visualization_settings]
                     ;; Allow changing card_id for action dashcards, but not for card dashcards.
                     ;; This is to preserve the existing behavior of questions and card_id
                     ;; I don't know why card_id couldn't be changed for cards though.
-                     action_id (conj :card_id))
-         updates (shallow-updates (select-keys dashboard-card update-ks)
-                                  (select-keys old-dashboard-card update-ks))]
-     (when (seq updates)
-       (t2/update! DashboardCard id updates))
-     (when (not= (:series dashboard-card [])
-                 (:series old-dashboard-card []))
-       (update-dashboard-cards-series! {(:id dashboard-card) (:series dashboard-card)}))
-     nil)))
+                      action_id (conj :card_id))
+          updates (shallow-updates (select-keys dashboard-card update-ks)
+                                   (select-keys old-dashboard-card update-ks))]
+      (when (seq updates)
+        (t2/update! DashboardCard id updates))
+      (when (not= (:series dashboard-card [])
+                  (:series old-dashboard-card []))
+        (update-dashboard-cards-series! {(:id dashboard-card) (:series dashboard-card)}))
+      nil)))
 
 (def ParamMapping
   "Schema for a parameter mapping as it would appear in the DashboardCard `:parameter_mappings` column."
@@ -218,14 +216,14 @@
   (when (seq dashboard-cards)
     (t2/with-transaction [_conn]
       (let [dashboard-card-ids (t2/insert-returning-pks!
-                                 DashboardCard
-                                 (for [dashcard dashboard-cards]
-                                   (merge {:parameter_mappings []
-                                           :visualization_settings {}}
-                                          (select-keys dashcard
-                                                       [:dashboard_id :card_id :action_id :size_x :size_y :row :col
-                                                        :parameter_mappings
-                                                        :visualization_settings]))))]
+                                DashboardCard
+                                (for [dashcard dashboard-cards]
+                                  (merge {:parameter_mappings []
+                                          :visualization_settings {}}
+                                         (select-keys dashcard
+                                                      [:dashboard_id :card_id :action_id :size_x :size_y :row :col
+                                                       :parameter_mappings
+                                                       :visualization_settings]))))]
         ;; add series to the DashboardCard
         (update-dashboard-cards-series! (zipmap dashboard-card-ids (map #(get % :series []) dashboard-cards)))
         ;; return the full DashboardCard

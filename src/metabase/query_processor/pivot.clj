@@ -110,12 +110,12 @@
    -- `ORDER BY` isn't allowed for fields that don't appear in `GROUP BY`."
   [outer-query]
   (update
-    outer-query
-    :query
-    (fn [query]
-      (if-let [new-order-by (not-empty (filterv (comp #(= :aggregation %) first second) (:order-by query)))]
-        (assoc query :order-by new-order-by)
-        (dissoc query :order-by)))))
+   outer-query
+   :query
+   (fn [query]
+     (if-let [new-order-by (not-empty (filterv (comp #(= :aggregation %) first second) (:order-by query)))]
+       (assoc query :order-by new-order-by)
+       (dissoc query :order-by)))))
 
 (defn- generate-queries
   "Generate the additional queries to perform a generic pivot table"

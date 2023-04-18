@@ -24,8 +24,8 @@
             (perms/grant-permissions! group (perms/table-segmented-query-path table))
             (perms/grant-collection-readwrite-permissions! group collection)
             (is (some? (mt/user-http-request :rasta :post 200 "card"
-                        (assoc (api.card-test/card-with-name-and-query card-name (api.card-test/mbql-count-query db table))
-                               :collection_id (u/the-id collection)))))))))
+                                             (assoc (api.card-test/card-with-name-and-query card-name (api.card-test/mbql-count-query db table))
+                                                    :collection_id (u/the-id collection)))))))))
 
     (testing "Users with segmented permissions should be able to update the query associated to a card"
       (mt/with-model-cleanup [Card]
@@ -43,8 +43,8 @@
             (perms/grant-collection-readwrite-permissions! group collection)
             (is (= "Another Name"
                    (:name (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card))
-                           {:name          "Another Name"
-                            :dataset_query (api.card-test/mbql-count-query db table)}))))))))))
+                                                {:name          "Another Name"
+                                                 :dataset_query (api.card-test/mbql-count-query db table)}))))))))))
 
 (deftest parameters-with-source-is-card-test
   (testing "a card with a parameter whose source is a card should respect sandboxing"

@@ -15,9 +15,9 @@
 (models/defmodel Query :query)
 
 (mi/define-methods
- Query
- {:types       (constantly {:query :json})
-  :primary-key (constantly :query_hash)})
+  Query
+  {:types       (constantly {:query :json})
+   :primary-key (constantly :query_hash)})
 
 ;;; Helper Fns
 
@@ -92,7 +92,7 @@
     (integer? source-table) {:database-id database-id, :table-id source-table}
     (string? source-table)  (let [[_ card-id] (re-find #"^card__(\d+)$" source-table)]
                               (t2/select-one ['Card [:table_id :table-id] [:database_id :database-id]]
-                                :id (Integer/parseInt card-id)))
+                                             :id (Integer/parseInt card-id)))
     (map? source-query)     (query->database-and-table-ids {:database database-id
                                                             :type     query-type
                                                             :query    source-query})))

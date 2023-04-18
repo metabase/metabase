@@ -147,8 +147,8 @@
    (remove-clause a-query -1 clause))
   ([a-query stage-number clause]
    (lib.core/remove-clause
-     a-query stage-number
-     (lib.core/normalize (js->clj clause :keywordize-keys true)))))
+    a-query stage-number
+    (lib.core/normalize (js->clj clause :keywordize-keys true)))))
 
 (defn ^:export replace-clause
   "Replaces the `target-clause` with `new-clause` in the `query` stage."
@@ -156,9 +156,9 @@
    (replace-clause a-query -1 target-clause new-clause))
   ([a-query stage-number target-clause new-clause]
    (lib.core/replace-clause
-     a-query stage-number
-     (lib.core/normalize (js->clj target-clause :keywordize-keys true))
-     (lib.core/normalize (js->clj new-clause :keywordize-keys true)))))
+    a-query stage-number
+    (lib.core/normalize (js->clj target-clause :keywordize-keys true))
+    (lib.core/normalize (js->clj new-clause :keywordize-keys true)))))
 
 (defn- prep-query-for-equals [a-query field-ids]
   (-> a-query

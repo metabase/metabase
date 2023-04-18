@@ -55,7 +55,7 @@
   [driver ^String column-name ^String database-type]
   (when-let [semantic-type (sql-jdbc.sync.interface/column->semantic-type driver database-type column-name)]
     (assert (isa? semantic-type :type/*)
-      (str "Invalid type: " semantic-type))
+            (str "Invalid type: " semantic-type))
     semantic-type))
 
 (defmethod sql-jdbc.sync.interface/fallback-metadata-query :sql-jdbc
@@ -91,31 +91,31 @@
   "Reducible metadata about the Fields belonging to a Table, fetching using JDBC DatabaseMetaData methods."
   [driver ^Connection conn db-name-or-nil schema table-name]
   (sql-jdbc.sync.common/reducible-results
-    #(.getColumns (.getMetaData conn)
-                  db-name-or-nil
-                  (some->> schema (driver/escape-entity-name-for-metadata driver))
-                  (some->> table-name (driver/escape-entity-name-for-metadata driver))
-                  nil)
-    (fn [^ResultSet rs]
+   #(.getColumns (.getMetaData conn)
+                 db-name-or-nil
+                 (some->> schema (driver/escape-entity-name-for-metadata driver))
+                 (some->> table-name (driver/escape-entity-name-for-metadata driver))
+                 nil)
+   (fn [^ResultSet rs]
       ;; https://docs.oracle.com/javase/7/docs/api/java/sql/DatabaseMetaData.html#getColumns(java.lang.String,%20java.lang.String,%20java.lang.String,%20java.lang.String)
-      #(let [default            (.getString rs "COLUMN_DEF")
-             no-default?        (contains? #{nil "NULL" "null"} default)
-             nullable           (.getInt rs "NULLABLE")
-             not-nullable?      (= 0 nullable)
+     #(let [default            (.getString rs "COLUMN_DEF")
+            no-default?        (contains? #{nil "NULL" "null"} default)
+            nullable           (.getInt rs "NULLABLE")
+            not-nullable?      (= 0 nullable)
              ;; IS_AUTOINCREMENT could return nil
-             auto-increment     (.getString rs "IS_AUTOINCREMENT")
-             auto-increment?    (= "YES" auto-increment)
-             no-auto-increment? (= "NO" auto-increment)
-             column-name        (.getString rs "COLUMN_NAME")
-             required?          (and no-default? not-nullable? no-auto-increment?)]
-         (merge
-           {:name                      column-name
-            :database-type             (.getString rs "TYPE_NAME")
-            :database-is-auto-increment auto-increment?
-            :database-required         required?}
-           (when-let [remarks (.getString rs "REMARKS")]
-             (when-not (str/blank? remarks)
-               {:field-comment remarks})))))))
+            auto-increment     (.getString rs "IS_AUTOINCREMENT")
+            auto-increment?    (= "YES" auto-increment)
+            no-auto-increment? (= "NO" auto-increment)
+            column-name        (.getString rs "COLUMN_NAME")
+            required?          (and no-default? not-nullable? no-auto-increment?)]
+        (merge
+         {:name                      column-name
+          :database-type             (.getString rs "TYPE_NAME")
+          :database-is-auto-increment auto-increment?
+          :database-required         required?}
+         (when-let [remarks (.getString rs "REMARKS")]
+           (when-not (str/blank? remarks)
+             {:field-comment remarks})))))))
 
 (defn ^:private fields-metadata
   [driver ^Connection conn {schema :schema, table-name :name} ^String db-name-or-nil]
@@ -257,13 +257,13 @@
 (defn- flattened-row [field-name row]
   (letfn [(flatten-row [row path]
             (lazy-seq
-              (when-let [[[k v] & xs] (seq row)]
-                (cond (and (map? v) (not-empty v))
-                      (into (flatten-row v (conj path k))
-                            (flatten-row xs path))
-                      :else
-                      (cons [(conj path k) v]
-                            (flatten-row xs path))))))]
+             (when-let [[[k v] & xs] (seq row)]
+               (cond (and (map? v) (not-empty v))
+                     (into (flatten-row v (conj path k))
+                           (flatten-row xs path))
+                     :else
+                     (cons [(conj path k) v]
+                           (flatten-row xs path))))))]
     (into {} (flatten-row row [field-name]))))
 
 (defn- type-by-parsing-string
@@ -320,11 +320,11 @@
              [json-column java.lang.Number]
 
              (every?
-               (fn [column-type]
-                 (some (fn [allowed-type]
-                         (isa? column-type allowed-type))
-                       [String Number Boolean java.time.LocalDateTime]))
-               [(acc-field-type-map json-column) (second-field-type-map json-column)])
+              (fn [column-type]
+                (some (fn [allowed-type]
+                        (isa? column-type allowed-type))
+                      [String Number Boolean java.time.LocalDateTime]))
+              [(acc-field-type-map json-column) (second-field-type-map json-column)])
              [json-column java.lang.String]
 
              :else

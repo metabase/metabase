@@ -127,14 +127,14 @@
     (with-jwt-default-setup
       (is (= "SSO is trying to do an open redirect to an untrusted site"
              (saml-test/client
-               :get 400 "/auth/sso" {:request-options {:redirect-strategy :none}}
-               :return_to "https://evilsite.com"
-               :jwt (jwt/sign {:email      "rasta@metabase.com"
-                               :first_name "Rasta"
-                               :last_name  "Toucan"
-                               :extra      "keypairs"
-                               :are        "also present"}
-                              default-jwt-secret)))))))
+              :get 400 "/auth/sso" {:request-options {:redirect-strategy :none}}
+              :return_to "https://evilsite.com"
+              :jwt (jwt/sign {:email      "rasta@metabase.com"
+                              :first_name "Rasta"
+                              :last_name  "Toucan"
+                              :extra      "keypairs"
+                              :are        "also present"}
+                             default-jwt-secret)))))))
 
 (deftest expired-jwt-test
   (testing "Check an expired JWT"
@@ -212,12 +212,12 @@
                      (->> (mt/boolean-ids-and-timestamps (t2/select User :email "newuser@metabase.com"))
                           (map #(dissoc % :last_login)))))))
           (let [response (saml-test/client-full-response :get 302 "/auth/sso"
-                                                           {:request-options {:redirect-strategy :none}}
-                                                           :return_to default-redirect-uri
-                                                           :jwt (jwt/sign {:email      "newuser@metabase.com"
-                                                                           :first_name "New"
-                                                                           :last_name  "User"}
-                                                                          default-jwt-secret))]
+                                                         {:request-options {:redirect-strategy :none}}
+                                                         :return_to default-redirect-uri
+                                                         :jwt (jwt/sign {:email      "newuser@metabase.com"
+                                                                         :first_name "New"
+                                                                         :last_name  "User"}
+                                                                        default-jwt-secret))]
             (is (saml-test/successful-login? response))
             (testing "update user first and last name"
               (is (= [{:email        "newuser@metabase.com"

@@ -2,28 +2,28 @@
   "Utilitiy functions for working with MBQL queries."
   (:refer-clojure :exclude [replace])
   #?@
-  (:clj
-   [(:require
-     [clojure.string :as str]
-     [metabase.mbql.predicates :as mbql.preds]
-     [metabase.mbql.schema :as mbql.s]
-     [metabase.mbql.schema.helpers :as schema.helpers]
-     [metabase.mbql.util.match :as mbql.match]
-     [metabase.models.dispatch :as models.dispatch]
-     [metabase.shared.util.i18n :as i18n]
-     [metabase.util.i18n]
-     [metabase.util.log :as log]
-     [potemkin :as p]
-     [schema.core :as s])]
-   :cljs
-   [(:require
-     [clojure.string :as str]
-     [metabase.mbql.predicates :as mbql.preds]
-     [metabase.mbql.schema :as mbql.s]
-     [metabase.mbql.schema.helpers :as schema.helpers]
-     [metabase.mbql.util.match :as mbql.match]
-     [metabase.shared.util.i18n :as i18n]
-     [schema.core :as s])]))
+   (:clj
+    [(:require
+      [clojure.string :as str]
+      [metabase.mbql.predicates :as mbql.preds]
+      [metabase.mbql.schema :as mbql.s]
+      [metabase.mbql.schema.helpers :as schema.helpers]
+      [metabase.mbql.util.match :as mbql.match]
+      [metabase.models.dispatch :as models.dispatch]
+      [metabase.shared.util.i18n :as i18n]
+      [metabase.util.i18n]
+      [metabase.util.log :as log]
+      [potemkin :as p]
+      [schema.core :as s])]
+    :cljs
+    [(:require
+      [clojure.string :as str]
+      [metabase.mbql.predicates :as mbql.preds]
+      [metabase.mbql.schema :as mbql.s]
+      [metabase.mbql.schema.helpers :as schema.helpers]
+      [metabase.mbql.util.match :as mbql.match]
+      [metabase.shared.util.i18n :as i18n]
+      [schema.core :as s])]))
 
 (defn qualified-name
   "Like `name`, but if `x` is a namespace-qualified keyword, returns that a string including the namespace."

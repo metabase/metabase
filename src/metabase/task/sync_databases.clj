@@ -123,7 +123,6 @@
    :db-schedule-column :cache_field_values_schedule
    :job-class          UpdateFieldValues})
 
-
 ;; These getter functions are not strictly necessary but are provided primarily so we can get some extra validation by
 ;; using them
 
@@ -157,7 +156,6 @@
   [task-info :- TaskInfo]
   (format "%s for all databases" (name (:key task-info))))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            DELETING TASKS FOR A DB                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -167,7 +165,7 @@
   [database :- (mi/InstanceOf Database) task-info :- TaskInfo]
   (let [trigger-key (trigger-key database task-info)]
     (log/debug (u/format-color 'red
-                   (trs "Unscheduling task for Database {0}: trigger: {1}" (u/the-id database) (.getName trigger-key))))
+                               (trs "Unscheduling task for Database {0}: trigger: {1}" (u/the-id database) (.getName trigger-key))))
     (task/delete-trigger! trigger-key)))
 
 (s/defn unschedule-tasks-for-db!
@@ -175,7 +173,6 @@
   [database :- (mi/InstanceOf Database)]
   (doseq [task [sync-analyze-task-info field-values-task-info]]
     (delete-task! database task)))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         (RE)SCHEDULING TASKS FOR A DB                                          |
@@ -186,10 +183,10 @@
   for it."
   [task-info :- TaskInfo]
   (jobs/build
-   (jobs/with-description (job-description task-info))
-   (jobs/of-type (job-class task-info))
-   (jobs/with-identity (job-key task-info))
-   (jobs/store-durably)))
+    (jobs/with-description (job-description task-info))
+    (jobs/of-type (job-class task-info))
+    (jobs/with-identity (job-key task-info))
+    (jobs/store-durably)))
 
 (s/def ^:private sync-analyze-job (job sync-analyze-task-info))
 (s/def ^:private field-values-job (job field-values-task-info))
@@ -198,22 +195,22 @@
   "Build a Quartz Trigger for `database` and `task-info`."
   [database :- (mi/InstanceOf Database) task-info :- TaskInfo]
   (triggers/build
-   (triggers/with-description (trigger-description database task-info))
-   (triggers/with-identity (trigger-key database task-info))
-   (triggers/using-job-data {"db-id" (u/the-id database)})
-   (triggers/for-job (job-key task-info))
-   (triggers/start-now)
-   (triggers/with-schedule
-     (cron/schedule
-      (cron/cron-schedule (cron-schedule database task-info))
+    (triggers/with-description (trigger-description database task-info))
+    (triggers/with-identity (trigger-key database task-info))
+    (triggers/using-job-data {"db-id" (u/the-id database)})
+    (triggers/for-job (job-key task-info))
+    (triggers/start-now)
+    (triggers/with-schedule
+      (cron/schedule
+       (cron/cron-schedule (cron-schedule database task-info))
       ;; if we miss a sync for one reason or another (such as system being down) do not try to run the sync again.
       ;; Just wait until the next sync cycle.
       ;;
       ;; See https://www.nurkiewicz.com/2012/04/quartz-scheduler-misfire-instructions.html for more info
-      (cron/with-misfire-handling-instruction-do-nothing)))))
+       (cron/with-misfire-handling-instruction-do-nothing)))))
 
 ;; called [[from metabase.models.database/schedule-tasks!]] from the post-insert and the pre-update
-#_ {:clj-kondo/ignore [:unused-private-var]}
+#_{:clj-kondo/ignore [:unused-private-var]}
 (s/defn ^:private check-and-schedule-tasks-for-db!
   "Schedule a new Quartz job for `database` and `task-info` if it doesn't already exist or is incorrect."
   [database :- (mi/InstanceOf Database)]
@@ -250,7 +247,6 @@
         ;; now (re)schedule the task
         (task/add-trigger! trigger)))))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              TASK INITIALIZATION                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -280,8 +276,8 @@
                ([counter db]
                 (try
                   (t2/update! Database (u/the-id db)
-                    (sync.schedules/schedule-map->cron-strings
-                     (sync.schedules/default-randomized-schedule)))
+                              (sync.schedules/schedule-map->cron-strings
+                               (sync.schedules/default-randomized-schedule)))
                   (inc counter)
                   (catch Exception e
                     (log/warn e

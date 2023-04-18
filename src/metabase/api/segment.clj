@@ -29,12 +29,12 @@
   ;; TODO - why can't we set other properties like `show_in_getting_started` when we create the Segment?
   (api/create-check Segment body)
   (let [segment (api/check-500
-                  (first (t2/insert-returning-instances! Segment
-                                                         :table_id    table_id
-                                                         :creator_id  api/*current-user-id*
-                                                         :name        name
-                                                         :description description
-                                                         :definition  definition)))]
+                 (first (t2/insert-returning-instances! Segment
+                                                        :table_id    table_id
+                                                        :creator_id  api/*current-user-id*
+                                                        :name        name
+                                                        :description description
+                                                        :definition  definition)))]
     (-> (events/publish-event! :segment-create segment)
         (hydrate :creator))))
 
@@ -65,8 +65,8 @@
                      :non-nil #{:archived :definition :name :show_in_getting_started})
         new-def    (->> clean-body :definition (mbql.normalize/normalize-fragment []))
         new-body   (merge
-                     (dissoc clean-body :revision_message)
-                     (when new-def {:definition new-def}))
+                    (dissoc clean-body :revision_message)
+                    (when new-def {:definition new-def}))
         changes    (when-not (= new-body existing)
                      new-body)
         archive?   (:archived changes)]
@@ -116,10 +116,10 @@
   {revision_id su/IntGreaterThanZero}
   (api/write-check Segment id)
   (revision/revert!
-    :entity      Segment
-    :id          id
-    :user-id     api/*current-user-id*
-    :revision-id revision_id))
+   :entity      Segment
+   :id          id
+   :user-id     api/*current-user-id*
+   :revision-id revision_id))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:id/related"

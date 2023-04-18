@@ -53,9 +53,9 @@
     events? (timeline-event/include-events options)))
 
 (mi/define-methods
- Timeline
- {:properties (constantly {::mi/timestamped? true
-                           ::mi/entity-id true})})
+  Timeline
+  {:properties (constantly {::mi/timestamped? true
+                            ::mi/entity-id true})})
 
 (defmethod serdes/hash-fields Timeline
   [_timeline]

@@ -516,9 +516,9 @@
               ["3"  460.0]
               ["4"  245.0]]
              (mt/rows
-               (druid-query
-                 {:aggregation [[:aggregation-options [:sum [:+ $venue_price 1]] {:name "New Price"}]]
-                  :breakout    [$venue_price]})))))))
+              (druid-query
+                {:aggregation [[:aggregation-options [:sum [:+ $venue_price 1]] {:name "New Price"}]]
+                 :breakout    [$venue_price]})))))))
 
 (deftest named-expression-aggregations-test
   (mt/test-driver :druid
@@ -529,17 +529,17 @@
                         ["4"  155.0]]
               :columns ["venue_price" "Sum-41"]}
              (mt/rows+column-names
-               (druid-query
-                 {:aggregation [[:aggregation-options [:- [:sum $venue_price] 41] {:name "Sum-41"}]]
-                  :breakout    [$venue_price]})))))))
+              (druid-query
+                {:aggregation [[:aggregation-options [:- [:sum $venue_price] 41] {:name "Sum-41"}]]
+                 :breakout    [$venue_price]})))))))
 
 (deftest distinct-count-of-two-dimensions-test
   (mt/test-driver :druid
     (is (= {:rows    [[98]]
             :columns ["count"]}
            (mt/rows+column-names
-             (druid-query
-               {:aggregation [[:distinct [:+ $checkins.venue_category_name $checkins.venue_name]]]}))))))
+            (druid-query
+              {:aggregation [[:distinct [:+ $checkins.venue_category_name $checkins.venue_name]]]}))))))
 
 (deftest metrics-inside-aggregation-clauses-test
   (mt/test-driver :druid
@@ -552,9 +552,9 @@
                   ["3"  346.0]
                   ["4" 197.0]]
                  (mt/rows
-                   (mt/run-mbql-query checkins
-                     {:aggregation [:+ [:metric (u/the-id metric)] 1]
-                      :breakout    [$venue_price]})))))))))
+                  (mt/run-mbql-query checkins
+                    {:aggregation [:+ [:metric (u/the-id metric)] 1]
+                     :breakout    [$venue_price]})))))))))
 
 (deftest order-by-aggregation-test
   (mt/test-driver :druid
@@ -655,19 +655,19 @@
       (tqpt/with-flattened-dbdef
         (mt/with-everything-store
           (tools.macro/macrolet [(parse-filter [filter-clause]
-                                   `(#'druid.qp/parse-filter (mt/$ids ~'checkins ~filter-clause)))]
-            (testing "normal non-compound filters should work as expected"
-              (is (= {:type :selector, :dimension "venue_price", :value 2}
-                     (parse-filter [:= $venue_price [:value 2 {:base_type :type/Integer}]]))))
-            (testing "temporal filters should get stripped out"
-              (is (= nil
-                     (parse-filter [:>= !default.timestamp [:absolute-datetime #t "2015-09-01T00:00Z[UTC]" :default]])))
-              (is (= {:type :selector, :dimension "venue_category_name", :value "Mexican"}
-                     (parse-filter
-                      [:and
-                       [:= $venue_category_name [:value "Mexican" {:base_type :type/Text}]]
+                                               `(#'druid.qp/parse-filter (mt/$ids ~'checkins ~filter-clause)))]
+                                (testing "normal non-compound filters should work as expected"
+                                  (is (= {:type :selector, :dimension "venue_price", :value 2}
+                                         (parse-filter [:= $venue_price [:value 2 {:base_type :type/Integer}]]))))
+                                (testing "temporal filters should get stripped out"
+                                  (is (= nil
+                                         (parse-filter [:>= !default.timestamp [:absolute-datetime #t "2015-09-01T00:00Z[UTC]" :default]])))
+                                  (is (= {:type :selector, :dimension "venue_category_name", :value "Mexican"}
+                                         (parse-filter
+                                          [:and
+                                           [:= $venue_category_name [:value "Mexican" {:base_type :type/Text}]]
 
-                       [:< !default.timestamp [:absolute-datetime #t "2015-10-01T00:00Z[UTC]" :default]]]))))))))))
+                                           [:< !default.timestamp [:absolute-datetime #t "2015-10-01T00:00Z[UTC]" :default]]]))))))))))
 
 (deftest multiple-filters-test
   (mt/test-driver :druid

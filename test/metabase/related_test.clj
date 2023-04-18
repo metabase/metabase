@@ -20,7 +20,6 @@
                                                     ["segment" 1]]
                                                    [:metric 1]]))))
 
-
 (deftest similiarity-test
   (mt/with-temp* [Card [{card-id-1 :id}
                         {:dataset_query (mt/mbql-query venues
@@ -151,7 +150,6 @@
             :tables      [(mt/id :users)]}
            (->> (mt/user-http-request :crowberto :get 200 (format "table/%s/related" (mt/id :venues)))
                 result-mask)))))
-
 
 ;; We should ignore non-active entities
 

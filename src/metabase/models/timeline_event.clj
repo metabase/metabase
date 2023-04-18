@@ -89,8 +89,8 @@
 ;;;; model
 
 (mi/define-methods
- TimelineEvent
- {:properties (constantly {::mi/timestamped? true})})
+  TimelineEvent
+  {:properties (constantly {::mi/timestamped? true})})
 
 (defmethod serdes/hash-fields TimelineEvent
   [_timeline-event]

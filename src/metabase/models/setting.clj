@@ -140,9 +140,9 @@
 (models/defmodel Setting :setting)
 
 (mi/define-methods
- Setting
- {:types       (constantly {:value :encrypted-text})
-  :primary-key (constantly :key)})
+  Setting
+  {:types       (constantly {:value :encrypted-text})
+   :primary-key (constantly :key)})
 
 (defmethod serdes/hash-fields Setting
   [_setting]
@@ -292,7 +292,7 @@
    :enabled?    (s/maybe clojure.lang.IFn)})
 
 (defonce ^{:doc "Map of loaded defsettings"}
-  registered-settings
+ registered-settings
   (atom {}))
 
 (defprotocol ^:private Resolvable
@@ -328,7 +328,6 @@
                                   (set (keys d2)))]
       (when-let [on-change (get-in rs [(keyword changed-setting) :on-change])]
         (on-change (clojure.core/get old changed-setting) (clojure.core/get new changed-setting))))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                      get                                                       |
@@ -399,8 +398,8 @@
   (or api/*is-superuser?*
       (do
         (u/ignore-exceptions
-         (classloader/require 'metabase-enterprise.advanced-permissions.common
-                              'metabase.public-settings.premium-features))
+          (classloader/require 'metabase-enterprise.advanced-permissions.common
+                               'metabase.public-settings.premium-features))
         (if-let [current-user-has-application-permisisons?
                  (and ((resolve 'metabase.public-settings.premium-features/enable-advanced-permissions?))
                       (resolve 'metabase-enterprise.advanced-permissions.common/current-user-has-application-permissions?))]
@@ -609,7 +608,6 @@
           (getter)))
       default)))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                      set!                                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -788,7 +786,6 @@
       (throw (UnsupportedOperationException. (tru "You cannot set {0}; it is a read-only setting." name))))
     (binding [*disable-cache* (not cache?)]
       (setter new-value))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               register-setting!                                                |
@@ -1044,7 +1041,6 @@
        ~(when-not (= (:setter options) :none)
           `(-> (def ~setting-setter-fn-symbol (setting-fn :setter ~setting-definition-symbol))
                (alter-meta! merge (setting-fn-metadata :setter ~setting-definition-symbol)))))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 EXTRA UTIL FNS                                                 |

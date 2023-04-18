@@ -67,10 +67,10 @@
             ;; This sends a test message. If we see our test message that means we didn't send a pulse message (which
             ;; is what we want)
             (email/send-message!
-              :subject      "Test"
-              :recipients   ["rasta@metabase.com"]
-              :message-type :html
-              :message      "Test Message"))
+             :subject      "Test"
+             :recipients   ["rasta@metabase.com"]
+             :message-type :html
+             :message      "Test Message"))
           (testing "emails"
             (is (= (et/email-to :rasta
                                 {:subject "Test"

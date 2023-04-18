@@ -17,8 +17,8 @@
         join-clause (-> ((lib/join-clause
                           (meta/table-metadata :categories)
                           [(lib/=
-                             (lib/field (meta/id :venues :category-id))
-                             (lib/with-join-alias (lib/field (meta/id :categories :id)) "CATEGORIES__via__CATEGORY_ID"))])
+                            (lib/field (meta/id :venues :category-id))
+                            (lib/with-join-alias (lib/field (meta/id :categories :id)) "CATEGORIES__via__CATEGORY_ID"))])
                          query -1)
                         ;; TODO -- need a nice way to set the alias of a join.
                         (assoc :alias "CATEGORIES__via__CATEGORY_ID"))
@@ -105,11 +105,11 @@
                 "info about the source Field")
     (let [query (lib/query
                  meta/metadata-provider
-                 (lib.convert/->pMBQL
-                  {:database (meta/id)
-                   :type     :query
-                   :query    {:source-table (meta/id :venues)
-                              :fields       [[:field (meta/id :categories :name) {:source-field (meta/id :venues :category-id)}]]}}))]
+                  (lib.convert/->pMBQL
+                   {:database (meta/id)
+                    :type     :query
+                    :query    {:source-table (meta/id :venues)
+                               :fields       [[:field (meta/id :categories :name) {:source-field (meta/id :venues :category-id)}]]}}))]
       (is (=? [{:name        "NAME"
                 :id          (meta/id :categories :name)
                 :fk_field_id (meta/id :venues :category-id)
@@ -203,8 +203,8 @@
                   (lib/join (-> (lib/join-clause
                                  (meta/table-metadata :categories)
                                  [(lib/=
-                                    (lib/field "VENUES" "CATEGORY_ID")
-                                    (lib/with-join-alias (lib/field "CATEGORIES" "ID") "Cat"))])
+                                   (lib/field "VENUES" "CATEGORY_ID")
+                                   (lib/with-join-alias (lib/field "CATEGORIES" "ID") "Cat"))])
                                 (lib/with-join-alias "Cat")
                                 (lib/with-join-fields :all)))
                   (lib/with-fields [(lib/field "VENUES" "ID")

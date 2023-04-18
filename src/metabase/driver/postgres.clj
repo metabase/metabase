@@ -198,9 +198,9 @@
         (comp (mapcat get-typenames)
               (map keyword))
         (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec database)
-                    [(str "SELECT nspname, typname "
-                          "FROM pg_type t JOIN pg_namespace n ON n.oid = t.typnamespace "
-                          "WHERE t.oid IN (SELECT DISTINCT enumtypid FROM pg_enum e)")])))
+          [(str "SELECT nspname, typname "
+                "FROM pg_type t JOIN pg_namespace n ON n.oid = t.typnamespace "
+                "WHERE t.oid IN (SELECT DISTINCT enumtypid FROM pg_enum e)")])))
 
 (def ^:private ^:dynamic *enum-types* nil)
 
@@ -518,8 +518,8 @@
         stored-field    (when (and (not is-aggregation?) (integer? stored-field-id))
                           (qp.store/field stored-field-id))]
     (and
-      (some? stored-field)
-      (field/json-field? stored-field))))
+     (some? stored-field)
+     (field/json-field? stored-field))))
 
 (defmethod sql.qp/->honeysql [:postgres :desc]
   [driver clause]
@@ -544,7 +544,6 @@
 (defmethod unprepare/unprepare-value [:postgres UUID]
   [_ value]
   (format "'%s'::uuid" value))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         metabase.driver.sql-jdbc impls                                         |
@@ -670,8 +669,8 @@
 
       true
       (as-> params ;; from outer cond->
-        (dissoc params :ssl-root-cert :ssl-root-cert-options :ssl-client-key :ssl-client-cert :ssl-key-password
-                       :ssl-use-client-auth)
+            (dissoc params :ssl-root-cert :ssl-root-cert-options :ssl-client-key :ssl-client-cert :ssl-key-password
+                    :ssl-use-client-auth)
         (apply dissoc params all-subprops)))))
 
 (def ^:private disable-ssl-params

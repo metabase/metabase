@@ -29,8 +29,8 @@
     (testing "long matches"
       (is (= 28
              (subseq-length (map str '(this social bird lives in small flocks in lowland rainforests in countries such as costa rica
-                                       it flies short distances between trees toucans rest in holes in trees))
+                                            it flies short distances between trees toucans rest in holes in trees))
                             (map str '(here is some filler
-                                       this social bird lives in small flocks in lowland rainforests in countries such as costa rica
-                                       it flies short distances between trees toucans rest in holes in trees
-                                       here is some more filler))))))))
+                                            this social bird lives in small flocks in lowland rainforests in countries such as costa rica
+                                            it flies short distances between trees toucans rest in holes in trees
+                                            here is some more filler))))))))

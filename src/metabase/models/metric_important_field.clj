@@ -11,5 +11,5 @@
   (derive ::mi/write-policy.superuser))
 
 (mi/define-methods
- MetricImportantField
- {:types (constantly {:definition :json})})
+  MetricImportantField
+  {:types (constantly {:definition :json})})

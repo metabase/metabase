@@ -62,8 +62,8 @@
       (t2/update! (if (mi/instance-of? Field original-model)
                     Field
                     Table)
-          (u/the-id original-model)
-        values-to-set)
+                  (u/the-id original-model)
+                  values-to-set)
       true)))
 
 (def ^:private classifiers
@@ -91,7 +91,6 @@
           (vary-meta field assoc :sync.classify/original field)
           classifiers))
 
-
 (s/defn ^:private classify!
   "Run various classifiers on `field` and its `fingerprint`, and save any detected changes."
   ([field :- i/FieldInstance]
@@ -104,7 +103,6 @@
        (when-not (= field updated-field)
          (save-model-updates! field updated-field))))))
 
-
 ;;; +------------------------------------------------------------------------------------------------------------------+
 ;;; |                                        CLASSIFYING ALL FIELDS IN A TABLE                                         |
 ;;; +------------------------------------------------------------------------------------------------------------------+
@@ -114,9 +112,9 @@
   should include Fields that have the latest fingerprint, but have not yet *completed* analysis."
   [table :- i/TableInstance]
   (seq (t2/select Field
-         :table_id            (u/the-id table)
-         :fingerprint_version i/latest-fingerprint-version
-         :last_analyzed       nil)))
+                  :table_id            (u/the-id table)
+                  :fingerprint_version i/latest-fingerprint-version
+                  :last_analyzed       nil)))
 
 (s/defn classify-fields!
   "Run various classifiers on the appropriate FIELDS in a TABLE that have not been previously analyzed. These do things

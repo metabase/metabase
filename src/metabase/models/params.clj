@@ -109,8 +109,8 @@
   [fields]
   (when-let [table-ids (seq (map :table_id fields))]
     (m/index-by :table_id (-> (t2/select Field:params-columns-only
-                                :table_id      [:in table-ids]
-                                :semantic_type (mdb.u/isa :type/Name))
+                                         :table_id      [:in table-ids]
+                                         :semantic_type (mdb.u/isa :type/Name))
                               ;; run `metabase.models.field/infer-has-field-values` on these Fields so their values of
                               ;; `has_field_values` will be consistent with what the FE expects. (e.g. we'll return
                               ;; `list` instead of `auto-list`.)
@@ -147,7 +147,6 @@
   (for [field fields]
     (update field :dimensions (partial map remove-dimension-nonpublic-columns))))
 
-
 (s/defn ^:private param-field-ids->fields
   "Get the Fields (as a map of Field ID -> Field) that shoudl be returned for hydrated `:param_fields` for a Card or
   Dashboard. These only contain the minimal amount of information necessary needed to power public or embedded
@@ -169,7 +168,6 @@
   "Hydration method for `:param_fields`."
   [instance]
   (param-fields instance))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               DASHBOARD-SPECIFIC                                               |

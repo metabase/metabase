@@ -128,13 +128,13 @@
       (let [result-query
             (lib/filter q1 (lib/between venues-category-id-metadata 42 100))
             result-filter {:operator (-> original-filter first name)
-                          :options (second original-filter)
-                          :args (subvec original-filter 2)}]
-       (is (=? simple-filtered-query
-               (dissoc result-query :lib/metadata)))
-       (testing "and getting the current filter"
-         (is (=? [result-filter]
-                 (lib/filters result-query))))))
+                           :options (second original-filter)
+                           :args (subvec original-filter 2)}]
+        (is (=? simple-filtered-query
+                (dissoc result-query :lib/metadata)))
+        (testing "and getting the current filter"
+          (is (=? [result-filter]
+                  (lib/filters result-query))))))
 
     (testing "setting a simple filter expression"
       (is (=? simple-filtered-query
@@ -172,9 +172,9 @@
                               :args (subvec third-filter 2)}
         first-add            (lib/filter simple-query
                                          (lib/between
-                                           (lib/field "VENUES" "CATEGORY_ID")
-                                           42
-                                           100))
+                                          (lib/field "VENUES" "CATEGORY_ID")
+                                          42
+                                          100))
         filtered-query       (assoc-in simple-query [:stages 0 :filters] [first-filter])
         second-add           (lib/filter first-add {:operator "starts-with"
                                                     :args [(lib/ref venues-name-metadata) "prefix"]})
@@ -212,4 +212,4 @@
             [:ends-with
              {:lib/uuid "953597df-a96d-4453-a57b-665e845abc69"}
              [:field {:lib/uuid "be28f393-538a-406b-90da-bac5f8ef565e"} (meta/id :venues :name)]
-             "t"]))) ))
+             "t"])))))

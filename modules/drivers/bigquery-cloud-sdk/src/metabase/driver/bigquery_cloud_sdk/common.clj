@@ -56,6 +56,6 @@
   ^String [{:keys [details] :as database}]
   (let [creds-proj-id (database-details->credential-project-id details)]
     (t2/update! Database
-      (u/the-id database)
-      {:details (assoc details :project-id-from-credentials creds-proj-id)})
+                (u/the-id database)
+                {:details (assoc details :project-id-from-credentials creds-proj-id)})
     creds-proj-id))

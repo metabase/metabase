@@ -21,10 +21,10 @@
               [4 "Wurstküche"                   29 33.9997 -118.465 2 4.0]
               [5 "Brite Spot Family Restaurant" 20 34.0778 -118.261 2 4.0]]
              (mt/formatted-rows [int str int 4.0 4.0 int float]
-               (mt/run-mbql-query venues
-                 {:expressions {:my_cool_new_field [:+ $price 2]}
-                  :limit       5
-                  :order-by    [[:asc $id]]})))))))
+                                (mt/run-mbql-query venues
+                                  {:expressions {:my_cool_new_field [:+ $price 2]}
+                                   :limit       5
+                                   :order-by    [[:asc $id]]})))))))
 
 (deftest floating-point-division-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
@@ -33,22 +33,22 @@
               [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2 1.0]
               [3 "The Apple Pan"         11 34.0406 -118.428 2 1.0]]
              (mt/formatted-rows [int str int 4.0 4.0 int float]
-               (mt/run-mbql-query venues
-                 {:expressions {:my_cool_new_field [:/ $price 2]}
-                  :limit       3
-                  :order-by    [[:asc $id]]})))))
+                                (mt/run-mbql-query venues
+                                  {:expressions {:my_cool_new_field [:/ $price 2]}
+                                   :limit       3
+                                   :order-by    [[:asc $id]]})))))
 
     (testing "Make sure FLOATING POINT division is done when dividing by expressions/fields"
       (is (= [[0.6]
               [0.5]
               [0.5]]
              (mt/formatted-rows [1.0]
-               (mt/run-mbql-query venues
-                 {:expressions {:big_price         [:+ $price 2]
-                                :my_cool_new_field [:/ $price [:expression "big_price"]]}
-                  :fields      [[:expression "my_cool_new_field"]]
-                  :limit       3
-                  :order-by    [[:asc $id]]})))))))
+                                (mt/run-mbql-query venues
+                                  {:expressions {:big_price         [:+ $price 2]
+                                                 :my_cool_new_field [:/ $price [:expression "big_price"]]}
+                                   :fields      [[:expression "my_cool_new_field"]]
+                                   :limit       3
+                                   :order-by    [[:asc $id]]})))))))
 
 (deftest nested-expressions-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
@@ -57,10 +57,10 @@
               [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2 2.0]
               [3 "The Apple Pan"         11 34.0406 -118.428 2 2.0]]
              (mt/formatted-rows [int str int 4.0 4.0 int float]
-               (mt/run-mbql-query venues
-                 {:expressions {:wow [:- [:* $price 2] [:+ $price 0]]}
-                  :limit       3
-                  :order-by    [[:asc $id]]})))))))
+                                (mt/run-mbql-query venues
+                                  {:expressions {:wow [:- [:* $price 2] [:+ $price 0]]}
+                                   :limit       3
+                                   :order-by    [[:asc $id]]})))))))
 
 (deftest multiple-expressions-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
@@ -69,22 +69,22 @@
               [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2 1.0 3.0]
               [3 "The Apple Pan"         11 34.0406 -118.428 2 1.0 3.0]]
              (mt/formatted-rows [int str int 4.0 4.0 int float float]
-               (mt/run-mbql-query venues
-                 {:expressions {:x [:- $price 1]
-                                :y [:+ $price 1]}
-                  :limit       3
-                  :order-by    [[:asc $id]]})))))))
+                                (mt/run-mbql-query venues
+                                  {:expressions {:x [:- $price 1]
+                                                 :y [:+ $price 1]}
+                                   :limit       3
+                                   :order-by    [[:asc $id]]})))))))
 
 (deftest expressions-in-fields-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
     (testing "Can we refer to expressions inside a FIELDS clause?"
       (is (= [[4] [4] [5]]
              (mt/formatted-rows [int]
-               (mt/run-mbql-query venues
-                 {:expressions {:x [:+ $price $id]}
-                  :fields      [[:expression :x]]
-                  :limit       3
-                  :order-by    [[:asc $id]]})))))))
+                                (mt/run-mbql-query venues
+                                  {:expressions {:x [:+ $price $id]}
+                                   :fields      [[:expression :x]]
+                                   :limit       3
+                                   :order-by    [[:asc $id]]})))))))
 
 (deftest dont-return-expressions-if-fields-is-explicit-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
@@ -100,25 +100,25 @@
       (testing "If an explicit `:fields` clause is present, expressions *not* in that clause should not come back"
         (is (= [[3 2] [2 2] [2 2]]
                (mt/formatted-rows [int int]
-                 (qp/process-query query)))))
+                                  (qp/process-query query)))))
 
       (testing "If `:fields` is not explicit, then return all the expressions"
         (is (= [[1 "Red Medicine"           4 10.0646 -165.374 3 4 2]
                 [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2 3 2]
                 [3 "The Apple Pan"         11 34.0406 -118.428 2 3 2]]
                (mt/formatted-rows [int str int 4.0 4.0 int int int]
-                 (qp/process-query (m/dissoc-in query [:query :fields]))))))
+                                  (qp/process-query (m/dissoc-in query [:query :fields]))))))
 
       (testing "When aggregating, expressions that aren't used shouldn't come back"
         (is (= [[2 22] [3 59] [4 13]]
                (mt/formatted-rows [int int]
-                 (mt/run-mbql-query venues
-                   {:expressions {priceplusone [:+ $price 1]
-                                  oneplusone   [:+ 1 1]}
-                    :aggregation [:count]
-                    :breakout    [[:expression priceplusone]]
-                    :order-by    [[:asc [:expression priceplusone]]]
-                    :limit       3}))))))))
+                                  (mt/run-mbql-query venues
+                                    {:expressions {priceplusone [:+ $price 1]
+                                                   oneplusone   [:+ 1 1]}
+                                     :aggregation [:count]
+                                     :breakout    [[:expression priceplusone]]
+                                     :order-by    [[:asc [:expression priceplusone]]]
+                                     :limit       3}))))))))
 
 (deftest expressions-in-order-by-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
@@ -127,29 +127,29 @@
               [99  "Golden Road Brewing" 10 34.1505 -118.274 2 101.0]
               [98  "Lucky Baldwin's Pub"  7 34.1454 -118.149 2 100.0]]
              (mt/formatted-rows [int str int 4.0 4.0 int float]
-               (mt/run-mbql-query venues
-                 {:expressions {:x [:+ $price $id]}
-                  :limit       3
-                  :order-by    [[:desc [:expression :x]]]})))))
+                                (mt/run-mbql-query venues
+                                  {:expressions {:x [:+ $price $id]}
+                                   :limit       3
+                                   :order-by    [[:desc [:expression :x]]]})))))
     (testing "Can we refer to expressions inside an ORDER BY clause with a secondary order by?"
       (is (= [[81 "Tanoshi Sushi & Sake Bar" 40 40.7677 -73.9533 4 85.0]
               [79 "Sushi Yasuda" 40 40.7514 -73.9736 4 83.0]
               [77 "Sushi Nakazawa" 40 40.7318 -74.0045 4 81.0]]
              (mt/formatted-rows [int str int 4.0 4.0 int float]
-               (mt/run-mbql-query venues
-                 {:expressions {:x [:+ $price $id]}
-                  :limit       3
-                  :order-by    [[:desc $price] [:desc [:expression :x]]]})))))))
+                                (mt/run-mbql-query venues
+                                  {:expressions {:x [:+ $price $id]}
+                                   :limit       3
+                                   :order-by    [[:desc $price] [:desc [:expression :x]]]})))))))
 
 (deftest aggregate-breakout-expression-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
     (testing "Can we AGGREGATE + BREAKOUT by an EXPRESSION?"
       (is (= [[2 22] [4 59] [6 13] [8 6]]
              (mt/formatted-rows [int int]
-               (mt/run-mbql-query venues
-                 {:expressions {:x [:* $price 2.0]}
-                  :aggregation [[:count]]
-                  :breakout    [[:expression :x]]})))))))
+                                (mt/run-mbql-query venues
+                                  {:expressions {:x [:* $price 2.0]}
+                                   :aggregation [[:count]]
+                                   :breakout    [[:expression :x]]})))))))
 
 (deftest expressions-should-include-type-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
@@ -169,7 +169,6 @@
               (is (isa? (name->base-type (mt/format-name "category_id"))
                         :type/Number)))))))))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           HANDLING NULLS AND ZEROES                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -180,18 +179,18 @@
 ;; e.g. scarcity = 100.0 / num-birds
 (defn- calculate-bird-scarcity* [formula filter-clause]
   (mt/formatted-rows [2.0]
-    (mt/dataset daily-bird-counts
-      (mt/run-mbql-query bird-count
-        {:expressions {"bird-scarcity" formula}
-         :fields      [[:expression "bird-scarcity"]]
-         :filter      filter-clause
-         :order-by    [[:asc $date]]
-         :limit       10}))))
+                     (mt/dataset daily-bird-counts
+                       (mt/run-mbql-query bird-count
+                         {:expressions {"bird-scarcity" formula}
+                          :fields      [[:expression "bird-scarcity"]]
+                          :filter      filter-clause
+                          :order-by    [[:asc $date]]
+                          :limit       10}))))
 
 (defmacro ^:private calculate-bird-scarcity [formula & [filter-clause]]
   `(mt/dataset ~'daily-bird-counts
      (mt/$ids ~'bird-count
-              (calculate-bird-scarcity* ~formula ~filter-clause))))
+       (calculate-bird-scarcity* ~formula ~filter-clause))))
 
 (deftest ^:parallel nulls-and-zeroes-test
   (mt/test-drivers (disj (mt/normal-drivers-with-feature :expressions)
@@ -205,10 +204,10 @@
              (calculate-bird-scarcity $count))))
 
     (testing (str "do expressions automatically handle division by zero? Should return `nil` "
-                    "in the results for places where that was attempted")
-        (is (= [[nil] [nil] [10.0] [12.5] [20.0] [20.0] [nil] [nil] [9.09] [7.14]]
-               (calculate-bird-scarcity [:/ 100.0 $count]
-                                        [:!= $count nil]))))
+                  "in the results for places where that was attempted")
+      (is (= [[nil] [nil] [10.0] [12.5] [20.0] [20.0] [nil] [nil] [9.09] [7.14]]
+             (calculate-bird-scarcity [:/ 100.0 $count]
+                                      [:!= $count nil]))))
 
     (testing (str "do expressions handle division by `nil`? Should return `nil` in the results for places where that "
                   "was attempted")
@@ -219,20 +218,20 @@
                                        [:!= $count 0]]))))
 
     (testing "can we handle BOTH NULLS AND ZEROES AT THE SAME TIME????"
-        (is (= [[nil] [nil] [nil] [10.0] [12.5] [20.0] [20.0] [nil] [nil] [nil]]
-               (calculate-bird-scarcity [:/ 100.0 $count]))))
+      (is (= [[nil] [nil] [nil] [10.0] [12.5] [20.0] [20.0] [nil] [nil] [nil]]
+             (calculate-bird-scarcity [:/ 100.0 $count]))))
 
     (testing "can we handle dividing by literal 0?"
-        (is (= [[nil] [nil] [nil] [nil] [nil] [nil] [nil] [nil] [nil] [nil]]
-               (calculate-bird-scarcity [:/ $count 0]))))
+      (is (= [[nil] [nil] [nil] [nil] [nil] [nil] [nil] [nil] [nil] [nil]]
+             (calculate-bird-scarcity [:/ $count 0]))))
 
     (testing "ok, what if we use multiple args to divide, and more than one is zero?"
-        (is (= [[nil] [nil] [nil] [1.0] [1.56] [4.0] [4.0] [nil] [nil] [nil]]
-               (calculate-bird-scarcity [:/ 100.0 $count $count]))))
+      (is (= [[nil] [nil] [nil] [1.0] [1.56] [4.0] [4.0] [nil] [nil] [nil]]
+             (calculate-bird-scarcity [:/ 100.0 $count $count]))))
 
     (testing "are nulls/zeroes still handled appropriately when nested inside other expressions?"
-        (is (= [[nil] [nil] [nil] [20.0] [25.0] [40.0] [40.0] [nil] [nil] [nil]]
-               (calculate-bird-scarcity [:* [:/ 100.0 $count] 2]))))
+      (is (= [[nil] [nil] [nil] [20.0] [25.0] [40.0] [40.0] [nil] [nil] [nil]]
+             (calculate-bird-scarcity [:* [:/ 100.0 $count] 2]))))
 
     (testing (str "if a zero is present in the NUMERATOR we should return ZERO and not NULL "
                   "(`0 / 10 = 0`; `10 / 0 = NULL`, at least as far as MBQL is concerned)")
@@ -250,7 +249,6 @@
     (testing "can multiplications handle nulls & zeros?"
       (is (= [[nil] [0.0] [0.0] [10.0] [8.0] [5.0] [5.0] [nil] [0.0] [0.0]]
              (calculate-bird-scarcity [:* 1 $count]))))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                      DATETIME EXTRACTION AND MANIPULATION                                      |
@@ -292,7 +290,6 @@
                       :order-by    [[:asc $name]]})
                    mt/rows)))))))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                     JOINS                                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -315,7 +312,6 @@
                                                   [:field (mt/id :users :id) {:join-alias "users__via__user_id"}]]}]})
                  mt/rows
                  ffirst))))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 MISC BUG FIXES                                                 |
@@ -359,10 +355,10 @@
                                        [:field (mt/id :lots-of-fields :b) nil]]}
                      :fields      (into [[:expression "c"]]
                                         (for [{:keys [id]} (t2/select [Field :id]
-                                                             :table_id (mt/id :lots-of-fields)
-                                                             :id       [:not-in #{(mt/id :lots-of-fields :a)
-                                                                                  (mt/id :lots-of-fields :b)}]
-                                                             {:order-by [[:name :asc]]})]
+                                                                      :table_id (mt/id :lots-of-fields)
+                                                                      :id       [:not-in #{(mt/id :lots-of-fields :a)
+                                                                                           (mt/id :lots-of-fields :b)}]
+                                                                      {:order-by [[:name :asc]]})]
                                           [:field id nil]))})]
         (t2/with-call-count [call-count-fn]
           (mt/with-native-query-testing-context query
@@ -373,36 +369,36 @@
 
 (deftest expression-with-slashes
   (mt/test-drivers (disj
-                     (mt/normal-drivers-with-feature :expressions)
+                    (mt/normal-drivers-with-feature :expressions)
                      ;; Slashes documented as not allowed in BQ
                      ;; https://cloud.google.com/bigquery/docs/reference/standard-sql/lexical
-                     :bigquery-cloud-sdk)
+                    :bigquery-cloud-sdk)
     (testing "Make sure an expression with a / in its name works (#12305)"
       (is (= [[1 "Red Medicine"           4 10.0646 -165.374 3 4.0]
               [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2 3.0]
               [3 "The Apple Pan"         11 34.0406 -118.428 2 3.0]]
              (mt/formatted-rows [int str int 4.0 4.0 int float]
-               (mt/run-mbql-query venues
-                 {:expressions {:TEST/my-cool-new-field [:+ $price 1]}
-                  :limit       3
-                  :order-by    [[:asc $id]]})))))))
+                                (mt/run-mbql-query venues
+                                  {:expressions {:TEST/my-cool-new-field [:+ $price 1]}
+                                   :limit       3
+                                   :order-by    [[:asc $id]]})))))))
 
 (deftest expression-using-aggregation-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
     (testing "Can we use aggregations from previous steps in expressions (#12762)"
       (is (= [["20th Century Cafe" 2 2 0]
-              [ "25°" 2 2 0]
+              ["25°" 2 2 0]
               ["33 Taps" 2 2 0]]
              (mt/formatted-rows [str int int int]
-               (mt/run-mbql-query venues
-                 {:source-query {:source-table (mt/id :venues)
-                                 :aggregation  [[:min (mt/id :venues :price)]
-                                                [:max (mt/id :venues :price)]]
-                                 :breakout     [[:field (mt/id :venues :name) nil]]
-                                 :limit        3}
-                  :expressions  {:price_range [:-
-                                               [:field "max" {:base-type :type/Number}]
-                                               [:field "min" {:base-type :type/Number}]]}})))))))
+                                (mt/run-mbql-query venues
+                                  {:source-query {:source-table (mt/id :venues)
+                                                  :aggregation  [[:min (mt/id :venues :price)]
+                                                                 [:max (mt/id :venues :price)]]
+                                                  :breakout     [[:field (mt/id :venues :name) nil]]
+                                                  :limit        3}
+                                   :expressions  {:price_range [:-
+                                                                [:field "max" {:base-type :type/Number}]
+                                                                [:field "min" {:base-type :type/Number}]]}})))))))
 
 (deftest expression-with-duplicate-column-name
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
@@ -417,7 +413,7 @@
           (mt/with-native-query-testing-context query
             (is (= [["Doohickey2" 42]]
                    (mt/formatted-rows [str int]
-                     (qp/process-query query))))))))))
+                                      (qp/process-query query))))))))))
 
 (deftest fk-field-and-duplicate-names-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions :foreign-keys)
@@ -434,7 +430,7 @@
           (is (= [[1 1  14  37.7  2.1  39.7 nil "2019-02-11T21:40:27.892Z" 2 "2017-12-31T14:41:56.87Z"]
                   [2 1 123 110.9  6.1 117.0 nil "2018-05-15T08:04:04.58Z"  3 "2017-11-16T13:53:14.232Z"]]
                  (mt/formatted-rows [int int int 1.0 1.0 1.0 identity str int str]
-                   results))))))))
+                                    results))))))))
 
 (deftest string-operations-from-subquery
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions :regex)
@@ -459,13 +455,13 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
     (testing "An expression whose name contains weird characters works properly"
       (let [query (mt/mbql-query venues
-                   {:expressions {"Refund Amount (?)" [:* $price -1]}
-                    :limit       1
-                    :order-by    [[:asc $id]]})]
+                    {:expressions {"Refund Amount (?)" [:* $price -1]}
+                     :limit       1
+                     :order-by    [[:asc $id]]})]
         (mt/with-native-query-testing-context query
           (is (= [[1 "Red Medicine" 4 10.0646 -165.374 3 -3]]
                  (mt/formatted-rows [int str int 4.0 4.0 int int]
-                   (qp/process-query query)))))))))
+                                    (qp/process-query query)))))))))
 
 (deftest join-table-on-itself-with-custom-column-test
   (testing "Should be able to join a source query against itself using an expression (#17770)"
@@ -493,7 +489,7 @@
             ;; source.category, source.count, source.CC, Q1.category, Q1.count, Q1.CC
             (is (= [["Doohickey" 42 2 "Doohickey" 42 2]]
                    (mt/formatted-rows [str int int str int int]
-                     (qp/process-query query))))))))))
+                                      (qp/process-query query))))))))))
 
 (deftest nested-expressions-with-existing-names-test
   (testing "Expressions with the same name as existing columns should work correctly in nested queries (#21131)"
@@ -510,4 +506,4 @@
               (mt/with-native-query-testing-context query
                 (is (= [[1 29.46 31.46] [2 70.08 72.08]]
                        (mt/formatted-rows [int 2.0 2.0]
-                         (qp/process-query query))))))))))))
+                                          (qp/process-query query))))))))))))

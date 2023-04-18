@@ -15,9 +15,8 @@
     :table-read})
 
 (defonce ^:private ^{:doc "Channel for receiving event notifications we want to subscribe to for view counting."}
-  view-log-channel
+ view-log-channel
   (a/chan))
-
 
 ;;; ## ---------------------------------------- EVENT PROCESSING ----------------------------------------
 
@@ -38,13 +37,12 @@
   (try
     (when-let [{topic :topic object :item} event]
       (record-view!
-        (events/topic->model topic)
-        (events/object->model-id topic object)
-        (events/object->user-id object)
-        (events/object->metadata object)))
+       (events/topic->model topic)
+       (events/object->model-id topic object)
+       (events/object->user-id object)
+       (events/object->metadata object)))
     (catch Throwable e
       (log/warn (format "Failed to process activity event. %s" (:topic event)) e))))
-
 
 ;;; ## ---------------------------------------- LIFECYLE ----------------------------------------
 

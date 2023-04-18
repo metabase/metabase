@@ -463,7 +463,6 @@
                                     [:field 6 {:join-alias    "Q2"
                                                :temporal-unit :month}]]}]})))
 
-
 ;;; these are e2e tests
 
 (deftest ^:parallel deduplicate-alias-names-test

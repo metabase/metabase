@@ -102,8 +102,8 @@
                :select    [[:u.id :user_id]
                            [(common/user-full-name :u) :user_name]
                            [(h2x/+ (common/zero-if-null :card_saves.count)
-                                  (common/zero-if-null :dashboard_saves.count)
-                                  (common/zero-if-null :pulse_saves.count))
+                                   (common/zero-if-null :dashboard_saves.count)
+                                   (common/zero-if-null :pulse_saves.count))
                             :saves]]
                :from      [[:core_user :u]]
                :left-join [:card_saves      [:= :u.id :card_saves.creator_id]

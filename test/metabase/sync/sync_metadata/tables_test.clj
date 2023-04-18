@@ -11,12 +11,12 @@
 
 (tx/defdataset db-with-some-cruft
   [["acquired_toucans"
-     [{:field-name "species",              :base-type :type/Text}
-      {:field-name "cam_has_acquired_one", :base-type :type/Boolean}]
-     [["Toco"               false]
-      ["Chestnut-Mandibled" true]
-      ["Keel-billed"        false]
-      ["Channel-billed"     false]]]
+    [{:field-name "species",              :base-type :type/Text}
+     {:field-name "cam_has_acquired_one", :base-type :type/Boolean}]
+    [["Toco"               false]
+     ["Chestnut-Mandibled" true]
+     ["Keel-billed"        false]
+     ["Channel-billed"     false]]]
    ["south_migrationhistory"
     [{:field-name "app_name",  :base-type :type/Text}
      {:field-name "migration", :base-type :type/Text}]

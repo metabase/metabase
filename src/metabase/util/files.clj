@@ -59,7 +59,6 @@
   [^Path path]
   (Files/isReadable path))
 
-
 ;;; ----------------------------------------------- Working with Dirs ------------------------------------------------
 
 (defn create-dir-if-not-exists!
@@ -72,7 +71,6 @@
   "Get a sequence of all files in `path`, presumably a directory or an archive of some sort (like a JAR)."
   [^Path path]
   (iterator-seq (.iterator (Files/list path))))
-
 
 ;;; ------------------------------------------------- Copying Stuff --------------------------------------------------
 
@@ -99,7 +97,6 @@
       (copy-file! source target)
       (catch Throwable e
         (log/error e (trs "Failed to copy file"))))))
-
 
 ;;; ------------------------------------------ Opening filesystems for URLs ------------------------------------------
 
@@ -135,7 +132,6 @@
     ~resource-filename-str
     (fn [~(vary-meta path-binding assoc :tag java.nio.file.Path)]
       ~@body)))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               JAR FILE CONTENTS                                                |

@@ -33,9 +33,9 @@
 
 (defn- sum-rows [replaced-indecies rows]
   (let [rf (#'qp.cumulative-aggregations/cumulative-ags-xform replaced-indecies (fn
-                                                                                 ([] [])
-                                                                                 ([acc] acc)
-                                                                                 ([acc row] (conj acc row))))]
+                                                                                  ([] [])
+                                                                                  ([acc] acc)
+                                                                                  ([acc row] (conj acc row))))]
     (transduce identity rf rows)))
 
 (deftest transduce-results-test
@@ -79,7 +79,6 @@
             {:database 1
              :type     :query
              :query    {:source-table 1, :aggregation [[:* [:cum-count] 1]]}})))))
-
 
 (defn- handle-cumulative-aggregations [query]
   (let [query (#'qp.cumulative-aggregations/rewrite-cumulative-aggregations query)

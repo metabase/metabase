@@ -13,5 +13,5 @@
   ((resolve 'metabase.models.pulse-channel/will-delete-recipient) pcr))
 
 (mi/define-methods
- PulseChannelRecipient
- {:pre-delete pre-delete})
+  PulseChannelRecipient
+  {:pre-delete pre-delete})

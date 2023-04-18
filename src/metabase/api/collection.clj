@@ -76,17 +76,17 @@
   (let [archived? (Boolean/parseBoolean archived)
         exclude-other-user-collections? (Boolean/parseBoolean exclude-other-user-collections)]
     (as-> (t2/select Collection
-            {:where    [:and
-                        [:= :archived archived?]
-                        [:= :namespace namespace]
-                        (collection/visible-collection-ids->honeysql-filter-clause
-                         :id
-                         (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]
-             :order-by [[:%lower.name :asc]]}) collections
+                     {:where    [:and
+                                 [:= :archived archived?]
+                                 [:= :namespace namespace]
+                                 (collection/visible-collection-ids->honeysql-filter-clause
+                                  :id
+                                  (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]
+                      :order-by [[:%lower.name :asc]]}) collections
           ;; Remove other users' personal collections
-          (if exclude-other-user-collections?
-            (remove-other-users-personal-collections api/*current-user-id* collections)
-            collections)
+      (if exclude-other-user-collections?
+        (remove-other-users-personal-collections api/*current-user-id* collections)
+        collections)
           ;; include Root Collection at beginning or results if archived isn't `true`
       (if archived?
         collections
@@ -138,14 +138,14 @@
                                                           :from            [:report_card]
                                                           :where           [:= :archived false]}))
         colls (cond->>
-                (t2/select Collection
-                  {:where [:and
-                           (when exclude-archived?
-                             [:= :archived false])
-                           [:= :namespace namespace]
-                           (collection/visible-collection-ids->honeysql-filter-clause
-                            :id
-                            (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]})
+               (t2/select Collection
+                          {:where [:and
+                                   (when exclude-archived?
+                                     [:= :archived false])
+                                   [:= :namespace namespace]
+                                   (collection/visible-collection-ids->honeysql-filter-clause
+                                    :id
+                                    (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]})
                 exclude-other-user-collections?
                 (remove-other-users-personal-collections api/*current-user-id*))
         colls-with-details (map collection/personal-collection-with-ui-details colls)]
@@ -165,14 +165,14 @@
                                                                                :from            [:report_card]
                                                                                :where           [:= :archived false]}))
            colls                           (cond->>
-                                             (t2/select Collection
-                                               {:where [:and
-                                                        (when exclude-archived?
-                                                          [:= :archived false])
-                                                        [:= :namespace nil]
-                                                        (collection/visible-collection-ids->honeysql-filter-clause
-                                                         :id
-                                                         (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]})
+                                            (t2/select Collection
+                                                       {:where [:and
+                                                                (when exclude-archived?
+                                                                  [:= :archived false])
+                                                                [:= :namespace nil]
+                                                                (collection/visible-collection-ids->honeysql-filter-clause
+                                                                 :id
+                                                                 (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]})
                                              exclude-other-user-collections?
                                              (remove-other-users-personal-collections api/*current-user-id*))
            colls-with-details              (map collection/personal-collection-with-ui-details colls)]
@@ -198,7 +198,6 @@
 (def ^:private valid-sort-columns #{"name" "last_edited_at" "last_edited_by" "model"})
 (def ^:private valid-sort-directions #{"asc" "desc"})
 (defn- normalize-sort-choice [w] (when w (keyword (str/replace w #"_" "-"))))
-
 
 (def ^:private CollectionChildrenOptions
   {:archived?                     s/Bool
@@ -323,25 +322,25 @@
 
 (defn- card-query [dataset? collection {:keys [archived? pinned-state]}]
   (-> {:select    (cond->
-                    [:c.id :c.name :c.description :c.entity_id :c.collection_position :c.display :c.collection_preview
-                     :c.dataset_query
-                     [(h2x/literal (if dataset? "dataset" "card")) :model]
-                     [:u.id :last_edit_user]
-                     [:u.email :last_edit_email]
-                     [:u.first_name :last_edit_first_name]
-                     [:u.last_name :last_edit_last_name]
-                     [:r.timestamp :last_edit_timestamp]
-                     [{:select   [:status]
-                       :from     [:moderation_review]
-                       :where    [:and
-                                  [:= :moderated_item_type "card"]
-                                  [:= :moderated_item_id :c.id]
-                                  [:= :most_recent true]]
+                   [:c.id :c.name :c.description :c.entity_id :c.collection_position :c.display :c.collection_preview
+                    :c.dataset_query
+                    [(h2x/literal (if dataset? "dataset" "card")) :model]
+                    [:u.id :last_edit_user]
+                    [:u.email :last_edit_email]
+                    [:u.first_name :last_edit_first_name]
+                    [:u.last_name :last_edit_last_name]
+                    [:r.timestamp :last_edit_timestamp]
+                    [{:select   [:status]
+                      :from     [:moderation_review]
+                      :where    [:and
+                                 [:= :moderated_item_type "card"]
+                                 [:= :moderated_item_id :c.id]
+                                 [:= :most_recent true]]
                        ;; limit 1 to ensure that there is only one result but this invariant should hold true, just
                        ;; protecting against potential bugs
-                       :order-by [[:id :desc]]
-                       :limit    1}
-                      :moderated_status]]
+                      :order-by [[:id :desc]]
+                      :limit    1}
+                     :moderated_status]]
                     dataset?
                     (conj :c.database_id))
        :from      [[:report_card :c]]
@@ -592,7 +591,6 @@
         (for [model [:card :dashboard :snippet :pulse :collection :timeline]]
           (:select (collection-children-query model {:id 1 :location "/"} nil)))))
 
-
 (defn children-sort-clause
   "Given the client side sort-info, return sort clause to effect this. `db-type` is necessary due to complications from
   treatment of nulls in the different app db types."
@@ -753,7 +751,6 @@
                           :sort-info    [(or (some-> sort_column normalize-sort-choice) :name)
                                          (or (some-> sort_direction normalize-sort-choice) :asc)]})))
 
-
 ;;; -------------------------------------------- GET /api/collection/root --------------------------------------------
 
 (defn- root-collection [collection-namespace]
@@ -808,13 +805,12 @@
         model-set       (set (map keyword (u/one-or-many models)))
         model-kwds      (visible-model-kwds root-collection model-set)]
     (collection-children
-      root-collection
-      {:models       model-kwds
-       :archived?    (Boolean/parseBoolean archived)
-       :pinned-state (keyword pinned_state)
-       :sort-info    [(or (some-> sort_column normalize-sort-choice) :name)
-                      (or (some-> sort_direction normalize-sort-choice) :asc)]})))
-
+     root-collection
+     {:models       model-kwds
+      :archived?    (Boolean/parseBoolean archived)
+      :pinned-state (keyword pinned_state)
+      :sort-info    [(or (some-> sort_column normalize-sort-choice) :name)
+                     (or (some-> sort_direction normalize-sort-choice) :asc)]})))
 
 ;;; ----------------------------------------- Creating/Editing a Collection ------------------------------------------
 
@@ -836,16 +832,16 @@
   (api/check-403 (or (nil? authority_level)
                      (and api/*is-superuser?* authority_level)))
   (first
-    (t2/insert-returning-instances!
-      Collection
-      (merge
-        {:name        name
-         :color       color
-         :description description
-         :authority_level authority_level
-         :namespace   namespace}
-        (when parent_id
-          {:location (collection/children-location (t2/select-one [Collection :location :id] :id parent_id))})))))
+   (t2/insert-returning-instances!
+    Collection
+    (merge
+     {:name        name
+      :color       color
+      :description description
+      :authority_level authority_level
+      :namespace   namespace}
+     (when parent_id
+       {:location (collection/children-location (t2/select-one [Collection :location :id] :id parent_id))})))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/"
@@ -880,7 +876,7 @@
         ;; ok, make sure we have perms to do this operation
         (api/check-403
          (perms/set-has-full-permissions-for-set? @api/*current-user-permissions-set*
-           (collection/perms-for-moving collection-before-update new-parent)))
+                                                  (collection/perms-for-moving collection-before-update new-parent)))
         ;; ok, we're good to move!
         (collection/move-collection! collection-before-update new-location)))))
 
@@ -894,7 +890,7 @@
     ;; Check that we have approprate perms
     (api/check-403
      (perms/set-has-full-permissions-for-set? @api/*current-user-permissions-set*
-       (collection/perms-for-archiving collection-before-update)))))
+                                              (collection/perms-for-archiving collection-before-update)))))
 
 (defn- maybe-send-archived-notificaitons!
   "When a collection is archived, all of it's cards are also marked as archived, but this is down in the model layer

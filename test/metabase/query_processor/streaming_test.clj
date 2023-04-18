@@ -81,9 +81,9 @@
     (with-open [os (java.io.ByteArrayOutputStream.)]
       (let [streaming-response (binding [*number-of-cans* 2]
                                  (qp.streaming/streaming-response [context :json]
-                                   (let [metadata {:cols [{:name "num_cans", :base_type :type/Integer}]}
-                                         rows     [[*number-of-cans*]]]
-                                     (qp.context/reducef (qp.context/rff context) context metadata rows))))
+                                                                  (let [metadata {:cols [{:name "num_cans", :base_type :type/Integer}]}
+                                                                        rows     [[*number-of-cans*]]]
+                                                                    (qp.context/reducef (qp.context/rff context) context metadata rows))))
             complete-promise   (promise)]
         (server.protocols/respond streaming-response
                                   {:response      (reify HttpServletResponse
@@ -218,7 +218,6 @@
                   :time-ltz       #inst "1899-12-31T23:23:18.000-00:00"
                   :time-tz        #inst "1899-12-31T23:23:18.000-00:00"})))))))))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             Export E2E tests                                                   |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -304,10 +303,10 @@
                                 (parse-json-results results))))
 
                  :xlsx (fn [results]
-                        (is (= [["ID" "Name" "Category ID" "Latitude" "Longitude" "Price"]
-                                [1.0 "Red Medicine" 4.0 10.0646 -165.374 3.0]
-                                [2.0 "Stout Burgers & Beers" 11.0 34.0996 -118.329 2.0]]
-                               (xlsx-test/parse-xlsx-results results))))}}))
+                         (is (= [["ID" "Name" "Category ID" "Latitude" "Longitude" "Price"]
+                                 [1.0 "Red Medicine" 4.0 10.0646 -165.374 3.0]
+                                 [2.0 "Stout Burgers & Beers" 11.0 34.0996 -118.329 2.0]]
+                                (xlsx-test/parse-xlsx-results results))))}}))
 
 (deftest reordered-columns-test
   (do-test
@@ -337,9 +336,9 @@
                                 (parse-json-results results))))
 
                  :xlsx (fn [results]
-                        (is (= [["Name" "ID" "Category ID" "Price"]
-                                ["Red Medicine" 1.0 4.0 3.0]]
-                               (xlsx-test/parse-xlsx-results results))))}}))
+                         (is (= [["Name" "ID" "Category ID" "Price"]
+                                 ["Red Medicine" 1.0 4.0 3.0]]
+                                (xlsx-test/parse-xlsx-results results))))}}))
 
 (deftest remapped-columns-test
   (letfn [(testfn [remap-type]
@@ -431,7 +430,6 @@
                          (is (= [["ID" "ID" "NAME"]
                                  [1.0 1.0 "Red Medicine"]]
                                 (xlsx-test/parse-xlsx-results results))))}}))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        Streaming logic unit tests                                              |

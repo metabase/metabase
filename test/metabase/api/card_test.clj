@@ -191,7 +191,6 @@
                                      :target [:variable [:template-tag :category]]
                                      :value  2}]})))))))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           FETCHING CARDS & FILTERING                                           |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -212,7 +211,6 @@
              (card-returned? :database db        card-1)))
       (is (= true
              (card-returned? :database db        card-2))))))
-
 
 (deftest authentication-test
   (is (= (get mw.util/response-unauthentic :body) (client/client :get 401 "card")))
@@ -363,23 +361,23 @@
                                                   :database 1}}]
                     ;; native query reference doesn't match
                     Card [card-5 {:name "Card 5"
-                                   :dataset_query {:type :native
-                                                   :native (let [model-ref (str "card__" model-id)
-                                                                 card-id other-card-id
-                                                                 card-ref (format "#%d-q1" card-id)]
-                                                             {:query (format "select o.id %s from orders o join {{%s}} q1 on o.PRODUCT_ID = q1.PRODUCT_ID"
-                                                                             model-ref card-ref)
-                                                              :template-tags {card-ref
-                                                                              {:id "2185b98b-20b3-65e6-8623-4fb56acb0ca7"
-                                                                               :name card-ref
-                                                                               :display-name card-ref
-                                                                               :type :card
-                                                                               :card-id card-id}}})
-                                                   :database 1}}]
+                                  :dataset_query {:type :native
+                                                  :native (let [model-ref (str "card__" model-id)
+                                                                card-id other-card-id
+                                                                card-ref (format "#%d-q1" card-id)]
+                                                            {:query (format "select o.id %s from orders o join {{%s}} q1 on o.PRODUCT_ID = q1.PRODUCT_ID"
+                                                                            model-ref card-ref)
+                                                             :template-tags {card-ref
+                                                                             {:id "2185b98b-20b3-65e6-8623-4fb56acb0ca7"
+                                                                              :name card-ref
+                                                                              :display-name card-ref
+                                                                              :type :card
+                                                                              :card-id card-id}}})
+                                                  :database 1}}]
                     Database [{other-database-id :id}]
                     ;; database doesn't quite match
                     Card [card-6 {:name "Card 6", :database_id other-database-id
-                                   :dataset_query {:query {:source-table (str "card__" model-id)}}}]
+                                  :dataset_query {:query {:source-table (str "card__" model-id)}}}]
                     ;; same as matching question, but archived
                     Card [card-7 {:name "Card 7"
                                   :archived true
@@ -475,10 +473,10 @@
                                                   :type     :native
                                                   :native   {:query         (format "SELECT * FROM {{%s}};" card-tag-name)
                                                              :template-tags {card-tag-name {:card-id      (u/the-id card),
-                                                                                             :display-name card-tag-name,
-                                                                                             :id           (str (random-uuid))
-                                                                                             :name         card-tag-name,
-                                                                                             :type         :card}}}}})))))))
+                                                                                            :display-name card-tag-name,
+                                                                                            :id           (str (random-uuid))
+                                                                                            :name         card-tag-name,
+                                                                                            :type         :card}}}}})))))))
 
 (deftest create-card-disallow-setting-enable-embedding-test
   (testing "POST /api/card"
@@ -551,17 +549,17 @@
       (mt/with-temp Card [card]
         (is (= 1234
                (:cache_ttl (mt/user-http-request :rasta
-                                     :put
-                                     200
-                                     (str "card/" (u/the-id card))
-                                     {:cache_ttl 1234}))))))
+                                                 :put
+                                                 200
+                                                 (str "card/" (u/the-id card))
+                                                 {:cache_ttl 1234}))))))
     (testing "nilling out cache ttl works"
       (mt/with-temp Card [card]
         (is (= nil
                (do
-                (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:cache_ttl 1234})
-                (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:cache_ttl nil})
-                (:cache_ttl (mt/user-http-request :rasta :get 200 (str "card/" (u/the-id card)))))))))))
+                 (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:cache_ttl 1234})
+                 (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:cache_ttl nil})
+                 (:cache_ttl (mt/user-http-request :rasta :get 200 (str "card/" (u/the-id card)))))))))))
 
 (deftest saving-card-fetches-correct-metadata
   (testing "make sure when saving a Card the correct query metadata is fetched (if incorrect)"
@@ -765,7 +763,6 @@
               (is (= (:display newcard) (:display card)))
               (is (not= (:id newcard) (:id card))))))))))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            FETCHING A SPECIFIC CARD                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -837,7 +834,6 @@
 ;;; |                                       UPDATING A CARD (PUT /api/card/:id)
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-
 (deftest updating-a-card-that-doesnt-exist-should-give-a-404
   (is (= "Not found."
          (mt/user-http-request :crowberto :put 404 "card/12345"))))
@@ -882,7 +878,7 @@
                     Card       [card {:collection_id (u/the-id collection) :archived true}]]
       (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
       (is (= "You don't have permissions to do that."
-              (mt/user-http-request :rasta :put 403 (str "card/" (u/the-id card)) {:archived false}))))))
+             (mt/user-http-request :rasta :put 403 (str "card/" (u/the-id card)) {:archived false}))))))
 
 (deftest clear-description-test
   (testing "Can we clear the description of a Card? (#4738)"
@@ -1011,7 +1007,6 @@
       (testing  "You cannot update a model to have variables"
         (is (= "A model made from a native SQL question cannot have a variable or field filter."
                (mt/user-http-request :rasta :put 400 (format "card/%d" (:id card)) {:dataset true})))))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        Updating the positions of stuff                                         |
@@ -1282,7 +1277,6 @@
                             s/Keyword      s/Any}
                            (update-card! :rasta 200 {:name "Another new name", :dataset_query (mt/mbql-query checkins)}))))))))))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        Card updates that impact alerts                                         |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -1373,10 +1367,10 @@
               (u/with-timeout 5000
                 (mt/with-expected-messages 2
                   (f {:card card}))
-               (is (= (merge (crowberto-alert-not-working {expected-email true})
-                             (rasta-alert-not-working     {expected-email true}))
-                      (mt/regex-email-bodies (re-pattern expected-email)))
-                   (format "Email containing %s should have been sent to Crowberto and Rasta" (pr-str expected-email)))))
+                (is (= (merge (crowberto-alert-not-working {expected-email true})
+                              (rasta-alert-not-working     {expected-email true}))
+                       (mt/regex-email-bodies (re-pattern expected-email)))
+                    (format "Email containing %s should have been sent to Crowberto and Rasta" (pr-str expected-email)))))
             (if deleted?
               (is (= nil (t2/select-one Pulse :id (u/the-id pulse)))
                   "Alert should have been deleted")
@@ -1516,16 +1510,16 @@
                     ;; the temp defaults set {:time_matters true}
                     TimelineEvent [_ {:name        "event-a"
                                       :timeline_id (u/the-id tl-a)
-                                            :timestamp   #t "2020-01-01T10:00:00.0Z"}]
+                                      :timestamp   #t "2020-01-01T10:00:00.0Z"}]
                     TimelineEvent [_ {:name        "event-b"
                                       :timeline_id (u/the-id tl-a)
-                                            :timestamp   #t "2021-01-01T10:00:00.0Z"}]
+                                      :timestamp   #t "2021-01-01T10:00:00.0Z"}]
                     TimelineEvent [_ {:name        "event-c"
                                       :timeline_id (u/the-id tl-a)
-                                            :timestamp   #t "2022-01-01T10:00:00.0Z"}]
+                                      :timestamp   #t "2022-01-01T10:00:00.0Z"}]
                     TimelineEvent [_ {:name        "event-d"
                                       :timeline_id (u/the-id tl-a)
-                                            :timestamp   #t "2023-01-01T10:00:00.0Z"}]]
+                                      :timestamp   #t "2023-01-01T10:00:00.0Z"}]]
       (testing "Events are properly filtered when given only `start=` parameter"
         (is (= #{"event-c" "event-d"}
                (event-names (timelines-range-request card {:start "2022-01-01T10:00:00.0Z"})))))
@@ -1538,8 +1532,8 @@
                                                            :end   "2022-12-01T10:00:00.0Z"})))))
       (mt/with-temp TimelineEvent [_ {:name         "event-a2"
                                       :timeline_id  (u/the-id tl-a)
-                                             :timestamp    #t "2020-01-01T10:00:00.0Z"
-                                             :time_matters false}]
+                                      :timestamp    #t "2020-01-01T10:00:00.0Z"
+                                      :time_matters false}]
         (testing "Events are properly filtered considering the `time_matters` state."
           ;; notice that event-a and event-a2 have the same timestamp, but different time_matters states.
           ;; time_matters = false effectively means "We care only about the DATE of this event", so
@@ -1649,7 +1643,7 @@
       :headers
       (select-keys ["Cache-Control" "Content-Disposition" "Content-Type" "Expires" "X-Accel-Buffering"])
       (update "Content-Disposition" #(some-> % (str/replace #"my_awesome_card_.+(\.\w+)"
-                                                            "my_awesome_card_<timestamp>$1")))))
+                                                 "my_awesome_card_<timestamp>$1")))))
 
 (deftest download-response-headers-test
   (testing "Make sure CSV/etc. download requests come back with the correct headers"
@@ -1672,7 +1666,6 @@
               "Expires"             "Tue, 03 Jul 2001 06:00:00 GMT"
               "X-Accel-Buffering"   "no"}
              (test-download-response-headers (format "card/%d/query/xlsx" (u/the-id card))))))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  COLLECTIONS                                                   |
@@ -1742,7 +1735,6 @@
               (is (= (t2/select-one-fn :collection_id Card :id (u/the-id card))
                      (u/the-id new-collection))))))))))
 
-
 ;;; ------------------------------ Bulk Collections Update (POST /api/card/collections) ------------------------------
 
 (defn- collection-names
@@ -1774,106 +1766,106 @@
 (deftest changed?-test
   (letfn [(changed? [before after]
             (#'api.card/changed? api.card/card-compare-keys before after))]
-   (testing "Ignores keyword/string"
-     (is (false? (changed? {:dataset_query {:type :query}} {:dataset_query {:type "query"}}))))
-   (testing "Ignores properties not in `api.card/card-compare-keys"
-     (is (false? (changed? {:collection_id 1
-                            :collection_position 0}
-                           {:collection_id 2
-                            :collection_position 1}))))
-   (testing "Sees changes"
-     (is (true? (changed? {:dataset_query {:type :query}}
-                          {:dataset_query {:type :query
-                                           :query {}}})))
-     (testing "But only when they are different in the after, not just omitted"
-       (is (false? (changed? {:dataset_query {} :collection_id 1}
-                             {:collection_id 1})))
-       (is (true? (changed? {:dataset_query {} :collection_id 1}
-                            {:dataset_query nil :collection_id 1})))))))
+    (testing "Ignores keyword/string"
+      (is (false? (changed? {:dataset_query {:type :query}} {:dataset_query {:type "query"}}))))
+    (testing "Ignores properties not in `api.card/card-compare-keys"
+      (is (false? (changed? {:collection_id 1
+                             :collection_position 0}
+                            {:collection_id 2
+                             :collection_position 1}))))
+    (testing "Sees changes"
+      (is (true? (changed? {:dataset_query {:type :query}}
+                           {:dataset_query {:type :query
+                                            :query {}}})))
+      (testing "But only when they are different in the after, not just omitted"
+        (is (false? (changed? {:dataset_query {} :collection_id 1}
+                              {:collection_id 1})))
+        (is (true? (changed? {:dataset_query {} :collection_id 1}
+                             {:dataset_query nil :collection_id 1})))))))
 
 (deftest update-verified-card-test
   (tools.macro/macrolet
-      [(with-card [verified & body]
-         `(mt/with-temp* ~(cond-> `[Collection [~'collection]
-                                    Collection [~'collection2]
-                                    Card       [~'card {:collection_id (u/the-id ~'collection)
-                                                        :dataset_query (mt/mbql-query ~'venues)}]]
-                            (= verified :verified)
-                            (into
-                             `[ModerationReview
-                               [~'review {:moderated_item_id   (:id ~'card)
-                                          :moderated_item_type "card"
-                                          :moderator_id        (mt/user->id :rasta)
-                                          :most_recent         true
-                                          :status              "verified"
-                                          :text                "lookin good"}]]))
-            ~@body))]
-      (letfn [(verified? [card]
-                (-> card (hydrate [:moderation_reviews :moderator_details])
-                    :moderation_reviews first :status #{"verified"} boolean))
-              (reviews [card]
-                (t2/select ModerationReview
-                           :moderated_item_type "card"
-                           :moderated_item_id (u/the-id card)
-                           {:order-by [[:id :desc]]}))
-              (update-card [card diff]
-                (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) (merge card diff)))]
-        (testing "Changing core attributes un-verifies the card"
-          (with-card :verified
-            (is (verified? card))
-            (update-card card (update-in card [:dataset_query :query :source-table] inc))
-            (is (not (verified? card)))
-            (testing "The unverification edit has explanatory text"
-              (is (= "Unverified due to edit"
-                     (-> (reviews card) first :text))))))
-        (testing "Changing some attributes does not unverify"
-          (tools.macro/macrolet [(remains-verified [& body]
-                                   `(~'with-card :verified
-                                     (is (~'verified? ~'card) "Not verified initially")
-                                     ~@body
-                                     (is (~'verified? ~'card) "Not verified after action")))]
-            (testing "changing collection"
-              (remains-verified
-               (update-card card {:collection_id (u/the-id collection2)})))
-            (testing "pinning"
-              (remains-verified
-               (update-card card {:collection_position 1})))
-            (testing "making public"
-              (remains-verified
-               (update-card card {:made_public_by_id (mt/user->id :rasta)
-                                  :public_uuid (UUID/randomUUID)})))
-            (testing "Changing description"
-              (remains-verified
-               (update-card card {:description "foo"})))
-            (testing "Changing name"
-              (remains-verified
-               (update-card card {:name "foo"})))
-            (testing "Changing archived"
-              (remains-verified
-               (update-card card {:archived true})))
-            (testing "Changing display"
-              (remains-verified
-               (update-card card {:display :line})))
-            (testing "Changing visualization settings"
-              (remains-verified
-               (update-card card {:visualization_settings {:table.cell_column "FOO"}})))))
-        (testing "Does not add a new nil moderation review when not verified"
-          (with-card :not-verified
-            (is (empty? (reviews card)))
-            (update-card card {:description "a new description"})
-            (is (empty? (reviews card)))))
-        (testing "Does not add nil moderation reviews when there are reviews but not verified"
+   [(with-card [verified & body]
+      `(mt/with-temp* ~(cond-> `[Collection [~'collection]
+                                 Collection [~'collection2]
+                                 Card       [~'card {:collection_id (u/the-id ~'collection)
+                                                     :dataset_query (mt/mbql-query ~'venues)}]]
+                         (= verified :verified)
+                         (into
+                          `[ModerationReview
+                            [~'review {:moderated_item_id   (:id ~'card)
+                                       :moderated_item_type "card"
+                                       :moderator_id        (mt/user->id :rasta)
+                                       :most_recent         true
+                                       :status              "verified"
+                                       :text                "lookin good"}]]))
+         ~@body))]
+   (letfn [(verified? [card]
+             (-> card (hydrate [:moderation_reviews :moderator_details])
+                 :moderation_reviews first :status #{"verified"} boolean))
+           (reviews [card]
+             (t2/select ModerationReview
+                        :moderated_item_type "card"
+                        :moderated_item_id (u/the-id card)
+                        {:order-by [[:id :desc]]}))
+           (update-card [card diff]
+             (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) (merge card diff)))]
+     (testing "Changing core attributes un-verifies the card"
+       (with-card :verified
+         (is (verified? card))
+         (update-card card (update-in card [:dataset_query :query :source-table] inc))
+         (is (not (verified? card)))
+         (testing "The unverification edit has explanatory text"
+           (is (= "Unverified due to edit"
+                  (-> (reviews card) first :text))))))
+     (testing "Changing some attributes does not unverify"
+       (tools.macro/macrolet [(remains-verified [& body]
+                                                `(~'with-card :verified
+                                                              (is (~'verified? ~'card) "Not verified initially")
+                                                              ~@body
+                                                              (is (~'verified? ~'card) "Not verified after action")))]
+                             (testing "changing collection"
+                               (remains-verified
+                                (update-card card {:collection_id (u/the-id collection2)})))
+                             (testing "pinning"
+                               (remains-verified
+                                (update-card card {:collection_position 1})))
+                             (testing "making public"
+                               (remains-verified
+                                (update-card card {:made_public_by_id (mt/user->id :rasta)
+                                                   :public_uuid (UUID/randomUUID)})))
+                             (testing "Changing description"
+                               (remains-verified
+                                (update-card card {:description "foo"})))
+                             (testing "Changing name"
+                               (remains-verified
+                                (update-card card {:name "foo"})))
+                             (testing "Changing archived"
+                               (remains-verified
+                                (update-card card {:archived true})))
+                             (testing "Changing display"
+                               (remains-verified
+                                (update-card card {:display :line})))
+                             (testing "Changing visualization settings"
+                               (remains-verified
+                                (update-card card {:visualization_settings {:table.cell_column "FOO"}})))))
+     (testing "Does not add a new nil moderation review when not verified"
+       (with-card :not-verified
+         (is (empty? (reviews card)))
+         (update-card card {:description "a new description"})
+         (is (empty? (reviews card)))))
+     (testing "Does not add nil moderation reviews when there are reviews but not verified"
           ;; testing that we aren't just adding a nil moderation each time we update a card
-          (with-card :verified
-            (is (verified? card))
-            (moderation-review/create-review! {:moderated_item_id   (u/the-id card)
-                                               :moderated_item_type "card"
-                                               :moderator_id        (mt/user->id :rasta)
-                                               :status              nil})
-            (is (not (verified? card)))
-            (is (= 2 (count (reviews card))))
-            (update-card card {:description "a new description"})
-            (is (= 2 (count (reviews card)))))))))
+       (with-card :verified
+         (is (verified? card))
+         (moderation-review/create-review! {:moderated_item_id   (u/the-id card)
+                                            :moderated_item_type "card"
+                                            :moderator_id        (mt/user->id :rasta)
+                                            :status              nil})
+         (is (not (verified? card)))
+         (is (= 2 (count (reviews card))))
+         (update-card card {:description "a new description"})
+         (is (= 2 (count (reviews card)))))))))
 
 (deftest test-that-we-can-bulk-move-some-cards-with-no-collection-into-a-collection
   (mt/with-temp* [Collection [collection {:name "Pog Collection"}]
@@ -2218,7 +2210,7 @@
                           (t2/select-one-fn :result_metadata Card :id card-id))))
               (testing "Even if you only send the new query and not existing metadata"
                 (is (= ["EDITED DISPLAY" "EDITED DISPLAY"]
-                     (->> (update-card! {:id (u/the-id card) :dataset_query query}) :result_metadata (map :display_name)))))
+                       (->> (update-card! {:id (u/the-id card) :dataset_query query}) :result_metadata (map :display_name)))))
               (testing "Descriptions can be cleared (#20517)"
                 (is (= ["foo" "foo"]
                        (->> (update-card! (update card
@@ -2234,8 +2226,8 @@
                             (map :description)))))))))))
   (testing "Cards preserve edits to `visibility_type` (#22520)"
     (mt/with-temp* [Card [model {:dataset_query (mt/mbql-query venues
-                                                               {:fields [$id $name]
-                                                                :limit 2})
+                                                  {:fields [$id $name]
+                                                   :limit 2})
                                  :dataset       true}]]
       (let [updated-metadata (-> model :result_metadata vec
                                  (assoc-in [1 :visibility_type]

@@ -146,7 +146,7 @@
         (log/info (trs "Migration lock is cleared. Running migrations..."))
         (let [^Contexts contexts nil] (.update liquibase contexts)))
       (log/info
-        (trs "Migration lock cleared, but nothing to do here! Migrations were finished by another instance.")))))
+       (trs "Migration lock cleared, but nothing to do here! Migrations were finished by another instance.")))))
 
 (s/defn force-migrate-up-if-needed!
   "Force migrating up. This does three things differently from [[migrate-up-if-needed!]]:

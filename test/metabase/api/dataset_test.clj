@@ -36,7 +36,7 @@
 (defn- format-response [m]
   (when-not (map? m)
     (throw (ex-info (format "Expected results to be a map! Got: %s" (u/pprint-to-str m))
-             {:results m})))
+                    {:results m})))
   (into
    {}
    (for [[k v] (-> m
@@ -165,7 +165,7 @@
       :headers
       (select-keys ["Cache-Control" "Content-Disposition" "Content-Type" "Expires" "X-Accel-Buffering"])
       (update "Content-Disposition" #(some-> % (str/replace #"query_result_.+(\.\w+)"
-                                                            "query_result_<timestamp>$1")))))
+                                                 "query_result_<timestamp>$1")))))
 
 (deftest download-response-headers-test
   (testing "Make sure CSV/etc. download requests come back with the correct headers"
@@ -280,7 +280,7 @@
               :params nil}
              (mt/user-http-request :rasta :post 200 "dataset/native"
                                    (assoc (mt/mbql-query venues {:fields [$id $name]})
-                                     :pretty false))))
+                                          :pretty false))))
 
       (testing "\nMake sure parameters are spliced correctly"
         (is (= {:query  (str "SELECT \"PUBLIC\".\"CHECKINS\".\"ID\" AS \"ID\" FROM \"PUBLIC\".\"CHECKINS\" "
@@ -290,9 +290,9 @@
                 :params nil}
                (mt/user-http-request :rasta :post 200 "dataset/native"
                                      (assoc (mt/mbql-query checkins
-                                                           {:fields [$id]
-                                                            :filter [:= $date "2015-11-13"]})
-                                       :pretty false)))))
+                                              {:fields [$id]
+                                               :filter [:= $date "2015-11-13"]})
+                                            :pretty false)))))
 
       (testing "\nshould require that the user have ad-hoc native perms for the DB"
         (mt/with-temp-copy-of-db
@@ -318,7 +318,7 @@
              (mt/user-http-request :rasta :post 200 "dataset/native"
                                    (assoc
                                     (mt/mbql-query venues {:fields [$id $name]})
-                                     :pretty true)))))
+                                    :pretty true)))))
     (testing "The default behavior is to format the SQL"
       (is (= {:query  (str "SELECT\n"
                            "  \"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\",\n"

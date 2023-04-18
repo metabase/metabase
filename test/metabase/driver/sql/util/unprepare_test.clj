@@ -13,16 +13,16 @@
   (testing "check simple unprepare with only one string arg"
     (is (= "SELECT count(*) FROM venues WHERE venues.name = 'Barney''s Beanery'"
            (unprepare/unprepare :sql
-                                ["SELECT count(*) FROM venues WHERE venues.name = ?"
-                                 "Barney's Beanery"]))))
+             ["SELECT count(*) FROM venues WHERE venues.name = ?"
+              "Barney's Beanery"]))))
 
   (testing "ok, try to trip it up -- multiple args: string, boolean, and date; `??` which should not be replaced by a value"
     (is (= "SELECT 'Cam''s Cool Toucan' FROM TRUE WHERE x ?? y AND z = timestamp with time zone '2017-01-01 00:00:00.000Z'"
            (unprepare/unprepare :sql
-                                ["SELECT ? FROM ? WHERE x ?? y AND z = ?"
-                                 "Cam's Cool Toucan"
-                                 true
-                                 (t/offset-date-time "2017-01-01T00:00:00.000Z")])))))
+             ["SELECT ? FROM ? WHERE x ?? y AND z = ?"
+              "Cam's Cool Toucan"
+              true
+              (t/offset-date-time "2017-01-01T00:00:00.000Z")])))))
 
 (driver/register! ::unprepare-test, :parent :sql, :abstract? true)
 
@@ -38,7 +38,7 @@
   (testing "check that we can override methods for unpreparing values of specific classes"
     (is (= "SELECT 'Cam\\'s Cool Toucan' FROM TRUE WHERE x ?? y AND z = from_iso8601_timestamp('2017-01-01T00:00:00Z')"
            (unprepare/unprepare ::unprepare-test
-                                ["SELECT ? FROM ? WHERE x ?? y AND z = ?"
-                                 "Cam's Cool Toucan"
-                                 true
-                                 (t/offset-date-time "2017-01-01T00:00:00.000Z")])))))
+             ["SELECT ? FROM ? WHERE x ?? y AND z = ?"
+              "Cam's Cool Toucan"
+              true
+              (t/offset-date-time "2017-01-01T00:00:00.000Z")])))))

@@ -26,7 +26,7 @@
   [alter-sql f]
   ;; first, create a new in-memory test DB and add some data to it
   (one-off-dbs/with-blank-db
-    (doseq [statement [ ;; H2 needs that 'guest' user for QP purposes. Set that up
+    (doseq [statement [;; H2 needs that 'guest' user for QP purposes. Set that up
                        "CREATE USER IF NOT EXISTS GUEST PASSWORD 'guest';"
                        ;; Keep DB open until we say otherwise :)
                        "SET DB_CLOSE_DELAY -1;"
@@ -54,12 +54,12 @@
 (deftest renaming-fields-test
   (testing "make sure we can identify case changes on a field (#7923)"
     (let [db-state (with-test-db-before-and-after-altering
-                    "ALTER TABLE \"birds\" RENAME COLUMN \"example_name\" to \"Example_Name\";"
-                    (fn [database]
-                      (set
-                       (map (partial into {})
-                            (t2/select [Field :id :name :active]
-                              :table_id [:in (t2/select-pks-set Table :db_id (u/the-id database))])))))]
+                     "ALTER TABLE \"birds\" RENAME COLUMN \"example_name\" to \"Example_Name\";"
+                     (fn [database]
+                       (set
+                        (map (partial into {})
+                             (t2/select [Field :id :name :active]
+                                        :table_id [:in (t2/select-pks-set Table :db_id (u/the-id database))])))))]
       (is (= {:before-sync #{{:name "species",      :active true}
                              {:name "example_name", :active true}}
               :after-sync #{{:name "species",      :active true}
@@ -79,22 +79,22 @@
             :after-sync  #{{:name "species",      :active true}
                            {:name "example_name", :active false}}}
            (with-test-db-before-and-after-altering
-            "ALTER TABLE \"birds\" DROP COLUMN \"example_name\";"
-            (fn [database]
-              (set
-               (map (partial into {})
-                    (t2/select [Field :name :active]
-                      :table_id [:in (t2/select-pks-set Table :db_id (u/the-id database))])))))))))
+             "ALTER TABLE \"birds\" DROP COLUMN \"example_name\";"
+             (fn [database]
+               (set
+                (map (partial into {})
+                     (t2/select [Field :name :active]
+                                :table_id [:in (t2/select-pks-set Table :db_id (u/the-id database))])))))))))
 
 (deftest dont-show-deleted-fields-test
   (testing "make sure deleted fields doesn't show up in `:fields` of a table"
     (is (= {:before-sync #{"species" "example_name"}
             :after-sync  #{"species"}}
            (with-test-db-before-and-after-altering
-            "ALTER TABLE \"birds\" DROP COLUMN \"example_name\";"
-            (fn [database]
-              (let [table (hydrate (t2/select-one Table :db_id (u/the-id database)) :fields)]
-                (set (map :name (:fields table))))))))))
+             "ALTER TABLE \"birds\" DROP COLUMN \"example_name\";"
+             (fn [database]
+               (let [table (hydrate (t2/select-one Table :db_id (u/the-id database)) :fields)]
+                 (set (map :name (:fields table))))))))))
 
 (deftest dont-splice-inactive-columns-into-queries-test
   (testing (str "make sure that inactive columns don't end up getting spliced into queries! This test arguably "
@@ -116,11 +116,10 @@
                (-> (qp/process-query {:database (u/the-id database)
                                       :type     :query
                                       :query    {:source-table (t2/select-one-pk Table
-                                                                 :db_id (u/the-id database), :name "birds")}})
+                                                                                 :db_id (u/the-id database), :name "birds")}})
                    :data
                    :native_form
                    :query)))))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                PK & FK Syncing                                                 |
@@ -170,7 +169,7 @@
                 (let [{:keys                  [step-info]
                        {:keys [task_details]} :task-history}     (sync.util-test/sync-database! "sync-fks" (mt/db))
                       {:keys [semantic_type fk_target_field_id]} (t2/select-one [Field :semantic_type :fk_target_field_id]
-                                                                   :id (mt/id :checkins :user_id))]
+                                                                                :id (mt/id :checkins :user_id))]
                   {:step-info         (sync.util-test/only-step-keys step-info)
                    :task-details      task_details
                    :semantic-type     semantic_type

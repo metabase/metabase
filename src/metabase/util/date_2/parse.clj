@@ -75,9 +75,9 @@
         [:offset :time]     (OffsetTime/of local-time zone-offset)
         [:local  :time]     local-time
         (throw (ex-info (tru "Don''t know how to parse {0} using format {1}" (pr-str s) (pr-str formattr))
-                 {:s                s
-                  :formatter        formattr
-                  :supported-fields (all-supported-fields temporal-accessor)}))))))
+                        {:s                s
+                         :formatter        formattr
+                         :supported-fields (all-supported-fields temporal-accessor)}))))))
 
 (def ^:private ^DateTimeFormatter date-formatter*
   (b/formatter

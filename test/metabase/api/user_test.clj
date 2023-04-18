@@ -50,7 +50,6 @@
 ;;; |                   Fetching Users -- GET /api/user, GET /api/user/current, GET /api/user/:id                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-
 ;; ## /api/user/* AUTHENTICATION Tests
 ;; We assume that all endpoints for a given context are enforced by the same middleware, so we don't run the same
 ;; authentication test on every single individual endpoint
@@ -337,7 +336,6 @@
       (is (= "Not found."
              (mt/user-http-request :crowberto :get 404 (str "user/" (mt/user->id :trashbird))))))))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                     Creating a new User -- POST /api/user                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -436,8 +434,8 @@
 (defn- superuser-and-admin-pgm-info [email]
   {:is-superuser? (t2/select-one-fn :is_superuser User :%lower.email (u/lower-case-en email))
    :pgm-exists?   (t2/exists? PermissionsGroupMembership
-                    :user_id  (t2/select-one-pk User :%lower.email (u/lower-case-en email))
-                    :group_id (u/the-id (perms-group/admin)))})
+                              :user_id  (t2/select-one-pk User :%lower.email (u/lower-case-en email))
+                              :group_id (u/the-id (perms-group/admin)))})
 
 (deftest create-user-add-to-admin-group-test
   (testing "POST /api/user"
@@ -488,7 +486,6 @@
                                    {:first_name "Something"
                                     :last_name  "Random"
                                     :email      (u/upper-case-en (:email (mt/fetch-user :rasta)))}))))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                      Updating a User -- PUT /api/user/:id                                      |
@@ -884,7 +881,6 @@
                     (is (= "en_US"
                            (locale-from-db)))))))))))))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                              Reactivating a User -- PUT /api/user/:id/reactivate                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -923,7 +919,6 @@
             (mt/user-http-request :crowberto :put 200 (format "user/%s/reactivate" (u/the-id user)))
             (is (= {:is_active true, :google_auth false}
                    (mt/derecordize (t2/select-one [User :is_active :google_auth] :id (u/the-id user)))))))))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                               Updating a Password -- PUT /api/user/:id/password                                |
@@ -1013,7 +1008,6 @@
     (testing "Check that a non-superuser CANNOT deactivate themselves"
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :delete 403 (format "user/%d" (mt/user->id :rasta)) {}))))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                  Other Endpoints -- PUT /api/user/:id/qpnewb, POST /api/user/:id/send_invite                   |

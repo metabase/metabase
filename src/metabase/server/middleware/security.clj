@@ -21,7 +21,7 @@
             (base64-encode
              (.digest (doto (MessageDigest/getInstance "SHA-256")
                         (.update (.getBytes (slurp (io/resource resource-filename))))))))]
-    (mapv file-hash [ ;; inline script in index.html that sets `MetabaseBootstrap` and the like
+    (mapv file-hash [;; inline script in index.html that sets `MetabaseBootstrap` and the like
                      "frontend_client/inline_js/index_bootstrap.js"
                      ;; inline script in index.html that loads Google Analytics
                      "frontend_client/inline_js/index_ganalytics.js"
@@ -52,21 +52,21 @@
    (str/join
     (for [[k vs] {:default-src  ["'none'"]
                   :script-src   (concat
-                                  ["'self'"
-                                   "'unsafe-eval'" ; TODO - we keep working towards removing this entirely
-                                   "https://maps.google.com"
-                                   "https://accounts.google.com"
-                                   (when (public-settings/anon-tracking-enabled)
-                                     "https://www.google-analytics.com")
+                                 ["'self'"
+                                  "'unsafe-eval'" ; TODO - we keep working towards removing this entirely
+                                  "https://maps.google.com"
+                                  "https://accounts.google.com"
+                                  (when (public-settings/anon-tracking-enabled)
+                                    "https://www.google-analytics.com")
                                    ;; for webpack hot reloading
-                                   (when config/is-dev?
-                                     "*:8080")
+                                  (when config/is-dev?
+                                    "*:8080")
                                    ;; for react dev tools to work in Firefox until resolution of
                                    ;; https://github.com/facebook/react/issues/17997
-                                   (when config/is-dev?
-                                     "'unsafe-inline'")]
-                                  (when-not config/is-dev?
-                                    (map (partial format "'sha256-%s'") inline-js-hashes)))
+                                  (when config/is-dev?
+                                    "'unsafe-inline'")]
+                                 (when-not config/is-dev?
+                                   (map (partial format "'sha256-%s'") inline-js-hashes)))
                   :child-src    ["'self'"
                                  ;; TODO - double check that we actually need this for Google Auth
                                  "https://accounts.google.com"]
@@ -106,10 +106,10 @@
 
 (defsetting ssl-certificate-public-key
   (deferred-tru
-    (str "Base-64 encoded public key for this site''s SSL certificate. "
-         "Specify this to enable HTTP Public Key Pinning. "
-         "See {0} for more information.")
-    "http://mzl.la/1EnfqBf"))
+   (str "Base-64 encoded public key for this site''s SSL certificate. "
+        "Specify this to enable HTTP Public Key Pinning. "
+        "See {0} for more information.")
+   "http://mzl.la/1EnfqBf"))
 ;; TODO - it would be nice if we could make this a proper link in the UI; consider enabling markdown parsing
 
 (defn- first-embedding-app-origin
@@ -134,7 +134,7 @@
      {"X-Frame-Options"                 (if (embedding-app-origin)
                                           (format "ALLOW-FROM %s" (first-embedding-app-origin))
                                           "DENY")})
-   { ;; Tell browser to block suspected XSS attacks
+   {;; Tell browser to block suspected XSS attacks
     "X-XSS-Protection"                  "1; mode=block"
     ;; Prevent Flash / PDF files from including content from site.
     "X-Permitted-Cross-Domain-Policies" "none"

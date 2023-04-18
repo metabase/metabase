@@ -1,12 +1,12 @@
  (ns metabase.lib.metadata.jvm
-  "Implementation(s) of [[metabase.lib.metadata.protocols/MetadataProvider]] only for the JVM."
-  (:require
-   [metabase.lib.metadata.cached-provider :as lib.metadata.cached-provider]
-   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
-   [metabase.util.log :as log]
-   [potemkin :as p]
-   [pretty.core :as pretty]
-   [toucan2.core :as t2]))
+   "Implementation(s) of [[metabase.lib.metadata.protocols/MetadataProvider]] only for the JVM."
+   (:require
+    [metabase.lib.metadata.cached-provider :as lib.metadata.cached-provider]
+    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+    [metabase.util.log :as log]
+    [potemkin :as p]
+    [pretty.core :as pretty]
+    [toucan2.core :as t2]))
 
 (defn- metadata-type->model [metadata-type]
   (case metadata-type
@@ -33,12 +33,12 @@
 (p/deftype+ UncachedApplicationDatabaseMetadataProvider [database-id]
   lib.metadata.protocols/MetadataProvider
   (database [_this]
-    (when-not database-id
-      (throw (ex-info (format "Cannot use %s with %s with a nil Database ID"
-                              `lib.metadata.protocols/database
-                              `UncachedApplicationDatabaseMetadataProvider)
-                      {})))
-    (fetch-instance :metadata/database database-id))
+            (when-not database-id
+              (throw (ex-info (format "Cannot use %s with %s with a nil Database ID"
+                                      `lib.metadata.protocols/database
+                                      `UncachedApplicationDatabaseMetadataProvider)
+                              {})))
+            (fetch-instance :metadata/database database-id))
 
   (table   [_this table-id]   (fetch-instance :metadata/table   table-id))
   (field   [_this field-id]   (fetch-instance :metadata/field   field-id))
@@ -47,27 +47,27 @@
   (segment [_this segment-id] (fetch-instance :metadata/segment segment-id))
 
   (tables [_this]
-    (when-not database-id
-      (throw (ex-info (format "Cannot use %s with %s with a nil Database ID"
-                              `lib.metadata.protocols/tables
-                              `UncachedApplicationDatabaseMetadataProvider)
-                      {})))
-    (log/debugf "Fetching all Tables for Database %d" database-id)
-    (mapv #(assoc % :lib/type :metadata/table)
-          (t2/select :metabase.models.table/Table :db_id database-id)))
+          (when-not database-id
+            (throw (ex-info (format "Cannot use %s with %s with a nil Database ID"
+                                    `lib.metadata.protocols/tables
+                                    `UncachedApplicationDatabaseMetadataProvider)
+                            {})))
+          (log/debugf "Fetching all Tables for Database %d" database-id)
+          (mapv #(assoc % :lib/type :metadata/table)
+                (t2/select :metabase.models.table/Table :db_id database-id)))
 
   (fields [_this table-id]
-    (log/debugf "Fetching all Fields for Table %d" table-id)
-    (mapv #(assoc % :lib/type :metadata/field)
-          (t2/select :metabase.models.field/Field :table_id table-id)))
+          (log/debugf "Fetching all Fields for Table %d" table-id)
+          (mapv #(assoc % :lib/type :metadata/field)
+                (t2/select :metabase.models.field/Field :table_id table-id)))
 
   lib.metadata.protocols/BulkMetadataProvider
   (bulk-metadata [_this metadata-type ids]
-    (bulk-instances metadata-type ids))
+                 (bulk-instances metadata-type ids))
 
   pretty/PrettyPrintable
   (pretty [_this]
-    (list `->UncachedApplicationDatabaseMetadataProvider database-id)))
+          (list `->UncachedApplicationDatabaseMetadataProvider database-id)))
 
 (defn application-database-metadata-provider
   "An implementation of [[metabase.lib.metadata.protocols/MetadataProvider]] for the application database.

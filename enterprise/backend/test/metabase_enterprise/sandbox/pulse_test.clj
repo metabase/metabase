@@ -67,8 +67,8 @@
                      :breakout    [$price]})]
         (is (= [[3 13]]
                (mt/formatted-rows [int int]
-                 (mt/with-test-user :rasta
-                   (qp/process-query query))))
+                                  (mt/with-test-user :rasta
+                                    (qp/process-query query))))
             "Basic sanity check: make sure the query is properly set up to apply GTAPs")
         (testing "GTAPs should apply to Pulses — they should get the same results as if running that query normally"
           (is (= [[3 13]]
@@ -217,7 +217,6 @@
           (mt/user-http-request :rasta :put 200 (format "pulse/%d" pulse-id)
                                 {:channels [(assoc pc :recipients [{:id (mt/user->id :rasta)}])]})
 
-
-          ;; Crowberto should now be removed as a recipient
+;; Crowberto should now be removed as a recipient
           (is (= [(mt/user->id :rasta)]
                  (->> (api.alert/email-channel (pulse/retrieve-pulse pulse-id)) :recipients (map :id) sort))))))))

@@ -109,7 +109,6 @@
   "Compile MBQL query to SQL and parse it as a HoneySQL-esque map."
   (comp sql->sql-map query->sql))
 
-
 ;;;; [[testing]] context tooling
 
 (defn pprint-native-query-with-best-strategy

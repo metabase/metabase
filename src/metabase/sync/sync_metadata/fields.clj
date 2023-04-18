@@ -74,7 +74,6 @@
        {:total-fields   (count db-metadata)
         :updated-fields (sync-and-update! table db-metadata)}))))
 
-
 (s/defn sync-fields! :- (s/maybe {:updated-fields su/IntGreaterThanOrEqualToZero
                                   :total-fields   su/IntGreaterThanOrEqualToZero})
   "Sync the Fields in the Metabase application database for all the Tables in a `database`."

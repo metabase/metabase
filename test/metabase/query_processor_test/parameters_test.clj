@@ -16,13 +16,12 @@
 (defn- run-count-query [query]
   (or (ffirst
        (mt/formatted-rows [int]
-         (qp/process-query query)))
+                          (qp/process-query query)))
       ;; HACK (!) Mongo returns `nil` count instead of 0 — (#5419) — workaround until this is fixed
       0))
 
 (defn- query-with-default-parameter-value [query param-name param-value]
   (assoc-in query [:native :template-tags (name param-name) :default] param-value))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Template Tag Params                                               |
@@ -71,7 +70,6 @@
             (testing "date params"
               (is (= 1
                      (count-with-params :users :last_login :date/single "2014-08-02T09:30Z" options))))))))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Field Filter Params                                               |
@@ -162,7 +160,7 @@
                                          :value  "2014-01-06"}])]
           (is (= [[182 "2014-01-06T00:00:00Z" 5 31]]
                  (mt/formatted-rows :checkins
-                   (qp/process-query query)))))))))
+                                    (qp/process-query query)))))))))
 
 (deftest string-escape-test
   ;; test `:sql` drivers that support native parameters
@@ -214,21 +212,21 @@
   (testing "Params in SQL comments are ignored"
     (testing "Single-line comments"
       (mt/dataset airports
-                  (is (= {:query  "SELECT NAME FROM COUNTRY WHERE \"PUBLIC\".\"COUNTRY\".\"NAME\" IN ('US', 'MX') -- {{ignoreme}}"
-                          :params nil}
-                         (qp/compile-and-splice-parameters
-                          {:type       :native
-                           :native     {:query         "SELECT NAME FROM COUNTRY WHERE {{country}} -- {{ignoreme}}"
-                                        :template-tags {"country"
-                                                        {:name         "country"
-                                                         :display-name "Country"
-                                                         :type         :dimension
-                                                         :dimension    [:field (mt/id :country :name) nil]
-                                                         :widget-type  :category}}}
-                           :database   (mt/id)
-                           :parameters [{:type   :location/country
-                                         :target [:dimension [:template-tag "country"]]
-                                         :value  ["US" "MX"]}]})))))
+        (is (= {:query  "SELECT NAME FROM COUNTRY WHERE \"PUBLIC\".\"COUNTRY\".\"NAME\" IN ('US', 'MX') -- {{ignoreme}}"
+                :params nil}
+               (qp/compile-and-splice-parameters
+                {:type       :native
+                 :native     {:query         "SELECT NAME FROM COUNTRY WHERE {{country}} -- {{ignoreme}}"
+                              :template-tags {"country"
+                                              {:name         "country"
+                                               :display-name "Country"
+                                               :type         :dimension
+                                               :dimension    [:field (mt/id :country :name) nil]
+                                               :widget-type  :category}}}
+                 :database   (mt/id)
+                 :parameters [{:type   :location/country
+                               :target [:dimension [:template-tag "country"]]
+                               :value  ["US" "MX"]}]})))))
 
     (testing "Multi-line comments"
       (is (= {:query  "SELECT * FROM VENUES WHERE\n/*\n{{ignoreme}}\n*/ \"PUBLIC\".\"VENUES\".\"PRICE\" IN (1, 2)"

@@ -16,10 +16,10 @@
 (models/defmodel Dimension :dimension)
 
 (mi/define-methods
- Dimension
- {:types      (constantly {:type :keyword})
-  :properties (constantly {::mi/timestamped? true
-                           ::mi/entity-id    true})})
+  Dimension
+  {:types      (constantly {:type :keyword})
+   :properties (constantly {::mi/timestamped? true
+                            ::mi/entity-id    true})})
 
 (defmethod serdes/hash-fields Dimension
   [_dimension]

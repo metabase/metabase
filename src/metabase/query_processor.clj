@@ -258,7 +258,6 @@
       [combined-pre-process]    ; ↑ pre-process   ↓
       around-middleware])))     ; ↑ query         ↓ results
 
-
 ;; In REPL-based dev rebuild the QP every time it is called; this way we don't need to reload this namespace when
 ;; middleware is changed. Outside of dev only build the QP once for performance/locality
 (defn- base-qp [middleware]
@@ -305,7 +304,7 @@
   [{query-type :type, :as query}]
   (when-not (= (mbql.u/normalize-token query-type) :query)
     (throw (ex-info (tru "Can only determine expected columns for MBQL queries.")
-             {:type qp.error-type/qp})))
+                    {:type qp.error-type/qp})))
   ;; TODO - we should throw an Exception if the query has a native source query or at least warn about it. Need to
   ;; check where this is used.
   (qp.store/with-store
@@ -335,7 +334,6 @@
   ;; ID is the virtual DB identifier
   (let [driver (driver.u/database->driver (:database (preprocess query)))]
     (driver/splice-parameters-into-native-query driver (compile query))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                      Userland Queries (Public Interface)                                       |

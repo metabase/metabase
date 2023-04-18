@@ -130,8 +130,8 @@
              (check-download-permisions (mbql-download-query))))
 
         (testing "No exception is thrown for non-download queries"
-              (let [query (dissoc (mbql-download-query 'venues) :info)]
-                (is (= query (check-download-permisions query))))))))
+          (let [query (dissoc (mbql-download-query 'venues) :info)]
+            (is (= query (check-download-permisions query))))))))
 
   (testing "No exception is thrown if the user has any (full or limited) download permissions for the DB"
     (with-download-perms-for-db (mt/id) :full
@@ -149,8 +149,8 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- csv-row-count
- [results]
- (count
+  [results]
+  (count
    ;; Ignore first row, since it's the header
    (rest (csv/read-csv results))))
 
@@ -308,8 +308,8 @@
       (streaming-test/do-test
        "A user has limited downloads for a query with a join if they have limited permissions for one of the tables"
        {:query (mt/mbql-query checkins
-                    {:joins [{:source-table $$users
-                              :condition    [:= $user_id 1]}]
-                     :limit 10})
+                 {:joins [{:source-table $$users
+                           :condition    [:= $user_id 1]}]
+                  :limit 10})
         :endpoints  [:card :dataset]
         :assertions {:csv (fn [results] (is (= 3 (csv-row-count results))))}}))))

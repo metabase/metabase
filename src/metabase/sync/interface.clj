@@ -72,7 +72,6 @@
 (def FieldInstance                "Schema for a valid instance of a Metabase Field."    (mi/InstanceOf Field))
 (def ResultColumnMetadataInstance "Schema for result column metadata."                  su/Map)
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            SAMPLING & FINGERPRINTS                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -124,10 +123,9 @@
   "Schema for a Field 'fingerprint' generated as part of the analysis stage. Used to power the 'classification'
    sub-stage of analysis. Stored as the `fingerprint` column of Field."
   (su/open-schema
-    {(s/optional-key :global)       GlobalFingerprint
-     (s/optional-key :type)         TypeSpecificFingerprint
-     (s/optional-key :experimental) {s/Keyword s/Any}}))
-
+   {(s/optional-key :global)       GlobalFingerprint
+    (s/optional-key :type)         TypeSpecificFingerprint
+    (s/optional-key :experimental) {s/Keyword s/Any}}))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             FINGERPRINT VERSIONING                                             |

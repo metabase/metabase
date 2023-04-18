@@ -6,20 +6,20 @@
 ;; https://clojure.atlassian.net/browse/CLJ-1148
 
 (defonce ^:private
-  ^{:doc "Map of `coercion-strategy -> #{allowed-base-type}`."}
-  strategy->allowed-base-types
+ ^{:doc "Map of `coercion-strategy -> #{allowed-base-type}`."}
+ strategy->allowed-base-types
   (atom {}))
 
 (defonce ^:private
-  ^{:doc "Map of coercion strategy -> resulting effective-type"}
-  strategy->effective-type
+ ^{:doc "Map of coercion strategy -> resulting effective-type"}
+ strategy->effective-type
   (atom {}))
 
 (defonce ^:private
-  ^{:doc "Map of base-type -> #{strategy} which are not inheritable. Eg, binary fields are marked `type/*` and may be coerced
+ ^{:doc "Map of base-type -> #{strategy} which are not inheritable. Eg, binary fields are marked `type/*` and may be coerced
   to timestamps with `:Coercion/YYYYMMDDHHMMSSBytes->Temporal` but we don't want all children of `type/*` to be
   coerced as such."}
-  non-descending-base-type->strategy
+ non-descending-base-type->strategy
   (atom {}))
 
 (defn non-descending-strategies

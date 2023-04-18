@@ -143,9 +143,9 @@
   (let [persisted-info (persisted-info/turn-on-model! (mt/user->id :rasta) card)]
     (t2/update! PersistedInfo {:card_id (u/the-id card)}
                 {:definition (json/encode
-                               (persisted-info/metadata->definition
-                                 (:result_metadata card)
-                                 (:table_name persisted-info)))
+                              (persisted-info/metadata->definition
+                               (:result_metadata card)
+                               (:table_name persisted-info)))
                  :active true
                  :state "persisted"
                  :query_hash (persisted-info/query-hash (:dataset_query card))})))
@@ -162,9 +162,9 @@
           (is (str/includes?
                (:query (qp/compile
 
-                        {:database (mt/id)
-                         :query {:source-table (str "card__" (u/the-id card))}
-                         :type :query}))
+                         {:database (mt/id)
+                          :query {:source-table (str "card__" (u/the-id card))}
+                          :type :query}))
                "metabase_cache")))))
     (testing "Queries from source if sandboxed"
       (met/with-gtaps
@@ -178,7 +178,7 @@
           (fake-persist-card! card)
           (is (not (str/includes?
                     (:query (qp/compile
-                             {:database (mt/id)
-                              :query {:source-table (str "card__" (u/the-id card))}
-                              :type :query}))
+                              {:database (mt/id)
+                               :query {:source-table (str "card__" (u/the-id card))}
+                               :type :query}))
                     "metabase_cache"))))))))

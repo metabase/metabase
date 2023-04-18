@@ -251,10 +251,10 @@
 
 (defmacro is-ex-data [expected actual-call]
   `(try
-    ~actual-call
-    (is (= true false))
-    (catch clojure.lang.ExceptionInfo e#
-      (is (~'schema= ~expected (ex-data e#))))))
+     ~actual-call
+     (is (= true false))
+     (catch clojure.lang.ExceptionInfo e#
+       (is (~'schema= ~expected (ex-data e#))))))
 
 (deftest bulk-create-happy-path-test
   (testing "bulk/create"
@@ -547,11 +547,11 @@
                           "None of the errors are from ssh")))))
               (testing "Can perform custom actions on ssh-enabled database"
                 (let [query (update (mt/native-query
-                                     {:query "update categories set name = 'foo' where id = {{id}}"
-                                      :template-tags {:id {:id "id"
-                                                           :name "id"
-                                                           :type "number"
-                                                           :display-name "Id"}}})
+                                      {:query "update categories set name = 'foo' where id = {{id}}"
+                                       :template-tags {:id {:id "id"
+                                                            :name "id"
+                                                            :type "number"
+                                                            :display-name "Id"}}})
                                     :type name)]
                   (mt/with-actions [{card-id :id} {:dataset true
                                                    :dataset_query (mt/mbql-query categories)}

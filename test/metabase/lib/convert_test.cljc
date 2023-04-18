@@ -226,53 +226,53 @@
     (is (= {:type :query
             :query {}}
            (lib.convert/->legacy-MBQL
-             (lib.convert/->pMBQL
-               {:type :query}))))
-    (is (= {:type :query
-            :database 1
-            :query {}}
-            (lib.convert/->legacy-MBQL
-              (lib.convert/->pMBQL
-                {:type :query
-                 :database 1}))))
+            (lib.convert/->pMBQL
+             {:type :query}))))
     (is (= {:type :query
             :database 1
             :query {}}
            (lib.convert/->legacy-MBQL
-             (lib.convert/->pMBQL
-               {:type :query
-                :database 1})))))
+            (lib.convert/->pMBQL
+             {:type :query
+              :database 1}))))
+    (is (= {:type :query
+            :database 1
+            :query {}}
+           (lib.convert/->legacy-MBQL
+            (lib.convert/->pMBQL
+             {:type :query
+              :database 1})))))
   (testing "recoverable queries"
     (is (nil? (->
-                {:database 1
-                 :type :query
-                 :query {:source-table 224
-                         :order-by [[:asc [:xfield 1 nil]]]}}
-                lib.convert/->pMBQL
-                lib/order-bys)))
+               {:database 1
+                :type :query
+                :query {:source-table 224
+                        :order-by [[:asc [:xfield 1 nil]]]}}
+               lib.convert/->pMBQL
+               lib/order-bys)))
     (is (nil? (->
-                {:database 1
-                 :type :query
-                 :query {:source-table 224
-                         :filter [:and [:= [:xfield 1 nil]]]}}
-                lib.convert/->pMBQL
-                lib/filters)))
+               {:database 1
+                :type :query
+                :query {:source-table 224
+                        :filter [:and [:= [:xfield 1 nil]]]}}
+               lib.convert/->pMBQL
+               lib/filters)))
     (is (nil? (->
-                {:database 5
-                 :type :query
-                 :query {:joins [{:source-table 3
+               {:database 5
+                :type :query
+                :query {:joins [{:source-table 3
                                   ;; Invalid condition makes the join invalid
-                                  :condition [:= [:field 2 nil] [:xfield 2 nil]]}]
-                         :source-table 4}}
-                 lib.convert/->pMBQL
-                 lib/joins)))
+                                 :condition [:= [:field 2 nil] [:xfield 2 nil]]}]
+                        :source-table 4}}
+               lib.convert/->pMBQL
+               lib/joins)))
     (is (nil? (->
-                {:database 5
-                 :type :query
-                 :query {:joins [{:source-table 3
-                                  :condition [:= [:field 2 nil] [:field 2 nil]]
+               {:database 5
+                :type :query
+                :query {:joins [{:source-table 3
+                                 :condition [:= [:field 2 nil] [:field 2 nil]]
                                   ;; Invalid field, the join is still valid
-                                  :fields [[:xfield 2 nil]]}]
-                         :source-table 4}}
-                 lib.convert/->pMBQL
-                 (get-in [:stages 0 :joins 0 :fields]))))))
+                                 :fields [[:xfield 2 nil]]}]
+                        :source-table 4}}
+               lib.convert/->pMBQL
+               (get-in [:stages 0 :joins 0 :fields]))))))

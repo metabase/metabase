@@ -61,16 +61,15 @@
                               "Valid database engine")
     (deferred-tru "value must be a valid database engine.")))
 
-
 ;;; ----------------------------------------------- GET /api/database ------------------------------------------------
 
 (defn- add-tables [dbs]
   (let [db-id->tables (group-by :db_id (filter mi/can-read? (t2/select Table
-                                                              :active          true
-                                                              :db_id           [:in (map :id dbs)]
-                                                              :visibility_type nil
-                                                              {:order-by [[:%lower.schema :asc]
-                                                                          [:%lower.display_name :asc]]})))]
+                                                                       :active          true
+                                                                       :db_id           [:in (map :id dbs)]
+                                                                       :visibility_type nil
+                                                                       {:order-by [[:%lower.schema :asc]
+                                                                                   [:%lower.display_name :asc]]})))]
     (for [db dbs]
       (assoc db :tables (get db-id->tables (:id db) [])))))
 
@@ -86,7 +85,7 @@
   [dbs :- [su/Map]]
   (for [db dbs]
     (assoc db :native_permissions (if (perms/set-has-full-permissions? @api/*current-user-permissions-set*
-                                        (perms/adhoc-native-query-path (u/the-id db)))
+                                                                       (perms/adhoc-native-query-path (u/the-id db)))
                                     :write
                                     :none))))
 
@@ -207,8 +206,8 @@
   [dbs]
   (let [filtered-dbs
         (if-let [f (u/ignore-exceptions
-                    (classloader/require 'metabase-enterprise.advanced-permissions.common)
-                    (resolve 'metabase-enterprise.advanced-permissions.common/filter-databases-by-data-model-perms))]
+                     (classloader/require 'metabase-enterprise.advanced-permissions.common)
+                     (resolve 'metabase-enterprise.advanced-permissions.common/filter-databases-by-data-model-perms))]
           (f dbs)
           dbs)]
     (map
@@ -297,7 +296,6 @@
     {:data  db-list-res
      :total (count db-list-res)}))
 
-
 ;;; --------------------------------------------- GET /api/database/:id ----------------------------------------------
 
 (s/defn ^:private expanded-schedules [db :- (mi/InstanceOf Database)]
@@ -353,8 +351,8 @@
       true                         (get-database-hydrate-include include)
       include-editable-data-model? check-db-data-model-perms
       (mi/can-write? database)     (->
-                                     secret/expand-db-details-inferred-secret-values
-                                     (assoc :can-manage true)))))
+                                    secret/expand-db-details-inferred-secret-values
+                                    (assoc :can-manage true)))))
 
 (def ^:private database-usage-models
   "List of models that are used to report usage on a database."
@@ -413,12 +411,11 @@
   (api/check-404 (t2/exists? Database :id id))
   (let [table-ids (t2/select-pks-set Table :db_id id)]
     (first (mdb.query/query
-             {:select [:*]
-              :from   (for [model database-usage-models
-                            :let [query (database-usage-query model id table-ids)]
-                            :when query]
-                        [query model])}))))
-
+            {:select [:*]
+             :from   (for [model database-usage-models
+                           :let [query (database-usage-query model id table-ids)]
+                           :when query]
+                       [query model])}))))
 
 ;;; ----------------------------------------- GET /api/database/:id/metadata -----------------------------------------
 
@@ -478,17 +475,16 @@
                (Boolean/parseBoolean include_hidden)
                (Boolean/parseBoolean include_editable_data_model)))
 
-
 ;;; --------------------------------- GET /api/database/:id/autocomplete_suggestions ---------------------------------
 
 (defn- autocomplete-tables [db-id search-string limit]
   (t2/select [Table :id :db_id :schema :name]
-    {:where    [:and [:= :db_id db-id]
-                     [:= :active true]
-                     [:like :%lower.name (u/lower-case-en search-string)]
-                     [:= :visibility_type nil]]
-     :order-by [[:%lower.name :asc]]
-     :limit    limit}))
+             {:where    [:and [:= :db_id db-id]
+                         [:= :active true]
+                         [:like :%lower.name (u/lower-case-en search-string)]
+                         [:= :visibility_type nil]]
+              :order-by [[:%lower.name :asc]]
+              :limit    limit}))
 
 (defn- autocomplete-cards
   "Returns cards that match the search string in the given database, ordered by id.
@@ -570,9 +566,9 @@
 
 (defsetting native-query-autocomplete-match-style
   (deferred-tru
-    (str "Matching style for native query editor's autocomplete. Can be \"substring\", \"prefix\", or \"off\". "
-         "Larger instances can have performance issues matching using substring, so can use prefix matching, "
-         " or turn autocompletions off."))
+   (str "Matching style for native query editor's autocomplete. Can be \"substring\", \"prefix\", or \"off\". "
+        "Larger instances can have performance issues matching using substring, so can use prefix matching, "
+        " or turn autocompletions off."))
   :visibility :public
   :type       :keyword
   :default    :substring
@@ -627,7 +623,6 @@
     (catch Throwable e
       (log/warn e (trs "Error with autocomplete: {0}" (ex-message e))))))
 
-
 ;;; ------------------------------------------ GET /api/database/:id/fields ------------------------------------------
 
 #_{:clj-kondo/ignore [:deprecated-var]}
@@ -636,8 +631,8 @@
   [id]
   (api/read-check Database id)
   (let [fields (filter mi/can-read? (-> (t2/select [Field :id :name :display_name :table_id :base_type :semantic_type]
-                                          :table_id        [:in (t2/select-fn-set :id Table, :db_id id)]
-                                          :visibility_type [:not-in ["sensitive" "retired"]])
+                                                   :table_id        [:in (t2/select-fn-set :id Table, :db_id id)]
+                                                   :visibility_type [:not-in ["sensitive" "retired"]])
                                         (hydrate :table)))]
     (for [{:keys [id name display_name table base_type semantic_type]} fields]
       {:id            id
@@ -647,7 +642,6 @@
        :semantic_type semantic_type
        :table_name    (:name table)
        :schema        (:schema table)})))
-
 
 ;;; ----------------------------------------- GET /api/database/:id/idfields -----------------------------------------
 
@@ -662,7 +656,6 @@
     (sort-by (comp u/lower-case-en :name :table)
              (filter field-perm-check (-> (database/pk-fields {:id id})
                                           (hydrate :table))))))
-
 
 ;;; ----------------------------------------------- POST /api/database -----------------------------------------------
 
@@ -727,11 +720,11 @@
                            details-with-ssl)]
     (or
       ;; Opportunistic SSL
-      details-with-ssl
+     details-with-ssl
       ;; Try with original parameters
-      (some-> (test-database-connection engine details)
-              (assoc :valid false))
-      details)))
+     (some-> (test-database-connection engine details)
+             (assoc :valid false))
+     details)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/"
@@ -748,8 +741,8 @@
   (api/check-superuser)
   (when cache_ttl
     (api/check (premium-features/enable-advanced-config?)
-               [402 (tru (str "The cache TTL database setting is only enabled if you have a premium token with the "
-                              "advanced-config feature."))]))
+      [402 (tru (str "The cache TTL database setting is only enabled if you have a premium token with the "
+                     "advanced-config feature."))]))
   (let [is-full-sync?    (or (nil? is_full_sync)
                              (boolean is_full_sync))
         details-or-error (test-connection-details engine details)
@@ -758,21 +751,21 @@
       ;; no error, proceed with creation. If record is inserted successfuly, publish a `:database-create` event.
       ;; Throw a 500 if nothing is inserted
       (u/prog1 (api/check-500 (first (t2/insert-returning-instances!
-                                       Database
-                                       (merge
-                                         {:name         name
-                                          :engine       engine
-                                          :details      details-or-error
-                                          :is_full_sync is-full-sync?
-                                          :is_on_demand (boolean is_on_demand)
-                                          :cache_ttl    cache_ttl
-                                          :creator_id   api/*current-user-id*}
-                                         (sync.schedules/schedule-map->cron-strings
-                                           (if (:let-user-control-scheduling details)
-                                             (sync.schedules/scheduling schedules)
-                                             (sync.schedules/default-randomized-schedule)))
-                                         (when (some? auto_run_queries)
-                                           {:auto_run_queries auto_run_queries})))))
+                                      Database
+                                      (merge
+                                       {:name         name
+                                        :engine       engine
+                                        :details      details-or-error
+                                        :is_full_sync is-full-sync?
+                                        :is_on_demand (boolean is_on_demand)
+                                        :cache_ttl    cache_ttl
+                                        :creator_id   api/*current-user-id*}
+                                       (sync.schedules/schedule-map->cron-strings
+                                        (if (:let-user-control-scheduling details)
+                                          (sync.schedules/scheduling schedules)
+                                          (sync.schedules/default-randomized-schedule)))
+                                       (when (some? auto_run_queries)
+                                         {:auto_run_queries auto_run_queries})))))
         (events/publish-event! :database-create <>)
         (snowplow/track-event! ::snowplow/database-connection-successful
                                api/*current-user-id*
@@ -796,7 +789,6 @@
   (let [details-or-error (test-connection-details engine details)]
     {:valid (not (false? (:valid details-or-error)))}))
 
-
 ;;; --------------------------------------- POST /api/database/sample_database ----------------------------------------
 
 #_{:clj-kondo/ignore [:deprecated-var]}
@@ -806,7 +798,6 @@
   (api/check-superuser)
   (sample-data/add-sample-database!)
   (t2/select-one Database :is_sample true))
-
 
 ;;; --------------------------------------------- PUT /api/database/:id ----------------------------------------------
 
@@ -829,8 +820,8 @@
   [id]
   {:id su/IntGreaterThanZero}
   (api/check (public-settings/persisted-models-enabled)
-             400
-             (tru "Persisting models is not enabled."))
+    400
+    (tru "Persisting models is not enabled."))
   (api/let-404 [database (t2/select-one Database :id id)]
     (api/write-check database)
     (if (-> database :options :persist-models-enabled)
@@ -842,8 +833,8 @@
           ;; do secrets require special handling to not clobber them or mess up encryption?
           (do (t2/update! Database id {:options (assoc (:options database) :persist-models-enabled true)})
               (task.persist-refresh/schedule-persistence-for-database!
-                database
-                (public-settings/persisted-model-refresh-cron-schedule))
+               database
+               (public-settings/persisted-model-refresh-cron-schedule))
               api/generic-204-no-content)
           (throw (ex-info (ddl.i/error->message error schema)
                           {:error error
@@ -942,7 +933,6 @@
           ;; return the DB with the expanded schedules back in place
           (add-expanded-schedules db))))))
 
-
 ;;; -------------------------------------------- DELETE /api/database/:id --------------------------------------------
 
 #_{:clj-kondo/ignore [:deprecated-var]}
@@ -954,7 +944,6 @@
     (t2/delete! Database :id id)
     (events/publish-event! :database-delete db))
   api/generic-204-no-content)
-
 
 ;;; ------------------------------------------ POST /api/database/:id/sync -------------------------------------------
 
@@ -1034,7 +1023,6 @@
     (t2/query-one {:delete-from :metabase_fieldvalues
                    :where       [:in :id field-values-ids]})))
 
-
 ;; TODO - should this be something like DELETE /api/database/:id/field_values instead?
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/:id/discard_values"
@@ -1042,7 +1030,6 @@
   [id]
   (delete-all-field-values-for-database! (api/write-check (t2/select-one Database :id id)))
   {:status :ok})
-
 
 ;;; ------------------------------------------ GET /api/database/:id/schemas -----------------------------------------
 
@@ -1094,19 +1081,18 @@
          distinct
          (sort-by u/lower-case-en))))
 
-
 ;;; ------------------------------------- GET /api/database/:id/schema/:schema ---------------------------------------
 
 (defn- schema-tables-list [db-id schema]
   (api/read-check Database db-id)
   (api/check-403 (can-read-schema? db-id schema))
   (filter mi/can-read? (t2/select Table
-                         :db_id           db-id
-                         :schema          schema
-                         :active          true
+                                  :db_id           db-id
+                                  :schema          schema
+                                  :active          true
                          ;; a non-nil value means Table is hidden -- see [[metabase.models.table/visibility-types]]
-                         :visibility_type nil
-                         {:order-by [[:display_name :asc]]})))
+                                  :visibility_type nil
+                                  {:order-by [[:display_name :asc]]})))
 
 (api/defendpoint GET "/:id/schema/:schema"
   "Returns a list of Tables for the given Database `id` and `schema`"

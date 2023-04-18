@@ -442,7 +442,6 @@
   (fn [driver _ _] (driver/dispatch-on-initialized-driver driver))
   :hierarchy #'driver/hierarchy)
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           Low-Level ->honeysql impls                                           |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -539,18 +538,18 @@
   "Wrap a `field-identifier` in appropriate HoneySQL expressions if it refers to a UNIX timestamp Field."
   [driver field honeysql-form]
   (u/prog1 (match [(:base_type field) (:coercion_strategy field)]
-            [(:isa? :type/Number) (:isa? :Coercion/UNIXTime->Temporal)]
-            (unix-timestamp->honeysql driver
-                                      (semantic-type->unix-timestamp-unit (:coercion_strategy field))
-                                      honeysql-form)
+             [(:isa? :type/Number) (:isa? :Coercion/UNIXTime->Temporal)]
+             (unix-timestamp->honeysql driver
+                                       (semantic-type->unix-timestamp-unit (:coercion_strategy field))
+                                       honeysql-form)
 
-            [:type/Text (:isa? :Coercion/String->Temporal)]
-            (cast-temporal-string driver (:coercion_strategy field) honeysql-form)
+             [:type/Text (:isa? :Coercion/String->Temporal)]
+             (cast-temporal-string driver (:coercion_strategy field) honeysql-form)
 
-            [(:isa? :type/*) (:isa? :Coercion/Bytes->Temporal)]
-            (cast-temporal-byte driver (:coercion_strategy field) honeysql-form)
+             [(:isa? :type/*) (:isa? :Coercion/Bytes->Temporal)]
+             (cast-temporal-byte driver (:coercion_strategy field) honeysql-form)
 
-            :else honeysql-form)
+             :else honeysql-form)
     (when-not (= <> honeysql-form)
       (log/tracef "Applied casting\n=>\n%s" (u/pprint-to-str <>)))))
 
@@ -754,10 +753,10 @@
 (defmethod ->honeysql [:sql :sum-where]
   [driver [_ arg pred]]
   (hx/call :sum (hx/call :case
-                    (->honeysql driver pred) (->honeysql driver arg)
-                    :else                    (case (long hx/*honey-sql-version*)
-                                               1 0.0
-                                               2 [:inline 0.0]))))
+                         (->honeysql driver pred) (->honeysql driver arg)
+                         :else                    (case (long hx/*honey-sql-version*)
+                                                    1 0.0
+                                                    2 [:inline 0.0]))))
 
 (defmethod ->honeysql [:sql :count-where]
   [driver [_ pred]]
@@ -1027,7 +1026,6 @@
                               2 [ag-expr [ag-alias]])))]
     (reduce sql.helpers/select honeysql-form honeysql-ags)))
 
-
 ;;; ----------------------------------------------- breakout & fields ------------------------------------------------
 
 (defmethod apply-top-level-clause [:sql :breakout]
@@ -1043,7 +1041,6 @@
   [driver _ honeysql-form {fields :fields}]
   (apply sql.helpers/select honeysql-form (vec (for [field-clause fields]
                                                  (as driver field-clause)))))
-
 
 ;;; ----------------------------------------------------- filter -----------------------------------------------------
 
@@ -1139,7 +1136,6 @@
   [driver _ honeysql-form {clause :filter}]
   (sql.helpers/where honeysql-form (->honeysql driver clause)))
 
-
 ;;; -------------------------------------------------- join tables ---------------------------------------------------
 
 (declare mbql->honeysql)
@@ -1223,7 +1219,6 @@
             2 apply-joins-honey-sql-2)]
     (f driver honeysql-form joins)))
 
-
 ;;; ---------------------------------------------------- order-by ----------------------------------------------------
 
 (defmethod ->honeysql [:sql :asc]
@@ -1250,7 +1245,6 @@
       (sql.helpers/limit (inline-num items))
       (sql.helpers/offset (inline-num (* items (dec page))))))
 
-
 ;;; -------------------------------------------------- source-table --------------------------------------------------
 
 (defmethod ->honeysql [:sql Table]
@@ -1261,7 +1255,6 @@
 (defmethod apply-top-level-clause [:sql :source-table]
   [driver _ honeysql-form {source-table-id :source-table}]
   (sql.helpers/from honeysql-form (maybe-wrap-unaliased-expr (->honeysql driver (qp.store/table source-table-id)))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           Building the HoneySQL Form                                           |

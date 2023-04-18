@@ -90,7 +90,6 @@
 (defmacro ^:private with-pulses-in-writeable-collection [pulses-or-ids & body]
   `(do-with-pulses-in-a-collection perms/grant-collection-readwrite-permissions! ~pulses-or-ids (fn [] ~@body)))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       /api/pulse/* AUTHENTICATION Tests                                        |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -101,7 +100,6 @@
 (deftest authentication-test
   (is (= (:body mw.util/response-unauthentic) (client/client :get 401 "pulse")))
   (is (= (:body mw.util/response-unauthentic) (client/client :put 401 "pulse/13"))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                POST /api/pulse                                                 |
@@ -372,7 +370,6 @@
                   (is (= nil
                          (t2/select-one [Pulse :collection_id :collection_position] :name pulse-name))))))))))))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               PUT /api/pulse/:id                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -596,7 +593,6 @@
         (is (t2/exists? PulseChannel :id (u/the-id pc)))
         (is (t2/exists? PulseChannelRecipient :id (u/the-id pcr)))))))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                   UPDATING PULSE COLLECTION POSITIONS                                          |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -736,7 +732,6 @@
                   (testing "Collection 2"
                     (is (= (second expected)
                            (api.card-test/get-name->collection-position :rasta (u/the-id collection-2))))))))))))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 GET /api/pulse                                                 |
@@ -1070,10 +1065,10 @@
       (mt/with-temporary-setting-values [slack-token nil
                                          slack-app-token nil]
         (is (empty?
-               (-> (mt/user-http-request :rasta :get 200 "pulse/form_input")
-                   (get-in [:channels :slack :fields])
-                   (first)
-                   (:options))))))))
+             (-> (mt/user-http-request :rasta :get 200 "pulse/form_input")
+                 (get-in [:channels :slack :fields])
+                 (first)
+                 (:options))))))))
 
 (deftest preview-pulse-test
   (testing "GET /api/pulse/preview_card/:id"
@@ -1090,9 +1085,9 @@
 
         (testing "If rendering a Pulse fails (e.g. because font registration failed) the endpoint should return the error message"
           (with-redefs [style/register-fonts-if-needed! (fn []
-                                                         (throw (ex-info "Can't register fonts!"
-                                                                         {}
-                                                                         (NullPointerException.))))]
+                                                          (throw (ex-info "Can't register fonts!"
+                                                                          {}
+                                                                          (NullPointerException.))))]
             (let [{{:strs [Content-Type]} :headers, :keys [body]} (preview 500)]
               (is (= "application/json;charset=utf-8"
                      Content-Type))
@@ -1100,7 +1095,7 @@
                             :trace    s/Any
                             :via      s/Any
                             s/Keyword s/Any}
-                     body)))))))))
+                           body)))))))))
 
 (deftest delete-subscription-test
   (testing "DELETE /api/pulse/:id/subscription"

@@ -43,12 +43,12 @@
 
 (defmethod task/init! ::CheckForNewVersions [_]
   (let [job     (jobs/build
-                 (jobs/of-type CheckForNewVersions)
-                 (jobs/with-identity (jobs/key job-key)))
+                  (jobs/of-type CheckForNewVersions)
+                  (jobs/with-identity (jobs/key job-key)))
         trigger (triggers/build
-                 (triggers/with-identity (triggers/key trigger-key))
-                 (triggers/start-now)
-                 (triggers/with-schedule
+                  (triggers/with-identity (triggers/key trigger-key))
+                  (triggers/start-now)
+                  (triggers/with-schedule
                    ;; run twice a day
-                   (cron/cron-schedule "0 15 6,18 * * ? *")))]
+                    (cron/cron-schedule "0 15 6,18 * * ? *")))]
     (task/schedule-task! job trigger)))

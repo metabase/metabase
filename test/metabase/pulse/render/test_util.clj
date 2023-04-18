@@ -352,9 +352,9 @@
                (remove (set (:hide scenario-settings)) (range (count cols)))
                (range (dec (count cols))))
         cols-to-keep (->> cols
-                         (filter #((set keep) (second (:field_ref %))))
-                         (remove nil?)
-                         vec)
+                          (filter #((set keep) (second (:field_ref %))))
+                          (remove nil?)
+                          vec)
         new-rows (mapv (fn [row] (mapv #(get row (second (:field_ref %))) cols-to-keep))
                        (get-in card-and-data [:data :rows]))]
     (-> card-and-data

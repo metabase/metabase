@@ -17,14 +17,14 @@
   `our-metadata` is always returned in this format. (The ID is needed in certain places so we know which Fields to
   retire, and the parent ID of any nested-fields.)"
   (assoc i/TableMetadataField
-    :id                             su/IntGreaterThanZero
-    (s/optional-key :nested-fields) #{(s/recursive #'TableMetadataFieldWithID)}))
+         :id                             su/IntGreaterThanZero
+         (s/optional-key :nested-fields) #{(s/recursive #'TableMetadataFieldWithID)}))
 
 (def TableMetadataFieldWithOptionalID
   "Schema for either `i/TableMetadataField` (`db-metadata`) or `TableMetadataFieldWithID` (`our-metadata`)."
   (assoc i/TableMetadataField
-    (s/optional-key :id)            su/IntGreaterThanZero
-    (s/optional-key :nested-fields) #{(s/recursive #'TableMetadataFieldWithOptionalID)}))
+         (s/optional-key :id)            su/IntGreaterThanZero
+         (s/optional-key :nested-fields) #{(s/recursive #'TableMetadataFieldWithOptionalID)}))
 
 (s/defn field-metadata-name-for-logging :- s/Str
   "Return a 'name for logging' for a map that conforms to the `TableMetadataField` schema.

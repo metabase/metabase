@@ -151,8 +151,6 @@
           (is (= {:rows 1}
                  (-> results :data (select-keys [:dataset :rows]) (update :rows count)))))))))
 
-
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                   JOINS 2.0                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -162,10 +160,10 @@
   tests the actual contents of the metadata."
   [results]
   (letfn [(clean [sm] (map #(select-keys % [:field_ref]) sm))]
-   (update-in results [:query :joins]
-              (fn [joins]
-                (map (fn [join] (update join :source-metadata clean))
-                     joins)))))
+    (update-in results [:query :joins]
+               (fn [joins]
+                 (map (fn [join] (update join :source-metadata clean))
+                      joins)))))
 
 (deftest joins-test
   (let [metadata [{:name         "ID"

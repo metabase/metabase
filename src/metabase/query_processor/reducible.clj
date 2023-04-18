@@ -128,7 +128,6 @@
     (binding [*run-on-separate-thread?* false]
       (wait-for-async-result (apply qp args)))))
 
-
 ;;; ------------------------------------------------- Other Util Fns -------------------------------------------------
 
 (defn reducible-rows

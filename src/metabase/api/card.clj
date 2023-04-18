@@ -82,7 +82,7 @@
 (defmethod cards-for-filter-option* :bookmarked
   [_]
   (let [cards (for [{{:keys [archived], :as card} :card} (hydrate (t2/select [CardBookmark :card_id]
-                                                                    :user_id api/*current-user-id*)
+                                                                             :user_id api/*current-user-id*)
                                                                   :card)
                     :when                                 (not archived)]
                 card)]
@@ -110,11 +110,11 @@
 (defmethod cards-for-filter-option* :recent
   [_]
   (cards-with-ids (map :model_id (t2/select [ViewLog :model_id [:%max.timestamp :max]]
-                                   :model   "card"
-                                   :user_id api/*current-user-id*
-                                   {:group-by [:model_id]
-                                    :order-by [[:max :desc]]
-                                    :limit    10}))))
+                                            :model   "card"
+                                            :user_id api/*current-user-id*
+                                            {:group-by [:model_id]
+                                             :order-by [[:max :desc]]
+                                             :limit    10}))))
 
 ;; All Cards, sorted by popularity (the total number of times they are viewed in `ViewLogs`). (yes, this isn't
 ;; actually filtering anything, but for the sake of simplicitiy it is included amongst the filter options for the time
@@ -122,9 +122,9 @@
 (defmethod cards-for-filter-option* :popular
   [_]
   (cards-with-ids (map :model_id (t2/select [ViewLog :model_id [:%count.* :count]]
-                                   :model "card"
-                                   {:group-by [:model_id]
-                                    :order-by [[:count :desc]]}))))
+                                            :model "card"
+                                            {:group-by [:model_id]
+                                             :order-by [[:count :desc]]}))))
 
 ;; Cards that have been archived.
 (defmethod cards-for-filter-option* :archived
@@ -195,7 +195,7 @@
                           :last_query_start
                           :collection [:moderation_reviews :moderator_details])
                  (cond-> ;; card
-                   (:dataset raw-card) (hydrate :persisted))
+                  (:dataset raw-card) (hydrate :persisted))
                  api/read-check
                  (last-edit/with-last-edit-info :card))]
     (u/prog1 card
@@ -217,7 +217,6 @@
                                        {:timeline/events? (= include "events")
                                         :events/start     (when start (u.date/parse start))
                                         :events/end       (when end (u.date/parse end))})))
-
 
 ;;; -------------------------------------------------- Saving Cards --------------------------------------------------
 
@@ -262,12 +261,12 @@
       ;; re-run and blend the saved into the new metadata
       (and dataset? (or valid-metadata? (seq original-metadata)))
       (do
-       (log/debug (trs "Querying for metadata and blending model metadata"))
-       (a/go (let [metadata' (if valid-metadata?
-                               (map mbql.normalize/normalize-source-metadata metadata)
-                               original-metadata)
-                   fresh     (a/<! (qp.async/result-metadata-for-query-async query))]
-               (qp.util/combine-metadata fresh metadata'))))
+        (log/debug (trs "Querying for metadata and blending model metadata"))
+        (a/go (let [metadata' (if valid-metadata?
+                                (map mbql.normalize/normalize-source-metadata metadata)
+                                original-metadata)
+                    fresh     (a/<! (qp.async/result-metadata-for-query-async query))]
+                (qp.util/combine-metadata fresh metadata'))))
       :else
       ;; compute fresh
       (do
@@ -357,10 +356,10 @@ saved later when it is ready."
          card                 (t2/with-transaction [_conn]
                                ;; Adding a new card at `collection_position` could cause other cards in this
                                ;; collection to change position, check that and fix it if needed
-                               (api/maybe-reconcile-collection-position! card-data)
-                               (first (t2/insert-returning-instances! Card (cond-> card-data
-                                                                             (and metadata (not timed-out?))
-                                                                             (assoc :result_metadata metadata)))))]
+                                (api/maybe-reconcile-collection-position! card-data)
+                                (first (t2/insert-returning-instances! Card (cond-> card-data
+                                                                              (and metadata (not timed-out?))
+                                                                              (assoc :result_metadata metadata)))))]
      (when-not delay-event?
        (events/publish-event! :card-create card))
      (when timed-out?
@@ -409,7 +408,6 @@ saved later when it is ready."
         new-name  (str (trs "Copy of ") (:name orig-card))
         new-card  (assoc orig-card :name new-name)]
     (create-card! new-card)))
-
 
 ;;; ------------------------------------------------- Updating Cards -------------------------------------------------
 
@@ -553,8 +551,6 @@ saved later when it is ready."
         [_ changes-in-after] (data/diff before after)]
     (boolean (seq changes-in-after))))
 
-
-
 (def card-compare-keys
   "When comparing a card to possibly unverify, only consider these keys as changing something 'important' about the
   query."
@@ -569,25 +565,25 @@ saved later when it is ready."
   [{:keys [id], :as card-before-update} {:keys [archived], :as card-updates}]
   ;; don't block our precious core.async thread, run the actual DB updates on a separate thread
   (t2/with-transaction [_conn]
-   (api/maybe-reconcile-collection-position! card-before-update card-updates)
+    (api/maybe-reconcile-collection-position! card-before-update card-updates)
 
-   (when (and (card-is-verified? card-before-update)
-              (changed? card-compare-keys card-before-update card-updates))
+    (when (and (card-is-verified? card-before-update)
+               (changed? card-compare-keys card-before-update card-updates))
      ;; this is an enterprise feature but we don't care if enterprise is enabled here. If there is a review we need
      ;; to remove it regardless if enterprise edition is present at the moment.
-     (moderation-review/create-review! {:moderated_item_id   id
-                                        :moderated_item_type "card"
-                                        :moderator_id        api/*current-user-id*
-                                        :status              nil
-                                        :text                (tru "Unverified due to edit")}))
+      (moderation-review/create-review! {:moderated_item_id   id
+                                         :moderated_item_type "card"
+                                         :moderator_id        api/*current-user-id*
+                                         :status              nil
+                                         :text                (tru "Unverified due to edit")}))
    ;; ok, now save the Card
-   (t2/update! Card id
+    (t2/update! Card id
      ;; `collection_id` and `description` can be `nil` (in order to unset them). Other values should only be
      ;; modified if they're passed in as non-nil
-     (u/select-keys-when card-updates
-       :present #{:collection_id :collection_position :description :cache_ttl :dataset}
-       :non-nil #{:dataset_query :display :name :visualization_settings :archived :enable_embedding
-                  :parameters :parameter_mappings :embedding_params :result_metadata :collection_preview})))
+                (u/select-keys-when card-updates
+                  :present #{:collection_id :collection_position :description :cache_ttl :dataset}
+                  :non-nil #{:dataset_query :display :name :visualization_settings :archived :enable_embedding
+                             :parameters :parameter_mappings :embedding_params :result_metadata :collection_preview})))
     ;; Fetch the updated Card from the DB
 
   (let [card (t2/select-one Card :id id)]
@@ -603,7 +599,7 @@ saved later when it is ready."
                  :last_query_start
                  :collection [:moderation_reviews :moderator_details])
         (cond-> ;; card
-          (:dataset card) (hydrate :persisted))
+         (:dataset card) (hydrate :persisted))
         (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*)))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
@@ -657,7 +653,6 @@ saved later when it is ready."
           (log/info (trs "Metadata not available soon enough. Saving card {0} and asynchronously updating metadata" id))
           (schedule-metadata-saving result-metadata-chan <>))))))
 
-
 ;;; ------------------------------------------------- Deleting Cards -------------------------------------------------
 
 ;; TODO - Pretty sure this endpoint is not actually used any more, since Cards are supposed to get archived (via PUT
@@ -683,7 +678,7 @@ saved later when it is ready."
   ;; Sorting by `:collection_position` to ensure lower position cards are appended first
   (let [sorted-cards        (sort-by :collection_position cards)
         max-position-result (t2/select-one [Card [:%max.collection_position :max_position]]
-                              :collection_id new-collection-id-or-nil)
+                                           :collection_id new-collection-id-or-nil)
         ;; collection_position for the next card in the collection
         starting-position   (inc (get max-position-result :max_position 0))]
 
@@ -713,10 +708,10 @@ saved later when it is ready."
   ;; for each affected card...
   (when (seq card-ids)
     (let [cards (t2/select [Card :id :collection_id :collection_position :dataset_query]
-                  {:where [:and [:in :id (set card-ids)]
-                                [:or [:not= :collection_id new-collection-id-or-nil]
-                                  (when new-collection-id-or-nil
-                                    [:= :collection_id nil])]]})] ; poisioned NULLs = ick
+                           {:where [:and [:in :id (set card-ids)]
+                                    [:or [:not= :collection_id new-collection-id-or-nil]
+                                     (when new-collection-id-or-nil
+                                       [:= :collection_id nil])]]})] ; poisioned NULLs = ick
       ;; ...check that we have write permissions for it...
       (doseq [card cards]
         (api/write-check card))
@@ -751,9 +746,7 @@ saved later when it is ready."
   (move-cards-to-collection! collection_id card_ids)
   {:status :ok})
 
-
 ;;; ------------------------------------------------ Running a Query -------------------------------------------------
-
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/:card-id/query"
@@ -861,9 +854,9 @@ saved later when it is ready."
                  :or   {ignore_cache false}} :body}]
   {ignore_cache (s/maybe s/Bool)}
   (qp.card/run-query-for-card-async card-id :api
-                            :parameters parameters,
-                            :qp-runner qp.pivot/run-pivot-query
-                            :ignore_cache ignore_cache))
+                                    :parameters parameters,
+                                    :qp-runner qp.pivot/run-pivot-query
+                                    :ignore_cache ignore_cache))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/:card-id/persist"

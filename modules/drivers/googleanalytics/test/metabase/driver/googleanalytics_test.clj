@@ -155,7 +155,6 @@
   (is (= (ga-query {:max-results 25})
          (mbql->native {:query {:limit 25}}))))
 
-
 ;;; ----------------------------------------------- (Almost) E2E tests -----------------------------------------------
 
 (defn do-with-some-fields [thunk]
@@ -229,7 +228,7 @@
                                                (t/local-date "2019-11-18")
                                                (t/local-time 0)
                                                (t/zone-id system-timezone-id)))
-                                  (t/zone-id system-timezone-id))
+                                   (t/zone-id system-timezone-id))
         (is (= expected-ga-query
                (do-with-some-fields
                 (fn [{:keys [db table event-action-field event-label-field date-field], :as objects}]
@@ -260,7 +259,7 @@
                                                (t/local-date "2019-11-18")
                                                (t/local-time 0)
                                                (t/zone-id system-timezone-id)))
-                                  (t/zone-id system-timezone-id))
+                                   (t/zone-id system-timezone-id))
         (is (= expected-ga-query
                (do-with-some-fields
                 (comp qp/compile query-with-some-fields))))))))
@@ -332,7 +331,7 @@
                                                  (t/local-date "2019-11-18")
                                                  (t/local-time 0)
                                                  (t/zone-id system-timezone-id)))
-                                    (t/zone-id system-timezone-id))
+                                     (t/zone-id system-timezone-id))
           (do-with-some-fields
            (fn [{:keys [db table date-field]}]
              (is (= {:metrics    "ga:users"
@@ -350,7 +349,6 @@
                         :query
                         (select-keys [:start-date :end-date :dimensions :metrics :sort])))
                  "Last 4 months should includy July, August, September, and October (July 1st - October 31st)"))))))))
-
 
 ;;; ------------------------------------------------ Saving GA Cards -------------------------------------------------
 

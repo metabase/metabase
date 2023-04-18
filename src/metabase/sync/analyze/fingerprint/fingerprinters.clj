@@ -160,11 +160,11 @@
     `(defmethod fingerprinter ~field-type
        [field#]
        (with-error-handling
-         (with-global-fingerprinter
-           (redux/post-complete
-            ~transducer
-            (fn [fingerprint#]
-              {:type {~(first field-type) fingerprint#}})))
+        (with-global-fingerprinter
+          (redux/post-complete
+           ~transducer
+           (fn [fingerprint#]
+             {:type {~(first field-type) fingerprint#}})))
          (trs "Error generating fingerprint for {0}" (sync-util/name-for-logging field#))))))
 
 (declare ->temporal)

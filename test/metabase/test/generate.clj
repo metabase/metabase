@@ -389,8 +389,8 @@
                   (try
                     (first (t2/insert-returning-instances! (:model schema-opts)
                                                            (rsg/spec-gen-assoc-relations
-                                                             sm-db
-                                                             (assoc visit-opts :visit-val (:spec-gen attrs)))))
+                                                            sm-db
+                                                            (assoc visit-opts :visit-val (:spec-gen attrs)))))
                     (catch Throwable e
                       (log/error e)))))
       (rs/attr-map :insert!)))

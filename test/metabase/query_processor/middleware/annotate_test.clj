@@ -49,7 +49,6 @@
               {:cols [{:name "a" :base_type :type/Integer} {:name "a" :base_type :type/Integer}]
                :rows [[1 nil]]}))))))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       (MBQL) Col info for Field clauses                                        |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -211,25 +210,25 @@
   (testing "For fields with parents we should return them with a combined name including parent's name"
     (tt/with-temp* [Field [parent {:name "parent", :table_id (mt/id :venues)}]
                     Field [child  {:name "child", :table_id (mt/id :venues), :parent_id (u/the-id parent)}]]
-     (mt/with-everything-store
+      (mt/with-everything-store
         (is (= {:description     nil
-                 :table_id        (mt/id :venues)
-                 :semantic_type   nil
-                 :effective_type  nil
+                :table_id        (mt/id :venues)
+                :semantic_type   nil
+                :effective_type  nil
                  ;; these two are a gross symptom. there's some tension. sometimes it makes sense to have an effective
                  ;; type: the db type is different and we have a way to convert. Othertimes, it doesn't make sense:
                  ;; when the info is inferred. the solution to this might be quite extensive renaming
-                 :coercion_strategy nil
-                 :name            "parent.child"
-                 :settings        nil
-                 :field_ref       [:field (u/the-id child) nil]
-                 :nfc_path        nil
-                 :parent_id       (u/the-id parent)
-                 :id              (u/the-id child)
-                 :visibility_type :normal
-                 :display_name    "Child"
-                 :fingerprint     nil
-                 :base_type       :type/Text}
+                :coercion_strategy nil
+                :name            "parent.child"
+                :settings        nil
+                :field_ref       [:field (u/the-id child) nil]
+                :nfc_path        nil
+                :parent_id       (u/the-id parent)
+                :id              (u/the-id child)
+                :visibility_type :normal
+                :display_name    "Child"
+                :fingerprint     nil
+                :base_type       :type/Text}
                (into {} (#'annotate/col-info-for-field-clause {} [:field (u/the-id child) nil])))))))
 
   (testing "nested-nested fields should include grandparent name (etc)"
@@ -290,8 +289,8 @@
               :field_ref          [:expression "last-login-converted"]}
              (mt/$ids users
                (#'annotate/col-info-for-field-clause
-                 {:expressions {"last-login-converted" [:convert-timezone $last_login "Asia/Ho_Chi_Minh" "UTC"]}}
-                 [:expression "last-login-converted"]))))
+                {:expressions {"last-login-converted" [:convert-timezone $last_login "Asia/Ho_Chi_Minh" "UTC"]}}
+                [:expression "last-login-converted"]))))
       (is (= {:converted_timezone "Asia/Ho_Chi_Minh",
               :base_type          :type/DateTime,
               :name               "last-login-converted",
@@ -300,20 +299,20 @@
               :field_ref          [:expression "last-login-converted"]}
              (mt/$ids users
                (#'annotate/col-info-for-field-clause
-                 {:expressions {"last-login-converted" [:datetime-add
-                                                        [:convert-timezone $last_login "Asia/Ho_Chi_Minh" "UTC"] 2 :hour]}}
-                 [:expression "last-login-converted"])))))
+                {:expressions {"last-login-converted" [:datetime-add
+                                                       [:convert-timezone $last_login "Asia/Ho_Chi_Minh" "UTC"] 2 :hour]}}
+                [:expression "last-login-converted"])))))
 
-   (testing "if there is no matching expression it should give a meaningful error message"
-     (is (= {:data    {:expression-name "double-price"
-                       :tried           ["double-price" :double-price]
-                       :found           #{"one-hundred"}
-                       :type            :invalid-query}
-             :message "No expression named 'double-price'"}
-            (try
-              (mt/$ids venues
-                (#'annotate/col-info-for-field-clause {:expressions {"one-hundred" 100}} [:expression "double-price"]))
-              (catch Throwable e {:message (.getMessage e), :data (ex-data e)})))))))
+    (testing "if there is no matching expression it should give a meaningful error message"
+      (is (= {:data    {:expression-name "double-price"
+                        :tried           ["double-price" :double-price]
+                        :found           #{"one-hundred"}
+                        :type            :invalid-query}
+              :message "No expression named 'double-price'"}
+             (try
+               (mt/$ids venues
+                 (#'annotate/col-info-for-field-clause {:expressions {"one-hundred" 100}} [:expression "double-price"]))
+               (catch Throwable e {:message (.getMessage e), :data (ex-data e)})))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                    (MBQL) Col info for Aggregation clauses                                     |
@@ -456,7 +455,6 @@
              (mt/$ids venues
                (col-info-for-aggregation-clause {:expressions {"double-price" [:* $price 2]}} [:sum [:expression "double-price"]])))))))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           Other MBQL col info tests                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -473,9 +471,9 @@
 
 (deftest ^:parallel computed-columns-inference
   (letfn [(infer [expr] (-> (mt/mbql-query venues
-                                           {:expressions {"expr" expr}
-                                            :fields [[:expression "expr"]]
-                                            :limit 10})
+                              {:expressions {"expr" expr}
+                               :fields [[:expression "expr"]]
+                               :limit 10})
                             (add-column-info {})
                             :cols
                             first))]
@@ -640,15 +638,15 @@
               {:base_type :type/Float, :name "expression_2", :display_name "0.8 * Average of Price", :source :aggregation, :field_ref [:aggregation 1]}]
              (:cols (add-column-info
                      (mt/mbql-query venues
-                                      {:aggregation [[:* 0.9 [:avg $price]] [:* 0.8 [:avg $price]]]
-                                       :limit       10})
+                       {:aggregation [[:* 0.9 [:avg $price]] [:* 0.8 [:avg $price]]]
+                        :limit       10})
                      {})))))
     (testing "named :expressions"
       (is (= [{:name "prev_month", :display_name "prev_month", :base_type :type/DateTime, :expression_name "prev_month", :source :fields, :field_ref [:expression "prev_month"]}]
              (:cols (add-column-info
                      (mt/mbql-query users
-                                      {:expressions {:prev_month [:+ $last_login [:interval -1 :month]]}
-                                       :fields      [[:expression "prev_month"]], :limit 10})
+                       {:expressions {:prev_month [:+ $last_login [:interval -1 :month]]}
+                        :fields      [[:expression "prev_month"]], :limit 10})
                      {})))))))
 
 (deftest mbql-cols-nested-queries-test
@@ -677,39 +675,39 @@
 
   (testing "Aggregated question with source is an aggregated models should infer display_name correctly (#23248)"
     (mt/dataset sample-dataset
-     (mt/with-temp* [Card [{card-id :id}
-                           {:dataset true
-                            :dataset_query
-                            (mt/$ids :products
-                                     {:type     :query
-                                      :database (mt/id)
-                                      :query    {:source-table $$products
-                                                 :aggregation
-                                                 [[:aggregation-options
-                                                   [:sum $price]
-                                                   {:name "sum"}]
-                                                  [:aggregation-options
-                                                   [:max $rating]
-                                                   {:name "max"}]]
-                                                 :breakout     $category
-                                                 :order-by     [[:asc $category]]}})}]]
-       (let [query (qp/preprocess
+      (mt/with-temp* [Card [{card-id :id}
+                            {:dataset true
+                             :dataset_query
+                             (mt/$ids :products
+                               {:type     :query
+                                :database (mt/id)
+                                :query    {:source-table $$products
+                                           :aggregation
+                                           [[:aggregation-options
+                                             [:sum $price]
+                                             {:name "sum"}]
+                                            [:aggregation-options
+                                             [:max $rating]
+                                             {:name "max"}]]
+                                           :breakout     $category
+                                           :order-by     [[:asc $category]]}})}]]
+        (let [query (qp/preprocess
                      (mt/mbql-query nil
-                                    {:source-table (str "card__" card-id)
-                                     :aggregation  [[:aggregation-options
-                                                     [:sum
-                                                      [:field
-                                                       "sum"
-                                                       {:base-type :type/Float}]]
-                                                     {:name "sum"}]
-                                                    [:aggregation-options
-                                                     [:count]
-                                                     {:name "count"}]]
-                                     :limit        1}))]
-        (is (= ["Sum of Sum of Price" "Count"]
-              (->> (add-column-info query {})
-                  :cols
-                  (map :display_name)))))))))
+                       {:source-table (str "card__" card-id)
+                        :aggregation  [[:aggregation-options
+                                        [:sum
+                                         [:field
+                                          "sum"
+                                          {:base-type :type/Float}]]
+                                        {:name "sum"}]
+                                       [:aggregation-options
+                                        [:count]
+                                        {:name "count"}]]
+                        :limit        1}))]
+          (is (= ["Sum of Sum of Price" "Count"]
+                 (->> (add-column-info query {})
+                      :cols
+                      (map :display_name)))))))))
 
 (deftest ^:parallel inception-test
   (testing "Should return correct metadata for an 'inception-style' nesting of source > source > source with a join (#14745)"

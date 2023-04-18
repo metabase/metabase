@@ -9,8 +9,7 @@
    [metabase.util.i18n :refer [trs]]
    [schema.core :as s])
   (:import
-    (metabase.pulse.render.common NumericWrapper)))
-
+   (metabase.pulse.render.common NumericWrapper)))
 
 (set! *warn-on-reflection* true)
 

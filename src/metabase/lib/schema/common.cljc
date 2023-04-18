@@ -46,7 +46,7 @@
   [:fn
    {:error/message "valid base type"
     :error/fn      (fn [{:keys [value]} _]
-                (str "Not a valid base type: " value))}
+                     (str "Not a valid base type: " value))}
    base-type?])
 
 (mr/def ::external-op

@@ -7,11 +7,11 @@
 
 (defn- time-query [filter-type & filter-args]
   (mt/formatted-rows [int identity identity]
-    (mt/dataset test-data-with-time
-      (mt/run-mbql-query users
-        {:fields   [$id $name $last_login_time]
-         :order-by [[:asc $id]]
-         :filter   (into [filter-type $last_login_time] filter-args)}))))
+                     (mt/dataset test-data-with-time
+                       (mt/run-mbql-query users
+                         {:fields   [$id $name $last_login_time]
+                          :order-by [[:asc $id]]
+                          :filter   (into [filter-type $last_login_time] filter-args)}))))
 
 (defn- normal-drivers-that-support-time-type []
   (filter mt/supports-time-type? (mt/normal-drivers)))

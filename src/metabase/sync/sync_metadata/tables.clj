@@ -82,7 +82,6 @@
   [table :- i/DatabaseMetadataTable]
   (boolean (some #(re-find % (u/lower-case-en (:name table))) crufty-table-patterns)))
 
-
 ;;; ---------------------------------------------------- Syncing -----------------------------------------------------
 
 (s/defn ^:private update-database-metadata!
@@ -97,13 +96,13 @@
   "Create a single new table in the database, or mark it as active if it already exists."
   [database {schema :schema, table-name :name, :as table}]
   (if-let [existing-id (t2/select-one-pk Table
-                         :db_id (u/the-id database)
-                         :schema schema
-                         :name table-name
-                         :active false)]
+                                         :db_id (u/the-id database)
+                                         :schema schema
+                                         :name table-name
+                                         :active false)]
     ;; if the table already exists but is marked *inactive*, mark it as *active*
     (t2/update! Table existing-id
-      {:active true})
+                {:active true})
     ;; otherwise create a new Table
     (let [is-crufty? (is-crufty-table? table)]
       (first (t2/insert-returning-instances! Table
@@ -127,7 +126,6 @@
   (doseq [table new-tables]
     (create-or-reactivate-table! database table)))
 
-
 (s/defn ^:private retire-tables!
   "Mark any `old-tables` belonging to `database` as inactive."
   [database :- i/DatabaseInstance, old-tables :- #{i/DatabaseMetadataTable}]
@@ -140,7 +138,6 @@
                        :name   table-name
                        :active true}
                 {:active false})))
-
 
 (s/defn ^:private update-table-description!
   "Update description for any `changed-tables` belonging to `database`."
@@ -156,7 +153,6 @@
                          :description nil}
                   {:description description}))))
 
-
 (s/defn ^:private table-set :- #{i/DatabaseMetadataTable}
   "So there exist tables for the user and metabase metadata tables for internal usage by metabase.
   Get set of user tables only, excluding metabase metadata tables."
@@ -170,8 +166,8 @@
   [database :- i/DatabaseInstance]
   (set (map (partial into {})
             (t2/select [Table :name :schema :description]
-              :db_id  (u/the-id database)
-              :active true))))
+                       :db_id  (u/the-id database)
+                       :active true))))
 
 (s/defn sync-tables-and-database!
   "Sync the Tables recorded in the Metabase application database with the ones obtained by calling `database`'s driver's

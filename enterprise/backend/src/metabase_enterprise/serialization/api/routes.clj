@@ -10,6 +10,6 @@
 ;;; in [[metabase-enterprise.api.routes/routes]]
 (compojure/defroutes ^{:doc "Routes for serialization endpoints."} routes
   (compojure/context
-   "/serialize"
-   []
-   ee.api.serialization.serialize/routes))
+    "/serialize"
+    []
+    ee.api.serialization.serialize/routes))

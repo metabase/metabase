@@ -16,11 +16,11 @@
   [logger-name level x more]
   `(let [level#  (glogi-level ~level)
          logger# ~logger-name]
-    (when (is-loggable? logger# level#)
-     (let [x# ~x]
-       (if (instance? js/Error x#)
-         (lambdaisland.glogi/log logger# level# (print-str ~@more) x#)
-         (lambdaisland.glogi/log logger# level# (print-str x# ~@more) nil))))))
+     (when (is-loggable? logger# level#)
+       (let [x# ~x]
+         (if (instance? js/Error x#)
+           (lambdaisland.glogi/log logger# level# (print-str ~@more) x#)
+           (lambdaisland.glogi/log logger# level# (print-str x# ~@more) nil))))))
 
 (defn- glogi-logf
   "Macro helper for [[logf]] in CLJS."
@@ -79,16 +79,16 @@
   {:arglists '([level message & more] [level throwable message & more])}
   [level x & more]
   (macros/case
-    :cljs (glogi-logp (str *ns*) level x more)
-    :clj  (tools-logp *ns*       level x more)))
+   :cljs (glogi-logp (str *ns*) level x more)
+   :clj  (tools-logp *ns*       level x more)))
 
 (defmacro logf
   "Implementation for printf-style `logf`.
   You shouldn't have to use this directly; prefer the level-specific macros like [[infof]]."
   [level x & args]
   (macros/case
-    :cljs (glogi-logf (str *ns*) level x args)
-    :clj  (tools-logf *ns*       level x args)))
+   :cljs (glogi-logf (str *ns*) level x args)
+   :clj  (tools-logf *ns*       level x args)))
 
 ;;; --------------------------------------------------- Public API ---------------------------------------------------
 (defmacro trace
@@ -171,15 +171,15 @@
   ([expr] `(spy :debug ~expr))
   ([level expr]
    (macros/case
-     :cljs (glogi-spy (str *ns*) level expr
-                      #(str/trim-newline
-                        (with-out-str
-                          #_{:clj-kondo/ignore [:discouraged-var]}
-                           (pprint/with-pprint-dispatch pprint/code-dispatch
-                             (pprint/pprint '~expr)
-                             (print "=> ")
-                             (pprint/pprint %)))))
-     :clj  `(clojure.tools.logging/spy ~level ~expr))))
+    :cljs (glogi-spy (str *ns*) level expr
+                     #(str/trim-newline
+                       (with-out-str
+                         #_{:clj-kondo/ignore [:discouraged-var]}
+                         (pprint/with-pprint-dispatch pprint/code-dispatch
+                           (pprint/pprint '~expr)
+                           (print "=> ")
+                           (pprint/pprint %)))))
+    :clj  `(clojure.tools.logging/spy ~level ~expr))))
 
 #_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
 (defmacro spyf

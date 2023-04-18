@@ -70,7 +70,7 @@
 (defmethod driver/describe-table-fks :redshift
   [_ database table]
   (set (for [fk (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec database)
-                            [fk-query (:name table) (:schema table)])]
+                  [fk-query (:name table) (:schema table)])]
          {:fk-column-name   (:fk-column-name fk)
           :dest-table       {:name   (:dest-table-name fk)
                              :schema (:dest-table-schema fk)}
@@ -284,11 +284,11 @@
  [:postgres Types/TIMESTAMP])
 
 (defmethod sql-jdbc.execute/read-column-thunk
- [:redshift Types/OTHER]
- [driver ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
- (if (= "interval" (.getColumnTypeName rsmeta i))
-   #(.getValue ^RedshiftInterval (.getObject rs i RedshiftInterval))
-   ((get-method sql-jdbc.execute/read-column-thunk [:postgres (.getColumnType rsmeta i)]) driver rs rsmeta i)))
+  [:redshift Types/OTHER]
+  [driver ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
+  (if (= "interval" (.getColumnTypeName rsmeta i))
+    #(.getValue ^RedshiftInterval (.getObject rs i RedshiftInterval))
+    ((get-method sql-jdbc.execute/read-column-thunk [:postgres (.getColumnType rsmeta i)]) driver rs rsmeta i)))
 
 (prefer-method
  sql-jdbc.execute/read-column-thunk

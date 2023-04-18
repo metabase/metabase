@@ -87,18 +87,18 @@
 (p.types/defrecord+ UserLocalizedString [format-string args pluralization-opts]
   Object
   (toString [_]
-    (translate-user-locale format-string args pluralization-opts))
+            (translate-user-locale format-string args pluralization-opts))
   schema.core.Schema
   (explain [this]
-    (str this)))
+           (str this)))
 
 (p.types/defrecord+ SiteLocalizedString [format-string args pluralization-opts]
   Object
   (toString [_]
-    (translate-site-locale format-string args pluralization-opts))
+            (translate-site-locale format-string args pluralization-opts))
   s/Schema
   (explain [this]
-    (str this)))
+           (str this)))
 
 (defn- localized-to-json
   "Write a UserLocalizedString or SiteLocalizedString to the `json-generator`. This is intended for
@@ -115,10 +115,10 @@
   (s/cond-pre UserLocalizedString SiteLocalizedString))
 
 (defn- valid-str-form?
- [str-form]
- (and
-  (= (first str-form) 'str)
-  (every? string? (rest str-form))))
+  [str-form]
+  (and
+   (= (first str-form) 'str)
+   (every? string? (rest str-form))))
 
 (defn- validate-number-of-args
   "Make sure the right number of args were passed to `trs`/`tru` and related forms during macro expansion."

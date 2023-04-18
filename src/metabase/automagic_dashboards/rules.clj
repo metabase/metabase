@@ -317,8 +317,8 @@
       ds))))
 
 (def ^:private rules (delay
-                      (u.files/with-open-path-to-resource [path rules-dir]
-                        (into {} (load-rule-dir path)))))
+                       (u.files/with-open-path-to-resource [path rules-dir]
+                         (into {} (load-rule-dir path)))))
 
 (defn get-rules
   "Get all rules with prefix `prefix`.

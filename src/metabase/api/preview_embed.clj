@@ -27,7 +27,7 @@
   [token]
   (let [unsigned-token (check-and-unsign token)]
     (api.embed/card-for-unsigned-token unsigned-token
-      :embedding-params (embed/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params]))))
+                                       :embedding-params (embed/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params]))))
 
 (def ^:private max-results
   "Embedding previews need to be limited in size to avoid performance issues (#20938)."
@@ -53,7 +53,7 @@
   [token]
   (let [unsigned-token (check-and-unsign token)]
     (api.embed/dashboard-for-unsigned-token unsigned-token
-      :embedding-params (embed/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params]))))
+                                            :embedding-params (embed/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params]))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/dashboard/:token/dashcard/:dashcard-id/card/:card-id"

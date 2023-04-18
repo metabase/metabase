@@ -15,6 +15,6 @@
     (merge defaults log-entry)))
 
 (mi/define-methods
- ViewLog
- {:pre-insert pre-insert
-  :types      (constantly {:metadata :json})})
+  ViewLog
+  {:pre-insert pre-insert
+   :types      (constantly {:metadata :json})})

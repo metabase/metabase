@@ -137,8 +137,8 @@
    :default      true
    :display-name (deferred-tru "Rerun queries for simple explorations")
    :description  (deferred-tru
-                   (str "We execute the underlying query when you explore data using Summarize or Filter. "
-                        "This is on by default but you can turn it off if performance is slow."))
+                  (str "We execute the underlying query when you explore data using Summarize or Filter. "
+                       "This is on by default but you can turn it off if performance is slow."))
    :visible-if   {"advanced-options" true}})
 
 (def let-user-control-scheduling
@@ -155,8 +155,8 @@
   {:name "schedules.metadata_sync"
    :display-name (deferred-tru "Database syncing")
    :description  (deferred-tru
-                   (str "This is a lightweight process that checks for updates to this database’s schema. "
-                        "In most cases, you should be fine leaving this set to sync hourly."))
+                  (str "This is a lightweight process that checks for updates to this database’s schema. "
+                       "In most cases, you should be fine leaving this set to sync hourly."))
    :visible-if   {"let-user-control-scheduling" true}})
 
 (def cache-field-values-schedule
@@ -165,10 +165,10 @@
   {:name "schedules.cache_field_values"
    :display-name (deferred-tru "Scanning for Filter Values")
    :description  (deferred-tru
-                   (str "Metabase can scan the values present in each field in this database to enable checkbox "
-                        "filters in dashboards and questions. This can be a somewhat resource-intensive process, "
-                        "particularly if you have a very large database. When should Metabase automatically scan "
-                        "and cache field values?"))
+                  (str "Metabase can scan the values present in each field in this database to enable checkbox "
+                       "filters in dashboards and questions. This can be a somewhat resource-intensive process, "
+                       "particularly if you have a very large database. When should Metabase automatically scan "
+                       "and cache field values?"))
    :visible-if   {"let-user-control-scheduling" true}})
 
 (def json-unfolding
@@ -178,8 +178,8 @@
    :type         :boolean
    :visible-if   {"advanced-options" true}
    :description  (deferred-tru
-                   (str "We unfold JSON columns into component fields."
-                        "This is on by default but you can turn it off if performance is slow."))
+                  (str "We unfold JSON columns into component fields."
+                       "This is on by default but you can turn it off if performance is slow."))
    :default      true})
 
 (def refingerprint
@@ -188,8 +188,8 @@
    :type         :boolean
    :display-name (deferred-tru "Periodically refingerprint tables")
    :description  (deferred-tru
-                   (str "This enables Metabase to scan for additional field values during syncs allowing smarter "
-                        "behavior, like improved auto-binning on your bar charts."))
+                  (str "This enables Metabase to scan for additional field values during syncs allowing smarter "
+                       "behavior, like improved auto-binning on your bar charts."))
    :visible-if   {"advanced-options" true}})
 
 (def default-advanced-options
@@ -225,8 +225,8 @@
    :getter (fn []
              (when-let [ips (public-settings/cloud-gateway-ips)]
                (str (deferred-tru
-                      (str "If your database is behind a firewall, you may need to allow connections from our Metabase "
-                           "[Cloud IP addresses](https://www.metabase.com/cloud/docs/ip-addresses-to-whitelist.html):"))
+                     (str "If your database is behind a firewall, you may need to allow connections from our Metabase "
+                          "[Cloud IP addresses](https://www.metabase.com/cloud/docs/ip-addresses-to-whitelist.html):"))
                     "\n"
                     (str/join " - " ips))))})
 
@@ -235,15 +235,14 @@
   added to the plugin manifest as connection properties, similar to the keys in the `default-options` map."
   {:cloud-ip-address-info cloud-ip-address-info})
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           Fetching Current Timezone                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defprotocol ^:private ^:deprecated ParseDateTimeString
   (^:private parse
-   ^DateTime [this date-time-str]
-   "Parse the `date-time-str` and return a `DateTime` instance."))
+    ^DateTime [this date-time-str]
+    "Parse the `date-time-str` and return a `DateTime` instance."))
 
 (extend-protocol ParseDateTimeString
   DateTimeFormatter
@@ -342,7 +341,6 @@
             (str
              (tru "Unable to parse date string ''{0}'' for database engine ''{1}''"
                   time-str (-> database :engine name))) e)))))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               Class -> Base Type                                               |

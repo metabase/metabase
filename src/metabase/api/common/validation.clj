@@ -14,13 +14,13 @@
   "Check that the `public-sharing-enabled` Setting is `true`, or throw a `400`."
   []
   (api/check (public-settings/enable-public-sharing)
-             [400 (tru "Public sharing is not enabled.")]))
+    [400 (tru "Public sharing is not enabled.")]))
 
 (defn check-embedding-enabled
   "Is embedding of Cards or Objects (secured access via `/api/embed` endpoints with a signed JWT enabled?"
   []
   (api/check (public-settings/enable-embedding)
-             [400 (tru "Embedding is not enabled.")]))
+    [400 (tru "Embedding is not enabled.")]))
 
 (defn check-has-application-permission
   "If `advanced-permissions` is enabled, check `*current-user*` has application permission of type `perm-type`.
@@ -39,8 +39,8 @@
   "Check if advanced permissions is enabled to use permission types such as :group-manager or :application-permissions."
   [perm-type]
   (api/check (premium-features/enable-advanced-permissions?)
-             [402 (tru "The {0} permissions functionality is only enabled if you have a premium token with the advanced-permissions feature."
-                       (str/replace (name perm-type) "-" " "))]))
+    [402 (tru "The {0} permissions functionality is only enabled if you have a premium token with the advanced-permissions feature."
+              (str/replace (name perm-type) "-" " "))]))
 
 (defn check-group-manager
   "If `advanced-permissions` is enabled, check is `*current-user*` a manager of at least one group.
@@ -62,7 +62,7 @@
 
   ([group-or-id require-superuser?]
    (u/ignore-exceptions
-    (classloader/require 'metabase-enterprise.advanced-permissions.common))
+     (classloader/require 'metabase-enterprise.advanced-permissions.common))
    (if-let [f (and (premium-features/enable-advanced-permissions?)
                    (resolve 'metabase-enterprise.advanced-permissions.common/current-user-is-manager-of-group?))]
      (api/check-403 (or api/*is-superuser?* (f group-or-id)))

@@ -52,7 +52,6 @@
 (defmethod hformat/fn-handler "percentile-cont" [_ field p]
   (str "PERCENTILE_CONT(" (hformat/to-sql p) ") within group (order by " (hformat/to-sql field) ")"))
 
-
 ;; HoneySQL 0.7.0+ parameterizes numbers to fix issues with NaN and infinity -- see
 ;; https://github.com/jkk/honeysql/pull/122. However, this broke some of Metabase's behavior, specifically queries
 ;; with calculated columns with numeric literals -- some SQL databases can't recognize that a calculated field in a
@@ -86,19 +85,19 @@
 (p.types/defrecord+ ^{:deprecated "0.46.0"} Identifier [identifier-type components]
   ToSql
   (to-sql [_]
-    (binding [hformat/*allow-dashed-names?* true]
-      (str/join
-       \.
-       (for [component components]
-         (hformat/quote-identifier component, :split false)))))
+          (binding [hformat/*allow-dashed-names?* true]
+            (str/join
+             \.
+             (for [component components]
+               (hformat/quote-identifier component, :split false)))))
   pretty/PrettyPrintable
   (pretty [this]
-    #_{:clj-kondo/ignore [:deprecated-var]}
-    (if (= (set (keys this)) #{:identifier-type :components})
-      (cons `identifier (cons identifier-type components))
+          #_{:clj-kondo/ignore [:deprecated-var]}
+          (if (= (set (keys this)) #{:identifier-type :components})
+            (cons `identifier (cons identifier-type components))
       ;; if there's extra info beyond the usual two keys print with the record type reader literal syntax e.g.
       ;; #metabase..Identifier {...}
-      (list (symbol (str \# `Identifier)) (into {} this)))))
+            (list (symbol (str \# `Identifier)) (into {} this)))))
 
 ;;; don't use `->Identifier` or `map->Identifier`. Use the `identifier` function instead, which cleans up its input
 
@@ -140,14 +139,14 @@
 (p.types/defrecord+ ^{:deprecated "0.46.0"} Literal [literal]
   ToSql
   (to-sql [_]
-    #_{:clj-kondo/ignore [:deprecated-var]}
-    (as-> literal <>
-      (str/replace <> #"(?<![\\'])'(?![\\'])"  "''")
-      (str \' <> \')))
+          #_{:clj-kondo/ignore [:deprecated-var]}
+          (as-> literal <>
+            (str/replace <> #"(?<![\\'])'(?![\\'])"  "''")
+            (str \' <> \')))
   pretty/PrettyPrintable
   (pretty [_]
-    #_{:clj-kondo/ignore [:deprecated-var]}
-    (list `literal literal)))
+          #_{:clj-kondo/ignore [:deprecated-var]}
+          (list `literal literal)))
 
 ;;; as with `Identifier` you should use the the `literal` function below instead of the auto-generated factory functions.
 
@@ -173,23 +172,23 @@
   "Protocol for a HoneySQL form that has type information such as `:metabase.util.honeysql-extensions/database-type`.
   See #15115 for background."
   (^{:deprecated "0.46.0"} type-info [honeysql-form]
-    "Return type information associated with `honeysql-form`, if any (i.e., if it is a `TypedHoneySQLForm`); otherwise
+                                     "Return type information associated with `honeysql-form`, if any (i.e., if it is a `TypedHoneySQLForm`); otherwise
     returns `nil`.")
   (^{:deprecated "0.46.0"} with-type-info [honeysql-form new-type-info]
-    "Add type information to a `honeysql-form`. Wraps `honeysql-form` and returns a `TypedHoneySQLForm`.")
+                                          "Add type information to a `honeysql-form`. Wraps `honeysql-form` and returns a `TypedHoneySQLForm`.")
   (^{:deprecated "0.46.0"} unwrap-typed-honeysql-form [honeysql-form]
-    "If `honeysql-form` is a `TypedHoneySQLForm`, unwrap it and return the original form without type information.
+                                                      "If `honeysql-form` is a `TypedHoneySQLForm`, unwrap it and return the original form without type information.
     Otherwise, returns form as-is."))
 
 ;; a wrapped for any HoneySQL form that records additional type information in an `info` map.
 (p.types/defrecord+ ^{:deprecated "0.46.0"} TypedHoneySQLForm [form info]
   pretty/PrettyPrintable
   (pretty [_]
-    `(with-type-info ~form ~info))
+          `(with-type-info ~form ~info))
 
   ToSql
   (to-sql [_]
-    (hformat/to-sql form)))
+          (hformat/to-sql form)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (alter-meta! #'->TypedHoneySQLForm assoc :private true)
@@ -201,10 +200,10 @@
   [expr zone]
   hformat/ToSql
   (to-sql [_]
-    #_{:clj-kondo/ignore [:deprecated-var]}
-    (clojure.core/format "(%s AT TIME ZONE %s)"
-                         (hformat/to-sql expr)
-                         (hformat/to-sql (literal zone)))))
+          #_{:clj-kondo/ignore [:deprecated-var]}
+          (clojure.core/format "(%s AT TIME ZONE %s)"
+                               (hformat/to-sql expr)
+                               (hformat/to-sql (literal zone)))))
 
 (def ^{:deprecated "0.46.0"} ^:private NormalizedTypeInfo
   {(s/optional-key :metabase.util.honeysql-extensions/database-type)
@@ -323,8 +322,8 @@
   [sql-type expr]
   {:deprecated "0.46.0"}
   (if (is-of-type? expr sql-type)
-      expr
-      (cast sql-type expr)))
+    expr
+    (cast sql-type expr)))
 
 (defn cast-unless-type-in
   "Cast `expr` to `desired-type` unless `expr` is of one of the `acceptable-types`. Returns a typed HoneySQL form.
@@ -431,7 +430,7 @@
   (pretty [{fn-name :name, args :args, :as this}]
     #_{:clj-kondo/ignore [:discouraged-var]}
     (with-meta (apply list `hsql/call fn-name args)
-               (meta this))))
+      (meta this))))
 
 (defmethod print-method honeysql.types.SqlCall
   [call writer]

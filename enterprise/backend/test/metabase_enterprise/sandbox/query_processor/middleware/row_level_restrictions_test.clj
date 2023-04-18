@@ -134,17 +134,16 @@
 
 (defn- run-venues-count-query []
   (mt/format-rows-by [int]
-    (mt/rows
-     (mt/run-mbql-query venues {:aggregation [[:count]]}))))
+                     (mt/rows
+                      (mt/run-mbql-query venues {:aggregation [[:count]]}))))
 
 (defn- run-checkins-count-broken-out-by-price-query []
   (mt/format-rows-by [#(some-> % int) int]
-    (mt/rows
-      (mt/run-mbql-query checkins
-        {:aggregation [[:count]]
-         :order-by    [[:asc $venue_id->venues.price]]
-         :breakout    [$venue_id->venues.price]}))))
-
+                     (mt/rows
+                      (mt/run-mbql-query checkins
+                        {:aggregation [[:count]]
+                         :order-by    [[:asc $venue_id->venues.price]]
+                         :breakout    [$venue_id->venues.price]}))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                MIDDLEWARE TESTS                                                |
@@ -252,7 +251,6 @@
                 (mt/mbql-query venues
                   {:aggregation [[:count]]}))))))))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                END-TO-END TESTS                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -318,8 +316,8 @@
       (is (= [[1 "Red Medicine"]
               [2 "Stout Burgers & Beers"]]
              (mt/formatted-rows [int str]
-               (met/with-gtaps {:gtaps {:venues (venue-names-native-gtap-def)}}
-                 (mt/run-mbql-query venues {:limit 2, :order-by [[:asc [:field (mt/id :venues :id)]]]}))))))
+                                (met/with-gtaps {:gtaps {:venues (venue-names-native-gtap-def)}}
+                                  (mt/run-mbql-query venues {:limit 2, :order-by [[:asc [:field (mt/id :venues :id)]]]}))))))
 
     (testing (str "When no card_id is included in the GTAP, should default to a query against the table, with the GTAP "
                   "criteria applied")
@@ -371,8 +369,8 @@
             (mt/with-native-query-testing-context query
               (is (= [[100]]
                      (mt/format-rows-by [int]
-                       (mt/rows
-                        (qp/process-query query))))))))))))
+                                        (mt/rows
+                                         (qp/process-query query))))))))))))
 
 ;; Test that we can follow FKs to related tables and breakout by columns on those related tables. This test has
 ;; several things wrapped up which are detailed below
@@ -424,18 +422,18 @@
           (is (= #{[nil "Quentin Sören" 45] [1 "Quentin Sören" 10]}
                  (set
                   (mt/format-rows-by [#(when % (int %)) str int]
-                    (mt/rows
-                     (mt/run-mbql-query checkins
-                       {:aggregation [[:count]]
-                        :order-by    [[:asc $venue_id->venues.price]]
-                        :breakout    [$venue_id->venues.price $user_id->users.name]})))))))))))
+                                     (mt/rows
+                                      (mt/run-mbql-query checkins
+                                        {:aggregation [[:count]]
+                                         :order-by    [[:asc $venue_id->venues.price]]
+                                         :breakout    [$venue_id->venues.price $user_id->users.name]})))))))))))
 
 (defn- run-query-returning-remark [run-query-fn]
   (let [remark (atom nil)
         orig   qp.util/query->remark]
     (with-redefs [qp.util/query->remark (fn [driver outer-query]
-                                         (u/prog1 (orig driver outer-query)
-                                           (reset! remark <>)))]
+                                          (u/prog1 (orig driver outer-query)
+                                            (reset! remark <>)))]
       (let [results (run-query-fn)]
         (or (some-> @remark (str/replace #"queryHash: \w+" "queryHash: <hash>"))
             (log/infof "NO REMARK FOUND:\n %s" (u/pprint-to-str 'red results))
@@ -457,10 +455,10 @@
                        :attributes {"cat" 50}}
         (is (= [[1 6] [2 4]]
                (mt/format-rows-by [int int]
-                 (mt/rows
-                  (mt/run-mbql-query venues
-                    {:aggregation [[:count]]
-                     :breakout    [$price]})))))))))
+                                  (mt/rows
+                                   (mt/run-mbql-query venues
+                                     {:aggregation [[:count]]
+                                      :breakout    [$price]})))))))))
 
 (deftest sql-with-join-test
   (mt/test-drivers (row-level-restrictions-fk-drivers)
@@ -470,22 +468,22 @@
       (is (= [[2  1]
               [72 1]]
              (mt/format-rows-by [int int identity int]
-               (mt/rows
-                (met/with-gtaps {:gtaps      {:checkins (parameterized-sql-with-join-gtap-def)}
-                                 :attributes {"user" 1}}
-                  (mt/run-mbql-query checkins
-                    {:limit 2})))))))
+                                (mt/rows
+                                 (met/with-gtaps {:gtaps      {:checkins (parameterized-sql-with-join-gtap-def)}
+                                                  :attributes {"user" 1}}
+                                   (mt/run-mbql-query checkins
+                                     {:limit 2})))))))
 
     (testing (str "EE #230: If we modify the query in a way that would cause the original to get nested as a source query, "
                   "do things work?")
       (is (= [[5 69]]
              (mt/format-rows-by [int int]
-               (mt/rows
-                (met/with-gtaps {:gtaps      {:checkins (parameterized-sql-with-join-gtap-def)}
-                                 :attributes {"user" 5}}
-                  (mt/run-mbql-query checkins
-                    {:aggregation [[:count]]
-                     :breakout    [$user_id]})))))))))
+                                (mt/rows
+                                 (met/with-gtaps {:gtaps      {:checkins (parameterized-sql-with-join-gtap-def)}
+                                                  :attributes {"user" 5}}
+                                   (mt/run-mbql-query checkins
+                                     {:aggregation [[:count]]
+                                      :breakout    [$user_id]})))))))))
 
 (deftest correct-metadata-test
   (testing (str "We should return the same metadata as the original Table when running a query against a sandboxed "
@@ -591,8 +589,8 @@
                                       :checkins {}}
                          :attributes {"venue_id" 1}})
         (let [venues-gtap-card-id (t2/select-one-fn :card_id GroupTableAccessPolicy
-                                                       :group_id (:id &group)
-                                                       :table_id (mt/id :venues))]
+                                                    :group_id (:id &group)
+                                                    :table_id (mt/id :venues))]
           (is (integer? venues-gtap-card-id))
           (testing "GTAP Card should not yet current have result_metadata"
             (is (= nil
@@ -635,8 +633,8 @@
                                               :checkins {}}
                                  :attributes {"venue_id" 1}})
                 (let [venues-gtap-card-id (t2/select-one-fn :card_id GroupTableAccessPolicy
-                                                               :group_id (:id &group)
-                                                               :table_id (mt/id :venues))]
+                                                            :group_id (:id &group)
+                                                            :table_id (mt/id :venues))]
                   (is (integer? venues-gtap-card-id))
                   (testing "GTAP Card should not yet current have result_metadata"
                     (is (= nil
@@ -834,7 +832,7 @@
                                                           :effective_type :type/Text
                                                           :coercion_strategy nil
                                                           :semantic_type  (t2/select-one-fn :semantic_type Field
-                                                                                               :id (mt/id :products :category))
+                                                                                            :id (mt/id :products :category))
                                                           :database_type "CHARACTER VARYING"
                                                           :name          "CATEGORY"}]]
                                        (get-in (qp/preprocess drill-thru-query) [:query :filter])))))]
@@ -1002,16 +1000,16 @@
                                  (fn [[x y group]]
                                    [group (sort-str x) (sort-str y)]))))
                  (mt/formatted-rows [str str int 2.0]
-                   (qp.pivot/run-pivot-query
-                    (mt/mbql-query orders
-                      {:joins       [{:source-table $$people
-                                      :fields       :all
-                                      :condition    [:= $user_id &P.people.id]
-                                      :alias        "P"}]
-                       :aggregation [[:sum $total]]
-                       :breakout    [&P.people.source
-                                     $product_id->products.category]
-                       :limit       5}))))))))))
+                                    (qp.pivot/run-pivot-query
+                                     (mt/mbql-query orders
+                                       {:joins       [{:source-table $$people
+                                                       :fields       :all
+                                                       :condition    [:= $user_id &P.people.id]
+                                                       :alias        "P"}]
+                                        :aggregation [[:sum $total]]
+                                        :breakout    [&P.people.source
+                                                      $product_id->products.category]
+                                        :limit       5}))))))))))
 
 (deftest caching-test
   (testing "Make sure Sandboxing works in combination with caching (#18579)"
@@ -1054,10 +1052,10 @@
         (mt/with-persistence-enabled [persist-models!]
           (mt/with-temp* [Card [model {:dataset       true
                                        :dataset_query (mt/mbql-query
-                                                          products
+                                                       products
                                                         ;; note does not include the field we have to filter on. No way
                                                         ;; to use the sandbox filter on the cached table
-                                                          {:fields [$id $price]})}]]
+                                                        {:fields [$id $price]})}]]
             ;; persist model (as admin, so sandboxing is not applied to the persisted query)
             (mt/with-test-user :crowberto
               (persist-models!))

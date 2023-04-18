@@ -27,10 +27,10 @@
                       [2 "Stout Burgers & Beers" 11 34.1 -118.329 2 1.1 11 2 1 1]
                       [3 "The Apple Pan" 11 34.041 -118.428 2 1.1 11 2 1 1]]
                      (mt/formatted-rows [int str int 3.0 3.0 int 1.0 int int int int]
-                       (-> (mt/user-http-request :rasta :get 200 (test-endpoint))
-                           first
-                           :dataset_query
-                           qp/process-query)))))))))))
+                                        (-> (mt/user-http-request :rasta :get 200 (test-endpoint))
+                                            first
+                                            :dataset_query
+                                            qp/process-query)))))))))))
 
 (deftest permissions-test
   (testing "GET /api/transform/:db-id/:schema/:transform-name"

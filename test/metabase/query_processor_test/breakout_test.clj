@@ -21,21 +21,21 @@
                 :cols [(qp.test/breakout-col :checkins :user_id)
                        (qp.test/aggregate-col :count)]}
                (qp.test/rows-and-cols
-                 (mt/format-rows-by [int int]
-                   (mt/run-mbql-query checkins
-                     {:aggregation [[:count]]
-                      :breakout    [$user_id]
-                      :order-by    [[:asc $user_id]]}))))))
+                (mt/format-rows-by [int int]
+                                   (mt/run-mbql-query checkins
+                                     {:aggregation [[:count]]
+                                      :breakout    [$user_id]
+                                      :order-by    [[:asc $user_id]]}))))))
 
       (testing "without breakout"
         (testing "This should act as a \"distinct values\" query and return ordered results"
           (is (= {:cols [(qp.test/breakout-col :checkins :user_id)]
                   :rows [[1] [2] [3] [4] [5] [6] [7] [8] [9] [10]]}
                  (qp.test/rows-and-cols
-                   (mt/format-rows-by [int]
-                     (mt/run-mbql-query checkins
-                       {:breakout [$user_id]
-                        :limit    10}))))))))
+                  (mt/format-rows-by [int]
+                                     (mt/run-mbql-query checkins
+                                       {:breakout [$user_id]
+                                        :limit    10}))))))))
 
     (testing "multiple columns"
       (testing "without explicit order by"
@@ -45,11 +45,11 @@
                          (qp.test/breakout-col :checkins :venue_id)
                          (qp.test/aggregate-col :count)]}
                  (qp.test/rows-and-cols
-                   (mt/format-rows-by [int int int]
-                     (mt/run-mbql-query checkins
-                       {:aggregation [[:count]]
-                        :breakout    [$user_id $venue_id]
-                        :limit       10})))))))
+                  (mt/format-rows-by [int int int]
+                                     (mt/run-mbql-query checkins
+                                       {:aggregation [[:count]]
+                                        :breakout    [$user_id $venue_id]
+                                        :limit       10})))))))
 
       (testing "with explicit order by"
         (testing "`breakout` should not implicitly order by any fields specified in `order-by`"
@@ -58,22 +58,22 @@
                          (qp.test/breakout-col :checkins :venue_id)
                          (qp.test/aggregate-col :count)]}
                  (qp.test/rows-and-cols
-                   (mt/format-rows-by [int int int]
-                     (mt/run-mbql-query checkins
-                       {:aggregation [[:count]]
-                        :breakout    [$user_id $venue_id]
-                        :order-by    [[:desc $user_id]]
-                        :limit       10}))))))))))
+                  (mt/format-rows-by [int int int]
+                                     (mt/run-mbql-query checkins
+                                       {:aggregation [[:count]]
+                                        :breakout    [$user_id $venue_id]
+                                        :order-by    [[:desc $user_id]]
+                                        :limit       10}))))))))))
 
 (deftest internal-remapping-test
   (mt/test-drivers (mt/normal-drivers)
     (mt/with-column-remappings [venues.category_id (values-of categories.name)]
       (let [{:keys [rows cols]} (qp.test/rows-and-cols
                                  (mt/format-rows-by [int int str]
-                                   (mt/run-mbql-query venues
-                                     {:aggregation [[:count]]
-                                      :breakout    [$category_id]
-                                      :limit       5})))]
+                                                    (mt/run-mbql-query venues
+                                                      {:aggregation [[:count]]
+                                                       :breakout    [$category_id]
+                                                       :limit       5})))]
         (is (= [(assoc (qp.test/breakout-col :venues :category_id) :remapped_to "Category ID [internal remap]")
                 (qp.test/aggregate-col :count)
                 (#'qp.add-dimension-projections/create-remapped-col "Category ID [internal remap]" (mt/format-name "category_id") :type/Text)]
@@ -106,62 +106,62 @@
       (testing "20 bins"
         (is (= [[10.0 1] [32.0 4] [34.0 57] [36.0 29] [40.0 9]]
                (mt/formatted-rows [1.0 int]
-                 (mt/run-mbql-query venues
-                   {:aggregation [[:count]]
-                    :breakout    [[:field %latitude {:binning {:strategy :num-bins, :num-bins 20}}]]})))))
+                                  (mt/run-mbql-query venues
+                                    {:aggregation [[:count]]
+                                     :breakout    [[:field %latitude {:binning {:strategy :num-bins, :num-bins 20}}]]})))))
 
       (testing "3 bins"
         (is (= [[0.0 1] [20.0 90] [40.0 9]]
                (mt/formatted-rows [1.0 int]
-                 (mt/run-mbql-query venues
-                   {:aggregation [[:count]]
-                    :breakout    [[:field %latitude {:binning {:strategy :num-bins, :num-bins 3}}]]}))))))
+                                  (mt/run-mbql-query venues
+                                    {:aggregation [[:count]]
+                                     :breakout    [[:field %latitude {:binning {:strategy :num-bins, :num-bins 3}}]]}))))))
 
     (testing "Bin two columns"
       (is (= [[10.0 -170.0 1] [32.0 -120.0 4] [34.0 -120.0 57] [36.0 -125.0 29] [40.0 -75.0 9]]
              (mt/formatted-rows [1.0 1.0 int]
-               (mt/run-mbql-query venues
-                 {:aggregation [[:count]]
-                  :breakout    [[:field %latitude {:binning {:strategy :num-bins, :num-bins 20}}]
-                                [:field %longitude {:binning {:strategy :num-bins, :num-bins 20}}]]})))))
+                                (mt/run-mbql-query venues
+                                  {:aggregation [[:count]]
+                                   :breakout    [[:field %latitude {:binning {:strategy :num-bins, :num-bins 20}}]
+                                                 [:field %longitude {:binning {:strategy :num-bins, :num-bins 20}}]]})))))
 
     (testing "should default to 8 bins when number of bins isn't specified"
       (is (= [[10.0 1] [30.0 90] [40.0 9]]
              (mt/formatted-rows [1.0 int]
-               (mt/run-mbql-query venues
-                 {:aggregation [[:count]]
-                  :breakout    [[:field %latitude {:binning {:strategy :default}}]]}))))
+                                (mt/run-mbql-query venues
+                                  {:aggregation [[:count]]
+                                   :breakout    [[:field %latitude {:binning {:strategy :default}}]]}))))
 
       (mt/with-temporary-setting-values [breakout-bin-width 5.0]
         (is (= [[10.0 1] [30.0 61] [35.0 29] [40.0 9]]
                (mt/formatted-rows [1.0 int]
-                 (mt/run-mbql-query venues
-                   {:aggregation [[:count]]
-                    :breakout    [[:field %latitude {:binning {:strategy :default}}]]}))))))
+                                  (mt/run-mbql-query venues
+                                    {:aggregation [[:count]]
+                                     :breakout    [[:field %latitude {:binning {:strategy :default}}]]}))))))
 
     (testing "bin width"
       (is (= [[10.0 1] [33.0 4] [34.0 57] [37.0 29] [40.0 9]]
              (mt/formatted-rows [1.0 int]
-               (mt/run-mbql-query venues
-                 {:aggregation [[:count]]
-                  :breakout    [[:field %latitude {:binning {:strategy :bin-width, :bin-width 1}}]]}))))
+                                (mt/run-mbql-query venues
+                                  {:aggregation [[:count]]
+                                   :breakout    [[:field %latitude {:binning {:strategy :bin-width, :bin-width 1}}]]}))))
 
       (testing "using a float"
         (is (= [[10.0 1] [32.5 61] [37.5 29] [40.0 9]]
                (mt/formatted-rows [1.0 int]
-                 (mt/run-mbql-query venues
-                   {:aggregation [[:count]]
-                    :breakout    [[:field %latitude {:binning {:strategy :bin-width, :bin-width 2.5}}]]}))))
+                                  (mt/run-mbql-query venues
+                                    {:aggregation [[:count]]
+                                     :breakout    [[:field %latitude {:binning {:strategy :bin-width, :bin-width 2.5}}]]}))))
 
         (mt/with-temporary-setting-values [breakout-bin-width 1.0]
           (is (= [[33.0 4] [34.0 57]]
                  (mt/formatted-rows [1.0 int]
-                   (mt/run-mbql-query venues
-                     {:aggregation [[:count]]
-                      :filter      [:and
-                                    [:< $latitude 35]
-                                    [:> $latitude 20]]
-                      :breakout    [[:field %latitude {:binning {:strategy :default}}]]})))))))))
+                                    (mt/run-mbql-query venues
+                                      {:aggregation [[:count]]
+                                       :filter      [:and
+                                                     [:< $latitude 35]
+                                                     [:> $latitude 20]]
+                                       :breakout    [[:field %latitude {:binning {:strategy :default}}]]})))))))))
 
 (deftest binning-info-test
   (mt/test-drivers (mt/normal-drivers-with-feature :binning)
@@ -205,8 +205,8 @@
               :error  "Unable to bin Field without a min/max value"}
              (-> (qp/process-userland-query
                   (mt/mbql-query venues
-                                 {:aggregation [[:count]]
-                                  :breakout    [[:field %latitude {:binning {:strategy :default}}]]}))
+                    {:aggregation [[:count]]
+                     :breakout    [[:field %latitude {:binning {:strategy :default}}]]}))
                  (select-keys [:status :class :error])))))))
 
 (defn- nested-venues-query [card-or-card-id]
@@ -228,18 +228,18 @@
           (mt/with-native-query-testing-context query
             (is (= [[10.0 1] [32.0 4] [34.0 57] [36.0 29] [40.0 9]]
                    (mt/formatted-rows [1.0 int]
-                     (qp/process-query query))))))))
+                                      (qp/process-query query))))))))
 
     (testing "should be able to use :default binning in a nested query"
       (mt/with-temporary-setting-values [breakout-bin-width 5.0]
         (is (= [[10.0 1] [30.0 61] [35.0 29] [40.0 9]]
                (mt/formatted-rows [1.0 int]
-                 (mt/run-mbql-query venues
-                   {:source-query
-                    {:source-table $$venues
-                     :aggregation  [[:count]]
-                     :breakout     [[:field %latitude {:binning {:strategy :default}}]]}
-                    :order-by [[:asc $latitude]]}))))))
+                                  (mt/run-mbql-query venues
+                                    {:source-query
+                                     {:source-table $$venues
+                                      :aggregation  [[:count]]
+                                      :breakout     [[:field %latitude {:binning {:strategy :default}}]]}
+                                     :order-by [[:asc $latitude]]}))))))
 
     (testing "Binning is not supported when there is no fingerprint to determine boundaries"
       ;; Unfortunately our new `add-source-metadata` middleware is just too good at what it does and will pull in
@@ -252,8 +252,8 @@
                  Exception
                  #"Cannot update binned field: query is missing source-metadata"
                  (qp.test/rows
-                   (qp/process-query
-                    (nested-venues-query card)))))))))))
+                  (qp/process-query
+                   (nested-venues-query card)))))))))))
 
 (deftest field-in-breakout-and-fields-test
   (mt/test-drivers (mt/normal-drivers)

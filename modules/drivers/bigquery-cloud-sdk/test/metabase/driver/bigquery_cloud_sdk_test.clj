@@ -59,39 +59,39 @@
    ;; the initial dataset isn't realized until it's used the first time. because of that,
    ;; we don't care how many pages it took to load this dataset above. it will be a large
    ;; number because we're just tracking the number of times `get-query-results` gets invoked.
-   (testing "with pagination"
-     (let [pages-retrieved (atom 0)
-           page-callback   (fn [] (swap! pages-retrieved inc))]
-       (with-bindings {#'bigquery/*page-size*             25
-                       #'bigquery/*page-callback*         page-callback}
-         (let [actual (->> (metadata-queries/table-rows-sample (t2/select-one Table :id (mt/id :venues))
-                             [(t2/select-one Field :id (mt/id :venues :id))
-                              (t2/select-one Field :id (mt/id :venues :name))]
-                             (constantly conj))
-                           (sort-by first)
-                           (take 5))]
-           (is (= [[1 "Red Medicine"]
-                   [2 "Stout Burgers & Beers"]
-                   [3 "The Apple Pan"]
-                   [4 "Wurstküche"]
-                   [5 "Brite Spot Family Restaurant"]]
-                  actual))
+    (testing "with pagination"
+      (let [pages-retrieved (atom 0)
+            page-callback   (fn [] (swap! pages-retrieved inc))]
+        (with-bindings {#'bigquery/*page-size*             25
+                        #'bigquery/*page-callback*         page-callback}
+          (let [actual (->> (metadata-queries/table-rows-sample (t2/select-one Table :id (mt/id :venues))
+                              [(t2/select-one Field :id (mt/id :venues :id))
+                               (t2/select-one Field :id (mt/id :venues :name))]
+                              (constantly conj))
+                            (sort-by first)
+                            (take 5))]
+            (is (= [[1 "Red Medicine"]
+                    [2 "Stout Burgers & Beers"]
+                    [3 "The Apple Pan"]
+                    [4 "Wurstküche"]
+                    [5 "Brite Spot Family Restaurant"]]
+                   actual))
            ;; the `(sort-by)` above will cause the entire resultset to be realized, so
            ;; we want to make sure that it really did retrieve 25 rows per request
            ;; this only works if the timeout has been temporarily set to 0 (see above)
-           (is (= 4 @pages-retrieved))))))))
+            (is (= 4 @pages-retrieved))))))))
 
 ;; These look like the macros from metabase.query-processor-test.expressions-test
 ;; but conform to bigquery naming rules
 (defn- calculate-bird-scarcity* [formula filter-clause]
   (mt/formatted-rows [2.0]
-    (mt/dataset daily-bird-counts
-      (mt/run-mbql-query bird-count
-        {:expressions {"bird_scarcity" formula}
-         :fields      [[:expression "bird_scarcity"]]
-         :filter      filter-clause
-         :order-by    [[:asc $date]]
-         :limit       10}))))
+                     (mt/dataset daily-bird-counts
+                       (mt/run-mbql-query bird-count
+                         {:expressions {"bird_scarcity" formula}
+                          :fields      [[:expression "bird_scarcity"]]
+                          :filter      filter-clause
+                          :order-by    [[:asc $date]]
+                          :limit       10}))))
 
 (defmacro ^:private calculate-bird-scarcity [formula & [filter-clause]]
   `(mt/dataset ~'daily-bird-counts
@@ -112,7 +112,6 @@
       (is (= [[nil] [nil] [10.0] [12.5] [20.0] [20.0] [nil] [nil] [9.09] [7.14]]
              (calculate-bird-scarcity [:/ 100.0 $count]
                                       [:!= $count nil]))))
-
 
     (testing (str "do expressions handle division by `nil`? Should return `nil` in the results for places where that "
                   "was attempted")
@@ -146,7 +145,6 @@
     (testing "can subtraction handle nulls & zeroes?"
       (is (= [[nil] [10.0] [10.0] [0.0] [2.0] [5.0] [5.0] [nil] [10.0] [10.0]]
              (calculate-bird-scarcity [:- 10 $count]))))
-
 
     (testing "can multiplications handle nulls & zeros?"
       (is (= [[nil] [0.0] [0.0] [10.0] [8.0] [5.0] [5.0] [nil] [0.0] [0.0]]
@@ -226,9 +224,9 @@
                 [2 "Stout Burgers & Beers" "Burger"]
                 [3 "The Apple Pan" "Burger"]]
                (mt/rows
-                 (mt/run-mbql-query nil
-                   {:source-table (mt/id view-name)
-                    :order-by     [[:asc (mt/id view-name :id)]]}))))))))
+                (mt/run-mbql-query nil
+                  {:source-table (mt/id view-name)
+                   :order-by     [[:asc (mt/id view-name :id)]]}))))))))
 
 (deftest query-integer-pk-or-fk-test
   (mt/test-driver :bigquery-cloud-sdk
@@ -268,10 +266,10 @@
           (testing " for querying"
             (is (= 23
                    (count (mt/first-row
-                            (mt/run-mbql-query taxi_trips
-                              {:filter [:= [:field (mt/id :taxi_trips :payment_type) nil]
-                                           "Cash"]
-                               :limit  1}))))))
+                           (mt/run-mbql-query taxi_trips
+                             {:filter [:= [:field (mt/id :taxi_trips :payment_type) nil]
+                                       "Cash"]
+                              :limit  1}))))))
           (testing " has project-id-from-credentials set correctly"
             (is (= (bigquery-project-id) (get-in temp-db [:details :project-id-from-credentials])))))))))
 
@@ -293,7 +291,7 @@
                          :database-type "BIGNUMERIC"
                          :base-type :type/Decimal
                          :database-position 3}}}
-            (driver/describe-table :bigquery-cloud-sdk (mt/db) {:name tbl-nm, :schema "v3_test_data"}))
+             (driver/describe-table :bigquery-cloud-sdk (mt/db) {:name tbl-nm, :schema "v3_test_data"}))
           "`describe-table` should see the fields in the table")
       (sync/sync-database! (mt/db) {:scan :schema})
       (testing "We should be able to run queries against the table"
@@ -303,7 +301,7 @@
                                   [:bigdecimal_col (bigdec bigdecimal-val)]]]
           (testing (format "filtering against %s" col-nm))
           (is (= 1
-                (-> (mt/first-row
+                 (-> (mt/first-row
                       (mt/run-mbql-query nil
                         {:source-table (mt/id tbl-nm)
                          :aggregation  [[:count]]
@@ -311,21 +309,21 @@
                                          :type   :number/=
                                          :target [:field (mt/id tbl-nm col-nm)]
                                          :value  [param-v]}]}))
-                    first))))))))
+                     first))))))))
 
 (deftest sync-table-with-array-test
   (testing "Tables with ARRAY (REPEATED) columns can be synced successfully"
     (do-with-temp-obj "table_array_type_%s"
-      (fn [tbl-nm] ["CREATE TABLE `v3_test_data.%s` AS SELECT 1 AS int_col, GENERATE_ARRAY(1,10) AS array_col"
-                    tbl-nm])
-      (fn [tbl-nm] ["DROP TABLE IF EXISTS `v3_test_data.%s`" tbl-nm])
-      (fn [tbl-nm]
-        (is (= {:schema "v3_test_data"
-                :name   tbl-nm
-                :fields #{{:name "int_col", :database-type "INTEGER", :base-type :type/Integer, :database-position 0}
-                          {:name "array_col", :database-type "INTEGER", :base-type :type/Array, :database-position 1}}}
-               (driver/describe-table :bigquery-cloud-sdk (mt/db) {:name tbl-nm, :schema "v3_test_data"}))
-            "`describe-table` should detect the correct base-type for array type columns")))))
+                      (fn [tbl-nm] ["CREATE TABLE `v3_test_data.%s` AS SELECT 1 AS int_col, GENERATE_ARRAY(1,10) AS array_col"
+                                    tbl-nm])
+                      (fn [tbl-nm] ["DROP TABLE IF EXISTS `v3_test_data.%s`" tbl-nm])
+                      (fn [tbl-nm]
+                        (is (= {:schema "v3_test_data"
+                                :name   tbl-nm
+                                :fields #{{:name "int_col", :database-type "INTEGER", :base-type :type/Integer, :database-position 0}
+                                          {:name "array_col", :database-type "INTEGER", :base-type :type/Array, :database-position 1}}}
+                               (driver/describe-table :bigquery-cloud-sdk (mt/db) {:name tbl-nm, :schema "v3_test_data"}))
+                            "`describe-table` should detect the correct base-type for array type columns")))))
 
 (deftest sync-inactivates-old-duplicate-tables
   (testing "If on the new driver, then downgrade, then upgrade again (#21981)"
@@ -417,8 +415,8 @@
                                                        :details
                                                        (assoc :dataset-filters-type "exclusion"
                                                               :dataset-filters-patterns "v*"))}
-          (fn [{dataset-id :schema}]
-            (is (not= \v (first dataset-id)))))))))
+                                         (fn [{dataset-id :schema}]
+                                           (is (not= \v (first dataset-id)))))))))
 
 (deftest normalize-away-dataset-id-test
   (mt/test-driver :bigquery-cloud-sdk
@@ -473,11 +471,11 @@
       (is (= [[1 "foo" "bar"]
               [2 "alice" "bob"]
               [3 "x" "y"]]
-            (-> {:query
-                 "SELECT * FROM `metabase-bigquery-ci.google_drive_dataset.metabase_ci_bigquery_sheet` ORDER BY `id`"}
-                mt/native-query
-                qp/process-query
-                mt/rows))))))
+             (-> {:query
+                  "SELECT * FROM `metabase-bigquery-ci.google_drive_dataset.metabase_ci_bigquery_sheet` ORDER BY `id`"}
+                 mt/native-query
+                 qp/process-query
+                 mt/rows))))))
 
 (deftest datetime-truncate-field-literal-form-test
   (mt/test-driver :bigquery-cloud-sdk

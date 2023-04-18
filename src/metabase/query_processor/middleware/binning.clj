@@ -50,11 +50,10 @@
                                                global-max)]
     (when-not (and min-value max-value)
       (throw (ex-info (tru "Unable to bin Field without a min/max value")
-               {:type        qp.error-type/invalid-query
-                :field-id    field-id
-                :fingerprint fingerprint})))
+                      {:type        qp.error-type/invalid-query
+                       :field-id    field-id
+                       :fingerprint fingerprint})))
     {:min-value min-value, :max-value max-value}))
-
 
 ;;; ------------------------------------------ Calculating resolved options ------------------------------------------
 
@@ -88,7 +87,6 @@
       [:num-bins
        {:num-bins  num-bins
         :bin-width (calculate-bin-width min-value max-value num-bins)}])))
-
 
 ;;; ------------------------------------- Humanized binning with nicer-breakout --------------------------------------
 
@@ -149,7 +147,6 @@
   (let [f (partial nicer-breakout* strategy)]
     ((fixed-point f) opts)))
 
-
 ;;; -------------------------------------------- Adding resolved options ---------------------------------------------
 
 (defn- resolve-options [strategy strategy-param metadata min-value max-value]
@@ -187,7 +184,7 @@
         source-metadata)
        (throw (ex-info (tru "Cannot update binned field: could not find matching source metadata for Field ''{0}''"
                             field-id-or-name)
-                {:field field-id-or-name, :resolved-metadata source-metadata}))))))
+                       {:field field-id-or-name, :resolved-metadata source-metadata}))))))
 
 (s/defn ^:private update-binned-field :- mbql.s/field
   "Given a `binning-strategy` clause, resolve the binning strategy (either provided or found if default is specified)

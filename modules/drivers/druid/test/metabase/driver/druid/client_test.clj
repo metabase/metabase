@@ -45,28 +45,28 @@
 
 (deftest ssh-tunnel-test
   (mt/test-driver
-   :druid
-   (is (thrown?
-        java.net.ConnectException
-        (try
-          (let [engine  :druid
-                details {:ssl            false
-                         :password       "changeme"
-                         :tunnel-host    "localhost"
-                         :tunnel-pass    "BOGUS-BOGUS"
-                         :port           5432
-                         :dbname         "test"
-                         :host           "http://localhost"
-                         :tunnel-enabled true
+    :druid
+    (is (thrown?
+         java.net.ConnectException
+         (try
+           (let [engine  :druid
+                 details {:ssl            false
+                          :password       "changeme"
+                          :tunnel-host    "localhost"
+                          :tunnel-pass    "BOGUS-BOGUS"
+                          :port           5432
+                          :dbname         "test"
+                          :host           "http://localhost"
+                          :tunnel-enabled true
                          ;; we want to use a bogus port here on purpose -
                          ;; so that locally, it gets a ConnectionRefused,
                          ;; and in CI it does too. Apache's SSHD library
                          ;; doesn't wrap every exception in an SshdException
-                         :tunnel-port    21212
-                         :tunnel-user    "bogus"}]
-            (driver.u/can-connect-with-details? engine details :throw-exceptions))
-          (catch Throwable e
-            (loop [^Throwable e e]
-              (or (when (instance? java.net.ConnectException e)
-                    (throw e))
-                  (some-> (.getCause e) recur)))))))))
+                          :tunnel-port    21212
+                          :tunnel-user    "bogus"}]
+             (driver.u/can-connect-with-details? engine details :throw-exceptions))
+           (catch Throwable e
+             (loop [^Throwable e e]
+               (or (when (instance? java.net.ConnectException e)
+                     (throw e))
+                   (some-> (.getCause e) recur)))))))))

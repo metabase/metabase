@@ -1,4 +1,4 @@
-[ ;; 151 cities where Tupac was sighted
+[;; 151 cities where Tupac was sighted
  ["cities" [{:field-name "name"
              :base-type  :type/Text}
             {:field-name "latitude"

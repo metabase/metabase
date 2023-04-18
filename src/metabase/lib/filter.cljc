@@ -33,9 +33,9 @@
   (when-let [filters (clojure.core/not-empty (:filters (lib.util/query-stage query stage-number)))]
     (i18n/tru "Filtered by {0}"
               (lib.util/join-strings-with-conjunction
-                (i18n/tru "and")
-                (for [filter filters]
-                  (lib.metadata.calculation/display-name query stage-number filter :long))))))
+               (i18n/tru "and")
+               (for [filter filters]
+                 (lib.metadata.calculation/display-name query stage-number filter :long))))))
 
 ;;; Display names for filter clauses are only really used in generating descriptions for `:case` aggregations or for
 ;;; generating the suggested name for a query.

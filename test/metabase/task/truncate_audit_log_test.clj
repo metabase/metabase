@@ -15,15 +15,15 @@
   ;; Tests for the EE implementation are in `metabase-enterprise.task.truncate-audit-log-test`
   (with-redefs [premium-features/enable-advanced-config? (constantly false)]
     (testing "Self-hosted OSS instances default to infinite retention and cannot be changed"
-        (is (= ##Inf (truncate-audit-log.i/audit-max-retention-days)))
+      (is (= ##Inf (truncate-audit-log.i/audit-max-retention-days)))
 
-        (mt/with-temp-env-var-value [mb-audit-max-retention-days 30]
-          (is (= ##Inf (truncate-audit-log.i/audit-max-retention-days))))
+      (mt/with-temp-env-var-value [mb-audit-max-retention-days 30]
+        (is (= ##Inf (truncate-audit-log.i/audit-max-retention-days))))
 
-        (is (thrown-with-msg?
-             java.lang.UnsupportedOperationException
-             #"You cannot set audit-max-retention-days"
-             (setting/set! :audit-max-retention-days 30))))
+      (is (thrown-with-msg?
+           java.lang.UnsupportedOperationException
+           #"You cannot set audit-max-retention-days"
+           (setting/set! :audit-max-retention-days 30))))
 
     (testing "Cloud instances can have their value set by env var only, and default to 365"
       (with-redefs [premium-features/is-hosted? (constantly true)]
@@ -65,26 +65,26 @@
                                                         {:started_at (t/minus (t/offset-date-time) (t/years 1))})]]
       ;; Mock a cloud environment so that we can change the setting value via env var
       (with-redefs [premium-features/is-hosted? (constantly true)]
-       (testing "When the threshold is 0 (representing infinity), no rows are deleted"
-         (mt/with-temp-env-var-value [mb-audit-max-retention-days 0]
-           (#'task.truncate-audit-log/query-execution-cleanup!)
-           (is (= #{qe1-id qe2-id qe3-id}
-                  (t2/select-fn-set :id QueryExecution {:where [:in :id [qe1-id qe2-id qe3-id]]}))))
-
-        (testing "When the threshold is 100 days, one row is deleted"
-         (mt/with-temp-env-var-value [mb-audit-max-retention-days 100]
+        (testing "When the threshold is 0 (representing infinity), no rows are deleted"
+          (mt/with-temp-env-var-value [mb-audit-max-retention-days 0]
             (#'task.truncate-audit-log/query-execution-cleanup!)
-            (is (= #{qe1-id qe2-id}
-                   (t2/select-fn-set :id QueryExecution {:where [:in :id [qe1-id qe2-id qe3-id]]})))))
+            (is (= #{qe1-id qe2-id qe3-id}
+                   (t2/select-fn-set :id QueryExecution {:where [:in :id [qe1-id qe2-id qe3-id]]}))))
 
-        (testing "When the threshold is 30 days, two rows are deleted"
-         (mt/with-temp-env-var-value [mb-audit-max-retention-days 30]
-            (#'task.truncate-audit-log/query-execution-cleanup!)
-            (is (= #{qe1-id}
-                   (t2/select-fn-set :id QueryExecution {:where [:in :id [qe1-id qe2-id qe3-id]]})))))
+          (testing "When the threshold is 100 days, one row is deleted"
+            (mt/with-temp-env-var-value [mb-audit-max-retention-days 100]
+              (#'task.truncate-audit-log/query-execution-cleanup!)
+              (is (= #{qe1-id qe2-id}
+                     (t2/select-fn-set :id QueryExecution {:where [:in :id [qe1-id qe2-id qe3-id]]})))))
 
-        (testing "When the threshold set to 1 day, the remaining row is not deleted because the minimum threshold is 30"
-         (mt/with-temp-env-var-value [mb-audit-max-retention-days 1]
-            (#'task.truncate-audit-log/query-execution-cleanup!)
-            (is (= #{qe1-id}
-                   (t2/select-fn-set :id QueryExecution {:where [:in :id [qe1-id qe2-id qe3-id]]}))))))))))
+          (testing "When the threshold is 30 days, two rows are deleted"
+            (mt/with-temp-env-var-value [mb-audit-max-retention-days 30]
+              (#'task.truncate-audit-log/query-execution-cleanup!)
+              (is (= #{qe1-id}
+                     (t2/select-fn-set :id QueryExecution {:where [:in :id [qe1-id qe2-id qe3-id]]})))))
+
+          (testing "When the threshold set to 1 day, the remaining row is not deleted because the minimum threshold is 30"
+            (mt/with-temp-env-var-value [mb-audit-max-retention-days 1]
+              (#'task.truncate-audit-log/query-execution-cleanup!)
+              (is (= #{qe1-id}
+                     (t2/select-fn-set :id QueryExecution {:where [:in :id [qe1-id qe2-id qe3-id]]}))))))))))

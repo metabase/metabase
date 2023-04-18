@@ -97,7 +97,7 @@
     (:conn-uri database)            database            ; connection URI has all the parameters
     (:conn-uri (:details database)) (:details database)
     :else                           (throw (Exception. (str "with-mongo-connection failed: bad connection details:"
-                                                          (:details database))))))
+                                                            (:details database))))))
 
 (defn- srv-conn-str
   "Creates Mongo client connection string to connect using
@@ -177,10 +177,10 @@
 
 (defn- details->mongo-connection-info [{:keys [conn-uri srv?], :as details}]
   (if (str/blank? conn-uri)
-      ((if srv?
-         srv-connection-info
-         normal-connection-info) details)
-      (conn-string-info details)))
+    ((if srv?
+       srv-connection-info
+       normal-connection-info) details)
+    (conn-string-info details)))
 
 (defmulti ^:private connect
   "Connect to MongoDB using Mongo `connection-info`, return a tuple of `[mongo-client db]`, instances of `MongoClient`
@@ -224,13 +224,13 @@
     (ssh/with-ssh-tunnel [details-with-tunnel details]
       (let [connection-info (details->mongo-connection-info (normalize-details details-with-tunnel))
             [mongo-client db] (connect connection-info)]
-       (log/debug (u/format-color 'cyan (trs "Opened new MongoDB connection.")))
-       (try
-         (binding [*mongo-connection* db]
-           (f *mongo-connection*))
-         (finally
-           (mg/disconnect mongo-client)
-           (log/debug (u/format-color 'cyan (trs "Closed MongoDB connection.")))))))))
+        (log/debug (u/format-color 'cyan (trs "Opened new MongoDB connection.")))
+        (try
+          (binding [*mongo-connection* db]
+            (f *mongo-connection*))
+          (finally
+            (mg/disconnect mongo-client)
+            (log/debug (u/format-color 'cyan (trs "Closed MongoDB connection.")))))))))
 
 (defmacro with-mongo-connection
   "Open a new MongoDB connection to ``database-or-connection-string`, bind connection to `binding`, execute `body`, and

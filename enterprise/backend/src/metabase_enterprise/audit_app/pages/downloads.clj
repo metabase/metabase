@@ -55,14 +55,14 @@
 
 (def ^:private bucket-maxes
   "Add/remove numbers here to adjust buckets returned by the `by-size` query."
-  [     10
-       100
-      1000
-      5000
-     10000
-     50000
-    100000
-    500000
+  [10
+   100
+   1000
+   5000
+   10000
+   50000
+   100000
+   500000
    1000000])
 
 (def ^:private rows->bucket-case-expression

@@ -272,11 +272,11 @@
         (testing (format "with malli Schema: %s" (pr-str malli))
           (is (false? (malli-validate malli case))))
         (testing (format "with Plumatic Schema: %s" (pr-str plumatic))
-         (is (false? (plumatic-validate plumatic case))))))
+          (is (false? (plumatic-validate plumatic case))))))
 
     (doseq [case success-cases]
       (testing (format "case: %s should success" (pr-str case))
         (testing (format "with malli Schema: %s" (pr-str malli))
           (is (true? (malli-validate malli case))))
         (testing (format "with Plumatic Schema: %s"  (pr-str plumatic))
-         (is (true? (plumatic-validate plumatic case))))))))
+          (is (true? (plumatic-validate plumatic case))))))))

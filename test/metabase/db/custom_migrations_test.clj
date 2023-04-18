@@ -24,13 +24,13 @@
                      abandonment-emails-trigger-key "metabase.task.abandonment-emails.trigger"
                      ;; this corresponds to the job and trigger removed in metabase#27348
                      job     (jobs/build
-                              (jobs/of-type AbandonmentEmail)
-                              (jobs/with-identity (jobs/key abandonment-emails-job-key)))
+                               (jobs/of-type AbandonmentEmail)
+                               (jobs/with-identity (jobs/key abandonment-emails-job-key)))
                      trigger (triggers/build
-                              (triggers/with-identity (triggers/key abandonment-emails-trigger-key))
-                              (triggers/start-now)
-                              (triggers/with-schedule
-                                (cron/cron-schedule "0 0 12 * * ? *")))]
+                               (triggers/with-identity (triggers/key abandonment-emails-trigger-key))
+                               (triggers/start-now)
+                               (triggers/with-schedule
+                                 (cron/cron-schedule "0 0 12 * * ? *")))]
                  (task/schedule-task! job trigger)
                  (testing "before the migration, the job and trigger exist"
                    (is (some? (qs/get-job (@#'task/scheduler) (jobs/key abandonment-emails-job-key))))

@@ -66,7 +66,6 @@
     ;; showing a list of possible values. FieldValues not kept.
     :none})
 
-
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
 (models/defmodel Field :metabase_field)
@@ -103,20 +102,20 @@
             fallback-type))))))
 
 (models/add-type! ::base-type
-  :in  (hierarchy-keyword-in  :base_type :ancestor-types [:type/*])
-  :out (hierarchy-keyword-out :base_type :ancestor-types [:type/*], :fallback-type :type/*))
+                  :in  (hierarchy-keyword-in  :base_type :ancestor-types [:type/*])
+                  :out (hierarchy-keyword-out :base_type :ancestor-types [:type/*], :fallback-type :type/*))
 
 (models/add-type! ::effective-type
-  :in  (hierarchy-keyword-in  :effective_type :ancestor-types [:type/*])
-  :out (hierarchy-keyword-out :effective_type :ancestor-types [:type/*], :fallback-type :type/*))
+                  :in  (hierarchy-keyword-in  :effective_type :ancestor-types [:type/*])
+                  :out (hierarchy-keyword-out :effective_type :ancestor-types [:type/*], :fallback-type :type/*))
 
 (models/add-type! ::semantic-type
-  :in  (hierarchy-keyword-in  :semantic_type :ancestor-types [:Semantic/* :Relation/*])
-  :out (hierarchy-keyword-out :semantic_type :ancestor-types [:Semantic/* :Relation/*], :fallback-type nil))
+                  :in  (hierarchy-keyword-in  :semantic_type :ancestor-types [:Semantic/* :Relation/*])
+                  :out (hierarchy-keyword-out :semantic_type :ancestor-types [:Semantic/* :Relation/*], :fallback-type nil))
 
 (models/add-type! ::coercion-strategy
-  :in  (hierarchy-keyword-in  :coercion_strategy :ancestor-types [:Coercion/*])
-  :out (hierarchy-keyword-out :coercion_strategy :ancestor-types [:Coercion/*], :fallback-type nil))
+                  :in  (hierarchy-keyword-in  :coercion_strategy :ancestor-types [:Coercion/*])
+                  :out (hierarchy-keyword-out :coercion_strategy :ancestor-types [:Coercion/*], :fallback-type nil))
 
 (defn- pre-insert [field]
   (let [defaults {:display_name (humanization/name->human-readable-name (:name field))}]
@@ -179,28 +178,27 @@
                         (partial m/map-vals maybe-parse-semantic-numeric-values)))
 
 (models/add-type! :json-for-fingerprints
-  :in  mi/json-in
-  :out (comp update-semantic-numeric-values mi/json-out-with-keywordization))
+                  :in  mi/json-in
+                  :out (comp update-semantic-numeric-values mi/json-out-with-keywordization))
 
 (mi/define-methods
- Field
- {:hydration-keys (constantly [:destination :field :origin :human_readable_field])
-  :types          (constantly {:base_type         ::base-type
-                               :effective_type    ::effective-type
-                               :coercion_strategy ::coercion-strategy
-                               :semantic_type     ::semantic-type
-                               :visibility_type   :keyword
-                               :has_field_values  :keyword
-                               :fingerprint       :json-for-fingerprints
-                               :settings          :json
-                               :nfc_path          :json})
-  :properties     (constantly {::mi/timestamped? true})
-  :pre-insert     pre-insert})
+  Field
+  {:hydration-keys (constantly [:destination :field :origin :human_readable_field])
+   :types          (constantly {:base_type         ::base-type
+                                :effective_type    ::effective-type
+                                :coercion_strategy ::coercion-strategy
+                                :semantic_type     ::semantic-type
+                                :visibility_type   :keyword
+                                :has_field_values  :keyword
+                                :fingerprint       :json-for-fingerprints
+                                :settings          :json
+                                :nfc_path          :json})
+   :properties     (constantly {::mi/timestamped? true})
+   :pre-insert     pre-insert})
 
 (defmethod serdes/hash-fields Field
   [_field]
   [:name (serdes/hydrated-hash :table)])
-
 
 ;;; ---------------------------------------------- Hydration / Util Fns ----------------------------------------------
 
@@ -325,7 +323,6 @@
           :let  [target-id (:fk_target_field_id field)]]
       (assoc field :target (id->target-field target-id)))))
 
-
 (defn qualified-name-components
   "Return the pieces that represent a path to `field`, of the form `[table-name parent-fields-name* field-name]`."
   [{field-name :name, table-id :table_id, parent-id :parent_id}]
@@ -373,7 +370,7 @@
 ;; a trio of strings with schema maybe nil.
 (defmethod serdes/generate-path "Field" [_ {table_id :table_id field :name}]
   (let [table (when (number? table_id)
-                   (t2/select-one 'Table :id table_id))
+                (t2/select-one 'Table :id table_id))
         db    (when table
                 (t2/select-one-fn :name 'Database :id (:db_id table)))
         [db schema table] (if (number? table_id)

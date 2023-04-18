@@ -22,7 +22,6 @@
 
 (models/defmodel PermissionsGroup :permissions_group)
 
-
 ;;; -------------------------------------------- Magic Groups Getter Fns ---------------------------------------------
 
 (defn- magic-group [group-name]
@@ -52,7 +51,6 @@
   "Fetch the `Administrators` permissions group"
   (magic-group admin-group-name))
 
-
 ;;; --------------------------------------------------- Validation ---------------------------------------------------
 
 (defn exists-with-name?
@@ -60,7 +58,7 @@
   ^Boolean [group-name]
   {:pre [((some-fn keyword? string?) group-name)]}
   (t2/exists? PermissionsGroup
-    :%lower.name (u/lower-case-en (name group-name))))
+              :%lower.name (u/lower-case-en (name group-name))))
 
 (defn- check-name-not-already-taken
   [group-name]
@@ -75,8 +73,7 @@
                        (admin)]]
     (when (= id (:id magic-group))
       (throw (ex-info (tru "You cannot edit or delete the ''{0}'' permissions group!" (:name magic-group))
-               {:status-code 400})))))
-
+                      {:status-code 400})))))
 
 ;;; --------------------------------------------------- Lifecycle ----------------------------------------------------
 
@@ -102,13 +99,12 @@
       (check-name-not-already-taken group-name))))
 
 (mi/define-methods
- PermissionsGroup
- {:pre-delete  pre-delete
-  :pre-insert  pre-insert
-  :pre-update  pre-update})
+  PermissionsGroup
+  {:pre-delete  pre-delete
+   :pre-insert  pre-insert
+   :pre-update  pre-update})
 
 ;;; ---------------------------------------------------- Util Fns ----------------------------------------------------
-
 
 (mi/define-simple-hydration-method members
   :members

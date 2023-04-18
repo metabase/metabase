@@ -123,7 +123,6 @@
 (defmacro ^:private with-alerts-in-writeable-collection [alerts-or-ids & body]
   `(do-with-alerts-in-a-collection perms/grant-collection-readwrite-permissions! ~alerts-or-ids (fn [] ~@body)))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       /api/alert/* AUTHENTICATION Tests                                        |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -304,11 +303,11 @@
                  [(et/with-expected-messages 1
                     (alert-response
                      ((alert-client :rasta) :post 200 "alert"
-                      {:card             {:id (u/the-id card), :include_csv false, :include_xls false, :dashboard_card_id nil}
-                       :collection_id    (u/the-id collection)
-                       :alert_condition  "rows"
-                       :alert_first_only false
-                       :channels         [daily-email-channel]})))
+                                            {:card             {:id (u/the-id card), :include_csv false, :include_xls false, :dashboard_card_id nil}
+                                             :collection_id    (u/the-id collection)
+                                             :alert_condition  "rows"
+                                             :alert_first_only false
+                                             :channels         [daily-email-channel]})))
                   (et/regex-email-bodies #"https://metabase.com/testmb"
                                          #"has any results"
                                          #"My question")])))))))
@@ -339,12 +338,12 @@
              (array-map
               :response (et/with-expected-messages 2
                           (-> ((alert-client :crowberto) :post 200 "alert"
-                               {:card             {:id (u/the-id card), :include_csv false, :include_xls false, :dashboard_card_id nil}
-                                :alert_condition  "rows"
-                                :alert_first_only false
-                                :channels         [(assoc daily-email-channel
-                                                          :details       {:emails nil}
-                                                          :recipients    (mapv mt/fetch-user [:crowberto :rasta]))]})
+                                                         {:card             {:id (u/the-id card), :include_csv false, :include_xls false, :dashboard_card_id nil}
+                                                          :alert_condition  "rows"
+                                                          :alert_first_only false
+                                                          :channels         [(assoc daily-email-channel
+                                                                                    :details       {:emails nil}
+                                                                                    :recipients    (mapv mt/fetch-user [:crowberto :rasta]))]})
                               setify-recipient-emails
                               alert-response))
               :emails (et/regex-email-bodies #"https://metabase.com/testmb"
@@ -396,7 +395,6 @@
                (et/regex-email-bodies #"https://metabase.com/testmb"
                                       #"meets its goal"
                                       #"My question")))))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               PUT /api/alert/:id                                               |
@@ -481,7 +479,7 @@
              (mt/with-model-cleanup [Pulse]
                (alert-response
                 ((alert-client :crowberto) :put 200 (alert-url alert)
-                 (default-alert-req card pc))))))))
+                                           (default-alert-req card pc))))))))
 
   (testing "Admin users can update any alert, changing the related alert attributes"
     (mt/with-temp* [Pulse                 [alert (basic-alert)]
@@ -496,8 +494,8 @@
              (mt/with-model-cleanup [Pulse]
                (alert-response
                 ((alert-client :crowberto) :put 200 (alert-url alert)
-                 (default-alert-req card (u/the-id pc) {:alert_first_only true, :alert_above_goal true, :alert_condition "goal"}
-                                    [(mt/fetch-user :rasta)]))))))))
+                                           (default-alert-req card (u/the-id pc) {:alert_first_only true, :alert_above_goal true, :alert_condition "goal"}
+                                                              [(mt/fetch-user :rasta)]))))))))
 
   (testing "Admin users can add a recipient, that recipient should be notified"
     (mt/with-temp* [Pulse                 [alert (basic-alert)]
@@ -514,8 +512,8 @@
                   (alert-response
                    (setify-recipient-emails
                     ((alert-client :crowberto) :put 200 (alert-url alert)
-                     (default-alert-req card pc {} [(mt/fetch-user :crowberto)
-                                                    (mt/fetch-user :rasta)])))))
+                                               (default-alert-req card pc {} [(mt/fetch-user :crowberto)
+                                                                              (mt/fetch-user :rasta)])))))
                 (et/regex-email-bodies #"https://metabase.com/testmb"
                                        #"now getting alerts")]))))))
 
@@ -532,7 +530,7 @@
                (mt/with-model-cleanup [Pulse]
                  (alert-response
                   ((alert-client :rasta) :put 200 (alert-url alert)
-                   (default-alert-req card pc)))))))))
+                                         (default-alert-req card pc)))))))))
 
   (testing "Non-admin users cannot change the recipients of an alert"
     (mt/with-temp* [Pulse                 [alert (basic-alert)]
@@ -545,7 +543,7 @@
              (with-alerts-in-writeable-collection [alert]
                (mt/with-model-cleanup [Pulse]
                  ((alert-client :rasta) :put 403 (alert-url alert)
-                  (default-alert-req card pc {} [(mt/fetch-user :crowberto)])))))))))
+                                        (default-alert-req card pc {} [(mt/fetch-user :crowberto)])))))))))
 
 (deftest admin-users-remove-recipient-test
   (testing "admin users can remove a recipieint, that recipient should be notified"
@@ -573,16 +571,16 @@
 (deftest update-alert-permissions-test
   (testing "Non-admin users cannot update alerts for cards in a collection they don't have access to"
     (is (= "You don't have permissions to do that."
-         (mt/with-non-admin-groups-no-root-collection-perms
-           (mt/with-temp* [Pulse                 [alert (assoc (basic-alert) :creator_id (mt/user->id :crowberto))]
-                           Card                  [card]
-                           PulseCard             [_     (pulse-card alert card)]
-                           PulseChannel          [pc    (pulse-channel alert)]
-                           PulseChannelRecipient [_     (recipient pc :rasta)]]
-             (mt/with-non-admin-groups-no-root-collection-perms
-               (with-alert-setup
-                 ((alert-client :rasta) :put 403 (alert-url alert)
-                  (default-alert-req card pc)))))))))
+           (mt/with-non-admin-groups-no-root-collection-perms
+             (mt/with-temp* [Pulse                 [alert (assoc (basic-alert) :creator_id (mt/user->id :crowberto))]
+                             Card                  [card]
+                             PulseCard             [_     (pulse-card alert card)]
+                             PulseChannel          [pc    (pulse-channel alert)]
+                             PulseChannelRecipient [_     (recipient pc :rasta)]]
+               (mt/with-non-admin-groups-no-root-collection-perms
+                 (with-alert-setup
+                   ((alert-client :rasta) :put 403 (alert-url alert)
+                                          (default-alert-req card pc)))))))))
 
   (testing "Non-admin users can't edit alerts if they're not in the recipient list"
     (is (= "You don't have permissions to do that."
@@ -594,7 +592,7 @@
                              PulseChannelRecipient [_     (recipient pc :crowberto)]]
                (with-alert-setup
                  ((alert-client :rasta) :put 403 (alert-url alert)
-                  (default-alert-req card pc))))))))
+                                        (default-alert-req card pc))))))))
 
   (testing "Non-admin users can update alerts in collection they have view permisisons"
     (mt/with-non-admin-groups-no-root-collection-perms

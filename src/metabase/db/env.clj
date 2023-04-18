@@ -45,7 +45,6 @@
   (or (some-> mb-db-connection-uri raw-connection-string->type)
       mb-db-type))
 
-
 ;;;; [[env->DataSource]]
 
 (defn- get-db-file
@@ -93,7 +92,6 @@
   (if mb-db-connection-uri
     (mdb.data-source/raw-connection-string->DataSource mb-db-connection-uri mb-db-user mb-db-pass)
     (mdb.data-source/broken-out-details->DataSource db-type (broken-out-details db-type env-vars))))
-
 
 ;;;; exports: [[db-type]], [[db-file]], and [[data-source]] created using environment variables.
 

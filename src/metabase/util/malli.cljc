@@ -86,13 +86,13 @@
            raw-arglists (map :raw-arglist parglists)
            schema (as-> (map ->schema parglists) $ (if single (first $) (into [:function] $)))
            annotated-doc (str/trim
-                           (str "Inputs: " (if single
-                                             (pr-str (first (mapv :raw-arglist parglists)))
-                                             (str "(" (str/join "\n           " (map (comp pr-str :raw-arglist) parglists)) ")"))
-                                "\n  Return: " (str/replace (u/pprint-to-str (:schema return :any))
-                                                            "\n"
-                                                            (str "\n          "))
-                                (when (not-empty doc) (str "\n\n  " doc))))
+                          (str "Inputs: " (if single
+                                            (pr-str (first (mapv :raw-arglist parglists)))
+                                            (str "(" (str/join "\n           " (map (comp pr-str :raw-arglist) parglists)) ")"))
+                               "\n  Return: " (str/replace (u/pprint-to-str (:schema return :any))
+                                                "\n"
+                                                (str "\n          "))
+                               (when (not-empty doc) (str "\n\n  " doc))))
            id (str (gensym "id"))
            inner-defn `(core/defn
                          ~name

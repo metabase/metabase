@@ -48,7 +48,6 @@
 (def ^:private ^:const ^Integer default-embed-max-height 800)
 (def ^:private ^:const ^Integer default-embed-max-width 1024)
 
-
 ;;; -------------------------------------------------- Public Cards --------------------------------------------------
 
 (defn combine-parameters-and-template-tags
@@ -137,13 +136,13 @@
   [qp-runner export-format]
   (fn [query info]
     (qp.streaming/streaming-response
-        [{:keys [reducedf], :as context} export-format (u/slugify (:card-name info))]
-        (let [context  (assoc context :reducedf (public-reducedf reducedf))
-              in-chan  (binding [api/*current-user-permissions-set* (atom #{"/"})]
-                         (qp-runner query info context))
-              out-chan (a/promise-chan (map transform-results))]
-          (async.u/promise-pipe in-chan out-chan)
-          out-chan))))
+     [{:keys [reducedf], :as context} export-format (u/slugify (:card-name info))]
+     (let [context  (assoc context :reducedf (public-reducedf reducedf))
+           in-chan  (binding [api/*current-user-permissions-set* (atom #{"/"})]
+                      (qp-runner query info context))
+           out-chan (a/promise-chan (map transform-results))]
+       (async.u/promise-pipe in-chan out-chan)
+       out-chan))))
 
 (defn run-query-for-card-with-id-async
   "Run the query belonging to Card with `card-id` with `parameters` and other query options (e.g. `:constraints`).
@@ -195,7 +194,6 @@
    :middleware {:process-viz-settings? true
                 :js-int-to-string?     false
                 :format-rows?          false}))
-
 
 ;;; ----------------------------------------------- Public Dashboards ------------------------------------------------
 
@@ -330,7 +328,6 @@
      :height  height
      :html    (embed/iframe url width height)}))
 
-
 ;;; ----------------------------------------------- Public Action ------------------------------------------------
 
 (def ^:private action-public-keys
@@ -348,7 +345,6 @@
   (let [action (api/check-404 (action/select-action :public_uuid uuid :archived false))]
     (actions/check-actions-enabled! action)
     (select-keys action action-public-keys)))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        FieldValues, Search, Remappings                                         |
@@ -435,7 +431,6 @@
   (let [dashboard-id (api/check-404 (t2/select-one-pk Dashboard :public_uuid uuid, :archived false))]
     (dashboard-and-field-id->values dashboard-id field-id)))
 
-
 ;;; --------------------------------------------------- Searching ----------------------------------------------------
 
 (defn search-card-fields
@@ -473,7 +468,6 @@
   (validation/check-public-sharing-enabled)
   (let [dashboard-id (api/check-404 (t2/select-one-pk Dashboard :public_uuid uuid, :archived false))]
     (search-dashboard-fields dashboard-id field-id search-field-id value (when limit (Integer/parseInt limit)))))
-
 
 ;;; --------------------------------------------------- Remappings ---------------------------------------------------
 
@@ -615,7 +609,6 @@
                                                                                      :action_id (:id action)})
             ;; Undo middleware string->keyword coercion
             (actions.execution/execute-action! action (update-keys parameters name))))))))
-
 
 ;;; ----------------------------------------- Route Definitions & Complaints -----------------------------------------
 

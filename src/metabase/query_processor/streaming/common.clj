@@ -16,8 +16,8 @@
     (apply-timezone #t \"2021-03-30T20:06:00Z\") -> #t \"2021-03-30T13:06:00-07:00\""
   [t]
   (u.date/with-time-zone-same-instant
-   t
-   (qp.store/cached ::results-timezone (t/zone-id (qp.timezone/results-timezone-id)))))
+    t
+    (qp.store/cached ::results-timezone (t/zone-id (qp.timezone/results-timezone-id)))))
 
 (defprotocol FormatValue
   "Protocol for specifying how objects of various classes in QP result rows should be formatted in various download

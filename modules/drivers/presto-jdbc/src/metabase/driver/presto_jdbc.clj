@@ -441,8 +441,8 @@
   (let [remove-blank-vals (fn [m] (into {} (remove (comp str/blank? val) m)))
         ks                (keys kerb-props->url-param-names)]
     (-> (select-keys details ks)
-      remove-blank-vals
-      (set/rename-keys kerb-props->url-param-names))))
+        remove-blank-vals
+        (set/rename-keys kerb-props->url-param-names))))
 
 (defn- append-additional-options [additional-options props]
   (let [opts-str (sql-jdbc.common/additional-opts->string :url props)]
@@ -556,12 +556,12 @@
   Adapted from the legacy Presto driver implementation."
   [driver conn schema table-name]
   (try
-   (let [sql (sql-jdbc.describe-database/simple-select-probe-query driver schema table-name)]
+    (let [sql (sql-jdbc.describe-database/simple-select-probe-query driver schema table-name)]
         ;; if the query completes without throwing an Exception, we can SELECT from this table
-        (jdbc/reducible-query {:connection conn} sql)
-        true)
-   (catch Throwable _
-     false)))
+      (jdbc/reducible-query {:connection conn} sql)
+      true)
+    (catch Throwable _
+      false)))
 
 (defn- describe-schema
   "Gets a set of maps for all tables in the given `catalog` and `schema`. Adapted from the legacy Presto driver
@@ -570,11 +570,11 @@
   (let [sql (describe-schema-sql driver catalog schema)]
     (log/trace (trs "Running statement in describe-schema: {0}" sql))
     (into #{} (comp (filter (fn [{table-name :table}]
-                                (have-select-privilege? driver conn schema table-name)))
+                              (have-select-privilege? driver conn schema table-name)))
                     (map (fn [{table-name :table}]
-                             {:name        table-name
-                              :schema      schema})))
-              (jdbc/reducible-query {:connection conn} sql))))
+                           {:name        table-name
+                            :schema      schema})))
+          (jdbc/reducible-query {:connection conn} sql))))
 
 (defn- all-schemas
   "Gets a set of maps for all tables in all schemas in the given `catalog`. Adapted from the legacy Presto driver
@@ -593,25 +593,25 @@
   (with-open [conn (-> (sql-jdbc.conn/db->pooled-connection-spec database)
                        jdbc/get-connection)]
     (let [schemas (if schema #{(describe-schema driver conn catalog schema)}
-                             (all-schemas driver conn catalog))]
+                      (all-schemas driver conn catalog))]
       {:tables (reduce set/union schemas)})))
 
 (defmethod driver/describe-table :presto-jdbc
   [driver {{:keys [catalog] :as _details} :details :as database} {schema :schema, table-name :name}]
   (with-open [conn (-> (sql-jdbc.conn/db->pooled-connection-spec database)
-                     jdbc/get-connection)]
+                       jdbc/get-connection)]
     (let [sql (describe-table-sql driver catalog schema table-name)]
       (log/trace (trs "Running statement in describe-table: {0}" sql))
       {:schema schema
        :name   table-name
        :fields (into
-                 #{}
-                 (map-indexed (fn [idx {:keys [column type] :as _col}]
-                                {:name column
-                                 :database-type type
-                                 :base-type         (presto-type->base-type type)
-                                 :database-position idx}))
-                 (jdbc/reducible-query {:connection conn} sql))})))
+                #{}
+                (map-indexed (fn [idx {:keys [column type] :as _col}]
+                               {:name column
+                                :database-type type
+                                :base-type         (presto-type->base-type type)
+                                :database-position idx}))
+                (jdbc/reducible-query {:connection conn} sql))})))
 
 ;;; The Presto JDBC driver DOES NOT support the `.getImportedKeys` method so just return `nil` here so the `:sql-jdbc`
 ;;; implementation doesn't try to use it.
@@ -631,17 +631,16 @@
                                 sql
                                 ResultSet/TYPE_FORWARD_ONLY
                                 ResultSet/CONCUR_READ_ONLY)]
-       (try
-         (try
-           (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
-           (catch Throwable e
-             (log/debug e (trs "Error setting prepared statement fetch direction to FETCH_FORWARD"))))
-         (sql-jdbc.execute/set-parameters! driver stmt params)
-         stmt
-         (catch Throwable e
-           (.close stmt)
-           (throw e)))))
-
+    (try
+      (try
+        (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
+        (catch Throwable e
+          (log/debug e (trs "Error setting prepared statement fetch direction to FETCH_FORWARD"))))
+      (sql-jdbc.execute/set-parameters! driver stmt params)
+      stmt
+      (catch Throwable e
+        (.close stmt)
+        (throw e)))))
 
 (defmethod sql-jdbc.execute/statement :presto-jdbc
   [_ ^Connection conn]
@@ -754,8 +753,8 @@
           ;; even though this value is a `LocalTime`, the base-type is time with time zone, so we need to shift it back to
           ;; the UTC (0) offset
           (t/offset-time
-            local-time
-            (t/zone-offset 0))
+           local-time
+           (t/zone-offset 0))
           ;; else the base-type is time without time zone, so just return the local-time value
           local-time)))))
 
@@ -773,18 +772,18 @@
         (when-let [t (u.date/parse s)]
           (cond
             (or (instance? OffsetDateTime t)
-              (instance? ZonedDateTime t))
+                (instance? ZonedDateTime t))
             (-> (t/offset-date-time t)
               ;; tests are expecting this to be in the UTC offset, so convert to that
-              (t/with-offset-same-instant (t/zone-offset 0)))
+                (t/with-offset-same-instant (t/zone-offset 0)))
 
             ;; presto "helpfully" returns local results already adjusted to session time zone offset for us, e.g.
             ;; '2021-06-15T00:00:00' becomes '2021-06-15T07:00:00' if the session timezone is US/Pacific. Undo the
             ;; madness and convert back to UTC
             zone
             (-> (t/zoned-date-time t zone)
-              (u.date/with-time-zone-same-instant "UTC")
-              t/local-date-time)
+                (u.date/with-time-zone-same-instant "UTC")
+                t/local-date-time)
             :else
             t))))))
 

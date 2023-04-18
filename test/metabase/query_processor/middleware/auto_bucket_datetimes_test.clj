@@ -90,7 +90,7 @@
 
       (testing "for breakouts or other filters with multiple args, all args must be yyyy-MM-dd"
         (is (= {:source-table 1
-                :filter       [:between [:field (u/the-id field) {:temporal-unit :day }] "2018-11-19" "2018-11-20"]}
+                :filter       [:between [:field (u/the-id field) {:temporal-unit :day}] "2018-11-19" "2018-11-20"]}
                (auto-bucket-mbql
                 {:source-table 1
                  :filter       [:between [:field (u/the-id field) nil] "2018-11-19" "2018-11-20"]})))

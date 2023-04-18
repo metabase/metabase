@@ -6,7 +6,7 @@
 (p.types/defprotocol+ Respond
   "Protocol for converting API endpoint responses to something Jetty can handle."
   (respond [body context]
-    "Convert an API endpoint response to something Jetty-friendly. Default impl uses Ring functionality to write the
+           "Convert an API endpoint response to something Jetty-friendly. Default impl uses Ring functionality to write the
   response to a Jetty `OutputStream`. Things that need more advanced functionality than what Ring provides (such as
   the streaming response logic) provide their own custom implementations of this method.
 

@@ -104,7 +104,7 @@
       (testing "The total length of stored values must less than our max-length-limit"
         (is (= {:values          ["AAAA"]
                 :has_more_values true}
-              (#'field-values/distinct-values {})))))))
+               (#'field-values/distinct-values {})))))))
 
 (deftest clear-field-values-for-field!-test
   (mt/with-temp* [Database    [{database-id :id}]
@@ -252,18 +252,18 @@
 (deftest insert-field-values-type-test
   (testing "fieldvalues type=:full shouldn't have hash_key"
     (is (thrown-with-msg?
-          clojure.lang.ExceptionInfo
-          #"Full FieldValues shouldnt have hash_key"
-          (mt/with-temp FieldValues [_ {:field_id (mt/id :venues :id)
-                                        :type :full
-                                        :hash_key "random-hash"}]))))
+         clojure.lang.ExceptionInfo
+         #"Full FieldValues shouldnt have hash_key"
+         (mt/with-temp FieldValues [_ {:field_id (mt/id :venues :id)
+                                       :type :full
+                                       :hash_key "random-hash"}]))))
 
   (testing "Advanced fieldvalues requires a hash_key"
     (is (thrown-with-msg?
-          clojure.lang.ExceptionInfo
-          #"Advanced FieldValues requires a hash_key"
-          (mt/with-temp FieldValues [_ {:field_id (mt/id :venues :id)
-                                        :type :sandbox}])))))
+         clojure.lang.ExceptionInfo
+         #"Advanced FieldValues requires a hash_key"
+         (mt/with-temp FieldValues [_ {:field_id (mt/id :venues :id)
+                                       :type :sandbox}])))))
 
 (deftest insert-full-field-values-should-remove-all-cached-field-values
   (mt/with-temp* [FieldValues [sandbox-fv {:field_id (mt/id :venues :id)
@@ -284,18 +284,17 @@
 
 (deftest cant-update-type-or-has-of-a-field-values-test
   (mt/with-temp FieldValues [fv {:field_id (mt/id :venues :id)
-                                  :type     :sandbox
-                                  :hash_key "random-hash"}]
+                                 :type     :sandbox
+                                 :hash_key "random-hash"}]
     (is (thrown-with-msg?
-          clojure.lang.ExceptionInfo
-          #"Cant update type or hash_key for a FieldValues."
-          (t2/update! FieldValues (:id fv) {:type :full})))
+         clojure.lang.ExceptionInfo
+         #"Cant update type or hash_key for a FieldValues."
+         (t2/update! FieldValues (:id fv) {:type :full})))
 
     (is (thrown-with-msg?
-          clojure.lang.ExceptionInfo
-          #"Cant update type or hash_key for a FieldValues."
-          (t2/update! FieldValues (:id fv) {:hash_key "new-hash"})))))
-
+         clojure.lang.ExceptionInfo
+         #"Cant update type or hash_key for a FieldValues."
+         (t2/update! FieldValues (:id fv) {:hash_key "new-hash"})))))
 
 (deftest identity-hash-test
   (testing "Field hashes are composed of the name and the table's identity-hash"

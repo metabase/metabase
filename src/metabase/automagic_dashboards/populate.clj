@@ -31,21 +31,21 @@
   "Create and return a new collection."
   [title color description parent-collection-id]
   (first (t2/insert-returning-instances!
-           'Collection
-           (merge
-             {:name        title
-              :color       color
-              :description description}
-             (when parent-collection-id
-               {:location (collection/children-location (t2/select-one ['Collection :location :id]
-                                                                       :id parent-collection-id))})))))
+          'Collection
+          (merge
+           {:name        title
+            :color       color
+            :description description}
+           (when parent-collection-id
+             {:location (collection/children-location (t2/select-one ['Collection :location :id]
+                                                                     :id parent-collection-id))})))))
 
 (defn get-or-create-root-container-collection
   "Get or create container collection for automagic dashboards in the root collection."
   []
   (or (t2/select-one 'Collection
-        :name     "Automatically Generated Dashboards"
-        :location "/")
+                     :name     "Automatically Generated Dashboards"
+                     :location "/")
       (create-collection! "Automatically Generated Dashboards" "#509EE3" nil nil)))
 
 (defn colors
@@ -120,11 +120,11 @@
                                         :graph.dimensions    dimensions)
                                  (merge (colorize card))
                                  (cond->
-                                     series_labels (assoc :graph.series_labels series_labels)
+                                  series_labels (assoc :graph.series_labels series_labels)
 
-                                     x_label       (assoc :graph.x_axis.title_text x_label)
+                                  x_label       (assoc :graph.x_axis.title_text x_label)
 
-                                     y_label       (assoc :graph.y_axis.title_text y_label)))}))
+                                  y_label       (assoc :graph.y_axis.title_text y_label)))}))
 
 (defn- add-card
   "Add a card to dashboard `dashboard` at position [`x`, `y`]."
@@ -314,12 +314,12 @@
              distinct
              count
              (= 1))
-   [(->> ds (mapcat :parameters) distinct)
-    (->> ds
-         (mapcat :ordered_cards)
-         (mapcat :parameter_mappings)
-         (map #(dissoc % :card_id))
-         distinct)]))
+    [(->> ds (mapcat :parameters) distinct)
+     (->> ds
+          (mapcat :ordered_cards)
+          (mapcat :parameter_mappings)
+          (map #(dissoc % :card_id))
+          distinct)]))
 
 (defn merge-dashboards
   "Merge dashboards `dashboard` into dashboard `target`."
@@ -341,13 +341,13 @@
                                                      (m/update-existing-in [:visualization_settings :text]
                                                                            downsize-titles)
                                                      (assoc :parameter_mappings
-                                                       (when-let [card-id (:card_id %)]
-                                                         (for [mapping parameter-mappings]
-                                                           (assoc mapping :card_id card-id)))))))]
+                                                            (when-let [card-id (:card_id %)]
+                                                              (for [mapping parameter-mappings]
+                                                                (assoc mapping :card_id card-id)))))))]
      (-> target
          (assoc :parameters paramters)
          (cond->
-           (not skip-titles?)
+          (not skip-titles?)
            (add-text-card {:width                  grid-width
                            :height                 group-heading-height
                            :text                   (format "# %s" (:name dashboard))

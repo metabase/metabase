@@ -26,16 +26,16 @@
   ;; The following routes are NICE and do follow the `/ee/<feature>/` naming convention. Please add new routes here
   ;; and follow the convention.
   (compojure/context
-   "/ee" []
-   (compojure/context
-    "/audit-app" []
-    (ee.api.common/+require-premium-feature :audit-app audit-app/routes))
-   (compojure/context
-    "/advanced-permissions" []
-    (ee.api.common/+require-premium-feature :advanced-permissions advanced-permissions/routes))
-   (compojure/context
-    "/logs" []
-    (ee.api.common/+require-premium-feature :advanced-config logs/routes))
-   (compojure/context
-    "/serialization" []
-    (ee.api.common/+require-premium-feature :serialization serialization/routes))))
+    "/ee" []
+    (compojure/context
+      "/audit-app" []
+      (ee.api.common/+require-premium-feature :audit-app audit-app/routes))
+    (compojure/context
+      "/advanced-permissions" []
+      (ee.api.common/+require-premium-feature :advanced-permissions advanced-permissions/routes))
+    (compojure/context
+      "/logs" []
+      (ee.api.common/+require-premium-feature :advanced-config logs/routes))
+    (compojure/context
+      "/serialization" []
+      (ee.api.common/+require-premium-feature :serialization serialization/routes))))

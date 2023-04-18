@@ -81,8 +81,8 @@
   [t]
   (try
     (java.time.LocalDate/parse
-      t
-      (java.time.format.DateTimeFormatter/ofPattern "yyyy-MM-dd'T'hh:mm:ss.SSXXX"))
+     t
+     (java.time.format.DateTimeFormatter/ofPattern "yyyy-MM-dd'T'hh:mm:ss.SSXXX"))
     true
     (catch Exception _e
       false)))
@@ -103,7 +103,7 @@
 
       (testing "the created_at should have the format yyyy-MM-dd'T'hh:mm:ss.SSXXX"
         (is (valid-datetime-for-snowplow?
-              (get-in (first @*snowplow-collector*) [:context :data :created_at])))))))
+             (get-in (first @*snowplow-collector*) [:context :data :created_at])))))))
 
 (deftest ip-address-override-test
   (testing "IP address on Snowplow subject is overridden with a dummy value (127.0.0.1)"

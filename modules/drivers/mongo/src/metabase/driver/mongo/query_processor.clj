@@ -82,11 +82,9 @@
     [\"_id\" \"date\" \"user_id\" \"venue_id\"]"
   [s/Str])
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                    QP Impl                                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
-
 
 ;; TODO - We already have a *query* dynamic var in metabase.query-processor.interface. Do we need this one too?
 (def ^:dynamic ^:private *query* nil)
@@ -197,12 +195,10 @@
       {"$dateFromString" {:dateString field-name
                           :onError    field-name}}
 
-
       (isa? coercion :Coercion/ISO8601->Date)
       (throw (ex-info (tru "MongoDB does not support parsing strings as dates. Try parsing to a datetime instead")
                       {:type              qp.error-type/unsupported-feature
                        :coercion-strategy coercion}))
-
 
       (isa? coercion :Coercion/ISO8601->Time)
       (throw (ex-info (tru "MongoDB does not support parsing strings as times. Try parsing to a datetime instead")
@@ -394,12 +390,12 @@
   (let [report-zone (t/zone-id (or (qp.timezone/report-timezone-id-if-supported :mongo)
                                    "UTC"))
         t           (condp = (class t)
-                     java.time.LocalDate      t
-                     java.time.LocalTime      t
-                     java.time.LocalDateTime  t
-                     java.time.OffsetTime     (t/offset-time t report-zone)
-                     java.time.OffsetDateTime (t/offset-date-time t report-zone)
-                     java.time.ZonedDateTime  (t/offset-date-time t report-zone))]
+                      java.time.LocalDate      t
+                      java.time.LocalTime      t
+                      java.time.LocalDateTime  t
+                      java.time.OffsetTime     (t/offset-time t report-zone)
+                      java.time.OffsetDateTime (t/offset-date-time t report-zone)
+                      java.time.ZonedDateTime  (t/offset-date-time t report-zone))]
     (letfn [(extract [unit]
               (u.date/extract t unit))
             (bucket [unit]
@@ -525,9 +521,9 @@
   [[_ & [_ & divisors :as args]]]
   ;; division works outside in (/ 1 2 3) => (/ (/ 1 2) 3)
   (let [division (reduce
-                   (fn [accum head]
-                     {"$divide" [accum head]})
-                   (map ->rvalue args))
+                  (fn [accum head]
+                    {"$divide" [accum head]})
+                  (map ->rvalue args))
         literal-zero? (some #(and (number? %) (zero? %)) divisors)
         non-literal-nil-checks (mapv (fn [divisor] {"$eq" [(->rvalue divisor) 0]}) (remove number? divisors))]
     (cond
@@ -756,7 +752,6 @@
   [[_ & args]]
   {$or (mapv compile-filter args)})
 
-
 ;; MongoDB doesn't support negating top-level filter clauses. So we can leverage the MBQL lib's `negate-filter-clause`
 ;; to negate everything, with the exception of the string filter clauses, which we will convert to a `{not <regex}`
 ;; clause (see `->rvalue` for `::not` above). `negate` below wraps the MBQL lib function
@@ -829,7 +824,6 @@
 (defmethod compile-cond :not [[_ subclause]]
   (compile-cond (negate subclause)))
 
-
 ;;; ----------------------------------------------------- joins ------------------------------------------------------
 
 (defn- find-source-collection
@@ -880,10 +874,10 @@
         ;; Map the own fields to a fresh alias and to its rvalue.
         mapping (map (fn [f] (let [alias (-> (format "let_%s_" (->lvalue f))
                                             ;; ~ in let aliases provokes a parse error in Mongo
-                                            (str/replace "~" "_")
-                                            gensym
-                                            name)]
-                              {:field f, :rvalue (->rvalue f), :alias alias}))
+                                             (str/replace "~" "_")
+                                             gensym
+                                             name)]
+                               {:field f, :rvalue (->rvalue f), :alias alias}))
                      own-fields)]
     ;; Add the mappings from the source query and the let bindings of $lookup to the field mappings.
     ;; In the join pipeline the let bindings have to referenced with the prefix $$, so we add $ to the name.
@@ -1177,7 +1171,6 @@
           ;; now add additional clauses to the end of :query as applicable
           (update :query into pipeline-stages)))))
 
-
 ;;; ---------------------------------------------------- order-by ----------------------------------------------------
 
 (s/defn ^:private order-by->$sort :- $SortStage
@@ -1259,7 +1252,6 @@
     pipeline-ctx
     (update pipeline-ctx :query conj {$limit limit})))
 
-
 ;;; ------------------------------------------------------ page ------------------------------------------------------
 
 (defn- handle-page [{{page-num :page, items-per-page :items, :as page-clause} :page} pipeline-ctx]
@@ -1323,9 +1315,9 @@
           (org.bson.BsonArray/parse s))
     (catch Throwable e
       (throw (ex-info (tru "Unable to parse query: {0}" (.getMessage e))
-               {:type  qp.error-type/invalid-query
-                :query s}
-               e)))))
+                      {:type  qp.error-type/invalid-query
+                       :query s}
+                      e)))))
 
 (defn- mbql->native-rec
   "Compile a potentially nested MBQL query."

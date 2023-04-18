@@ -151,11 +151,11 @@
    auto-migrate? :- (s/maybe s/Bool)]
   (u/profile (trs "Database setup")
     (u/with-us-locale
-       (binding [mdb.connection/*application-db* (mdb.connection/application-db db-type data-source :create-pool? false) ; should already be a pool
-                 setting/*disable-cache*         true]
-         (verify-db-connection   db-type data-source)
-         (run-schema-migrations! db-type data-source auto-migrate?)
-         (run-data-migrations!))))
+      (binding [mdb.connection/*application-db* (mdb.connection/application-db db-type data-source :create-pool? false) ; should already be a pool
+                setting/*disable-cache*         true]
+        (verify-db-connection   db-type data-source)
+        (run-schema-migrations! db-type data-source auto-migrate?)
+        (run-data-migrations!))))
   :done)
 
 ;;;; Toucan Setup.

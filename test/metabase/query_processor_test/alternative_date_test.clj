@@ -51,8 +51,8 @@
   (mt/test-drivers (mt/normal-drivers)
     (mt/dataset sad-toucan-incidents
       (let [query (mt/mbql-query incidents
-                     {:filter   [:= !day.timestamp "2015-06-02"]
-                      :order-by [[:asc $timestamp]]})]
+                    {:filter   [:= !day.timestamp "2015-06-02"]
+                     :order-by [[:asc $timestamp]]})]
         ;; There's a race condition with this test. If we happen to grab a connection that is in a session with the
         ;; timezone set to pacific, we'll get 9 results even when the above if statement is true. It seems to be pretty
         ;; rare, but explicitly specifying UTC will make the issue go away
@@ -138,8 +138,7 @@
           (testing (format "\nquery = %s" (u/pprint-to-str query))
             (is (= [[41]]
                    (mt/formatted-rows [int]
-                     (qp/process-query query))))))))))
-
+                                      (qp/process-query query))))))))))
 
 ;;; :type/ISO8601DateTimeString tests
 
@@ -191,8 +190,8 @@
                ;; string-times dataset has three text fields, ts, d, t for timestamp, date, and time
                (mt/rows (mt/dataset string-times
                           (qp/process-query
-                            (assoc (mt/mbql-query times)
-                                   :middleware {:format-rows? false})))))))
+                           (assoc (mt/mbql-query times)
+                                  :middleware {:format-rows? false})))))))
       (testing "sparksql adds UTC"
         (mt/test-drivers #{:sparksql}
           (is (= #{[1 "foo" #t "2004-10-19T10:23:54Z[UTC]" #t "2004-10-19T00:00Z[UTC]"]
@@ -201,8 +200,8 @@
                  ;; order seems to be nondeterministic
                  (set (mt/rows (mt/dataset just-dates
                                  (qp/process-query
-                                   (assoc (mt/mbql-query just-dates)
-                                          :middleware {:format-rows? false})))))))))
+                                  (assoc (mt/mbql-query just-dates)
+                                         :middleware {:format-rows? false})))))))))
       (testing "oracle doesn't have a time type"
         (mt/test-drivers #{:oracle}
           (is (= [[1M "foo" #t "2004-10-19T10:23:54" #t "2004-10-19T00:00"]
@@ -211,8 +210,8 @@
                  ;; string-times dataset has three text fields, ts, d, t for timestamp, date, and time
                  (mt/rows (mt/dataset just-dates
                             (qp/process-query
-                              (assoc (mt/mbql-query just-dates)
-                                     :middleware {:format-rows? false}))))))))
+                             (assoc (mt/mbql-query just-dates)
+                                    :middleware {:format-rows? false}))))))))
 
       (testing "sqlite returns as strings"
         (mt/test-drivers #{:sqlite}
@@ -222,8 +221,8 @@
                  ;; string-times dataset has three text fields, ts, d, t for timestamp, date, and time
                  (mt/rows (mt/dataset string-times
                             (qp/process-query
-                              (assoc (mt/mbql-query times)
-                                     :middleware {:format-rows? false}))))))))
+                             (assoc (mt/mbql-query times)
+                                    :middleware {:format-rows? false}))))))))
 
       (testing "mongo only supports datetime"
         (mt/test-drivers #{:mongo}
@@ -232,46 +231,46 @@
                     [(t/instant "2008-10-19T10:23:54Z")]
                     [(t/instant "2012-10-19T10:23:54Z")]]
                    (mt/rows (qp/process-query
-                              (assoc (mt/mbql-query times
-                                                    {:fields [$ts]})
-                                     :middleware {:format-rows? false})))))
+                             (assoc (mt/mbql-query times
+                                      {:fields [$ts]})
+                                    :middleware {:format-rows? false})))))
             (is (thrown-with-msg?
-                  clojure.lang.ExceptionInfo
-                  #"MongoDB does not support parsing strings as dates. Try parsing to a datetime instead"
-                  (qp/process-query
-                    (mt/mbql-query times {:fields [$d]}))))
+                 clojure.lang.ExceptionInfo
+                 #"MongoDB does not support parsing strings as dates. Try parsing to a datetime instead"
+                 (qp/process-query
+                  (mt/mbql-query times {:fields [$d]}))))
             (is (thrown-with-msg?
-                  clojure.lang.ExceptionInfo
-                  #"MongoDB does not support parsing strings as times. Try parsing to a datetime instead"
-                  (qp/process-query
-                    (mt/mbql-query times {:fields [$t]}))))))))
+                 clojure.lang.ExceptionInfo
+                 #"MongoDB does not support parsing strings as times. Try parsing to a datetime instead"
+                 (qp/process-query
+                  (mt/mbql-query times {:fields [$t]}))))))))
 
     (testing "are queryable as dates"
       (mt/dataset string-times
-       (testing "a datetime field"
+        (testing "a datetime field"
          ;; TODO: why does this fail on oracle? gives a NPE
-         (mt/test-drivers (disj (sql-jdbc.tu/sql-jdbc-drivers) :oracle :sparksql)
-           (is (= 1
-                  (->> (mt/run-mbql-query times
-                         {:filter [:= !day.ts "2008-10-19"]})
-                       mt/rows
-                       count))))
+          (mt/test-drivers (disj (sql-jdbc.tu/sql-jdbc-drivers) :oracle :sparksql)
+            (is (= 1
+                   (->> (mt/run-mbql-query times
+                          {:filter [:= !day.ts "2008-10-19"]})
+                        mt/rows
+                        count))))
 
-         (mt/test-drivers #{:mongo}
-           (is (= 1
-                  (->> (mt/run-mbql-query times
-                         {:filter [:= !day.ts "2008-10-19"]
-                          :fields [$ts]})
-                       mt/rows
-                       count)))))
+          (mt/test-drivers #{:mongo}
+            (is (= 1
+                   (->> (mt/run-mbql-query times
+                          {:filter [:= !day.ts "2008-10-19"]
+                           :fields [$ts]})
+                        mt/rows
+                        count)))))
 
-       (testing "a date field"
-         (mt/test-drivers (disj (sql-jdbc.tu/sql-jdbc-drivers) :oracle :sparksql)
-           (is (= 1
-                  (->> (mt/run-mbql-query times
-                         {:filter [:= !day.d "2008-10-19"]})
-                       mt/rows
-                       count)))))))))
+        (testing "a date field"
+          (mt/test-drivers (disj (sql-jdbc.tu/sql-jdbc-drivers) :oracle :sparksql)
+            (is (= 1
+                   (->> (mt/run-mbql-query times
+                          {:filter [:= !day.d "2008-10-19"]})
+                        mt/rows
+                        count)))))))))
 
 (mt/defdataset yyyymmddhhss-times
   [["times" [{:field-name "name"
@@ -314,9 +313,9 @@
            (sort-by
             first
             (mt/rows (mt/dataset yyyymmddhhss-binary-times
-                                 (qp/process-query
-                                  (assoc (mt/mbql-query times)
-                                         :middleware {:format-rows? false})))))))))
+                       (qp/process-query
+                        (assoc (mt/mbql-query times)
+                               :middleware {:format-rows? false})))))))))
 
 (deftest yyyymmddhhmmss-dates
   (mt/test-drivers #{:mongo :oracle :postgres :h2 :mysql :bigquery-cloud-sdk :snowflake :redshift :sqlserver}
@@ -349,6 +348,6 @@
            (sort-by
             first
             (mt/rows (mt/dataset yyyymmddhhss-times
-                                 (qp/process-query
-                                  (assoc (mt/mbql-query times)
-                                         :middleware {:format-rows? false})))))))))
+                       (qp/process-query
+                        (assoc (mt/mbql-query times)
+                               :middleware {:format-rows? false})))))))))

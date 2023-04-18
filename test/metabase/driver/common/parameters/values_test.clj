@@ -211,7 +211,6 @@
              :dimension    [:field (mt/id :checkins :date) nil]}
             nil))))
 
-
   (testing "multiple values for the same tag should return a vector with multiple params instead of a single param"
     (is (= {:field (extra-field-info
                     {:id            (mt/id :checkins :date)
@@ -286,8 +285,6 @@
         (is (thrown?
              clojure.lang.ExceptionInfo
              (query->params-map query)))))))
-
-
 
 (deftest card-query-test
   (mt/with-test-user :rasta
@@ -588,18 +585,18 @@
     (is (schema= {(s/eq "checkin_date") {:value    (s/eq [{:type :date/range, :value "2015-01-01~2016-09-01"}
                                                           {:type :date/single, :value "2015-07-01"}])
                                          s/Keyword s/Any}}
-           (query->params-map
-            {:template-tags {"checkin_date" {:name         "checkin_date"
-                                             :display-name "Checkin Date"
-                                             :type         :dimension
-                                             :widget-type  :date/all-options
-                                             :dimension    [:field (mt/id :checkins :date) nil]}}
-             :parameters    [{:type   :date/range
-                              :target [:dimension [:template-tag "checkin_date"]]
-                              :value  "2015-01-01~2016-09-01"}
-                             {:type   :date/single
-                              :target [:dimension [:template-tag "checkin_date"]]
-                              :value  "2015-07-01"}]})))))
+                 (query->params-map
+                  {:template-tags {"checkin_date" {:name         "checkin_date"
+                                                   :display-name "Checkin Date"
+                                                   :type         :dimension
+                                                   :widget-type  :date/all-options
+                                                   :dimension    [:field (mt/id :checkins :date) nil]}}
+                   :parameters    [{:type   :date/range
+                                    :target [:dimension [:template-tag "checkin_date"]]
+                                    :value  "2015-01-01~2016-09-01"}
+                                   {:type   :date/single
+                                    :target [:dimension [:template-tag "checkin_date"]]
+                                    :value  "2015-07-01"}]})))))
 
 (deftest use-parameter-defaults-test
   (testing "If parameter specifies a default value (but tag does not), use the parameter's default"

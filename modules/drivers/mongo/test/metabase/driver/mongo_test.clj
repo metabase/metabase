@@ -37,44 +37,44 @@
 ;; ## Tests for connection functions
 (deftest can-connect-test?
   (mt/test-driver
-   :mongo
-   (doseq [{:keys [details expected message]} [{:details  {:host   "localhost"
-                                                           :port   3000
-                                                           :dbname "bad-db-name"}
-                                                :expected false}
-                                               {:details  {}
-                                                :expected false}
-                                               {:details  {:host   "localhost"
-                                                           :port   27017
-                                                           :user   "metabase"
-                                                           :pass   "metasample123"
-                                                           :dbname "metabase-test"}
-                                                :expected true}
-                                               {:details  {:host   "localhost"
-                                                           :user   "metabase"
-                                                           :pass   "metasample123"
-                                                           :dbname "metabase-test"}
-                                                :expected true
-                                                :message  "should use default port 27017 if not specified"}
-                                               {:details  {:host   "123.4.5.6"
-                                                           :dbname "bad-db-name?connectTimeoutMS=50"}
-                                                :expected false}
-                                               {:details  {:host   "localhost"
-                                                           :port   3000
-                                                           :dbname "bad-db-name?connectTimeoutMS=50"}
-                                                :expected false}
-                                               {:details  {:conn-uri "mongodb://metabase:metasample123@localhost:27017/metabase-test?authSource=admin"}
-                                                :expected (not (tdm/ssl-required?))}
-                                               {:details  {:conn-uri "mongodb://localhost:3000/bad-db-name?connectTimeoutMS=50"}
-                                                :expected false}]
-           :let [ssl-details (tdm/conn-details details)]]
-     (testing (str "connect with " details)
-       (is (= expected
-              (driver.u/can-connect-with-details? :mongo ssl-details))
-           (str message))))))
+    :mongo
+    (doseq [{:keys [details expected message]} [{:details  {:host   "localhost"
+                                                            :port   3000
+                                                            :dbname "bad-db-name"}
+                                                 :expected false}
+                                                {:details  {}
+                                                 :expected false}
+                                                {:details  {:host   "localhost"
+                                                            :port   27017
+                                                            :user   "metabase"
+                                                            :pass   "metasample123"
+                                                            :dbname "metabase-test"}
+                                                 :expected true}
+                                                {:details  {:host   "localhost"
+                                                            :user   "metabase"
+                                                            :pass   "metasample123"
+                                                            :dbname "metabase-test"}
+                                                 :expected true
+                                                 :message  "should use default port 27017 if not specified"}
+                                                {:details  {:host   "123.4.5.6"
+                                                            :dbname "bad-db-name?connectTimeoutMS=50"}
+                                                 :expected false}
+                                                {:details  {:host   "localhost"
+                                                            :port   3000
+                                                            :dbname "bad-db-name?connectTimeoutMS=50"}
+                                                 :expected false}
+                                                {:details  {:conn-uri "mongodb://metabase:metasample123@localhost:27017/metabase-test?authSource=admin"}
+                                                 :expected (not (tdm/ssl-required?))}
+                                                {:details  {:conn-uri "mongodb://localhost:3000/bad-db-name?connectTimeoutMS=50"}
+                                                 :expected false}]
+            :let [ssl-details (tdm/conn-details details)]]
+      (testing (str "connect with " details)
+        (is (= expected
+               (driver.u/can-connect-with-details? :mongo ssl-details))
+            (str message))))))
 
 (deftest database-supports?-test
- (mt/test-driver
+  (mt/test-driver
     :mongo
     (doseq [{:keys [dbms_version expected]}
             [{:dbms_version {:semantic-version [5 0 0 0]}
@@ -89,7 +89,6 @@
         (is (= expected
                (let [db (first (t2/insert-returning-instances! Database {:name "dummy", :engine "mongo", :dbms_version dbms_version}))]
                  (driver/database-supports? :mongo :expressions db))))))))
-
 
 (def ^:private native-query
   "[{\"$project\": {\"_id\": \"$_id\"}},
@@ -127,7 +126,7 @@
              {:schema nil, :name "categories"}
              {:schema nil, :name "users"}
              {:schema nil, :name "venues"}}
-            (:tables (driver/describe-database :mongo (mt/db)))))))
+           (:tables (driver/describe-database :mongo (mt/db)))))))
 
 (deftest describe-table-test
   (mt/test-driver :mongo
@@ -166,9 +165,9 @@
       (testing "Can we filter against nested columns?"
         (is (= [[16]]
                (mt/rows
-                 (mt/run-mbql-query tips
-                   {:aggregation [[:count]]
-                    :filter      [:= $tips.source.username "tupac"]})))))
+                (mt/run-mbql-query tips
+                  {:aggregation [[:count]]
+                   :filter      [:= $tips.source.username "tupac"]})))))
 
       (testing "Can we breakout against nested columns?"
         (is (= [[nil 297]
@@ -176,10 +175,10 @@
                 ["biggie" 11]
                 ["bob" 20]]
                (mt/rows
-                 (mt/run-mbql-query tips
-                   {:aggregation [[:count]]
-                    :breakout    [$tips.source.username]
-                    :limit       4}))))))))
+                (mt/run-mbql-query tips
+                  {:aggregation [[:count]]
+                   :breakout    [$tips.source.username]
+                   :limit       4}))))))))
 
 ;; Make sure that all-NULL columns work and are synced correctly (#6875)
 (tx/defdataset all-null-columns
@@ -200,8 +199,8 @@
              (map
               (partial into {})
               (t2/select [Field :name :database_type :base_type :semantic_type]
-                :table_id (mt/id :bird_species)
-                {:order-by [:name]})))))))
+                         :table_id (mt/id :bird_species)
+                         {:order-by [:name]})))))))
 
 (deftest new-rows-take-precedence-when-collecting-metadata-test
   (mt/test-driver :mongo
@@ -227,8 +226,8 @@
                  (into #{}
                        (map (partial into {}))
                        (t2/select [Field :name :database_type :base_type :semantic_type]
-                         :table_id (mt/id :bird_species)
-                         {:order-by [:name]})))))))))
+                                  :table_id (mt/id :bird_species)
+                                  {:order-by [:name]})))))))))
 
 (deftest table-rows-sample-test
   (mt/test-driver :mongo
@@ -252,8 +251,8 @@
             {:active true, :name "users"}
             {:active true, :name "venues"}]
            (for [field (t2/select [Table :name :active]
-                         :db_id (mt/id)
-                         {:order-by [:name]})]
+                                  :db_id (mt/id)
+                                  {:order-by [:name]})]
              (into {} field)))
         "Test that Tables got synced correctly")))
 
@@ -278,19 +277,19 @@
                {:semantic_type :type/Category,  :base_type :type/Integer,  :name "price"}]]
              (vec (for [table-name table-names]
                     (vec (for [field (t2/select [Field :name :base_type :semantic_type]
-                                       :active   true
-                                       :table_id (mt/id table-name)
-                                       {:order-by [:name]})]
+                                                :active   true
+                                                :table_id (mt/id table-name)
+                                                {:order-by [:name]})]
                            (into {} field))))))))))
 
 (tx/defdataset with-bson-ids
   [["birds"
-     [{:field-name "name", :base-type :type/Text}
-      {:field-name "bird_id", :base-type :type/MongoBSONID}
-      {:field-name "bird_uuid", :base-type :type/UUID}]
-     [["Rasta Toucan" (ObjectId. "012345678901234567890123") "11111111-1111-1111-1111-111111111111"]
-      ["Lucky Pigeon" (ObjectId. "abcdefabcdefabcdefabcdef") "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]
-      ["Unlucky Raven" nil]]]])
+    [{:field-name "name", :base-type :type/Text}
+     {:field-name "bird_id", :base-type :type/MongoBSONID}
+     {:field-name "bird_uuid", :base-type :type/UUID}]
+    [["Rasta Toucan" (ObjectId. "012345678901234567890123") "11111111-1111-1111-1111-111111111111"]
+     ["Lucky Pigeon" (ObjectId. "abcdefabcdefabcdefabcdef") "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]
+     ["Unlucky Raven" nil]]]])
 
 (deftest bson-ids-test
   (mt/test-driver :mongo
@@ -311,15 +310,15 @@
         (testing "treat null ObjectId as empty (#15801)"
           (is (= [[3 "Unlucky Raven" nil]]
                  (rows (mt/run-mbql-query birds
-                        {:filter [:is-empty $bird_id]
-                         :fields [$id $name $bird_id]})))))
+                         {:filter [:is-empty $bird_id]
+                          :fields [$id $name $bird_id]})))))
 
         (testing "treat non-null ObjectId as not-empty (#15801)"
           (is (= [[1 "Rasta Toucan" (ObjectId. "012345678901234567890123")]
                   [2 "Lucky Pigeon" (ObjectId. "abcdefabcdefabcdefabcdef")]]
                  (rows (mt/run-mbql-query birds
-                        {:filter [:not-empty $bird_id]
-                         :fields [$id $name $bird_id]}))))))
+                         {:filter [:not-empty $bird_id]
+                          :fields [$id $name $bird_id]}))))))
 
       (testing "BSON UUIDs"
         (testing "Check that we support Mongo BSON UUID and can filter by it"
@@ -334,7 +333,6 @@
                          {:filter [:is-null $bird_uuid]
                           :fields [$id $name $bird_uuid]})))))
 
-
         (testing "treat null UUID as empty"
           (is (= [[3 "Unlucky Raven" nil]]
                  (rows (mt/run-mbql-query birds
@@ -345,9 +343,8 @@
         (is (= [[1 "Rasta Toucan" "11111111-1111-1111-1111-111111111111"]
                 [2 "Lucky Pigeon" "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]
                (rows (mt/run-mbql-query birds
-                         {:filter [:not-empty $bird_uuid]
-                          :fields [$id $name $bird_uuid]}))))))))
-
+                       {:filter [:not-empty $bird_uuid]
+                        :fields [$id $name $bird_uuid]}))))))))
 
 (deftest bson-fn-call-forms-test
   (mt/test-driver :mongo
@@ -415,16 +412,16 @@
     (mt/test-driver :mongo
       (is (= [[22]]
              (mt/rows
-               (qp/process-query
-                {:database (mt/id)
-                 :type     :native
-                 :native   {:projections [:count]
-                            :query       [{"$project" {"price" "$price"}}
-                                          {"$match" {"price" {"$eq" 1}}}
-                                          {"$group" {"_id" nil, "count" {"$sum" 1}}}
-                                          {"$sort" {"_id" 1}}
-                                          {"$project" {"_id" false, "count" true}}]
-                            :collection  "venues"}})))))))
+              (qp/process-query
+               {:database (mt/id)
+                :type     :native
+                :native   {:projections [:count]
+                           :query       [{"$project" {"price" "$price"}}
+                                         {"$match" {"price" {"$eq" 1}}}
+                                         {"$group" {"_id" nil, "count" {"$sum" 1}}}
+                                         {"$sort" {"_id" 1}}
+                                         {"$project" {"_id" false, "count" true}}]
+                           :collection  "venues"}})))))))
 
 (defn- create-database-from-row-maps! [database-name collection-name row-maps]
   (or (t2/select-one Database :engine "mongo", :name database-name)

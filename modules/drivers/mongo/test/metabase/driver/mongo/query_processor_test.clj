@@ -59,9 +59,9 @@
                   :collection  "attempts"
                   :mbql?       true}
                  (qp/compile
-                  (mt/mbql-query attempts
-                                 {:aggregation [[:count]]
-                                  :filter      [:time-interval $datetime :last :month]})))))))))
+                   (mt/mbql-query attempts
+                     {:aggregation [[:count]]
+                      :filter      [:time-interval $datetime :last :month]})))))))))
 
 (deftest absolute-datetime-test
   (mt/test-driver :mongo
@@ -99,19 +99,19 @@
                     :collection  "attempts"
                     :mbql?       true}
                    (qp/compile
-                    (mt/mbql-query attempts
-                      {:aggregation [[:count]]
-                       :filter      [:time-interval $datetime :last :month]}))))
+                     (mt/mbql-query attempts
+                       {:aggregation [[:count]]
+                        :filter      [:time-interval $datetime :last :month]}))))
 
             (testing "should still work even with bucketing bucketing"
               (let [tz (qp.timezone/results-timezone-id :mongo mt/db)
                     query (mt/with-everything-store
                             (qp/compile
-                             (mt/mbql-query attempts
-                                            {:aggregation [[:count]]
-                                             :breakout    [[:field %datetime {:temporal-unit :month}]
-                                                           [:field %datetime {:temporal-unit :day}]]
-                                             :filter      [:= [:field %datetime {:temporal-unit :month}] [:relative-datetime -1 :month]]})))]
+                              (mt/mbql-query attempts
+                                {:aggregation [[:count]]
+                                 :breakout    [[:field %datetime {:temporal-unit :month}]
+                                               [:field %datetime {:temporal-unit :day}]]
+                                 :filter      [:= [:field %datetime {:temporal-unit :month}] [:relative-datetime -1 :month]]})))]
                 (is (= {:projections ["datetime" "datetime_2" "count"]
                         :query       [{"$match"
                                        {"$and"
@@ -119,24 +119,24 @@
                                          {"$expr" {"$lt" ["$datetime" {:$dateFromString {:dateString "2021-02-01T00:00Z"}}]}}]}}
                                       {"$group" {"_id"   (if (date-arithmetic-supported?)
                                                            {"datetime" {:$dateTrunc {:date "$datetime"
-                                                                                             :startOfWeek "sunday"
-                                                                                             :timezone tz
-                                                                                             :unit "month"}}
+                                                                                     :startOfWeek "sunday"
+                                                                                     :timezone tz
+                                                                                     :unit "month"}}
                                                             "datetime_2" {:$dateTrunc {:date "$datetime"
-                                                                                           :startOfWeek "sunday"
-                                                                                           :timezone tz
-                                                                                           :unit "day"}}}
+                                                                                       :startOfWeek "sunday"
+                                                                                       :timezone tz
+                                                                                       :unit "day"}}}
                                                            {"datetime" {:$let {:vars {:parts {:$dateToParts {:date "$datetime"
-                                                                                                                     :timezone tz}}}
-                                                                                     :in   {:$dateFromParts {:year  "$$parts.year"
-                                                                                                             :month "$$parts.month"
-                                                                                                             :timezone tz}}}}
+                                                                                                             :timezone tz}}}
+                                                                               :in   {:$dateFromParts {:year  "$$parts.year"
+                                                                                                       :month "$$parts.month"
+                                                                                                       :timezone tz}}}}
                                                             "datetime_2"   {:$let {:vars {:parts {:$dateToParts {:date "$datetime"
-                                                                                                                     :timezone tz}}}
-                                                                                       :in   {:$dateFromParts {:year  "$$parts.year"
-                                                                                                               :month "$$parts.month"
-                                                                                                               :day   "$$parts.day"
-                                                                                                               :timezone tz}}}}})
+                                                                                                                 :timezone tz}}}
+                                                                                   :in   {:$dateFromParts {:year  "$$parts.year"
+                                                                                                           :month "$$parts.month"
+                                                                                                           :day   "$$parts.day"
+                                                                                                           :timezone tz}}}}})
                                                  "count" {"$sum" 1}}}
                                       {"$sort" {"_id" 1}}
                                       {"$project" {"_id"              false
@@ -219,9 +219,9 @@
                   :collection  "tips",
                   :mbql?       true}
                  (qp/compile
-                  (mt/mbql-query tips
-                    {:aggregation [[:count]]
-                     :filter      [:= $tips.source.username "tupac"]}))))
+                   (mt/mbql-query tips
+                     {:aggregation [[:count]]
+                      :filter      [:= $tips.source.username "tupac"]}))))
 
           (is (= {:projections ["source.username" "count"]
                   :query       [{"$group" {"_id"   {"source" {"username" "$source.username"}}
@@ -232,16 +232,16 @@
                   :collection  "tips"
                   :mbql?       true}
                  (qp/compile
-                  (mt/mbql-query tips
-                    {:aggregation [[:count]]
-                     :breakout    [$tips.source.username]}))))
+                   (mt/mbql-query tips
+                     {:aggregation [[:count]]
+                      :breakout    [$tips.source.username]}))))
           (testing "Parent fields are removed from projections when child fields are included (#19135)"
             (let [table       (t2/select-one Table :db_id (mt/id))
                   fields      (t2/select Field :table_id (u/the-id table))
                   projections (-> (mongo.qp/mbql->native
-                                    (mt/mbql-query tips {:fields (mapv (fn [f]
-                                                                         [:field (u/the-id f) nil])
-                                                                       fields)}))
+                                   (mt/mbql-query tips {:fields (mapv (fn [f]
+                                                                        [:field (u/the-id f) nil])
+                                                                      fields)}))
                                   :projections
                                   set)]
               ;; the "source", "url", and "venue" fields should NOT have been chosen as projections, since they have
@@ -261,10 +261,10 @@
               :collection  "venues"
               :mbql?       true}
              (qp/compile
-              (mt/mbql-query venues
-                {:aggregation [[:distinct $name]
-                               [:distinct $price]]
-                 :limit       5})))))))
+               (mt/mbql-query venues
+                 {:aggregation [[:distinct $name]
+                                [:distinct $price]]
+                  :limit       5})))))))
 
 (defn- extract-projections [projections q]
   (select-keys (get-in q [:query 0 "$project"]) projections))
@@ -274,61 +274,61 @@
     (testing "Should be able to deal with expressions (#9382 is for BQ but we're doing it for mongo too)"
       (is (= {"bob" "$latitude", "cobb" "$name"}
              (extract-projections
-               ["bob" "cobb"]
-               (qp/compile
-                 (mt/mbql-query venues
-                                {:fields      [[:expression "bob"] [:expression "cobb"]]
-                                 :expressions {:bob   [:field $latitude nil]
-                                               :cobb [:field $name nil]}
-                                 :limit       5}))))))
+              ["bob" "cobb"]
+              (qp/compile
+                (mt/mbql-query venues
+                  {:fields      [[:expression "bob"] [:expression "cobb"]]
+                   :expressions {:bob   [:field $latitude nil]
+                                 :cobb [:field $name nil]}
+                   :limit       5}))))))
     (testing "Should be able to deal with 1-arity functions"
       (is (= {"cobb" {"$toUpper" "$name"},
               "bob" {"$abs" "$latitude"}}
              (extract-projections
-               ["bob" "cobb"]
-               (qp/compile
-                 (mt/mbql-query venues
-                                {:fields      [[:expression "bob"] [:expression "cobb"]]
-                                 :expressions {:bob   [:abs $latitude]
-                                               :cobb [:upper $name]}
-                                 :limit       5}))))))
+              ["bob" "cobb"]
+              (qp/compile
+                (mt/mbql-query venues
+                  {:fields      [[:expression "bob"] [:expression "cobb"]]
+                   :expressions {:bob   [:abs $latitude]
+                                 :cobb [:upper $name]}
+                   :limit       5}))))))
     (testing "Should be able to deal with 2-arity functions"
       (is (= {"bob" {"$add" ["$price" 300]}}
              (extract-projections
-               ["bob"]
-               (qp/compile
-                 (mt/mbql-query venues
-                                {:fields      [[:expression "bob"]]
-                                 :expressions {:bob   [:+ $price 300]}
-                                 :limit       5}))))))
+              ["bob"]
+              (qp/compile
+                (mt/mbql-query venues
+                  {:fields      [[:expression "bob"]]
+                   :expressions {:bob   [:+ $price 300]}
+                   :limit       5}))))))
     (testing "Should be able to deal with a little indirection"
       (is (= {"bob" {"$abs" {"$subtract" ["$price" 300]}}}
              (extract-projections
-               ["bob"]
-               (qp/compile
-                 (mt/mbql-query venues
-                                {:fields      [[:expression "bob"]]
-                                 :expressions {:bob   [:abs [:- $price 300]]}
-                                 :limit       5}))))))
+              ["bob"]
+              (qp/compile
+                (mt/mbql-query venues
+                  {:fields      [[:expression "bob"]]
+                   :expressions {:bob   [:abs [:- $price 300]]}
+                   :limit       5}))))))
     (testing "Should be able to deal with a little indirection, with an expression in"
       (is (= {"bob" {"$abs" "$latitude"},
               "cobb" {"$ceil" {"$abs" "$latitude"}}}
              (extract-projections
-               ["bob" "cobb"]
-               (qp/compile
-                 (mt/mbql-query venues
-                                {:fields      [[:expression "bob"] [:expression "cobb"]]
-                                 :expressions {:bob  [:abs $latitude]
-                                               :cobb [:ceil [:expression "bob"]]}
-                                 :limit       5}))))))
+              ["bob" "cobb"]
+              (qp/compile
+                (mt/mbql-query venues
+                  {:fields      [[:expression "bob"] [:expression "cobb"]]
+                   :expressions {:bob  [:abs $latitude]
+                                 :cobb [:ceil [:expression "bob"]]}
+                   :limit       5}))))))
     (testing "Should be able to deal with coalescing"
       (is (= {"bob" {"$ifNull" ["$latitude" "$price"]}}
              (extract-projections
-               ["bob"]
-               (qp/compile
-                 (mt/mbql-query venues
-                                {:expressions {:bob [:coalesce [:field $latitude nil] [:field $price nil]]}
-                                 :limit       5}))))))
+              ["bob"]
+              (qp/compile
+                (mt/mbql-query venues
+                  {:expressions {:bob [:coalesce [:field $latitude nil] [:field $price nil]]}
+                   :limit       5}))))))
 
     (testing "Should be able to deal with group by expressions"
       (is (= {:collection "venues",
@@ -339,9 +339,9 @@
                       {"$project" {"_id" false, "asdf" "$_id.asdf", "count" true}}]}
              (qp/compile
                (mt/mbql-query venues
-                              {:expressions {:asdf ["field" $price nil]},
-                               :aggregation [["count"]],
-                               :breakout [["expression" "asdf"]]})))))))
+                 {:expressions {:asdf ["field" $price nil]},
+                  :aggregation [["count"]],
+                  :breakout [["expression" "asdf"]]})))))))
 
 (deftest compile-time-interval-test
   (mt/test-driver :mongo
@@ -373,9 +373,9 @@
                   {"$limit" 1048575}]
                  (:query
                   (qp/compile
-                   (mt/mbql-query checkins
-                     {:filter   [:time-interval $date -4 :month]
-                      :breakout [!day.date]}))))))))))
+                    (mt/mbql-query checkins
+                      {:filter   [:time-interval $date -4 :month]
+                       :breakout [!day.date]}))))))))))
 
 (deftest temporal-arithmetic-test
   (testing "Mixed integer and date arithmetic works with Mongo 5+"
@@ -428,13 +428,13 @@
                                  (qp.datetime-test/datetime-math op #t "2008-06-20 00:00:00" 2 unit)
                                  (qp.datetime-test/datetime-math op #t "2012-11-21 00:00:00" 2 unit)
                                  (qp.datetime-test/datetime-math op #t "2012-11-21 00:00:00" 2 unit)]
-                       :query   {:expressions {"expr" [op [:field field-id nil] 2 unit]}
-                                 :fields      [[:expression "expr"]]}}
+                      :query   {:expressions {"expr" [op [:field field-id nil] 2 unit]}
+                                :fields      [[:expression "expr"]]}}
                      {:expected (into [] (frequencies
-                                           [(qp.datetime-test/datetime-math op #t "2004-03-19 00:00:00" 2 unit)
-                                            (qp.datetime-test/datetime-math op #t "2008-06-20 00:00:00" 2 unit)
-                                            (qp.datetime-test/datetime-math op #t "2012-11-21 00:00:00" 2 unit)
-                                            (qp.datetime-test/datetime-math op #t "2012-11-21 00:00:00" 2 unit)]))
+                                          [(qp.datetime-test/datetime-math op #t "2004-03-19 00:00:00" 2 unit)
+                                           (qp.datetime-test/datetime-math op #t "2008-06-20 00:00:00" 2 unit)
+                                           (qp.datetime-test/datetime-math op #t "2012-11-21 00:00:00" 2 unit)
+                                           (qp.datetime-test/datetime-math op #t "2012-11-21 00:00:00" 2 unit)]))
                       :query    {:expressions {"expr" [op [:field field-id nil] 2 unit]}
                                  :aggregation [[:count]]
                                  :breakout    [[:expression "expr"]]}}]]

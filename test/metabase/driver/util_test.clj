@@ -201,20 +201,20 @@
              :required    true}
             {:name "last-prop"}]
            (driver.u/connection-props-server->client
-             nil
-             [{:name "first-prop"}
-              {:name         "my-schema-filters"
-               :type         :schema-filters
-               :display-name "Schemas"}
-              {:name "last-prop"}]))))
+            nil
+            [{:name "first-prop"}
+             {:name         "my-schema-filters"
+              :type         :schema-filters
+              :display-name "Schemas"}
+             {:name "last-prop"}]))))
   (testing "connection-props-server->client detects cycles in visible-if dependencies"
     (let [fake-props [{:name "prop-a", :visible-if {:prop-c "something"}}
                       {:name "prop-b", :visible-if {:prop-a "something else"}}
                       {:name "prop-c", :visible-if {:prop-b "something else entirely"}}]]
       (is (thrown-with-msg?
-            clojure.lang.ExceptionInfo
-            #"Cycle detected"
-            (driver.u/connection-props-server->client :fake-cyclic-driver fake-props))))))
+           clojure.lang.ExceptionInfo
+           #"Cycle detected"
+           (driver.u/connection-props-server->client :fake-cyclic-driver fake-props))))))
 
 (deftest connection-details-client->server-test
   (testing "db-details-client->server works as expected"

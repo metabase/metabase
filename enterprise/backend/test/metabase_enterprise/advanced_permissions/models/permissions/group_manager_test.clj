@@ -13,9 +13,9 @@
   (testing "set-user-group-memberships!"
     (testing "should be able to add user to a new group"
       (mt/with-user-in-groups
-        [group-1 {:name "Group 1"}
-         group-2 {:name "Group 2"}
-         user    [group-1]]
+       [group-1 {:name "Group 1"}
+        group-2 {:name "Group 2"}
+        user    [group-1]]
         (mt/with-test-user :crowberto
           (gm/set-user-group-memberships! user [{:id               (:id (perms-group/all-users))
                                                  :is_group_manager false}
@@ -34,9 +34,9 @@
 
     (testing "should be able to remove User from an existing groups"
       (mt/with-user-in-groups
-        [group-1 {:name "Group 1"}
-         group-2 {:name "Group 2"}
-         user    [group-1 group-2]]
+       [group-1 {:name "Group 1"}
+        group-2 {:name "Group 2"}
+        user    [group-1 group-2]]
         (mt/with-test-user :crowberto
           (gm/set-user-group-memberships! user [{:id               (:id (perms-group/all-users))
                                                  :is_group_manager false}
@@ -50,9 +50,9 @@
 
     (testing "should be able to add and remove users' groups at the same time"
       (mt/with-user-in-groups
-        [group-1 {:name "Group 1"}
-         group-2 {:name "Group 2"}
-         user    [group-1]]
+       [group-1 {:name "Group 1"}
+        group-2 {:name "Group 2"}
+        user    [group-1]]
         (mt/with-test-user :crowberto
           (gm/set-user-group-memberships! user [{:id               (:id (perms-group/all-users))
                                                  :is_group_manager false}
@@ -66,8 +66,8 @@
 
     (testing "Should be able to promote an existing user to Group manger"
       (mt/with-user-in-groups
-        [group {:name "Group"}
-         user  [group]]
+       [group {:name "Group"}
+        user  [group]]
         (mt/with-test-user :crowberto
           (gm/set-user-group-memberships! user [{:id               (:id (perms-group/all-users))
                                                  :is_group_manager false}
@@ -81,8 +81,8 @@
 
     (testing "No-op should be fine"
       (mt/with-user-in-groups
-        [group {:name "Group"}
-         user  [group]]
+       [group {:name "Group"}
+        user  [group]]
         (mt/with-test-user :crowberto
           (gm/set-user-group-memberships! user [{:id               (:id (perms-group/all-users))
                                                  :is_group_manager false}

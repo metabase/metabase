@@ -76,7 +76,7 @@
 (defmethod default-session-cookie-attributes :default
   [session-type _]
   (throw (ex-info (str (tru "Invalid session-type."))
-           {:session-type session-type})))
+                  {:session-type session-type})))
 
 (defmethod default-session-cookie-attributes :normal
   [_ request]
@@ -216,7 +216,6 @@
                       request)]
       (handler request respond raise))))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             wrap-current-user-info                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -284,7 +283,6 @@
   (fn [request respond raise]
     (handler (merge-current-user-info request) respond raise)))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               bind-current-user                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -340,7 +338,7 @@
   [current-user-id]
   (when current-user-id
     (t2/select-one [User [:id :metabase-user-id] [:is_superuser :is-superuser?] [:locale :user-locale] :settings]
-      :id current-user-id)))
+                   :id current-user-id)))
 
 (defmacro with-current-user
   "Execute code in body with User with `current-user-id` bound as the current user. (This is not used in the middleware
@@ -350,7 +348,6 @@
   `(do-with-current-user
     (with-current-user-fetch-user-for-id ~current-user-id)
     (fn [] ~@body)))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              reset-cookie-timeout                                             |

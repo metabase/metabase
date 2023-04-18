@@ -121,7 +121,7 @@
   :type       ::uuid-nonce)
 
 (defn- normalize-site-url [^String s]
-  (let [ ;; remove trailing slashes
+  (let [;; remove trailing slashes
         s (str/replace s #"/$" "")
         ;; add protocol if missing
         s (if (str/starts-with? s "http")
@@ -156,8 +156,8 @@
 
 (defsetting site-locale
   (deferred-tru
-    (str "The default language for all users across the Metabase UI, system emails, pulses, and alerts. "
-         "Users can individually override this default language from their own account settings."))
+   (str "The default language for all users across the Metabase UI, system emails, pulses, and alerts. "
+        "Users can individually override this default language from their own account settings."))
   :default    "en"
   :visibility :public
   :setter     (fn [new-value]
@@ -328,10 +328,10 @@
   :default    "Lato"
   :enabled?   premium-features/enable-whitelabeling?
   :setter (fn [new-value]
-              (when new-value
-                (when-not (u.fonts/available-font? new-value)
-                  (throw (ex-info (tru "Invalid font {0}" (pr-str new-value)) {:status-code 400}))))
-              (setting/set-value-of-type! :string :application-font new-value)))
+            (when new-value
+              (when-not (u.fonts/available-font? new-value)
+                (throw (ex-info (tru "Invalid font {0}" (pr-str new-value)) {:status-code 400}))))
+            (setting/set-value-of-type! :string :application-font new-value)))
 
 (defsetting application-font-files
   (deferred-tru "Tell us where to find the file for each font weight. You don’t need to include all of them, but it’ll look better if you do.")
@@ -393,8 +393,8 @@
 
 (defsetting breakout-bins-num
   (deferred-tru
-    (str "When using the default binning strategy and a number of bins is not provided, "
-         "this number will be used as the default."))
+   (str "When using the default binning strategy and a number of bins is not provided, "
+        "this number will be used as the default."))
   :type :integer
   :default 8)
 
@@ -427,8 +427,8 @@
 
 (defsetting show-homepage-xrays
   (deferred-tru
-    (str "Whether or not to display x-ray suggestions on the homepage. They will also be hidden if any dashboards are "
-         "pinned. Admins might hide this to direct users to better content than raw data"))
+   (str "Whether or not to display x-ray suggestions on the homepage. They will also be hidden if any dashboards are "
+        "pinned. Admins might hide this to direct users to better content than raw data"))
   :type       :boolean
   :default    true
   :visibility :authenticated)
@@ -535,9 +535,9 @@
 
 (defsetting start-of-week
   (deferred-tru
-    (str "This will affect things like grouping by week or filtering in GUI queries. "
-         "It won''t affect most SQL queries, "
-         "although it is used to set the WEEK_START session variable in Snowflake."))
+   (str "This will affect things like grouping by week or filtering in GUI queries. "
+        "It won''t affect most SQL queries, "
+        "although it is used to set the WEEK_START session variable in Snowflake."))
   :visibility :public
   :type       :keyword
   :default    :sunday
@@ -589,8 +589,8 @@
 
 (defsetting show-database-syncing-modal
   (deferred-tru
-    (str "Whether an introductory modal should be shown after the next database connection is added. "
-         "Defaults to false if any non-default database has already finished syncing for this instance."))
+   (str "Whether an introductory modal should be shown after the next database connection is added. "
+        "Defaults to false if any non-default database has already finished syncing for this instance."))
   :visibility :admin
   :type       :boolean
   :getter     (fn []

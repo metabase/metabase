@@ -27,7 +27,6 @@
   (perms/delete-related-permissions! group-id
                                      (apply (partial perms/feature-perms-path perm-type perm-value) path-components)))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          Download permissions                                                  |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -117,7 +116,6 @@
     ;; non-native download permissions.
     (perms/update-native-download-permissions! group-id db-id)))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          Data model permissions                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -173,7 +171,6 @@
       (when (map? schemas)
         (doseq [[schema new-schema-perms] (seq schemas)]
           (update-schema-data-model-permissions! group-id db-id schema new-schema-perms))))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          Data model permissions                                                |

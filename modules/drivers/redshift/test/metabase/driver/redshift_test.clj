@@ -195,22 +195,22 @@
     (testing "Native query parameters should work with filters. (#12984)"
       (is (= [[693 "2015-12-29T00:00:00Z" 10 90]]
              (mt/rows
-               (qp/process-query
-                {:database   (mt/id)
-                 :type       :native
-                 :native     {:query         (str "select * "
-                                                  (format "from \"%s\".test_data_checkins " (redshift.test/unique-session-schema))
-                                                  "where {{date}} "
-                                                  "order by date desc "
-                                                  "limit 1;")
-                              :template-tags {"date" {:name         "date"
-                                                      :display-name "date"
-                                                      :type         :dimension
-                                                      :widget-type  :date/all-options
-                                                      :dimension    [:field (mt/id :checkins :date) nil]}}}
-                 :parameters [{:type   :date/all-options
-                               :target [:dimension [:template-tag "date"]]
-                               :value  "past30years"}]})))))))
+              (qp/process-query
+               {:database   (mt/id)
+                :type       :native
+                :native     {:query         (str "select * "
+                                                 (format "from \"%s\".test_data_checkins " (redshift.test/unique-session-schema))
+                                                 "where {{date}} "
+                                                 "order by date desc "
+                                                 "limit 1;")
+                             :template-tags {"date" {:name         "date"
+                                                     :display-name "date"
+                                                     :type         :dimension
+                                                     :widget-type  :date/all-options
+                                                     :dimension    [:field (mt/id :checkins :date) nil]}}}
+                :parameters [{:type   :date/all-options
+                              :target [:dimension [:template-tag "date"]]
+                              :value  "past30years"}]})))))))
 
 (defn- execute! [format-string & args]
   (let [sql  (apply format format-string args)
@@ -381,5 +381,5 @@
     (testing "Redshift Interval values should behave the same as postgres (#19501)"
       (is (= ["0 years 0 mons 5 days 0 hours 0 mins 0.0 secs"]
              (mt/first-row
-               (qp/process-query
-                 (mt/native-query {:query "select interval '5 days'"}))))))))
+              (qp/process-query
+               (mt/native-query {:query "select interval '5 days'"}))))))))

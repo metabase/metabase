@@ -15,7 +15,7 @@
                   (lib/aggregate (lib/sum (lib/field (meta/id :venues :price)))))
         ;; wrong arity: there's a bug in our Kondo config, see https://metaboat.slack.com/archives/C04DN5VRQM6/p1679022185079739?thread_ts=1679022025.317059&cid=C04DN5VRQM6
         query (-> #_{:clj-kondo/ignore [:invalid-arity]}
-                  (lib/filter query (lib/= (lib/field (meta/id :venues :name)) "Toucannery"))
+               (lib/filter query (lib/= (lib/field (meta/id :venues :name)) "Toucannery"))
                   (lib/breakout (lib/field (meta/id :venues :category-id)))
                   (lib/order-by (lib/field (meta/id :venues :id)))
                   (lib/limit 100))]

@@ -248,7 +248,6 @@
         (is (= false
                (perms/valid-path-format? path)))))))
 
-
 ;;; -------------------------------------------------- data-perms-path ---------------------------------------------------
 
 (deftest data-perms-path-test
@@ -317,7 +316,6 @@
         (is (= (format "/db/1/schema/%s/table/2/" expected-escaped)
                (perms/data-perms-path {:id 1} schema-name {:id 2})))))))
 
-
 ;;; ---------------------------------- Generating permissions paths for Collections ----------------------------------
 
 (deftest collection-path-test
@@ -348,7 +346,6 @@
              Exception
              (f input)))))))
 
-
 ;;; ------------------------------------------- is-permissions-for-object? -------------------------------------------
 
 (deftest is-permissions-for-object?-test
@@ -373,7 +370,6 @@
       (is (= expected
              (perms/is-permissions-for-object? perms-path "/db/1/schema/PUBLIC/table/1/"))))))
 
-
 ;;; --------------------------------------- is-partial-permissions-for-object? ---------------------------------------
 
 (deftest is-partial-permissions-for-object?-test
@@ -397,7 +393,6 @@
     (testing (pr-str (list 'is-partial-permissions-for-object? perms-path "/db/1/"))
       (is (= expected
              (perms/is-partial-permissions-for-object? perms-path "/db/1/"))))))
-
 
 ;;; ---------------------------------------------- is-permissions-set? -----------------------------------------------
 
@@ -446,7 +441,6 @@
             (is (= false
                    (is-permissions-set? perms-set)))))))))
 
-
 ;;; ------------------------------------------- set-has-full-permissions? --------------------------------------------
 
 (deftest set-has-full-permissions?-test
@@ -472,7 +466,6 @@
     (testing (pr-str (list 'set-has-full-permissions? perms path))
       (is (= expected
              (perms/set-has-full-permissions? perms path))))))
-
 
 ;;; ------------------------------------------ set-has-partial-permissions? ------------------------------------------
 
@@ -505,7 +498,6 @@
     (testing (pr-str (list 'set-has-partial-permissions? perms path))
       (is (= expected
              (perms/set-has-partial-permissions? perms path))))))
-
 
 ;;; -------------------------------------- set-has-application-permission-of-type? ---------------------------------------
 
@@ -549,7 +541,6 @@
     (testing (pr-str (list 'set-has-full-permissions-for-set? perms paths))
       (is (= expected
              (perms/set-has-full-permissions-for-set? perms paths))))))
-
 
 ;;; -------------------------------------- set-has-partial-permissions-for-set? --------------------------------------
 
@@ -601,7 +592,6 @@
       (is (= expected
              (perms/set-has-partial-permissions-for-set? perms paths))))))
 
-
 ;;; ------------------------------------ perms-objects-set-for-parent-collection -------------------------------------
 
 (deftest perms-objects-set-for-parent-collection-test
@@ -629,7 +619,6 @@
           (is (thrown?
                Exception
                (apply perms/perms-objects-set-for-parent-collection input))))))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            Permissions Graph Tests                                             |
@@ -847,8 +836,8 @@
   (mt/with-temp PermissionsGroup [{group-id :id}]
     (letfn [(perms []
               (t2/select-fn-set :object Permissions
-                               {:where [:and [:= :group_id group-id]
-                                             [:like :object "/application/%"]]}))]
+                                {:where [:and [:= :group_id group-id]
+                                         [:like :object "/application/%"]]}))]
       (is (= nil (perms)))
       (doseq [[perm-type perm-path] [[:subscription "/application/subscription/"]
                                      [:monitoring "/application/monitoring/"]
@@ -873,7 +862,6 @@
 
   (is (= :query-v2        (perms/classify-path "/query/db/0/native/")))
   (is (= :data-v2         (perms/classify-path "/data/db/3/schema/something/table/3/"))))
-
 
 (deftest data-permissions-classify-path
   (is (= :data (perms/classify-path "/db/3/")))
@@ -913,24 +901,23 @@
     (is (= v2-paths (mapcat #'perms/->v2-path v2-paths)))
     (let [w (partial mapcat #'perms/->v2-path)]
       (is (= v2-paths (->
-                                    v1-paths
-                          w w                       w w;
-                          w w                       w w;
-                          w w w w w w w w w w w w w w w;
-                          w w w w w w w w w w w w w w w;
-                          w w w                   w w w;
-                          w w      w         w      w w
-                          w w     w w       w w     w w
-                          w w           w           w w
-                          w w           w           w w
-                          w w w w w w w w w w w w w w w;
-                              w w w w w w w w w w w;;;;
-                              w w w w w w w w w w w;;
-                                  w w w w w w w;
-                                      w   w;
-                                      w   w
-                                    w w   w w))))));
-
+                       v1-paths
+                       w w                       w w;
+                       w w                       w w;
+                       w w w w w w w w w w w w w w w;
+                       w w w w w w w w w w w w w w w;
+                       w w w                   w w w;
+                       w w      w         w      w w
+                       w w     w w       w w     w w
+                       w w           w           w w
+                       w w           w           w w
+                       w w w w w w w w w w w w w w w;
+                       w w w w w w w w w w w;;;;
+                       w w w w w w w w w w w;;
+                       w w w w w w w;
+                       w   w;
+                       w   w
+                       w w   w w))))));
 
 (deftest data-permissions-v2-migration-move-test
   (testing "move admin"

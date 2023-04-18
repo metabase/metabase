@@ -17,10 +17,10 @@
 (deftest ^:parallel default-map-options-test
   (testing `lib.options/options
     (is (= nil
-             (lib.options/options {:lib/type :map})))
+           (lib.options/options {:lib/type :map})))
     (is (= {:x 1}
-             (lib.options/options {:lib/type :map, :lib/options {:x 1}}))))
+           (lib.options/options {:lib/type :map, :lib/options {:x 1}}))))
   (testing `lib.options/with-options
     (is (= {:lib/type :map, :lib/options {:x 2}}
-             (lib.options/with-options {:lib/type :map, :lib/options {:x 1}} {:x 2})
-             (lib.options/with-options {:lib/type :map, :lib/options {:x 1, :y 2}} {:x 2})))))
+           (lib.options/with-options {:lib/type :map, :lib/options {:x 1}} {:x 2})
+           (lib.options/with-options {:lib/type :map, :lib/options {:x 1, :y 2}} {:x 2})))))

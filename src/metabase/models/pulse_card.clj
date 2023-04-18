@@ -11,8 +11,8 @@
 (models/defmodel PulseCard :pulse_card)
 
 (mi/define-methods
- PulseCard
- {:properties (constantly {::mi/entity-id true})})
+  PulseCard
+  {:properties (constantly {::mi/entity-id true})})
 
 (defmethod serdes/hash-fields PulseCard
   [_pulse-card]
@@ -42,13 +42,13 @@
   values if they're not provided."
   [new-pulse-cards :- [NewPulseCard]]
   (t2/insert! PulseCard
-    (for [{:keys [card_id pulse_id dashboard_card_id position include_csv include_xls]} new-pulse-cards]
-      {:card_id           card_id
-       :pulse_id          pulse_id
-       :dashboard_card_id dashboard_card_id
-       :position          (u/or-with some? position (next-position-for pulse_id))
-       :include_csv       (u/or-with some? include_csv false)
-       :include_xls       (u/or-with some? include_xls false)})))
+              (for [{:keys [card_id pulse_id dashboard_card_id position include_csv include_xls]} new-pulse-cards]
+                {:card_id           card_id
+                 :pulse_id          pulse_id
+                 :dashboard_card_id dashboard_card_id
+                 :position          (u/or-with some? position (next-position-for pulse_id))
+                 :include_csv       (u/or-with some? include_csv false)
+                 :include_xls       (u/or-with some? include_xls false)})))
 
 ; ----------------------------------------------------- Serialization -------------------------------------------------
 

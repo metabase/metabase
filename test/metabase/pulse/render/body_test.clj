@@ -637,7 +637,7 @@
                (map :class)
                (mapcat #(str/split % #" "))
                (filter #{"visx-axis-left" "visx-axis-right"}))]
-   (into #{} xf nodes)))
+    (into #{} xf nodes)))
 
 (deftest reasonable-split-axes-test
   (let [rows [["Category" "Series A" "Series B"]

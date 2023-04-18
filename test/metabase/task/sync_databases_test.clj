@@ -87,10 +87,10 @@
 (deftest unschedule-deleted-database-test
   (is (= [(update sync-job :triggers empty)
           (update fv-job   :triggers empty)]
-        (with-scheduler-setup
-          (mt/with-temp Database [database {:engine :postgres}]
-            (t2/delete! Database :id (u/the-id database))
-            (current-tasks-for-db database))))))
+         (with-scheduler-setup
+           (mt/with-temp Database [database {:engine :postgres}]
+             (t2/delete! Database :id (u/the-id database))
+             (current-tasks-for-db database))))))
 
 ;; Check that changing the schedule column(s) for a DB properly updates the scheduled tasks
 (deftest schedule-change-test
@@ -173,25 +173,25 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 #_(defn- check-if-sync-processes-ran-for-db {:style/indent 0} [waits db-info]
-   (let [sync-db-metadata-ran?    (promise)
-         analyze-db-ran?          (promise)
-         update-field-values-ran? (promise)]
-     (with-redefs [metabase.sync.sync-metadata/sync-db-metadata!   (fn [& _] (deliver sync-db-metadata-ran? true))
-                   metabase.sync.analyze/analyze-db!               (fn [& _] (deliver analyze-db-ran? true))
-                   metabase.sync.field-values/update-field-values! (fn [& _] (deliver update-field-values-ran? true))]
-       (with-scheduler-setup
-         (mt/with-temp Database [database db-info]
+    (let [sync-db-metadata-ran?    (promise)
+          analyze-db-ran?          (promise)
+          update-field-values-ran? (promise)]
+      (with-redefs [metabase.sync.sync-metadata/sync-db-metadata!   (fn [& _] (deliver sync-db-metadata-ran? true))
+                    metabase.sync.analyze/analyze-db!               (fn [& _] (deliver analyze-db-ran? true))
+                    metabase.sync.field-values/update-field-values! (fn [& _] (deliver update-field-values-ran? true))]
+        (with-scheduler-setup
+          (mt/with-temp Database [database db-info]
            ;; deref the promises in parallel so they all get sufficient time to run.
-           (into {} (pmap (fn [[k promis]]
-                            (let [wait-time-ms (or (get waits k)
-                                                   (throw (ex-info (str "Don't know how long to wait for " k) {})))]
-                              [k (deref promis wait-time-ms false)]))
-                          {:ran-sync?                sync-db-metadata-ran?
-                           :ran-analyze?             analyze-db-ran?
-                           :ran-update-field-values? update-field-values-ran?})))))))
+            (into {} (pmap (fn [[k promis]]
+                             (let [wait-time-ms (or (get waits k)
+                                                    (throw (ex-info (str "Don't know how long to wait for " k) {})))]
+                               [k (deref promis wait-time-ms false)]))
+                           {:ran-sync?                sync-db-metadata-ran?
+                            :ran-analyze?             analyze-db-ran?
+                            :ran-update-field-values? update-field-values-ran?})))))))
 
 #_(defn- cron-schedule-for-next-year []
-   (format "0 15 10 * * ? %d" (inc (u.date/extract :year))))
+    (format "0 15 10 * * ? %d" (inc (u.date/extract :year))))
 
 ;; this test fails all the time -- disabled for now until I figure out how to fix it - Cam
 #_(deftest check-sync-tasks-run-test

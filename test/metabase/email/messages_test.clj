@@ -64,10 +64,10 @@
 ;; Test that IOException bubbles up
 (deftest throws-exception
   (is (thrown-with-msg?
-        IOException
-        (re-pattern (format "Unable to create temp file in `%s`" (System/getProperty "java.io.tmpdir")))
-        (with-create-temp-failure
-          (#'messages/create-temp-file-or-throw "txt")))))
+       IOException
+       (re-pattern (format "Unable to create temp file in `%s`" (System/getProperty "java.io.tmpdir")))
+       (with-create-temp-failure
+         (#'messages/create-temp-file-or-throw "txt")))))
 
 (deftest alert-schedule-text-test
   (testing "Alert schedules can be described as English strings, with the timezone included"

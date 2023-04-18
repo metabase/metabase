@@ -97,16 +97,16 @@
         (is (= "3.01" (fmt-with-type :type/Decimal 3.010)))
         (is (= "0.25" (fmt-with-type :type/Decimal 0.254)))))
     (testing "Does not throw on nils"
-        (is (nil?
+      (is (nil?
+           ((common/number-formatter {:id 1}
+                                     {::mb.viz/column-settings
+                                      {{::mb.viz/column-id 1}
+                                       {::mb.viz/number-style "percent"}}})
+            nil))))
+    (testing "Does not throw on non-numeric types"
+      (is (= "bob"
              ((common/number-formatter {:id 1}
                                        {::mb.viz/column-settings
                                         {{::mb.viz/column-id 1}
                                          {::mb.viz/number-style "percent"}}})
-              nil))))
-    (testing "Does not throw on non-numeric types"
-        (is (= "bob"
-               ((common/number-formatter {:id 1}
-                                         {::mb.viz/column-settings
-                                          {{::mb.viz/column-id 1}
-                                           {::mb.viz/number-style "percent"}}})
-                "bob"))))))
+              "bob"))))))

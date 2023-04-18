@@ -38,7 +38,6 @@
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           Creating Connection Pools                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -78,7 +77,7 @@
 
 (defmethod data-warehouse-connection-pool-properties :default
   [driver database]
-  { ;; only fetch one new connection at a time, rather than batching fetches (default = 3 at a time). This is done in
+  {;; only fetch one new connection at a time, rather than batching fetches (default = 3 at a time). This is done in
    ;; interest of minimizing memory consumption
    "acquireIncrement"             1
    ;; [From dox] Seconds a Connection can remain pooled but unused before being discarded.
@@ -143,9 +142,9 @@
         spec                (connection-details->spec driver details-with-tunnel)
         properties          (data-warehouse-connection-pool-properties driver database)]
     (merge
-      (connection-pool-spec spec properties)
+     (connection-pool-spec spec properties)
       ;; also capture entries related to ssh tunneling for later use
-      (select-keys spec [:tunnel-enabled :tunnel-session :tunnel-tracker :tunnel-entrance-port :tunnel-entrance-host]))))
+     (select-keys spec [:tunnel-enabled :tunnel-session :tunnel-tracker :tunnel-entrance-port :tunnel-entrance-host]))))
 
 (defn- destroy-pool! [database-id pool-spec]
   (log/debug (u/format-color 'red (trs "Closing old connection pool for database {0} ..." database-id)))
@@ -153,11 +152,11 @@
   (ssh/close-tunnel! pool-spec))
 
 (defonce ^:private ^{:doc "A map of our currently open connection pools, keyed by Database `:id`."}
-  database-id->connection-pool
+ database-id->connection-pool
   (atom {}))
 
 (defonce ^:private ^{:doc "A map of DB details hash values, keyed by Database `:id`."}
-  database-id->jdbc-spec-hash
+ database-id->jdbc-spec-hash
   (atom {}))
 
 (s/defn ^:private jdbc-spec-hash
@@ -204,7 +203,7 @@
 
 (defn- log-jdbc-spec-hash-change-msg! [db-id]
   (log/warn (u/format-color 'yellow (trs "Hash of database {0} details changed; marking pool invalid to reopen it"
-                                          db-id)))
+                                         db-id)))
   nil)
 
 (defn db->pooled-connection-spec
@@ -220,9 +219,9 @@
                             db-or-id-or-spec) ; passed in
                           (t2/select-one [Database :id :engine :details] :id database-id)     ; look up by ID
                           (throw (ex-info (tru "Database {0} does not exist." database-id)
-                                   {:status-code 404
-                                    :type        qp.error-type/invalid-query
-                                    :database-id database-id})))
+                                          {:status-code 404
+                                           :type        qp.error-type/invalid-query
+                                           :database-id database-id})))
           get-fn      (fn [db-id log-invalidation?]
                         (when-let [details (get @database-id->connection-pool db-id)]
                           (cond

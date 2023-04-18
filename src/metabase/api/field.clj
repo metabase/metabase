@@ -42,7 +42,7 @@
   "Does the Current User have segmented query permissions for `table`?"
   [table]
   (perms/set-has-full-permissions? @api/*current-user-permissions-set*
-    (perms/table-segmented-query-path table)))
+                                   (perms/table-segmented-query-path table)))
 
 (defn- throw-if-no-read-or-segmented-perms
   "Validates that the user either has full read permissions for `field` or segmented permissions on the table
@@ -143,13 +143,13 @@
           true)
         (clear-dimension-on-type-change! field (:base_type field) new-semantic-type)
         (t2/update! Field id
-          (u/select-keys-when (assoc body
-                                     :fk_target_field_id (when-not removed-fk? fk-target-field-id)
-                                     :effective_type effective-type
-                                     :coercion_strategy coercion-strategy)
-            :present #{:caveats :description :fk_target_field_id :points_of_interest :semantic_type :visibility_type
-                       :coercion_strategy :effective_type :has_field_values :nfc_path}
-            :non-nil #{:display_name :settings})))))
+                    (u/select-keys-when (assoc body
+                                               :fk_target_field_id (when-not removed-fk? fk-target-field-id)
+                                               :effective_type effective-type
+                                               :coercion_strategy coercion-strategy)
+                      :present #{:caveats :description :fk_target_field_id :points_of_interest :semantic_type :visibility_type
+                                 :coercion_strategy :effective_type :has_field_values :nfc_path}
+                      :non-nil #{:display_name :settings})))))
     ;; return updated field. note the fingerprint on this might be out of date if the task below would replace them
     ;; but that shouldn't matter for the datamodel page
     (u/prog1 (hydrate (t2/select-one Field :id id) :dimensions)
@@ -166,7 +166,6 @@
     [[:count     (metadata-queries/field-count field)]
      [:distincts (metadata-queries/field-distinct-count field)]]))
 
-
 ;;; --------------------------------------------------- Dimensions ---------------------------------------------------
 
 #_{:clj-kondo/ignore [:deprecated-var]}
@@ -180,7 +179,7 @@
   (api/check (or (= dimension-type "internal")
                  (and (= dimension-type "external")
                       human_readable_field_id))
-             [400 "Foreign key based remappings require a human readable field id"])
+    [400 "Foreign key based remappings require a human readable field id"])
   (if-let [dimension (t2/select-one Dimension :field_id id)]
     (t2/update! Dimension (u/the-id dimension)
                 {:type                    dimension-type
@@ -200,7 +199,6 @@
   (api/write-check Field id)
   (t2/delete! Dimension :field_id id)
   api/generic-204-no-content)
-
 
 ;;; -------------------------------------------------- FieldValues ---------------------------------------------------
 
@@ -404,7 +402,6 @@
      (catch Throwable e
        (log/debug e (trs "Error searching field values"))
        nil))))
-
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:id/search/:search-id"

@@ -41,8 +41,8 @@
               :filter      [:= $price 1]})
            (substitute-params
             (mt/mbql-query venues
-             {:aggregation [[:count]]
-              :parameters  [{:name "price", :type :category, :target $price, :value 1}]}))))))
+              {:aggregation [[:count]]
+               :parameters  [{:name "price", :type :category, :target $price, :value 1}]}))))))
 
 (deftest ^:parallel expand-native-top-level-params-test
   (testing "can we expand native params if they are specified at the top level?"
@@ -173,11 +173,11 @@
       (let [card-1-id (:id card-1)
             card-2-id (:id card-2)]
         (is (= (mt/native-query
-                {:query "SELECT COUNT(*) FROM (SELECT 1) AS c1, (SELECT 2) AS c2", :params []})
+                 {:query "SELECT COUNT(*) FROM (SELECT 1) AS c1, (SELECT 2) AS c2", :params []})
                (substitute-params
                 (mt/native-query
-                 {:query         (str "SELECT COUNT(*) FROM {{#" card-1-id "}} AS c1, {{#" card-2-id "}} AS c2")
-                  :template-tags (card-template-tags [card-1-id card-2-id])})))))))
+                  {:query         (str "SELECT COUNT(*) FROM {{#" card-1-id "}} AS c1, {{#" card-2-id "}} AS c2")
+                   :template-tags (card-template-tags [card-1-id card-2-id])})))))))
 
   (testing "multiple CTE queries, referenced in template tags, are correctly substituted"
     (mt/with-temp* [Card [card-1 {:dataset_query (mt/native-query {:query "SELECT 1"})}]
@@ -185,31 +185,31 @@
       (let [card-1-id (:id card-1)
             card-2-id (:id card-2)]
         (is (= (mt/native-query
-                {:query "WITH c1 AS (SELECT 1), c2 AS (SELECT 2) SELECT COUNT(*) FROM c1, c2", :params []})
+                 {:query "WITH c1 AS (SELECT 1), c2 AS (SELECT 2) SELECT COUNT(*) FROM c1, c2", :params []})
                (substitute-params
                 (mt/native-query
-                 {:query         (str "WITH c1 AS {{#" card-1-id "}}, "
-                                      "c2 AS {{#" card-2-id "}} SELECT COUNT(*) FROM c1, c2")
-                  :template-tags (card-template-tags [card-1-id card-2-id])})))))))
+                  {:query         (str "WITH c1 AS {{#" card-1-id "}}, "
+                                       "c2 AS {{#" card-2-id "}} SELECT COUNT(*) FROM c1, c2")
+                   :template-tags (card-template-tags [card-1-id card-2-id])})))))))
 
   (testing "recursive native queries, referenced in template tags, are correctly substituted"
     (mt/with-temp* [Card [card-1 {:dataset_query (mt/native-query {:query "SELECT 1"})}]
                     Card [card-2 {:dataset_query (mt/native-query
-                                                  {:query         (str "SELECT * FROM {{#" (:id card-1) "}} AS c1")
-                                                   :template-tags (card-template-tags [(:id card-1)])})}]]
+                                                   {:query         (str "SELECT * FROM {{#" (:id card-1) "}} AS c1")
+                                                    :template-tags (card-template-tags [(:id card-1)])})}]]
       (let [card-2-id (:id card-2)]
         (is (= (mt/native-query
-                {:query "SELECT COUNT(*) FROM (SELECT * FROM (SELECT 1) AS c1) AS c2", :params []})
+                 {:query "SELECT COUNT(*) FROM (SELECT * FROM (SELECT 1) AS c1) AS c2", :params []})
                (substitute-params
                 (mt/native-query
-                 {:query         (str "SELECT COUNT(*) FROM {{#" card-2-id "}} AS c2")
-                  :template-tags (card-template-tags [card-2-id])})))))))
+                  {:query         (str "SELECT COUNT(*) FROM {{#" card-2-id "}} AS c2")
+                   :template-tags (card-template-tags [card-2-id])})))))))
 
   (testing "recursive native/MBQL queries, referenced in template tags, are correctly substituted"
     (mt/with-temp* [Card [card-1 {:dataset_query (mt/mbql-query venues)}]
                     Card [card-2 {:dataset_query (mt/native-query
-                                                  {:query         (str "SELECT * FROM {{#" (:id card-1) "}} AS c1")
-                                                   :template-tags (card-template-tags [(:id card-1)])})}]]
+                                                   {:query         (str "SELECT * FROM {{#" (:id card-1) "}} AS c1")
+                                                    :template-tags (card-template-tags [(:id card-1)])})}]]
       (let [card-2-id       (:id card-2)
             card-1-subquery (str "SELECT "
                                  "\"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\", "
@@ -221,37 +221,37 @@
                                  "FROM \"PUBLIC\".\"VENUES\" "
                                  "LIMIT 1048575")]
         (is (= (mt/native-query
-                {:query (str "SELECT COUNT(*) FROM (SELECT * FROM (" card-1-subquery ") AS c1) AS c2") :params []})
+                 {:query (str "SELECT COUNT(*) FROM (SELECT * FROM (" card-1-subquery ") AS c1) AS c2") :params []})
                (substitute-params
                 (mt/native-query
-                 {:query         (str "SELECT COUNT(*) FROM {{#" card-2-id "}} AS c2")
-                  :template-tags (card-template-tags [card-2-id])}))))))))
+                  {:query         (str "SELECT COUNT(*) FROM {{#" card-2-id "}} AS c2")
+                   :template-tags (card-template-tags [card-2-id])}))))))))
 
 (deftest referencing-cards-with-parameters-test
   (testing "referencing card with parameter and default value substitutes correctly"
     (mt/with-temp Card [param-card {:dataset_query (mt/native-query
-                                                    {:query "SELECT {{x}}"
-                                                     :template-tags {"x"
-                                                                     {:id "x", :name "x", :display-name "Number x",
-                                                                      :type :number, :default "1", :required true}}})}]
+                                                     {:query "SELECT {{x}}"
+                                                      :template-tags {"x"
+                                                                      {:id "x", :name "x", :display-name "Number x",
+                                                                       :type :number, :default "1", :required true}}})}]
       (is (= (mt/native-query
-              {:query "SELECT * FROM (SELECT 1) AS x", :params []})
+               {:query "SELECT * FROM (SELECT 1) AS x", :params []})
              (substitute-params
               (mt/native-query
-               {:query         (str "SELECT * FROM {{#" (:id param-card) "}} AS x")
-                :template-tags (card-template-tags [(:id param-card)])}))))))
+                {:query         (str "SELECT * FROM {{#" (:id param-card) "}} AS x")
+                 :template-tags (card-template-tags [(:id param-card)])}))))))
 
   (testing "referencing card with parameter and NO default value, fails substitution"
     (mt/with-temp Card [param-card {:dataset_query (mt/native-query
-                                                    {:query "SELECT {{x}}"
-                                                     :template-tags {"x"
-                                                                     {:id "x", :name "x", :display-name "Number x",
-                                                                      :type :number, :required false}}})}]
+                                                     {:query "SELECT {{x}}"
+                                                      :template-tags {"x"
+                                                                      {:id "x", :name "x", :display-name "Number x",
+                                                                       :type :number, :required false}}})}]
       (is (thrown? ExceptionInfo
-            (substitute-params
-             (mt/native-query
-              {:query         (str "SELECT * FROM {{#" (:id param-card) "}} AS x")
-               :template-tags (card-template-tags [(:id param-card)])})))))))
+                   (substitute-params
+                    (mt/native-query
+                      {:query         (str "SELECT * FROM {{#" (:id param-card) "}} AS x")
+                       :template-tags (card-template-tags [(:id param-card)])})))))))
 
 (defn- snippet-template-tags
   [snippet-name->id]

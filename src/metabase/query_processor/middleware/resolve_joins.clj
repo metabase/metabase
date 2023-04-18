@@ -53,7 +53,6 @@
   [joins :- Joins]
   (qp.store/fetch-and-store-tables! (remove nil? (map :source-table joins))))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             :joins Transformations                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -80,9 +79,9 @@
    join
    (when (= fields :all)
      {:fields (if source-query
-               (source-metadata->fields join source-metadata)
-               (for [[_ id-or-name opts] (qp.add-implicit-clauses/sorted-implicit-fields-for-table source-table)]
-                 [:field id-or-name (assoc opts :join-alias alias)]))})))
+                (source-metadata->fields join source-metadata)
+                (for [[_ id-or-name opts] (qp.add-implicit-clauses/sorted-implicit-fields-for-table source-table)]
+                  [:field id-or-name (assoc opts :join-alias alias)]))})))
 
 (s/defn ^:private resolve-references :- Joins
   [joins :- Joins]
@@ -100,7 +99,6 @@
   (for [{:keys [source-query], :as join} joins]
     (cond-> join
       source-query resolve-joins-in-mbql-query-all-levels)))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           MBQL-Query Transformations                                           |
@@ -143,7 +141,6 @@
   (-> query
       (update :joins (comp resolve-join-source-queries resolve-references))
       merge-joins-fields))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                Middleware & Boring Recursive Application Stuff                                 |

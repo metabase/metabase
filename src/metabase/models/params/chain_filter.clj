@@ -400,7 +400,7 @@
                            ;; return the lesser of limit (if set) or max results
                            :limit        ((fnil min Integer/MAX_VALUE) limit max-results)}
                           (when original-field-clause
-                            { ;; don't return rows that don't have values for the original Field. e.g. if
+                            {;; don't return rows that don't have values for the original Field. e.g. if
                              ;; venues.category_id is remapped to categories.name and we do a search with query 's',
                              ;; we only want to return [category_id name] tuples where [category_id] is not nil
                              ;;
@@ -414,7 +414,6 @@
                    (add-joins source-table-id joins)
                    (add-filters source-table-id joined-table-ids constraints)))
    :middleware {:disable-remaps? true}})
-
 
 ;;; ------------------------ Chain filter (powers GET /api/dashboard/:id/params/:key/values) -------------------------
 
@@ -469,11 +468,11 @@
 (s/defn ^:private human-readable-remapping-map :- (s/maybe HumanReadableRemappingMap)
   [field-id :- su/IntGreaterThanZero]
   (when-let [{orig :values, remapped :human_readable_values} (t2/select-one [FieldValues :values :human_readable_values]
-                                                               {:where [:and
-                                                                        [:= :type "full"]
-                                                                        [:= :field_id field-id]
-                                                                        [:not= :human_readable_values nil]
-                                                                        [:not= :human_readable_values "{}"]]})]
+                                                                            {:where [:and
+                                                                                     [:= :type "full"]
+                                                                                     [:= :field_id field-id]
+                                                                                     [:not= :human_readable_values nil]
+                                                                                     [:not= :human_readable_values "{}"]]})]
     (when (seq remapped)
       (zipmap orig remapped))))
 
@@ -546,8 +545,8 @@
   "Whether we should use cached `FieldValues` instead of running a query via the QP."
   [field-id]
   (and
-    field-id
-    (field-values/field-should-have-field-values? field-id)))
+   field-id
+   (field-values/field-should-have-field-values? field-id)))
 
 (defn- cached-field-values [field-id constraints {:keys [limit]}]
   ;; TODO: why don't we remap the human readable values here?
@@ -588,7 +587,6 @@
         (if-let [remapped-field-id (remapped-field-id field-id)]
           (field-to-field-remapped-chain-filter field-id remapped-field-id constraints options)
           (unremapped-chain-filter field-id constraints options))))))
-
 
 ;;; ----------------- Chain filter search (powers GET /api/dashboard/:id/params/:key/search/:query) -----------------
 
@@ -647,19 +645,19 @@
   (and (use-cached-field-values? field-id)
        (isa? (t2/select-one-fn :base_type Field :id field-id) :type/Text)
        (apply t2/exists? FieldValues (mapcat
-                                       identity
-                                       (merge {:field_id field-id, :values [:not= nil], :human_readable_values nil}
+                                      identity
+                                      (merge {:field_id field-id, :values [:not= nil], :human_readable_values nil}
                                               ;; if we are doing a search, make sure we only use field values
                                               ;; when we're certain the fieldvalues we stored are all the possible values.
                                               ;; otherwise, we should search directly from DB
-                                              {:has_more_values false}
-                                              (if-not (empty? constraints)
-                                                {:type     "linked-filter"
-                                                 :hash_key (params.field-values/hash-key-for-advanced-field-values :linked-filter field-id constraints)}
-                                                (if-let [hash-key (params.field-values/hash-key-for-advanced-field-values :sandbox field-id nil)]
-                                                  {:type    "sandbox"
-                                                   :hash_key hash-key}
-                                                  {:type "full"})))))))
+                                             {:has_more_values false}
+                                             (if-not (empty? constraints)
+                                               {:type     "linked-filter"
+                                                :hash_key (params.field-values/hash-key-for-advanced-field-values :linked-filter field-id constraints)}
+                                               (if-let [hash-key (params.field-values/hash-key-for-advanced-field-values :sandbox field-id nil)]
+                                                 {:type    "sandbox"
+                                                  :hash_key hash-key}
+                                                 {:type "full"})))))))
 
 (defn- cached-field-values-search
   [field-id query constraints {:keys [limit]}]
@@ -701,7 +699,6 @@
           (if-let [remapped-field-id (remapped-field-id field-id)]
             (field-to-field-remapped-chain-filter-search field-id remapped-field-id constraints query options)
             (unremapped-chain-filter-search field-id constraints query options)))))))
-
 
 ;;; ------------------ Filterable Field IDs (powers GET /api/dashboard/params/valid-filter-fields) -------------------
 

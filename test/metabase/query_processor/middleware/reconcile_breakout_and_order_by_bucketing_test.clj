@@ -97,9 +97,9 @@
   (testing (str "if there are two breakouts of the same Field with different bucketing, let's just use the bucketing "
                 "for the first breakout (?)")
     (is (= (mbql-query
-            :breakout [[:field 1 {:temporal-unit :day}]
-                       [:field 1 {:temporal-unit :month}]]
-            :order-by [[:asc [:field 1 {:temporal-unit :day}]]])
+             :breakout [[:field 1 {:temporal-unit :day}]
+                        [:field 1 {:temporal-unit :month}]]
+             :order-by [[:asc [:field 1 {:temporal-unit :day}]]])
            (reconcile-breakout-and-order-by-bucketing
             :breakout [[:field 1 {:temporal-unit :day}]
                        [:field 1 {:temporal-unit :month}]]

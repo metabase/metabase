@@ -25,7 +25,7 @@
                      (mdb.setup/setup-db! :h2 data-source true)))
               (is (= ["Administrators" "All Users"]
                      (mapv :name (jdbc/query {:datasource data-source}
-                                             "SELECT name FROM permissions_group ORDER BY name ASC;")))))]
+                                   "SELECT name FROM permissions_group ORDER BY name ASC;")))))]
       (let [subname (format "mem:%s;DB_CLOSE_DELAY=10" (mt/random-name))]
         (testing "from a jdbc-spec map"
           (test* (mdb.data-source/broken-out-details->DataSource

@@ -192,7 +192,7 @@
               :fk-field-id                  (meta/id :checkins :user-id)
               ::lib.column-group/columns    [{:display_name "ID", :lib/source :source/implicitly-joinable}
                                              {:display_name "Name", :lib/source :source/implicitly-joinable}
-                                             {:display_name "Last Login", :lib/source :source/implicitly-joinable}] }]
+                                             {:display_name "Last Login", :lib/source :source/implicitly-joinable}]}]
             groups))
     (testing `lib/display-info
       (is (=? [{:name                   "My Card"

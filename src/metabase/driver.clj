@@ -71,7 +71,6 @@
   :getter     (fn [] (long-timezone-name (report-timezone)))
   :doc        false)
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 Current Driver                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -97,7 +96,6 @@
   {:style/indent 1}
   [driver & body]
   `(do-with-driver ~driver (fn [] ~@body)))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                             Driver Registration / Hierarchy / Multimethod Dispatch                             |
@@ -183,7 +181,6 @@
   [driver & _]
   (the-initialized-driver driver))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       Interface (Multimethod Defintions)                                       |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -229,7 +226,6 @@
   ;; implementation.
   ;;
   ;; `initialize-if-needed!` takes care to make sure a driver's parent(s) are initialized before initializing a driver.
-
 
 (defmethod initialize! :default [_]) ; no-op
 
@@ -326,8 +322,7 @@
     "Schema for a map containing information about a connection property we should ask the user to supply when setting up
   a new database, as returned by an implementation of `connection-properties`."
     (s/constrained
-     {
-      ;; The key that should be used to store this property in the `details` map.
+     {;; The key that should be used to store this property in the `details` map.
       :name su/NonBlankString
 
       ;; Human-readable name that should be displayed to the User in UI for editing this field.
@@ -397,8 +392,7 @@
 ;; TODO -- I think we should rename this to `features` since `driver/driver-features` is a bit redundant.
 (def driver-features
   "Set of all features a driver can support."
-  #{
-    ;; Does this database support foreign key relationships?
+  #{;; Does this database support foreign key relationships?
     :foreign-keys
 
     ;; Does this database support nested fields for any and every field except primary key (e.g. Mongo)?

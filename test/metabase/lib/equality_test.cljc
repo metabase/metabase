@@ -44,7 +44,7 @@
       {:lib/type :m, :a 1}          {:a 1, :b/c 2}
       {:lib/type :m, :a 1, :b/c 2}  {:a 1, :b/c 2}
       {:lib/type :m, :a 1, :b/c 2}  {:a 1, :b/c 3}
-      {:lib/type :m1, }             {:lib/type :m2, }
+      {:lib/type :m1}             {:lib/type :m2}
       {:lib/type :m1, :a 1}         {:lib/type :m2, :a 1}
       {:lib/type :m1, :a 1}         {:lib/type :m2, :a 1, :b/c 2}
       {:lib/type :m1, :a 1, :b/c 2} {:lib/type :m2, :a 1, :b/c 2}

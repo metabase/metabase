@@ -24,12 +24,12 @@
     (let [now (str (java.time.Instant/now))]
       (with-redefs [mongo.execute/aggregate
                     (fn [& _] (make-mongo-cursor [{"_id" 0
-                                                  "name" "Crowberto"
-                                                  "alias" "the Brave"}
-                                                 {"_id" 1
-                                                  "name" "Rasta"
-                                                  "last_login" now
-                                                  "nickname" "Blue"}]))]
+                                                   "name" "Crowberto"
+                                                   "alias" "the Brave"}
+                                                  {"_id" 1
+                                                   "name" "Rasta"
+                                                   "last_login" now
+                                                   "nickname" "Blue"}]))]
         (testing "Projected and first-row fields are returned"
           (let [query {:database (mt/id)
                        :native

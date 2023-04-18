@@ -25,27 +25,27 @@
               :breakout [[:field 17 nil]]}))))))
 
 (deftest segments-test
- (mt/with-temp* [Database [{database-id :id}]
-                 Table    [{table-id :id}     {:db_id database-id}]
-                 Segment  [{segment-1-id :id} {:table_id   table-id
-                                               :definition {:filter [:and [:= [:field 5 nil] "abc"]]}}]
-                 Segment  [{segment-2-id :id} {:table_id   table-id
-                                               :definition {:filter [:and [:is-null [:field 7 nil]]]}}]]
-   (is (= (mbql-query
-           {:filter   [:and
-                       [:= [:field 5 nil] "abc"]
-                       [:or
-                        [:is-null [:field 7 nil]]
-                        [:> [:field 4 nil] 1]]]
-            :breakout [[:field 17 nil]]})
-          (#'expand-macros/expand-metrics-and-segments
-           (mbql-query
+  (mt/with-temp* [Database [{database-id :id}]
+                  Table    [{table-id :id}     {:db_id database-id}]
+                  Segment  [{segment-1-id :id} {:table_id   table-id
+                                                :definition {:filter [:and [:= [:field 5 nil] "abc"]]}}]
+                  Segment  [{segment-2-id :id} {:table_id   table-id
+                                                :definition {:filter [:and [:is-null [:field 7 nil]]]}}]]
+    (is (= (mbql-query
             {:filter   [:and
-                        [:segment segment-1-id]
+                        [:= [:field 5 nil] "abc"]
                         [:or
-                         [:segment segment-2-id]
+                         [:is-null [:field 7 nil]]
                          [:> [:field 4 nil] 1]]]
-             :breakout [[:field 17 nil]]}))))))
+             :breakout [[:field 17 nil]]})
+           (#'expand-macros/expand-metrics-and-segments
+            (mbql-query
+             {:filter   [:and
+                         [:segment segment-1-id]
+                         [:or
+                          [:segment segment-2-id]
+                          [:> [:field 4 nil] 1]]]
+              :breakout [[:field 17 nil]]}))))))
 
 (deftest metric-test
   (testing "just a metric (w/out nested segments)"

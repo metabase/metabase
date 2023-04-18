@@ -117,22 +117,22 @@
     (with-redefs [premium-features/is-hosted? (constantly false)]
       (testing "Specifying access-key will not use credential chain"
         (is (not (contains?
-                   (sql-jdbc.conn/connection-details->spec :athena {:region "us-west-2" :access_key "abc123"})
-                   :AwsCredentialsProviderClass))))
+                  (sql-jdbc.conn/connection-details->spec :athena {:region "us-west-2" :access_key "abc123"})
+                  :AwsCredentialsProviderClass))))
       (testing "Not specifying access-key will use credential chain"
         (is (contains?
-              (sql-jdbc.conn/connection-details->spec :athena {:region "us-west-2"})
-              :AwsCredentialsProviderClass)))))
+             (sql-jdbc.conn/connection-details->spec :athena {:region "us-west-2"})
+             :AwsCredentialsProviderClass)))))
   (testing "When hosted"
     (with-redefs [premium-features/is-hosted? (constantly true)]
       (testing "Specifying access-key will not use credential chain"
         (is (not (contains?
-                   (sql-jdbc.conn/connection-details->spec :athena {:region "us-west-2" :access_key "abc123"})
-                   :AwsCredentialsProviderClass))))
+                  (sql-jdbc.conn/connection-details->spec :athena {:region "us-west-2" :access_key "abc123"})
+                  :AwsCredentialsProviderClass))))
       (testing "Not specifying access-key will still not use credential chain"
         (is (not (contains?
-                   (sql-jdbc.conn/connection-details->spec :athena {:region "us-west-2"})
-                   :AwsCredentialsProviderClass)))))))
+                  (sql-jdbc.conn/connection-details->spec :athena {:region "us-west-2"})
+                  :AwsCredentialsProviderClass)))))))
 
 (deftest page-test
   (testing ":page clause places OFFSET *before* LIMIT"
@@ -141,9 +141,9 @@
                  " ORDER BY \"default\".\"categories\".\"id\" ASC"
                  " OFFSET ? LIMIT ?") 10 5]
            (sql.qp/format-honeysql :athena
-             (sql.qp/apply-top-level-clause :athena :page
-                                            {:select   [[:default.categories.id "id"]]
-                                             :from     [:default.categories]
-                                             :order-by [[:default.categories.id :asc]]}
-                                            {:page {:page  3
-                                                    :items 5}}))))))
+                                   (sql.qp/apply-top-level-clause :athena :page
+                                     {:select   [[:default.categories.id "id"]]
+                                      :from     [:default.categories]
+                                      :order-by [[:default.categories.id :asc]]}
+                                     {:page {:page  3
+                                             :items 5}}))))))

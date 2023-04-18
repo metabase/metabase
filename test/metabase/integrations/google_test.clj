@@ -30,7 +30,6 @@
       (google/google-auth-client-id! "")
       (is (= nil (google/google-auth-client-id))))))
 
-
 ;;; --------------------------------------------- account autocreation -----------------------------------------------
 
 (deftest allow-autocreation-test
@@ -70,7 +69,6 @@
                      (select-keys user [:first_name :last_name :email]))))
             (finally
               (t2/delete! User :email "rasta@sf-toucannery.com"))))))))
-
 
 ;;; --------------------------------------------- google-auth-token-info ---------------------------------------------
 
@@ -122,7 +120,6 @@
                                      token-1
                                      token-2)}
                     token-1)))))))
-
 
 ;;; --------------------------------------- google-auth-fetch-or-create-user! ----------------------------------------
 

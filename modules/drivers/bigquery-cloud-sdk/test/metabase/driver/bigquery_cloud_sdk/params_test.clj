@@ -46,8 +46,8 @@
         (testing (format "^%s %s" (some-> v class .getCanonicalName) (pr-str v))
           (let [results (qp/process-query
                          (assoc (mt/native-query
-                                 {:query  "SELECT ?"
-                                  :params [v]})
+                                  {:query  "SELECT ?"
+                                   :params [v]})
                                 :middleware {:format-rows? false}))]
             (is (= (or (:v expected) v)
                    (first (mt/first-row results))))

@@ -193,8 +193,8 @@
   uses [[clojure.string/upper-case]].) This function DOES NOT quote the identifier."
   [a-name]
   (assert ((some-fn keyword? string? symbol?) a-name)
-    (str "Cannot format `nil` name -- did you use a `$field` without specifying its Table? (Change the form to"
-         " `$table.field`, or specify a top-level default Table to `$ids` or `mbql-query`.)"))
+          (str "Cannot format `nil` name -- did you use a `$field` without specifying its Table? (Change the form to"
+               " `$table.field`, or specify a top-level default Table to `$ids` or `mbql-query`.)"))
   (ddl.i/format-name (tx/driver) (name a-name)))
 
 (defn id

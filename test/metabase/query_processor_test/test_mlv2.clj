@@ -136,34 +136,34 @@
     (do-with-legacy-query-testing-context
      original-query
      (^:once fn* []
-      (let [pMBQL (-> original-query lib.convert/->pMBQL)]
+                 (let [pMBQL (-> original-query lib.convert/->pMBQL)]
         ;; don't bother doing this test if the output is invalid; [[test-mlv2-conversion]] will fail anyway, no point in
         ;; triggering an Exception here as well.
-        (when (mc/validate ::lib.schema/query pMBQL)
-          (do-with-pMBQL-query-testing-context
-           pMBQL
-           (^:once fn* []
-            (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (:database original-query))
-                  mlv2-query        (lib/query metadata-provider pMBQL)
-                  mlv2-metadata     (lib.metadata.calculation/metadata mlv2-query)]
+                   (when (mc/validate ::lib.schema/query pMBQL)
+                     (do-with-pMBQL-query-testing-context
+                      pMBQL
+                      (^:once fn* []
+                                  (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (:database original-query))
+                                        mlv2-query        (lib/query metadata-provider pMBQL)
+                                        mlv2-metadata     (lib.metadata.calculation/metadata mlv2-query)]
               ;; Just make sure we can calculate some metadata (any metadata, even nothing) without throwing an
               ;; Exception at this point; making sure it is CORRECT will be the next step after this.
-              (is (any? mlv2-metadata)))))))))))
+                                    (is (any? mlv2-metadata)))))))))))
 
 (defn- test-mlv2-conversion [query]
   (when-not (skip-conversion-tests? query)
     (do-with-legacy-query-testing-context
      query
      (^:once fn* []
-      (let [pMBQL (-> query lib.convert/->pMBQL)]
-        (do-with-pMBQL-query-testing-context
-         pMBQL
-         (^:once fn* []
-          (testing "Legacy MBQL queries should round trip to pMBQL and back"
-            (is (= query
-                   (-> pMBQL lib.convert/->legacy-MBQL))))
-          (testing "converted pMBQL query should validate against the pMBQL schema"
-            (is (not (me/humanize (mc/explain ::lib.schema/query pMBQL))))))))))))
+                 (let [pMBQL (-> query lib.convert/->pMBQL)]
+                   (do-with-pMBQL-query-testing-context
+                    pMBQL
+                    (^:once fn* []
+                                (testing "Legacy MBQL queries should round trip to pMBQL and back"
+                                  (is (= query
+                                         (-> pMBQL lib.convert/->legacy-MBQL))))
+                                (testing "converted pMBQL query should validate against the pMBQL schema"
+                                  (is (not (me/humanize (mc/explain ::lib.schema/query pMBQL))))))))))))
 
 (def ^:private ^:dynamic *original-query* nil)
 

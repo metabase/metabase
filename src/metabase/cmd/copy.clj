@@ -233,9 +233,9 @@
   ;; work if done inside the same transaction.)
   (doseq [{constraint :constraint_name, table :table_name} (jdbc/query
                                                             conn
-                                                            [(str "SELECT * "
-                                                                  "FROM information_schema.table_constraints "
-                                                                  "WHERE constraint_type = 'FOREIGN KEY'")])]
+                                                             [(str "SELECT * "
+                                                                   "FROM information_schema.table_constraints "
+                                                                   "WHERE constraint_type = 'FOREIGN KEY'")])]
     (jdbc/execute! conn [(format "ALTER TABLE \"%s\" ALTER CONSTRAINT \"%s\" DEFERRABLE" table constraint)]))
   ;; now enable constraint deferring for the duration of the transaction
   (jdbc/execute! conn ["SET CONSTRAINTS ALL DEFERRED"]))
@@ -336,7 +336,6 @@
                                         seq-name (name table-name))]]
         (jdbc/db-query-with-resultset target-db-conn [sql] :val)))))
 
-
 (defmethod update-sequence-values! :h2
   [_ data-source]
   #_{:clj-kondo/ignore [:discouraged-var]}
@@ -348,7 +347,6 @@
                      sql        (format "ALTER TABLE %s ALTER COLUMN ID RESTART WITH COALESCE((SELECT MAX(ID) + 1 FROM %s), 1)"
                                         table-name table-name)]]
         (jdbc/execute! target-db-conn sql)))))
-
 
 (s/defn copy!
   "Copy data from a source application database into an empty destination application database."

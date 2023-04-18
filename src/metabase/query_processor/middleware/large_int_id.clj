@@ -47,7 +47,7 @@
                                                                ;; we should be able to, but it doesn't work (not
                                                                ;; initialized)
                                                                (t2/select-one [Field :base_type :semantic_type]
-                                                                 :id field-id))]
+                                                                              :id field-id))]
                                               (when (and (or (isa? (:semantic_type field) :type/PK)
                                                              (isa? (:semantic_type field) :type/FK))
                                                          (or (isa? (:base_type field) :type/Integer)

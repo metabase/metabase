@@ -11,7 +11,7 @@
 (models/defmodel ParameterCard :parameter_card)
 
 (defonce ^{:doc "Set of valid parameterized_object_type for a ParameterCard"}
-  valid-parameterized-object-type #{"dashboard" "card"})
+ valid-parameterized-object-type #{"dashboard" "card"})
 
 (defn- validate-parameterized-object-type
   [{:keys [parameterized_object_type] :as _parameter-card}]
@@ -33,12 +33,12 @@
       (validate-parameterized-object-type pc))))
 
 (mi/define-methods
- ParameterCard
- {:properties (constantly {::mi/timestamped? true
-                           ::mi/entity-id    true})
-  :types      (constantly {:parameterized_object_type :keyword})
-  :pre-insert pre-insert
-  :pre-update pre-update})
+  ParameterCard
+  {:properties (constantly {::mi/timestamped? true
+                            ::mi/entity-id    true})
+   :types      (constantly {:parameterized_object_type :keyword})
+   :pre-insert pre-insert
+   :pre-update pre-update})
 
 (defn delete-all-for-parameterized-object!
   "Delete all ParameterCard for a give Parameterized Object and NOT listed in the optional

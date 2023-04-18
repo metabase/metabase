@@ -47,7 +47,7 @@
   (merge
    (when-let [card-ids (get referenced-objects "card")]
      (let [id->dataset?                       (t2/select-pk->fn :dataset Card
-                                                                   :id [:in card-ids])
+                                                                :id [:in card-ids])
            {dataset-ids true card-ids' false} (group-by (comp boolean id->dataset?)
                                                         ;; only existing ids go back
                                                         (keys id->dataset?))]
@@ -97,24 +97,24 @@
 (defn- models-query
   [model ids]
   (t2/select
-      (case model
-        "card"      [Card
-                     :id :name :collection_id :description :display
-                     :dataset_query :dataset :archived
-                     :collection.authority_level]
-        "dashboard" [Dashboard
-                     :id :name :collection_id :description
-                     :archived
-                     :collection.authority_level]
-        "table"     [Table
-                     :id :name :db_id
-                     :display_name :initial_sync_status
-                     :visibility_type])
-      (let [model-symb (symbol (str/capitalize model))
-            self-qualify #(db/qualify model-symb %)]
-        (cond-> {:where [:in (self-qualify :id) ids]}
-          (not= model "table")
-          (merge {:left-join [:collection [:= :collection.id (self-qualify :collection_id)]]})))))
+   (case model
+     "card"      [Card
+                  :id :name :collection_id :description :display
+                  :dataset_query :dataset :archived
+                  :collection.authority_level]
+     "dashboard" [Dashboard
+                  :id :name :collection_id :description
+                  :archived
+                  :collection.authority_level]
+     "table"     [Table
+                  :id :name :db_id
+                  :display_name :initial_sync_status
+                  :visibility_type])
+   (let [model-symb (symbol (str/capitalize model))
+         self-qualify #(db/qualify model-symb %)]
+     (cond-> {:where [:in (self-qualify :id) ids]}
+       (not= model "table")
+       (merge {:left-join [:collection [:= :collection.id (self-qualify :collection_id)]]})))))
 
 (defn- select-items! [model ids]
   (when (seq ids)
@@ -314,8 +314,8 @@
 (defn- order-items
   [items]
   (when (seq items)
-      (let [groups (group-by :model items)]
-        (mapcat #(get groups %) model-precedence))))
+    (let [groups (group-by :model items)]
+      (mapcat #(get groups %) model-precedence))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/popular_items"

@@ -26,7 +26,7 @@
 (set! *warn-on-reflection* true)
 
 (u/ignore-exceptions
- (classloader/require 'metabase-enterprise.advanced-permissions.common))
+  (classloader/require 'metabase-enterprise.advanced-permissions.common))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/"
@@ -118,7 +118,7 @@
   (set (:recipients (email-channel alert))))
 
 (defn- non-creator-recipients [{{creator-id :id} :creator :as alert}]
- (remove #(= creator-id (:id %)) (collect-alert-recipients alert)))
+  (remove #(= creator-id (:id %)) (collect-alert-recipients alert)))
 
 (defn- notify-new-alert-created! [alert]
   (when (email/email-configured?)
@@ -175,14 +175,14 @@
    channels         (s/maybe (su/non-empty [su/Map]))
    archived         (s/maybe s/Bool)}
   (try
-   (validation/check-has-application-permission :monitoring)
-   (catch clojure.lang.ExceptionInfo _e
-     (validation/check-has-application-permission :subscription false)))
+    (validation/check-has-application-permission :monitoring)
+    (catch clojure.lang.ExceptionInfo _e
+      (validation/check-has-application-permission :subscription false)))
 
   ;; fetch the existing Alert in the DB
   (let [alert-before-update                   (api/check-404 (pulse/retrieve-alert id))
         current-user-has-application-permissions? (and (premium-features/enable-advanced-permissions?)
-                                                   (resolve 'metabase-enterprise.advanced-permissions.common/current-user-has-application-permissions?))
+                                                       (resolve 'metabase-enterprise.advanced-permissions.common/current-user-has-application-permissions?))
         has-subscription-perms?               (and current-user-has-application-permissions?
                                                    (current-user-has-application-permissions? :subscription))
         has-monitoring-permissions?           (and current-user-has-application-permissions?
@@ -200,13 +200,13 @@
                   has-monitoring-permissions?
                   has-subscription-perms?)
       (api/check (= (-> alert-before-update :creator :id) api/*current-user-id*)
-                 [403 (tru "Non-admin users without monitoring or subscription permissions are only allowed to update alerts that they created")])
+        [403 (tru "Non-admin users without monitoring or subscription permissions are only allowed to update alerts that they created")])
       (api/check (or (not (contains? alert-updates :channels))
                      (and (= 1 (count channels))
                           ;; Non-admin alerts can only include the creator as a recipient
                           (= [api/*current-user-id*]
                              (map :id (:recipients (email-channel alert-updates))))))
-                 [403 (tru "Non-admin users without monitoring or subscription permissions are not allowed to modify the channels for an alert")]))
+        [403 (tru "Non-admin users without monitoring or subscription permissions are not allowed to modify the channels for an alert")]))
 
     ;; only admin or users with subscription permissions can add recipients
     (let [to-add-recipients (difference (set (map :id (:recipients (email-channel alert-updates))))
@@ -214,7 +214,7 @@
       (api/check (or api/*is-superuser?*
                      has-subscription-perms?
                      (empty? to-add-recipients))
-                 [403 (tru "Non-admin users without subscription permissions are not allowed to add recipients")]))
+        [403 (tru "Non-admin users without subscription permissions are not allowed to add recipients")]))
 
     ;; now update the Alert
     (let [updated-alert (pulse/update-alert!

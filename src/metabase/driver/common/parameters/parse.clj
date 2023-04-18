@@ -166,4 +166,4 @@
        (do
          (log/tracef "Tokenized native query ->\n%s" (u/pprint-to-str tokenized))
          (u/prog1 (combine-adjacent-strings (first (parse-tokens* tokenized 0 0 nil)))
-                  (log/tracef "Parsed native query ->\n%s" (u/pprint-to-str <>))))))))
+           (log/tracef "Parsed native query ->\n%s" (u/pprint-to-str <>))))))))

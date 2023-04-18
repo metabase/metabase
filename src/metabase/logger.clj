@@ -40,7 +40,7 @@
         ^org.apache.logging.log4j.core.Layout layout                   nil
         ^"[Lorg.apache.logging.log4j.core.config.Property;" properties nil]
     (proxy [org.apache.logging.log4j.core.appender.AbstractAppender]
-        ["metabase-appender" filter layout false properties]
+           ["metabase-appender" filter layout false properties]
       (append [event]
         (swap! messages* conj (event->log-data event))
         nil))))

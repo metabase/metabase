@@ -40,7 +40,6 @@
   "Current cache backend. Dynamically rebindable primary for test purposes."
   (i/cache-backend (config/config-kw :mb-qp-cache-backend)))
 
-
 ;;; ------------------------------------------------------ Save ------------------------------------------------------
 
 (defn- purge! [backend]
@@ -120,7 +119,6 @@
        (vreset! has-rows? true)
        (rf acc row)))))
 
-
 ;;; ----------------------------------------------------- Fetch ------------------------------------------------------
 
 (defn- cached-results-rff
@@ -175,7 +173,6 @@
       (log/error e (trs "Error attempting to fetch cached results for query with hash {0}: {1}"
                         (i/short-hex-hash query-hash) (ex-message e)))
       ::miss)))
-
 
 ;;; --------------------------------------------------- Middleware ---------------------------------------------------
 

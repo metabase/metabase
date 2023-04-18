@@ -18,8 +18,8 @@
   "Returns :win, :mac, :unix, or nil"
   []
   (condp
-      #(<= 0 (.indexOf ^String %2 ^String %1))
-      (.toLowerCase (System/getProperty "os.name"))
+   #(<= 0 (.indexOf ^String %2 ^String %1))
+   (.toLowerCase (System/getProperty "os.name"))
     "win" :win
     "mac" :mac
     "nix" :unix
@@ -56,9 +56,9 @@
                                              :context     :pulse
                                              :card-id     card-id}))
         png-bytes                        (render/render-pulse-card-to-png (pulse/defaulted-timezone card)
-                                                                                card
-                                                                                query-results
-                                                                                1000)
+                                                                          card
+                                                                          query-results
+                                                                          1000)
         tmp-file                         (java.io.File/createTempFile "card-png" ".png")]
     (with-open [w (java.io.FileOutputStream. tmp-file)]
       (.write w ^bytes png-bytes))
@@ -91,5 +91,4 @@
                                        :custom-column-names {:names ["-A-" "-B-" "-C-" "-D-"]}
                                        :hidden-columns      {:hide [0 2]}})
       :viz-tree
-      open-hiccup-as-html)
-  )
+      open-hiccup-as-html))

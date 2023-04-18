@@ -226,33 +226,33 @@
 
 (def ^:private keyword-or-non-blank-str-malli
   (mc/schema
-    [:or :keyword NonBlankString]))
+   [:or :keyword NonBlankString]))
 
 (def ValuesSourceConfig
   "Schema for valid source_options within a Parameter"
   ;; TODO: This should be tighter
   (mc/schema
-    [:map
-     [:values {:optional true} [:* :any]]
-     [:card_id {:optional true} PositiveInt]
-     [:value_field {:optional true} Field]
-     [:label_field {:optional true} Field]]))
+   [:map
+    [:values {:optional true} [:* :any]]
+    [:card_id {:optional true} PositiveInt]
+    [:value_field {:optional true} Field]
+    [:label_field {:optional true} Field]]))
 
 #_(def ParameterSource
-      (mc/schema
-        [:multi {:dispatch :values_source_type}
-         ["card"        [:map
-                         [:values_source_type :string]
-                         [:values_source_config
-                          [:map {:closed true}
-                           [:card_id {:optional true} IntGreaterThanZero]
-                           [:value_field {:optional true} Field]
-                           [:label_field {:optional true} Field]]]]]
-         ["static-list" [:map
-                         [:values_source_type :string]
-                         [:values_source_config
-                          [:map {:closed true}
-                           [:values {:optional true} [:* :any]]]]]]]))
+    (mc/schema
+     [:multi {:dispatch :values_source_type}
+      ["card"        [:map
+                      [:values_source_type :string]
+                      [:values_source_config
+                       [:map {:closed true}
+                        [:card_id {:optional true} IntGreaterThanZero]
+                        [:value_field {:optional true} Field]
+                        [:label_field {:optional true} Field]]]]]
+      ["static-list" [:map
+                      [:values_source_type :string]
+                      [:values_source_config
+                       [:map {:closed true}
+                        [:values {:optional true} [:* :any]]]]]]]))
 
 (def Parameter
   "Schema for a valid Parameter.
@@ -304,5 +304,5 @@
 (def UUIDString
   "Schema for a UUID string"
   (mu/with-api-error-message
-   [:re u/uuid-regex]
-   (deferred-tru "value must be a valid UUID.")))
+    [:re u/uuid-regex]
+    (deferred-tru "value must be a valid UUID.")))

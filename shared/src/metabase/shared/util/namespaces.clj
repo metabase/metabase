@@ -1,8 +1,8 @@
 (ns metabase.shared.util.namespaces
   "Potemkin is Java-only, so here's a basic function-importing macro that works for both CLJS and CLJ."
   (:require
-    [net.cgrand.macrovich :as macros]
-    [potemkin :as p]))
+   [net.cgrand.macrovich :as macros]
+   [potemkin :as p]))
 
 (defn- redef [target sym]
   (let [defn-name (or sym (symbol (name target)))]
@@ -26,11 +26,11 @@
   If you need to rename a function, instead of just the function name, pass `[original new-name]`."
   [& spaces]
   (macros/case
-    :cljs `(do
-             ~@(for [[target-ns & fns] spaces
-                     f                 fns
-                     :let [target-sym (if (vector? f) (first f)  f)
-                           new-sym    (if (vector? f) (second f) f)
-                           target     (symbol (name target-ns) (name target-sym))]]
-                 (redef target new-sym)))
-    :clj  `(p/import-vars ~@spaces)))
+   :cljs `(do
+            ~@(for [[target-ns & fns] spaces
+                    f                 fns
+                    :let [target-sym (if (vector? f) (first f)  f)
+                          new-sym    (if (vector? f) (second f) f)
+                          target     (symbol (name target-ns) (name target-sym))]]
+                (redef target new-sym)))
+   :clj  `(p/import-vars ~@spaces)))

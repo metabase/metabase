@@ -56,16 +56,16 @@
              (mt/user-http-request :rasta :post 400 (snippet-url) {})))
 
       (is (name-schema-error? (mt/user-http-request :rasta
-                               :post 400 (snippet-url)
-                               {:content "NULL"})))
+                                                    :post 400 (snippet-url)
+                                                    {:content "NULL"})))
 
       (is (name-schema-error? (mt/user-http-request :rasta :post 400 (snippet-url)
-                               {:content "NULL"
-                                :name    " starts with a space"})))
+                                                    {:content "NULL"
+                                                     :name    " starts with a space"})))
 
       (is (name-schema-error? (mt/user-http-request :rasta :post 400 (snippet-url)
-                               {:content "NULL"
-                                :name    "contains a } character"})))))
+                                                    {:content "NULL"
+                                                     :name    "contains a } character"})))))
 
   (testing "successful create returns new snippet's data"
     (doseq [[message user] {"admin user should be able to create" :crowberto
@@ -100,7 +100,7 @@
   (testing "Shouldn't be able to specify non-default creator_id"
     (try
       (let [snippet (mt/user-http-request :crowberto :post 200 (snippet-url)
-                     {:name "test-snippet", :content "1", :creator_id (mt/user->id :rasta)})]
+                                          {:name "test-snippet", :content "1", :creator_id (mt/user->id :rasta)})]
         (is (= (mt/user->id :crowberto)
                (:creator_id snippet))))
       (finally
@@ -112,7 +112,7 @@
       (letfn [(create! [expected-status-code collection-id]
                 (try
                   (let [response (mt/user-http-request :rasta :post expected-status-code (snippet-url)
-                                  {:name "test-snippet", :description "Just null", :content "NULL", :collection_id collection-id})]
+                                                       {:name "test-snippet", :description "Just null", :content "NULL", :collection_id collection-id})]
                     {:response response
                      :db       (some->> (:id response) (t2/select-one NativeQuerySnippet :id))})
                   (finally
@@ -148,8 +148,8 @@
           (testing message
             (let [updated-desc    "Updated description."
                   updated-snippet (mt/user-http-request user
-                                   :put 200 (snippet-url (:id snippet))
-                                   {:description updated-desc})]
+                                                        :put 200 (snippet-url (:id snippet))
+                                                        {:description updated-desc})]
               (is (= updated-desc (:description updated-snippet)))))))
 
       (testing "Attempting to change Snippet's name to one that's already in use should throw an error"

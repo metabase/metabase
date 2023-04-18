@@ -17,12 +17,10 @@
     :database-trigger-sync})
 
 (defonce ^:private ^{:doc "Channel for receiving event notifications we want to subscribe to for database sync events."}
-  sync-database-channel
+ sync-database-channel
   (a/chan))
 
-
 ;;; ------------------------------------------------ EVENT PROCESSING ------------------------------------------------
-
 
 (defn process-sync-database-event
   "Handle processing for a single event notification received on the `sync-database-channel`"
@@ -42,7 +40,6 @@
               (log/error e (trs "Error syncing Database {0}" (u/the-id database))))))))
     (catch Throwable e
       (log/warn e (trs "Failed to process sync-database event.") topic))))
-
 
 ;;; ---------------------------------------------------- LIFECYLE ----------------------------------------------------
 

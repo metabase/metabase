@@ -84,9 +84,9 @@
 (deftest header-truncation-test []
   (let [[normal-heading long-heading :as row] ["Count" (apply str (repeat 120 "A"))]
         [normal-rendered long-rendered]       (->> (#'table/render-table-head {:row row})
-                                               (tree-seq vector? rest)
-                                               (filter #(= :th (first %)))
-                                               (map last))]
+                                                   (tree-seq vector? rest)
+                                                   (filter #(= :th (first %)))
+                                                   (map last))]
     (testing "Table Headers are truncated if they are really long."
       (is (= normal-heading normal-rendered))
       (is (= "A..." (subs long-rendered (- (count long-rendered) 4) (count long-rendered))))
@@ -149,9 +149,9 @@
                                                                             :date_abbreviate false}
                                                             :type/Number   {:number_separators ",."}}]
         (is (= ["0,1" "9.000" "12-10-2022" "0,12" "0,67"]
-             (-> rows
-                 (render.tu/make-card-and-data :table)
-                 render.tu/render-as-hiccup
-                 render.tu/remove-attrs
-                 (render.tu/nodes-with-tag :td)
-                 (->> (map second)))))))))
+               (-> rows
+                   (render.tu/make-card-and-data :table)
+                   render.tu/render-as-hiccup
+                   render.tu/remove-attrs
+                   (render.tu/nodes-with-tag :td)
+                   (->> (map second)))))))))

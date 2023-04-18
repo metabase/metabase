@@ -236,28 +236,28 @@
   :hierarchy lib.hierarchy/hierarchy)
 
 (mr/register! ::display-info
-  [:map
-   [:display_name :string]
+              [:map
+               [:display_name :string]
    ;; For Columns. `base_type` not included here, FE doesn't need to know about that.
-   [:effective_type {:optional true} [:maybe [:ref ::lib.schema.common/base-type]]]
-   [:semantic_type  {:optional true} [:maybe [:ref ::lib.schema.common/semantic-type]]]
+               [:effective_type {:optional true} [:maybe [:ref ::lib.schema.common/base-type]]]
+               [:semantic_type  {:optional true} [:maybe [:ref ::lib.schema.common/semantic-type]]]
    ;; for things that have a Table, e.g. a Field
-   [:table {:optional true} [:maybe [:ref ::display-info]]]
+               [:table {:optional true} [:maybe [:ref ::display-info]]]
    ;; these are derived from the `:lib/source`/`:metabase.lib.metadata/column-source`, but instead of using that value
    ;; directly we're returning a different property so the FE doesn't break if we change those keys in the future,
    ;; e.g. if we consolidate or split some of those keys. This is all the FE really needs to know.
    ;;
    ;; if this is a Column, does it come from a previous stage?
-   [:is_from_previous_stage {:optional true} [:maybe :boolean]]
+               [:is_from_previous_stage {:optional true} [:maybe :boolean]]
    ;; if this is a Column, does it come from a join in this stage?
-   [:is_from_join {:optional true} [:maybe :boolean]]
+               [:is_from_join {:optional true} [:maybe :boolean]]
    ;; if this is a Column, is it 'calculated', i.e. does it come from an expression in this stage?
-   [:is_calculated {:optional true} [:maybe :boolean]]
+               [:is_calculated {:optional true} [:maybe :boolean]]
    ;; if this is a Column, is it an implicitly joinable one? I.e. is it from a different table that we have not
    ;; already joined, but could implicitly join against?
-   [:is_implicitly_joinable {:optional true} [:maybe :boolean]]
+               [:is_implicitly_joinable {:optional true} [:maybe :boolean]]
    ;; For the `:table` field of a Column, is this the source table, or a joined table?
-   [:is_source_table {:optional true} [:maybe :boolean]]])
+               [:is_source_table {:optional true} [:maybe :boolean]]])
 
 (mu/defn display-info :- ::display-info
   "Given some sort of Cljs object, return a map with the info you'd need to implement UI for it. This is mostly meant to
@@ -317,12 +317,12 @@
   :hierarchy lib.hierarchy/hierarchy)
 
 #_(defmethod default-columns-method :default
-  [query stage-number x unique-name-fn]
-  (mapv (fn [col]
-          (assoc col
-                 :lib/source-column-alias  (:name col)
-                 :lib/desired-column-alias (unique-name-fn (:name col))))
-        (metadata query stage-number x)))
+    [query stage-number x unique-name-fn]
+    (mapv (fn [col]
+            (assoc col
+                   :lib/source-column-alias  (:name col)
+                   :lib/desired-column-alias (unique-name-fn (:name col))))
+          (metadata query stage-number x)))
 
 (def ColumnsWithUniqueAliases
   "Schema for column metadata that should be returned by [[default-columns]]. This is mostly used

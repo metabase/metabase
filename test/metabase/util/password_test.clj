@@ -89,4 +89,4 @@
         hashed   (u.password/hash-bcrypt password)]
     (is (not= password hashed))
     (testing "Can verify our hashed passwords"
-     (is (u.password/bcrypt-verify password hashed) "Password did not verify"))))
+      (is (u.password/bcrypt-verify password hashed) "Password did not verify"))))

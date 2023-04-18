@@ -131,8 +131,8 @@
      [:sqlserver 'test-data-with-time]
      [\"SELECT * FROM dbo.users WHERE dbo.users.last_login_time > ?\" (java-time/offset-time \"16:00Z\")])"
   {:arglists '([driver sql]            [[driver dataset] sql]
-               [driver honeysql-form]  [[driver dataset] honeysql-form]
-               [driver [sql & params]] [[driver dataset] [sql & params]])}
+                                       [driver honeysql-form]  [[driver dataset] honeysql-form]
+                                       [driver [sql & params]] [[driver dataset] [sql & params]])}
   [driver-or-driver+dataset sql-args]
   (let [[driver dataset] (u/one-or-many driver-or-driver+dataset)
         [sql & params]   (if (map? sql-args)

@@ -10,8 +10,6 @@
 
 (set! *warn-on-reflection* true)
 
-
-
 (defn schema-name
   "Returns a schema name for persisting models. Needs the database to use the db id and the site-uuid to ensure that
   multiple connections from multiple metabae remain distinct. The UUID will have the first character of each section taken.

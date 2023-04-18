@@ -106,7 +106,7 @@
                           ;; make sure the Snippet is back in the original Collection if it was changed
                           (t2/update! NativeQuerySnippet (:id snippet) {:collection_id (:id source-collection)})
                           (let [response (mt/user-http-request :rasta :put (format "native-query-snippet/%d" (:id snippet))
-                                          {:collection_id (:id dest-collection)})]
+                                                               {:collection_id (:id dest-collection)})]
                             (cond
                               (= response "You don't have permissions to do that.")                     false
                               (and (map? response) (= (:collection_id response) (:id dest-collection))) true

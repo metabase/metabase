@@ -19,21 +19,21 @@
 
 (defsetting slack-token
   (deferred-tru
-    (str "Deprecated Slack API token for connecting the Metabase Slack bot. "
-         "Please use a new Slack app integration instead."))
+   (str "Deprecated Slack API token for connecting the Metabase Slack bot. "
+        "Please use a new Slack app integration instead."))
   :deprecated "0.42.0"
   :visibility :settings-manager
   :doc        false)
 
 (defsetting slack-app-token
   (deferred-tru
-    (str "Bot user OAuth token for connecting the Metabase Slack app. "
-         "This should be used for all new Slack integrations starting in Metabase v0.42.0.")))
+   (str "Bot user OAuth token for connecting the Metabase Slack app. "
+        "This should be used for all new Slack integrations starting in Metabase v0.42.0.")))
 
 (defsetting slack-token-valid?
   (deferred-tru
-    (str "Whether the current Slack app token, if set, is valid. "
-         "Set to 'false' if a Slack API request returns an auth error."))
+   (str "Whether the current Slack app token, if set, is valid. "
+        "Set to 'false' if a Slack API request returns an auth error."))
   :type       :boolean
   :visibility :settings-manager
   :doc        false)
@@ -331,10 +331,10 @@
   [channel-id :- su/NonBlankString, text-or-nil :- (s/maybe s/Str) & [attachments]]
   ;; TODO: it would be nice to have an emoji or icon image to use here
   (POST "chat.postMessage"
-        {:form-params
-         {:channel     channel-id
-          :username    "MetaBot"
-          :icon_url    "http://static.metabase.com/metabot_slack_avatar_whitebg.png"
-          :text        text-or-nil
-          :attachments (when (seq attachments)
-                         (json/generate-string attachments))}}))
+    {:form-params
+     {:channel     channel-id
+      :username    "MetaBot"
+      :icon_url    "http://static.metabase.com/metabot_slack_avatar_whitebg.png"
+      :text        text-or-nil
+      :attachments (when (seq attachments)
+                     (json/generate-string attachments))}}))

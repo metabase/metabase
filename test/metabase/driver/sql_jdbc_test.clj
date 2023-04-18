@@ -174,10 +174,10 @@
         spliced      (driver/splice-parameters-into-native-query driver/*driver* native-query)]
     (ffirst
      (mt/formatted-rows [int]
-       (qp/process-query
-        {:database (mt/id)
-         :type     :native
-         :native   spliced})))))
+                        (qp/process-query
+                         {:database (mt/id)
+                          :type     :native
+                          :native   spliced})))))
 
 (deftest ^:parallel splice-parameters-mbql-test
   (testing "`splice-parameters-into-native-query` should generate a query that works correctly"

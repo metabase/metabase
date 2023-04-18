@@ -53,10 +53,10 @@
       (case status
         ;; disabled means a param is not allowed to be specified by either token or user
         "disabled" (api/check (not (contains? all-params param))
-                              [400 (tru "You''re not allowed to specify a value for {0}." param)])
+                     [400 (tru "You''re not allowed to specify a value for {0}." param)])
         ;; enabled means either JWT *or* user can specify the param, but not both. Param is *not* required
         "enabled"  (api/check (not (contains? duplicated-params param))
-                              [400 (tru "You can''t specify a value for {0} if it''s already set in the JWT." param)])
+                     [400 (tru "You can''t specify a value for {0} if it''s already set in the JWT." param)])
         ;; locked means JWT must specify param
         "locked"   (api/check
                     (contains? token-params param)      [400 (tru "You must specify a value for {0} in the JWT." param)]
@@ -104,7 +104,6 @@
   ;; ok, everything checks out, now return the merged params map
   (merge user-params token-params))
 
-
 ;;; ---------------------------------------------- Other Param Util Fns ----------------------------------------------
 
 (defn- remove-params-in-set
@@ -143,7 +142,7 @@
         ordered-cards      (:ordered_cards dashboard)
         params-with-values (reduce
                             (fn [acc param]
-                             (if-let [value (get token-params (keyword (:slug param)))]
+                              (if-let [value (get token-params (keyword (:slug param)))]
                                 (conj acc (assoc param :value value))
                                 acc))
                             []
@@ -210,7 +209,6 @@
   [query-params]
   (m/map-keys keyword query-params))
 
-
 ;;; ---------------------------- Card Fns used by both /api/embed and /api/preview_embed -----------------------------
 
 (defn card-for-unsigned-token
@@ -242,7 +240,6 @@
               :constraints constraints,
               :qp-runner qp-runner,
               options)))
-
 
 ;;; -------------------------- Dashboard Fns used by both /api/embed and /api/preview_embed --------------------------
 
@@ -280,7 +277,6 @@
      :context       :embedded-dashboard
      :constraints   constraints)))
 
-
 ;;; ------------------------------------- Other /api/embed-specific utility fns --------------------------------------
 
 (defn- check-embedding-enabled-for-object
@@ -302,7 +298,6 @@
 (def ^:private ^{:arglists '([card-id])} check-embedding-enabled-for-card
   "Runs check-embedding-enabled-for-object for a given Card id"
   (partial check-embedding-enabled-for-object Card))
-
 
 ;;; ------------------------------------------- /api/embed/card endpoints --------------------------------------------
 
@@ -361,7 +356,6 @@
                 :js-int-to-string?     false
                 :format-rows?          false}))
 
-
 ;;; ----------------------------------------- /api/embed/dashboard endpoints -----------------------------------------
 
 (api/defendpoint GET "/dashboard/:token"
@@ -413,7 +407,6 @@
   [token dashcard-id card-id & query-params]
   (dashcard-results-for-signed-token-async token dashcard-id card-id :api query-params))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        FieldValues, Search, Remappings                                         |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -437,7 +430,6 @@
         dashboard-id   (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])]
     (check-embedding-enabled-for-dashboard dashboard-id)
     (api.public/dashboard-and-field-id->values dashboard-id field-id)))
-
 
 ;;; --------------------------------------------------- Searching ----------------------------------------------------
 
@@ -463,7 +455,6 @@
     (check-embedding-enabled-for-dashboard dashboard-id)
     (api.public/search-dashboard-fields dashboard-id field-id search-field-id value (when limit
                                                                                       (Integer/parseInt limit)))))
-
 
 ;;; --------------------------------------------------- Remappings ---------------------------------------------------
 
@@ -491,7 +482,7 @@
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET ["/dashboard/:token/dashcard/:dashcard-id/card/:card-id/:export-format"
-                                         :export-format api.dataset/export-format-regex]
+                             :export-format api.dataset/export-format-regex]
   "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the
   `embedding-secret-key` return the data in one of the export formats"
   [token export-format dashcard-id card-id, :as {:keys [query-params]}]
@@ -505,7 +496,6 @@
     :middleware {:process-viz-settings? true
                  :js-int-to-string?     false
                  :format-rows?          false}))
-
 
 ;;; ----------------------------------------------- Param values -------------------------------------------------
 

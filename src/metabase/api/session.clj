@@ -71,7 +71,6 @@
     (throw (ex-info (str (tru "Password login is disabled for this instance.")) {:status-code 400})))
   ((get-method create-session! :sso) session-type user device-info))
 
-
 ;;; ## API Endpoints
 
 (def ^:private login-throttlers
@@ -178,7 +177,7 @@
       (http-401-on-error
        (throttle/with-throttling [(login-throttlers :ip-address) ip-address
                                   (login-throttlers :username)   username]
-           (do-login))))))
+                                 (do-login))))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema DELETE "/"
@@ -241,7 +240,7 @@
     (let [user-id (Integer/parseInt user-id)]
       (when-let [{:keys [reset_token reset_triggered], :as user} (t2/select-one [User :id :last_login :reset_triggered
                                                                                  :reset_token]
-                                                                   :id user-id, :is_active true)]
+                                                                                :id user-id, :is_active true)]
         ;; Make sure the plaintext token matches up with the hashed one for this user
         (when (u/ignore-exceptions
                 (u.password/bcrypt-verify token reset_token))
@@ -294,18 +293,18 @@
     (google/do-google-auth request)
     (http-401-on-error
      (throttle/with-throttling [(login-throttlers :ip-address) (request.u/ip-address request)]
-       (let [user (google/do-google-auth request)
-             {session-uuid :id, :as session} (create-session! :sso user (request.u/device-info request))
-             response {:id (str session-uuid)}
-             user (t2/select-one [User :id :is_active], :email (:email user))]
-         (if (and user (:is_active user))
-           (mw.session/set-session-cookies request
-                                           response
-                                           session
-                                           (t/zoned-date-time (t/zone-id "GMT")))
-           (throw (ex-info (str disabled-account-message)
-                           {:status-code 401
-                            :errors      {:account disabled-account-snippet}}))))))))
+                               (let [user (google/do-google-auth request)
+                                     {session-uuid :id, :as session} (create-session! :sso user (request.u/device-info request))
+                                     response {:id (str session-uuid)}
+                                     user (t2/select-one [User :id :is_active], :email (:email user))]
+                                 (if (and user (:is_active user))
+                                   (mw.session/set-session-cookies request
+                                                                   response
+                                                                   session
+                                                                   (t/zoned-date-time (t/zone-id "GMT")))
+                                   (throw (ex-info (str disabled-account-message)
+                                                   {:status-code 401
+                                                    :errors      {:account disabled-account-snippet}}))))))))
 
 (defn- +log-all-request-failures [handler]
   (fn [request respond raise]

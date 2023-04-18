@@ -97,7 +97,6 @@
      respond
      (comp respond api-exception-response))))
 
-
 (defn catch-uncaught-exceptions
   "Middleware that catches any unexpected Exceptions that reroutes them thru `raise` where they can be handled
   appropriately."

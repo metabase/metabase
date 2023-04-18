@@ -28,7 +28,7 @@
   different permissions group that grants full access to the table."
   [sandboxes group-ids]
   (let [perms               (when (seq group-ids)
-                             (t2/select Permissions {:where [:in :group_id group-ids]}))
+                              (t2/select Permissions {:where [:in :group_id group-ids]}))
         group-id->perms-set (-> (group-by :group_id perms)
                                 (update-vals (fn [perms] (into #{} (map :object) perms))))]
     (filter (partial enforce-sandbox? group-id->perms-set)

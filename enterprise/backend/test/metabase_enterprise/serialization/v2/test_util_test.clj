@@ -23,10 +23,10 @@
                          :breakout     [["datetime-field" [:field created-id] "week"]]
                          :filter       ["<" [:field nps-id] 9]}}
              (#'serdes/mbql-fully-qualified-names->ids
-               {:database "Metabase Store",
-                :type     "query",
-                :query    {:source-table ["Metabase Store" "public" "crm_survey_response"],
-                           :aggregation  [["cum-count"]],
-                           :breakout     [["datetime-field" ["field-id" ["Metabase Store" "public"
-                                                                         "crm_survey_response" "created_at"]] "week"]],
-                           :filter       ["<" ["field-id" ["Metabase Store" "public" "crm_survey_response" "nps"]] 9]}}))))))
+              {:database "Metabase Store",
+               :type     "query",
+               :query    {:source-table ["Metabase Store" "public" "crm_survey_response"],
+                          :aggregation  [["cum-count"]],
+                          :breakout     [["datetime-field" ["field-id" ["Metabase Store" "public"
+                                                                        "crm_survey_response" "created_at"]] "week"]],
+                          :filter       ["<" ["field-id" ["Metabase Store" "public" "crm_survey_response" "nps"]] 9]}}))))))

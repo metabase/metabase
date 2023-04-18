@@ -28,10 +28,10 @@
                       :type/Text)]}
              (qp.test/rows-and-cols
               (mt/format-rows-by [str int str]
-                (mt/run-mbql-query venues
-                  {:fields   [$name $category_id]
-                   :order-by [[:asc $name]]
-                   :limit    4}))))))))
+                                 (mt/run-mbql-query venues
+                                   {:fields   [$name $category_id]
+                                    :order-by [[:asc $name]]
+                                    :limit    4}))))))))
 
 (deftest basic-external-remapping-test
   (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys)
@@ -59,10 +59,10 @@
                         :name          "count"
                         :semantic_type :type/Quantity}]}
                (-> (mt/format-rows-by [str int int]
-                     (mt/run-mbql-query venues
-                       {:aggregation [[:count]]
-                        :breakout    [$category_id]
-                        :limit       3}))
+                                      (mt/run-mbql-query venues
+                                        {:aggregation [[:count]]
+                                         :breakout    [$category_id]
+                                         :limit       3}))
                    qp.test/rows-and-cols
                    (update :cols (fn [[c1 c2 agg]]
                                    [(dissoc c1 :source_alias) c2 (dissoc agg :base_type :effective_type)])))))))))
@@ -154,10 +154,10 @@
                                 :field_ref     $category_id->categories.name))]}
                (-> (select-columns (set (map mt/format-name ["name" "price" "name_2"]))
                      (mt/format-rows-by [str int str str]
-                       (mt/run-mbql-query venues
-                         {:fields   [$name $price $category_id]
-                          :order-by [[:asc $name]]
-                          :limit    4})))
+                                        (mt/run-mbql-query venues
+                                          {:fields   [$name $price $category_id]
+                                           :order-by [[:asc $name]]
+                                           :limit    4})))
                    (update :cols (fn [[c1 c2 c3]]
                                    [c1 c2 (dissoc c3 :source_alias)])))))))))
 
@@ -179,8 +179,8 @@
       (mt/with-column-remappings [venues.category_id categories.name]
         (is (= ["20th Century Cafe" "25°" "33 Taps" "800 Degrees Neapolitan Pizzeria"]
                (->> (mt/rows
-                      (mt/run-mbql-query venues
-                        {:order-by [[:asc $name]], :limit 4}))
+                     (mt/run-mbql-query venues
+                       {:order-by [[:asc $name]], :limit 4}))
                     (map second))))))))
 
 (deftest self-referencing-test
@@ -194,7 +194,7 @@
     (mt/dataset test-data-self-referencing-user
       (mt/with-column-remappings [users.created_by users.name]
         (t2/update! Field (mt/id :users :created_by)
-          {:fk_target_field_id (mt/id :users :id)})
+                    {:fk_target_field_id (mt/id :users :id)})
         (is (= ["Dwight Gresham" "Shad Ferdynand" "Kfir Caj" "Plato Yeshua"]
                (->> (mt/run-mbql-query users
                       {:order-by [[:asc $name]]
@@ -208,9 +208,9 @@
       (letfn [(remappings-with-metadata [metadata]
                 (metabase.test/with-column-remappings [orders.product_id products.title]
                   (mt/rows
-                    (mt/run-mbql-query nil
-                      {:source-query    {:native "SELECT * FROM ORDERS WHERE USER_ID = 1 AND TOTAL > 10 ORDER BY ID ASC LIMIT 2;"}
-                       :source-metadata metadata}))))]
+                   (mt/run-mbql-query nil
+                     {:source-query    {:native "SELECT * FROM ORDERS WHERE USER_ID = 1 AND TOTAL > 10 ORDER BY ID ASC LIMIT 2;"}
+                      :source-metadata metadata}))))]
         (testing "With the metadata from an MBQL query"
           (let [metadata (get-in (qp/process-query (mt/mbql-query orders))
                                  [:data :results_metadata :columns])]
@@ -235,7 +235,7 @@
               (mt/with-native-query-testing-context query
                 (is (= [[6 1 60 29.8 1.64 31.44 nil "2019-11-06T16:38:50.134Z" 3 "Rustic Paper Car"]]
                        (mt/formatted-rows [int int int 2.0 2.0 2.0 identity str int str]
-                         (qp/process-query query))))))))))))
+                                          (qp/process-query query))))))))))))
 
 (deftest multiple-fk-remaps-test
   (testing "Should be able to do multiple FK remaps via different FKs from Table A to Table B (#9236)"
@@ -293,7 +293,7 @@
                           ["Small Marble Shoes"        "Doohickey" "Small Marble Shoes"        352]
                           ["Synergistic Granite Chair" "Doohickey" "Synergistic Granite Chair" 286]]
                          (mt/formatted-rows [str str str int]
-                           results))))))))))))
+                                            results))))))))))))
 
 (deftest inception-style-nested-query-with-joins-test
   (testing "source query > source query > query with join (with remappings) should work (#14724)"

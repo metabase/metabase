@@ -20,7 +20,7 @@
     (mt/with-temp-vals-in-db Field (mt/id :venues :price) {:position -1}
       (let [ids       (map second (#'qp.add-implicit-clauses/sorted-implicit-fields-for-table (mt/id :venues)))
             id->field (m/index-by :id (t2/select [Field :id :position :name :semantic_type] :id [:in ids]))]
-        (is (= [ ;; sorted first because it has lowest positon
+        (is (= [;; sorted first because it has lowest positon
                 {:position -1, :name "PRICE", :semantic_type :type/Category}
                 ;; PK
                 {:position 0, :name "ID", :semantic_type :type/PK}
@@ -79,7 +79,7 @@
   (testing "We should add sorted implicit Fields for a query with no aggregations"
     (is (= (:query
             (mt/mbql-query venues
-              {:fields [ ;; :type/PK Fields should get sorted first
+              {:fields [;; :type/PK Fields should get sorted first
                         $id
                         ;; followed by :type/Name Fields
                         $name
@@ -93,7 +93,7 @@
                     Field [field-2 {:table_id (mt/id :venues), :position 101, :name "aaaaa"}]]
       (is (= (:query
               (mt/mbql-query venues
-                {:fields [ ;; all fields with lower positions should get sorted first according to rules above
+                {:fields [;; all fields with lower positions should get sorted first according to rules above
                           $id $name $category_id $latitude $longitude $price
                           ;; followed by position = 100, then position = 101
                           [:field (u/the-id field-1) nil]

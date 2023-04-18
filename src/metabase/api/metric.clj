@@ -30,12 +30,12 @@
   ;; TODO - why can't set the other properties like `show_in_getting_started` when you create a Metric?
   (api/create-check Metric body)
   (let [metric (api/check-500
-                 (first (t2/insert-returning-instances! Metric
-                                                        :table_id    table_id
-                                                        :creator_id  api/*current-user-id*
-                                                        :name        name
-                                                        :description description
-                                                        :definition  definition)))]
+                (first (t2/insert-returning-instances! Metric
+                                                       :table_id    table_id
+                                                       :creator_id  api/*current-user-id*
+                                                       :name        name
+                                                       :description description
+                                                       :definition  definition)))]
     (-> (events/publish-event! :metric-create metric)
         (hydrate :creator))))
 
@@ -76,8 +76,8 @@
                      :non-nil #{:archived :definition :name :show_in_getting_started})
         new-def    (->> clean-body :definition (mbql.normalize/normalize-fragment []))
         new-body   (merge
-                     (dissoc clean-body :revision_message)
-                     (when new-def {:definition new-def}))
+                    (dissoc clean-body :revision_message)
+                    (when new-def {:definition new-def}))
         changes    (when-not (= new-body existing)
                      new-body)
         archive?   (:archived changes)]
@@ -125,7 +125,6 @@
                                         {:metric_id id, :field_id field-id}))
     {:success true}))
 
-
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema DELETE "/:id"
   "Archive a Metric. (DEPRECATED -- Just pass updated value of `:archived` to the `PUT` endpoint instead.)"
@@ -136,14 +135,12 @@
   (write-check-and-update-metric! id {:archived true, :revision_message revision_message})
   api/generic-204-no-content)
 
-
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:id/revisions"
   "Fetch `Revisions` for `Metric` with ID."
   [id]
   (api/read-check Metric id)
   (revision/revisions+details Metric id))
-
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/:id/revert"
@@ -152,16 +149,15 @@
   {revision_id su/IntGreaterThanZero}
   (api/write-check Metric id)
   (revision/revert!
-    :entity      Metric
-    :id          id
-    :user-id     api/*current-user-id*
-    :revision-id revision_id))
+   :entity      Metric
+   :id          id
+   :user-id     api/*current-user-id*
+   :revision-id revision_id))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:id/related"
   "Return related entities."
   [id]
   (-> (t2/select-one Metric :id id) api/read-check related/related))
-
 
 (api/define-routes)

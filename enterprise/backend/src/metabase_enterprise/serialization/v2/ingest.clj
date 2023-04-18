@@ -17,16 +17,16 @@
   ;; Represents a data source for deserializing previously-exported appdb content into this Metabase instance.
   ;; This is written as a protocol since overriding it with [[reify]] is useful for testing.
   (ingest-list
-    [this]
-    "Return a reducible stream of `:serdes/meta`-style abstract paths, one for each entity in the dump.
+   [this]
+   "Return a reducible stream of `:serdes/meta`-style abstract paths, one for each entity in the dump.
     See the description of these abstract paths in [[metabase.models.serialization.base]].
     Each path is ordered from the root to the leaf.
 
     The order of the whole list is not specified and should not be relied upon!")
 
   (ingest-one
-    [this path]
-    "Given one of the `:serdes/meta` abstract paths returned by [[ingest-list]], read in and return the entire
+   [this path]
+   "Given one of the `:serdes/meta` abstract paths returned by [[ingest-list]], read in and return the entire
     corresponding entity."))
 
 (defn- read-timestamps [entity]

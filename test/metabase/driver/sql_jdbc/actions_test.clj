@@ -47,6 +47,6 @@
           ;; this `category_id` -- it's an FK constraint violation.
           (binding [*current-user-permissions-set* (delay #{"/"})]
             (is (thrown-with-msg? Exception #"Referential integrity constraint violation:.*"
-                                            (actions/perform-action! :row/delete (mt/mbql-query categories {:filter [:= $id 58]})))))
+                                  (actions/perform-action! :row/delete (mt/mbql-query categories {:filter [:= $id 58]})))))
           (testing "Make sure our impl was actually called."
             (is @parse-sql-error-called?)))))))

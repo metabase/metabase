@@ -37,7 +37,6 @@
 ;;; |                                          metabase.driver method impls                                          |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-
 (defmethod driver/supports? [:athena :foreign-keys] [_ _] true)
 
 (defmethod driver/database-supports? [:athena :datetime-diff] [_driver _feature _database] true)

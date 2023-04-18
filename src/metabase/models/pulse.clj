@@ -126,10 +126,10 @@
 (defmethod mi/can-read? Pulse
   [notification]
   (if (is-alert? notification)
-   (mi/current-user-has-full-permissions? :read notification)
-   (or api/*is-superuser?*
-       (or (current-user-is-creator? notification)
-           (current-user-is-recipient? notification)))))
+    (mi/current-user-has-full-permissions? :read notification)
+    (or api/*is-superuser?*
+        (or (current-user-is-creator? notification)
+            (current-user-is-recipient? notification)))))
 
 ;; Non-admins should be able to create subscriptions, and update subscriptions that they created, but not edit anyone
 ;; else's subscriptions (except for unsubscribing themselves, which uses a custom API).
@@ -142,13 +142,13 @@
              (current-user-is-creator? notification)))))
 
 (mi/define-methods
- Pulse
- {:hydration-keys (constantly [:pulse])
-  :properties     (constantly {::mi/timestamped? true
-                               ::mi/entity-id    true})
-  :pre-insert     pre-insert
-  :pre-update     pre-update
-  :types          (constantly {:parameters :json})})
+  Pulse
+  {:hydration-keys (constantly [:pulse])
+   :properties     (constantly {::mi/timestamped? true
+                                ::mi/entity-id    true})
+   :pre-insert     pre-insert
+   :pre-update     pre-update
+   :types          (constantly {:parameters :json})})
 
 (defmethod serdes/hash-fields Pulse
   [_pulse]
@@ -196,8 +196,8 @@
             :dashboard_id       (s/maybe su/IntGreaterThanZero)
             :parameter_mappings (s/maybe [su/Map])})
     (deferred-tru "value must be a map with the following keys `({0})`"
-      (str/join ", " ["collection_id" "description" "display" "id" "include_csv" "include_xls" "name"
-                      "dashboard_id" "parameter_mappings"]))))
+                  (str/join ", " ["collection_id" "description" "display" "id" "include_csv" "include_xls" "name"
+                                  "dashboard_id" "parameter_mappings"]))))
 
 (def CoercibleToCardRef
   "Schema for functions accepting either a `HybridPulseCard` or `CardRef`."
@@ -403,7 +403,6 @@
    :include_xls       (get card :include_xls false)
    :dashboard_card_id (get card :dashboard_card_id nil)})
 
-
 ;;; ------------------------------------------ Other Persistence Functions -------------------------------------------
 
 (s/defn update-notification-cards!
@@ -464,12 +463,12 @@
   [notification-or-id channels :- [su/Map]]
   (let [new-channels   (group-by (comp keyword :channel_type) channels)
         old-channels   (group-by (comp keyword :channel_type) (t2/select PulseChannel
-                                                                :pulse_id (u/the-id notification-or-id)))
+                                                                         :pulse_id (u/the-id notification-or-id)))
         handle-channel #(create-update-delete-channel! (u/the-id notification-or-id)
                                                        (first (get new-channels %))
                                                        (first (get old-channels %)))]
     (assert (zero? (count (get new-channels nil)))
-      "Cannot have channels without a :channel_type attribute")
+            "Cannot have channels without a :channel_type attribute")
     ;; don't automatically archive this Pulse if we end up deleting its last PulseChannel -- we're probably replacing
     ;; it with a new one immediately thereafter.
     (binding [*automatically-archive-when-last-channel-is-deleted* false]
@@ -518,8 +517,8 @@
 (s/defn ^:private notification-or-id->existing-card-refs :- [CardRef]
   [notification-or-id]
   (t2/select [PulseCard [:card_id :id] :include_csv :include_xls :dashboard_card_id]
-    :pulse_id (u/the-id notification-or-id)
-    {:order-by [[:position :asc]]}))
+             :pulse_id (u/the-id notification-or-id)
+             {:order-by [[:position :asc]]}))
 
 (s/defn ^:private card-refs-have-changed? :- s/Bool
   [notification-or-id, new-card-refs :- [CardRef]]
@@ -545,9 +544,9 @@
                     (s/optional-key :archived)            s/Bool
                     (s/optional-key :parameters)          [su/Map]}]
   (t2/update! Pulse (u/the-id notification)
-    (u/select-keys-when notification
-      :present [:collection_id :collection_position :archived]
-      :non-nil [:name :alert_condition :alert_above_goal :alert_first_only :skip_if_empty :parameters]))
+              (u/select-keys-when notification
+                :present [:collection_id :collection_position :archived]
+                :non-nil [:name :alert_condition :alert_above_goal :alert_first_only :skip_if_empty :parameters]))
   ;; update Cards if the 'refs' have changed
   (when (contains? notification :cards)
     (update-notification-cards-if-changed! notification (map card->ref (:cards notification))))
@@ -595,9 +594,9 @@
 
 (defmethod serdes/load-xform "Pulse" [pulse]
   (cond-> (serdes/load-xform-basics pulse)
-      true                   (update :creator_id    serdes/*import-user*)
-      (:collection_id pulse) (update :collection_id serdes/*import-fk* 'Collection)
-      (:dashboard_id  pulse) (update :dashboard_id  serdes/*import-fk* 'Dashboard)))
+    true                   (update :creator_id    serdes/*import-user*)
+    (:collection_id pulse) (update :collection_id serdes/*import-fk* 'Collection)
+    (:dashboard_id  pulse) (update :dashboard_id  serdes/*import-fk* 'Dashboard)))
 
 (defmethod serdes/dependencies "Pulse" [{:keys [collection_id dashboard_id]}]
   (filterv some? [(when collection_id [{:model "Collection" :id collection_id}])

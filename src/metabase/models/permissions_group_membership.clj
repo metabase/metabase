@@ -16,7 +16,7 @@
 
 (defonce ^:dynamic ^{:doc "Should we allow people to be added to or removed from the All Users permissions group? By
   default, this is `false`, but enable it when adding or deleting users."}
-  *allow-changing-all-users-group-members*
+ *allow-changing-all-users-group-members*
   false)
 
 (defn- check-not-all-users-group
@@ -25,7 +25,7 @@
   (when (= group-id (:id (perms-group/all-users)))
     (when-not *allow-changing-all-users-group-members*
       (throw (ex-info (tru "You cannot add or remove users to/from the ''All Users'' group.")
-               {:status-code 400})))))
+                      {:status-code 400})))))
 
 (defn- admin-count
   "The current number of non-archived admins (superusers)."
@@ -68,7 +68,7 @@
       (t2/update! 'User user_id {:is_superuser true}))))
 
 (mi/define-methods
- PermissionsGroupMembership
- {:pre-delete  pre-delete
-  :pre-insert  pre-insert
-  :post-insert post-insert})
+  PermissionsGroupMembership
+  {:pre-delete  pre-delete
+   :pre-insert  pre-insert
+   :post-insert post-insert})

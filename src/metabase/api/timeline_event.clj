@@ -78,9 +78,9 @@
     (collection/check-allowed-to-change-collection existing timeline-event-updates)
     ;; todo: if we accept a new timestamp, must we require a timezone? gut says yes?
     (t2/update! TimelineEvent id
-      (u/select-keys-when timeline-event-updates
-        :present #{:description :timestamp :time_matters :timezone :icon :timeline_id :archived}
-        :non-nil #{:name}))
+                (u/select-keys-when timeline-event-updates
+                  :present #{:description :timestamp :time_matters :timezone :icon :timeline_id :archived}
+                  :non-nil #{:name}))
     (t2/select-one TimelineEvent :id id)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}

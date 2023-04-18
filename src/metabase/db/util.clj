@@ -23,9 +23,9 @@
   In toucan2, every keyword can be a model so if `model` is a keyword, returns as is, otherwise calls [[mdb.u/primary-key]]."
   [model]
   (if (keyword? model)
-   (first (t2/primary-keys model))
-   #_{:clj-kondo/ignore [:discouraged-var]}
-   (models/primary-key model)))
+    (first (t2/primary-keys model))
+    #_{:clj-kondo/ignore [:discouraged-var]}
+    (models/primary-key model)))
 
 (defn join
   "Convenience for generating a HoneySQL `JOIN` clause.

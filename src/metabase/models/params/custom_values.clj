@@ -49,25 +49,24 @@
   Maybe we should lower it for the sake of displaying a parameter dropdown."
   1000)
 
-
 (defn- values-from-card-query
   [card value-field query]
   (let [value-base-type (:base_type (qp.util/field->field-info value-field (:result_metadata card)))]
     {:database (:database_id card)
      :type     :query
      :query    (merge
-                 {:source-table (format "card__%d" (:id card))
-                  :breakout     [value-field]
-                  :limit        *max-rows*}
-                 {:filter [:and
-                           [(if (isa? value-base-type :type/Text)
-                              :not-empty
-                              :not-null)
-                            value-field]
-                           (when query
-                             (if-not (isa? value-base-type :type/Text)
-                               [:= value-field query]
-                               [:contains [:lower value-field] (u/lower-case-en query)]))]})
+                {:source-table (format "card__%d" (:id card))
+                 :breakout     [value-field]
+                 :limit        *max-rows*}
+                {:filter [:and
+                          [(if (isa? value-base-type :type/Text)
+                             :not-empty
+                             :not-null)
+                           value-field]
+                          (when query
+                            (if-not (isa? value-base-type :type/Text)
+                              [:= value-field query]
+                              [:contains [:lower value-field] (u/lower-case-en query)]))]})
      :middleware {:disable-remaps? true}}))
 
 (mu/defn values-from-card
@@ -108,8 +107,8 @@
 (defn- can-get-card-values?
   [card value-field]
   (boolean
-    (and (not (:archived card))
-         (some? (qp.util/field->field-info value-field (:result_metadata card))))))
+   (and (not (:archived card))
+        (some? (qp.util/field->field-info value-field (:result_metadata card))))))
 
 ;;; --------------------------------------------- Putting it together ----------------------------------------------
 

@@ -41,7 +41,6 @@
 ;; new function that will execute the original in whatever context or with whatever side effects appropriate for that
 ;; step.
 
-
 ;; This looks something like {:sync #{1 2}, :cache #{2 3}} when populated.
 ;; Key is a type of sync operation, e.g. `:sync` or `:cache`; vals are sets of DB IDs undergoing that operation.
 ;;
@@ -71,17 +70,16 @@
         (finally
           (swap! operation->db-ids update operation #(disj % (u/the-id database-or-id))))))))
 
-
 (defn- with-sync-events
   "Publish events related to beginning and ending a sync-like process, e.g. `:sync-database` or `:cache-values`, for a
   DATABASE-ID. F is executed between the logging of the two events."
   ;; we can do everyone a favor and infer the name of the individual begin and sync events
   ([event-name-prefix database-or-id f]
    (with-sync-events
-    (keyword (str (name event-name-prefix) "-begin"))
-    (keyword (str (name event-name-prefix) "-end"))
-    database-or-id
-    f))
+     (keyword (str (name event-name-prefix) "-begin"))
+     (keyword (str (name event-name-prefix) "-end"))
+     database-or-id
+     f))
   ([begin-event-name end-event-name database-or-id f]
    (fn []
      (let [start-time    (System/nanoTime)
@@ -103,8 +101,8 @@
         _          (log-fn (u/format-color 'magenta "STARTING: %s" message))
         result     (f)]
     (log-fn (u/format-color 'magenta "FINISHED: %s (%s)"
-              message
-              (u/format-nanoseconds (- (System/nanoTime) start-time))))
+                            message
+                            (u/format-nanoseconds (- (System/nanoTime) start-time))))
     result))
 
 (defn- with-start-and-finish-logging
@@ -194,7 +192,6 @@
   {:style/indent 3}
   [operation database message & body]
   `(do-sync-operation ~operation ~database ~message (fn [] ~@body)))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              EMOJI PROGRESS METER                                              |
@@ -303,7 +300,7 @@
   mi/model)
 
 (defmethod name-for-logging Database
-  [{database-name :name, id :id, engine :engine,}]
+  [{database-name :name, id :id, engine :engine}]
   (trs "{0} Database {1} ''{2}''" (name engine) (or id "") database-name))
 
 (defmethod name-for-logging Table [{schema :schema, id :id, table-name :name}]
@@ -414,7 +411,7 @@
                                    "# %s\n"
                                    "# %s\n"
                                    (when log-summary-fn
-                                       (format "# %s\n" (log-summary-fn step-info))))
+                                     (format "# %s\n" (log-summary-fn step-info))))
                        [(trs "Completed step ''{0}''" step-name)
                         (trs "Start: {0}" (u.date/format start-time))
                         (trs "End: {0}" (u.date/format end-time))

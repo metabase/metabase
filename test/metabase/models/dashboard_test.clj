@@ -52,7 +52,6 @@
                              :card_id (= card-id card_id)
                              :series  (= [series-id-1 series-id-2] series))]))))))
 
-
 (deftest diff-dashboards-str-test
   (is (= "renamed it from \"Diff Test\" to \"Diff Test Changed\" and added a description."
          (revision/diff-str
@@ -381,13 +380,13 @@
   (testing "shoudld not override if existsed "
     (mt/with-temp* [Card      [{card-id :id}]
                     Dashboard [{dashboard-id :id} {:parameters [{:name   "Category Name"
-                                                                  :slug   "category_name"
-                                                                  :id     "_CATEGORY_NAME_"
-                                                                  :type   "category"
-                                                                  :values_query_type    "list"
-                                                                  :values_source_type   "card"
-                                                                  :values_source_config {:card_id card-id
-                                                                                         :value_field [:field 2 nil]}}]}]]
+                                                                 :slug   "category_name"
+                                                                 :id     "_CATEGORY_NAME_"
+                                                                 :type   "category"
+                                                                 :values_query_type    "list"
+                                                                 :values_source_type   "card"
+                                                                 :values_source_config {:card_id card-id
+                                                                                        :value_field [:field 2 nil]}}]}]]
       (is (=? [{:name                 "Category Name"
                 :slug                 "category_name"
                 :id                   "_CATEGORY_NAME_"

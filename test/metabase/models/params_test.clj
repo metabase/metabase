@@ -18,7 +18,6 @@
       (is (= expected
              (params/wrap-field-id-if-needed x))))))
 
-
 ;;; ---------------------------------------------- name_field hydration ----------------------------------------------
 
 (deftest hydrate-name-field-test
@@ -60,7 +59,6 @@
            (-> (t2/select-one [Field :name :table_id :semantic_type], :id (mt/id :checkins :id))
                (hydrate :name_field)
                mt/derecordize)))))
-
 
 ;;; -------------------------------------------------- param_fields --------------------------------------------------
 

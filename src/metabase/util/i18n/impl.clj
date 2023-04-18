@@ -19,7 +19,7 @@
 (p.types/defprotocol+ CoerceToLocale
   "Protocol for anything that can be coerced to a `java.util.Locale`."
   (locale ^java.util.Locale [this]
-    "Coerce `this` to a `java.util.Locale`."))
+          "Coerce `this` to a `java.util.Locale`."))
 
 (defn normalized-locale-string
   "Normalize a locale string to the canonical format.

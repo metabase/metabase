@@ -26,7 +26,7 @@
 
 (s/defn ^:private everything-store-table [table-id :- (s/maybe su/IntGreaterThanZero)]
   (assert (= (:id (qp.store/database)) (data/id))
-    "with-everything-store currently does not support switching drivers. Make sure you call with-driver *before* with-everything-store.")
+          "with-everything-store currently does not support switching drivers. Make sure you call with-driver *before* with-everything-store.")
   (or (get-in @@#'qp.store/*store* [:tables table-id])
       (do
         (qp.store/fetch-and-store-tables! [table-id])
@@ -34,7 +34,7 @@
 
 (s/defn ^:private everything-store-field [field-id :- (s/maybe su/IntGreaterThanZero)]
   (assert (= (:id (qp.store/database)) (data/id))
-    "with-everything-store currently does not support switching drivers. Make sure you call with-driver *before* with-everything-store.")
+          "with-everything-store currently does not support switching drivers. Make sure you call with-driver *before* with-everything-store.")
   (or (get-in @@#'qp.store/*store* [:fields field-id])
       (do
         (qp.store/fetch-and-store-fields! [field-id])
@@ -120,7 +120,6 @@
   (#'qp.add-implicit-joins/join-alias
    (t2/select-one-fn :name Table :id (u/the-id table-or-id))
    (t2/select-one-fn :name Field :id (u/the-id field-or-id))))
-
 
 ;;; ------------------------------------------------- Timezone Stuff -------------------------------------------------
 

@@ -39,9 +39,9 @@
       (u/with-timeout 2000
         (is (= {:query long-query}
                (qp/compile
-                {:database (mt/id)
-                 :type     :native
-                 :native   {:query long-query}})))))))
+                 {:database (mt/id)
+                  :type     :native
+                  :native   {:query long-query}})))))))
 
 ;; If user permissions are bound, we should do permissions checking when you call `compile`; you should need
 ;; native query execution permissions for the DB in question plus the perms needed for the original query in order to

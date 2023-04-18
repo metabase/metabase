@@ -218,7 +218,6 @@
              (setting-exists-in-db? :test-setting-2))
           "setting still shouldn't exist in the DB"))))
 
-
 ;;; --------------------------------------------- all & user-facing-info ---------------------------------------------
 
 ;; these tests are to check that settings get returned with the correct information; these functions are what feed
@@ -226,13 +225,13 @@
 
 (defn- user-facing-info-with-db-and-env-var-values [setting db-value env-var-value]
   (tu/do-with-temporary-setting-value setting db-value
-    (fn []
-      (tu/do-with-temp-env-var-value
-       (setting/setting-env-map-name (keyword setting))
-       env-var-value
-       (fn []
-         (dissoc (#'setting/user-facing-info (#'setting/resolve-setting setting))
-                 :key :description))))))
+                                      (fn []
+                                        (tu/do-with-temp-env-var-value
+                                         (setting/setting-env-map-name (keyword setting))
+                                         env-var-value
+                                         (fn []
+                                           (dissoc (#'setting/user-facing-info (#'setting/resolve-setting setting))
+                                                   :key :description))))))
 
 (deftest user-facing-info-test
   (testing "user-facing info w/ no db value, no env var value, no default value"
@@ -335,7 +334,6 @@
             (is (= "TEST SETTING - WITH I18N"
                    (description)))))))))
 
-
 ;;; ------------------------------------------------ BOOLEAN SETTINGS ------------------------------------------------
 
 (deftest boolean-settings-tag-test
@@ -386,7 +384,6 @@
       (is (= false
              (test-boolean-setting))))))
 
-
 ;;; ------------------------------------------------- JSON SETTINGS --------------------------------------------------
 
 (deftest set-json-setting-test
@@ -394,7 +391,6 @@
          (test-json-setting! {:a 100, :b 200})))
   (is (= {:a 100, :b 200}
          (test-json-setting))))
-
 
 ;;; -------------------------------------------------- CSV Settings --------------------------------------------------
 
@@ -448,7 +444,6 @@
     (is (= nil
            (setting/user-facing-value :test-csv-setting-with-default)))))
 
-
 ;;; ----------------------------------------------- Encrypted Settings -----------------------------------------------
 
 (defn- actual-value-in-db [setting-key]
@@ -491,7 +486,6 @@
                   :default        nil}
                  (#'setting/user-facing-info (setting/resolve-setting :test-json-setting)))))))))
 
-
 ;;; ----------------------------------------------- TIMESTAMP SETTINGS -----------------------------------------------
 
 (defsetting test-timestamp-setting
@@ -506,7 +500,6 @@
     (test-timestamp-setting! #t "2018-07-11T09:32:00.000Z")
     (is (= #t "2018-07-11T09:32:00.000Z"
            (test-timestamp-setting)))))
-
 
 ;;; ----------------------------------------------- Uncached Settings ------------------------------------------------
 
@@ -545,7 +538,6 @@
       (is (= nil
              (settings-last-updated-value-in-db))))))
 
-
 ;;; ----------------------------------------------- Sensitive Settings -----------------------------------------------
 
 (defsetting test-sensitive-setting
@@ -564,7 +556,6 @@
     (is (= "123456"
            (test-sensitive-setting)))))
 
-
 ;;; ------------------------------------------------- CACHE SYNCING --------------------------------------------------
 
 (deftest cache-sync-test
@@ -580,7 +571,6 @@
     ;; ok, make sure the setting was set
     (is (= "Banana Beak"
            (toucan-name)))))
-
 
 ;;; ------------------------------------------------- Setting Visibility ------------------------------------------------
 
@@ -783,7 +773,6 @@
           (is (= ::not-present
                  (f :test-database-local-only-setting-with-default))))))))
 
-
 ;;; ------------------------------------------------- User-local Settings ----------------------------------------------
 
 (defsetting test-user-local-only-setting
@@ -881,7 +870,6 @@
       (is (= "custom" (test-enabled-setting-default)))
       (is (= "custom" (test-enabled-setting-no-default))))))
 
-
 ;;; ------------------------------------------------- Misc tests -------------------------------------------------------
 
 (defsetting ^:private test-integer-setting
@@ -975,7 +963,7 @@
       "Test setting - this only shows up in dev (6)"
       :visibility :internal)
     (is (= {:new-setting {:munged-name "test-setting-normal-1", :name :test-setting-normal-1},
-             :existing-setting {:munged-name "test-setting-normal-1", :name :test-setting-normal-1??}}
+            :existing-setting {:munged-name "test-setting-normal-1", :name :test-setting-normal-1??}}
            (m/map-vals #(select-keys % [:name :munged-name])
                        (try (defsetting test-setting-normal-1
                               "Test setting - this only shows up in dev (6)"

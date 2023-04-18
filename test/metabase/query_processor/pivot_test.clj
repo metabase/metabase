@@ -55,17 +55,17 @@
              [0]
              [0 1]
              ;; "grand totals" row
-             [      3]
+             [3]
              ;; bottom right corner
              []])
            (#'qp.pivot/breakout-combinations 4 [0 1 2] [3])))
     (testing "If pivot-rows and pivot-cols aren't specified, then just return the powerset"
       (is (= [[0 1 2]
-              [  1 2]
+              [1 2]
               [0   2]
-              [    2]
+              [2]
               [0 1]
-              [  1]
+              [1]
               [0]
               []]
              (#'qp.pivot/breakout-combinations 3 [] []))))))
@@ -84,7 +84,6 @@
   ;; TODO -- we should require these columns to be distinct as well (I think?)
   ;; TODO -- require all numbers to be positive
   ;; TODO -- can you specify something in both pivot-rows and pivot-cols?
-
 
 (defn- test-query []
   (mt/dataset sample-dataset
@@ -187,12 +186,12 @@
 
 (defn- distinct-values [table col]
   (->> (mt/rows
-         (mt/dataset sample-dataset
-           (qp/process-query
-            {:database (mt/id)
-             :type     :query
-             :query    {:source-table (mt/id table)
-                        :breakout     [[:field (mt/id table col) nil]]}})))
+        (mt/dataset sample-dataset
+          (qp/process-query
+           {:database (mt/id)
+            :type     :query
+            :query    {:source-table (mt/id table)
+                       :breakout     [[:field (mt/id table col) nil]]}})))
        (map first)
        set))
 
@@ -264,9 +263,9 @@
                 "test-expr"]
                (map :display_name
                     (mt/cols
-                      (qp.pivot/run-pivot-query (-> query
-                                                    (assoc-in [:query :fields] [[:expression "test-expr"]])
-                                                    (assoc-in [:query :expressions] {:test-expr [:ltrim "wheeee"]})))))))))
+                     (qp.pivot/run-pivot-query (-> query
+                                                   (assoc-in [:query :fields] [[:expression "test-expr"]])
+                                                   (assoc-in [:query :expressions] {:test-expr [:ltrim "wheeee"]})))))))))
 
     (testing "We should still be able to use expressions inside the aggregations"
       (is (schema= {:status   (s/eq :completed)
@@ -350,4 +349,4 @@
                   [4 nil 2 314]
                   [nil nil 3 607]]
                  (mt/rows
-                   (qp.pivot/run-pivot-query query)))))))))
+                  (qp.pivot/run-pivot-query query)))))))))

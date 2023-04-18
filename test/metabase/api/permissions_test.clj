@@ -61,7 +61,7 @@
                            (get id->group (:id group)))))))))
     (testing "requires superuser"
       (is (= "You don't have permissions to do that."
-           (mt/user-http-request :rasta :get 403 "permissions/group"))))))
+             (mt/user-http-request :rasta :get 403 "permissions/group"))))))
 
 (deftest groups-list-limit-test
   (testing "GET /api/permissions/group?limit=1&offset=1"
@@ -72,7 +72,7 @@
              (mt/user-http-request :crowberto :get 200 "permissions/group" :offset "1"))))
     (testing "Limit and offset pagination works for permissions list"
       (is (partial= [{:id 1, :name "All Users"}]
-             (mt/user-http-request :crowberto :get 200 "permissions/group" :limit "1" :offset "1"))))))
+                    (mt/user-http-request :crowberto :get 200 "permissions/group" :limit "1" :offset "1"))))))
 
 (deftest fetch-group-test
   (testing "GET /permissions/group/:id"
@@ -107,7 +107,7 @@
 
     (testing "requires superuers"
       (is (= "You don't have permissions to do that."
-           (mt/user-http-request :rasta :get 403 (format "permissions/group/%d" (:id (perms-group/all-users)))))))))
+             (mt/user-http-request :rasta :get 403 (format "permissions/group/%d" (:id (perms-group/all-users)))))))))
 
 (deftest create-group-test
   (testing "POST /permissions/group"
@@ -116,13 +116,13 @@
         (mt/user-http-request :crowberto :post 200 "permissions/group" {:name "Test Group"})
         (is (some? (t2/select PermissionsGroup :name "Test Group")))))
 
-   (testing "requires superuser"
-     (is (= "You don't have permissions to do that."
-          (mt/user-http-request :rasta :post 403 "permissions/group" {:name "Test Group"}))))
+    (testing "requires superuser"
+      (is (= "You don't have permissions to do that."
+             (mt/user-http-request :rasta :post 403 "permissions/group" {:name "Test Group"}))))
 
-   (testing "group name is required"
-     (is (= {:errors {:name "value must be a non-blank string."}}
-            (mt/user-http-request :crowberto :post 400 "permissions/group" {:name nil}))))))
+    (testing "group name is required"
+      (is (= {:errors {:name "value must be a non-blank string."}}
+             (mt/user-http-request :crowberto :post 400 "permissions/group" {:name nil}))))))
 
 (deftest delete-group-test
   (testing "DELETE /permissions/group/:id"
@@ -133,11 +133,10 @@
 
     (testing "requires superuser"
       (t2.with-temp/with-temp [PermissionsGroup {group-id :id} {:name "Test group"}]
-         (is (= "You don't have permissions to do that."
-                (mt/user-http-request :rasta :delete 403 (format "permissions/group/%d" group-id))))))))
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :delete 403 (format "permissions/group/%d" group-id))))))))
 
 ;;; +---------------------------------------------- permissions graph apis -----------------------------------------------------------+
-
 
 (deftest fetch-perms-graph-test
   (testing "GET /api/permissions/graph"
@@ -223,7 +222,7 @@
     (testing "permissions when group has no permissions"
       (mt/with-temp* [PermissionsGroup [group]]
         (mt/user-http-request :crowberto :put 200 "permissions/graph"
-         (assoc-in (perms/data-perms-graph) [:groups (u/the-id group)] nil))
+                              (assoc-in (perms/data-perms-graph) [:groups (u/the-id group)] nil))
         (is (empty? (t2/select Permissions :group_id (u/the-id group))))
         (is (= nil (get-in (perms/data-perms-graph) [:groups (u/the-id group)])))
         (is (= nil (get-in (perms/data-perms-graph-v2) [:groups (u/the-id group)])))))))
@@ -258,8 +257,8 @@
                                    (assoc (perms/data-perms-graph) :sandboxes [{:card_id 1}])))))))
 (defn- ee-features-enabled? []
   (u/ignore-exceptions
-   (classloader/require 'metabase-enterprise.advanced-permissions.models.permissions)
-   (some? (resolve 'metabase-enterprise.advanced-permissions.models.permissions/update-db-execute-permissions!))))
+    (classloader/require 'metabase-enterprise.advanced-permissions.models.permissions)
+    (some? (resolve 'metabase-enterprise.advanced-permissions.models.permissions/update-db-execute-permissions!))))
 
 (deftest update-execution-perms-graph-test
   (mt/with-model-cleanup [Permissions]

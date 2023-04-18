@@ -203,7 +203,6 @@
                                 :margin-bottom :16px})}
      (trs "More results have been included as a file attachment")]))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                     render                                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -986,7 +985,6 @@
      [:div
       [:img {:style (style/style {:display :block :width :100%})
              :src   (:image-src image-bundle)}]]}))
-
 
 (s/defmethod render :empty :- common/RenderedPulseCard
   [_ render-type _ _ _ _]

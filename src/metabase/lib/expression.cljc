@@ -193,9 +193,9 @@
   ([query stage-number expression-name an-expression-clause]
    (let [stage-number (or stage-number -1)]
      (lib.util/update-query-stage
-       query stage-number
-       update :expressions
-       assoc expression-name (lib.common/->op-arg query stage-number an-expression-clause)))))
+      query stage-number
+      update :expressions
+      assoc expression-name (lib.common/->op-arg query stage-number an-expression-clause)))))
 
 (lib.common/defop + [x y & more])
 (lib.common/defop - [x y & more])

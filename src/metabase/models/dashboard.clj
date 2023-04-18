@@ -124,7 +124,7 @@
             cards-to-add         (set/difference correct-card-ids stale-card-ids)
             card-id->dashcard-id (when (seq cards-to-add)
                                    (t2/select-fn->pk :card_id DashboardCard :dashboard_id dashboard-id
-                                                        :card_id [:in cards-to-add]))
+                                                     :card_id [:in cards-to-add]))
             positions-for        (fn [pulse-id] (drop (pulse-card/next-position-for pulse-id)
                                                       (range)))
             new-pulse-cards      (for [pulse-id                         pulse-ids
@@ -147,21 +147,20 @@
   (update-dashboard-subscription-pulses! dashboard))
 
 (mi/define-methods
- Dashboard
- {:properties  (constantly {::mi/timestamped? true
-                            ::mi/entity-id    true})
-  :types       (constantly {:parameters :parameters-list, :embedding_params :json})
-  :pre-delete  pre-delete
-  :pre-insert  pre-insert
-  :post-insert post-insert
-  :pre-update  pre-update
-  :post-update post-update
-  :post-select (comp public-settings/remove-public-uuid-if-public-sharing-is-disabled)})
+  Dashboard
+  {:properties  (constantly {::mi/timestamped? true
+                             ::mi/entity-id    true})
+   :types       (constantly {:parameters :parameters-list, :embedding_params :json})
+   :pre-delete  pre-delete
+   :pre-insert  pre-insert
+   :post-insert post-insert
+   :pre-update  pre-update
+   :post-update post-update
+   :post-select (comp public-settings/remove-public-uuid-if-public-sharing-is-disabled)})
 
 (defmethod serdes/hash-fields Dashboard
   [_dashboard]
   [:name (serdes/hydrated-hash :collection) :created_at])
-
 
 ;;; --------------------------------------------------- Revisions ----------------------------------------------------
 
@@ -243,7 +242,6 @@
         (concat (map-indexed check-series-change (:cards changes)))
         (->> (filter identity)
              build-sentence))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 OTHER CRUD FNS                                                 |
@@ -334,12 +332,12 @@
     ;; Don't save text cards
     (-> card :dataset_query not-empty)
     (let [card (first (t2/insert-returning-instances!
-                        'Card
-                        (-> card
-                            (update :result_metadata #(or % (-> card
-                                                                :dataset_query
-                                                                result-metadata-for-query)))
-                            (dissoc :id))))]
+                       'Card
+                       (-> card
+                           (update :result_metadata #(or % (-> card
+                                                               :dataset_query
+                                                               result-metadata-for-query)))
+                           (dissoc :id))))]
       (events/publish-event! :card-create card)
       (hydrate card :creator :dashboard_count :can_write :collection))))
 
@@ -355,9 +353,9 @@
 (defn- ensure-unique-collection-name
   [collection-name parent-collection-id]
   (let [c (t2/count Collection
-            :name     [:like (format "%s%%" collection-name)]
-            :location (collection/children-location (t2/select-one [Collection :location :id]
-                                                      :id parent-collection-id)))]
+                    :name     [:like (format "%s%%" collection-name)]
+                    :location (collection/children-location (t2/select-one [Collection :location :id]
+                                                                           :id parent-collection-id)))]
     (if (zero? c)
       collection-name
       (format "%s %s" collection-name (inc c)))))
@@ -373,15 +371,15 @@
                     "Automatically generated cards."
                     parent-collection-id)
         dashboard  (first (t2/insert-returning-instances!
-                            Dashboard
-                            (-> dashboard
-                                (dissoc :ordered_cards :rule :related :transient_name
-                                        :transient_filters :param_fields :more)
-                                (assoc :description         (->> dashboard
-                                                                 :transient_filters
-                                                                 applied-filters-blurb)
-                                       :collection_id       (:id collection)
-                                       :collection_position 1))))]
+                           Dashboard
+                           (-> dashboard
+                               (dissoc :ordered_cards :rule :related :transient_name
+                                       :transient_filters :param_fields :more)
+                               (assoc :description         (->> dashboard
+                                                                :transient_filters
+                                                                applied-filters-blurb)
+                                      :collection_id       (:id collection)
+                                      :collection_position 1))))]
     (add-dashcards! dashboard
                     (for [dashcard dashcards]
                       (let [card     (some-> dashcard :card (assoc :collection_id (:id collection)) save-card!)
@@ -396,7 +394,7 @@
                                          (assoc :series series)
                                          (assoc :card_id (:id card)))]
                         dashcard)))
-   dashboard))
+    dashboard))
 
 (def ^:private ParamWithMapping
   {:name     su/NonBlankString

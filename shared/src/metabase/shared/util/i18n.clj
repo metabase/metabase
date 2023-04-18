@@ -10,7 +10,7 @@
     (tru \"Number of cans: {0}\" 2)"
   [format-string & args]
   (macros/case
-    :clj
+   :clj
     `(i18n/tru ~format-string ~@args)
 
     :cljs
@@ -26,7 +26,7 @@
   temporarily override the locale used by ttag using the `withInstanceLocalization` wrapper function."
   [format-string & args]
   (macros/case
-    :clj
+   :clj
     (do
       (require 'metabase.util.i18n)
       `(i18n/trs ~format-string ~@args))
@@ -40,7 +40,7 @@
   syntax. (Other placeholders are not supported)."
   [format-string format-string-pl n]
   (macros/case
-    :clj
+   :clj
     `(i18n/trun ~format-string ~format-string-pl ~n)
 
     :cljs
@@ -52,7 +52,7 @@
   placeholders are not supported)."
   [format-string format-string-pl n]
   (macros/case
-    :clj
+   :clj
     `(i18n/trsn ~format-string ~format-string-pl ~n)
 
     :cljs

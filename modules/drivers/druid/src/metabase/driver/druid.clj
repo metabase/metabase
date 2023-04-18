@@ -43,9 +43,9 @@
 (defmethod driver/execute-reducible-query :druid
   [_ query context respond]
   (druid.execute/execute-reducible-query
-    (partial druid.client/do-query-with-cancellation (qp.context/canceled-chan context))
-    (update-in query [:native :query] add-timeout-to-query (qp.context/timeout context))
-    respond))
+   (partial druid.client/do-query-with-cancellation (qp.context/canceled-chan context))
+   (update-in query [:native :query] add-timeout-to-query (qp.context/timeout context))
+   respond))
 
 (doseq [[feature supported?] {:set-timezone            true
                               :expression-aggregations true}]

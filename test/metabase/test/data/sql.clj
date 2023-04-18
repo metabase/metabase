@@ -18,7 +18,6 @@
   (driver/add-parent! driver :sql/test-extensions)
   (log/infof "Added SQL test extensions for %s ✏️" driver))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          Interface (Identifier Names)                                          |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -30,7 +29,6 @@
   :hierarchy #'driver/hierarchy)
 
 (defmethod pk-field-name :sql/test-extensions [_] "id")
-
 
 ;; TODO - WHAT ABOUT SCHEMA NAME???
 (defmulti qualified-name-components
@@ -69,7 +67,6 @@
          (map (partial ddl.i/format-name driver))
          (apply sql.u/quote-name driver identifier-type))))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Interface (Comments)                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -92,7 +89,6 @@
   (when (seq field-comment)
     (format "COMMENT '%s'" field-comment)))
 
-
 (defmulti standalone-column-comment-sql
   "Return standalone `COMMENT` statement for a column."
   {:arglists '([driver dbdef tabledef fielddef])}
@@ -106,9 +102,8 @@
   [driver {:keys [database-name]} {:keys [table-name]} {:keys [field-name field-comment]}]
   (when (seq field-comment)
     (format "COMMENT ON COLUMN %s IS '%s';"
-      (qualify-and-quote driver database-name table-name field-name)
-      field-comment)))
-
+            (qualify-and-quote driver database-name table-name field-name)
+            field-comment)))
 
 (defmulti inline-table-comment-sql
   "Return an inline `COMMENT` statement for a table."
@@ -124,7 +119,6 @@
   (when (seq table-comment)
     (format "COMMENT '%s'" table-comment)))
 
-
 (defmulti standalone-table-comment-sql
   "Return standalone `COMMENT` statement for a table."
   {:arglists '([driver dbdef tabledef])}
@@ -138,9 +132,8 @@
   [driver {:keys [database-name]} {:keys [table-name table-comment]}]
   (when (seq table-comment)
     (format "COMMENT ON TABLE %s IS '%s';"
-      (qualify-and-quote driver database-name table-name)
-      table-comment)))
-
+            (qualify-and-quote driver database-name table-name)
+            table-comment)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         Interface (DDL SQL Statements)                                         |
@@ -166,7 +159,6 @@
        (Exception.
         (format "No test data type mapping for driver %s for base type %s; add an impl for field-base-type->sql-type."
                 driver base-type)))))
-
 
 (defmulti pk-sql-type
   "SQL type of a primary key field."
@@ -247,7 +239,6 @@
   "Alternate implementation of `drop-table-if-exists-sql` that adds `CASCADE` to the statement for DBs that support it."
   [driver {:keys [database-name]} {:keys [table-name]}]
   (format "DROP TABLE IF EXISTS %s CASCADE;" (qualify-and-quote driver database-name table-name)))
-
 
 (defmulti add-fk-sql
   "Return a `ALTER TABLE ADD CONSTRAINT FOREIGN KEY` statement."

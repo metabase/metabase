@@ -25,8 +25,8 @@
     [(str sql replacement-snippet) (concat args prepared-statement-args) missing]))
 
 (defn- substitute-native-query-snippet [[sql args missing] v]
-   (let [{:keys [replacement-snippet]} (sql.params.substitution/->replacement-snippet-info driver/*driver* v)]
-     [(str sql replacement-snippet) args missing]))
+  (let [{:keys [replacement-snippet]} (sql.params.substitution/->replacement-snippet-info driver/*driver* v)]
+    [(str sql replacement-snippet) args missing]))
 
 (defn- substitute-param [param->value [sql args missing] in-optional? {:keys [k]}]
   (if-not (contains? param->value k)
@@ -89,13 +89,13 @@
                              (substitute* param->value parsed-query false)
                              (catch Throwable e
                                (throw (ex-info (tru "Unable to substitute parameters: {0}" (ex-message e))
-                                        {:type         (or (:type (ex-data e)) qp.error-type/qp)
-                                         :params       param->value
-                                         :parsed-query parsed-query}
-                                        e))))]
+                                               {:type         (or (:type (ex-data e)) qp.error-type/qp)
+                                                :params       param->value
+                                                :parsed-query parsed-query}
+                                               e))))]
     (log/tracef "=>%s\n%s" sql (pr-str args))
     (when (seq missing)
       (throw (ex-info (tru "Cannot run the query: missing required parameters: {0}" (set missing))
-               {:type    qp.error-type/missing-required-parameter
-                :missing missing})))
+                      {:type    qp.error-type/missing-required-parameter
+                       :missing missing})))
     [(str/trim sql) args]))

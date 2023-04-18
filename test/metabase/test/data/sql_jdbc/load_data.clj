@@ -40,7 +40,6 @@
   tx/dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  Loading Data                                                  |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -53,7 +52,6 @@
 ;; (ex. SQL Server has a low limit on how many ? args we can have in a prepared statement, so it needs to be broken
 ;;  out into chunks; Oracle doesn't understand the normal syntax for inserting multiple rows at a time so we'll insert
 ;;  them one-at-a-time instead)
-
 
 ;;; ------------------------------------ make-load-data-fn! middleware functions -------------------------------------
 
@@ -98,7 +96,6 @@
   ([map-fn insert!] (fn [rows]
                       (dorun (map-fn insert! rows)))))
 
-
 ;;; -------------------------------- Making a load-data! impl with make-load-data-fn ---------------------------------
 
 (defn load-data-get-rows
@@ -131,7 +128,6 @@
               rows    (load-data-get-rows driver dbdef tabledef)]
           (log/tracef "Inserting rows like: %s" (first rows))
           (insert! rows))))))
-
 
 ;;; ------------------------------------------ Predefinied load-data! impls ------------------------------------------
 
@@ -176,7 +172,6 @@
 
 (defmethod load-data! :sql-jdbc/test-extensions [driver dbdef tabledef]
   (load-data-chunked! driver dbdef tabledef))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              CREATING DBS/TABLES                                               |

@@ -90,11 +90,11 @@
     (with-test-driver-db
       (is (= [[10]]
              (mt/rows
-               (mt/user-http-request :lucky
-                :post 202 "dataset"
-                {:database (mt/id)
-                 :type     "native"
-                 :native   {:query {:sleep 10}}})))))))
+              (mt/user-http-request :lucky
+                                    :post 202 "dataset"
+                                    {:database (mt/id)
+                                     :type     "native"
+                                     :native   {:query {:sleep 10}}})))))))
 
 (deftest truly-async-test
   (testing "StreamingResponses should truly be asynchronous, and not block Jetty threads while waiting for results"
@@ -104,9 +104,9 @@
             session-token      (client/authenticate (mt/user->credentials :lucky))
             url                (client/build-url "dataset" nil)
             request            (client/build-request-map session-token
-                                                              {:database (mt/id)
-                                                               :type     "native"
-                                                               :native   {:query {:sleep 2000}}})]
+                                                         {:database (mt/id)
+                                                          :type     "native"
+                                                          :native   {:query {:sleep 2000}}})]
         (testing (format "%d simultaneous queries" num-requests)
           (dotimes [_ num-requests]
             (future (http/post url request)))
@@ -129,9 +129,9 @@
           (let [url           (client/build-url "dataset" nil)
                 session-token (client/authenticate (mt/user->credentials :lucky))
                 request       (client/build-request-map session-token
-                                                             {:database (mt/id)
-                                                              :type     "native"
-                                                              :native   {:query {:sleep 5000}}})
+                                                        {:database (mt/id)
+                                                         :type     "native"
+                                                         :native   {:query {:sleep 5000}}})
                 futur         (http/post url (assoc request :async? true) identity (fn [e] (throw e)))]
             (is (future? futur))
             ;; wait a little while for the query to start running -- this should usually happen fairly quickly

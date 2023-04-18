@@ -12,7 +12,6 @@
           (t/is (= expected
                    (f input))))))))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                NORMALIZE TOKENS                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -25,229 +24,223 @@
 
 (t/deftest ^:parallel normalize-tokens-test
   (normalize-tests
-    "Query type should get normalized"
-    {{:type "NATIVE"}
-     {:type :native}}
+   "Query type should get normalized"
+   {{:type "NATIVE"}
+    {:type :native}}
 
-    "native queries should NOT get normalized"
-    {{:type "NATIVE", :native {"QUERY" "SELECT COUNT(*) FROM CANS;"}}
-     {:type :native, :native {:query "SELECT COUNT(*) FROM CANS;"}}
+   "native queries should NOT get normalized"
+   {{:type "NATIVE", :native {"QUERY" "SELECT COUNT(*) FROM CANS;"}}
+    {:type :native, :native {:query "SELECT COUNT(*) FROM CANS;"}}
 
-     {:native {:query {:NAME        "FAKE_QUERY"
-                       :description "Theoretical fake query in a JSON-based query lang"}}}
-     {:native {:query {:NAME        "FAKE_QUERY"
-                       :description "Theoretical fake query in a JSON-based query lang"}}}}
+    {:native {:query {:NAME        "FAKE_QUERY"
+                      :description "Theoretical fake query in a JSON-based query lang"}}}
+    {:native {:query {:NAME        "FAKE_QUERY"
+                      :description "Theoretical fake query in a JSON-based query lang"}}}}
 
-    "METRICS shouldn't get normalized in some kind of wacky way"
-    {{:aggregation ["+" ["METRIC" 10] 1]}
-     {:aggregation [:+ [:metric 10] 1]}}
+   "METRICS shouldn't get normalized in some kind of wacky way"
+   {{:aggregation ["+" ["METRIC" 10] 1]}
+    {:aggregation [:+ [:metric 10] 1]}}
 
-    "Nor should SEGMENTS"
-    {{:filter ["=" ["+" ["SEGMENT" 10] 1] 10]}
-     {:filter [:= [:+ [:segment 10] 1] 10]}}
+   "Nor should SEGMENTS"
+   {{:filter ["=" ["+" ["SEGMENT" 10] 1] 10]}
+    {:filter [:= [:+ [:segment 10] 1] 10]}}
 
-    "field literals should be exempt too"
-    {{:order-by [[:desc [:field-literal "SALES_TAX" :type/Number]]]}
-     {:order-by [[:desc [:field-literal "SALES_TAX" :type/Number]]]}}
+   "field literals should be exempt too"
+   {{:order-by [[:desc [:field-literal "SALES_TAX" :type/Number]]]}
+    {:order-by [[:desc [:field-literal "SALES_TAX" :type/Number]]]}}
 
+   "... but they should be converted to strings if passed in as a KW for some reason"
+   {{:order-by [[:desc ["field_literal" :SALES/TAX "type/Number"]]]}
+    {:order-by [[:desc [:field-literal "SALES/TAX" :type/Number]]]}}
 
-    "... but they should be converted to strings if passed in as a KW for some reason"
-    {{:order-by [[:desc ["field_literal" :SALES/TAX "type/Number"]]]}
-     {:order-by [[:desc [:field-literal "SALES/TAX" :type/Number]]]}}
+   "modern :field clauses should get normalized"
+   {[:field 2 {"temporal-unit" "day"}]
+    [:field 2 {:temporal-unit :day}]
 
-    "modern :field clauses should get normalized"
-    {[:field 2 {"temporal-unit" "day"}]
-     [:field 2 {:temporal-unit :day}]
+    [:field 2 {"binning" {"strategy" "default"}}]
+    [:field 2 {:binning {:strategy :default}}]}
 
-     [:field 2 {"binning" {"strategy" "default"}}]
-     [:field 2 {:binning {:strategy :default}}]}
-
-    ":value clauses should keep snake_case keys in the type info arg"
+   ":value clauses should keep snake_case keys in the type info arg"
     ;; See https://github.com/metabase/metabase/issues/23354 for details
-    {[:value "some value" {:some_key "some key value"}]
-     [:value "some value" {:some_key "some key value"}]}))
+   {[:value "some value" {:some_key "some key value"}]
+    [:value "some value" {:some_key "some key value"}]}))
 
 ;;; -------------------------------------------------- aggregation ---------------------------------------------------
 
 (t/deftest ^:parallel normalize-aggregations-test
   (normalize-tests
-    "Legacy 'rows' aggregations"
-    {{:query {"AGGREGATION" "ROWS"}}
-     {:query {:aggregation :rows}}
+   "Legacy 'rows' aggregations"
+   {{:query {"AGGREGATION" "ROWS"}}
+    {:query {:aggregation :rows}}
 
-     {:query {"AGGREGATION" ["ROWS"]}}
-     {:query {:aggregation [:rows]}}}
+    {:query {"AGGREGATION" ["ROWS"]}}
+    {:query {:aggregation [:rows]}}}
 
-    "Other uppercase tokens"
-    {{:query {"AGGREGATION" ["COUNT" 10]}}
-     {:query {:aggregation [:count 10]}}
+   "Other uppercase tokens"
+   {{:query {"AGGREGATION" ["COUNT" 10]}}
+    {:query {:aggregation [:count 10]}}
 
-     {:query {"AGGREGATION" [["COUNT" 10]]}}
-     {:query {:aggregation [[:count 10]]}}}
+    {:query {"AGGREGATION" [["COUNT" 10]]}}
+    {:query {:aggregation [[:count 10]]}}}
 
-    "make sure we normalize ag tokens properly when there's wacky MBQL 95 ag syntax"
-    {{:query {:aggregation ["rows" "count"]}}
-     {:query {:aggregation [:rows :count]}}
+   "make sure we normalize ag tokens properly when there's wacky MBQL 95 ag syntax"
+   {{:query {:aggregation ["rows" "count"]}}
+    {:query {:aggregation [:rows :count]}}
 
-     {:query {:aggregation ["count" "count"]}}
-     {:query {:aggregation [:count :count]}}}
+    {:query {:aggregation ["count" "count"]}}
+    {:query {:aggregation [:count :count]}}}
 
-    "don't normalize names of expression refs!"
-    {{:query {:aggregation ["count" ["count" ["expression" "ABCDEF"]]]}}
-     {:query {:aggregation [:count [:count [:expression "ABCDEF"]]]}}}
+   "don't normalize names of expression refs!"
+   {{:query {:aggregation ["count" ["count" ["expression" "ABCDEF"]]]}}
+    {:query {:aggregation [:count [:count [:expression "ABCDEF"]]]}}}
 
-    "make sure binning-strategy clauses get normalized the way we'd expect"
-    {{:query {:breakout [["BINNING_STRATEGY" 10 "BIN-WIDTH" 2000]]}}
-     {:query {:breakout [[:binning-strategy 10 :bin-width 2000]]}}}
+   "make sure binning-strategy clauses get normalized the way we'd expect"
+   {{:query {:breakout [["BINNING_STRATEGY" 10 "BIN-WIDTH" 2000]]}}
+    {:query {:breakout [[:binning-strategy 10 :bin-width 2000]]}}}
 
-    "or field literals!"
-    {{:query {:aggregation ["count" ["count" ["field_literal" "ABCDEF" "type/Text"]]]}}
-     {:query {:aggregation [:count [:count [:field-literal "ABCDEF" :type/Text]]]}}}
+   "or field literals!"
+   {{:query {:aggregation ["count" ["count" ["field_literal" "ABCDEF" "type/Text"]]]}}
+    {:query {:aggregation [:count [:count [:field-literal "ABCDEF" :type/Text]]]}}}
 
-    "event if you try your best to break things it should handle it"
-    {{:query {:aggregation ["count" ["sum" 10] ["count" 20] "count"]}}
-     {:query {:aggregation [:count [:sum 10] [:count 20] :count]}}}
+   "event if you try your best to break things it should handle it"
+   {{:query {:aggregation ["count" ["sum" 10] ["count" 20] "count"]}}
+    {:query {:aggregation [:count [:sum 10] [:count 20] :count]}}}
 
-    "try an ag that is named using legacy `:named` clause"
-    {{:query {:aggregation ["named" ["SuM" 10] "My COOL AG"]}}
-     {:query {:aggregation [:named [:sum 10] "My COOL AG"]}}
+   "try an ag that is named using legacy `:named` clause"
+   {{:query {:aggregation ["named" ["SuM" 10] "My COOL AG"]}}
+    {:query {:aggregation [:named [:sum 10] "My COOL AG"]}}
 
-     {:query {:aggregation ["named" ["SuM" 10] "My COOL AG" {:use-as-display-name? false}]}}
-     {:query {:aggregation [:named [:sum 10] "My COOL AG" {:use-as-display-name? false}]}}}
+    {:query {:aggregation ["named" ["SuM" 10] "My COOL AG" {:use-as-display-name? false}]}}
+    {:query {:aggregation [:named [:sum 10] "My COOL AG" {:use-as-display-name? false}]}}}
 
-    "try w/ `:aggregation-options`, the replacement for `:named`"
-    {{:query {:aggregation ["aggregation_options" ["SuM" 10] {"display_name" "My COOL AG"}]}}
-     {:query {:aggregation [:aggregation-options [:sum 10] {:display-name "My COOL AG"}]}}}
+   "try w/ `:aggregation-options`, the replacement for `:named`"
+   {{:query {:aggregation ["aggregation_options" ["SuM" 10] {"display_name" "My COOL AG"}]}}
+    {:query {:aggregation [:aggregation-options [:sum 10] {:display-name "My COOL AG"}]}}}
 
-    "try an expression ag"
-    {{:query {:aggregation ["+" ["sum" 10] ["*" ["SUM" 20] 3]]}}
-     {:query {:aggregation [:+ [:sum 10] [:* [:sum 20] 3]]}}}
+   "try an expression ag"
+   {{:query {:aggregation ["+" ["sum" 10] ["*" ["SUM" 20] 3]]}}
+    {:query {:aggregation [:+ [:sum 10] [:* [:sum 20] 3]]}}}
 
-    "expression ags should handle varargs"
-    {{:query {:aggregation ["+" ["sum" 10] ["SUM" 20] ["sum" 30]]}}
-     {:query {:aggregation [:+ [:sum 10] [:sum 20] [:sum 30]]}}}
+   "expression ags should handle varargs"
+   {{:query {:aggregation ["+" ["sum" 10] ["SUM" 20] ["sum" 30]]}}
+    {:query {:aggregation [:+ [:sum 10] [:sum 20] [:sum 30]]}}}
 
-    "expression references should be exempt too"
-    {{:order-by [[:desc [:expression "SALES_TAX"]]]}
-     {:order-by [[:desc [:expression "SALES_TAX"]]]}}
+   "expression references should be exempt too"
+   {{:order-by [[:desc [:expression "SALES_TAX"]]]}
+    {:order-by [[:desc [:expression "SALES_TAX"]]]}}
 
-    "... but they should be converted to strings if passed in as a KW for some reason. Make sure we preserve namespace!"
-    {{:order-by [[:desc ["expression" :SALES/TAX]]]}
-     {:order-by [[:desc [:expression "SALES/TAX"]]]}}
+   "... but they should be converted to strings if passed in as a KW for some reason. Make sure we preserve namespace!"
+   {{:order-by [[:desc ["expression" :SALES/TAX]]]}
+    {:order-by [[:desc [:expression "SALES/TAX"]]]}}
 
-    "case"
-    {{:query {:aggregation ["sum" ["case"
-                                   [[[">" ["field-id" 12] 10] 10]
-                                    [[">" ["field-id" 12] 100] ["field-id" 1]]
-                                    [["=" ["field-id" 2] 1] "foo"]]
-                                   {:default ["field-id" 2]}]]}}
-     {:query {:aggregation [:sum [:case
-                                  [[[:> [:field-id 12] 10] 10]
-                                   [[:> [:field-id 12] 100] [:field-id 1]]
-                                   [[:= [:field-id 2] 1] "foo"]]
-                                  {:default [:field-id 2]}]]}}}
+   "case"
+   {{:query {:aggregation ["sum" ["case"
+                                  [[[">" ["field-id" 12] 10] 10]
+                                   [[">" ["field-id" 12] 100] ["field-id" 1]]
+                                   [["=" ["field-id" 2] 1] "foo"]]
+                                  {:default ["field-id" 2]}]]}}
+    {:query {:aggregation [:sum [:case
+                                 [[[:> [:field-id 12] 10] 10]
+                                  [[:> [:field-id 12] 100] [:field-id 1]]
+                                  [[:= [:field-id 2] 1] "foo"]]
+                                 {:default [:field-id 2]}]]}}}
 
-    "various other new ag types"
-    {{:query {:aggregation ["median" ["field-id" 13]]}}
-     {:query {:aggregation [:median [:field-id 13]]}}
+   "various other new ag types"
+   {{:query {:aggregation ["median" ["field-id" 13]]}}
+    {:query {:aggregation [:median [:field-id 13]]}}
 
-     {:query {:aggregation ["var" ["field-id" 13]]}}
-     {:query {:aggregation [:var [:field-id 13]]}}
+    {:query {:aggregation ["var" ["field-id" 13]]}}
+    {:query {:aggregation [:var [:field-id 13]]}}
 
-     {:query {:aggregation ["percentile" ["field-id" 13] 0.9]}}
-     {:query {:aggregation [:percentile [:field-id 13] 0.9]}}}))
-
-
+    {:query {:aggregation ["percentile" ["field-id" 13] 0.9]}}
+    {:query {:aggregation [:percentile [:field-id 13] 0.9]}}}))
 
 ;;; ---------------------------------------------------- order-by ----------------------------------------------------
 
 (t/deftest ^:parallel normalize-order-by-test
   (normalize-tests
-    "does order-by get properly normalized?"
-    {{:query {"ORDER_BY" [[10 "ASC"]]}}
-     {:query {:order-by [[10 :asc]]}}
+   "does order-by get properly normalized?"
+   {{:query {"ORDER_BY" [[10 "ASC"]]}}
+    {:query {:order-by [[10 :asc]]}}
 
-     {:query {"ORDER_BY" [["ASC" 10]]}}
-     {:query {:order-by [[:asc 10]]}}
+    {:query {"ORDER_BY" [["ASC" 10]]}}
+    {:query {:order-by [[:asc 10]]}}
 
-     {:query {"ORDER_BY" [[["field_id" 10] "ASC"]]}}
-     {:query {:order-by [[[:field-id 10] :asc]]}}
+    {:query {"ORDER_BY" [[["field_id" 10] "ASC"]]}}
+    {:query {:order-by [[[:field-id 10] :asc]]}}
 
-     {:query {"ORDER_BY" [["DESC" ["field_id" 10]]]}}
-     {:query {:order-by [[:desc [:field-id 10]]]}}}))
-
+    {:query {"ORDER_BY" [["DESC" ["field_id" 10]]]}}
+    {:query {:order-by [[:desc [:field-id 10]]]}}}))
 
 ;;; ----------------------------------------------------- filter -----------------------------------------------------
 
 (t/deftest ^:parallel normalize-filter-test
   (normalize-tests
-    "the unit & amount in time interval clauses should get normalized"
-    {{:query {"FILTER" ["time-interval" 10 "current" "day"]}}
-     {:query {:filter [:time-interval 10 :current :day]}}}
+   "the unit & amount in time interval clauses should get normalized"
+   {{:query {"FILTER" ["time-interval" 10 "current" "day"]}}
+    {:query {:filter [:time-interval 10 :current :day]}}}
 
-    "but amount should not get normalized if it's an integer"
-    {{:query {"FILTER" ["time-interval" 10 -10 "day"]}}
-     {:query {:filter [:time-interval 10 -10 :day]}}}
+   "but amount should not get normalized if it's an integer"
+   {{:query {"FILTER" ["time-interval" 10 -10 "day"]}}
+    {:query {:filter [:time-interval 10 -10 :day]}}}
 
-    "make sure we support time-interval options"
-    {["TIME_INTERVAL" 10 -30 "DAY" {"include_current" true}]
-     [:time-interval 10 -30 :day {:include-current true}]}
+   "make sure we support time-interval options"
+   {["TIME_INTERVAL" 10 -30 "DAY" {"include_current" true}]
+    [:time-interval 10 -30 :day {:include-current true}]}
 
-    "the unit in relative datetime clauses should get normalized"
-    {{:query {"FILTER" ["=" [:field-id 10] ["RELATIVE_DATETIME" -31 "DAY"]]}}
-     {:query {:filter [:= [:field-id 10] [:relative-datetime -31 :day]]}}}
+   "the unit in relative datetime clauses should get normalized"
+   {{:query {"FILTER" ["=" [:field-id 10] ["RELATIVE_DATETIME" -31 "DAY"]]}}
+    {:query {:filter [:= [:field-id 10] [:relative-datetime -31 :day]]}}}
 
-    "should work if we do [:relative-datetime :current] as well"
-    {{:query {"FILTER" ["=" [:field-id 10] ["RELATIVE_DATETIME" "CURRENT"]]}}
-     {:query {:filter [:= [:field-id 10] [:relative-datetime :current]]}}}
+   "should work if we do [:relative-datetime :current] as well"
+   {{:query {"FILTER" ["=" [:field-id 10] ["RELATIVE_DATETIME" "CURRENT"]]}}
+    {:query {:filter [:= [:field-id 10] [:relative-datetime :current]]}}}
 
-    "and in datetime-field clauses (MBQL 98+)"
-    {{:query {"FILTER" ["=" [:datetime-field ["field_id" 10] "day"] "2018-09-05"]}}
-     {:query {:filter [:= [:datetime-field [:field-id 10] :day] "2018-09-05"]}}}
+   "and in datetime-field clauses (MBQL 98+)"
+   {{:query {"FILTER" ["=" [:datetime-field ["field_id" 10] "day"] "2018-09-05"]}}
+    {:query {:filter [:= [:datetime-field [:field-id 10] :day] "2018-09-05"]}}}
 
-    "(or in long-since-deprecated MBQL 95 format)"
-    {{:query {"FILTER" ["=" [:datetime-field 10 "as" "day"] "2018-09-05"]}}
-     {:query {:filter [:= [:datetime-field 10 :as :day] "2018-09-05"]}}}
+   "(or in long-since-deprecated MBQL 95 format)"
+   {{:query {"FILTER" ["=" [:datetime-field 10 "as" "day"] "2018-09-05"]}}
+    {:query {:filter [:= [:datetime-field 10 :as :day] "2018-09-05"]}}}
 
-    "if string filters have an options map that should get normalized"
-    {{:query {"FILTER" ["starts_with" 10 "ABC" {"case_sensitive" true}]}}
-     {:query {:filter [:starts-with 10 "ABC" {:case-sensitive true}]}}}))
-
+   "if string filters have an options map that should get normalized"
+   {{:query {"FILTER" ["starts_with" 10 "ABC" {"case_sensitive" true}]}}
+    {:query {:filter [:starts-with 10 "ABC" {:case-sensitive true}]}}}))
 
 ;;; --------------------------------------------------- parameters ---------------------------------------------------
 
 (t/deftest ^:parallel normalize-parmaeters-test
   (normalize-tests
-    "make sure we're not running around trying to normalize the type in native query params"
-    {{:type       :native
-      :parameters [{:type   "date/range"
-                    :target [:dimension [:template-tag "checkin_date"]]
-                    :value  "2015-04-01~2015-05-01"}]}
-     {:type       :native
-      :parameters [{:type   :date/range
-                    :target [:dimension [:template-tag "checkin_date"]]
-                    :value  "2015-04-01~2015-05-01"}]}}
+   "make sure we're not running around trying to normalize the type in native query params"
+   {{:type       :native
+     :parameters [{:type   "date/range"
+                   :target [:dimension [:template-tag "checkin_date"]]
+                   :value  "2015-04-01~2015-05-01"}]}
+    {:type       :native
+     :parameters [{:type   :date/range
+                   :target [:dimension [:template-tag "checkin_date"]]
+                   :value  "2015-04-01~2015-05-01"}]}}
 
-    "`:parameters` `:type` should get normalized, but `:value` should not."
-    {{:type       "native"
-      :parameters [{:type   "text"
-                    :target ["dimension" ["template-tag" "names_list"]]
-                    :value  ["BBQ" "Bakery" "Bar"]}]}
-     {:type       :native
-      :parameters [{:type   :text
-                    :target [:dimension [:template-tag "names_list"]]
-                    :value  ["BBQ" "Bakery" "Bar"]}]}}
+   "`:parameters` `:type` should get normalized, but `:value` should not."
+   {{:type       "native"
+     :parameters [{:type   "text"
+                   :target ["dimension" ["template-tag" "names_list"]]
+                   :value  ["BBQ" "Bakery" "Bar"]}]}
+    {:type       :native
+     :parameters [{:type   :text
+                   :target [:dimension [:template-tag "names_list"]]
+                   :value  ["BBQ" "Bakery" "Bar"]}]}}
 
-
-    "make sure normalization doesn't try to parse value as an MBQL clause"
-    {{:type       "native"
-      :parameters [{:type   "text"
-                    :target ["dimension" ["template-tag" "names_list"]]
-                    :value  ["=" 10 20]}]}
-     {:type       :native
-      :parameters [{:type   :text
-                    :target [:dimension [:template-tag "names_list"]]
-                    :value  ["=" 10 20]}]}}))
+   "make sure normalization doesn't try to parse value as an MBQL clause"
+   {{:type       "native"
+     :parameters [{:type   "text"
+                   :target ["dimension" ["template-tag" "names_list"]]
+                   :value  ["=" 10 20]}]}
+    {:type       :native
+     :parameters [{:type   :text
+                   :target [:dimension [:template-tag "names_list"]]
+                   :value  ["=" 10 20]}]}}))
 
 (t/deftest ^:parallel normalize-template-tags-test
   (letfn [(query-with-template-tags [template-tags]
@@ -416,83 +409,80 @@
        :native   {:template-tags {"x" {:name "x"
                                        :type :nonsense}}}}})))
 
-
 ;;; ------------------------------------------------- source queries -------------------------------------------------
 
 (t/deftest ^:parallel normalize-source-queries-test
   (normalize-tests
-    "Make sure token normalization works correctly on source queries"
-    {{:database 4
-      :type     :query
-      :query    {"source_query" {:native         "SELECT * FROM PRODUCTS WHERE CATEGORY = {{category}} LIMIT 10"
-                                 "template_tags" {:category {:name         "category"
-                                                             :display-name "Category"
-                                                             :type         "text"
-                                                             :required     true
-                                                             :default      "Widget"}}}}}
-     {:database 4
-      :type     :query
-      :query    {:source-query {:native        "SELECT * FROM PRODUCTS WHERE CATEGORY = {{category}} LIMIT 10"
-                                :template-tags {"category" {:name         "category"
+   "Make sure token normalization works correctly on source queries"
+   {{:database 4
+     :type     :query
+     :query    {"source_query" {:native         "SELECT * FROM PRODUCTS WHERE CATEGORY = {{category}} LIMIT 10"
+                                "template_tags" {:category {:name         "category"
                                                             :display-name "Category"
-                                                            :type         :text
+                                                            :type         "text"
                                                             :required     true
                                                             :default      "Widget"}}}}}
+    {:database 4
+     :type     :query
+     :query    {:source-query {:native        "SELECT * FROM PRODUCTS WHERE CATEGORY = {{category}} LIMIT 10"
+                               :template-tags {"category" {:name         "category"
+                                                           :display-name "Category"
+                                                           :type         :text
+                                                           :required     true
+                                                           :default      "Widget"}}}}}
 
-     {:database 4
-      :type     :query
-      :query    {"source_query" {"source_table" 1, "aggregation" "rows"}}}
-     {:database 4
-      :type     :query
-      :query    {:source-query {:source-table 1, :aggregation :rows}}}}))
-
-
+    {:database 4
+     :type     :query
+     :query    {"source_query" {"source_table" 1, "aggregation" "rows"}}}
+    {:database 4
+     :type     :query
+     :query    {:source-query {:source-table 1, :aggregation :rows}}}}))
 
 ;;; ----------------------------------------------------- joins ------------------------------------------------------
 
 (t/deftest ^:parallel normalize-joins-test
   (normalize-tests
-    "do entries in the `:joins` clause get normalized?"
-    {{:database 4
-      :type     :query
-      :query    {"source_table" 1
-                 "Joins"        [{"source_table" 2
-                                  "alias"        :my/table
-                                  "strategy"     "left-join"
-                                  "fields"       "all"}]}}
-     {:database 4
-      :type     :query
-      :query    {:source-table 1
-                 :joins        [{:source-table 2
-                                 :alias        "my/table"
-                                 :strategy     :left-join
-                                 :fields       :all}]}}}
+   "do entries in the `:joins` clause get normalized?"
+   {{:database 4
+     :type     :query
+     :query    {"source_table" 1
+                "Joins"        [{"source_table" 2
+                                 "alias"        :my/table
+                                 "strategy"     "left-join"
+                                 "fields"       "all"}]}}
+    {:database 4
+     :type     :query
+     :query    {:source-table 1
+                :joins        [{:source-table 2
+                                :alias        "my/table"
+                                :strategy     :left-join
+                                :fields       :all}]}}}
 
-    "what about with a sequence of :fields?"
-    {{:database 4
-      :type     :query
-      :query    {"source_table" 1
-                 "joins"        [{"fields" [["field_id" 1] ["field_literal" :MY_FIELD "type/Integer"]]}]}}
-     {:database 4
-      :type     :query
-      :query    {:source-table 1
-                 :joins        [{:fields [[:field-id 1]
-                                          [:field-literal "MY_FIELD" :type/Integer]]}]}}}
+   "what about with a sequence of :fields?"
+   {{:database 4
+     :type     :query
+     :query    {"source_table" 1
+                "joins"        [{"fields" [["field_id" 1] ["field_literal" :MY_FIELD "type/Integer"]]}]}}
+    {:database 4
+     :type     :query
+     :query    {:source-table 1
+                :joins        [{:fields [[:field-id 1]
+                                         [:field-literal "MY_FIELD" :type/Integer]]}]}}}
 
-    "do `:joins` inside a nested query get normalized?"
-    {{:database 4
-      :type     :query
-      :query    {"source_query"
-                 {"source_table" 1
-                  "joins"
-                  [{"strategy" "right-join"
-                    "fields"   [["field_id" 1] ["field_literal" :MY_FIELD "type/Integer"]]}]}}}
-     {:database 4
-      :type     :query
-      :query    {:source-query {:source-table 1
-                                :joins        [{:strategy :right-join
-                                                :fields   [[:field-id 1]
-                                                           [:field-literal "MY_FIELD" :type/Integer]]}]}}}}))
+   "do `:joins` inside a nested query get normalized?"
+   {{:database 4
+     :type     :query
+     :query    {"source_query"
+                {"source_table" 1
+                 "joins"
+                 [{"strategy" "right-join"
+                   "fields"   [["field_id" 1] ["field_literal" :MY_FIELD "type/Integer"]]}]}}}
+    {:database 4
+     :type     :query
+     :query    {:source-query {:source-table 1
+                               :joins        [{:strategy :right-join
+                                               :fields   [[:field-id 1]
+                                                          [:field-literal "MY_FIELD" :type/Integer]]}]}}}}))
 
 (t/deftest ^:parallel normalize-source-query-in-joins-test
   (t/testing "does a `:source-query` in `:joins` get normalized?"
@@ -519,34 +509,33 @@
                    (#'mbql.normalize/normalize-tokens
                     (query-with-joins [{"source_query" {"NATIVE" {"this_is_a_native_query" "TRUE"}}}])))))))))
 
-
 ;;; ----------------------------------------------------- other ------------------------------------------------------
 
 (t/deftest ^:parallel normalize-execution-context-test
   (normalize-tests
-    "Does the QueryExecution context get normalized?"
-    {{:context "json-download"}
-     {:context :json-download}}
+   "Does the QueryExecution context get normalized?"
+   {{:context "json-download"}
+    {:context :json-download}}
 
-    "if `:context` is `nil` it's not our problem"
-    {{:context nil}
-     {:context nil}}))
+   "if `:context` is `nil` it's not our problem"
+   {{:context nil}
+    {:context nil}}))
 
 (t/deftest ^:parallel params-normalization-test
   (normalize-tests
-    ":native :params shouldn't get normalized."
-    {{:native {:query  "SELECT * FROM venues WHERE name = ?"
-               :params ["Red Medicine"]}}
-     {:native {:query  "SELECT * FROM venues WHERE name = ?"
-               :params ["Red Medicine"]}}}))
+   ":native :params shouldn't get normalized."
+   {{:native {:query  "SELECT * FROM venues WHERE name = ?"
+              :params ["Red Medicine"]}}
+    {:native {:query  "SELECT * FROM venues WHERE name = ?"
+              :params ["Red Medicine"]}}}))
 
 (t/deftest ^:parallel normalize-projections-test
   (normalize-tests
-    "Native :projections shouldn't get normalized."
-    {{:type   :native
-      :native {:projections ["_id" "name" "category_id" "latitude" "longitude" "price"]}}
-     {:type   :native
-      :native {:projections ["_id" "name" "category_id" "latitude" "longitude" "price"]}}}))
+   "Native :projections shouldn't get normalized."
+   {{:type   :native
+     :native {:projections ["_id" "name" "category_id" "latitude" "longitude" "price"]}}
+    {:type   :native
+     :native {:projections ["_id" "name" "category_id" "latitude" "longitude" "price"]}}}))
 
 ;; this is also covered
 (t/deftest ^:parallel normalize-expressions-test
@@ -583,7 +572,6 @@
     {:query {:expressions {"abc/def" [:+ 1 2]}
              :fields      [[:expression "abc/def"]]}}}))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  CANONICALIZE                                                  |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -616,13 +604,12 @@
 
 (t/deftest ^:parallel canonicalize-substring-test
   (canonicalize-tests
-   "substring index 0 -> 1"
-   {[:substring "foo" 0 1]
-    [:substring "foo" 1 1]
+    "substring index 0 -> 1"
+    {[:substring "foo" 0 1]
+     [:substring "foo" 1 1]
 
-    [:substring "foo" 0 1 3]
-    [:substring "foo" 1 1 3]}))
-
+     [:substring "foo" 0 1 3]
+     [:substring "foo" 1 1 3]}))
 
 ;;; ------------------------------------------------ binning strategy ------------------------------------------------
 
@@ -631,7 +618,6 @@
     "make sure `binning-strategy` wraps implicit Field IDs"
     {{:query {:breakout [[:binning-strategy 10 :bin-width 2000]]}}
      {:query {:breakout [[:field 10 {:binning {:strategy :bin-width, :bin-width 2000}}]]}}}))
-
 
 ;;; -------------------------------------------------- aggregation ---------------------------------------------------
 
@@ -737,7 +723,6 @@
     {{:query {:aggregation [[:percentile [:field-id 37809] 0.9]]}}
      {:query {:aggregation [[:percentile [:field 37809 nil] 0.9]]}}}))
 
-
 ;;; ---------------------------------------------------- breakout ----------------------------------------------------
 
 (t/deftest ^:parallel canonicalize-breakout-test
@@ -759,7 +744,6 @@
      {:query {:breakout [[:field 1000 nil]]}}
      {:query {:breakout [[:field 1000 nil]]}}}))
 
-
 ;;; ----------------------------------------------------- fields -----------------------------------------------------
 
 (t/deftest ^:parallel canonicalize-fields-test
@@ -777,7 +761,6 @@
     "should handle seqs"
     {{:query {:fields '(10 20)}}
      {:query {:fields [[:field 10 nil] [:field 20 nil]]}}}))
-
 
 ;;; ----------------------------------------------------- filter -----------------------------------------------------
 
@@ -918,7 +901,6 @@
     {{:query {:filter '(:= 1 10)}}
      {:query {:filter [:= [:field 1 nil] 10]}}}))
 
-
 ;;; ---------------------------------------------------- order-by ----------------------------------------------------
 
 (t/deftest ^:parallel canonicalize-order-by-test
@@ -938,7 +920,6 @@
      {:query {:order-by [[:asc 10]]}}
      {:query {:order-by [[:asc [:field 10 nil]]]}}}
 
-
     "we should handle seqs no prob"
     {{:query {:order-by '((1 :ascending))}}
      {:query {:order-by [[:asc [:field 1 nil]]]}}}
@@ -949,7 +930,6 @@
                          [:asc 1]]}}
      {:query {:order-by [[:asc [:field 1 nil]]
                          [:desc [:field 2 nil]]]}}}))
-
 
 ;;; ------------------------------------------------- source queries -------------------------------------------------
 
@@ -980,7 +960,6 @@
      {:database 4
       :type     :query
       :query    {:source-query {:source-table 1, :aggregation []}}}}))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          WHOLE-QUERY TRANSFORMATIONS                                           |
@@ -1029,7 +1008,6 @@
        :query {:breakout [[:field 1 nil]
                           [:field 4 {:source-field 2, :temporal-unit :month}]]
                :fields   [[:field 3 nil]]}}}}))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              REMOVE EMPTY CLAUSES                                              |
@@ -1083,7 +1061,6 @@
       [:field 2 {:x [{:y nil}]}]
       [:field 2 nil]}}))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            PUTTING IT ALL TOGETHER                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -1114,14 +1091,14 @@
                             :target [:dimension [:template-tag "names_list"]]
                             :value  ["BBQ" "Bakery" "Bar"]}]}
              (mbql.normalize/normalize
-               {:native     {:query          "SELECT * FROM CATEGORIES WHERE {{names_list}}"
-                             "template_tags" {:names_list {:name         "names_list"
-                                                           :display_name "Names List"
-                                                           :type         "dimension"
-                                                           :dimension    ["field-id" 49]}}}
-                :parameters [{:type   "text"
-                              :target ["dimension" ["template-tag" "names_list"]]
-                              :value  ["BBQ" "Bakery" "Bar"]}]})))))
+              {:native     {:query          "SELECT * FROM CATEGORIES WHERE {{names_list}}"
+                            "template_tags" {:names_list {:name         "names_list"
+                                                          :display_name "Names List"
+                                                          :type         "dimension"
+                                                          :dimension    ["field-id" 49]}}}
+               :parameters [{:type   "text"
+                             :target ["dimension" ["template-tag" "names_list"]]
+                             :value  ["BBQ" "Bakery" "Bar"]}]})))))
 
 (t/deftest ^:parallel e2e-big-query-with-segments-test
   (t/testing "let's try normalizing a big query with SEGMENTS"
@@ -1350,7 +1327,7 @@
     (t/testing "shouldn't try to do anything crazy non-standard MBQL clauses like `:dimension` (from automagic dashboards)"
       (t/is (= [:time-interval [:dimension "JoinDate"] -30 :day]
                (mbql.normalize/normalize-fragment [:query :filter]
-                                                  ["time-interval" ["dimension" "JoinDate"] -30 "day"]))))
+                 ["time-interval" ["dimension" "JoinDate"] -30 "day"]))))
 
     (t/testing "should be able to modernize Fields anywhere we find them"
       (t/is (= [[:> [:field 1 nil] 3]
@@ -1359,15 +1336,15 @@
                  [:segment 1]]
                 [:metric 1]]
                (mbql.normalize/normalize-fragment nil
-                                                  [[:> [:field-id 1] 3]
-                                                   ["and" [:= ["FIELD-ID" 2] 2]
-                                                    ["segment" 1]]
-                                                   [:metric 1]]))))
+                 [[:> [:field-id 1] 3]
+                  ["and" [:= ["FIELD-ID" 2] 2]
+                   ["segment" 1]]
+                  [:metric 1]]))))
 
     (t/testing "Should be able to modern Field options anywhere"
       (t/is (= [:field 2 {:temporal-unit :day}]
                (mbql.normalize/normalize-fragment nil
-                                                  [:field 2 {"temporal-unit" "day"}]))))))
+                 [:field 2 {"temporal-unit" "day"}]))))))
 
 (t/deftest ^:parallel normalize-source-metadata-test
   (t/testing "normalize-source-metadata"

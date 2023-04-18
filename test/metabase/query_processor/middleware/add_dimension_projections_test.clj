@@ -12,7 +12,6 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 
-
 ;;; ----------------------------------------- add-fk-remaps (pre-processing) -----------------------------------------
 
 (defn- add-fk-remaps [query]
@@ -177,7 +176,6 @@
                                                         ::qp.add-dimension-projections/new-field-dimension-id 1000}]]}})
                      query)))))))
 
-
 ;;; ---------------------------------------- remap-results (post-processing) -----------------------------------------
 
 (defn- remap-results [query metadata rows]
@@ -262,12 +260,12 @@
                                          :remapped_from "CATEGORY_ID"
                                          :display_name  "My Venue Category"}]}}
                     (remap-results
-                      {::qp.add-dimension-projections/external-remaps [{:id                        1000
-                                                                        :name                      "My Venue Category"
-                                                                        :field_id                  (mt/id :venues :category_id)
-                                                                        :field_name                "category_id"
-                                                                        :human_readable_field_id   category-id
-                                                                        :human_readable_field_name "category_name"}]}
+                     {::qp.add-dimension-projections/external-remaps [{:id                        1000
+                                                                       :name                      "My Venue Category"
+                                                                       :field_id                  (mt/id :venues :category_id)
+                                                                       :field_name                "category_id"
+                                                                       :human_readable_field_id   category-id
+                                                                       :human_readable_field_name "category_name"}]}
                      {:cols [{:name "ID"}
                              {:name "NAME"}
                              {:name    "CATEGORY_ID"
@@ -328,8 +326,8 @@
                                                          :limit    4})
             {remap-info :remaps, preprocessed :query} (add-fk-remaps query)
             dimension-id                              (t2/select-one-pk Dimension
-                                                        :field_id                (mt/id :venues :category_id)
-                                                        :human_readable_field_id (mt/id :categories :name))]
+                                                                        :field_id                (mt/id :venues :category_id)
+                                                                        :human_readable_field_id (mt/id :categories :name))]
         (is (integer? dimension-id))
         (testing "Preprocessing"
           (testing "Remap info"
@@ -380,11 +378,11 @@
                                                            :order-by [[:asc $id]]
                                                            :limit    3})
               sender-dimension-id                       (t2/select-one-pk Dimension
-                                                          :field_id                (mt/id :messages :sender_id)
-                                                          :human_readable_field_id (mt/id :users :name))
+                                                                          :field_id                (mt/id :messages :sender_id)
+                                                                          :human_readable_field_id (mt/id :users :name))
               receiver-dimension-id                     (t2/select-one-pk Dimension
-                                                          :field_id                (mt/id :messages :receiver_id)
-                                                          :human_readable_field_id (mt/id :users :name))
+                                                                          :field_id                (mt/id :messages :receiver_id)
+                                                                          :human_readable_field_id (mt/id :users :name))
               {remap-info :remaps, preprocessed :query} (add-fk-remaps query)]
           (testing "Pre-processing"
             (testing "Remap info"

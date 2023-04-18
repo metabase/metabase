@@ -84,18 +84,18 @@
   [^AsyncContext async-context f ^OutputStream os finished-chan canceled-chan]
   {:pre [(some? os)]}
   (let [task (^:once fn* []
-               (try
-                 (do-f* f os finished-chan canceled-chan)
-                 (catch Throwable e
-                   (log/error e (trs "bound-fn caught unexpected Exception"))
-                   (a/>!! finished-chan :unexpected-error))
-                 (finally
-                   (a/>!! finished-chan (if (a/poll! canceled-chan)
-                                          :canceled
-                                          :completed))
-                   (a/close! finished-chan)
-                   (a/close! canceled-chan)
-                   (.complete async-context))))]
+                         (try
+                           (do-f* f os finished-chan canceled-chan)
+                           (catch Throwable e
+                             (log/error e (trs "bound-fn caught unexpected Exception"))
+                             (a/>!! finished-chan :unexpected-error))
+                           (finally
+                             (a/>!! finished-chan (if (a/poll! canceled-chan)
+                                                    :canceled
+                                                    :completed))
+                             (a/close! finished-chan)
+                             (a/close! canceled-chan)
+                             (.complete async-context))))]
     (.submit (thread-pool/thread-pool) ^Runnable task)
     nil))
 
@@ -210,21 +210,21 @@
 (p.types/deftype+ StreamingResponse [f options donechan]
   pretty/PrettyPrintable
   (pretty [_]
-    (list (pretty/qualify-symbol-for-*ns* `->StreamingResponse) f options donechan))
+          (list (pretty/qualify-symbol-for-*ns* `->StreamingResponse) f options donechan))
 
   server.protocols/Respond
   (respond [_this context]
-    (respond context f options donechan))
+           (respond context f options donechan))
 
   ;; sync responses only (in some cases?)
   compojure.response/Renderable
   (render [this request]
-    (render this (should-gzip-response? request)))
+          (render this (should-gzip-response? request)))
 
   ;; async responses only
   compojure.response/Sendable
   (send* [this request respond* _]
-    (respond* (compojure.response/render this request))))
+         (respond* (compojure.response/render this request))))
 
 ;; TODO -- don't think any of this is needed any mo
 (defn- render [^StreamingResponse streaming-response gzip?]

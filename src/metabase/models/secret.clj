@@ -30,11 +30,11 @@
   (derive ::mi/write-policy.superuser))
 
 (mi/define-methods
- Secret
- {:types      (constantly {:value  :secret-value
-                           :kind   :keyword
-                           :source :keyword})
-  :properties (constantly {::mi/timestamped? true})})
+  Secret
+  {:types      (constantly {:value  :secret-value
+                            :kind   :keyword
+                            :source :keyword})
+   :properties (constantly {::mi/timestamped? true})})
 
 ;;; ---------------------------------------------- Hydration / Util Fns ----------------------------------------------
 
@@ -54,7 +54,7 @@
   {:added "0.42.0"}
   [conn-props]
   (->> (filter #(= :secret (keyword (:type %))) conn-props)
-    (reduce (fn [acc prop] (assoc acc (:name prop) prop)) {})))
+       (reduce (fn [acc prop] (assoc acc (:name prop) prop)) {})))
 
 (defn value->file!*
   "Returns the value of the given `secret` instance in the form of a file. If the given instance has a `:file-path` as
@@ -243,7 +243,7 @@
     (if latest-version
       (if (= (select-keys latest-version bump-version-keys) [kind src value])
         (pos? (t2/update! Secret {:id existing-id :version (:version latest-version)}
-                        {:name nm}))
+                          {:name nm}))
         (insert-new (u/the-id latest-version) (inc (:version latest-version))))
       (insert-new nil 1))))
 
@@ -262,10 +262,10 @@
   [driver db-details reduce-fn]
   (let [conn-props-fn (get-method driver/connection-properties driver)]
     (if (and (map? db-details) (fn? conn-props-fn))
-        (let [conn-props            (conn-props-fn driver)
-              conn-secrets-by-name  (conn-props->secret-props-by-name conn-props)]
-          (reduce-kv reduce-fn db-details conn-secrets-by-name))
-        db-details)))
+      (let [conn-props            (conn-props-fn driver)
+            conn-secrets-by-name  (conn-props->secret-props-by-name conn-props)]
+        (reduce-kv reduce-fn db-details conn-secrets-by-name))
+      db-details)))
 
 (defn expand-inferred-secret-values
   "Expand certain secret sub-properties in the `db-details`, depending on the secret type, for admin purposes.  This is
@@ -301,7 +301,7 @@
         src     (:source secret*)]
     ;; always populate the -source, -creator-id, and -created-at sub properties
     (cond-> (assoc db-details (subprop "-source") src
-                              (subprop "-creator-id") (:creator_id secret*))
+                   (subprop "-creator-id") (:creator_id secret*))
 
       (some? (:created_at secret*))
       (assoc (subprop "-created-at") (t/format :iso-offset-date-time (:created_at secret*)))

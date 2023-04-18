@@ -34,8 +34,8 @@
                                       {:status-code 400})))
                     (setting/set-value-of-type! :string :google-auth-client-id trimmed-client-id))
                   (do
-                   (setting/set-value-of-type! :string :google-auth-client-id nil)
-                   (setting/set-value-of-type! :boolean :google-auth-enabled false)))))
+                    (setting/set-value-of-type! :string :google-auth-client-id nil)
+                    (setting/set-value-of-type! :boolean :google-auth-enabled false)))))
 
 (defsetting google-auth-configured
   (deferred-tru "Is Google Sign-In configured?")
@@ -62,10 +62,10 @@
 (define-multi-setting-impl google.i/google-auth-auto-create-accounts-domain :oss
   :getter (fn [] (setting/get-value-of-type :string :google-auth-auto-create-accounts-domain))
   :setter (fn [domain]
-              (when (and domain (str/includes? domain ","))
+            (when (and domain (str/includes? domain ","))
                 ;; Multiple comma-separated domains is EE-only feature
-                (throw (ex-info (tru "Invalid domain") {:status-code 400})))
-              (setting/set-value-of-type! :string :google-auth-auto-create-accounts-domain domain)))
+              (throw (ex-info (tru "Invalid domain") {:status-code 400})))
+            (setting/set-value-of-type! :string :google-auth-auto-create-accounts-domain domain)))
 
 (def ^:private google-auth-token-info-url "https://www.googleapis.com/oauth2/v3/tokeninfo?id_token=%s")
 
@@ -81,8 +81,8 @@
              audience (if (string? audience) [audience] audience)]
          (when-not (contains? (set audience) client-id)
            (throw (ex-info (tru
-                             (str "Google Sign-In token appears to be incorrect. "
-                                  "Double check that it matches in Google and Metabase."))
+                            (str "Google Sign-In token appears to be incorrect. "
+                                 "Double check that it matches in Google and Metabase."))
                            {:status-code 400}))))
        (when-not (= (:email_verified <>) "true")
          (throw (ex-info (tru "Email is not verified.") {:status-code 400})))))))

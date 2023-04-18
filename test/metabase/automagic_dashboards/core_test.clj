@@ -42,7 +42,6 @@
          (->> 42
               (#'magic/->reference :mbql)))))
 
-
 ;;; ------------------- Rule matching  -------------------
 
 (deftest rule-matching-test
@@ -60,7 +59,6 @@
                     (#'magic/->root))
                 (#'magic/matching-rules (rules/get-rules ["table"]))
                 (map (comp first :applies_to)))))))
-
 
 ;;; ------------------- `automagic-anaysis` -------------------
 
@@ -105,13 +103,13 @@
 ;; Cardinality of cards genned from fields is much more labile than anything else
 ;; Not just with respect to drivers, but all sorts of other stuff that makes it chaotic
 (deftest mass-field-test
-    (mt/with-test-user :rasta
-      (automagic-dashboards.test/with-dashboard-cleanup
-        (doseq [field (t2/select Field
-                                 :table_id [:in (t2/select-fn-set :id Table :db_id (mt/id))]
-                                 :visibility_type "normal"
-                                 {:order-by [[:id :asc]]})]
-          (is (pos? (count (:ordered_cards (magic/automagic-analysis field {})))))))))
+  (mt/with-test-user :rasta
+    (automagic-dashboards.test/with-dashboard-cleanup
+      (doseq [field (t2/select Field
+                               :table_id [:in (t2/select-fn-set :id Table :db_id (mt/id))]
+                               :visibility_type "normal"
+                               {:order-by [[:id :asc]]})]
+        (is (pos? (count (:ordered_cards (magic/automagic-analysis field {})))))))))
 
 (deftest metric-test
   (mt/with-temp Metric [metric {:table_id (mt/id :venues)
@@ -284,16 +282,16 @@
       (mt/with-non-admin-groups-no-root-collection-perms
         (let [source-query {:database (mt/id)
                             :query    (mt/$ids
-                                       {:source-table $$products
-                                        :fields       [$products.category
-                                                       $products.price]})
+                                        {:source-table $$products
+                                         :fields       [$products.category
+                                                        $products.price]})
                             :type     :query}]
           (mt/with-temp* [Collection [{collection-id :id}]
                           Card [card {:table_id        (mt/id :products)
                                       :collection_id   collection-id
                                       :dataset_query   source-query
                                       :result_metadata (mt/with-test-user
-                                                         :rasta
+                                                        :rasta
                                                          (result-metadata-for-query
                                                           source-query))
                                       :dataset         true}]]
@@ -328,9 +326,9 @@
                                       :collection_id   collection-id
                                       :dataset_query   source-query
                                       :result_metadata (mt/with-test-user
-                                                           :rasta
-                                                           (result-metadata-for-query
-                                                            source-query))
+                                                        :rasta
+                                                         (result-metadata-for-query
+                                                          source-query))
                                       :dataset         true}]]
             (let [root               (#'magic/->root card)
                   {:keys [dimensions] :as _rule} (rules/get-rule ["table" "GenericTable"])
@@ -380,24 +378,24 @@
         (let [source-query {:database (mt/id)
                             :type     :query
                             :query    (mt/$ids
-                                       {:source-table $$orders
-                                        :joins        [{:fields       [&u.people.state
-                                                                       &u.people.source
-                                                                       &u.people.longitude
-                                                                       &u.people.latitude]
-                                                        :source-table $$people
-                                                        :condition    [:= $orders.user_id &u.people.id]}
-                                                       {:fields       [&p.products.category
-                                                                       &p.products.price]
-                                                        :source-table $$products
-                                                        :condition    [:= $orders.product_id &p.products.id]}]
-                                        :fields       [$orders.created_at]})}]
+                                        {:source-table $$orders
+                                         :joins        [{:fields       [&u.people.state
+                                                                        &u.people.source
+                                                                        &u.people.longitude
+                                                                        &u.people.latitude]
+                                                         :source-table $$people
+                                                         :condition    [:= $orders.user_id &u.people.id]}
+                                                        {:fields       [&p.products.category
+                                                                        &p.products.price]
+                                                         :source-table $$products
+                                                         :condition    [:= $orders.product_id &p.products.id]}]
+                                         :fields       [$orders.created_at]})}]
           (mt/with-temp* [Collection [{collection-id :id}]
                           Card [card {:table_id        (mt/id :products)
                                       :collection_id   collection-id
                                       :dataset_query   source-query
                                       :result_metadata (mt/with-test-user
-                                                         :rasta
+                                                        :rasta
                                                          (result-metadata-for-query
                                                           source-query))
                                       :dataset         true}]]
@@ -470,16 +468,16 @@
       (mt/with-non-admin-groups-no-root-collection-perms
         (let [source-query {:database (mt/id)
                             :query    (mt/$ids
-                                       {:source-table $$products
-                                        :fields       [$products.category
-                                                       $products.price]})
+                                        {:source-table $$products
+                                         :fields       [$products.category
+                                                        $products.price]})
                             :type     :query}]
           (mt/with-temp* [Collection [{collection-id :id}]
                           Card [card {:table_id        (mt/id :products)
                                       :collection_id   collection-id
                                       :dataset_query   source-query
                                       :result_metadata (mt/with-test-user
-                                                         :rasta
+                                                        :rasta
                                                          (result-metadata-for-query
                                                           source-query))
                                       :dataset         true}]]
@@ -521,9 +519,9 @@
                                       :collection_id   collection-id
                                       :dataset_query   source-query
                                       :result_metadata (mt/with-test-user
-                                                           :rasta
-                                                           (result-metadata-for-query
-                                                            source-query))
+                                                        :rasta
+                                                         (result-metadata-for-query
+                                                          source-query))
                                       :dataset         true}]]
             (let [dashboard (mt/with-test-user :rasta (magic/automagic-analysis card nil))
                   temporal-field-ids (for [card (:ordered_cards dashboard)
@@ -553,9 +551,9 @@
                                       :collection_id   collection-id
                                       :dataset_query   source-query
                                       :result_metadata (mt/with-test-user
-                                                           :rasta
-                                                           (result-metadata-for-query
-                                                            source-query))
+                                                        :rasta
+                                                         (result-metadata-for-query
+                                                          source-query))
                                       :dataset         true}]]
             (let [{:keys [ordered_cards] :as dashboard} (mt/with-test-user :rasta (magic/automagic-analysis card nil))]
               (ensure-single-table-sourced (mt/id :people) dashboard)
@@ -665,7 +663,6 @@
           (-> (t2/select-one Card :id card-id)
               (test-automagic-analysis [:= [:field (mt/id :venues :category_id) nil] 2] 7)))))))
 
-
 (deftest complicated-card-cell-test
   (mt/with-non-admin-groups-no-root-collection-perms
     (mt/with-temp* [Collection [{collection-id :id}]
@@ -680,7 +677,6 @@
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
           (-> (t2/select-one Card :id card-id)
               (test-automagic-analysis [:= [:field (mt/id :venues :category_id) nil] 2] 7)))))))
-
 
 (deftest adhoc-filter-test
   (mt/with-test-user :rasta
@@ -736,7 +732,6 @@
             cards       (vec (:ordered_cards res))
             join-member (get-in cards [2 :card :dataset_query :query :joins])]
         (is (= join-vec join-member))))))
-
 
 ;;; ------------------- /candidates -------------------
 
@@ -817,7 +812,6 @@
                    first
                    :stats)))))))
 
-
 ;;; ------------------- Definition overloading -------------------
 
 (deftest most-specific-definition-test
@@ -871,7 +865,6 @@
                first
                key)))))
 
-
 ;;; ------------------- Datetime resolution inference -------------------
 
 (deftest optimal-datetime-resolution-test
@@ -894,7 +887,6 @@
     (testing (format "fingerprint = %s" (pr-str fingerprint))
       (is (= expected
              (#'magic/optimal-datetime-resolution {:fingerprint fingerprint}))))))
-
 
 ;;; ------------------- Datetime humanization (for chart and dashboard titles) -------------------
 
@@ -958,7 +950,6 @@
       (testing "Should humanize inside filter"
         (is (= "number of Venues where Longitude is between 2 and 4; and Latitude is between 3 and 1"
                (magic/cell-title root ["inside" (mt/$ids venues $latitude) (mt/$ids venues $longitude) 1 2 3 4])))))))
-
 
 ;;; -------------------- Filters --------------------
 

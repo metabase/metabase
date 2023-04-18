@@ -280,7 +280,6 @@
           table2d    (atom nil)
           field2d    (atom nil)]
 
-
       (ts/with-source-and-dest-dbs
         (testing "serializing the original database, table, field and card"
           (ts/with-source-db
@@ -356,7 +355,6 @@
           db2d       (atom nil)
           table2d    (atom nil)
           field2d    (atom nil)]
-
 
       (ts/with-source-and-dest-dbs
         (testing "serializing the original database, table, field and card"
@@ -437,7 +435,6 @@
           table2d    (atom nil)
           field3d    (atom nil)]
 
-
       (ts/with-source-and-dest-dbs
         (testing "serializing the original database, table, field and card"
           (ts/with-source-db
@@ -506,7 +503,7 @@
                                                      :target       (s/eq [:dimension [:field ["my-db" nil "orders" "subtotal"]
                                                                                       {:source-field ["my-db" nil "orders" "invoice"]}]])}]
                                s/Keyword s/Any}]
-                       (:ordered_cards dash))))
+                             (:ordered_cards dash))))
 
               (testing "exported :visualization_settings are properly converted"
                 (let [expected {:table.pivot_column "SOURCE"
@@ -530,7 +527,6 @@
                          (:visualization_settings card)))
                   (is (= expected
                          (-> dash :ordered_cards first :visualization_settings))))))))
-
 
         (testing "deserializing adjusts the IDs properly"
           (ts/with-dest-db

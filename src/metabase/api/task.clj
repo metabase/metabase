@@ -9,7 +9,6 @@
    [metabase.task :as task]
    [toucan2.core :as t2]))
 
-
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/"
   "Fetch a list of recent tasks stored as Task History"
@@ -32,6 +31,5 @@
   []
   (validation/check-has-application-permission :monitoring)
   (task/scheduler-info))
-
 
 (api/define-routes)

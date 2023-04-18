@@ -50,7 +50,6 @@
    (write-string! json-generator (apply str "0x" (for [b (take 4 byte-ar)]
                                                    (format "%02X" b))))))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             Parsing JSON Requests                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -67,7 +66,6 @@
         (handler (assoc request :body json) respond raise)
         (respond ring.json/default-malformed-response))
       (handler request respond raise))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            Streaming JSON Responses                                            |

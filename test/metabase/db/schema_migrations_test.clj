@@ -124,50 +124,50 @@
         ;; Using insert with table-name, so we don't run into the field type validation
         ;; added in 38
         (t2/insert! (t2/table-name Field)
-          (for [field [{:base_type     :type/Text
-                        :semantic_type :type/Address
-                        :name          "address"
-                        :table_id      table-id
-                        :database_type "VARCHAR"}
-                       {:base_type     :type/Text
-                        :semantic_type :type/ISO8601DateTimeString
-                        :name          "iso-datetime"
-                        :table_id      table-id
-                        :database_type "VARCHAR"}
-                       {:base_type     :type/Text
-                        :semantic_type "timestamp_milliseconds"
-                        :name          "iso-datetime-v0.20"
-                        :table_id      table-id
-                        :database_type "VARCHAR"}
-                       {:base_type     :type/Text
-                        :semantic_type :type/ISO8601DateString
-                        :name          "iso-date"
-                        :table_id      table-id
-                        :database_type "VARCHAR"}
-                       {:base_type     :type/Text
-                        :semantic_type :type/ISO8601TimeString
-                        :name          "iso-time"
-                        :table_id      table-id
-                        :database_type "VARCHAR"}
-                       {:base_type     :type/Integer
-                        :semantic_type :type/UNIXTimestampSeconds
-                        :name          "unix-seconds"
-                        :table_id      table-id
-                        :database_type "INT"}
-                       {:base_type     :type/Integer
-                        :semantic_type :type/UNIXTimestampMilliseconds
-                        :name          "unix-millis"
-                        :table_id      table-id
-                        :database_type "INT"}
-                       {:base_type     :type/Integer
-                        :semantic_type :type/UNIXTimestampMicroseconds
-                        :name          "unix-micros"
-                        :table_id      table-id
-                        :database_type "INT"}]]
-            (-> field
-                (update :base_type u/qualified-name)
-                (update :semantic_type u/qualified-name)
-                (assoc :created_at (mi/now), :updated_at (mi/now)))))
+                    (for [field [{:base_type     :type/Text
+                                  :semantic_type :type/Address
+                                  :name          "address"
+                                  :table_id      table-id
+                                  :database_type "VARCHAR"}
+                                 {:base_type     :type/Text
+                                  :semantic_type :type/ISO8601DateTimeString
+                                  :name          "iso-datetime"
+                                  :table_id      table-id
+                                  :database_type "VARCHAR"}
+                                 {:base_type     :type/Text
+                                  :semantic_type "timestamp_milliseconds"
+                                  :name          "iso-datetime-v0.20"
+                                  :table_id      table-id
+                                  :database_type "VARCHAR"}
+                                 {:base_type     :type/Text
+                                  :semantic_type :type/ISO8601DateString
+                                  :name          "iso-date"
+                                  :table_id      table-id
+                                  :database_type "VARCHAR"}
+                                 {:base_type     :type/Text
+                                  :semantic_type :type/ISO8601TimeString
+                                  :name          "iso-time"
+                                  :table_id      table-id
+                                  :database_type "VARCHAR"}
+                                 {:base_type     :type/Integer
+                                  :semantic_type :type/UNIXTimestampSeconds
+                                  :name          "unix-seconds"
+                                  :table_id      table-id
+                                  :database_type "INT"}
+                                 {:base_type     :type/Integer
+                                  :semantic_type :type/UNIXTimestampMilliseconds
+                                  :name          "unix-millis"
+                                  :table_id      table-id
+                                  :database_type "INT"}
+                                 {:base_type     :type/Integer
+                                  :semantic_type :type/UNIXTimestampMicroseconds
+                                  :name          "unix-micros"
+                                  :table_id      table-id
+                                  :database_type "INT"}]]
+                      (-> field
+                          (update :base_type u/qualified-name)
+                          (update :semantic_type u/qualified-name)
+                          (assoc :created_at (mi/now), :updated_at (mi/now)))))
         (migrate!)
         (is (= (by-name
                 [{:base_type         :type/Text
@@ -222,10 +222,10 @@
   [^Connection conn table-name]
   (with-open [rset (.getColumns (.getMetaData conn) nil nil table-name nil)]
     (into {} (take-while some?)
-             (repeatedly
-               (fn []
-                 (when (.next rset)
-                   [(.getString rset "COLUMN_NAME") (.getString rset "TYPE_NAME")]))))))
+          (repeatedly
+           (fn []
+             (when (.next rset)
+               [(.getString rset "COLUMN_NAME") (.getString rset "TYPE_NAME")]))))))
 
 (deftest convert-text-to-longtext-migration-test
   (testing "all columns that were TEXT type in MySQL were changed to"
@@ -645,9 +645,9 @@
                                                                            :visualization_settings "{}"
                                                                            :database_id            database-id
                                                                            :collection_id          nil}))]
-       (migrate!)
-       (is (= nil
-              (:parameters (first (t2/select (t2/table-name Card) {:where [:= :id card-id]})))))))))
+        (migrate!)
+        (is (= nil
+               (:parameters (first (t2/select (t2/table-name Card) {:where [:= :id card-id]})))))))))
 
 (deftest add-parameter-mappings-to-cards-test
   (testing "Migration v44.00-024: Add parameter_mappings to cards"
@@ -790,26 +790,26 @@
   (testing "Migrations v46.00-029 thru v46.00-031: make Dimension field_id unique instead of field_id + name"
     (impl/test-migrations ["v46.00-029" "v46.00-031"] [migrate!]
       (let [database-id (first (t2/insert-returning-pks! (t2/table-name Database) {:details   "{}"
-                                                                                    :engine    "h2"
-                                                                                    :is_sample false
-                                                                                    :name      "populate-collection-created-at-test-db"}))
+                                                                                   :engine    "h2"
+                                                                                   :is_sample false
+                                                                                   :name      "populate-collection-created-at-test-db"}))
             table-id    (first (t2/insert-returning-pks! (t2/table-name Table) {:db_id      database-id
-                                                                                 :name       "Table"
-                                                                                 :created_at :%now
-                                                                                 :updated_at :%now
-                                                                                 :active     true}))
+                                                                                :name       "Table"
+                                                                                :created_at :%now
+                                                                                :updated_at :%now
+                                                                                :active     true}))
             field-1-id  (first (t2/insert-returning-pks! (t2/table-name Field) {:name          "F1"
-                                                                                 :table_id      table-id
-                                                                                 :base_type     "type/Text"
-                                                                                 :database_type "TEXT"
-                                                                                 :created_at    :%now
-                                                                                 :updated_at    :%now}))
+                                                                                :table_id      table-id
+                                                                                :base_type     "type/Text"
+                                                                                :database_type "TEXT"
+                                                                                :created_at    :%now
+                                                                                :updated_at    :%now}))
             field-2-id  (first (t2/insert-returning-pks! (t2/table-name Field) {:name          "F2"
-                                                                                 :table_id      table-id
-                                                                                 :base_type     "type/Text"
-                                                                                 :database_type "TEXT"
-                                                                                 :created_at    :%now
-                                                                                 :updated_at    :%now}))
+                                                                                :table_id      table-id
+                                                                                :base_type     "type/Text"
+                                                                                :database_type "TEXT"
+                                                                                :created_at    :%now
+                                                                                :updated_at    :%now}))
             _           (t2/insert! (t2/table-name Dimension) {:field_id   field-1-id
                                                                :name       "F1 D1"
                                                                :type       "internal"
@@ -877,36 +877,36 @@
                                                                             :password    "superstrong"
                                                                             :date_joined :%now}))
             db-id    (first (t2/insert-returning-pks! (t2/table-name Database) {:name       "db"
-                                                                                 :engine     "postgres"
-                                                                                 :created_at :%now
-                                                                                 :updated_at :%now
-                                                                                 :settings    "{\"database-enable-actions\":true}"
-                                                                                 :details    "{}"}))
+                                                                                :engine     "postgres"
+                                                                                :created_at :%now
+                                                                                :updated_at :%now
+                                                                                :settings    "{\"database-enable-actions\":true}"
+                                                                                :details    "{}"}))
             table-id (first (t2/insert-returning-pks! (t2/table-name Table) {:db_id      db-id
-                                                                              :name       "Table"
-                                                                              :created_at :%now
-                                                                              :updated_at :%now
-                                                                              :active     true}))
+                                                                             :name       "Table"
+                                                                             :created_at :%now
+                                                                             :updated_at :%now
+                                                                             :active     true}))
             model-id (first (t2/insert-returning-pks! (t2/table-name Card) {:name                   "My Saved Question"
-                                                                             :created_at             :%now
-                                                                             :updated_at             :%now
-                                                                             :creator_id             user-id
-                                                                             :table_id               table-id
-                                                                             :display                "table"
-                                                                             :dataset_query          "{}"
-                                                                             :visualization_settings "{}"
-                                                                             :database_id            db-id
-                                                                             :collection_id          nil}))
+                                                                            :created_at             :%now
+                                                                            :updated_at             :%now
+                                                                            :creator_id             user-id
+                                                                            :table_id               table-id
+                                                                            :display                "table"
+                                                                            :dataset_query          "{}"
+                                                                            :visualization_settings "{}"
+                                                                            :database_id            db-id
+                                                                            :collection_id          nil}))
             _        (t2/insert! (t2/table-name Action) {:name       "Update user name"
                                                          :type       "implicit"
                                                          :model_id   model-id
                                                          :archived   false
                                                          :created_at :%now
                                                          :updated_at :%now})]
-       (is (thrown? clojure.lang.ExceptionInfo
-                    (t2/delete! Database :id db-id)))
-       (migrate!)
-       (is (t2/delete! Database :id db-id))))))
+        (is (thrown? clojure.lang.ExceptionInfo
+                     (t2/delete! Database :id db-id)))
+        (migrate!)
+        (is (t2/delete! Database :id db-id))))))
 
 (deftest split-data-permission-test
   (testing "Migration v46.00-080: split existing v1 data permission paths into v2 data and query permission paths"
@@ -996,11 +996,11 @@
           mysql-field-2-id :type/Text)
         ;; TODO: this is commented out temporarily because it flakes for MySQL
         #_(testing "Rollback restores the original state"
-          (migrate! :down 46)
-          (let [new-base-types (t2/select-pk->fn :base_type Field)]
-            (are [field-id expected] (= expected (get new-base-types field-id))
-              pg-field-1-id :type/Structured
-              pg-field-2-id :type/Structured
-              pg-field-3-id :type/Text
-              mysql-field-1-id :type/SerializedJSON
-              mysql-field-2-id :type/Text)))))))
+            (migrate! :down 46)
+            (let [new-base-types (t2/select-pk->fn :base_type Field)]
+              (are [field-id expected] (= expected (get new-base-types field-id))
+                pg-field-1-id :type/Structured
+                pg-field-2-id :type/Structured
+                pg-field-3-id :type/Text
+                mysql-field-1-id :type/SerializedJSON
+                mysql-field-2-id :type/Text)))))))

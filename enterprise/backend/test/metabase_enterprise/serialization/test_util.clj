@@ -52,7 +52,7 @@
      (tt/with-temp* ~model-bindings ~@body)))
 
 (defn create! [model & {:as properties}]
- (first (t2/insert-returning-instances! model (merge (tt/with-temp-defaults model) properties))))
+  (first (t2/insert-returning-instances! model (merge (tt/with-temp-defaults model) properties))))
 
 (defn- do-with-in-memory-h2-db [db-name-prefix f]
   (let [db-name           (str db-name-prefix (mt/random-name))
@@ -222,7 +222,7 @@
                                                   :enabled true}]
                                  :column_settings {(keyword (format
                                                              "[\"ref\",[\"field\",%d,null]]"
-                                                              ~'latitude-field-id))
+                                                             ~'latitude-field-id))
                                                    {:show_mini_bar true
                                                     :column_title "Parallel"}}}}]
                    Card       [{~'card-id-nested-query :id}
@@ -246,11 +246,11 @@
                                  :native
                                  {:query "SELECT * FROM {{#1}} AS subquery"
                                   :template-tags
-                                  {"#1"{:id "72461b3b-3877-4538-a5a3-7a3041924517"
-                                        :name "#1"
-                                        :display-name "#1"
-                                        :type "card"
-                                        :card-id ~'card-id}}}}}]
+                                  {"#1" {:id "72461b3b-3877-4538-a5a3-7a3041924517"
+                                         :name "#1"
+                                         :display-name "#1"
+                                         :type "card"
+                                         :card-id ~'card-id}}}}}]
                    DashboardCard       [{~'dashcard-id :id}
                                         {:dashboard_id ~'dashboard-id
                                          :card_id ~'card-id}]
@@ -272,23 +272,23 @@
                                          :card_id                ~'card-id-root
                                          :visualization_settings (-> (mb.viz/visualization-settings)
                                                                      (mb.viz/with-entity-click-action
-                                                                      ~'numeric-field-id
-                                                                      ::mb.viz/card
-                                                                      ~'card-id
-                                                                      (mb.viz/fk-parameter-mapping
-                                                                       "Category"
-                                                                       ~'category-field-id
-                                                                       ~'numeric-field-id))
+                                                                       ~'numeric-field-id
+                                                                       ::mb.viz/card
+                                                                       ~'card-id
+                                                                       (mb.viz/fk-parameter-mapping
+                                                                        "Category"
+                                                                        ~'category-field-id
+                                                                        ~'numeric-field-id))
                                                                      (mb.viz/with-entity-click-action
-                                                                      ~'name-field-id
-                                                                      ::mb.viz/dashboard
-                                                                      ~'root-dashboard-id)
+                                                                       ~'name-field-id
+                                                                       ::mb.viz/dashboard
+                                                                       ~'root-dashboard-id)
                                                                      (mb.viz/with-click-action
-                                                                      (mb.viz/column-name->column-ref "Price Known")
-                                                                      (mb.viz/url-click-action "/price-info"))
+                                                                       (mb.viz/column-name->column-ref "Price Known")
+                                                                       (mb.viz/url-click-action "/price-info"))
                                                                      (mb.viz/with-click-action
-                                                                      (mb.viz/field-id->column-ref ~'latitude-field-id)
-                                                                      (mb.viz/crossfilter-click-action {}))
+                                                                       (mb.viz/field-id->column-ref ~'latitude-field-id)
+                                                                       (mb.viz/crossfilter-click-action {}))
                                                                      mb.viz/norm->db)}]
                    DashboardCardSeries [~'_ {:dashboardcard_id   ~'dashcard-with-click-actions
                                              :card_id            ~'card-id-root

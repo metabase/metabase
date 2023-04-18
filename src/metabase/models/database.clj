@@ -129,11 +129,11 @@
     (if (nil? value) ;; secret value for this conn prop was not changed
       details
       (let [{:keys [id] :as secret*} (secret/upsert-secret-value!
-                                       (id-kw details)
-                                       new-name
-                                       kind
-                                       src
-                                       value)]
+                                      (id-kw details)
+                                      new-name
+                                      kind
+                                      src
+                                      value)]
         (-> details
             ;; remove the -value keyword (since in the persisted details blob, we only ever want to store the -id),
             ;; but the value may be re-added by expand-inferred-secret-values below (if appropriate)
@@ -144,9 +144,9 @@
 (defn- handle-secrets-changes [{:keys [details] :as database}]
   (if (map? details)
     (let [updated-details (secret/reduce-over-details-secret-values
-                            (driver.u/database->driver database)
-                            details
-                            (partial handle-db-details-secret-prop! database))]
+                           (driver.u/database->driver database)
+                           details
+                           (partial handle-db-details-secret-prop! database))]
       (assoc database :details updated-details))
     database))
 
@@ -206,11 +206,11 @@
                            :new-engine      new-engine})))))))
 
 (defn- pre-insert [{:keys [details initial_sync_status], :as database}]
-   (-> database
-       (cond->
-        (not details)             (assoc :details {})
-        (not initial_sync_status) (assoc :initial_sync_status "incomplete"))
-       handle-secrets-changes))
+  (-> database
+      (cond->
+       (not details)             (assoc :details {})
+       (not initial_sync_status) (assoc :initial_sync_status "incomplete"))
+      handle-secrets-changes))
 
 (defmethod mi/perms-objects-set Database
   [{db-id :id} read-or-write]
@@ -219,26 +219,25 @@
       :write (perms/db-details-write-perms-path db-id))})
 
 (mi/define-methods
- Database
- {:hydration-keys (constantly [:database :db])
-  :types          (constantly {:details                     :encrypted-json
-                               :options                     :json
-                               :engine                      :keyword
-                               :metadata_sync_schedule      :cron-string
-                               :cache_field_values_schedule :cron-string
-                               :start_of_week               :keyword
-                               :settings                    :encrypted-json
-                               :dbms_version                :json})
-  :post-insert    post-insert
-  :post-select    post-select
-  :pre-insert     pre-insert
-  :pre-update     pre-update
-  :pre-delete     pre-delete})
+  Database
+  {:hydration-keys (constantly [:database :db])
+   :types          (constantly {:details                     :encrypted-json
+                                :options                     :json
+                                :engine                      :keyword
+                                :metadata_sync_schedule      :cron-string
+                                :cache_field_values_schedule :cron-string
+                                :start_of_week               :keyword
+                                :settings                    :encrypted-json
+                                :dbms_version                :json})
+   :post-insert    post-insert
+   :post-select    post-select
+   :pre-insert     pre-insert
+   :pre-update     pre-update
+   :pre-delete     pre-delete})
 
 (defmethod serdes/hash-fields Database
   [_database]
   [:name :engine])
-
 
 ;;; ---------------------------------------------- Hydration / Util Fns ----------------------------------------------
 
@@ -256,7 +255,6 @@
     (when (seq table-ids)
       (t2/select 'Field, :table_id [:in table-ids], :semantic_type (mdb.u/isa :type/PK)))))
 
-
 ;;; -------------------------------------------------- JSON Encoder --------------------------------------------------
 
 (def ^:const protected-password
@@ -269,11 +267,11 @@
   driver can't be clearly determined, this simply returns the default set (driver.u/default-sensitive-fields)."
   [database]
   (if (and (some? database) (not-empty database))
-      (let [driver (driver.u/database->driver database)]
-        (if (some? driver)
-            (driver.u/sensitive-fields (driver.u/database->driver database))
-            driver.u/default-sensitive-fields))
-      driver.u/default-sensitive-fields))
+    (let [driver (driver.u/database->driver database)]
+      (if (some? driver)
+        (driver.u/sensitive-fields (driver.u/database->driver database))
+        driver.u/default-sensitive-fields))
+    driver.u/default-sensitive-fields))
 
 (methodical/defmethod mi/to-json Database
   "When encoding a Database as JSON remove the `details` for any User without write perms for the DB.

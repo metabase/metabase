@@ -24,12 +24,12 @@
                     Dashboard [dash-2]]
       (letfn [(add-card-to-dash! [dash]
                 (t2/insert! DashboardCard
-                  {:card_id      card-id
-                   :dashboard_id (u/the-id dash)
-                   :row          0
-                   :col          0
-                   :size_x       4
-                   :size_y       4}))
+                            {:card_id      card-id
+                             :dashboard_id (u/the-id dash)
+                             :row          0
+                             :col          0
+                             :size_x       4
+                             :size_y       4}))
               (get-dashboard-count []
                 (card/dashboard-count (t2/select-one Card :id card-id)))]
         (is (= 0
@@ -191,7 +191,7 @@
       (is (thrown?
            Exception
            (t2/update! Card (u/the-id card)
-             (card-with-source-table (str "card__" (u/the-id card))))))))
+                       (card-with-source-table (str "card__" (u/the-id card))))))))
 
   (testing "Do the same stuff with circular reference between two Cards... (A -> B -> A)"
     (tt/with-temp* [Card [card-a (card-with-source-table (mt/id :venues))]
@@ -199,7 +199,7 @@
       (is (thrown?
            Exception
            (t2/update! Card (u/the-id card-a)
-             (card-with-source-table (str "card__" (u/the-id card-b))))))))
+                       (card-with-source-table (str "card__" (u/the-id card-b))))))))
 
   (testing "ok now try it with A -> C -> B -> A"
     (tt/with-temp* [Card [card-a (card-with-source-table (mt/id :venues))]
@@ -208,7 +208,7 @@
       (is (thrown?
            Exception
            (t2/update! Card (u/the-id card-a)
-             (card-with-source-table (str "card__" (u/the-id card-c)))))))))
+                       (card-with-source-table (str "card__" (u/the-id card-c)))))))))
 
 (deftest validate-collection-namespace-test
   (mt/with-temp Collection [{collection-id :id} {:namespace "currency"}]
@@ -366,9 +366,9 @@
            #":parameters must be a sequence of maps with :id and :type keys"
            (mt/with-temp Card [_ {:parameters {:a :b}}])))
 
-     (mt/with-temp Card [card {:parameters [{:id   "valid-id"
-                                             :type "id"}]}]
-       (is (some? card))))
+      (mt/with-temp Card [card {:parameters [{:id   "valid-id"
+                                              :type "id"}]}]
+        (is (some? card))))
 
     (testing "updating"
       (mt/with-temp Card [{:keys [id]} {:parameters []}]
@@ -399,9 +399,9 @@
            #":parameter_mappings must be a sequence of maps with :parameter_id and :type keys"
            (mt/with-temp Card [_ {:parameter_mappings {:a :b}}])))
 
-     (mt/with-temp Card [card {:parameter_mappings [{:parameter_id "valid-id"
-                                                     :target       [:field 1000 nil]}]}]
-       (is (some? card))))
+      (mt/with-temp Card [card {:parameter_mappings [{:parameter_id "valid-id"
+                                                      :target       [:field 1000 nil]}]}]
+        (is (some? card))))
 
     (testing "updating"
       (mt/with-temp Card [{:keys [id]} {:parameter_mappings []}]
@@ -493,9 +493,9 @@
   (mt/dataset sample-dataset
     (mt/with-temp*
       [Card      [{source-card-id :id} (merge (mt/card-with-source-metadata-for-query
-                                                (mt/mbql-query products {:fields [(mt/$ids $products.title)
-                                                                                  (mt/$ids $products.category)]
-                                                                         :limit 5}))
+                                               (mt/mbql-query products {:fields [(mt/$ids $products.title)
+                                                                                 (mt/$ids $products.category)]
+                                                                        :limit 5}))
                                               {:database_id (mt/id)
                                                :table_id    (mt/id :products)})]
        Card      [card                 {:parameters [{:name                  "Param 1"
@@ -524,8 +524,8 @@
       (testing "on update result_metadata"
         (t2/update! Card source-card-id
                     (mt/card-with-source-metadata-for-query
-                      (mt/mbql-query products {:fields [(mt/$ids $products.title)]
-                                               :limit 5})))
+                     (mt/mbql-query products {:fields [(mt/$ids $products.title)]
+                                              :limit 5})))
 
         (testing "ParameterCard for dashboard is removed"
           (is (=? [{:card_id                   source-card-id
@@ -621,10 +621,10 @@
 (deftest upgrade-to-v2-db-test
   (testing ":visualization_settings v. 1 should be upgraded to v. 2 on select"
     (mt/with-temp Card [{card-id :id} {:visualization_settings {:pie.show_legend true}}]
-        (is (= {:version 2
-                :pie.show_legend true
-                :pie.percent_visibility "inside"}
-               (t2/select-one-fn :visualization_settings Card :id card-id)))))
+      (is (= {:version 2
+              :pie.show_legend true
+              :pie.percent_visibility "inside"}
+             (t2/select-one-fn :visualization_settings Card :id card-id)))))
   (testing ":visualization_settings v. 1 should be upgraded to v. 2 and persisted on update"
     (mt/with-temp Card [{card-id :id} {:visualization_settings {:pie.show_legend true}}]
       (t2/update! Card card-id {:name "Favorite Toucan Foods"})

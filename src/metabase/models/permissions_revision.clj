@@ -8,11 +8,11 @@
 (models/defmodel PermissionsRevision :permissions_revision)
 
 (mi/define-methods
- PermissionsRevision
- {:types      (constantly {:before :json
-                           :after  :json})
-  :properties (constantly {::mi/created-at-timestamped? true})
-  :pre-update (fn [& _] (throw (Exception. (tru "You cannot update a PermissionsRevision!"))))})
+  PermissionsRevision
+  {:types      (constantly {:before :json
+                            :after  :json})
+   :properties (constantly {::mi/created-at-timestamped? true})
+   :pre-update (fn [& _] (throw (Exception. (tru "You cannot update a PermissionsRevision!"))))})
 
 (defn latest-id
   "Return the ID of the newest `PermissionsRevision`, or zero if none have been made yet.

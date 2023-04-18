@@ -42,7 +42,6 @@
         (is (= 1
                (t2/update! Metric id {:creator_id (mt/user->id :rasta)})))))))
 
-
 ;; ## Metric Revisions
 
 (deftest serialize-metric-test

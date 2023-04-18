@@ -71,7 +71,7 @@
   (merge
    {:table_id true, :database_id true}
    (t2/select-one [Table [:name :table_name] [:schema :table_schema] [:description :table_description]]
-     :id (mt/id :checkins))))
+                  :id (mt/id :checkins))))
 
 (defn- sorted-results [results]
   (->> results
@@ -143,7 +143,7 @@
                                                   (assoc action-model-params :collection_id (u/the-id coll)))]
                     Action      [{action-id :id
                                   :as action}   (merge (data-map "action %s action")
-                                  {:type :query, :model_id (u/the-id action-model)})]
+                                                       {:type :query, :model_id (u/the-id action-model)})]
                     QueryAction [_qa (query-action action-id)]
                     Card        [card           (coll-data-map "card %s card" coll)]
                     Card        [dataset        (assoc (coll-data-map "dataset %s dataset" coll)
@@ -515,8 +515,8 @@
     (with-search-items-in-root-collection "test2"
       (mt/with-temp* [Card        [action-model action-model-params]
                       Action      [{action-id :id} (archived {:name     "action test action"
-                                                :type     :query
-                                                :model_id (u/the-id action-model)})]
+                                                              :type     :query
+                                                              :model_id (u/the-id action-model)})]
                       QueryAction [_ (query-action action-id)]
                       Card        [_ (archived {:name "card test card"})]
                       Card        [_ (archived {:name "dataset test dataset" :dataset true})]
@@ -679,7 +679,7 @@
      Table     {table-id :id} {:db_id  db-id
                                :schema nil}
      Metric    _              {:table_id table-id
-                                :name     "metric count test 1"}
+                               :name     "metric count test 1"}
      Metric    _              {:table_id table-id
                                :name     "metric count test 1"}
      Metric    _              {:table_id table-id

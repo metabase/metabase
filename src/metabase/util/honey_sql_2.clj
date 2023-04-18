@@ -184,12 +184,12 @@
   "Protocol for a HoneySQL form that has type information such as `:metabase.util.honeysql-extensions/database-type`.
   See #15115 for background."
   (type-info [honeysql-form]
-    "Return type information associated with `honeysql-form`, if any (i.e., if it is a `TypedHoneySQLForm`); otherwise
+             "Return type information associated with `honeysql-form`, if any (i.e., if it is a `TypedHoneySQLForm`); otherwise
     returns `nil`.")
   (with-type-info [honeysql-form new-type-info]
     "Add type information to a `honeysql-form`. Wraps `honeysql-form` and returns a `TypedHoneySQLForm`.")
   (unwrap-typed-honeysql-form [honeysql-form]
-    "If `honeysql-form` is a `TypedHoneySQLForm`, unwrap it and return the original form without type information.
+                              "If `honeysql-form` is a `TypedHoneySQLForm`, unwrap it and return the original form without type information.
     Otherwise, returns form as-is."))
 
 (defn- format-typed [_fn [expr _type-info]]

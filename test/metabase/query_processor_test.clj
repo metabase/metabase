@@ -89,7 +89,7 @@
    (col-defaults)
    (t2/select-one [Field :id :table_id :semantic_type :base_type :effective_type
                    :coercion_strategy :name :display_name :fingerprint]
-     :id (data/id table-kw field-kw))
+                  :id (data/id table-kw field-kw))
    {:field_ref [:field (data/id table-kw field-kw) nil]}
    (when (#{:last_login :date} field-kw)
      {:unit      :default
@@ -206,14 +206,14 @@
      (first
       (cols
        (qp/process-query
-         {:database db-id
-          :type     :native
-          :native   (qp/compile
-                      {:database db-id
-                       :type     :query
-                       :query    {:source-table table-id
-                                  :fields       [[:field field-id nil]]
-                                  :limit        1}})}))))))
+        {:database db-id
+         :type     :native
+         :native   (qp/compile
+                     {:database db-id
+                      :type     :query
+                      :query    {:source-table table-id
+                                 :fields       [[:field field-id nil]]
+                                 :limit        1}})}))))))
 
 (defn native-query-col
   "Return expected `:cols` info for a Field from a native query or native source query."
@@ -329,8 +329,8 @@
                                                   (.getName (class v))
                                                   (pr-str v)
                                                   (.getMessage e))
-                                   {:f f, :v v, :format-nil-values? format-nil-values?}
-                                   e)))))))))
+                                          {:f f, :v v, :format-nil-values? format-nil-values?}
+                                          e)))))))))
 
               :else
               (throw (ex-info "Unexpected response: rows are not sequential!" {:response response})))))))))

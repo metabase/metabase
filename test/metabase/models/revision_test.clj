@@ -32,11 +32,11 @@
 
 (defn- push-fake-revision! [card-id & {:keys [message] :as object}]
   (revision/push-revision!
-    :entity   FakedCard
-    :id       card-id
-    :user-id  (mt/user->id :rasta)
-    :object   (dissoc object :message)
-    :message  message))
+   :entity   FakedCard
+   :id       card-id
+   :user-id  (mt/user->id :rasta)
+   :object   (dissoc object :message)
+   :message  message))
 
 (deftest post-select-test
   (testing (str "make sure we call the appropriate post-select methods on `:object` when a revision comes out of the "
@@ -141,7 +141,6 @@
       (dorun (repeatedly (inc revision/max-revisions) #(push-fake-revision! card-id, :name "Tips Created by Day")))
       (is (= revision/max-revisions
              (count (revision/revisions FakedCard card-id)))))))
-
 
 ;;; # REVISIONS+DETAILS
 

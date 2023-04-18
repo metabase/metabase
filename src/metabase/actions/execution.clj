@@ -125,21 +125,21 @@
         requires_pk              (contains? #{:row/delete :row/update} implicit-action)]
     (api/check (or (not requires_pk)
                    (some? (get simple-parameters pk-field-name)))
-               400
-               (tru "Missing primary key parameter: {0}"
-                    (pr-str (u/slugify (:name pk-field)))))
+      400
+      (tru "Missing primary key parameter: {0}"
+           (pr-str (u/slugify (:name pk-field)))))
     (api/check (empty? extra-parameters)
-               400
-               {:message (tru "No destination parameter found for {0}. Found: {1}"
-                              (pr-str extra-parameters)
-                              (pr-str (set (keys slug->field-name))))
-                :parameters request-parameters
-                :destination-parameters (keys slug->field-name)})
+      400
+      {:message (tru "No destination parameter found for {0}. Found: {1}"
+                     (pr-str extra-parameters)
+                     (pr-str (set (keys slug->field-name))))
+       :parameters request-parameters
+       :destination-parameters (keys slug->field-name)})
     (cond->
-      {:query {:database database-id,
-               :type :query,
-               :query {:source-table table-id}}
-       :row-parameters row-parameters}
+     {:query {:database database-id,
+              :type :query,
+              :query {:source-table table-id}}
+      :row-parameters row-parameters}
 
       requires_pk
       (assoc-in [:query :query :filter]
@@ -155,8 +155,8 @@
   (let [implicit-action (keyword (:kind action))
         {:keys [query row-parameters]} (build-implicit-query action implicit-action request-parameters)
         _ (api/check (or (= implicit-action :row/delete) (seq row-parameters))
-                     400
-                     (tru "Implicit parameters must be provided."))
+            400
+            (tru "Implicit parameters must be provided."))
         arg-map (cond-> query
                   (= implicit-action :row/create)
                   (assoc :create-row row-parameters)
@@ -195,8 +195,8 @@
 (defn- fetch-implicit-action-values
   [dashboard-id action request-parameters]
   (api/check (contains? #{"row/update" "row/delete"} (:kind action))
-             400
-             (tru "Values can only be fetched for actions that require a Primary Key."))
+    400
+    (tru "Values can only be fetched for actions that require a Primary Key."))
   (let [implicit-action (keyword (:kind action))
         {:keys [prefetch-parameters]} (build-implicit-query action implicit-action request-parameters)
         info {:executed-by api/*current-user-id*
@@ -206,14 +206,14 @@
         ;; prefilling a form with day old data would be bad
         result (binding [persisted-info/*allow-persisted-substitution* false]
                  (qp/process-query-and-save-execution!
-                   (qp.card/query-for-card card prefetch-parameters nil nil)
-                   info))
+                  (qp.card/query-for-card card prefetch-parameters nil nil)
+                  info))
         exposed-params (set (map :id (:parameters action)))]
     (m/filter-keys
-      #(contains? exposed-params %)
-      (zipmap
-        (map (comp u/slugify :name) (get-in result [:data :cols]))
-        (first (get-in result [:data :rows]))))))
+     #(contains? exposed-params %)
+     (zipmap
+      (map (comp u/slugify :name) (get-in result [:data :cols]))
+      (first (get-in result [:data :rows]))))))
 
 (defn fetch-values
   "Fetch values to pre-fill implicit action execution - custom actions will return no values.

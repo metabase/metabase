@@ -88,7 +88,6 @@
     (sql.helpers/from honeysql-form [(sql.qp/->honeysql driver (h2x/identifier :table schema table-name))
                                      [(sql.qp/->honeysql driver (h2x/identifier :table-alias source-table-alias))]])))
 
-
 ;;; ------------------------------------------- Other Driver Method Impls --------------------------------------------
 
 (defrecord SparkSQLDataSource [url properties]
@@ -139,8 +138,8 @@
      (let [results (jdbc/query {:connection conn} [(format
                                                     "describe %s"
                                                     (sql.u/quote-name driver :table
-                                                      (dash-to-underscore schema)
-                                                      (dash-to-underscore table-name)))])]
+                                                                      (dash-to-underscore schema)
+                                                                      (dash-to-underscore table-name)))])]
        (set
         (for [[idx {col-name :col_name, data-type :data_type, :as result}] (m/indexed results)
               :when (valid-describe-table-row? result)]

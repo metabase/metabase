@@ -11,7 +11,7 @@
 
 (defonce ^:private ^{:doc "Generate a random prefix to add to all of the [[id]]s below, so that they change between
   test runs to catch places where people are hardcoding IDs rather than using [[id]]."}
-  random-id-offset
+ random-id-offset
   (* (rand-int 100) 1000))
 
 (defn id
@@ -775,36 +775,36 @@
    :points_of_interest      nil
    :lib/type                :metadata/table})
 
- (defmethod field-metadata [:products :id]
+(defmethod field-metadata [:products :id]
   [_table-name _field-name]
-   {:description                nil
-    :database_type              "BIGINT"
-    :semantic_type              :type/PK
-    :table_id                   (id :products)
-    :coercion_strategy          nil
-    :name                       "ID"
-    :fingerprint_version        0
-    :has_field_values           nil
-    :settings                   nil
-    :caveats                    nil
-    :fk_target_field_id         nil
-    :custom_position            0
-    :effective_type             :type/BigInteger
-    :active                     true
-    :nfc_path                   nil
-    :parent_id                  nil
-    :id                         (id :products :id)
-    :database_is_auto_increment true
-    :position                   0
-    :visibility_type            :normal
-    :preview_display            true
-    :display_name               "ID"
-    :database_position          0
-    :database_required          false
-    :fingerprint                nil
-    :base_type                  :type/BigInteger
-    :points_of_interest         nil
-    :lib/type                   :metadata/field})
+  {:description                nil
+   :database_type              "BIGINT"
+   :semantic_type              :type/PK
+   :table_id                   (id :products)
+   :coercion_strategy          nil
+   :name                       "ID"
+   :fingerprint_version        0
+   :has_field_values           nil
+   :settings                   nil
+   :caveats                    nil
+   :fk_target_field_id         nil
+   :custom_position            0
+   :effective_type             :type/BigInteger
+   :active                     true
+   :nfc_path                   nil
+   :parent_id                  nil
+   :id                         (id :products :id)
+   :database_is_auto_increment true
+   :position                   0
+   :visibility_type            :normal
+   :preview_display            true
+   :display_name               "ID"
+   :database_position          0
+   :database_required          false
+   :fingerprint                nil
+   :base_type                  :type/BigInteger
+   :points_of_interest         nil
+   :lib/type                   :metadata/field})
 
 (defmethod field-metadata [:products :rating]
   [_table-name _field-name]
@@ -843,41 +843,41 @@
    :points_of_interest         nil
    :lib/type                   :metadata/field})
 
- (defmethod field-metadata [:products :category]
-   [_table-name _field-name]
-   {:description                nil
-    :database_type              "CHARACTER VARYING"
-    :semantic_type              :type/Category
-    :table_id                   (id :products)
-    :coercion_strategy          nil
-    :name                       "CATEGORY"
-    :fingerprint_version        5
-    :has_field_values           :auto-list
-    :settings                   nil
-    :caveats                    nil
-    :fk_target_field_id         nil
-    :custom_position            0
-    :effective_type             :type/Text
-    :active                     true
-    :nfc_path                   nil
-    :parent_id                  nil
-    :id                         (id :products :category)
-    :database_is_auto_increment false
-    :position                   3
-    :visibility_type            :normal
-    :preview_display            true
-    :display_name               "Category"
-    :database_position          3
-    :database_required          false
-    :fingerprint                {:global {:distinct-count 4, :nil% 0.0}
-                                 :type   {:type/Text {:percent-json   0.0
-                                                      :percent-url    0.0
-                                                      :percent-email  0.0
-                                                      :percent-state  0.0
-                                                      :average-length 6.375}}}
-    :base_type                  :type/Text
-    :points_of_interest         nil
-    :lib/type                   :metadata/field})
+(defmethod field-metadata [:products :category]
+  [_table-name _field-name]
+  {:description                nil
+   :database_type              "CHARACTER VARYING"
+   :semantic_type              :type/Category
+   :table_id                   (id :products)
+   :coercion_strategy          nil
+   :name                       "CATEGORY"
+   :fingerprint_version        5
+   :has_field_values           :auto-list
+   :settings                   nil
+   :caveats                    nil
+   :fk_target_field_id         nil
+   :custom_position            0
+   :effective_type             :type/Text
+   :active                     true
+   :nfc_path                   nil
+   :parent_id                  nil
+   :id                         (id :products :category)
+   :database_is_auto_increment false
+   :position                   3
+   :visibility_type            :normal
+   :preview_display            true
+   :display_name               "Category"
+   :database_position          3
+   :database_required          false
+   :fingerprint                {:global {:distinct-count 4, :nil% 0.0}
+                                :type   {:type/Text {:percent-json   0.0
+                                                     :percent-url    0.0
+                                                     :percent-email  0.0
+                                                     :percent-state  0.0
+                                                     :average-length 6.375}}}
+   :base_type                  :type/Text
+   :points_of_interest         nil
+   :lib/type                   :metadata/field})
 
 (defmethod field-metadata [:products :price]
   [_table-name _field-name]
@@ -916,41 +916,41 @@
    :points_of_interest         nil
    :lib/type                   :metadata/field})
 
- (defmethod field-metadata [:products :title]
-   [_table-name _field-name]
-   {:description                nil
-    :database_type              "CHARACTER VARYING"
-    :semantic_type              :type/Title
-    :table_id                   (id :products)
-    :coercion_strategy          nil
-    :name                       "TITLE"
-    :fingerprint_version        5
-    :has_field_values           :auto-list
-    :settings                   nil
-    :caveats                    nil
-    :fk_target_field_id         nil
-    :custom_position            0
-    :effective_type             :type/Text
-    :active                     true
-    :nfc_path                   nil
-    :parent_id                  nil
-    :id                         (id :products :title)
-    :database_is_auto_increment false
-    :position                   2
-    :visibility_type            :normal
-    :preview_display            true
-    :display_name               "Title"
-    :database_position          2
-    :database_required          false
-    :fingerprint                {:global {:distinct-count 199, :nil% 0.0}
-                                 :type   {:type/Text {:percent-json   0.0
-                                                      :percent-url    0.0
-                                                      :percent-email  0.0
-                                                      :percent-state  0.0
-                                                      :average-length 21.495}}}
-    :base_type                  :type/Text
-    :points_of_interest         nil
-    :lib/type                   :metadata/field})
+(defmethod field-metadata [:products :title]
+  [_table-name _field-name]
+  {:description                nil
+   :database_type              "CHARACTER VARYING"
+   :semantic_type              :type/Title
+   :table_id                   (id :products)
+   :coercion_strategy          nil
+   :name                       "TITLE"
+   :fingerprint_version        5
+   :has_field_values           :auto-list
+   :settings                   nil
+   :caveats                    nil
+   :fk_target_field_id         nil
+   :custom_position            0
+   :effective_type             :type/Text
+   :active                     true
+   :nfc_path                   nil
+   :parent_id                  nil
+   :id                         (id :products :title)
+   :database_is_auto_increment false
+   :position                   2
+   :visibility_type            :normal
+   :preview_display            true
+   :display_name               "Title"
+   :database_position          2
+   :database_required          false
+   :fingerprint                {:global {:distinct-count 199, :nil% 0.0}
+                                :type   {:type/Text {:percent-json   0.0
+                                                     :percent-url    0.0
+                                                     :percent-email  0.0
+                                                     :percent-state  0.0
+                                                     :average-length 21.495}}}
+   :base_type                  :type/Text
+   :points_of_interest         nil
+   :lib/type                   :metadata/field})
 
 (defmethod field-metadata [:products :created-at]
   [_table-name _field-name]

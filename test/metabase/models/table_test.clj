@@ -36,7 +36,7 @@
                                              (mt/id :checkins :id)]))))
   (testing "Only active fields should be considerd when checking field order"
     (one-off-dbs/with-blank-db
-      (doseq [statement [ ;; H2 needs that 'guest' user for QP purposes. Set that up
+      (doseq [statement [;; H2 needs that 'guest' user for QP purposes. Set that up
                          "CREATE USER IF NOT EXISTS GUEST PASSWORD 'guest';"
                          ;; Keep DB open until we say otherwise :)
                          "SET DB_CLOSE_DELAY -1;"

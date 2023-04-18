@@ -59,8 +59,7 @@
           basic-query  #js {"type"  "query"
                             "query" #js {"joins" #js [join]}}
           classy-query #js {"type"  "query"
-                            "query" #js {"joins" #js [join-class]}}
-          ]
+                            "query" #js {"joins" #js [join-class]}}]
       (is (not= join join-class))
       (is (not= (js->clj join) (js->clj join-class)))
       (is (lib.js/query= basic-query classy-query)))))

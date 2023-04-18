@@ -24,11 +24,11 @@
       (try
         (mt/with-model-cleanup [Permissions]
           (u/ignore-exceptions
-           (@#'perms/update-group-permissions! all-users-group-id graph))
+            (@#'perms/update-group-permissions! all-users-group-id graph))
           (f))
         (finally
           (u/ignore-exceptions
-           (@#'perms/update-group-permissions! all-users-group-id current-graph)))))))
+            (@#'perms/update-group-permissions! all-users-group-id current-graph)))))))
 
 (defmacro ^:private with-all-users-data-perms
   "Runs `body` with perms for the All Users group temporarily set to the values in `graph`. Also enables the advanced
@@ -75,7 +75,6 @@
             (is (partial= {:can_access_db_details true}
                           (user-permissions :rasta)))))))))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        Data model permission enforcement                                       |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -97,7 +96,7 @@
                include_editable_data_model=true"
         (with-all-users-data-perms {(mt/id) {:data       {:schemas :all :native :write}
                                              :data-model {:schemas :none}}}
-            (is (= nil (get-test-db)))))
+          (is (= nil (get-test-db)))))
 
       (let [[id-1 id-2 id-3 id-4] (map u/the-id (database/tables (mt/db)))]
         (with-all-users-data-perms {(mt/id) {:data       {:schemas :all :native :write}
@@ -140,7 +139,6 @@
                                                 (format "database/%d/metadata?include_editable_data_model=true" (mt/id)))
                           :tables)]
           (is (= [id-1] (map :id tables))))))
-
 
     (testing "A user with data model perms can still fetch a DB name and tables if they have block perms for a DB"
       (let [[id-1 id-2 id-3 id-4] (map u/the-id (database/tables (mt/db)))]
@@ -350,7 +348,6 @@
           (mt/user-http-request :rasta :get 200
                                 (format "table/%d/query_metadata?include_editable_data_model=true" table-id)))))))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                  Database details permission enforcement                                       |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -432,7 +429,7 @@
       (with-all-users-data-perms {db-id {:data    {:native :none :schemas :block}
                                          :details :yes}}
         (is (partial= {:details {}}
-             (mt/user-http-request :rasta :get 200 (format "database/%d?exclude_uneditable_details=true" db-id))))))))
+                      (mt/user-http-request :rasta :get 200 (format "database/%d?exclude_uneditable_details=true" db-id))))))))
 
 (deftest actions-test
   (mt/with-temp-copy-of-db

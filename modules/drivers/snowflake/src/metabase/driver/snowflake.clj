@@ -227,9 +227,9 @@
   ;; relies on the ability to dynamicall change `start-of-week` setting, but with snowflake we set the
   ;; start-of-week in connection session instead of manipulate in MBQL
   (throw (ex-info (tru "sqlite doesn't support extract us week")
-          {:driver driver
-           :form   expr
-           :type   qp.error-type/invalid-query})))
+                  {:driver driver
+                   :form   expr
+                   :type   qp.error-type/invalid-query})))
 
 (defmethod sql.qp/date [:snowflake :day-of-week]
   [_driver _unit expr]
@@ -460,7 +460,7 @@
   [_ database]
   (if-not (str/blank? (-> database :details :regionid))
     (-> (update-in database [:details :account] #(str/join "." [% (-> database :details :regionid)]))
-      (m/dissoc-in [:details :regionid]))
+        (m/dissoc-in [:details :regionid]))
     database))
 
 (defmethod unprepare/unprepare-value [:snowflake OffsetDateTime]

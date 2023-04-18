@@ -105,8 +105,8 @@
   query."
   [source-card-id :- su/IntGreaterThanZero]
   (mi/perms-objects-set (or (t2/select-one ['Card :collection_id] :id source-card-id)
-                           (throw (Exception. (tru "Card {0} does not exist." source-card-id))))
-                       :read))
+                            (throw (Exception. (tru "Card {0} does not exist." source-card-id))))
+                        :read))
 
 (defn- preprocess-query [query]
   ;; ignore the current user for the purposes of calculating the permissions required to run the query. Don't want the

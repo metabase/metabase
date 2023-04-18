@@ -23,7 +23,7 @@
         (testing "it should be possible to use this endpoint successfully if all the conditions are met"
           (is (= embed-test/successful-card-info
                  (embed-test/dissoc-id-and-name
-                   (mt/user-http-request :crowberto :get 200 (card-url card))))))
+                  (mt/user-http-request :crowberto :get 200 (card-url card))))))
 
         (testing "if the user is not an admin this endpoint should fail"
           (is (= "You don't have permissions to do that."
@@ -54,10 +54,10 @@
                      :slug    "d"
                      :default nil}]
                    (-> (mt/user-http-request :crowberto :get 200 (card-url card {:_embedding_params {:a "locked"
-                                                                                                      :b "disabled"
-                                                                                                      :c "enabled"
-                                                                                                      :d "enabled"}
-                                                                                  :params            {:c 100}}))
+                                                                                                     :b "disabled"
+                                                                                                     :c "enabled"
+                                                                                                     :d "enabled"}
+                                                                                 :params            {:c 100}}))
                        :parameters)))))))))
 
 ;;; ------------------------------------ GET /api/preview_embed/card/:token/query ------------------------------------
@@ -179,7 +179,7 @@
         (testing "it should be possible to call this endpoint successfully..."
           (is (= embed-test/successful-dashboard-info
                  (embed-test/dissoc-id-and-name
-                   (mt/user-http-request :crowberto :get 200 (dashboard-url dash))))))
+                  (mt/user-http-request :crowberto :get 200 (dashboard-url dash))))))
 
         (testing "...but if the user is not an admin this endpoint should fail"
           (is (= "You don't have permissions to do that."
@@ -373,7 +373,6 @@
             (is (= [[1]]
                    (mt/rows (mt/user-http-request :crowberto :get (str (dashcard-url dashcard {:_embedding_params {:venue_id "enabled"}})
                                                                        "?venue_id=1")))))))))))
-
 
 ;; pivot tables
 

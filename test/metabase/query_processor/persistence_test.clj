@@ -66,7 +66,7 @@
                                          :dataset_query {:database (mt/id)
                                                          :type     :query
                                                          :query    {:source-table (mt/id :bird-count)}}}]]
-              (let [ ;; Get the number of rows before the model is persisted
+              (let [;; Get the number of rows before the model is persisted
                     query-on-top       {:database (mt/id)
                                         :type     :query
                                         :query    {:aggregation  [[:count]]
@@ -98,8 +98,8 @@
       (mt/dataset sample-dataset
         (doseq [[query-type query] [[:query (mt/mbql-query products)]
                                     [:native (mt/native-query
-                                              (mt/compile
-                                               (mt/mbql-query products)))]]]
+                                               (mt/compile
+                                                 (mt/mbql-query products)))]]]
           (mt/with-persistence-enabled [persist-models!]
             (mt/with-temp* [Card [model {:dataset true
                                          :database_id (mt/id)

@@ -107,7 +107,6 @@
 
 ;;; ### Public Interface
 
-
 (defn send-new-user-email!
   "Send an email to `invitied` letting them know `invitor` has invited them to join Metabase."
   [invited invitor join-url sent-from-setup?]
@@ -230,14 +229,14 @@
                         mdb.query/query
                         (mapv :user_id)))]
     (into
-      []
-      (distinct)
-      (concat
-        (all-admin-recipients)
-        (when (seq user-ids)
-          (t2/select-fn-set :email User {:where [:and
-                                                 [:= :is_active true]
-                                                 [:in :id user-ids]]}))))))
+     []
+     (distinct)
+     (concat
+      (all-admin-recipients)
+      (when (seq user-ids)
+        (t2/select-fn-set :email User {:where [:and
+                                               [:= :is_active true]
+                                               [:in :id user-ids]]}))))))
 
 (defn send-persistent-model-error-email!
   "Format and send an email informing the user about errors in the persistent model refresh task."
@@ -267,10 +266,10 @@
                                           (merge (common-context) context))]
     (when (seq emails)
       (email/send-message!
-        :subject      (trs "[{0}] Model cache refresh failed for {1}" (app-name-trs) (:name database))
-        :recipients   (vec emails)
-        :message-type :html
-        :message      message-body))))
+       :subject      (trs "[{0}] Model cache refresh failed for {1}" (app-name-trs) (:name database))
+       :recipients   (vec emails)
+       :message-type :html
+       :message      message-body))))
 
 (defn send-follow-up-email!
   "Format and send an email to the system admin following up on the installation."
@@ -601,10 +600,10 @@
   (future
     (try
       (email/send-message-or-throw!
-       {:recipients   [(:email user)]
-        :message-type :html
-        :subject      subject
-        :message      (stencil/render-file template-path template-context)})
+        {:recipients   [(:email user)]
+         :message-type :html
+         :subject      subject
+         :message      (stencil/render-file template-path template-context)})
       (catch Exception e
         (log/errorf e "Failed to send message to '%s' with subject '%s'" (:email user) subject)))))
 

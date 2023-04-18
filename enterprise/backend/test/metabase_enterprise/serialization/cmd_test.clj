@@ -30,31 +30,31 @@
     (mt/with-empty-h2-app-db
       ;; create a single dummy User to own a Card and a Database for it to reference
       (let [user (t2/insert! (t2/table-name User)
-                   :email        "nobody@nowhere.com"
-                   :first_name   (mt/random-name)
-                   :last_name    (mt/random-name)
-                   :password     (str (UUID/randomUUID))
-                   :date_joined  :%now
-                   :is_active    true
-                   :is_superuser true)
+                             :email        "nobody@nowhere.com"
+                             :first_name   (mt/random-name)
+                             :last_name    (mt/random-name)
+                             :password     (str (UUID/randomUUID))
+                             :date_joined  :%now
+                             :is_active    true
+                             :is_superuser true)
             db   (t2/insert! (t2/table-name Database)
-                   :name       "Test Database"
-                   :engine     "h2"
-                   :details    "{}"
-                   :created_at :%now
-                   :updated_at :%now)]
+                             :name       "Test Database"
+                             :engine     "h2"
+                             :details    "{}"
+                             :created_at :%now
+                             :updated_at :%now)]
         ;; then the card itself
         (t2/insert! (t2/table-name Card)
-          :name                   "Single Card"
-          :display                "Single Card"
-          :database_id            (u/the-id db)
-          :dataset_query          "{}"
-          :creator_id             (u/the-id user)
-          :visualization_settings "{}"
-          :parameters             "[]"
-          :parameter_mappings     "[]"
-          :created_at             :%now
-          :updated_at             :%now)
+                    :name                   "Single Card"
+                    :display                "Single Card"
+                    :database_id            (u/the-id db)
+                    :dataset_query          "{}"
+                    :creator_id             (u/the-id user)
+                    :visualization_settings "{}"
+                    :parameters             "[]"
+                    :parameter_mappings     "[]"
+                    :created_at             :%now
+                    :updated_at             :%now)
         ;; serialize "everything" (which should just be the card and user), which should succeed if #16931 is fixed
         (is (nil? (cmd/dump (ts/random-dump-dir "serdes-"))))))))
 
@@ -69,7 +69,7 @@
                                               (reset! user-pre-insert-called? true)
                                               (assoc user :password "test-password"))]
           (cmd/load dump-dir "--mode"     :update
-                             "--on-error" :abort)
+                    "--on-error" :abort)
           (is (true? @user-pre-insert-called?)))))))
 
 (deftest mode-update-remove-cards-test
@@ -112,7 +112,7 @@
               (testing "verify that things were loaded as expected"
                 (is (= 1 (t2/count Dashboard)) "# Dashboards")
                 (is (= 2 (t2/count Card)) "# Cards")
-                (is (= 2 (t2/count DashboardCard)) "# DashboardCards")>)))
+                (is (= 2 (t2/count DashboardCard)) "# DashboardCards") >)))
           (testing "remove one of the questions in the source's dashboard"
             (ts/with-source-db
               (t2/delete! Card :name "Card_2")

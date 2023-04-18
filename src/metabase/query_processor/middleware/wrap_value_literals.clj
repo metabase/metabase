@@ -43,7 +43,6 @@
    (when (:base-type opts)
      {:base_type (:base-type opts)})))
 
-
 ;;; ------------------------------------------------- add-type-info --------------------------------------------------
 
 ;; TODO -- parsing the temporal string literals should be moved into `auto-parse-filter-values`, it's really a
@@ -100,7 +99,6 @@
       [:time temporal-value unit]
       [:absolute-datetime temporal-value unit])
     [:value this info]))
-
 
 ;;; -------------------------------------------- wrap-literals-in-clause ---------------------------------------------
 

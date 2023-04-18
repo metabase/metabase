@@ -80,7 +80,6 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 
-
 (defn boolean-ids-and-timestamps
   "Useful for unit test comparisons. Converts map keys found in `data` satisfying `pred` with booleans when not nil."
   ([data]
@@ -103,7 +102,6 @@
                                 {} maybe-map)
                      maybe-map))
                  data)))
-
 
 (defn- user-id [username]
   (classloader/require 'metabase.test.data.users)
@@ -384,38 +382,38 @@
   (initialize/initialize-if-needed! :db :plugins)
   (let [setting-k     (name setting-k)
         setting       (try
-                       (#'setting/resolve-setting setting-k)
-                       (catch Exception e
-                         (when-not raw-setting?
-                           (throw e))))]
+                        (#'setting/resolve-setting setting-k)
+                        (catch Exception e
+                          (when-not raw-setting?
+                            (throw e))))]
     (if (and (not raw-setting?) (#'setting/env-var-value setting-k))
       (do-with-temp-env-var-value (setting/setting-env-map-name setting-k) value thunk)
       (let [original-value (if raw-setting?
                              (t2/select-one-fn :value Setting :key setting-k)
                              (#'setting/get setting-k))]
         (try
-         (if raw-setting?
-           (upsert-raw-setting! original-value setting-k value)
-           (setting/set! setting-k value))
-         (testing (colorize/blue (format "\nSetting %s = %s\n" (keyword setting-k) (pr-str value)))
-           (thunk))
-         (catch Throwable e
-           (throw (ex-info (str "Error in with-temporary-setting-values: " (ex-message e))
-                           {:setting  setting-k
-                            :location (symbol (name (:namespace setting)) (name setting-k))
-                            :value    value}
-                           e)))
-         (finally
-          (try
-           (if raw-setting?
-             (restore-raw-setting! original-value setting-k)
-             (setting/set! setting-k original-value))
-           (catch Throwable e
-             (throw (ex-info (str "Error restoring original Setting value: " (ex-message e))
-                             {:setting        setting-k
-                              :location       (symbol (name (:namespace setting)) setting-k)
-                              :original-value original-value}
-                             e))))))))))
+          (if raw-setting?
+            (upsert-raw-setting! original-value setting-k value)
+            (setting/set! setting-k value))
+          (testing (colorize/blue (format "\nSetting %s = %s\n" (keyword setting-k) (pr-str value)))
+            (thunk))
+          (catch Throwable e
+            (throw (ex-info (str "Error in with-temporary-setting-values: " (ex-message e))
+                            {:setting  setting-k
+                             :location (symbol (name (:namespace setting)) (name setting-k))
+                             :value    value}
+                            e)))
+          (finally
+            (try
+              (if raw-setting?
+                (restore-raw-setting! original-value setting-k)
+                (setting/set! setting-k original-value))
+              (catch Throwable e
+                (throw (ex-info (str "Error restoring original Setting value: " (ex-message e))
+                                {:setting        setting-k
+                                 :location       (symbol (name (:namespace setting)) setting-k)
+                                 :original-value original-value}
+                                e))))))))))
 
 (defmacro with-temporary-setting-values
   "Temporarily bind the site-wide values of one or more `Settings`, execute body, and re-establish the original values.
@@ -432,9 +430,9 @@
   (if (empty? bindings)
     `(do ~@body)
     `(do-with-temporary-setting-value ~(keyword setting-k) ~value
-       (fn []
-         (with-temporary-setting-values ~more
-           ~@body)))))
+                                      (fn []
+                                        (with-temporary-setting-values ~more
+                                          ~@body)))))
 
 (defmacro with-temporary-raw-setting-values
   "Like [[with-temporary-setting-values]] but works with raw value and it allows settings that are not defined
@@ -445,10 +443,10 @@
   (if (empty? bindings)
     `(do ~@body)
     `(do-with-temporary-setting-value ~(keyword setting-k) ~value
-       (fn []
-         (with-temporary-raw-setting-values ~more
-           ~@body))
-       :raw-setting? true)))
+                                      (fn []
+                                        (with-temporary-raw-setting-values ~more
+                                          ~@body))
+                                      :raw-setting? true)))
 
 (defn do-with-discarded-setting-changes [settings thunk]
   (initialize/initialize-if-needed! :db :plugins)
@@ -525,7 +523,6 @@
                  #(u/round-to-decimals decimal-place %)
                  data))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                   SCHEDULER                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -563,8 +560,8 @@
   (initialize/initialize-if-needed! :db)
   (do-with-unstarted-temp-scheduler
    (^:once fn* []
-    (qs/start @task/*quartz-scheduler*)
-    (thunk))))
+               (qs/start @task/*quartz-scheduler*)
+               (thunk))))
 
 (defmacro with-temp-scheduler
   "Execute `body` with a temporary scheduler in place.
@@ -674,7 +671,6 @@
           (testing "Shouldn't delete other Cards"
             (is (pos? (t2/count Card)))))))))
 
-
 ;; TODO - not 100% sure I understand
 (defn call-with-paused-query
   "This is a function to make testing query cancellation eaiser as it can be complex handling the multiple threads
@@ -753,8 +749,8 @@
      collection
      (fn []
        (t2/delete! Permissions
-         :object [:in #{(perms/collection-read-path collection) (perms/collection-readwrite-path collection)}]
-         :group_id [:not= (u/the-id (perms-group/admin))])
+                   :object [:in #{(perms/collection-read-path collection) (perms/collection-readwrite-path collection)}]
+                   :group_id [:not= (u/the-id (perms-group/admin))])
        (f)))
     ;; if this is the default namespace Root Collection, then double-check to make sure all non-admin groups get
     ;; perms for it at the end. This is here mostly for legacy reasons; we can remove this but it will require
@@ -1066,11 +1062,11 @@
   (do-with-temp-file
    temp-dir-name
    (^:once fn* [path]
-    (let [file (io/file path)]
-      (when (.exists file)
-        (org.apache.commons.io.FileUtils/deleteDirectory file)))
-    (u.files/create-dir-if-not-exists! (u.files/get-path path))
-    (f path))))
+               (let [file (io/file path)]
+                 (when (.exists file)
+                   (org.apache.commons.io.FileUtils/deleteDirectory file)))
+               (u.files/create-dir-if-not-exists! (u.files/get-path path))
+               (f path))))
 
 (defmacro with-temp-dir
   "Like [[with-temp-file]], but creates a new temporary directory in the system temp dir. Deletes existing directory if
@@ -1140,21 +1136,21 @@
   `connection-properties` vector match against some expected data."
   [expected actual]
   (cond (vector? expected)
-    (map-indexed (fn [idx prop]
-                   (reduce-kv (fn [acc k v]
-                                (assoc acc k (if (map? v)
-                                               (select-keys-sequentially (get (nth expected idx) k) v)
-                                               v)))
-                              {}
-                              (select-keys prop (keys (nth expected idx)))))
-                 actual)
+        (map-indexed (fn [idx prop]
+                       (reduce-kv (fn [acc k v]
+                                    (assoc acc k (if (map? v)
+                                                   (select-keys-sequentially (get (nth expected idx) k) v)
+                                                   v)))
+                                  {}
+                                  (select-keys prop (keys (nth expected idx)))))
+                     actual)
 
-    (map? expected)
+        (map? expected)
     ;; recursive case (ex: to turn value that might be a flatland.ordered.map into a regular Clojure map)
-    (select-keys actual (keys expected))
+        (select-keys actual (keys expected))
 
-    :else
-    actual))
+        :else
+        actual))
 
 (defn file->bytes
   "Reads a file at `file-path` completely into a byte array, returning that array."

@@ -39,12 +39,12 @@
   (mi/perms-objects-set (t2/select-one Card :id (:model_id instance)) read-or-write))
 
 (models/add-type! ::json-with-nested-parameters
-  :in  (comp mi/json-in
-             (fn [template]
-               (u/update-if-exists template :parameters mi/normalize-parameters-list)))
-  :out (comp (fn [template]
-               (u/update-if-exists template :parameters (mi/catch-normalization-exceptions mi/normalize-parameters-list)))
-             mi/json-out-with-keywordization))
+                  :in  (comp mi/json-in
+                             (fn [template]
+                               (u/update-if-exists template :parameters mi/normalize-parameters-list)))
+                  :out (comp (fn [template]
+                               (u/update-if-exists template :parameters (mi/catch-normalization-exceptions mi/normalize-parameters-list)))
+                             mi/json-out-with-keywordization))
 
 (mi/define-simple-hydration-method model
   :model
@@ -71,32 +71,32 @@
       (check-model-is-not-a-saved-question model-id))))
 
 (mi/define-methods
- Action
- {:types      (constantly {:type                   :keyword
-                           :parameter_mappings     :parameters-list
-                           :parameters             :parameters-list
-                           :visualization_settings :visualization-settings})
-  :properties (constantly {::mi/timestamped? true
-                           ::mi/entity-id    true})})
+  Action
+  {:types      (constantly {:type                   :keyword
+                            :parameter_mappings     :parameters-list
+                            :parameters             :parameters-list
+                            :visualization_settings :visualization-settings})
+   :properties (constantly {::mi/timestamped? true
+                            ::mi/entity-id    true})})
 
 (def ^:private Action-subtype-IModel-impl
   "[[models/IModel]] impl for `HTTPAction`, `ImplicitAction`, and `QueryAction`"
   {:primary-key (constantly :action_id)}) ; This is ok as long as we're 1:1
 
 (mi/define-methods
- QueryAction
- (merge
-  Action-subtype-IModel-impl
-  {:types (constantly {:dataset_query :json})}))
+  QueryAction
+  (merge
+   Action-subtype-IModel-impl
+   {:types (constantly {:dataset_query :json})}))
 
 (mi/define-methods
- ImplicitAction
- Action-subtype-IModel-impl)
+  ImplicitAction
+  Action-subtype-IModel-impl)
 
 (mi/define-methods
- HTTPAction
- (merge Action-subtype-IModel-impl
-        {:types (constantly {:template ::json-with-nested-parameters})}))
+  HTTPAction
+  (merge Action-subtype-IModel-impl
+         {:types (constantly {:template ::json-with-nested-parameters})}))
 
 (def action-columns
   "The columns that are common to all Action types."
@@ -110,15 +110,15 @@
     (let [action (first (t2/insert-returning-instances! Action (select-keys action-data action-columns)))
           model  (type->model (:type action))]
       (t2/query-one {:insert-into (t2/table-name model)
-                    :values [(-> (apply dissoc action-data action-columns)
-                                 (assoc :action_id (:id action))
-                                 (cond->
+                     :values [(-> (apply dissoc action-data action-columns)
+                                  (assoc :action_id (:id action))
+                                  (cond->
                                    (= (:type action) :implicit)
-                                   (dissoc :database_id)
-                                   (= (:type action) :http)
-                                   (update :template json/encode)
-                                   (= (:type action) :query)
-                                   (update :dataset_query json/encode)))]})
+                                    (dissoc :database_id)
+                                    (= (:type action) :http)
+                                    (update :template json/encode)
+                                    (= (:type action) :query)
+                                    (update :dataset_query json/encode)))]})
       (:id action))))
 
 (defn update!
@@ -128,9 +128,9 @@
   (when-let [action-row (not-empty (select-keys action action-columns))]
     (t2/update! Action id action-row))
   (when-let [type-row (not-empty (cond-> (apply dissoc action :id action-columns)
-                                         (= (or (:type action) (:type existing-action))
-                                            :implicit)
-                                         (dissoc :database_id)))]
+                                   (= (or (:type action) (:type existing-action))
+                                      :implicit)
+                                   (dissoc :database_id)))]
     (let [type-row (assoc type-row :action_id id)
           existing-model (type->model (:type existing-action))]
       (if (and (:type action) (not= (:type action) (:type existing-action)))
@@ -160,9 +160,9 @@
              (let [http-action (get http-actions-by-action-id (:id action))]
                (-> action
                    (merge
-                     {:disabled false}
-                     (select-keys http-action [:template :response_handle :error_handle])
-                     (select-keys (:template http-action) [:parameters :parameter_mappings])))))
+                    {:disabled false}
+                    (select-keys http-action [:template :response_handle :error_handle])
+                    (select-keys (:template http-action) [:parameters :parameter_mappings])))))
            actions))))
 
 (defn- normalize-implicit-actions [actions]
@@ -172,7 +172,7 @@
       (map (fn [action]
              (let [implicit-action (get implicit-actions-by-action-id (:id action))]
                (merge action
-                     (select-keys implicit-action [:kind]))))
+                      (select-keys implicit-action [:kind]))))
            actions))))
 
 (defn- select-actions-without-implicit-params
@@ -325,8 +325,8 @@
 
 (defmethod serdes/dependencies "Action" [action]
   (concat [[{:model "Card" :id (:model_id action)}]]
-    (when (= (:type action) "query")
-      [[{:model "Database" :id (:database_id action)}]])))
+          (when (= (:type action) "query")
+            [[{:model "Database" :id (:database_id action)}]])))
 
 (defmethod serdes/storage-path "Action" [action _ctx]
   (let [{:keys [id label]} (-> action serdes/path last)]

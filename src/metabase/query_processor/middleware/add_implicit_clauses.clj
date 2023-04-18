@@ -23,11 +23,11 @@
 (defn- table->sorted-fields*
   [table-id]
   (t2/select [Field :id :base_type :effective_type :coercion_strategy :semantic_type]
-    :table_id        table-id
-    :active          true
-    :visibility_type [:not-in ["sensitive" "retired"]]
-    :parent_id       nil
-    {:order-by table/field-order-rule}))
+             :table_id        table-id
+             :active          true
+             :visibility_type [:not-in ["sensitive" "retired"]]
+             :parent_id       nil
+             {:order-by table/field-order-rule}))
 
 (defn- table->sorted-fields
   "Return a sequence of all Fields for table that we'd normally include in the equivalent of a `SELECT *`."
@@ -119,7 +119,6 @@
       ;; add the fields & expressions under the `:fields` clause
       (assoc inner-query :fields (vec (concat fields expressions))))))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        Add Implicit Breakout Order Bys                                         |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -132,7 +131,6 @@
   ;; automatically ignore new ones that are reference Fields already in the order-by clause
   (reduce mbql.u/add-order-by-clause inner-query (for [breakout breakouts]
                                                    [:asc breakout])))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                   Middleware                                                   |

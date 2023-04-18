@@ -45,11 +45,11 @@
     (mi/perms-objects-set table read-or-write)))
 
 (mi/define-methods
- Metric
- {:types      (constantly {:definition :metric-segment-definition})
-  :properties (constantly {::mi/timestamped? true
-                           ::mi/entity-id    true})
-  :pre-update pre-update})
+  Metric
+  {:types      (constantly {:definition :metric-segment-definition})
+   :properties (constantly {::mi/timestamped? true
+                            ::mi/entity-id    true})
+   :pre-update pre-update})
 
 (mu/defn ^:private definition-description :- [:maybe ::lib.schema.common/non-blank-string]
   "Calculate a nice description of a Metric's definition."
@@ -91,7 +91,6 @@
     (for [metric metrics]
       (assoc metric :definition_description (definition-description metadata-provider metric)))))
 
-
 ;;; --------------------------------------------------- REVISIONS ----------------------------------------------------
 
 (defmethod revision/serialize-instance Metric
@@ -114,7 +113,6 @@
         (or (get-in base-diff [:after :definition])
             (get-in base-diff [:before :definition])) (assoc :definition {:before (get-in metric1 [:definition])
                                                                           :after  (get-in metric2 [:definition])})))))
-
 
 ;;; ------------------------------------------------- SERIALIZATION --------------------------------------------------
 

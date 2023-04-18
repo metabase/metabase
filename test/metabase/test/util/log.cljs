@@ -1,7 +1,7 @@
 (ns metabase.test.util.log
   (:require
-    [lambdaisland.glogi :as glogi]
-    [metabase.util.log :as log])
+   [lambdaisland.glogi :as glogi]
+   [metabase.util.log :as log])
   (:require-macros [metabase.test.util.log]))
 
 (def ^:private level-overrides

@@ -122,20 +122,19 @@
                             :all nil
                             :active [:= :archived false])
          base-collections (t2/select Collection {:where [:and [:= :location "/"]
-                                                              [:or [:= :personal_owner_id nil]
-                                                                   [:= :personal_owner_id
-                                                                       (some-> users first u/the-id)]]
-                                                              state-filter]})]
+                                                         [:or [:= :personal_owner_id nil]
+                                                          [:= :personal_owner_id
+                                                           (some-> users first u/the-id)]]
+                                                         state-filter]})]
      (if (empty? base-collections)
        []
        (-> (t2/select Collection
-                             {:where [:and
-                                      (reduce (fn [acc coll]
-                                                (conj acc [:like :location (format "/%d/%%" (:id coll))]))
-                                              [:or] base-collections)
-                                      state-filter]})
+                      {:where [:and
+                               (reduce (fn [acc coll]
+                                         (conj acc [:like :location (format "/%d/%%" (:id coll))]))
+                                       [:or] base-collections)
+                               state-filter]})
            (into base-collections))))))
-
 
 (defn v1-dump
   "Legacy Metabase app data dump"

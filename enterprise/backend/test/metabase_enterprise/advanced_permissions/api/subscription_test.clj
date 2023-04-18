@@ -19,10 +19,10 @@
   Use it when we need to isolate a user's permissions during tests."
   [& body]
   `(try
-    (perms/revoke-application-permissions! (perms-group/all-users) :subscription)
-    ~@body
-    (finally
-     (perms/grant-application-permissions! (perms-group/all-users) :subscription))))
+     (perms/revoke-application-permissions! (perms-group/all-users) :subscription)
+     ~@body
+     (finally
+       (perms/grant-application-permissions! (perms-group/all-users) :subscription))))
 
 (deftest pulse-permissions-test
   (testing "/api/pulse/*"
@@ -76,8 +76,8 @@
   (testing "PUT /api/pulse/:id"
     (with-subscription-disabled-for-all-users
       (mt/with-user-in-groups
-        [group {:name "New Group"}
-         user  [group]]
+       [group {:name "New Group"}
+        user  [group]]
         (mt/with-temp* [Card [{card-id :id}]]
           (letfn [(add-pulse-recipient [req-user status]
                     (pulse-test/with-pulse-for-card [the-pulse {:card    card-id
@@ -133,8 +133,8 @@
   (testing "/api/alert/*"
     (with-subscription-disabled-for-all-users
       (mt/with-user-in-groups
-        [group {:name "New Group"}
-         user  [group]]
+       [group {:name "New Group"}
+        user  [group]]
         (mt/with-temp*
           [Card       [card {:creator_id (:id user)}]
            Collection [_collection]]
@@ -156,7 +156,7 @@
                 user-alert   (premium-features-test/with-premium-features #{:advanced-permissions}
                                (perms/grant-application-permissions! group :subscription)
                                (u/prog1 (create-alert 200)
-                                        (perms/revoke-application-permissions! group :subscription)))
+                                 (perms/revoke-application-permissions! group :subscription)))
                 update-alert (fn [status]
                                (testing "update alert"
                                  (mt/user-http-request user :put status (format "alert/%d" (:id user-alert))
@@ -184,8 +184,8 @@
   (testing "PUT /api/alert/:id"
     (with-subscription-disabled-for-all-users
       (mt/with-user-in-groups
-        [group {:name "New Group"}
-         user  [group]]
+       [group {:name "New Group"}
+        user  [group]]
         (mt/with-temp Card [_]
           (letfn [(add-alert-recipient [req-user status]
                     (mt/with-temp* [Pulse                 [alert (alert-test/basic-alert)]

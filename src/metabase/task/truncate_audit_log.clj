@@ -65,14 +65,14 @@
 
 (defmethod task/init! ::TruncateAuditLog [_]
   (let [job     (jobs/build
-                 (jobs/of-type TruncateAuditLog)
-                 (jobs/with-identity (jobs/key truncate-audit-log-job-key)))
+                  (jobs/of-type TruncateAuditLog)
+                  (jobs/with-identity (jobs/key truncate-audit-log-job-key)))
         trigger (triggers/build
-                 (triggers/with-identity (triggers/key truncate-audit-log-trigger-key))
-                 (triggers/start-now)
-                 (triggers/with-schedule
-                   (cron/schedule
+                  (triggers/with-identity (triggers/key truncate-audit-log-trigger-key))
+                  (triggers/start-now)
+                  (triggers/with-schedule
+                    (cron/schedule
                     ;; run every 12 hours
-                    (cron/cron-schedule truncate-audit-log-cron)
-                    (cron/with-misfire-handling-instruction-do-nothing))))]
+                     (cron/cron-schedule truncate-audit-log-cron)
+                     (cron/with-misfire-handling-instruction-do-nothing))))]
     (task/schedule-task! job trigger)))

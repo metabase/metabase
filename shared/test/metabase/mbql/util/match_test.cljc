@@ -228,11 +228,11 @@
     (t/is (= {:query {:fields [[:fk-> [:field 1 nil] [:field 2 nil]]
                                [:fk-> [:field 3 nil] [:field 4 nil]]]}}
              (mbql.match/replace-in
-                 {:query {:fields [[:fk-> 1 2]
-                                   [:fk-> [:field 3 nil] [:field 4 nil]]]}}
-                 [:query :fields]
-                 [:fk-> (source :guard integer?) (dest :guard integer?)]
-                 [:fk-> [:field source nil] [:field dest nil]])))))
+              {:query {:fields [[:fk-> 1 2]
+                                [:fk-> [:field 3 nil] [:field 4 nil]]]}}
+              [:query :fields]
+               [:fk-> (source :guard integer?) (dest :guard integer?)]
+               [:fk-> [:field source nil] [:field dest nil]])))))
 
 (t/deftest ^:parallel replace-raw-keyword-patterns-test
   (t/testing "does `replace` accept a raw keyword as the pattern the way `match` does?"

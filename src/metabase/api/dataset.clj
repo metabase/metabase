@@ -72,7 +72,7 @@
                          (assoc :metadata/dataset-metadata (:result_metadata source-card)))]
     (binding [qp.perms/*card-id* source-card-id]
       (qp.streaming/streaming-response [context export-format]
-        (qp-runner query info context)))))
+                                       (qp-runner query info context)))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/"
@@ -80,7 +80,6 @@
   [:as {{:keys [database] :as query} :body}]
   {database (s/maybe s/Int)}
   (run-query-async (update-in query [:middleware :js-int-to-string?] (fnil identity true))))
-
 
 ;;; ----------------------------------- Downloading Query Results in Other Formats -----------------------------------
 
@@ -108,10 +107,10 @@
 (defn- viz-setting-key-fn
   "Key function for parsing JSON visualization settings into the DB form. Converts most keys to
   keywords, but leaves column references as strings."
-   [json-key]
-   (if (re-matches column-ref-regex json-key)
-     json-key
-     (keyword json-key)))
+  [json-key]
+  (if (re-matches column-ref-regex json-key)
+    json-key
+    (keyword json-key)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST ["/:export-format", :export-format export-format-regex]
@@ -138,7 +137,6 @@
      :export-format export-format
      :context       (export-format->context export-format)
      :qp-runner     qp/process-query-and-save-execution!)))
-
 
 ;;; ------------------------------------------------ Other Endpoints -------------------------------------------------
 
@@ -182,8 +180,7 @@
   (let [info {:executed-by api/*current-user-id*
               :context     :ad-hoc}]
     (qp.streaming/streaming-response [context :api]
-      (qp.pivot/run-pivot-query (assoc query :async? true) info context))))
-
+                                     (qp.pivot/run-pivot-query (assoc query :async? true) info context))))
 
 (defn- parameter-field-values
   [field-ids query]
@@ -206,8 +203,8 @@
   consulted if `:values_source_type` is nil. Query is an optional string return matching field values not all."
   [parameter field-ids query]
   (custom-values/parameter->values
-    parameter query
-    (fn [] (parameter-field-values field-ids query))))
+   parameter query
+   (fn [] (parameter-field-values field-ids query))))
 
 (api/defendpoint POST "/parameter/values"
   "Return parameter values for cards or dashboards that are being edited."

@@ -34,20 +34,20 @@
 
 (def ^:private Prefix
   (su/with-api-error-message
-      (s/pred (fn [prefix]
-                (some #(not-empty (rules/get-rules [% prefix])) ["table" "metric" "field"])))
+    (s/pred (fn [prefix]
+              (some #(not-empty (rules/get-rules [% prefix])) ["table" "metric" "field"])))
     (deferred-tru "invalid value for prefix")))
 
 (def ^:private Rule
   (su/with-api-error-message
-      (s/pred (fn [rule]
-                (some (fn [toplevel]
-                        (some (comp rules/get-rule
-                                    (fn [prefix]
-                                      [toplevel prefix rule])
-                                    :rule)
-                              (rules/get-rules [toplevel])))
-                      ["table" "metric" "field"])))
+    (s/pred (fn [rule]
+              (some (fn [toplevel]
+                      (some (comp rules/get-rule
+                                  (fn [prefix]
+                                    [toplevel prefix rule])
+                                  :rule)
+                            (rules/get-rules [toplevel])))
+                    ["table" "metric" "field"])))
     (deferred-tru "invalid value for rule name")))
 
 (def ^:private ^{:arglists '([s])} decode-base64-json
@@ -55,7 +55,7 @@
 
 (def ^:private Base64EncodedJSON
   (su/with-api-error-message
-      (s/pred decode-base64-json)
+    (s/pred decode-base64-json)
     (deferred-tru "value couldn''t be parsed as base64 encoded JSON")))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
@@ -71,8 +71,8 @@
 (defn- adhoc-query-read-check
   [query]
   (api/check-403 (perms/set-has-partial-permissions-for-set?
-                   @api/*current-user-permissions-set*
-                   (query-perms/perms-set (:dataset_query query), :throw-exceptions? true)))
+                  @api/*current-user-permissions-set*
+                  (query-perms/perms-set (:dataset_query query), :throw-exceptions? true)))
   query)
 
 (defn- ensure-int
@@ -104,8 +104,8 @@
 (defmethod ->entity :model
   [_entity-type card-id-str]
   (api/read-check (t2/select-one Card
-                    :id (ensure-int card-id-str)
-                    :dataset true)))
+                                 :id (ensure-int card-id-str)
+                                 :dataset true)))
 
 (defmethod ->entity :question
   [_entity-type card-id-str]
@@ -130,12 +130,12 @@
 
 (def ^:private Entity
   (su/with-api-error-message
-      (apply s/enum (map name (keys (methods ->entity))))
+    (apply s/enum (map name (keys (methods ->entity))))
     (deferred-tru "Invalid entity type")))
 
 (def ^:private ComparisonEntity
   (su/with-api-error-message
-      (s/enum "segment" "adhoc" "table")
+    (s/enum "segment" "adhoc" "table")
     (deferred-tru "Invalid comparison entity type. Can only be one of \"table\", \"segment\", or \"adhoc\"")))
 
 #_{:clj-kondo/ignore [:deprecated-var]}

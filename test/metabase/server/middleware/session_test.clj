@@ -50,8 +50,8 @@
              (#'config/mb-session-cookie-samesite*))))
 
     (is (thrown-with-msg? ExceptionInfo #"Invalid value for MB_COOKIE_SAMESITE"
-          (with-redefs [env/env (assoc env/env :mb-session-cookie-samesite "invalid value")]
-            (#'config/mb-session-cookie-samesite*))))))
+                          (with-redefs [env/env (assoc env/env :mb-session-cookie-samesite "invalid value")]
+                            (#'config/mb-session-cookie-samesite*))))))
 
 (deftest set-session-cookie-test
   (mt/with-temporary-setting-values [session-timeout nil]
@@ -123,7 +123,6 @@
                          session))
                   (is (some? session)))))))))))
 
-
 ;;; ------------------------------------- tests for full-app embedding sessions --------------------------------------
 
 (def ^:private embedded-session-cookie @#'mw.session/metabase-embedded-session-cookie)
@@ -171,7 +170,6 @@
                                                {}
                                                test-full-app-embed-session
                                                (t/zoned-date-time "2022-07-06T02:01Z[UTC]"))))))))
-
 
 ;;; ---------------------------------------- TEST wrap-session-id middleware -----------------------------------------
 
@@ -357,7 +355,6 @@
            (user-bound-handler
             (request-with-user-id 0))))))
 
-
 ;;; ----------------------------------------------------- Locale -----------------------------------------------------
 
 (deftest bind-locale-test
@@ -396,7 +393,6 @@
             (testing "w/ X-Metabase-Locale header"
               (is (= "en_GB"
                      (session-locale session-id :headers {"x-metabase-locale" "en-GB"}))))))))))
-
 
 ;;; ----------------------------------------------------- Session timeout -----------------------------------------------------
 

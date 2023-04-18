@@ -64,12 +64,12 @@
 
 (defmethod task/init! ::SendFollowUpEmails [_]
   (let [job     (jobs/build
-                 (jobs/of-type FollowUpEmail)
-                 (jobs/with-identity (jobs/key follow-up-emails-job-key)))
+                  (jobs/of-type FollowUpEmail)
+                  (jobs/with-identity (jobs/key follow-up-emails-job-key)))
         trigger (triggers/build
-                 (triggers/with-identity (triggers/key follow-up-emails-trigger-key))
-                 (triggers/start-now)
-                 (triggers/with-schedule
+                  (triggers/with-identity (triggers/key follow-up-emails-trigger-key))
+                  (triggers/start-now)
+                  (triggers/with-schedule
                    ;; run once a day
-                   (cron/cron-schedule "0 0 12 * * ? *")))]
+                    (cron/cron-schedule "0 0 12 * * ? *")))]
     (task/schedule-task! job trigger)))

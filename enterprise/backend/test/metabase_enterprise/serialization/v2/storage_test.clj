@@ -115,8 +115,7 @@
                        [gp-dir p-dir c-dir (str c-dir ".yaml")]}                              ; Child collection
                      (file-set (io/file dump-dir "collections")))))
             (testing "snippets under snippets/"
-              (is (= #{
-                       [(str (:entity_id c1) "_root_snippet.yaml")]                      ; Root snippet
+              (is (= #{[(str (:entity_id c1) "_root_snippet.yaml")]                      ; Root snippet
                        [gp-dir (str (:entity_id c2) "_grandparent_snippet.yaml")]        ; Grandparent snippet
                        [gp-dir p-dir (str (:entity_id c3) "_parent_snippet.yaml")]       ; Parent snippet
                        [gp-dir p-dir c-dir (str (:entity_id c4) "_child_snippet.yaml")]} ; Child snippet

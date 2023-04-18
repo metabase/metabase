@@ -151,11 +151,11 @@
             [2 59]
             [3 13]
             [4 6]]
-         (->> (mt/run-mbql-query nil
-                {:source-table (str "card__" card-id)
-                 :breakout     [[:field "PRICE" {:base-type :type/Float, :binning {:strategy :default}}]]
-                 :aggregation  [[:count]]})
-              (mt/formatted-rows [int int]))))))
+           (->> (mt/run-mbql-query nil
+                  {:source-table (str "card__" card-id)
+                   :breakout     [[:field "PRICE" {:base-type :type/Float, :binning {:strategy :default}}]]
+                   :aggregation  [[:count]]})
+                (mt/formatted-rows [int int]))))))
 
 (mt/defdataset single-row
   [["t" [{:field-name    "lat"

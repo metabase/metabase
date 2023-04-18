@@ -23,7 +23,7 @@
   "Execute a `honeysql-form` query against `database`, `driver`, and optionally `table`."
   ([driver database honeysql-form]
    (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec database)
-               (sql.qp/format-honeysql driver honeysql-form)))
+     (sql.qp/format-honeysql driver honeysql-form)))
 
   ([driver database table honeysql-form]
    (let [table-identifier (binding [hx/*honey-sql-version* (sql.qp/honey-sql-version driver)]
@@ -32,7 +32,6 @@
                                  sql.qp/maybe-wrap-unaliased-expr))]
      (query driver database (merge {:from [table-identifier]}
                                    honeysql-form)))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                     Default SQL JDBC metabase.driver impls                                     |

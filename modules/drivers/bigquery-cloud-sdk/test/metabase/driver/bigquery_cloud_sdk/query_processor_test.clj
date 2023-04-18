@@ -27,12 +27,12 @@
   (mt/test-driver :bigquery-cloud-sdk
     (is (= [[100] [99]]
            (mt/rows
-             (qp/process-query
-              (mt/native-query
-                {:query (str "SELECT `v3_test_data.venues`.`id` "
-                             "FROM `v3_test_data.venues` "
-                             "ORDER BY `v3_test_data.venues`.`id` DESC "
-                             "LIMIT 2;")})))))
+            (qp/process-query
+             (mt/native-query
+               {:query (str "SELECT `v3_test_data.venues`.`id` "
+                            "FROM `v3_test_data.venues` "
+                            "ORDER BY `v3_test_data.venues`.`id` DESC "
+                            "LIMIT 2;")})))))
 
     (testing (str "make sure that BigQuery native queries maintain the column ordering specified in the SQL -- "
                   "post-processing ordering shouldn't apply (metabase#2821)")
@@ -55,14 +55,14 @@
                :effective_type :type/Integer
                :field_ref    [:field "checkins_id" {:base-type :type/Integer}]}]
              (qp.test/cols
-               (qp/process-query
-                {:native   {:query (str "SELECT `v3_test_data.checkins`.`venue_id` AS `venue_id`, "
-                                        "       `v3_test_data.checkins`.`user_id` AS `user_id`, "
-                                        "       `v3_test_data.checkins`.`id` AS `checkins_id` "
-                                        "FROM `v3_test_data.checkins` "
-                                        "LIMIT 2")}
-                 :type     :native
-                 :database (mt/id)})))))
+              (qp/process-query
+               {:native   {:query (str "SELECT `v3_test_data.checkins`.`venue_id` AS `venue_id`, "
+                                       "       `v3_test_data.checkins`.`user_id` AS `user_id`, "
+                                       "       `v3_test_data.checkins`.`id` AS `checkins_id` "
+                                       "FROM `v3_test_data.checkins` "
+                                       "LIMIT 2")}
+                :type     :native
+                :database (mt/id)})))))
 
     (testing "queries with array result columns deserialize properly (metabase#10275)"
       (is (= [[["foo" "bar"]
@@ -85,8 +85,8 @@
                                        "[DATETIME '1957-05-17 03:35:00.00', DATETIME '2018-06-01 01:15:34.12'], "
                                        "[TIMESTAMP '2014-09-27 12:30:00.45-08', TIMESTAMP '2020-09-27 09:57:00.45-05'], "
                                        "[]")}
-                 :type     :native
-                 :database (mt/id)})))))))
+                :type     :native
+                :database (mt/id)})))))))
 
 (deftest aggregations-test
   (mt/test-driver :bigquery-cloud-sdk
@@ -140,9 +140,9 @@
 
 (defn- native-timestamp-query [db-or-db-id timestamp-str timezone-str]
   (-> (qp/process-query
-        {:database (u/the-id db-or-db-id)
-         :type     :native
-         :native   {:query (format "select datetime(TIMESTAMP \"%s\", \"%s\")" timestamp-str timezone-str)}})
+       {:database (u/the-id db-or-db-id)
+        :type     :native
+        :native   {:query (format "select datetime(TIMESTAMP \"%s\", \"%s\")" timestamp-str timezone-str)}})
       :data
       :rows
       ffirst))
@@ -224,23 +224,23 @@
                                             :name "name"
                                             :base_type "type/Text"}]]
              (query->native
-               {:database (u/the-id db)
-                :type     :query
-                :query    {:source-table (u/the-id table)
-                           :limit        1}
-                :info     {:executed-by 1000
-                           :query-hash  (byte-array [1 2 3 4])}}))))))
+              {:database (u/the-id db)
+               :type     :query
+               :query    {:source-table (u/the-id table)
+                          :limit        1}
+               :info     {:executed-by 1000
+                          :query-hash  (byte-array [1 2 3 4])}}))))))
 
 (deftest unprepare-params-test
   (mt/test-driver :bigquery-cloud-sdk
     (is (= [["Red Medicine"]]
            (qp.test/rows
-             (qp/process-query
-              (mt/native-query
-                {:query  (str "SELECT `v3_test_data.venues`.`name` AS `name` "
-                              "FROM `v3_test_data.venues` "
-                              "WHERE `v3_test_data.venues`.`name` = ?")
-                 :params ["Red Medicine"]}))))
+            (qp/process-query
+             (mt/native-query
+               {:query  (str "SELECT `v3_test_data.venues`.`name` AS `name` "
+                             "FROM `v3_test_data.venues` "
+                             "WHERE `v3_test_data.venues`.`name` = ?")
+                :params ["Red Medicine"]}))))
         (str "Do we properly unprepare, and can we execute, queries that still have parameters for one reason or "
              "another? (EE #277)"))))
 
@@ -446,17 +446,17 @@
                                                {:where (sql.qp/->honeysql :bigquery-cloud-sdk reconciled-clause)}))))))))))
 
   (testing "relative-datetime clauses inside filter clauses"
-      (doseq [[expected-type t] {:date      #t "2020-01-31"
-                                 :datetime  #t "2020-01-31T20:43:00.000"
-                                 :timestamp #t "2020-01-31T20:43:00.000-08:00"}]
-        (testing expected-type
-          (let [[_ _ relative-datetime :as clause] (sql.qp/->honeysql :bigquery-cloud-sdk
-                                                                      [:=
-                                                                       t
-                                                                       [:relative-datetime -1 :year]])]
-            (testing (format "\nclause = %s" (pr-str clause))
-              (is (= expected-type
-                     (#'bigquery.qp/temporal-type relative-datetime)))))))))
+    (doseq [[expected-type t] {:date      #t "2020-01-31"
+                               :datetime  #t "2020-01-31T20:43:00.000"
+                               :timestamp #t "2020-01-31T20:43:00.000-08:00"}]
+      (testing expected-type
+        (let [[_ _ relative-datetime :as clause] (sql.qp/->honeysql :bigquery-cloud-sdk
+                                                                    [:=
+                                                                     t
+                                                                     [:relative-datetime -1 :year]])]
+          (testing (format "\nclause = %s" (pr-str clause))
+            (is (= expected-type
+                   (#'bigquery.qp/temporal-type relative-datetime)))))))))
 
 (deftest field-literal-trunc-form-test
   (testing "`:field` clauses with literal string names should be quoted correctly when doing date truncation (#20806)"
@@ -558,9 +558,9 @@
                (testing (format "\nMBQL filter clause = %s" (pr-str filter-clause))
                  (is (= [["2020-01-01T00:00:00Z" "2020-01-01T00:00:00Z"]]
                         (mt/rows
-                          (mt/run-mbql-query nil
-                            {:source-table (mt/id table-name)
-                             :filter       filter-clause})))))))))))))
+                         (mt/run-mbql-query nil
+                           {:source-table (mt/id table-name)
+                            :filter       filter-clause})))))))))))))
 
 (deftest datetime-parameterized-sql-test
   (mt/test-driver :bigquery-cloud-sdk
@@ -785,19 +785,19 @@
       (testing "MBQL query"
         (is (= [[0]]
                (mt/formatted-rows [int]
-                 (mt/run-mbql-query venues
-                   {:aggregation [[:count]]
-                    :filter      [:= $name "x\\\\' OR 1 = 1 -- "]})))))
+                                  (mt/run-mbql-query venues
+                                    {:aggregation [[:count]]
+                                     :filter      [:= $name "x\\\\' OR 1 = 1 -- "]})))))
 
       (testing "native query"
         (is (= [[0]]
                (mt/formatted-rows [int]
-                 (qp/process-query
-                  (mt/native-query
-                    {:query  (str "SELECT count(*) AS `count` "
-                                  "FROM `v3_test_data.venues` "
-                                  "WHERE `v3_test_data.venues`.`name` = ?")
-                     :params ["x\\\\' OR 1 = 1 -- "]})))))))))
+                                  (qp/process-query
+                                   (mt/native-query
+                                     {:query  (str "SELECT count(*) AS `count` "
+                                                   "FROM `v3_test_data.venues` "
+                                                   "WHERE `v3_test_data.venues`.`name` = ?")
+                                      :params ["x\\\\' OR 1 = 1 -- "]})))))))))
 
 (deftest escape-alias-test
   (testing "`escape-alias` should generate valid field identifiers"
@@ -844,28 +844,28 @@
     (testing "Make sure multiple template parameters can be used in a single query correctly (#15487)"
       (is (= ["foo" "bar"]
              (mt/first-row
-               (qp/process-query
-                 {:database   (mt/id)
-                  :type       :native
-                  :native     {:query (str "DECLARE param1 STRING DEFAULT {{p1}};\n"
-                                           "DECLARE param2 STRING DEFAULT {{p2}};\n"
-                                            "SELECT param1, param2")
-                               :template-tags {:p1 {:name         "p1"
-                                                    :display_name "p1"
-                                                    :type         "text"
-                                                    :required     true}
-                                               :p2 {:name         "p2"
-                                                    :display_name "p2"
-                                                    :type         "text"
-                                                    :required     true}}}
-                  :parameters [{:type   "text"
-                                :name   "p1"
-                                :target [:variable [:template-tag "p1"]]
-                                :value  "foo"}
-                               {:type   "text"
-                                :name   "p2"
-                                :target [:variable [:template-tag "p2"]]
-                                :value  "bar"}]})))))))
+              (qp/process-query
+               {:database   (mt/id)
+                :type       :native
+                :native     {:query (str "DECLARE param1 STRING DEFAULT {{p1}};\n"
+                                         "DECLARE param2 STRING DEFAULT {{p2}};\n"
+                                         "SELECT param1, param2")
+                             :template-tags {:p1 {:name         "p1"
+                                                  :display_name "p1"
+                                                  :type         "text"
+                                                  :required     true}
+                                             :p2 {:name         "p2"
+                                                  :display_name "p2"
+                                                  :type         "text"
+                                                  :required     true}}}
+                :parameters [{:type   "text"
+                              :name   "p1"
+                              :target [:variable [:template-tag "p1"]]
+                              :value  "foo"}
+                             {:type   "text"
+                              :name   "p2"
+                              :target [:variable [:template-tag "p2"]]
+                              :value  "bar"}]})))))))
 
 (defn- project-id-prefix-if-set []
   (if-let [proj-id (mt/with-driver :bigquery-cloud-sdk

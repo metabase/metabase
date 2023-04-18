@@ -185,7 +185,7 @@
                 (mt/with-temp* [Card [model {:dataset true
                                              :dataset_query
                                              (mt/native-query
-                                              {:query "select * from checkins limit 1"})}]]
+                                               {:query "select * from checkins limit 1"})}]]
                   (let [action (cross-db-action (:id model) sample-dataset-id)
                         response (mt/user-http-request :rasta :post 400 "action"
                                                        action)]
@@ -232,8 +232,8 @@
                                      (= (:type initial-action) "implicit")
                                      (assoc :database_id (mt/id)
                                             :parameters (if (= "row/create" (:kind initial-action))
-                                                            []
-                                                            [{:id "id" :type "type/BigInteger" :special "hello"}]))))
+                                                          []
+                                                          [{:id "id" :type "type/BigInteger" :special "hello"}]))))
                   updated-action (update-fn initial-action)]
               (testing "Create fails with"
                 (testing "no permission"
@@ -477,7 +477,6 @@
             (mt/with-actions [{:keys [action-id]} action-opts]
               (is (= "Not found."
                      (mt/user-http-request :crowberto :delete 404 (format "action/%d/public_link" action-id)))))))
-
 
         (testing "Test that we *cannot* unshare a action if we are not admins"
           (let [action-opts (shared-action-opts)]

@@ -63,21 +63,21 @@
   [schedule-type schedule-hour schedule-day schedule-frame]
   (or
     ;; hourly schedule does not care about other inputs
-    (= schedule-type :hourly)
+   (= schedule-type :hourly)
     ;; daily schedule requires a valid `hour`
-    (and (= schedule-type :daily)
-         (hour-of-day? schedule-hour))
+   (and (= schedule-type :daily)
+        (hour-of-day? schedule-hour))
     ;; weekly schedule requires a valid `hour` and `day`
-    (and (= schedule-type :weekly)
-         (hour-of-day? schedule-hour)
-         (day-of-week? schedule-day))
+   (and (= schedule-type :weekly)
+        (hour-of-day? schedule-hour)
+        (day-of-week? schedule-day))
     ;; monthly schedule requires a valid `hour` and `frame`.  also a `day` if frame = first or last
-    (and (= schedule-type :monthly)
-         (schedule-frame? schedule-frame)
-         (hour-of-day? schedule-hour)
-         (or (contains? #{:first :last} schedule-frame)
-             (and (= :mid schedule-frame)
-                  (nil? schedule-day))))))
+   (and (= schedule-type :monthly)
+        (schedule-frame? schedule-frame)
+        (hour-of-day? schedule-hour)
+        (or (contains? #{:first :last} schedule-frame)
+            (and (= :mid schedule-frame)
+                 (nil? schedule-day))))))
 
 (def channel-types
   "Map which contains the definitions for each type of pulse channel we allow.  Each key is a channel type with a map
@@ -109,7 +109,6 @@
   "Does given `channel` type support a list of recipients? :tv:"
   [channel]
   (boolean (:allows_recipients (get channel-types channel))))
-
 
 ;; ## Entity
 
@@ -186,17 +185,17 @@
                               {:status-code 403})))))))))
 
 (mi/define-methods
- PulseChannel
- {:hydration-keys (constantly [:pulse_channel])
-  :types          (constantly {:details        :json
-                               :channel_type   :keyword
-                               :schedule_type  :keyword
-                               :schedule_frame :keyword})
-  :properties     (constantly {::mi/timestamped? true
-                               ::mi/entity-id    true})
-  :pre-delete     pre-delete
-  :pre-insert     validate-email-domains
-  :pre-update     validate-email-domains})
+  PulseChannel
+  {:hydration-keys (constantly [:pulse_channel])
+   :types          (constantly {:details        :json
+                                :channel_type   :keyword
+                                :schedule_type  :keyword
+                                :schedule_frame :keyword})
+   :properties     (constantly {::mi/timestamped? true
+                                ::mi/entity-id    true})
+   :pre-delete     pre-delete
+   :pre-insert     validate-email-domains
+   :pre-update     validate-email-domains})
 
 (defmethod serdes/hash-fields PulseChannel
   [_pulse-channel]
@@ -216,7 +215,6 @@
             has-email-addresses? (seq (:emails details))]
         (when-not has-email-addresses?
           (t2/delete! PulseChannel :id channel-id))))))
-
 
 ;; ## Persistence Functions
 
@@ -247,20 +245,19 @@
         monthly-schedule-day-or-nil (when (= :other monthday)
                                       weekday)]
     (t2/select [PulseChannel :id :pulse_id :schedule_type :channel_type]
-      {:where [:and [:= :enabled true]
-               [:or [:= :schedule_type "hourly"]
-                [:and [:= :schedule_type "daily"]
-                 [:= :schedule_hour hour]]
-                [:and [:= :schedule_type "weekly"]
-                 [:= :schedule_hour hour]
-                 [:= :schedule_day weekday]]
-                [:and [:= :schedule_type "monthly"]
-                 [:= :schedule_hour hour]
-                 [:= :schedule_frame schedule-frame]
-                 [:or [:= :schedule_day weekday]
+               {:where [:and [:= :enabled true]
+                        [:or [:= :schedule_type "hourly"]
+                         [:and [:= :schedule_type "daily"]
+                          [:= :schedule_hour hour]]
+                         [:and [:= :schedule_type "weekly"]
+                          [:= :schedule_hour hour]
+                          [:= :schedule_day weekday]]
+                         [:and [:= :schedule_type "monthly"]
+                          [:= :schedule_hour hour]
+                          [:= :schedule_frame schedule-frame]
+                          [:or [:= :schedule_day weekday]
                   ;; this is here specifically to allow for cases where day doesn't have to match
-                  [:= :schedule_day monthly-schedule-day-or-nil]]]]]})))
-
+                           [:= :schedule_day monthly-schedule-day-or-nil]]]]]})))
 
 (defn update-recipients!
   "Update the `PulseChannelRecipients` for `pulse-CHANNEL`.
@@ -281,9 +278,8 @@
         (t2/insert! PulseChannelRecipient vs)))
     (when (seq recipients-)
       (t2/delete! (t2/table-name PulseChannelRecipient)
-        :pulse_channel_id id
-        :user_id          [:in recipients-]))))
-
+                  :pulse_channel_id id
+                  :user_id          [:in recipients-]))))
 
 (defn update-pulse-channel!
   "Updates an existing `PulseChannel` along with all related data associated with the channel such as
@@ -313,7 +309,6 @@
     (when (supports-recipients? channel_type)
       (update-recipients! id (or (get recipients-by-type true) [])))))
 
-
 (defn create-pulse-channel!
   "Create a new `PulseChannel` along with all related data associated with the channel such as
   `PulseChannelRecipients`."
@@ -329,19 +324,19 @@
          (every? map? recipients)]}
   (let [recipients-by-type (group-by integer? (filter identity (map #(or (:id %) (:email %)) recipients)))
         {:keys [id]}       (first (t2/insert-returning-instances!
-                                    PulseChannel
-                                    :pulse_id       pulse_id
-                                    :channel_type   channel_type
-                                    :details        (cond-> details
-                                                      (supports-recipients? channel_type) (assoc :emails (get recipients-by-type false)))
-                                    :enabled        enabled
-                                    :schedule_type  schedule_type
-                                    :schedule_hour  (when (not= schedule_type :hourly)
-                                                      schedule_hour)
-                                    :schedule_day   (when (contains? #{:weekly :monthly} schedule_type)
-                                                      schedule_day)
-                                    :schedule_frame (when (= schedule_type :monthly)
-                                                      schedule_frame)))]
+                                   PulseChannel
+                                   :pulse_id       pulse_id
+                                   :channel_type   channel_type
+                                   :details        (cond-> details
+                                                     (supports-recipients? channel_type) (assoc :emails (get recipients-by-type false)))
+                                   :enabled        enabled
+                                   :schedule_type  schedule_type
+                                   :schedule_hour  (when (not= schedule_type :hourly)
+                                                     schedule_hour)
+                                   :schedule_day   (when (contains? #{:weekly :monthly} schedule_type)
+                                                     schedule_day)
+                                   :schedule_frame (when (= schedule_type :monthly)
+                                                     schedule_frame)))]
     (when (and (supports-recipients? channel_type) (seq (get recipients-by-type true)))
       (update-recipients! id (get recipients-by-type true)))
     ;; return the id of our newly created channel

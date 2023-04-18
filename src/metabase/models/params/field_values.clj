@@ -56,10 +56,10 @@
             ;; let's make sure we respect that limit here.
             ;; For a more detailed docs on this limt check out [[field-values/distinct-values]]
             limited-values                   (field-values/take-by-length field-values/*total-max-length* values)]
-       {:values          limited-values
-        :has_more_values (or (> (count values)
-                                (count limited-values))
-                             has_more_values)}))
+        {:values          limited-values
+         :has_more_values (or (> (count values)
+                                 (count limited-values))
+                              has_more_values)}))
 
     :sandbox
     (field-values/distinct-values field)))
@@ -82,10 +82,10 @@
   (when-let [{:keys [values has_more_values]} (fetch-advanced-field-values fv-type field constraints)]
     (let [;; If the full FieldValues of this field has a human-readable-values, fix it with the new values
           human-readable-values (field-values/fixup-human-readable-values
-                                  (t2/select-one FieldValues
-                                                 :field_id (:id field)
-                                                 :type :full)
-                                  values)]
+                                 (t2/select-one FieldValues
+                                                :field_id (:id field)
+                                                :type :full)
+                                 values)]
       (first (t2/insert-returning-instances! FieldValues
                                              :field_id (:id field)
                                              :type fv-type

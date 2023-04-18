@@ -32,13 +32,13 @@
                                                      :kind       kind
                                                      :value      value
                                                      :creator_id (mt/user->id :crowberto)}]
-         (is (= name (:name secret)))
-         (is (= kind (:kind secret)))
-         (is (mt/secret-value-equals? value (:value secret)))
-         (let [loaded (t2/select-one Secret :id id)]
-           (is (= name (:name loaded)))
-           (is (= kind (:kind loaded)))
-           (is (mt/secret-value-equals? value (:value loaded))))))))
+        (is (= name (:name secret)))
+        (is (= kind (:kind secret)))
+        (is (mt/secret-value-equals? value (:value secret)))
+        (let [loaded (t2/select-one Secret :id id)]
+          (is (= name (:name loaded)))
+          (is (= kind (:kind loaded)))
+          (is (mt/secret-value-equals? value (:value loaded))))))))
 
 (deftest secret-retrieval-test
   (testing "A secret value can be retrieved successfully"
@@ -91,10 +91,10 @@
                                       :value      file
                                       :creator_id (mt/user->id :crowberto)}]
         (is (= "titok"
-              (secret/get-secret-string
-               {:secret-prop-id      id
-                :secret-prop-options "local"}
-               "secret-prop")))))))
+               (secret/get-secret-string
+                {:secret-prop-id      id
+                 :secret-prop-options "local"}
+                "secret-prop")))))))
 
 (deftest value->file!-test
   (testing "value->file! works for a secret value"
@@ -154,18 +154,18 @@
   (let [value-key (keyword (str property "-value"))
         options-key (keyword (str property "-options"))]
     (:value (secret/db-details-prop->secret-map
-                  {:ssl true
-                   :ssl-mode "verify-ca"
-                   value-key (format "data:%s;base64,%s" mime-type (u/encode-base64 content))
-                   options-key "uploaded"
-                   :port 5432,
-                   :advanced-options false
-                   :dbname "the-bean-base"
-                   :host "localhost"
-                   :tunnel-enabled false
-                   :engine :postgres
-                   :user "human-bean"}
-                  property))))
+             {:ssl true
+              :ssl-mode "verify-ca"
+              value-key (format "data:%s;base64,%s" mime-type (u/encode-base64 content))
+              options-key "uploaded"
+              :port 5432,
+              :advanced-options false
+              :dbname "the-bean-base"
+              :host "localhost"
+              :tunnel-enabled false
+              :engine :postgres
+              :user "human-bean"}
+             property))))
 
 (deftest ssl-cert-base
   (testing "db-details-prop->secret-map"

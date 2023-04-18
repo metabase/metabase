@@ -98,13 +98,12 @@
         dash           (t2/with-transaction [_conn]
                         ;; Adding a new dashboard at `collection_position` could cause other dashboards in this collection to change
                         ;; position, check that and fix up if needed
-                        (api/maybe-reconcile-collection-position! dashboard-data)
+                         (api/maybe-reconcile-collection-position! dashboard-data)
                         ;; Ok, now save the Dashboard
-                        (first (t2/insert-returning-instances! Dashboard dashboard-data)))]
+                         (first (t2/insert-returning-instances! Dashboard dashboard-data)))]
     (events/publish-event! :dashboard-create dash)
     (snowplow/track-event! ::snowplow/dashboard-created api/*current-user-id* {:dashboard-id (u/the-id dash)})
     (assoc dash :last-edit-info (last-edit/edit-information-for-user @api/*current-user*))))
-
 
 ;;; -------------------------------------------- Hiding Unreadable Cards ---------------------------------------------
 
@@ -124,7 +123,6 @@
                                             (-> dashcard
                                                 (update :card hide-unreadable-card)
                                                 (update :series (partial mapv hide-unreadable-card))))))))
-
 
 ;;; ------------------------------------------ Query Average Duration Info -------------------------------------------
 
@@ -337,21 +335,21 @@
         dashboard      (t2/with-transaction [_conn]
                         ;; Adding a new dashboard at `collection_position` could cause other dashboards in this
                         ;; collection to change position, check that and fix up if needed
-                        (api/maybe-reconcile-collection-position! dashboard-data)
+                         (api/maybe-reconcile-collection-position! dashboard-data)
                         ;; Ok, now save the Dashboard
-                        (let [dash (first (t2/insert-returning-instances! Dashboard dashboard-data))
-                              {id->new-card :copied uncopied :uncopied}
-                              (when is_deep_copy
-                                (duplicate-cards existing-dashboard collection_id))]
-                          (reset! new-cards (vals id->new-card))
-                          (when-let [dashcards (seq (update-cards-for-copy from-dashboard-id
-                                                                           (:ordered_cards existing-dashboard)
-                                                                           is_deep_copy
-                                                                           id->new-card))]
-                            (api/check-500 (dashboard/add-dashcards! dash dashcards)))
-                          (cond-> dash
-                            (seq uncopied)
-                            (assoc :uncopied uncopied))))]
+                         (let [dash (first (t2/insert-returning-instances! Dashboard dashboard-data))
+                               {id->new-card :copied uncopied :uncopied}
+                               (when is_deep_copy
+                                 (duplicate-cards existing-dashboard collection_id))]
+                           (reset! new-cards (vals id->new-card))
+                           (when-let [dashcards (seq (update-cards-for-copy from-dashboard-id
+                                                                            (:ordered_cards existing-dashboard)
+                                                                            is_deep_copy
+                                                                            id->new-card))]
+                             (api/check-500 (dashboard/add-dashcards! dash dashcards)))
+                           (cond-> dash
+                             (seq uncopied)
+                             (assoc :uncopied uncopied))))]
     (snowplow/track-event! ::snowplow/dashboard-created api/*current-user-id* {:dashboard-id (u/the-id dashboard)})
     ;; must signal event outside of tx so cards are visible from other threads
     (when-let [newly-created-cards (seq @new-cards)]
@@ -507,8 +505,8 @@
         ;; need to add the appropriate `:card-id` for all the new mappings we're going to check.
         dashcard-id->card-id           (when (seq new-mappings)
                                          (t2/select-pk->fn :card_id DashboardCard
-                                           :dashboard_id dashboard-id
-                                           :id           [:in (set (map :dashcard-id new-mappings))]))
+                                                           :dashboard_id dashboard-id
+                                                           :id           [:in (set (map :dashcard-id new-mappings))]))
         new-mappings                   (for [{:keys [dashcard-id], :as mapping} new-mappings]
                                          (assoc mapping :card-id (get dashcard-id->card-id dashcard-id)))]
     (check-parameter-mapping-permissions new-mappings)))
@@ -543,7 +541,7 @@
     (api/check-not-archived (api/read-check Card card_id)))
   (check-parameter-mapping-permissions (for [{:keys [card_id parameter_mappings]} dashcards
                                              mapping parameter_mappings]
-                                        (assoc mapping :card-id card_id)))
+                                         (assoc mapping :card-id card_id)))
   (u/prog1 (api/check-500 (dashboard/add-dashcards! dashboard (map #(assoc % :creator_id @api/*current-user*) dashcards)))
     (events/publish-event! :dashboard-add-cards {:id (:id dashboard) :actor_id api/*current-user-id* :dashcards <>})
     (for [{:keys [card_id]} <>
@@ -563,9 +561,9 @@
 (defn- delete-dashcards! [{dashboard-id :id :as _dashboard} dashcard-ids]
   (when (seq dashcard-ids)
     (dashboard-card/delete-dashboard-cards!
-      (t2/select DashboardCard :id [:in dashcard-ids])
-      dashboard-id
-      api/*current-user-id*)))
+     (t2/select DashboardCard :id [:in dashcard-ids])
+     dashboard-id
+     api/*current-user-id*)))
 
 (def ^:private UpdatedDashboardCard
   [:map
@@ -602,14 +600,14 @@
 
         {:keys [to-update to-delete to-create]} (classify-changes current-cards cards)]
     (api/check-500
-      (t2/with-transaction [_conn]
-        (when (seq to-delete)
-          (delete-dashcards! dashboard (map :id to-delete)))
-        (when (seq to-create)
-          (create-dashcards! dashboard (map #(dissoc % :id) to-create)))
-        (when (seq to-update)
-          (update-dashcards! dashboard to-update))
-        true))
+     (t2/with-transaction [_conn]
+       (when (seq to-delete)
+         (delete-dashcards! dashboard (map :id to-delete)))
+       (when (seq to-create)
+         (create-dashcards! dashboard (map #(dissoc % :id) to-create)))
+       (when (seq to-update)
+         (update-dashcards! dashboard to-update))
+       true))
     (t2/hydrate (dashboard/ordered-cards id) :series)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
@@ -626,10 +624,10 @@
   {revision_id su/IntGreaterThanZero}
   (api/write-check Dashboard id)
   (revision/revert!
-    :entity      Dashboard
-    :id          id
-    :user-id     api/*current-user-id*
-    :revision-id revision_id))
+   :entity      Dashboard
+   :id          id
+   :user-id     api/*current-user-id*
+   :revision-id revision_id))
 
 ;;; ----------------------------------------------- Sharing is Caring ------------------------------------------------
 
@@ -701,10 +699,9 @@
   (let [parent-collection-id (if api/*is-superuser?*
                                (:id (populate/get-or-create-root-container-collection))
                                (t2/select-one-fn :id 'Collection
-                                 :personal_owner_id api/*current-user-id*))]
+                                                 :personal_owner_id api/*current-user-id*))]
     (->> (dashboard/save-transient-dashboard! dashboard parent-collection-id)
          (events/publish-event! :dashboard-create))))
-
 
 ;;; ------------------------------------- Chain-filtering param value endpoints --------------------------------------
 
@@ -877,7 +874,6 @@
     {:id       su/NonBlankString
      s/Keyword s/Any}
     "value must be a parameter map with an 'id' key"))
-
 
 ;;; ---------------------------------- Executing the action associated with a Dashcard -------------------------------
 #_{:clj-kondo/ignore [:deprecated-var]}

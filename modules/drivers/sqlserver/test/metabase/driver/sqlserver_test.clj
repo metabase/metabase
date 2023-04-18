@@ -101,12 +101,12 @@
             :subprotocol        "sqlserver"
             :user               "cam"}
            (sql-jdbc.conn/connection-details->spec :sqlserver
-             {:user               "cam"
-              :password           "toucans"
-              :db                 "birddb"
-              :host               "localhost"
-              :port               1433
-              :additional-options "trustServerCertificate=false"})))))
+                                                   {:user               "cam"
+                                                    :password           "toucans"
+                                                    :db                 "birddb"
+                                                    :host               "localhost"
+                                                    :port               1433
+                                                    :additional-options "trustServerCertificate=false"})))))
 
 (deftest add-max-results-limit-test
   (mt/test-driver :sqlserver
@@ -135,12 +135,12 @@
                            " ) \"source\" ")
               :params nil}
              (qp/compile
-              (mt/mbql-query venues
-                {:source-query {:source-table $$venues
-                                :fields       [$name]
-                                :order-by     [[:asc $id]]
-                                :limit        20}
-                 :limit        10})))))))
+               (mt/mbql-query venues
+                 {:source-query {:source-table $$venues
+                                 :fields       [$name]
+                                 :order-by     [[:asc $id]]
+                                 :limit        20}
+                  :limit        10})))))))
 
 (deftest dont-add-top-clauses-for-top-level-test
   (mt/test-driver :sqlserver
@@ -174,13 +174,13 @@
               ["Stout Burgers & Beers"]
               ["The Apple Pan"]]
              (mt/rows
-               (qp/process-query
-                (mt/mbql-query venues
-                  {:source-query {:source-table $$venues
-                                  :fields       [$name]
-                                  :order-by     [[:asc $id]]
-                                  :limit        5}
-                   :limit        3}))))))))
+              (qp/process-query
+               (mt/mbql-query venues
+                 {:source-query {:source-table $$venues
+                                 :fields       [$name]
+                                 :order-by     [[:asc $id]]
+                                 :limit        5}
+                  :limit        3}))))))))
 
 (deftest locale-bucketing-test
   (mt/test-driver :sqlserver
@@ -200,7 +200,7 @@
               (.execute stmt)))
           (let [[sql & params] (hsql/format {:select [[(sql.qp/date :sqlserver :month :temp.d) :my-date]]
                                              :from   [:temp]}
-                                 :quoting :ansi, :allow-dashed-names? true)]
+                                            :quoting :ansi, :allow-dashed-names? true)]
             (with-open [stmt (sql-jdbc.execute/prepared-statement :sqlserver conn sql params)
                         rs   (sql-jdbc.execute/execute-prepared-statement! :sqlserver stmt)]
               (let [row-thunk (sql-jdbc.execute/row-thunk :sqlserver rs (.getMetaData rs))]
@@ -299,9 +299,9 @@
             (testing "Should still return correct results"
               (is (= expected-rows
                      (take 5 (mt/rows
-                               (mt/run-mbql-query checkins
-                                 {:aggregation [[:count]]
-                                  :breakout    [[:field $date {:temporal-unit unit}]]}))))))))))))
+                              (mt/run-mbql-query checkins
+                                {:aggregation [[:count]]
+                                 :breakout    [[:field $date {:temporal-unit unit}]]}))))))))))))
 (deftest max-results-bare-rows-test
   (mt/test-driver :sqlserver
     (testing "Should support overriding the ROWCOUNT for a specific SQL Server DB (#9940)"
@@ -339,10 +339,10 @@
                                        "SELECT V FROM @DATA\n"
                                        "\n"
                                        "SELECT COUNT(1) FROM @TEMP\n")}
-                         mt/native-query
+                          mt/native-query
                          ;; add default query constraints to ensure the default limit of 2000 is overridden by the
                          ;; `:rowcount-override` connection property we defined in the details above
-                         (assoc :constraints (qp.constraints/default-query-constraints))
-                         qp/process-query
-                         mt/rows
-                         ffirst))))))))
+                          (assoc :constraints (qp.constraints/default-query-constraints))
+                          qp/process-query
+                          mt/rows
+                          ffirst))))))))

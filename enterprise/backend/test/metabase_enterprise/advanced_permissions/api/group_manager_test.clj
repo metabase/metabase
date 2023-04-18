@@ -15,8 +15,8 @@
 (deftest permissions-group-apis-test
   (testing "/api/permissions/group"
     (mt/with-user-in-groups
-      [group {:name "New Group"}
-       user  [group]]
+     [group {:name "New Group"}
+      user  [group]]
       (letfn [(get-groups [user status]
                 (testing (format ", get groups with %s user" (mt/user-descriptor user))
                   (mt/user-http-request user :get status "permissions/group")))
@@ -131,8 +131,8 @@
 
       (testing "permissions test - "
         (mt/with-user-in-groups
-          [group  {:name "New Group"}
-           user   [group]]
+         [group  {:name "New Group"}
+          user   [group]]
           (testing "if `advanced-permissions` is disabled, require admins"
             (premium-features-test/with-premium-features #{}
               (get-membership user 403)
@@ -148,8 +148,8 @@
 
         ;; Use different groups for each block since `clear-memberships` is destructive
         (mt/with-user-in-groups
-          [group  {:name "New Group"}
-           user   [group]]
+         [group  {:name "New Group"}
+          user   [group]]
           (testing "if `advanced-permissions` is enabled"
             (premium-features-test/with-premium-features #{:advanced-permissions}
               (testing "requires Group Manager or admins"
@@ -165,8 +165,8 @@
                 (clear-memberships :crowberto 204 group))
 
               (mt/with-user-in-groups
-                [group-2  {:name "New Group 2"}
-                 user-2   [group-2]]
+               [group-2  {:name "New Group 2"}
+                user-2   [group-2]]
                 (testing "succeed if users access group that they are manager of"
                   (t2/update! PermissionsGroupMembership {:user_id  (:id user-2)
                                                           :group_id (:id group-2)}
@@ -179,8 +179,8 @@
 
       (testing "edge case tests - "
         (mt/with-user-in-groups
-          [group {:name "New Group"}
-           user  [group]]
+         [group {:name "New Group"}
+          user  [group]]
 
           (testing "if `advanced-permissions` is disabled"
             (premium-features-test/with-premium-features #{}
@@ -218,8 +218,8 @@
 (deftest get-users-api-test
   (testing "GET /api/user?status=all"
     (mt/with-user-in-groups
-      [group {:name "New Group"}
-       user  [group]]
+     [group {:name "New Group"}
+      user  [group]]
       (letfn [(get-users [req-user status]
                 (testing (format "- get users with %s user" (mt/user-descriptor user))
                   (mt/user-http-request req-user :get status "/user?status=all")))]
@@ -245,34 +245,33 @@
 
   (testing "GET /api/user?group_id=:group_id"
     (testing "should sort by admins -> group managers -> normal users when filter by group_id"
-     (mt/with-temp* [User                       [user-a {:first_name "A"
-                                                         :last_name  "A"}]
-                     User                       [user-b {:first_name "B"
-                                                         :last_name  "B"}]
-                     User                       [user-c {:first_name "C"
-                                                         :last_name  "C"
-                                                         :is_superuser true}]
-                     PermissionsGroup           [group]
-                     PermissionsGroupMembership [_ {:user_id (:id user-a)
-                                                    :group_id (:id group)
-                                                    :is_group_manager false}]
-                     PermissionsGroupMembership [_ {:user_id  (:id user-b)
-                                                    :group_id (:id group)
-                                                    :is_group_manager true}]
-                     PermissionsGroupMembership [_ {:user_id  (:id user-c)
-                                                    :group_id (:id group)
-                                                    :is_group_manager false}]]
-       (is (= ["C" "B" "A"]
-              (->> (mt/user-http-request :crowberto :get 200 (format "/user?limit=25&offset=0&group_id=%d" (:id group)))
-                   :data
-                   (map :first_name))))))))
-
+      (mt/with-temp* [User                       [user-a {:first_name "A"
+                                                          :last_name  "A"}]
+                      User                       [user-b {:first_name "B"
+                                                          :last_name  "B"}]
+                      User                       [user-c {:first_name "C"
+                                                          :last_name  "C"
+                                                          :is_superuser true}]
+                      PermissionsGroup           [group]
+                      PermissionsGroupMembership [_ {:user_id (:id user-a)
+                                                     :group_id (:id group)
+                                                     :is_group_manager false}]
+                      PermissionsGroupMembership [_ {:user_id  (:id user-b)
+                                                     :group_id (:id group)
+                                                     :is_group_manager true}]
+                      PermissionsGroupMembership [_ {:user_id  (:id user-c)
+                                                     :group_id (:id group)
+                                                     :is_group_manager false}]]
+        (is (= ["C" "B" "A"]
+               (->> (mt/user-http-request :crowberto :get 200 (format "/user?limit=25&offset=0&group_id=%d" (:id group)))
+                    :data
+                    (map :first_name))))))))
 
 (deftest get-user-api-test
   (testing "GET /api/user/:id"
     (mt/with-user-in-groups
-      [group {:name "New Group"}
-       user  [group]]
+     [group {:name "New Group"}
+      user  [group]]
       (letfn [(get-user [req-user status]
                 (testing (format "- get user with %s user" (mt/user-descriptor user))
                   (mt/with-temp User [new-user]
@@ -300,8 +299,8 @@
 (deftest update-user-api-test
   (testing "PUT /api/user/:id"
     (mt/with-user-in-groups
-      [group {:name "New Group"}
-       user  [group]]
+     [group {:name "New Group"}
+      user  [group]]
       (mt/with-temp User [user-to-update]
         (letfn [(update-user-firstname [req-user status]
                   (testing (format "- update users firstname with %s user" (mt/user-descriptor user))
@@ -324,9 +323,9 @@
                 (remove-user-from-group [req-user status group-to-remove]
                   (u/ignore-exceptions
                    ;; ensure `user-to-update` is in `group-to-remove`
-                   (t2/insert! PermissionsGroupMembership
-                               :user_id (:id user-to-update)
-                               :group_id (:id group-to-remove)))
+                    (t2/insert! PermissionsGroupMembership
+                                :user_id (:id user-to-update)
+                                :group_id (:id group-to-remove)))
                   (let [current-user-group-membership (gm/user-group-memberships user-to-update)
                         new-user-group-membership     (into [] (filter #(not= (:id group-to-remove)
                                                                               (:id %))
@@ -334,7 +333,6 @@
                     (testing (format "- remove user from group with %s user" (mt/user-descriptor user))
                       (mt/user-http-request req-user :put status (format "user/%d" (:id user-to-update))
                                             {:user_group_memberships new-user-group-membership}))))]
-
 
           (testing "if `advanced-permissions` is disabled, requires admins"
             (premium-features-test/with-premium-features #{}

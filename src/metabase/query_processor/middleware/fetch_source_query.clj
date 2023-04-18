@@ -86,7 +86,6 @@
       (s/constrained query-has-resolved-database-id?
                      "Query where source-query virtual `:database` has been replaced with actual Database ID")))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       Resolving card__id -> source query                                       |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -115,11 +114,11 @@
        (let [collection (:collection native-query)]
          (cond-> native-query
                  ;; MongoDB native  queries consist of a collection and a pipelne (query)
-                 collection (update :native (fn [pipeline] {:collection collection
-                                                            :query      pipeline}))
+           collection (update :native (fn [pipeline] {:collection collection
+                                                      :query      pipeline}))
                  ;; trim trailing comments from SQL, but not other types of native queries
-                 (string? (:native native-query)) (update :native (partial trim-sql-query card-id))
-                 (empty? template-tags) (dissoc :template-tags))))
+           (string? (:native native-query)) (update :native (partial trim-sql-query card-id))
+           (empty? template-tags) (dissoc :template-tags))))
      (throw (ex-info (tru "Missing source query in Card {0}" card-id)
                      {:card card})))))
 
@@ -164,7 +163,6 @@
   [source-table-str :- mbql.s/source-table-card-id-regex]
   (when-let [[_ card-id-str] (re-find #"^card__(\d+)$" source-table-str)]
     (Integer/parseInt card-id-str)))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         Logic for traversing the query                                         |
@@ -284,7 +282,7 @@
       extract-resolved-card-id))
 
 (s/defn resolve-card-id-source-tables* :- {:card-id (s/maybe su/IntGreaterThanZero)
-                                                    :query   FullyResolvedQuery}
+                                           :query   FullyResolvedQuery}
   "Resolve `card__n`-style `:source-tables` in `query`."
   [{inner-query :query, :as outer-query} :- mbql.s/Query]
   (if-not inner-query

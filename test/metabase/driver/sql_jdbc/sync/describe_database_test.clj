@@ -40,9 +40,9 @@
     (let [{:keys [name schema]} (t2/select-one Table :id (mt/id :venues))]
       (is (= []
              (mt/rows
-               (qp/process-query
-                 (let [[sql] (sql-jdbc.describe-database/simple-select-probe-query (or driver/*driver* :h2) schema name)]
-                   (mt/native-query {:query sql})))))))))
+              (qp/process-query
+               (let [[sql] (sql-jdbc.describe-database/simple-select-probe-query (or driver/*driver* :h2) schema name)]
+                 (mt/native-query {:query sql})))))))))
 
 (defn- sql-jdbc-drivers-with-default-describe-database-impl
   "All SQL JDBC drivers that use the default SQL JDBC implementation of `describe-database`. (As far as I know, this is
@@ -101,8 +101,8 @@
 (defn- count-active-tables-in-db
   [db-id]
   (t2/count Table
-    :db_id  db-id
-    :active true))
+            :db_id  db-id
+            :active true))
 
 (deftest sync-only-accessable
   (one-off-dbs/with-blank-db

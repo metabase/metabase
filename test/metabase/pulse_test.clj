@@ -144,7 +144,6 @@
 (def ^:private test-card-result {pulse.test-util/card-name true})
 (def ^:private test-card-regex  (re-pattern pulse.test-util/card-name))
 
-
 (defn- produces-bytes? [{:keys [rendered-info]}]
   (when rendered-info
     (pos? (alength (or (render/png-from-render-info rendered-info 500)
@@ -164,7 +163,6 @@
   "Append `attachment` to the first email found for Rasta"
   [email attachment]
   (update-in email ["rasta@metabase.com" 0] #(update % :body conj attachment)))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                     Tests                                                      |
@@ -227,8 +225,8 @@
             (is (= {:channel-id "#general"
                     :attachments
                     [{:blocks
-                       [{:type "header", :text {:type "plain_text", :text "Pulse: Pulse Name", :emoji true}}
-                        {:type "section", :fields [{:type "mrkdwn", :text "Sent by Rasta Toucan"}]}]}
+                      [{:type "header", :text {:type "plain_text", :text "Pulse: Pulse Name", :emoji true}}
+                       {:type "section", :fields [{:type "mrkdwn", :text "Sent by Rasta Toucan"}]}]}
                      {:title           pulse.test-util/card-name
                       :rendered-info   {:attachments false
                                         :content     true}
@@ -418,14 +416,14 @@
       "skip if empty = false"
       {:pulse    {:skip_if_empty false}
        :assert {:email (fn [_ _]
-                           (is (= (rasta-pulse-email)
-                                  (mt/summarize-multipart-email #"Pulse Name"))))}}
+                         (is (= (rasta-pulse-email)
+                                (mt/summarize-multipart-email #"Pulse Name"))))}}
 
       "skip if empty = true"
       {:pulse    {:skip_if_empty true}
        :assert {:email (fn [_ _]
-                           (is (= {}
-                                  (mt/summarize-multipart-email #"Pulse Name"))))}})))
+                         (is (= {}
+                                (mt/summarize-multipart-email #"Pulse Name"))))}})))
 
 (deftest rows-alert-test
   (testing "Rows alert"
@@ -484,7 +482,6 @@
                  (mt/summarize-multipart-email test-card-regex
                                                #"More results have been included"
                                                #"ID</th>"))))}}
-
 
       "with data and a CSV + XLS attachment"
       {:card       (pulse.test-util/checkins-query-card {:breakout [!day.date]})
@@ -627,8 +624,8 @@
   (let [alert-above-pulse {:alert_above_goal true}
         alert-below-pulse {:alert_above_goal false}
         progress-result (fn [val] [{:card {:display :progress
-                                            :visualization_settings {:progress.goal 5}}
-                                     :result {:data {:rows [[val]]}}}])
+                                           :visualization_settings {:progress.goal 5}}
+                                    :result {:data {:rows [[val]]}}}])
         timeseries-result (fn [val] [{:card {:display :bar
                                              :visualization_settings {:graph.goal_value 5}}
                                       :result {:data {:cols [{:source :breakout}

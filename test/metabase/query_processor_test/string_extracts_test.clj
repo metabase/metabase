@@ -58,17 +58,17 @@
 (deftest test-replace
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
     (when
-      (or (not= driver/*driver* :mongo)
+     (or (not= driver/*driver* :mongo)
           ;; mongo supports $replaceAll since version 4.4
-          (driver.u/semantic-version-gte
-            (-> (mt/db) :dbms_version :semantic-version)
-            [4 4]))
+         (driver.u/semantic-version-gte
+          (-> (mt/db) :dbms_version :semantic-version)
+          [4 4]))
       (is (= "Red Baloon" (test-string-extract [:replace [:field (data/id :venues :name) nil] "Medicine" "Baloon"])))
       (is (= "Rod Modicino" (test-string-extract [:replace [:field (data/id :venues :name) nil] "e" "o"])))
       (is (= "Red" (test-string-extract [:replace [:field (data/id :venues :name) nil] " Medicine" ""])))
       (is (= "Larry's The Prime Rib" (test-string-extract
-                                       [:replace [:field (data/id :venues :name) nil] "Lawry's" "Larry's"]
-                                       [:= [:field (data/id :venues :name) nil] "Lawry's The Prime Rib"]))))))
+                                      [:replace [:field (data/id :venues :name) nil] "Lawry's" "Larry's"]
+                                      [:= [:field (data/id :venues :name) nil] "Lawry's The Prime Rib"]))))))
 
 (deftest test-coalesce
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
@@ -130,4 +130,4 @@
                    (mt/formatted-rows [int int int 2.0 2.0 2.0 int str int
                                        str
                                        int str str str str 2.0 2.0 str]
-                     (qp/process-query query))))))))))
+                                      (qp/process-query query))))))))))

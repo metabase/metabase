@@ -26,8 +26,8 @@
     (assoc session :type session-type)))
 
 (mi/define-methods
- Session
- {:pre-insert  pre-insert
-  :post-insert post-insert
-  :pre-update  pre-update
-  :properties  (constantly {::mi/created-at-timestamped? true})})
+  Session
+  {:pre-insert  pre-insert
+   :post-insert post-insert
+   :pre-update  pre-update
+   :properties  (constantly {::mi/created-at-timestamped? true})})

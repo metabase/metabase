@@ -24,7 +24,7 @@
 (defn- throw-if-no-premium-features-token []
   (when-not (premium-features/enable-sso?)
     (throw (ex-info (str (tru "SSO requires a valid token"))
-             {:status-code 403}))))
+                    {:status-code 403}))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/"
@@ -41,11 +41,11 @@
   {:status  (get (ex-data e) :status-code 500)
    :headers {"Content-Type" "text/html"}
    :body    (stencil/render-file "metabase_enterprise/sandbox/api/error_page"
-              (let [message    (.getMessage e)
-                    data       (u/pprint-to-str (ex-data e))]
-                {:errorMessage   message
-                 :exceptionClass (.getName Exception)
-                 :additionalData data}))})
+                                 (let [message    (.getMessage e)
+                                       data       (u/pprint-to-str (ex-data e))]
+                                   {:errorMessage   message
+                                    :exceptionClass (.getName Exception)
+                                    :additionalData data}))})
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/"

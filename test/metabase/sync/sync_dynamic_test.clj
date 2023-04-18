@@ -32,5 +32,5 @@
   (testing "basic test to make sure syncing nested fields works. This is sort of a higher-level test."
     (mt/with-temp Database [db {:engine ::toucanery/toucanery}]
       (sync/sync-database! db)
-     (is (= (remove-nonsense toucanery/toucanery-tables-and-fields)
-            (remove-nonsense (get-tables db)))))))
+      (is (= (remove-nonsense toucanery/toucanery-tables-and-fields)
+             (remove-nonsense (get-tables db)))))))

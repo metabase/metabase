@@ -239,7 +239,7 @@
   (testing "Ignores source-query from joins (#20809)"
     (let [query {:source-table 2,
                  :expressions  {"CC" [:+ 1 1]},
-                 :fields       [[:field 33 {:join-alias "Question 4918",}]
+                 :fields       [[:field 33 {:join-alias "Question 4918"}]
                                 [:field "count" {:join-alias "Question 4918"}]]
                  :joins        [{:alias           "Question 4918",
                                  :strategy        :left-join,
@@ -249,7 +249,7 @@
                                                     {:join-alias "Question 4918"}]]
                                  :condition       [:=
                                                    [:field 5 nil]
-                                                   [:field 33 {:join-alias "Question 4918",}]],
+                                                   [:field 33 {:join-alias "Question 4918"}]],
                                  :source-card-id  4918,
                                  :source-query    {:source-table 4,
                                                    ;; nested query has filter values with join-alias that should not
@@ -284,26 +284,26 @@
       (mt/with-temp* [Card [base {:dataset_query
                                   (mt/mbql-query
                                    reviews
-                                   {:breakout [$product_id],
-                                    :aggregation [[:count]],
+                                    {:breakout [$product_id],
+                                     :aggregation [[:count]],
                                     ;; filter on an implicit join
-                                    :filter [:= $product_id->products.category "Doohickey"]})}]]
+                                     :filter [:= $product_id->products.category "Doohickey"]})}]]
         ;; the result returned is not important, just important that the query is valid and completes
         (is (vector?
              (mt/rows
               (qp/process-query
                (mt/mbql-query
                 orders
-                {:joins [{:source-table (str "card__" (:id base)),
-                          :alias (str "Question " (:id base)),
-                          :condition [:=
-                                      $product_id
-                                      [:field
-                                       %reviews.product_id
-                                       {:join-alias (str "Question " (:id base))}]],
-                          :fields :all}],
-                 :expressions {"CC" [:+ 1 1]}
-                 :limit 2})))))))))
+                 {:joins [{:source-table (str "card__" (:id base)),
+                           :alias (str "Question " (:id base)),
+                           :condition [:=
+                                       $product_id
+                                       [:field
+                                        %reviews.product_id
+                                        {:join-alias (str "Question " (:id base))}]],
+                           :fields :all}],
+                  :expressions {"CC" [:+ 1 1]}
+                  :limit 2})))))))))
 
 (deftest nest-expressions-with-joins-test
   (driver/with-driver :h2
@@ -591,29 +591,29 @@
                                                                   pivot-grouping
                                                                   products-category
                                                                   products-id]})}
-                            (let [products-category [:field %products.category {:join-alias         "PRODUCTS__via__PRODUCT_ID"
-                                                                                ::add/source-table  ::add/source
-                                                                                ::add/source-alias  "PRODUCTS__via__PRODUCT_ID__CATEGORY"
-                                                                                ::add/desired-alias "PRODUCTS__via__PRODUCT_ID__CATEGORY"
-                                                                                ::add/position      0}]
-                                  created-at        [:field %created_at {:temporal-unit            :year
-                                                                         ::nest-query/outer-select true
-                                                                         ::add/source-table        ::add/source
-                                                                         ::add/source-alias        "CREATED_AT"
-                                                                         ::add/desired-alias       "CREATED_AT"
-                                                                         ::add/position            1}]
-                                  pivot-grouping    [:field "pivot-grouping" {:base-type          :type/Float
-                                                                              ::add/source-table  ::add/source
-                                                                              ::add/source-alias  "pivot-grouping"
-                                                                              ::add/desired-alias "pivot-grouping"
-                                                                              ::add/position      2}]]
-                              {:breakout    [products-category created-at pivot-grouping]
-                               :aggregation [[:aggregation-options [:count] {:name               "count"
-                                                                             ::add/desired-alias "count"
-                                                                             ::add/position      3}]]
-                               :order-by    [[:asc products-category]
-                                             [:asc created-at]
-                                             [:asc pivot-grouping]]})))
+                                 (let [products-category [:field %products.category {:join-alias         "PRODUCTS__via__PRODUCT_ID"
+                                                                                     ::add/source-table  ::add/source
+                                                                                     ::add/source-alias  "PRODUCTS__via__PRODUCT_ID__CATEGORY"
+                                                                                     ::add/desired-alias "PRODUCTS__via__PRODUCT_ID__CATEGORY"
+                                                                                     ::add/position      0}]
+                                       created-at        [:field %created_at {:temporal-unit            :year
+                                                                              ::nest-query/outer-select true
+                                                                              ::add/source-table        ::add/source
+                                                                              ::add/source-alias        "CREATED_AT"
+                                                                              ::add/desired-alias       "CREATED_AT"
+                                                                              ::add/position            1}]
+                                       pivot-grouping    [:field "pivot-grouping" {:base-type          :type/Float
+                                                                                   ::add/source-table  ::add/source
+                                                                                   ::add/source-alias  "pivot-grouping"
+                                                                                   ::add/desired-alias "pivot-grouping"
+                                                                                   ::add/position      2}]]
+                                   {:breakout    [products-category created-at pivot-grouping]
+                                    :aggregation [[:aggregation-options [:count] {:name               "count"
+                                                                                  ::add/desired-alias "count"
+                                                                                  ::add/position      3}]]
+                                    :order-by    [[:asc products-category]
+                                                  [:asc created-at]
+                                                  [:asc pivot-grouping]]})))
                         (-> (mt/mbql-query orders
                               {:aggregation [[:aggregation-options [:count] {:name "count"}]]
                                :breakout    [&PRODUCTS__via__PRODUCT_ID.products.category
@@ -666,9 +666,9 @@
                          :limit              1})
                       (-> (mt/mbql-query products
                             {:expressions {"CATEGORY" [:concat $category "2"]}
-                             :breakout    [:expression"CATEGORY"]
+                             :breakout    [:expression "CATEGORY"]
                              :aggregation [[:count]]
-                             :order-by    [[:asc [:expression"CATEGORY"]]]
+                             :order-by    [[:asc [:expression "CATEGORY"]]]
                              :limit       1})
                           qp/preprocess
                           add/add-alias-info

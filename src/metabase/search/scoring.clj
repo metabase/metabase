@@ -231,9 +231,9 @@
     {:weight number,
      :score  number,
      :name   string}"
-   metabase-enterprise.search.scoring
-   [result]
-   (weights-and-scores result))
+  metabase-enterprise.search.scoring
+  [result]
+  (weights-and-scores result))
 
 (defn- sum-weights [weights]
   (reduce

@@ -46,7 +46,6 @@
 ;; `db-qualified-table-name` like everyone else.
 (def ^:private test-catalog-name "test_data")
 
-
 (doseq [[base-type db-type] {:type/BigInteger             "BIGINT"
                              :type/Boolean                "BOOLEAN"
                              :type/Date                   "DATE"
@@ -111,7 +110,7 @@
                      "airport" 50
                      100)
         load-fn    (load-data/make-load-data-fn load-data/load-data-add-ids
-                     (partial load-data/load-data-chunked pmap chunk-size))]
+                                                (partial load-data/load-data-chunked pmap chunk-size))]
     (load-fn :presto-jdbc dbdef tabledef)))
 
 (defmethod load-data/load-data! :presto-jdbc
@@ -124,7 +123,7 @@
   Therefore, create a fresh connection from the DriverManager."
   ^Connection [jdbc-spec]
   (DriverManager/getConnection (format "jdbc:%s:%s" (:subprotocol jdbc-spec) (:subname jdbc-spec))
-    (connection-pool/map->properties (select-keys jdbc-spec [:user :SSL]))))
+                               (connection-pool/map->properties (select-keys jdbc-spec [:user :SSL]))))
 
 (defmethod load-data/do-insert! :presto-jdbc
   [driver spec table-identifier row-or-rows]
@@ -139,8 +138,8 @@
               (log/infof "[%s] Inserted %d rows into %s." driver rows-affected tbl-nm)))
           (catch Throwable e
             (throw (ex-info (format "[%s] Error executing SQL: %s" driver (ex-message e))
-                     {:driver driver, :sql sql, :params params}
-                     e))))))))
+                            {:driver driver, :sql sql, :params params}
+                            e))))))))
 
 (defmethod sql.tx/drop-db-if-exists-sql :presto-jdbc [_ _] nil)
 (defmethod sql.tx/create-db-sql         :presto-jdbc [_ _] nil)

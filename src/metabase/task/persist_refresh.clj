@@ -51,7 +51,7 @@
    multimethods on fake engine types, just work against this, and it will dispatch to the ddl.interface normally, or
    allow for easy to control custom behavior in tests."
   (refresh! [this database definition dataset-query]
-    "Refresh a persisted model. Returns a map with :state that is :success or :error. If :state is :error, includes a
+            "Refresh a persisted model. Returns a map with :state that is :success or :error. If :state is :error, includes a
     key :error with a string message. See [[metabase.driver.ddl.interface/refresh!]] for more information.")
   (unpersist! [this database persisted-info]))
 
@@ -63,7 +63,7 @@
         (let [query (limit/disable-max-results (:dataset_query card))]
           (ddl.i/refresh! (:engine database) database definition query))))
     (unpersist! [_ database persisted-info]
-     (ddl.i/unpersist! (:engine database) database persisted-info))))
+      (ddl.i/unpersist! (:engine database) database persisted-info))))
 
 (defn- refresh-with-stats! [refresher database stats persisted-info]
   ;; Since this could be long running, double check state just before refreshing
@@ -113,9 +113,9 @@
                                             [:card :collection] :database)
                                    (map #(assoc % :error (get-in error-details-by-id [(:id %) :error]))))]
           (messages/send-persistent-model-error-email!
-            db-id
-            persisted-infos
-            (:trigger task-details)))))
+           db-id
+           persisted-infos
+           (:trigger task-details)))))
     (t2/insert! TaskHistory {:task         task-type
                              :db_id        db-id
                              :started_at   start-time
@@ -208,7 +208,7 @@
                             persisted))
         {:keys [error success]} (save-task-history! "persist-refresh" database-id thunk)]
     (log/info
-      (trs "Finished persisted model refresh task for Database {0} with {1} successes and {2} errors." database-id success error))))
+     (trs "Finished persisted model refresh task for Database {0} with {1} successes and {2} errors." database-id success error))))
 
 (defn- refresh-individual!
   "Refresh an individual model based on [[PersistedInfo]]."
@@ -264,17 +264,17 @@
 
 (def ^:private refresh-job
   (jobs/build
-   (jobs/with-description "Persisted Model refresh task")
-   (jobs/of-type PersistenceRefresh)
-   (jobs/with-identity (jobs/key refresh-job-key))
-   (jobs/store-durably)))
+    (jobs/with-description "Persisted Model refresh task")
+    (jobs/of-type PersistenceRefresh)
+    (jobs/with-identity (jobs/key refresh-job-key))
+    (jobs/store-durably)))
 
 (def ^:private prune-job
   (jobs/build
-   (jobs/with-description "Persisted Model prune task")
-   (jobs/of-type PersistencePrune)
-   (jobs/with-identity (jobs/key prune-job-key))
-   (jobs/store-durably)))
+    (jobs/with-description "Persisted Model prune task")
+    (jobs/of-type PersistencePrune)
+    (jobs/with-identity (jobs/key prune-job-key))
+    (jobs/store-durably)))
 
 (def ^:private prune-scheduled-trigger-key
   (triggers/key "metabase.task.PersistencePrune.scheduled.trigger"))
@@ -293,21 +293,19 @@
   "Return a cron schedule that fires every `hours` hours."
   [cron-spec]
   (cron/schedule
-    (cron/cron-schedule cron-spec)
-    (cron/in-time-zone (TimeZone/getTimeZone (or (driver/report-timezone)
-                                                 (qp.timezone/system-timezone-id)
-                                                 "UTC")))
-    (cron/with-misfire-handling-instruction-do-nothing)))
+   (cron/cron-schedule cron-spec)
+   (cron/in-time-zone (TimeZone/getTimeZone (or (driver/report-timezone)
+                                                (qp.timezone/system-timezone-id)
+                                                "UTC")))
+   (cron/with-misfire-handling-instruction-do-nothing)))
 
 (comment
   (let [[start-hour start-minute] (map parse-long (str/split "00:00" #":"))
         hours 1]
 
-     (if (= 24 hours)
-         (format "0 %d %d * * ? *" start-minute start-hour)
-         (format "0 %d %d/%d * * ? *" start-minute start-hour hours))))
-
-
+    (if (= 24 hours)
+      (format "0 %d %d * * ? *" start-minute start-hour)
+      (format "0 %d %d/%d * * ? *" start-minute start-hour hours))))
 
 (def ^:private prune-scheduled-trigger
   (triggers/build
@@ -327,25 +325,25 @@
 
 (defn- database-trigger ^org.quartz.CronTrigger [database cron-spec]
   (triggers/build
-   (triggers/with-description (format "Refresh models for database %d" (u/the-id database)))
-   (triggers/with-identity (database-trigger-key database))
-   (triggers/using-job-data {"db-id" (u/the-id database)
-                             "type"  "database"})
-   (triggers/for-job (jobs/key refresh-job-key))
-   (triggers/start-now)
-   (triggers/with-schedule
-     (cron-schedule cron-spec))))
+    (triggers/with-description (format "Refresh models for database %d" (u/the-id database)))
+    (triggers/with-identity (database-trigger-key database))
+    (triggers/using-job-data {"db-id" (u/the-id database)
+                              "type"  "database"})
+    (triggers/for-job (jobs/key refresh-job-key))
+    (triggers/start-now)
+    (triggers/with-schedule
+      (cron-schedule cron-spec))))
 
 (defn- individual-trigger [persisted-info]
   (triggers/build
-   (triggers/with-description (format "Refresh model %d: persisted-info %d"
-                                      (:card_id persisted-info)
-                                      (u/the-id persisted-info)))
-   (triggers/with-identity (individual-trigger-key persisted-info))
-   (triggers/using-job-data {"persisted-id" (u/the-id persisted-info)
-                             "type"         "individual"})
-   (triggers/for-job (jobs/key refresh-job-key))
-   (triggers/start-now)))
+    (triggers/with-description (format "Refresh model %d: persisted-info %d"
+                                       (:card_id persisted-info)
+                                       (u/the-id persisted-info)))
+    (triggers/with-identity (individual-trigger-key persisted-info))
+    (triggers/using-job-data {"persisted-id" (u/the-id persisted-info)
+                              "type"         "individual"})
+    (triggers/for-job (jobs/key refresh-job-key))
+    (triggers/start-now)))
 
 (defn schedule-persistence-for-database!
   "Schedule a database for persistence refreshing."
@@ -378,7 +376,6 @@
                             (:card_id persisted-info)
                             (.. ^Trigger tggr getKey getName)))))))
          ;; other errors?
-
 
 (defn job-info-by-db-id
   "Fetch all database-ids that have a refresh job scheduled."

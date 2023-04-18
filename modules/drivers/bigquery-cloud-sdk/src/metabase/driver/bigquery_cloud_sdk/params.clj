@@ -49,9 +49,9 @@
 
 (defmethod ->QueryParameterValue java.math.BigDecimal [^BigDecimal v]
   (if (or (and (< 0 (.signum v))
-            (< 0 (.compareTo v min-bq-numeric-val)))
-        (and (> 0 (.signum v))
-             (> 0 (.compareTo v max-bq-numeric-val))))
+               (< 0 (.compareTo v min-bq-numeric-val)))
+          (and (> 0 (.signum v))
+               (> 0 (.compareTo v max-bq-numeric-val))))
     (param "BIGNUMERIC" v)
     (param "NUMERIC" v)))
 

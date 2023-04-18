@@ -85,15 +85,15 @@
 (deftest srv-connection-properties-test
   (testing "connection properties when using SRV"
     (are [host msg] (thrown-with-msg? Throwable msg
-                      (connect-mongo {:host host
-                                      :port               1015
-                                      :user               "test-user"
-                                      :authdb             "test-authdb"
-                                      :pass               "test-passwd"
-                                      :dbname             "test-dbname"
-                                      :ssl                true
-                                      :additional-options ""
-                                      :use-srv            true}))
+                                      (connect-mongo {:host host
+                                                      :port               1015
+                                                      :user               "test-user"
+                                                      :authdb             "test-authdb"
+                                                      :pass               "test-passwd"
+                                                      :dbname             "test-dbname"
+                                                      :ssl                true
+                                                      :additional-options ""
+                                                      :use-srv            true}))
       "db.fqdn.test" #"Unable to look up TXT record for host db.fqdn.test"
       "local.test"   #"Using DNS SRV requires a FQDN for host")
 

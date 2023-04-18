@@ -34,7 +34,7 @@
          (qp.test/rows-and-cols
           (qp/process-query
            (mt/native-query
-            {:query "select name from users;"}))))))
+             {:query "select name from users;"}))))))
 
 (deftest native-referring-question-referring-question-test
   (testing "Should be able to run native query referring a question referring a question (#25988)"

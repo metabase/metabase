@@ -71,7 +71,6 @@
 (derive :entity/EventTable :entity/GenericTable)
 (derive :entity/GoogleAnalyticsTable :entity/GenericTable)
 
-
 ;;; Numeric Types
 
 (derive :type/Number :type/*)
@@ -193,7 +192,6 @@
 ;; different from `java.time.OffsetDateTime`;
 (derive :type/Instant :type/DateTimeWithLocalTZ)
 
-
 ;; TODO -- shouldn't we have a `:type/LocalDateTime` as well?
 
 (derive :type/CreationTemporal :Semantic/*)
@@ -238,7 +236,6 @@
 
 (derive :type/Birthdate :Semantic/*)
 (derive :type/Birthdate :type/Date)
-
 
 ;;; Other
 
@@ -432,11 +429,11 @@
 (defn ^:export coercions_for_type
   "Coercions available for a type. In cljs will return a js array of strings like [\"Coercion/ISO8601->Time\" ...]. In
   clojure will return a sequence of keywords."
-   [base-type]
+  [base-type]
   (let [applicable (into () (comp (distinct) cat)
                          (vals (coercion-possibilities (keyword base-type))))]
-     #?(:cljs
-        (clj->js (map (fn [kw] (str (namespace kw) "/" (name kw)))
-                      applicable))
-        :clj
-        applicable)))
+    #?(:cljs
+       (clj->js (map (fn [kw] (str (namespace kw) "/" (name kw)))
+                     applicable))
+       :clj
+       applicable)))

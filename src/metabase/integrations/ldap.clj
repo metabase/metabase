@@ -198,7 +198,7 @@
   "Tests the connection to an LDAP server using the currently set settings."
   []
   (let [settings (into {} (for [[k v] mb-settings->ldap-details]
-                             [v (setting/get k)]))]
+                            [v (setting/get k)]))]
     (test-ldap-connection settings)))
 
 (defn verify-password

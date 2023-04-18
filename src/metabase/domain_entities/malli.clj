@@ -1,8 +1,8 @@
 (ns metabase.domain-entities.malli
   (:refer-clojure :exclude [defn])
   (:require
-    [malli.instrument]
-    [net.cgrand.macrovich :as macros]))
+   [malli.instrument]
+   [net.cgrand.macrovich :as macros]))
 
 (defmacro -define-getter
   "Generates an accessor, given the symbol and path to the value."
@@ -17,10 +17,10 @@
   [schema path in-sym]
   `(def ~in-sym
      ~(macros/case
-        :cljs `(-> ~schema
-                   (metabase.domain-entities.malli/schema-for-path ~path)
-                   metabase.domain-entities.converters/incoming)
-        :clj  `identity)))
+       :cljs `(-> ~schema
+                  (metabase.domain-entities.malli/schema-for-path ~path)
+                  metabase.domain-entities.converters/incoming)
+       :clj  `identity)))
 
 (defmacro -define-setter
   "Generates a setter. Prefixes the symbol with `with-`, ie. `with-foo-bar`.
@@ -38,9 +38,9 @@
   Generates nothing in CLJ mode."
   [schema path out-sym]
   (macros/case
-    :cljs `(def ~out-sym
-             (metabase.domain-entities.converters/outgoing
-               (metabase.domain-entities.malli/schema-for-path ~schema ~path)))))
+   :cljs `(def ~out-sym
+            (metabase.domain-entities.converters/outgoing
+             (metabase.domain-entities.malli/schema-for-path ~schema ~path)))))
 
 (defmacro -define-js-returning-getter
   "Generates a getter that converts back to a JS object, in CLJS.
@@ -49,11 +49,11 @@
   [[-define-js-converter]], eg. `foo-bar->`."
   [sym path out-sym]
   (macros/case
-    :cljs `(clojure.core/defn ~(vary-meta (symbol (str (name sym) "-js"))
-                                          assoc :export true)
-             ~(str "Fetches `" path "` and converts it to plain JS.")
-             [obj#]
-             (~out-sym (~sym obj#)))))
+   :cljs `(clojure.core/defn ~(vary-meta (symbol (str (name sym) "-js"))
+                                         assoc :export true)
+            ~(str "Fetches `" path "` and converts it to plain JS.")
+            [obj#]
+            (~out-sym (~sym obj#)))))
 
 (defmacro -define-getter-and-setter
   "Generates the getter, setter and necessary JS<->CLJS converters for a single `sym` and `path` pair.

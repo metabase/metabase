@@ -292,25 +292,25 @@
                               (binding [qp.perms/*card-id* (u/the-id card-1)]
                                 (is (= expected
                                        (mt/rows
-                                         (qp/process-query (:dataset_query card-1)))))))
+                                        (qp/process-query (:dataset_query card-1)))))))
 
                             (testing "Should be able to run Card 2 directly [Card 2 -> Card 1 -> Source Query]"
                               (binding [qp.perms/*card-id* (u/the-id card-2)]
                                 (is (= expected
                                        (mt/rows
-                                         (qp/process-query (:dataset_query card-2)))))))
+                                        (qp/process-query (:dataset_query card-2)))))))
 
                             (testing "Should be able to run ad-hoc query with Card 1 as source query [Ad-hoc -> Card -> Source Query]"
                               (is (= expected
                                      (mt/rows
-                                       (qp/process-query (mt/mbql-query nil
-                                                           {:source-table (format "card__%d" card-1-id)}))))))
+                                      (qp/process-query (mt/mbql-query nil
+                                                          {:source-table (format "card__%d" card-1-id)}))))))
 
                             (testing "Should be able to run ad-hoc query with Card 2 as source query [Ad-hoc -> Card -> Card -> Source Query]"
                               (is (= expected
                                      (mt/rows
-                                       (qp/process-userland-query (mt/mbql-query nil
-                                                                    {:source-table (format "card__%d" (u/the-id card-2))}))))))))))))))))))))
+                                      (qp/process-userland-query (mt/mbql-query nil
+                                                                   {:source-table (format "card__%d" (u/the-id card-2))}))))))))))))))))))))
 
 (deftest e2e-ignore-user-supplied-card-ids-test
   (testing "You shouldn't be able to bypass security restrictions by passing `[:info :card-id]` in the query."

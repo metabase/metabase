@@ -390,29 +390,29 @@
       (mt/with-db db
         (is (query= (mt/$ids venues
                       (merge
-                          {:source-query (let [price [:field %price {::add/source-table  $$venues
-                                                                     ::add/source-alias  "PRICE"
-                                                                     ::add/desired-alias "COOL.PRICE"
-                                                                     ::add/position      0}]]
-                                           {:source-table $$venues
-                                            :expressions  {"double_price" [:* price 2]}
-                                            :fields       [price
-                                                           [:expression "double_price" {::add/desired-alias "COOL.double_price"
-                                                                                        ::add/position      1}]]
-                                            :limit        1})}
-                          (let [double-price [:field
-                                              "double_price"
-                                              {:base-type          :type/Integer
-                                               ::add/source-table  ::add/source
-                                               ::add/source-alias  "COOL.double_price"
-                                               ::add/desired-alias "COOL.COOL.double_price"
-                                               ::add/position      0}]]
-                            {:aggregation [[:aggregation-options [:count] {:name               "COOL.count"
-                                                                           ::add/position      1
-                                                                           ::add/source-alias  "count"
-                                                                           ::add/desired-alias "COOL.count"}]]
-                             :breakout    [double-price]
-                             :order-by    [[:asc double-price]]})))
+                       {:source-query (let [price [:field %price {::add/source-table  $$venues
+                                                                  ::add/source-alias  "PRICE"
+                                                                  ::add/desired-alias "COOL.PRICE"
+                                                                  ::add/position      0}]]
+                                        {:source-table $$venues
+                                         :expressions  {"double_price" [:* price 2]}
+                                         :fields       [price
+                                                        [:expression "double_price" {::add/desired-alias "COOL.double_price"
+                                                                                     ::add/position      1}]]
+                                         :limit        1})}
+                       (let [double-price [:field
+                                           "double_price"
+                                           {:base-type          :type/Integer
+                                            ::add/source-table  ::add/source
+                                            ::add/source-alias  "COOL.double_price"
+                                            ::add/desired-alias "COOL.COOL.double_price"
+                                            ::add/position      0}]]
+                         {:aggregation [[:aggregation-options [:count] {:name               "COOL.count"
+                                                                        ::add/position      1
+                                                                        ::add/source-alias  "count"
+                                                                        ::add/desired-alias "COOL.count"}]]
+                          :breakout    [double-price]
+                          :order-by    [[:asc double-price]]})))
                     (-> (mt/mbql-query venues
                           {:source-query {:source-table $$venues
                                           :expressions  {"double_price" [:* $price 2]}

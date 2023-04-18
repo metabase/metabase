@@ -16,10 +16,10 @@
   "Schema for the `:schedules` key we add to the response containing 'expanded' versions of the CRON schedules.
    This same key is used in reverse to update the schedules."
   (su/with-api-error-message
-      (s/named
-       {(s/optional-key :cache_field_values) u.cron/ScheduleMap
-        (s/optional-key :metadata_sync)      u.cron/ScheduleMap}
-       "Map of expanded schedule maps")
+    (s/named
+     {(s/optional-key :cache_field_values) u.cron/ScheduleMap
+      (s/optional-key :metadata_sync)      u.cron/ScheduleMap}
+     "Map of expanded schedule maps")
     "value must be a valid map of schedule maps for a DB."))
 
 (s/defn schedule-map->cron-strings :- CronSchedulesMap

@@ -26,11 +26,11 @@
 
 (def query-with-no-duplicate-uuids
   (query "00000000-0000-0000-0000-000000000001"
-         "00000000-0000-0000-0000-000000000002"))
+    "00000000-0000-0000-0000-000000000002"))
 
 (def query-with-duplicate-uuids
   (query "00000000-0000-0000-0000-000000000001"
-         "00000000-0000-0000-0000-000000000001"))
+    "00000000-0000-0000-0000-000000000001"))
 
 (deftest ^:parallel collect-uuids-test
   (are [query expected-uuids] (= expected-uuids

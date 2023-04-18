@@ -99,8 +99,6 @@
                #"The download permissions functionality is only enabled if you have a premium token with the advanced-permissions feature."
                (ee-perms/update-db-download-permissions! group-id (mt/id) {:schemas :full}))))))))
 
-
-
 ;; The following tests are for the specific edge case of updating native download perms during sync if new tables are
 ;; discovered, or if tables are removed, since both events can potentially change the expected native download perms
 ;; for the database. This behavior should apply to both EE and OSS, but the test lives here for the convenience of
@@ -152,7 +150,6 @@
         (replace-tables ["Table 1" "Table 2" "Table 3"])
         (sync-tables/sync-tables-and-database! database)
         (is (= :limited (all-users-native-download-perms)))))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          Data model permissions                                                |
@@ -220,12 +217,12 @@
   (mt/with-model-cleanup [Permissions]
     (mt/with-temp PermissionsGroup [{group-id :id}]
       (premium-features-test/with-premium-features #{:advanced-permissions}
-            (testing "Detail perms for a DB can be set and revoked"
-              (ee-perms/update-db-details-permissions! group-id (mt/id) :yes)
-              (is (= :yes (details-perms-by-group-id group-id)))
+        (testing "Detail perms for a DB can be set and revoked"
+          (ee-perms/update-db-details-permissions! group-id (mt/id) :yes)
+          (is (= :yes (details-perms-by-group-id group-id)))
 
-              (ee-perms/update-db-details-permissions! group-id (mt/id) :no)
-              (is (nil? (details-perms-by-group-id group-id)))))
+          (ee-perms/update-db-details-permissions! group-id (mt/id) :no)
+          (is (nil? (details-perms-by-group-id group-id)))))
 
       (premium-features-test/with-premium-features #{}
         (testing "Detail permissions cannot be modified without the :advanced-permissions feature flag"

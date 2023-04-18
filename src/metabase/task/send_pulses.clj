@@ -61,7 +61,6 @@
          (catch Throwable e
            (on-error pulse-id e)))))))
 
-
 ;;; ------------------------------------------------------ Task ------------------------------------------------------
 
 (defn- monthday [dt]
@@ -105,20 +104,20 @@
 
 (defmethod task/init! ::SendPulses [_]
   (let [job     (jobs/build
-                 (jobs/of-type SendPulses)
-                 (jobs/with-identity (jobs/key send-pulses-job-key)))
+                  (jobs/of-type SendPulses)
+                  (jobs/with-identity (jobs/key send-pulses-job-key)))
         trigger (triggers/build
-                 (triggers/with-identity (triggers/key send-pulses-trigger-key))
-                 (triggers/start-now)
-                 (triggers/with-schedule
-                   (cron/schedule
+                  (triggers/with-identity (triggers/key send-pulses-trigger-key))
+                  (triggers/start-now)
+                  (triggers/with-schedule
+                    (cron/schedule
                     ;; run at the top of every hour
-                    (cron/cron-schedule "0 0 * * * ? *")
+                     (cron/cron-schedule "0 0 * * * ? *")
                     ;; If send-pulses! misfires, don't try to re-send all the misfired Pulses. Retry only the most
                     ;; recent misfire, discarding all others. This should hopefully cover cases where a misfire
                     ;; happens while the system is still running; if the system goes down for an extended period of
                     ;; time we don't want to re-send tons of (possibly duplicate) Pulses.
                     ;;
                     ;; See https://www.nurkiewicz.com/2012/04/quartz-scheduler-misfire-instructions.html
-                    (cron/with-misfire-handling-instruction-fire-and-proceed))))]
+                     (cron/with-misfire-handling-instruction-fire-and-proceed))))]
     (task/schedule-task! job trigger)))

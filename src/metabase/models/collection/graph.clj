@@ -34,7 +34,6 @@
   {:revision s/Int
    :groups   {su/IntGreaterThanZero GroupPermissionsGraph}})
 
-
 ;;; -------------------------------------------------- Fetch Graph ---------------------------------------------------
 
 (defn- group-id->permissions-set []
@@ -103,7 +102,6 @@
          non-personal-collection-ids
          (collection-permission-graph collection-namespace)))))
 
-
 ;;; -------------------------------------------------- Update Graph --------------------------------------------------
 
 (s/defn ^:private update-collection-permissions!
@@ -145,7 +143,7 @@
          new-perms          (select-keys new-perms (keys old-perms))
          ;; filter out any collections not in the old graph
          new-perms          (into {} (for [[group-id collection-id->perms] new-perms]
-                                      [group-id (select-keys collection-id->perms (keys (get old-perms group-id)))]))
+                                       [group-id (select-keys collection-id->perms (keys (get old-perms group-id)))]))
          [diff-old changes] (data/diff old-perms new-perms)]
      (perms/log-permissions-changes diff-old changes)
      (perms/check-revision-numbers old-graph new-graph)
@@ -154,4 +152,4 @@
          (doseq [[group-id changes] changes]
            (update-group-permissions! collection-namespace group-id changes))
          (perms/save-perms-revision! CollectionPermissionGraphRevision (:revision old-graph)
-                                      (assoc old-graph :namespace collection-namespace) changes))))))
+                                     (assoc old-graph :namespace collection-namespace) changes))))))

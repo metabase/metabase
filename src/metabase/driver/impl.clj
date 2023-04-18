@@ -16,9 +16,8 @@
 ;;; --------------------------------------------------- Hierarchy ----------------------------------------------------
 
 (defonce ^{:doc "Driver hierarchy. Used by driver multimethods for dispatch. Add new drivers with `register!`."}
-  hierarchy
+ hierarchy
   (make-hierarchy))
-
 
 (defonce ^{:doc "To find out whether a driver has been registered, we need to wait until any current driver-loading
   operations have finished. Otherwise we can get a \"false positive\" -- see #13114.
@@ -62,7 +61,6 @@
   [driver]
   (not (concrete? driver)))
 
-
 ;;; -------------------------------------------- Loading Driver Namespace --------------------------------------------
 
 (s/defn ^:private driver->expected-namespace [driver :- s/Keyword]
@@ -75,7 +73,7 @@
   [driver & require-options]
   (let [expected-ns (driver->expected-namespace driver)]
     (log/debug
-     (trs "Loading driver {0} {1}" (u/format-color 'blue driver) (apply list 'require expected-ns require-options)))
+      (trs "Loading driver {0} {1}" (u/format-color 'blue driver) (apply list 'require expected-ns require-options)))
     (try
       (apply classloader/require expected-ns require-options)
       (catch Throwable e
@@ -104,7 +102,6 @@
               ;; if *still* not registered, throw an Exception
               (when-not (registered? driver)
                 (throw (Exception. (tru "Driver not registered after loading: {0}" driver)))))))))))
-
 
 ;;; -------------------------------------------------- Registration --------------------------------------------------
 
@@ -154,7 +151,7 @@
         (doseq [parent parents
                 :when  (concrete? parent)]
           (throw (ex-info (trs "Abstract drivers cannot derive from concrete parent drivers.")
-                   {:driver driver, :parent parent}))))
+                          {:driver driver, :parent parent}))))
       ;; validate that the registration isn't stomping on things
       (check-abstractness-hasnt-changed driver abstract?)
       ;; ok, if that was successful we can derive the driver from `:metabase.driver/driver`/`::concrete` and parent(s)
@@ -167,14 +164,13 @@
       ;; ok, log our great success
       (log/info
        (u/format-color 'blue
-           (if (metabase.driver.impl/abstract? driver)
-             (trs "Registered abstract driver {0}" driver)
-             (trs "Registered driver {0}" driver)))
+                       (if (metabase.driver.impl/abstract? driver)
+                         (trs "Registered abstract driver {0}" driver)
+                         (trs "Registered driver {0}" driver)))
        (if (seq parents)
          (trs "(parents: {0})" (vec parents))
          "")
        (u/emoji "🚚")))))
-
 
 ;;; ------------------------------------------------- Initialization -------------------------------------------------
 
@@ -213,7 +209,6 @@
           (log/debug (trs "Reason:") (u/pprint-to-str 'blue (drop 5 (u/filtered-stacktrace (Thread/currentThread)))))
           (init-fn driver)
           (swap! initialized-drivers conj driver))))))
-
 
 ;;; ----------------------------------------------- [[truncate-alias]] -----------------------------------------------
 

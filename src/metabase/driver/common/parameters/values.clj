@@ -184,7 +184,6 @@
      {:snippet-id (:id snippet)
       :content    (:content snippet)})))
 
-
 ;;; Non-FieldFilter Params (e.g. WHERE x = {{x}})
 
 (s/defn ^:private param-value-for-raw-value-tag
@@ -218,7 +217,6 @@
 (defmethod parse-tag :date
   [tag params]
   (param-value-for-raw-value-tag tag params))
-
 
 ;;; Parsing Values
 
@@ -302,31 +300,31 @@
   base type Fields as UUIDs."
   [param-type :- mbql.s/TemplateTagType value]
   (cond
-   (= value params/no-value)
-   value
+    (= value params/no-value)
+    value
 
-   (= param-type :number)
-   (value->number value)
+    (= param-type :number)
+    (value->number value)
 
-   (= param-type :date)
-   (params/map->Date {:s value})
+    (= param-type :date)
+    (params/map->Date {:s value})
 
    ;; Field Filters
-   (and (= param-type :dimension)
-        (= (get-in value [:value :type]) :number))
-   (update-in value [:value :value] value->number)
+    (and (= param-type :dimension)
+         (= (get-in value [:value :type]) :number))
+    (update-in value [:value :value] value->number)
 
-   (sequential? value)
-   (params/map->MultipleValues {:values (for [v value]
-                                         (parse-value-for-type param-type v))})
+    (sequential? value)
+    (params/map->MultipleValues {:values (for [v value]
+                                           (parse-value-for-type param-type v))})
 
    ;; Field Filters with "special" base types
-   (and (= param-type :dimension)
-        (get-in value [:field :base_type]))
-   (update-filter-for-field-type value)
+    (and (= param-type :dimension)
+         (get-in value [:field :base_type]))
+    (update-filter-for-field-type value)
 
-   :else
-   value))
+    :else
+    value))
 
 (s/defn ^:private value-for-tag :- ParsedParamValue
   "Given a map `tag` (a value in the `:template-tags` dictionary) return the corresponding value from the `params`

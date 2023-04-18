@@ -726,9 +726,9 @@
   [table]
   (for [{:keys [id target]} (field/with-targets
                               (t2/select Field
-                                :table_id           (u/the-id table)
-                                :fk_target_field_id [:not= nil]
-                                :active             true))
+                                         :table_id           (u/the-id table)
+                                         :fk_target_field_id [:not= nil]
+                                         :active             true))
         :when (some-> target mi/can-read?)]
     (-> target field/table (assoc :link id))))
 
@@ -743,11 +743,11 @@
 (defmethod inject-root Field
   [context field]
   (let [field (assoc field
-                :link (->> context
-                           :tables
-                           (m/find-first (comp #{(:table_id field)} u/the-id))
-                           :link)
-                :engine (-> context :source source->engine))]
+                     :link (->> context
+                                :tables
+                                (m/find-first (comp #{(:table_id field)} u/the-id))
+                                :link)
+                     :engine (-> context :source source->engine))]
     (update context :dimensions
             (fn [dimensions]
               (->> dimensions
@@ -778,10 +778,10 @@
   (let [engine (source->engine source)]
     (if (mi/instance-of? Table source)
       (comp (->> (t2/select Field
-                   :table_id [:in (map u/the-id tables)]
-                   :visibility_type "normal"
-                   :preview_display true
-                   :active true)
+                            :table_id [:in (map u/the-id tables)]
+                            :visibility_type "normal"
+                            :preview_display true
+                            :active true)
                  field/with-targets
                  (map #(assoc % :engine engine))
                  (group-by :table_id))
@@ -850,7 +850,7 @@
    (-> rule
        (select-keys [:title :description :transient_title :groups])
        (cond->
-         (:comparison? root)
+        (:comparison? root)
          (update :groups (partial m/map-vals (fn [{:keys [title comparison_title] :as group}]
                                                (assoc group :title (or comparison_title title))))))
        (instantiate-metadata context {}))))
@@ -868,11 +868,11 @@
     (when (or (not-empty cards)
               (-> rule :cards nil?))
       [(assoc (make-dashboard root rule context)
-         :filters (->> rule
-                       :dashboard_filters
-                       (mapcat (comp :matches (:dimensions context)))
-                       (remove (comp (singular-cell-dimensions root) id-or-name)))
-         :cards cards)
+              :filters (->> rule
+                            :dashboard_filters
+                            (mapcat (comp :matches (:dimensions context)))
+                            (remove (comp (singular-cell-dimensions root) id-or-name)))
+              :cards cards)
        rule
        context])))
 
@@ -979,8 +979,8 @@
         num-selected (count-leafs selected)]
     (if (pos? num-selected)
       (merge-with concat
-        selected
-        (fill-related (- available-slots num-selected) selectors related))
+                  selected
+                  (fill-related (- available-slots num-selected) selectors related))
       {})))
 
 (def ^:private related-selectors
@@ -1085,7 +1085,6 @@
                                     (format "%s#show=all" (:url root)))
                :transient_filters (:query-filter context)
                :param_fields      (->> context :query-filter (filter-referenced-fields root))))))
-
 
 (defmulti automagic-analysis
   "Create a transient dashboard analyzing given entity."
@@ -1251,9 +1250,9 @@
   "Recursively finds key in coll, returns true or false"
   [coll k]
   (boolean (let [coll-zip (zip/zipper coll? #(if (map? %) (vals %) %) nil coll)]
-            (loop [x coll-zip]
-              (when-not (zip/end? x)
-                (if (k (zip/node x)) true (recur (zip/next x))))))))
+             (loop [x coll-zip]
+               (when-not (zip/end? x)
+                 (if (k (zip/node x)) true (recur (zip/next x))))))))
 
 (defn- splice-in
   [join-statement card-member]

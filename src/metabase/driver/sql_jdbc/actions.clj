@@ -144,7 +144,6 @@
   [[connection-binding database-id] & body]
   `(do-with-jdbc-transaction ~database-id (fn [~(vary-meta connection-binding assoc :tag 'Connection)] ~@body)))
 
-
 (defmulti prepare-query*
   "Multimethod for preparing a honeysql query `hsql-query` for a given action type `action`.
   `action` is a keyword like `:row/create` or `:bulk/create`; `hsql-query` is a generic
@@ -388,9 +387,9 @@
   "Given a `table-id` return a map of string Field name -> Field ID for the primary key columns for that Table."
   [table-id]
   (t2/select-fn->pk :name Field
-    {:where [:and
-             [:= :table_id table-id]
-             (mdb.u/isa :semantic_type :type/PK)]}))
+                    {:where [:and
+                             [:= :table_id table-id]
+                             (mdb.u/isa :semantic_type :type/PK)]}))
 
 (defn- row->mbql-filter-clause
   "Given [[field-name->id]] as returned by [[table-id->pk-field-name->id]] or similar and a `row` of column name to

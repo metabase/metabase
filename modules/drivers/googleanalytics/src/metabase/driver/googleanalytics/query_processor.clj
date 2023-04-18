@@ -66,13 +66,11 @@
 (defn- ga-filter ^String [& parts]
   (escape-for-filter-clause (apply str parts)))
 
-
 ;;; -------------------------------------------------- source-table --------------------------------------------------
 
 (defn- handle-source-table [{source-table-id :source-table}]
   (let [{source-table-name :name} (qp.store/table source-table-id)]
     {:ids (str "ga:" source-table-name)}))
-
 
 ;;; -------------------------------------------------- aggregation ---------------------------------------------------
 
@@ -81,9 +79,7 @@
   (when (seq ags)
     {:metrics (str/join "," (mbql.u/match ags [:metric (metric-name :guard string?)] metric-name))}))
 
-
 ;;; ---------------------------------------------------- breakout ----------------------------------------------------
-
 
 (defn- unit->ga-dimension
   [unit]
@@ -111,7 +107,6 @@
 
                                    _
                                    (->rvalue &match)))))})
-
 
 ;;; ----------------------------------------------------- filter -----------------------------------------------------
 
@@ -290,14 +285,12 @@
   [[_ field x]]
   (->date-range (field->unit field) := x))
 
-
 ;; MBQL :between is INCLUSIVE just like SQL !!!
 (defmethod parse-filter:interval :between
   [[_ field min-val max-val]]
   (merge
    (parse-filter:interval [:>= field min-val])
    (parse-filter:interval [:<= field max-val])))
-
 
 ;;; Compound filters
 
@@ -360,11 +353,10 @@
   [{filter-clause :filter}]
   (or (when filter-clause
         (add-start-end-dates
-          (parse-filter:interval
-            (normalize-datetime-units
-              (remove-non-datetime-filter-clauses filter-clause)))))
+         (parse-filter:interval
+          (normalize-datetime-units
+           (remove-non-datetime-filter-clauses filter-clause)))))
       {:start-date earliest-date, :end-date latest-date}))
-
 
 ;;; ------------------------------------------- filter (built-in segments) -------------------------------------------
 
@@ -381,7 +373,6 @@
   [inner-query]
   (when-let [built-in-segment (built-in-segment inner-query)]
     {:segment built-in-segment}))
-
 
 ;;; ---------------------------------------------------- order-by ----------------------------------------------------
 
@@ -403,7 +394,6 @@
                               (->rvalue &match)))))
                 (remove str/blank?)
                 (str/join ","))}))
-
 
 ;;; ----------------------------------------------------- limit ------------------------------------------------------
 

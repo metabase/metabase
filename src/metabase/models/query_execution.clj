@@ -23,8 +23,8 @@
   (assoc query-execution :row_count (or result_rows 0)))
 
 (mi/define-methods
- QueryExecution
- {:types       (constantly {:json_query :json, :status :keyword, :context :keyword})
-  :pre-insert  pre-insert
-  :pre-update  (fn [& _] (throw (Exception. (tru "You cannot update a QueryExecution!"))))
-  :post-select post-select})
+  QueryExecution
+  {:types       (constantly {:json_query :json, :status :keyword, :context :keyword})
+   :pre-insert  pre-insert
+   :pre-update  (fn [& _] (throw (Exception. (tru "You cannot update a QueryExecution!"))))
+   :post-select post-select})

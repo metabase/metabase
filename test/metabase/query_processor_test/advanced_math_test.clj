@@ -42,7 +42,6 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
     (is (= 2.0 (test-math-expression [:abs -2])))))
 
-
 (deftest ^:parallel test-power
   (mt/test-drivers (mt/normal-drivers-with-feature :advanced-math-expressions)
     (is (= 4.0 (test-math-expression [:power 2.0 2])))
@@ -60,7 +59,6 @@
 (deftest ^:parallel test-log
   (mt/test-drivers (mt/normal-drivers-with-feature :advanced-math-expressions)
     (is (= 1.0 (test-math-expression [:log 10.0])))))
-
 
 (deftest ^:parallel test-filter
   (mt/test-drivers (mt/normal-drivers-with-feature :advanced-math-expressions)
@@ -80,7 +78,7 @@
         (is (= expected
                (ffirst
                 (mt/formatted-rows [1.0]
-                  (mt/process-query query))))))))
+                                   (mt/process-query query))))))))
   (when (driver/database-supports? driver/*driver* :expression-aggregations (mt/db))
     (testing "Inside an expression aggregation"
       (let [query (mt/mbql-query venues
@@ -89,7 +87,7 @@
           (is (= (+ expected 1.0)
                  (ffirst
                   (mt/formatted-rows [1.0]
-                    (mt/process-query query))))))))))
+                                     (mt/process-query query))))))))))
 
 ;;; there is a test for standard deviation itself
 ;;; in [[metabase.query-processor-test.aggregation-test/standard-deviation-test]]

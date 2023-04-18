@@ -109,9 +109,9 @@
   [{:keys [entity url] :as _link-card}]
   (let [url-link-card? (some? url)]
     {:text (str (format
-                  "### [%s](%s)"
-                  (if url-link-card? url (:name entity))
-                  (if url-link-card? url (link-card-entity->url entity)))
+                 "### [%s](%s)"
+                 (if url-link-card? url (:name entity))
+                 (if url-link-card? url (link-card-entity->url entity)))
                 (when-let [description (if url-link-card? nil (:description entity))]
                   (format "\n%s" description)))}))
 
@@ -131,8 +131,8 @@
       (some? (:entity link-card))
       (let [{:keys [model id]} (:entity link-card)
             instance           (t2/select-one
-                                 (serdes/link-card-model->toucan-model model)
-                                 (dashboard-card/link-card-info-query-for-model model id))]
+                                (serdes/link-card-model->toucan-model model)
+                                (dashboard-card/link-card-info-query-for-model model id))]
         (when (mi/can-read? instance)
           (link-card->text (assoc link-card :entity instance)))))))
 
@@ -322,7 +322,7 @@
   (let [goal-comparison      (if alert_above_goal >= <)
         goal-val             (ui-logic/find-goal-value first-result)
         comparison-col-rowfn (ui-logic/make-goal-comparison-rowfn (:card first-result)
-                                                            (get-in first-result [:result :data]))]
+                                                                  (get-in first-result [:result :data]))]
 
     (when-not (and goal-val comparison-col-rowfn)
       (throw (ex-info (tru "Unable to compare results to goal for alert.")
@@ -332,7 +332,6 @@
      (some (fn [row]
              (goal-comparison (comparison-col-rowfn row) goal-val))
            (get-in first-result [:result :data :rows])))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         Creating Notifications To Send                                         |
@@ -456,7 +455,6 @@
                                   :when result]
                               result))))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             Sending Notifications                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -538,12 +536,12 @@
      :sender (retry/decorate send-notification! retry)}))
 
 (defonce
-  ^{:private true
-    :doc "Stores the current retry state. Updated whenever the notification
+ ^{:private true
+   :doc "Stores the current retry state. Updated whenever the notification
   retry settings change.
   It starts with value `nil` but is set whenever the settings change or when
   the first call with retry is made. (See #22790 for more details.)"}
-  retry-state
+ retry-state
   (atom nil))
 
 (defn- reconfigure-retrying [_old-value _new-value]

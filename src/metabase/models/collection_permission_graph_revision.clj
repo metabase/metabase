@@ -8,11 +8,11 @@
 (models/defmodel CollectionPermissionGraphRevision :collection_permission_graph_revision)
 
 (mi/define-methods
- CollectionPermissionGraphRevision
- {:types      (constantly {:before :json
-                           :after  :json})
-  :properties (constantly {::mi/created-at-timestamped? true})
-  :pre-update (fn [& _] (throw (Exception. (tru "You cannot update a CollectionPermissionGraphRevision!"))))})
+  CollectionPermissionGraphRevision
+  {:types      (constantly {:before :json
+                            :after  :json})
+   :properties (constantly {::mi/created-at-timestamped? true})
+   :pre-update (fn [& _] (throw (Exception. (tru "You cannot update a CollectionPermissionGraphRevision!"))))})
 
 (defn latest-id
   "Return the ID of the newest `CollectionPermissionGraphRevision`, or zero if none have been made yet.

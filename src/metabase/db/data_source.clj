@@ -20,29 +20,29 @@
   (pretty [_]
     ;; in dev we can actually print out the details, it's useful in debugging. Everywhere else we should obscure them
     ;; because they're potentially sensitive.
-    (if config/is-dev?
-      (list `->DataSource url properties)
-      (list `->DataSource (symbol "#_REDACTED") (symbol "#_REDACTED"))))
+          (if config/is-dev?
+            (list `->DataSource url properties)
+            (list `->DataSource (symbol "#_REDACTED") (symbol "#_REDACTED"))))
 
   javax.sql.DataSource
   (getConnection [_]
-    (update-h2/update-if-needed url)
-    (if properties
-      (DriverManager/getConnection url properties)
-      (DriverManager/getConnection url)))
+                 (update-h2/update-if-needed url)
+                 (if properties
+                   (DriverManager/getConnection url properties)
+                   (DriverManager/getConnection url)))
 
   ;; we don't use (.getConnection this url user password) so we don't need to implement it.
   (getConnection [_ _user _password]
-    (throw (UnsupportedOperationException. "Use (.getConnection this) instead.")))
+                 (throw (UnsupportedOperationException. "Use (.getConnection this) instead.")))
 
   Object
   (equals [_ another]
-    (and (instance? DataSource another)
-         (= (.url ^DataSource another) url)
-         (= (.properties ^DataSource another) properties)))
+          (and (instance? DataSource another)
+               (= (.url ^DataSource another) url)
+               (= (.properties ^DataSource another) properties)))
 
   (toString [this]
-    (pr-str (pretty/pretty this))))
+            (pr-str (pretty/pretty this))))
 
 (alter-meta! #'->DataSource assoc :private true)
 

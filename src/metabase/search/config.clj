@@ -111,10 +111,10 @@
 
 (def ^:private dashboardcard-count-col
   "Subselect to get the count of associated DashboardCards"
-   [{:select [:%count.*]
-     :from   [:report_dashboardcard]
-     :where  [:= :report_dashboardcard.card_id :card.id]}
-    :dashboardcard_count])
+  [{:select [:%count.*]
+    :from   [:report_dashboardcard]
+    :where  [:= :report_dashboardcard.card_id :card.id]}
+   :dashboardcard_count])
 
 (def ^:private table-columns
   "Columns containing information about the Table this model references. Returned for Metrics and Segments."

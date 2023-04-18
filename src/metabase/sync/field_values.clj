@@ -121,4 +121,4 @@
   (sync-util/sync-operation :cache-field-values database (format "Cache field values in %s"
                                                                  (sync-util/name-for-logging database))
     (let [tables (sync-util/db->sync-tables database)]
-     (sync-util/run-sync-operation "field values scanning" database (make-sync-field-values-steps tables)))))
+      (sync-util/run-sync-operation "field values scanning" database (make-sync-field-values-steps tables)))))

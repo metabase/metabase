@@ -52,7 +52,6 @@
                   :height      height
                   :frameborder 0}]))
 
-
 ;;; ----------------------------------------------- EMBEDDING UTIL FNS -----------------------------------------------
 
 (setting/defsetting embedding-secret-key
@@ -61,7 +60,7 @@
   :setter (fn [new-value]
             (when (seq new-value)
               (assert (u/hexadecimal-string? new-value)
-                (tru "Invalid embedding-secret-key! Secret key must be a hexadecimal-encoded 256-bit key (i.e., a 64-character string).")))
+                      (tru "Invalid embedding-secret-key! Secret key must be a hexadecimal-encoded 256-bit key (i.e., a 64-character string).")))
             (setting/set-value-of-type! :string :embedding-secret-key new-value)))
 
 (defn- jwt-header

@@ -257,8 +257,8 @@
 
           (testing "Test that we can update a sandbox using the permission graph API"
             (let [sandbox-id (t2/select-one-fn :id GroupTableAccessPolicy
-                                                  :table_id table-id-1
-                                                  :group_id group-id)
+                                               :table_id table-id-1
+                                               :group_id group-id)
                   graph      (-> (perms/data-perms-graph)
                                  (assoc :sandboxes [{:id                   sandbox-id
                                                      :card_id              card-id-2
@@ -274,8 +274,8 @@
 
           (testing "Test that we can create and update multiple sandboxes at once using the permission graph API"
             (let [sandbox-id (t2/select-one-fn :id GroupTableAccessPolicy
-                                                  :table_id table-id-1
-                                                  :group_id group-id)
+                                               :table_id table-id-1
+                                               :group_id group-id)
                   graph       (-> (perms/data-perms-graph)
                                   (assoc-in [:groups group-id (mt/id) :data :schemas "PUBLIC" table-id-2 :query] :segmented)
                                   (assoc :sandboxes [{:id                   sandbox-id

@@ -105,7 +105,7 @@
     (let [idp (sso-settings/jwt-identity-provider-uri)
           return-to-param (if (str/includes? idp "?") "&return_to=" "?return_to=")]
       (response/redirect (str idp (when redirect
-                                   (str return-to-param redirect)))))))
+                                    (str return-to-param redirect)))))))
 
 (defmethod sso.i/sso-post :jwt
   [_]

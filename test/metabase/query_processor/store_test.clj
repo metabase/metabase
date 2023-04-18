@@ -8,8 +8,8 @@
     (let [eval-count   (atom 0)
           cached-value (fn []
                          (qp.store/cached :value
-                                          (swap! eval-count inc)
-                                          :ok))]
+                           (swap! eval-count inc)
+                           :ok))]
       (qp.store/with-store
         (cached-value)
         (cached-value)
@@ -22,8 +22,8 @@
     (let [eval-count   (atom 0)
           cached-value (fn []
                          (qp.store/cached :value
-                                          (swap! eval-count inc)
-                                          :ok))]
+                           (swap! eval-count inc)
+                           :ok))]
       (qp.store/with-store
         (cached-value)
         (qp.store/with-store
@@ -38,8 +38,8 @@
     (let [eval-count   (atom 0)
           cached-value (fn [x]
                          (qp.store/cached x
-                                          (swap! eval-count inc)
-                                          x))]
+                           (swap! eval-count inc)
+                           x))]
       (qp.store/with-store
         (cached-value :a)
         (cached-value :b)

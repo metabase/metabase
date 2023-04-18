@@ -65,7 +65,6 @@
 (defn- save-failed-query-execution! [query-execution message]
   (save-query-execution! (assoc query-execution :error (str message))))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                   Middleware                                                   |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -138,13 +137,13 @@
                 (add-and-save-execution-info-xform! execution-info (rff metadata)))
               (raisef* [^Throwable e context]
                 (save-failed-query-execution!
-                  execution-info
-                  (or
-                    (some-> e (.getCause) (.getMessage))
-                    (.getMessage e)))
+                 execution-info
+                 (or
+                  (some-> e (.getCause) (.getMessage))
+                  (.getMessage e)))
                 (raisef (ex-info (.getMessage e)
-                          {:query-execution execution-info}
-                          e)
+                                 {:query-execution execution-info}
+                                 e)
                         context))]
         (try
           (qp query rff* (assoc context :raisef raisef*))

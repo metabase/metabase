@@ -127,13 +127,11 @@
    show_in_getting_started (s/maybe s/Bool)}
   (update-tables! ids body))
 
-
 (def ^:private auto-bin-str (deferred-tru "Auto bin"))
 (def ^:private dont-bin-str (deferred-tru "Don''t bin"))
 (def ^:private minute-str (deferred-tru "Minute"))
 (def ^:private hour-str (deferred-tru "Hour"))
 (def ^:private day-str (deferred-tru "Day"))
-
 
 ;; note the order of these options corresponds to the order they will be shown to the user in the UI
 (def ^:private time-options
@@ -420,7 +418,7 @@
   [id]
   (let [{:keys [database_id] :as card} (t2/select-one [Card :id :dataset_query :result_metadata :name :description
                                                        :collection_id :database_id]
-                                         :id id)
+                                                      :id id)
         moderated-status              (->> (mdb.query/query {:select   [:status]
                                                              :from     [:moderation_review]
                                                              :where    [:and
@@ -429,7 +427,7 @@
                                                                         [:= :most_recent true]]
                                                              :order-by [[:id :desc]]
                                                              :limit    1}
-                                                            :id id)
+                                             :id id)
                                            first :status)]
     (-> (assoc card :moderated_status moderated-status)
         api/read-check

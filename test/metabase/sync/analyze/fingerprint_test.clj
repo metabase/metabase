@@ -27,7 +27,6 @@
   (is (= #{"type/ImageURL" "type/AvatarURL"}
          (#'fingerprint/base-types->descendants #{:type/ImageURL :type/AvatarURL}))))
 
-
 ;; Make sure we generate the correct HoneySQL WHERE clause based on whatever is in
 ;; `fingerprint-version->types-that-should-be-re-fingerprinted`
 (deftest honeysql-for-fields-that-need-fingerprint-updating-test
@@ -124,7 +123,6 @@
            (binding [fingerprint/*refingerprint?* true]
              (#'fingerprint/honeysql-for-fields-that-need-fingerprint-updating))))))
 
-
 ;; Make sure that the above functions are used correctly to determine which Fields get (re-)fingerprinted
 (defn- field-was-fingerprinted? {:style/indent 0} [fingerprint-versions field-properties]
   (let [fingerprinted? (atom false)]
@@ -152,10 +150,10 @@
 
   (testing "field is a substype of newer fingerprint version, but it is a subtype of :type/Structured"
     (doseq [base-type (descendants :type/Structured)]
-     (is (= [default-stat-map false]
-            (field-was-fingerprinted?
-             {2 #{:type/Structured}}
-             {:base_type base-type, :fingerprint_version 1})))))
+      (is (= [default-stat-map false]
+             (field-was-fingerprinted?
+               {2 #{:type/Structured}}
+               {:base_type base-type, :fingerprint_version 1})))))
 
   (testing "field is *not* a subtype of newer fingerprint version"
     (is (= [default-stat-map false]
@@ -224,7 +222,6 @@
                (field-was-fingerprinted?
                  {1 #{:type/Text}}
                  {:base_type :type/Text, :fingerprint_version 1})))))))
-
 
 (deftest fingerprint-table!-test
   (testing "the `fingerprint!` function is correctly updating the correct columns of Field"

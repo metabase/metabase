@@ -30,13 +30,13 @@
                                   (mt/mbql-query checkins
                                     {:aggregation [[:count]]
                                      :breakout    [!month.date]}))
-                                 [:img _])))))
+                 [:img _])))))
 
 (deftest render-error-test
   (testing "gives us a proper error if we have erroring card"
     (is (= (get-in (render/render-pulse-card-for-display
-                     nil nil
-                     {:error "some error"}) [1 2 4 2 2])
+                    nil nil
+                    {:error "some error"}) [1 2 4 2 2])
            "There was a problem with this question."))))
 
 (deftest detect-pulse-chart-type-test
@@ -93,12 +93,12 @@
                                             :rows [[6]]}))))
   (testing "Various Single-Series display-types return correct chart-types."
     (mapv #(is (= %
-                 (render/detect-pulse-chart-type {:display %}
-                                                 {}
-                                                 {:cols [{:base_type :type/Text}
-                                                         {:base_type :type/Number}]
-                                                  :rows [["A" 2]
-                                                         ["B" 3]]})))
+                  (render/detect-pulse-chart-type {:display %}
+                                                  {}
+                                                  {:cols [{:base_type :type/Text}
+                                                          {:base_type :type/Number}]
+                                                   :rows [["A" 2]
+                                                          ["B" 3]]})))
           [:line :area :bar :combo :funnel :progress :table :waterfall]))
   (testing "Pie charts are correctly identified and return `:categorical/donut`."
     (is (= :categorical/donut
@@ -122,17 +122,17 @@
                                               :rows [[#t "2020" 2]
                                                      [#t "2021" 3]]}))))
     (is (= :multiple
-         (mt/with-temp* [Card                [card1 {:display :line}]
-                         Card                [card2 {:display :funnel}]
-                         Dashboard           [dashboard]
-                         DashboardCard       [dc1 {:dashboard_id (u/the-id dashboard) :card_id (u/the-id card1)}]
-                         DashboardCardSeries [_   {:dashboardcard_id (u/the-id dc1) :card_id (u/the-id card2)}]]
-           (render/detect-pulse-chart-type card1
-                                           dc1
-                                           {:cols [{:base_type :type/Temporal}
-                                                   {:base_type :type/Number}]
-                                            :rows [[#t "2020" 2]
-                                                   [#t "2021" 3]]}))))))
+           (mt/with-temp* [Card                [card1 {:display :line}]
+                           Card                [card2 {:display :funnel}]
+                           Dashboard           [dashboard]
+                           DashboardCard       [dc1 {:dashboard_id (u/the-id dashboard) :card_id (u/the-id card1)}]
+                           DashboardCardSeries [_   {:dashboardcard_id (u/the-id dc1) :card_id (u/the-id card2)}]]
+             (render/detect-pulse-chart-type card1
+                                             dc1
+                                             {:cols [{:base_type :type/Temporal}
+                                                     {:base_type :type/Number}]
+                                              :rows [[#t "2020" 2]
+                                                     [#t "2021" 3]]}))))))
 
 (deftest make-description-if-needed-test
   (testing "Use Visualization Settings's description if it exists"

@@ -20,7 +20,7 @@
 (p.types/defrecord+ FieldFilter [field value]
   pretty/PrettyPrintable
   (pretty [this]
-    (list (pretty/qualify-symbol-for-*ns* `map->FieldFilter) (into {} this))))
+          (list (pretty/qualify-symbol-for-*ns* `map->FieldFilter) (into {} this))))
 
 (defn FieldFilter?
   "Is `x` an instance of the `FieldFilter` record type?"
@@ -38,7 +38,7 @@
 (p.types/defrecord+ ReferencedCardQuery [card-id query params]
   pretty/PrettyPrintable
   (pretty [this]
-    (list (pretty/qualify-symbol-for-*ns* `map->ReferencedCardQuery) (into {} this))))
+          (list (pretty/qualify-symbol-for-*ns* `map->ReferencedCardQuery) (into {} this))))
 
 (defn ReferencedCardQuery?
   "Is `x` an instance of the `ReferencedCardQuery` record type?"
@@ -54,7 +54,7 @@
 (p.types/defrecord+ ReferencedQuerySnippet [snippet-id content]
   pretty/PrettyPrintable
   (pretty [this]
-    (list (pretty/qualify-symbol-for-*ns* `map->ReferencedQuerySnippet) (into {} this))))
+          (list (pretty/qualify-symbol-for-*ns* `map->ReferencedQuerySnippet) (into {} this))))
 
 (defn ReferencedQuerySnippet?
   "Is `x` an instance of the `ReferencedQuerySnippet` record type?"
@@ -67,12 +67,12 @@
 (p.types/defrecord+ Date [^String s]
   pretty/PrettyPrintable
   (pretty [_]
-    (list (pretty/qualify-symbol-for-*ns* `->Date) s)))
+          (list (pretty/qualify-symbol-for-*ns* `->Date) s)))
 
 (p.types/defrecord+ DateRange [start end]
   pretty/PrettyPrintable
   (pretty [_]
-    (list (pretty/qualify-symbol-for-*ns* `->DateRange) start end)))
+          (list (pretty/qualify-symbol-for-*ns* `->DateRange) start end)))
 
 ;; List of numbers to faciliate things like using params in a SQL `IN` clause. This is supported by both regular
 ;; filter clauses (e.g. `IN ({{ids}})` and in field filters. Field filters also support sequences of values other than
@@ -83,7 +83,7 @@
 (p.types/defrecord+ CommaSeparatedNumbers [numbers]
   pretty/PrettyPrintable
   (pretty [_]
-    (list (pretty/qualify-symbol-for-*ns* `->CommaSeparatedNumbers) numbers)))
+          (list (pretty/qualify-symbol-for-*ns* `->CommaSeparatedNumbers) numbers)))
 
 (def no-value
   "Convenience for representing an *optional* parameter present in a query but whose value is unspecified in the param
@@ -105,17 +105,17 @@
 (p.types/defrecord+ MultipleValues [values]
   pretty/PrettyPrintable
   (pretty [_]
-    (list (pretty/qualify-symbol-for-*ns* `->MultipleValues) values)))
+          (list (pretty/qualify-symbol-for-*ns* `->MultipleValues) values)))
 
 (p.types/defrecord+ Param [k]
   pretty/PrettyPrintable
   (pretty [_]
-    (list (pretty/qualify-symbol-for-*ns* `->Param) k)))
+          (list (pretty/qualify-symbol-for-*ns* `->Param) k)))
 
 (p.types/defrecord+ Optional [args]
   pretty/PrettyPrintable
   (pretty [_]
-    (cons (pretty/qualify-symbol-for-*ns* `->Optional) args)))
+          (cons (pretty/qualify-symbol-for-*ns* `->Optional) args)))
 
 ;; `Param?` and `Optional?` exist mostly so you don't have to try to import the classes from this namespace which can
 ;; cause problems if the ns isn't loaded first

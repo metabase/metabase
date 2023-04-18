@@ -51,8 +51,8 @@
 
 ;; for GTAPs
 (models/add-type! ::attribute-remappings
-  :in  (comp mi/json-in normalize-attribute-remapping-targets)
-  :out (comp normalize-attribute-remapping-targets mi/json-out-without-keywordization))
+                  :in  (comp mi/json-in normalize-attribute-remapping-targets)
+                  :out (comp normalize-attribute-remapping-targets mi/json-out-without-keywordization))
 
 (defn table-field-names->cols
   "Return a mapping of field names to corresponding cols for given table."
@@ -162,7 +162,7 @@
         (check-columns-match-table updated)))))
 
 (mi/define-methods
- GroupTableAccessPolicy
- {:types      (constantly {:attribute_remappings ::attribute-remappings})
-  :pre-insert pre-insert
-  :pre-update pre-update})
+  GroupTableAccessPolicy
+  {:types      (constantly {:attribute_remappings ::attribute-remappings})
+   :pre-insert pre-insert
+   :pre-update pre-update})

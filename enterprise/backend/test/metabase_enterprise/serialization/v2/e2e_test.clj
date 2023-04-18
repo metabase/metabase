@@ -25,9 +25,9 @@
    [reifyhealth.specmonstah.core :as rs]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
- (:import
-  (java.io File)
-  (java.nio.file Path)))
+  (:import
+   (java.io File)
+   (java.nio.file Path)))
 
 (set! *warn-on-reflection* true)
 
@@ -97,9 +97,9 @@
     (assoc refs :database_id (keyword (str "db" (quot table-number 10))))))
 
 (defn- clean-entity
- "Removes any comparison-confounding fields, like `:created_at`."
- [entity]
- (dissoc entity :created_at :result_metadata))
+  "Removes any comparison-confounding fields, like `:created_at`."
+  [entity]
+  (dissoc entity :created_at :result_metadata))
 
 (deftest e2e-storage-ingestion-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
@@ -111,116 +111,116 @@
         (ts/with-source-db
           (testing "insert"
             (test-gen/insert!
-              {;; Actions are special case where there is a 1:1 relationship between an action and an action subtype (query, implicit, or http)
+             {;; Actions are special case where there is a 1:1 relationship between an action and an action subtype (query, implicit, or http)
                ;; We generate 10 actions for each subtype, and 10 of each subtype.
                ;; actions 0-9 are query actions, 10-19 are implicit actions, and 20-29 are http actions.
-               :action                  (apply concat
-                                               (for [type [:query :implicit :http]]
-                                                 (many-random-fks 10
-                                                                  {:spec-gen {:type type}}
-                                                                  {:model_id   [:sm 10]
-                                                                   :creator_id [:u 10]})))
-               :query-action            (map-indexed
-                                         (fn [idx x]
-                                           (assoc-in x [1 :refs :action_id] (keyword (str "action" idx))))
-                                         (many-random-fks 10 {} {:database_id [:db 10]}))
-               :implicit-action         (map-indexed
-                                         (fn [idx x]
-                                           (update-in x [1 :refs]
-                                                      (fn [refs]
-                                                        (assoc refs :action_id (keyword (str "action" (+ 10 idx)))))))
-                                         (many-random-fks 10 {} {}))
-               :http-action             (map-indexed
-                                         (fn [idx x]
-                                           (update-in x [1 :refs]
-                                                      (fn [refs]
-                                                        (assoc refs :action_id (keyword (str "action" (+ 20 idx)))))))
-                                         (many-random-fks 10 {} {}))
-               :collection              [[100 {:refs     {:personal_owner_id ::rs/omit}}]
-                                         [10  {:refs     {:personal_owner_id ::rs/omit}
-                                               :spec-gen {:namespace :snippets}}]]
-               :database                [[10]]
+              :action                  (apply concat
+                                              (for [type [:query :implicit :http]]
+                                                (many-random-fks 10
+                                                                 {:spec-gen {:type type}}
+                                                                 {:model_id   [:sm 10]
+                                                                  :creator_id [:u 10]})))
+              :query-action            (map-indexed
+                                        (fn [idx x]
+                                          (assoc-in x [1 :refs :action_id] (keyword (str "action" idx))))
+                                        (many-random-fks 10 {} {:database_id [:db 10]}))
+              :implicit-action         (map-indexed
+                                        (fn [idx x]
+                                          (update-in x [1 :refs]
+                                                     (fn [refs]
+                                                       (assoc refs :action_id (keyword (str "action" (+ 10 idx)))))))
+                                        (many-random-fks 10 {} {}))
+              :http-action             (map-indexed
+                                        (fn [idx x]
+                                          (update-in x [1 :refs]
+                                                     (fn [refs]
+                                                       (assoc refs :action_id (keyword (str "action" (+ 20 idx)))))))
+                                        (many-random-fks 10 {} {}))
+              :collection              [[100 {:refs     {:personal_owner_id ::rs/omit}}]
+                                        [10  {:refs     {:personal_owner_id ::rs/omit}
+                                              :spec-gen {:namespace :snippets}}]]
+              :database                [[10]]
                ;; Tables are special - we define table 0-9 under db0, 10-19 under db1, etc. The :card spec below
                ;; depends on this relationship.
-               :table                   (into [] (for [db [:db0 :db1 :db2 :db3 :db4 :db5 :db6 :db7 :db8 :db9]]
-                                                   [10 {:refs {:db_id db}}]))
-               :field                   (many-random-fks 1000 {} {:table_id [:t 100]})
-               :core-user               [[100]]
-               :card                    (mapv #(update-in % [1 :refs] table->db)
-                                              (many-random-fks
-                                               100
-                                               {:spec-gen {:dataset_query {:database 1
-                                                                           :query {:source-table 3
-                                                                                   :aggregation [[:count]]
-                                                                                   :breakout [[:field 16 nil]]}
-                                                                           :type :query}
-                                                           :dataset       true}}
-                                               {:table_id      [:t    100]
-                                                :collection_id [:coll 100]
-                                                :creator_id    [:u    10]}))
+              :table                   (into [] (for [db [:db0 :db1 :db2 :db3 :db4 :db5 :db6 :db7 :db8 :db9]]
+                                                  [10 {:refs {:db_id db}}]))
+              :field                   (many-random-fks 1000 {} {:table_id [:t 100]})
+              :core-user               [[100]]
+              :card                    (mapv #(update-in % [1 :refs] table->db)
+                                             (many-random-fks
+                                              100
+                                              {:spec-gen {:dataset_query {:database 1
+                                                                          :query {:source-table 3
+                                                                                  :aggregation [[:count]]
+                                                                                  :breakout [[:field 16 nil]]}
+                                                                          :type :query}
+                                                          :dataset       true}}
+                                              {:table_id      [:t    100]
+                                               :collection_id [:coll 100]
+                                               :creator_id    [:u    10]}))
                ;; Simple model is primary used for actions.
                ;; We can't use :card for actions because implicit actions require the model's query to contain
                ;; nothing but a source table
-               :simple-model            (mapv #(update-in % [1 :refs] table->db)
-                                               (many-random-fks
-                                                10
-                                                {:spec-gen {:dataset_query {:database 1
-                                                                            :query {:source-table 3}
-                                                                            :type :query}
-                                                            :dataset       true}}
-                                                {:table_id      [:t    10]
-                                                 :collection_id [:coll 10]
-                                                 :creator_id    [:u    10]}))
-               :dashboard               (concat (many-random-fks 100 {} {:collection_id [:coll 100]
-                                                                         :creator_id    [:u    10]})
+              :simple-model            (mapv #(update-in % [1 :refs] table->db)
+                                             (many-random-fks
+                                              10
+                                              {:spec-gen {:dataset_query {:database 1
+                                                                          :query {:source-table 3}
+                                                                          :type :query}
+                                                          :dataset       true}}
+                                              {:table_id      [:t    10]
+                                               :collection_id [:coll 10]
+                                               :creator_id    [:u    10]}))
+              :dashboard               (concat (many-random-fks 100 {} {:collection_id [:coll 100]
+                                                                        :creator_id    [:u    10]})
                                                 ;; create some root collection dashboards
-                                                (many-random-fks 50 {} {:creator_id    [:u 10]}))
-               :dashboard-card          (many-random-fks 300 {} {:card_id      [:c 100]
-                                                                 :dashboard_id [:d 100]})
-               :dimension               (vec (concat
+                                               (many-random-fks 50 {} {:creator_id    [:u 10]}))
+              :dashboard-card          (many-random-fks 300 {} {:card_id      [:c 100]
+                                                                :dashboard_id [:d 100]})
+              :dimension               (vec (concat
                                                ;; 20 with both IDs set
-                                              (many-random-fks 20 {}
-                                                               {:field_id                [:field 1000]
-                                                                :human_readable_field_id [:field 1000]})
+                                             (many-random-fks 20 {}
+                                                              {:field_id                [:field 1000]
+                                                               :human_readable_field_id [:field 1000]})
                                                ;; 20 with just :field_id
-                                              (many-random-fks 20 {:refs {:human_readable_field_id ::rs/omit}}
-                                                               {:field_id [:field 1000]})))
-               :metric                  (many-random-fks 30 {:spec-gen {:definition {:aggregation  [[:count]]
-                                                                                     :source-table 9}}}
-                                                         {:table_id   [:t 100]
-                                                          :creator_id [:u 10]})
-               :segment                 (many-random-fks 30 {:spec-gen {:definition {:filter [:!= [:field 60 nil] 50],
-                                                                                     :source-table 4}}}
-                                                         {:table_id   [:t 100]
-                                                          :creator_id [:u 10]})
-               :native-query-snippet    (many-random-fks 10 {} {:creator_id    [:u 10]
-                                                                :collection_id [:coll 10 100]})
-               :timeline                (many-random-fks 10 {} {:creator_id    [:u 10]
-                                                                :collection_id [:coll 100]})
-               :timeline-event          (many-random-fks 90 {} {:timeline_id   [:timeline 10]})
-               :pulse                   (vec (concat
+                                             (many-random-fks 20 {:refs {:human_readable_field_id ::rs/omit}}
+                                                              {:field_id [:field 1000]})))
+              :metric                  (many-random-fks 30 {:spec-gen {:definition {:aggregation  [[:count]]
+                                                                                    :source-table 9}}}
+                                                        {:table_id   [:t 100]
+                                                         :creator_id [:u 10]})
+              :segment                 (many-random-fks 30 {:spec-gen {:definition {:filter [:!= [:field 60 nil] 50],
+                                                                                    :source-table 4}}}
+                                                        {:table_id   [:t 100]
+                                                         :creator_id [:u 10]})
+              :native-query-snippet    (many-random-fks 10 {} {:creator_id    [:u 10]
+                                                               :collection_id [:coll 10 100]})
+              :timeline                (many-random-fks 10 {} {:creator_id    [:u 10]
+                                                               :collection_id [:coll 100]})
+              :timeline-event          (many-random-fks 90 {} {:timeline_id   [:timeline 10]})
+              :pulse                   (vec (concat
                                                ;; 10 classic pulses, from collections
-                                              (many-random-fks 10 {} {:collection_id [:coll 100]})
+                                             (many-random-fks 10 {} {:collection_id [:coll 100]})
                                                ;; 10 classic pulses, no collection
-                                              (many-random-fks 10 {:refs {:collection_id ::rs/omit}} {})
+                                             (many-random-fks 10 {:refs {:collection_id ::rs/omit}} {})
                                                ;; 10 dashboard subs
-                                              (many-random-fks 10 {:refs {:collection_id ::rs/omit}}
-                                                               {:dashboard_id  [:d 100]})))
-               :pulse-card              (vec (concat
+                                             (many-random-fks 10 {:refs {:collection_id ::rs/omit}}
+                                                              {:dashboard_id  [:d 100]})))
+              :pulse-card              (vec (concat
                                                ;; 60 pulse cards for the classic pulses
-                                              (many-random-fks 60 {} {:card_id       [:c 100]
-                                                                      :pulse_id      [:pulse 10]})
+                                             (many-random-fks 60 {} {:card_id       [:c 100]
+                                                                     :pulse_id      [:pulse 10]})
                                                ;; 60 pulse cards connected to dashcards for the dashboard subs
-                                              (many-random-fks 60 {} {:card_id           [:c 100]
-                                                                      :pulse_id          [:pulse 10 20]
-                                                                      :dashboard_card_id [:dc 300]})))
-               :pulse-channel           (vec (concat
+                                             (many-random-fks 60 {} {:card_id           [:c 100]
+                                                                     :pulse_id          [:pulse 10 20]
+                                                                     :dashboard_card_id [:dc 300]})))
+              :pulse-channel           (vec (concat
                                                ;; 15 channels for the classic pulses
-                                              (many-random-fks 15 {} {:pulse_id  [:pulse 10]})
+                                             (many-random-fks 15 {} {:pulse_id  [:pulse 10]})
                                                ;; 15 channels for the dashboard subs
-                                              (many-random-fks 15 {} {:pulse_id  [:pulse 10 20]})))
-               :pulse-channel-recipient (many-random-fks 40 {} {:pulse_channel_id [:pulse-channel 30]
-                                                                :user_id          [:u 100]})}))
+                                             (many-random-fks 15 {} {:pulse_id  [:pulse 10 20]})))
+              :pulse-channel-recipient (many-random-fks 40 {} {:pulse_channel_id [:pulse-channel 30]
+                                                               :user_id          [:u 100]})}))
 
           (is (= 100 (count (t2/select-fn-set :email 'User))))
 
@@ -585,17 +585,17 @@
                         {:model "dataset"    :id model-eid}]
                        (dashboard->link-cards extracted-dashboard)))
 
-               (is (= #{[{:id dash-eid          :model "Dashboard"}]
-                        [{:id coll-eid          :model "Collection"}]
-                        [{:id model-eid         :model "Card"}]
-                        [{:id card-eid          :model "Card"}]
-                        [{:id "Linked database" :model "Database"}]
-                        [{:model "Database" :id "Linked database"}
-                         {:model "Schema"   :id "Public"}
-                         {:model "Table"    :id "Linked table"}]}
-                    (set (serdes/dependencies extracted-dashboard))))
+                (is (= #{[{:id dash-eid          :model "Dashboard"}]
+                         [{:id coll-eid          :model "Collection"}]
+                         [{:id model-eid         :model "Card"}]
+                         [{:id card-eid          :model "Card"}]
+                         [{:id "Linked database" :model "Database"}]
+                         [{:model "Database" :id "Linked database"}
+                          {:model "Schema"   :id "Public"}
+                          {:model "Table"    :id "Linked table"}]}
+                       (set (serdes/dependencies extracted-dashboard))))
 
-               (storage/store! (seq extraction) dump-dir)))
+                (storage/store! (seq extraction) dump-dir)))
 
             (testing "ingest and load"
               ;; ingest
@@ -611,7 +611,7 @@
                          [model-name 'Card]
                          [dash-name  'Dashboard]]]
                   (testing (format "model %s from link cards are loaded properly" model)
-                   (is (some? (t2/select model :name name)))))
+                    (is (some? (t2/select model :name name)))))
 
                 (testing "linkcards are loaded with correct fk"
                   (let [new-db-id    (t2/select-one-pk Database :name db-name)

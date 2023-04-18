@@ -35,47 +35,47 @@
         dt-field (lib/field "USERS" "LAST_LOGIN")
         #_#_boolean-field (lib/->= 1 (lib/field "VENUES" "CATEGORY_ID"))]
     (doseq [[expr typ] (partition-all
-                         2
-                         [(lib/+ 1.1 2 int-field) :type/Number
-                          (lib/- 1.1 2 int-field) :type/Number
-                          (lib/* 1.1 2 int-field) :type/Number
-                          (lib// 1.1 2 int-field) :type/Float
-                          #_#_(lib/case boolean-field int-field boolean-field int-field) :type/Integer
-                          (lib/coalesce string-field "abc") :type/Text
-                          (lib/abs int-field) :type/Integer
-                          (lib/log int-field) :type/Float
-                          (lib/exp int-field) :type/Float
-                          (lib/sqrt int-field) :type/Float
-                          (lib/ceil float-field) :type/Integer
-                          (lib/floor float-field) :type/Integer
-                          (lib/round float-field) :type/Integer
-                          (lib/power int-field float-field) :type/Float
-                          (lib/interval 1 :month) :type/Integer ;; Need an interval type
-                          #_#_(lib/relative-datetime "2020-01-01" :default) :type/DateTime
-                          (lib/time "08:00:00" :hour) :type/Time
-                          #_#_(lib/absolute-datetime "2020-01-01" :default) :type/DateTimeWithTZ
-                          (lib/now) :type/DateTimeWithTZ
-                          (lib/convert-timezone dt-field "US/Pacific" "US/Eastern") :type/DateTime
-                          #_#_(lib/get-week dt-field :iso) :type/Integer
-                          (lib/get-year dt-field) :type/Integer
-                          (lib/get-month dt-field) :type/Integer
-                          (lib/get-day dt-field) :type/Integer
-                          (lib/get-hour dt-field) :type/Integer
-                          (lib/get-minute dt-field) :type/Integer
-                          (lib/get-second dt-field) :type/Integer
-                          (lib/get-quarter dt-field) :type/Integer
-                          (lib/datetime-add dt-field 1 :month) :type/DateTime
-                          (lib/datetime-subtract dt-field 1 :month) :type/DateTime
-                          #_#_(lib/concat string-field "abc") :type/Text
-                          (lib/substring string-field 0 10) :type/Text
-                          (lib/replace string-field "abc" "def") :type/Text
-                          (lib/regexextract string-field "abc") :type/Text
-                          (lib/length string-field) :type/Integer
-                          (lib/trim string-field) :type/Text
-                          (lib/rtrim string-field) :type/Text
-                          (lib/ltrim string-field) :type/Text
-                          (lib/upper string-field) :type/Text
-                          (lib/lower string-field) :type/Text])]
+                        2
+                        [(lib/+ 1.1 2 int-field) :type/Number
+                         (lib/- 1.1 2 int-field) :type/Number
+                         (lib/* 1.1 2 int-field) :type/Number
+                         (lib// 1.1 2 int-field) :type/Float
+                         #_#_(lib/case boolean-field int-field boolean-field int-field) :type/Integer
+                         (lib/coalesce string-field "abc") :type/Text
+                         (lib/abs int-field) :type/Integer
+                         (lib/log int-field) :type/Float
+                         (lib/exp int-field) :type/Float
+                         (lib/sqrt int-field) :type/Float
+                         (lib/ceil float-field) :type/Integer
+                         (lib/floor float-field) :type/Integer
+                         (lib/round float-field) :type/Integer
+                         (lib/power int-field float-field) :type/Float
+                         (lib/interval 1 :month) :type/Integer ;; Need an interval type
+                         #_#_(lib/relative-datetime "2020-01-01" :default) :type/DateTime
+                         (lib/time "08:00:00" :hour) :type/Time
+                         #_#_(lib/absolute-datetime "2020-01-01" :default) :type/DateTimeWithTZ
+                         (lib/now) :type/DateTimeWithTZ
+                         (lib/convert-timezone dt-field "US/Pacific" "US/Eastern") :type/DateTime
+                         #_#_(lib/get-week dt-field :iso) :type/Integer
+                         (lib/get-year dt-field) :type/Integer
+                         (lib/get-month dt-field) :type/Integer
+                         (lib/get-day dt-field) :type/Integer
+                         (lib/get-hour dt-field) :type/Integer
+                         (lib/get-minute dt-field) :type/Integer
+                         (lib/get-second dt-field) :type/Integer
+                         (lib/get-quarter dt-field) :type/Integer
+                         (lib/datetime-add dt-field 1 :month) :type/DateTime
+                         (lib/datetime-subtract dt-field 1 :month) :type/DateTime
+                         #_#_(lib/concat string-field "abc") :type/Text
+                         (lib/substring string-field 0 10) :type/Text
+                         (lib/replace string-field "abc" "def") :type/Text
+                         (lib/regexextract string-field "abc") :type/Text
+                         (lib/length string-field) :type/Integer
+                         (lib/trim string-field) :type/Text
+                         (lib/rtrim string-field) :type/Text
+                         (lib/ltrim string-field) :type/Text
+                         (lib/upper string-field) :type/Text
+                         (lib/lower string-field) :type/Text])]
       (testing (str "expression: " (pr-str expr))
         (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
                         (lib/expression "myexpr" expr))

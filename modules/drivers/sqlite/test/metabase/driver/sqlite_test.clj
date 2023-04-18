@@ -183,34 +183,34 @@
                      "2021-08-25T04:18:24Z"]] ; DATETIME
                    (qp.test/rows
                     (mt/run-mbql-query datetime_table
-                                       {:fields [$col_timestamp $col_date $col_datetime]
-                                        :filter [:= $test_case "epoch"]})))))
+                      {:fields [$col_timestamp $col_date $col_datetime]
+                       :filter [:= $test_case "epoch"]})))))
           (testing "select datetime stored as string with milliseconds"
             (is (= [["2021-08-25T04:18:24.111Z"   ; TIMESTAMP (raw string)
                      "2021-08-25T04:18:24.111Z"]] ; DATETIME
                    (qp.test/rows
                     (mt/run-mbql-query datetime_table
-                                       {:fields [$col_timestamp $col_datetime]
-                                        :filter [:= $test_case "iso8601-ms"]})))))
+                      {:fields [$col_timestamp $col_datetime]
+                       :filter [:= $test_case "iso8601-ms"]})))))
           (testing "select datetime stored as string without milliseconds"
             (is (= [["2021-08-25T04:18:24Z"   ; TIMESTAMP (raw string)
                      "2021-08-25T04:18:24Z"]] ; DATETIME
                    (qp.test/rows
                     (mt/run-mbql-query datetime_table
-                                       {:fields [$col_timestamp $col_datetime]
-                                        :filter [:= $test_case "iso8601-no-ms"]})))))
+                      {:fields [$col_timestamp $col_datetime]
+                       :filter [:= $test_case "iso8601-no-ms"]})))))
           (testing "select date stored as string without time"
             (is (= [["2021-08-25T00:00:00Z"]] ; DATE
                    (qp.test/rows
                     (mt/run-mbql-query datetime_table
-                                       {:fields [$col_date]
-                                        :filter [:= $test_case "iso8601-no-time"]})))))
+                      {:fields [$col_date]
+                       :filter [:= $test_case "iso8601-no-time"]})))))
           (testing "select NULL"
             (is (= [[nil nil nil]]
                    (qp.test/rows
                     (mt/run-mbql-query datetime_table
-                                       {:fields [$col_timestamp $col_date $col_datetime]
-                                        :filter [:= $test_case "null"]}))))))))))
+                      {:fields [$col_timestamp $col_date $col_datetime]
+                       :filter [:= $test_case "null"]}))))))))))
 
 (deftest duplicate-identifiers-test
   (testing "Make sure duplicate identifiers (even with different cases) get unique aliases"

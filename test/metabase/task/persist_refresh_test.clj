@@ -114,7 +114,6 @@
                                  :key (format "metabase.task.PersistenceRefresh.database.trigger.%d" (u/the-id db-2))}}
                (job-info db-1 db-2)))))))
 
-
 (deftest refresh-tables!'-test
   (mt/with-model-cleanup [TaskHistory]
     (mt/with-temp* [Database [db {:options {:persist-models-enabled true}}]

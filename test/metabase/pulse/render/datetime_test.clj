@@ -70,7 +70,7 @@
                                                          :effective_type :type/Date}
                                               {::mb.viz/column-settings
                                                {{::mb.viz/column-name "created_at"} col-viz}}))]
-      (doseq [[ date-style normal-result abbreviated-result]
+      (doseq [[date-style normal-result abbreviated-result]
               [["MMMM D, YYYY" "July 16, 2020" "Jul 16, 2020"]
                ["D MMMM, YYYY" "16 July, 2020" "16 Jul, 2020"]
                ["dddd, MMMM D, YYYY" "Thursday, July 16, 2020" "Thu, Jul 16, 2020"] ;; Render datetimes with Day of Week option. (#27105)
@@ -88,7 +88,7 @@
                                                          :effective_type :type/Date}
                                               {::mb.viz/column-settings
                                                {{::mb.viz/column-name "created_at"} col-viz}}))]
-      (doseq [[ date-style slash-result dash-result dot-result]
+      (doseq [[date-style slash-result dash-result dot-result]
               [["M/D/YYYY" "7/16/2020" "7-16-2020" "7.16.2020"]
                ["D/M/YYYY" "16/7/2020" "16-7-2020" "16.7.2020"]
                ["YYYY/M/D" "2020/7/16" "2020-7-16" "2020.7.16"]
@@ -105,10 +105,10 @@
                (fmt {::mb.viz/date-style "M/D/YYYY"}))))))
   (testing "Custom Formatting options are respected as defaults."
     (mt/with-temporary-setting-values [custom-formatting {:type/Temporal {:date_style "MMMM D, YYYY"
-                                                                                  :date_abbreviate true}}]
+                                                                          :date_abbreviate true}}]
       (is (= "Jul 16, 2020"
              (datetime/format-temporal-str "UTC" now nil nil))))
     (mt/with-temporary-setting-values [custom-formatting {:type/Temporal {:date_style "M/DD/YYYY"
-                                                                                    :date_separator "-"}}]
+                                                                          :date_separator "-"}}]
       (is (= "7-16-2020"
              (datetime/format-temporal-str "UTC" now nil nil))))))

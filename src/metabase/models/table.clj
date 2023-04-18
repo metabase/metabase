@@ -32,13 +32,11 @@
                     `:type/Temporal`s, and from there on in alphabetical order."
   #{:database :alphabetical :custom :smart})
 
-
 (models/defmodel Table :metabase_table)
 
 (doto Table
   (derive ::mi/read-policy.full-perms-for-perms-set)
   (derive ::mi/write-policy.full-perms-for-perms-set))
-
 
 ;;; --------------------------------------------------- Lifecycle ----------------------------------------------------
 
@@ -68,19 +66,18 @@
       :write (perms/data-model-write-perms-path db-id schema table-id))})
 
 (mi/define-methods
- Table
- {:hydration-keys (constantly [:table])
-  :types          (constantly {:entity_type     :keyword
-                               :visibility_type :keyword
-                               :field_order     :keyword})
-  :properties     (constantly {::mi/timestamped? true})
-  :pre-insert     pre-insert
-  :pre-delete     pre-delete})
+  Table
+  {:hydration-keys (constantly [:table])
+   :types          (constantly {:entity_type     :keyword
+                                :visibility_type :keyword
+                                :field_order     :keyword})
+   :properties     (constantly {::mi/timestamped? true})
+   :pre-insert     pre-insert
+   :pre-delete     pre-delete})
 
 (defmethod serdes/hash-fields Table
   [_table]
   [:schema :name (serdes/hydrated-hash :db)])
-
 
 ;;; ------------------------------------------------ Field ordering -------------------------------------------------
 
@@ -113,8 +110,8 @@
   "Field ordering is valid if all the fields from a given table are present and only from that table."
   [table field-ordering]
   (= (t2/select-pks-set Field
-       :table_id (u/the-id table)
-       :active   true)
+                        :table_id (u/the-id table)
+                        :active   true)
      (set field-ordering)))
 
 (defn custom-order-fields!
@@ -123,11 +120,10 @@
   {:pre [(valid-field-order? table field-order)]}
   (t2/update! Table (u/the-id table) {:field_order :custom})
   (doall
-    (map-indexed (fn [position field-id]
-                   (t2/update! Field field-id {:position        position
-                                               :custom_position position}))
-                 field-order)))
-
+   (map-indexed (fn [position field-id]
+                  (t2/update! Field field-id {:position        position
+                                              :custom_position position}))
+                field-order)))
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
@@ -136,19 +132,19 @@
   "Return the Fields belonging to a single `table`."
   [{:keys [id]}]
   (t2/select Field
-    :table_id        id
-    :active          true
-    :visibility_type [:not= "retired"]
-    {:order-by field-order-rule}))
+             :table_id        id
+             :active          true
+             :visibility_type [:not= "retired"]
+             {:order-by field-order-rule}))
 
 (mi/define-simple-hydration-method ^{:arglists '([table])} field-values
   :field_values
   "Return the FieldValues for all Fields belonging to a single `table`."
   [{:keys [id]}]
   (let [field-ids (t2/select-pks-set Field
-                    :table_id        id
-                    :visibility_type "normal"
-                    {:order-by field-order-rule})]
+                                     :table_id        id
+                                     :visibility_type "normal"
+                                     {:order-by field-order-rule})]
     (when (seq field-ids)
       (t2/select-fn->fn :field_id :values FieldValues, :field_id [:in field-ids]))))
 
@@ -157,9 +153,9 @@
   "Return the ID of the primary key `Field` for `table`."
   [{:keys [id]}]
   (t2/select-one-pk Field
-    :table_id        id
-    :semantic_type   (mdb.u/isa :type/PK)
-    :visibility_type [:not-in ["sensitive" "retired"]]))
+                    :table_id        id
+                    :semantic_type   (mdb.u/isa :type/PK)
+                    :visibility_type [:not-in ["sensitive" "retired"]]))
 
 (defn- with-objects [hydration-key fetch-objects-fn tables]
   (let [table-ids         (set (map :id tables))
@@ -192,10 +188,10 @@
   (with-objects :fields
     (fn [table-ids]
       (t2/select Field
-        :active          true
-        :table_id        [:in table-ids]
-        :visibility_type [:not= "retired"]
-        {:order-by       field-order-rule}))
+                 :active          true
+                 :table_id        [:in table-ids]
+                 :visibility_type [:not= "retired"]
+                 {:order-by       field-order-rule}))
     tables))
 
 ;;; ------------------------------------------------ Convenience Fns -------------------------------------------------

@@ -37,25 +37,25 @@
 (defmethod task/init! ::RefreshSlackChannelsAndUsers
   [_]
   (let [job     (jobs/build
-                 (jobs/of-type RefreshCache)
-                 (jobs/with-identity (jobs/key job-key)))
+                  (jobs/of-type RefreshCache)
+                  (jobs/with-identity (jobs/key job-key)))
         trigger (triggers/build
-                 (triggers/with-identity (triggers/key trigger-key))
-                 (triggers/with-schedule
-                   (cron/schedule
-                    (cron/cron-schedule
+                  (triggers/with-identity (triggers/key trigger-key))
+                  (triggers/with-schedule
+                    (cron/schedule
+                     (cron/cron-schedule
                      ;; run every 4 hours at a random minute:
-                     (format "0 %d 0/4 1/1 * ? *" (rand-int 60)))
-                    (cron/with-misfire-handling-instruction-do-nothing)))
+                      (format "0 %d 0/4 1/1 * ? *" (rand-int 60)))
+                     (cron/with-misfire-handling-instruction-do-nothing)))
 
-                 (triggers/start-now))
+                  (triggers/start-now))
         startup-job     (jobs/build
-                         (jobs/of-type RefreshCacheOnStartup)
-                         (jobs/with-identity (jobs/key startup-job-key)))
+                          (jobs/of-type RefreshCacheOnStartup)
+                          (jobs/with-identity (jobs/key startup-job-key)))
         startup-trigger (triggers/build
-                         (triggers/with-identity (triggers/key startup-trigger-key))
-                         (triggers/with-schedule
-                           (simple/schedule (simple/with-interval-in-seconds 60)))
-                         (triggers/start-now))]
+                          (triggers/with-identity (triggers/key startup-trigger-key))
+                          (triggers/with-schedule
+                            (simple/schedule (simple/with-interval-in-seconds 60)))
+                          (triggers/start-now))]
     (task/schedule-task! job trigger)
     (task/schedule-task! startup-job startup-trigger)))

@@ -22,11 +22,11 @@
               ["Wurstküche"]
               ["Brite Spot Family Restaurant"]]
              (mt/rows
-               (qp/process-query
-                {:database    (mt/id)
-                 :type        :native
-                 :native      (native-query)
-                 :constraints {:max-results 5}})))))
+              (qp/process-query
+               {:database    (mt/id)
+                :type        :native
+                :native      (native-query)
+                :constraints {:max-results 5}})))))
 
     (testing (str "does it also work when running via `process-query-and-save-with-max-results-constraints!`, the "
                   "function that powers endpoints like `POST /api/dataset`?")
@@ -36,12 +36,12 @@
               ["Wurstküche"]
               ["Brite Spot Family Restaurant"]]
              (mt/rows
-               (qp/process-query-and-save-with-max-results-constraints!
-                {:database    (mt/id)
-                 :type        :native
-                 :native      (native-query)
-                 :constraints {:max-results 5}}
-                {:context :question})))))))
+              (qp/process-query-and-save-with-max-results-constraints!
+               {:database    (mt/id)
+                :type        :native
+                :native      (native-query)
+                :constraints {:max-results 5}}
+               {:context :question})))))))
 
 (deftest override-limit-test
   (mt/test-drivers (mt/normal-drivers)
@@ -50,10 +50,10 @@
               ["Stout Burgers & Beers"]
               ["The Apple Pan"]]
              (mt/rows
-               (qp/process-query
-                (-> (mbql-query)
-                    (assoc-in [:query :limit] 10)
-                    (assoc :constraints {:max-results 3})))))))
+              (qp/process-query
+               (-> (mbql-query)
+                   (assoc-in [:query :limit] 10)
+                   (assoc :constraints {:max-results 3})))))))
 
     (testing "However if `:limit` is lower than `:constraints` we should not return more than the `:limit`"
       (is (= [["Red Medicine"]
@@ -62,7 +62,7 @@
               ["Wurstküche"]
               ["Brite Spot Family Restaurant"]]
              (mt/rows
-               (qp/process-query
-                (-> (mbql-query)
-                    (assoc-in [:query :limit] 5)
-                    (assoc :constraints {:max-results 10})))))))))
+              (qp/process-query
+               (-> (mbql-query)
+                   (assoc-in [:query :limit] 5)
+                   (assoc :constraints {:max-results 10})))))))))

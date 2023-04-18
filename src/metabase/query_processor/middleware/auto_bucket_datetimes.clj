@@ -39,7 +39,7 @@
    (when-let [field-ids (seq (filter integer? (map second unbucketed-fields)))]
      (into {} (for [{id :id, :as field}
                     (t2/select [Field :id :base_type :effective_type :semantic_type]
-                      :id [:in (set field-ids)])]
+                               :id [:in (set field-ids)])]
                 [id (set/rename-keys (select-keys field
                                                   [:base_type :effective_type :semantic_type])
                                      {:base_type      :base-type

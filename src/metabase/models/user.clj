@@ -75,20 +75,20 @@
     (binding [perms-group-membership/*allow-changing-all-users-group-members* true]
       (log/info (trs "Adding User {0} to All Users permissions group..." user-id))
       (t2/insert! PermissionsGroupMembership
-        :user_id  user-id
-        :group_id (:id (perms-group/all-users))))
+                  :user_id  user-id
+                  :group_id (:id (perms-group/all-users))))
     (when superuser?
       (log/info (trs "Adding User {0} to Admin permissions group..." user-id))
       (t2/insert! PermissionsGroupMembership
-        :user_id  user-id
-        :group_id (:id (perms-group/admin))))))
+                  :user_id  user-id
+                  :group_id (:id (perms-group/admin))))))
 
 (defn- pre-update
   [{reset-token :reset_token, superuser? :is_superuser, active? :is_active, :keys [email id locale], :as user}]
   ;; when `:is_superuser` is toggled add or remove the user from the 'Admin' group as appropriate
   (let [in-admin-group?  (t2/exists? PermissionsGroupMembership
-                           :group_id (:id (perms-group/admin))
-                           :user_id  id)]
+                                     :group_id (:id (perms-group/admin))
+                                     :user_id  id)]
     ;; Do not let the last admin archive themselves
     (when (and in-admin-group?
                (false? active?))
@@ -105,8 +105,8 @@
         (and (not superuser?)
              in-admin-group?)
         (t2/delete! (t2/table-name PermissionsGroupMembership)
-          :group_id (u/the-id (perms-group/admin))
-          :user_id  id))))
+                    :group_id (u/the-id (perms-group/admin))
+                    :user_id  id))))
   ;; make sure email and locale are valid if set
   (when email
     (assert (u/email? email)))
@@ -154,16 +154,16 @@
   (into non-admin-or-self-visible-columns [:is_superuser :last_login]))
 
 (mi/define-methods
- User
- {:default-fields (constantly default-user-columns)
-  :hydration-keys (constantly [:author :creator :user])
-  :properties     (constantly {::mi/updated-at-timestamped? true})
-  :pre-insert     pre-insert
-  :post-insert    post-insert
-  :pre-update     pre-update
-  :post-select    post-select
-  :types          (constantly {:login_attributes :json-no-keywordization
-                               :settings         :encrypted-json})})
+  User
+  {:default-fields (constantly default-user-columns)
+   :hydration-keys (constantly [:author :creator :user])
+   :properties     (constantly {::mi/updated-at-timestamped? true})
+   :pre-insert     pre-insert
+   :post-insert    post-insert
+   :pre-update     pre-update
+   :post-select    post-select
+   :types          (constantly {:login_attributes :json-no-keywordization
+                                :settings         :encrypted-json})})
 
 (defmethod serdes/hash-fields User
   [_user]
@@ -233,7 +233,7 @@
   [users]
   (when (seq users)
     (let [user-id->memberships (group-by :user_id (t2/select [PermissionsGroupMembership :user_id :group_id]
-                                                    :user_id [:in (set (map u/the-id users))]))]
+                                                             :user_id [:in (set (map u/the-id users))]))]
       (for [user users]
         (assoc user :group_ids (set (map :group_id (user-id->memberships (u/the-id user)))))))))
 
@@ -387,12 +387,12 @@
         [to-remove to-add] (data/diff old-group-ids new-group-ids)]
     (when (seq (concat to-remove to-add))
       (t2/with-transaction [_conn]
-       (when (seq to-remove)
-         (t2/delete! PermissionsGroupMembership :user_id user-id, :group_id [:in to-remove]))
+        (when (seq to-remove)
+          (t2/delete! PermissionsGroupMembership :user_id user-id, :group_id [:in to-remove]))
        ;; a little inefficient, but we need to do a separate `insert!` for each group we're adding membership to,
        ;; because `insert-many!` does not currently trigger methods such as `pre-insert`. We rely on those methods to
        ;; do things like automatically set the `is_superuser` flag for a User
        ;; TODO use multipel insert here
-       (doseq [group-id to-add]
-         (t2/insert! PermissionsGroupMembership {:user_id user-id, :group_id group-id}))))
+        (doseq [group-id to-add]
+          (t2/insert! PermissionsGroupMembership {:user_id user-id, :group_id group-id}))))
     true))

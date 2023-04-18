@@ -11,25 +11,25 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
     (is (= [[0.94]]
            (mt/formatted-rows [2.0]
-             (mt/run-mbql-query venues
-               {:aggregation [[:share [:< $price 4]]]}))))
+                              (mt/run-mbql-query venues
+                                {:aggregation [[:share [:< $price 4]]]}))))
 
     (testing "Normalization"
       (is (= [[0.94]]
              (mt/formatted-rows [2.0]
-               (mt/run-mbql-query venues
-                 {:aggregation [["share" ["<" ["field-id" (mt/id :venues :price)] 4]]]})))))
+                                (mt/run-mbql-query venues
+                                  {:aggregation [["share" ["<" ["field-id" (mt/id :venues :price)] 4]]]})))))
 
     (testing "Complex filter clauses"
       (is (= [[0.17]]
              (mt/formatted-rows [2.0]
-               (mt/run-mbql-query venues
-                 {:aggregation [[:share
-                                 [:and
-                                  [:< $price 4]
-                                  [:or
-                                   [:starts-with $name "M"]
-                                   [:ends-with $name "t"]]]]]})))))
+                                (mt/run-mbql-query venues
+                                  {:aggregation [[:share
+                                                  [:and
+                                                   [:< $price 4]
+                                                   [:or
+                                                    [:starts-with $name "M"]
+                                                    [:ends-with $name "t"]]]]]})))))
 
     (testing "empty results"
       ;; Vertica doesn't allow dividing null by zero
@@ -39,7 +39,7 @@
              clojure.lang.ExceptionInfo #"Division by zero"
              (mt/run-mbql-query venues
                {:aggregation [[:share [:< $price 4]]]
-               :filter      [:> $price Long/MAX_VALUE]})))
+                :filter      [:> $price Long/MAX_VALUE]})))
         ;; due to a bug in the Mongo counts are returned as empty when there are no results (#5419)
         (is (= (if (= driver/*driver* :mongo)
                  []
@@ -57,8 +57,8 @@
                                                             :filter       [:< [:field (mt/id :venues :price) nil] 4]}}]
         (is (= [[0.94]]
                (mt/formatted-rows [2.0]
-                 (mt/run-mbql-query venues
-                   {:aggregation [[:share [:segment segment-id]]]}))))))
+                                  (mt/run-mbql-query venues
+                                    {:aggregation [[:share [:segment segment-id]]]}))))))
 
     (testing "Share inside a Metric"
       (mt/with-temp Metric [{metric-id :id} {:table_id   (mt/id :venues)
@@ -66,8 +66,8 @@
                                                           :aggregation  [:share [:< [:field (mt/id :venues :price) nil] 4]]}}]
         (is (= [[0.94]]
                (mt/formatted-rows [2.0]
-                 (mt/run-mbql-query venues
-                   {:aggregation [[:metric metric-id]]}))))))))
+                                  (mt/run-mbql-query venues
+                                    {:aggregation [[:metric metric-id]]}))))))))
 
 (deftest expressions-test
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations :expressions)
@@ -77,13 +77,13 @@
               [4 0.5]
               [5 0.14]]
              (mt/formatted-rows [int 2.0]
-               (mt/run-mbql-query venues
-                 {:aggregation [[:share [:< $price 2]]]
-                  :breakout    [[:field $category_id nil]]
-                  :limit       4})))))
+                                (mt/run-mbql-query venues
+                                  {:aggregation [[:share [:< $price 2]]]
+                                   :breakout    [[:field $category_id nil]]
+                                   :limit       4})))))
 
     (testing "Share inside an expression"
       (is (= [[1.47]]
              (mt/formatted-rows [2.0]
-               (mt/run-mbql-query venues
-                 {:aggregation [[:+ [:/ [:share [:< $price 4]] 2] 1]]})))))))
+                                (mt/run-mbql-query venues
+                                  {:aggregation [[:+ [:/ [:share [:< $price 4]] 2] 1]]})))))))

@@ -36,7 +36,7 @@
     :user-login}) ; this is only used these days the first time someone logs in to record 'user-joined' events
 
 (defonce ^:private ^{:doc "Channel for receiving event notifications we want to subscribe to for the activity feed."}
-  activity-feed-channel
+ activity-feed-channel
   (a/chan))
 
 ;;; ------------------------------------------------ EVENT PROCESSING ------------------------------------------------
@@ -160,7 +160,6 @@
       (process-activity! (keyword (events/topic->model topic)) topic object))
     (catch Throwable e
       (log/warn e (trs "Failed to process activity event {0}" (pr-str (:topic activity-event)))))))
-
 
 ;;; --------------------------------------------------- LIFECYCLE ----------------------------------------------------
 

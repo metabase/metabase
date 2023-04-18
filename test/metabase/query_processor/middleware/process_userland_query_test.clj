@@ -23,12 +23,12 @@
                                                                       (when (java.util.Arrays/equals qe-hash original-hash)
                                                                         (deliver result query-execution))))]
         (run
-          (fn qe-result* []
-            (let [qe (deref result 1000 ::timed-out)]
-              (cond-> qe
-                (:running_time qe) (update :running_time int?)
-                (:hash qe)         (update :hash (fn [^bytes a-hash]
-                                                   (some-> a-hash codecs/bytes->hex)))))))))))
+         (fn qe-result* []
+           (let [qe (deref result 1000 ::timed-out)]
+             (cond-> qe
+               (:running_time qe) (update :running_time int?)
+               (:hash qe)         (update :hash (fn [^bytes a-hash]
+                                                  (some-> a-hash codecs/bytes->hex)))))))))))
 
 (defmacro ^:private with-query-execution {:style/indent 1} [[qe-result-binding query] & body]
   `(do-with-query-execution ~query (fn [~qe-result-binding] ~@body)))

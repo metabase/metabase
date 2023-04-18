@@ -94,8 +94,6 @@
               (is (= false
                      (mi/can-write? card))))))))))
 
-
-
 ;;; ----------------------------------------------- native read perms ------------------------------------------------
 
 (defn- native [query]
@@ -107,7 +105,6 @@
   (is (= #{"/db/1/native/"}
          (query-perms/perms-set
           (native "SELECT count(*) FROM toucan_sightings;")))))
-
 
 ;;; ------------------------------------------------- MBQL w/o JOIN --------------------------------------------------
 
@@ -144,7 +141,6 @@
              :type     :query
              :database (mt/id)})))))
 
-
 ;;; -------------------------------------------------- MBQL w/ JOIN --------------------------------------------------
 
 (deftest mbql-query-with-join-test
@@ -154,7 +150,6 @@
            (query-perms/perms-set
             (mt/mbql-query checkins
               {:order-by [[:asc $checkins.venue_id->venues.name]]}))))))
-
 
 ;;; ------------------------------------------- MBQL w/ nested MBQL query --------------------------------------------
 
@@ -180,7 +175,6 @@
              (query-perms/perms-set
               (query-with-source-card card)))))))
 
-
 ;;; ----------------------------------- MBQL w/ nested MBQL query including a JOIN -----------------------------------
 
 (deftest nested-query-with-join-test
@@ -194,7 +188,6 @@
       (is (= #{"/collection/root/read/"}
              (query-perms/perms-set
               (query-with-source-card card)))))))
-
 
 ;;; ------------------------------------------ MBQL w/ nested NATIVE query -------------------------------------------
 
@@ -217,7 +210,6 @@
              :query    {:source-query {:native "SELECT * FROM CHECKINS"}}}
             :throw-exceptions? true)))))
 
-
 ;;; --------------------------------------------- invalid/legacy queries ---------------------------------------------
 
 (deftest ^:parallel invalid-queries-test
@@ -227,7 +219,6 @@
              (query-perms/perms-set
               (mt/mbql-query venues
                 {:filter [:WOW 100 200]})))))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                   JOINS 2.0                                                    |

@@ -73,12 +73,12 @@
     (let [group-ids           (qp.store/cached *current-user-id*
                                 (t2/select-fn-set :group_id PermissionsGroupMembership :user_id *current-user-id*))
           sandboxes           (when (seq group-ids)
-                               (t2/select GroupTableAccessPolicy :group_id [:in group-ids]
-                                 :table_id [:in table-ids]))
+                                (t2/select GroupTableAccessPolicy :group_id [:in group-ids]
+                                           :table_id [:in table-ids]))
           enforced-sandboxes (mt.api.u/enforced-sandboxes sandboxes group-ids)]
-       (when (seq enforced-sandboxes)
-         (assert-one-gtap-per-table enforced-sandboxes)
-         enforced-sandboxes))))
+      (when (seq enforced-sandboxes)
+        (assert-one-gtap-per-table enforced-sandboxes)
+        enforced-sandboxes))))
 
 (defn- query->table-id->gtap [query]
   {:pre [(some? *current-user-id*)]}
@@ -232,7 +232,6 @@
       (qp.store/fetch-and-store-fields! field-ids))
     (assoc source-query :source-metadata metadata)))
 
-
 (s/defn ^:private gtap->source :- {:source-query                     s/Any
                                    (s/optional-key :source-metadata) [mbql.s/SourceQueryMetadata]
                                    s/Keyword                         s/Any}
@@ -252,8 +251,8 @@
   (->>
    (for [target-field-clause (vals attribute-remappings)]
      (mbql.u/match-one target-field-clause
-                       [:field (field-id :guard integer?) _]
-                       (t2/select-one-fn :table_id Field :id field-id)))
+       [:field (field-id :guard integer?) _]
+       (t2/select-one-fn :table_id Field :id field-id)))
    (cons table-id)
    (remove nil?)
    set))
@@ -276,7 +275,6 @@
 
 (defn- sandboxes->perms-set [sandboxes]
   (set (mapcat sandbox->perms-set sandboxes)))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                   Middleware                                                   |
@@ -355,7 +353,6 @@
                 (apply-sandboxing gtapped-query)))
             gtapped-query)))
       query))
-
 
 ;;;; Post-processing
 

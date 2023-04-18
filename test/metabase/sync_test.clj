@@ -125,9 +125,9 @@
 
 (defn- field-defaults-with-fingerprint []
   (assoc (field-defaults)
-    :last_analyzed       true
-    :fingerprint_version true
-    :fingerprint         true))
+         :last_analyzed       true
+         :fingerprint_version true
+         :fingerprint         true))
 
 (defn- field:movie-id []
   (merge

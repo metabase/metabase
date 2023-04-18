@@ -41,7 +41,6 @@
       (cond-> query'
         (seq replaced-indecies) (assoc ::replaced-indecies replaced-indecies)))))
 
-
 ;;;; Post-processing
 
 (defn- add-values-from-last-row
@@ -50,14 +49,14 @@
     (add-values-from-last-row #{0} [100 200] [50 60]) ; -> [150 60]"
   [[index & more] last-row row]
   (cond
-   (not index)
-   row
+    (not index)
+    row
 
-   (not last-row)
-   row
+    (not last-row)
+    row
 
-   :else
-   (recur more last-row (update (vec row) index (partial (fnil + 0 0) (nth last-row index))))))
+    :else
+    (recur more last-row (update (vec row) index (partial (fnil + 0 0) (nth last-row index))))))
 
 (defn- cumulative-ags-xform [replaced-indecies rf]
   {:pre [(fn? rf)]}

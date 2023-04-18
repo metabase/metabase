@@ -89,25 +89,25 @@
               (testing "decodes settings and dashboard.details"
                 (with-open [target-conn (.getConnection (copy.h2/h2-data-source h2-file-plaintext))]
                   (is (= "baz" (:value (first (jdbc/query {:connection target-conn}
-                                                          "select \"VALUE\" from SETTING where \"KEY\"='my-site-admin';")))))
+                                                "select \"VALUE\" from SETTING where \"KEY\"='my-site-admin';")))))
                   (is (= "{\"db\":\"/tmp/test.db\"}"
                          (:details (first (jdbc/query {:connection target-conn}
-                                                      "select details from metabase_database where id=1;")))))))
+                                            "select details from metabase_database where id=1;")))))))
 
               (testing "when flag is set to false, encrypted settings and dashboard.details are still encrypted"
                 (with-open [target-conn (.getConnection (copy.h2/h2-data-source h2-file-enc))]
                   (is (not (= "baz"
                               (:value (first (jdbc/query {:connection target-conn}
-                                                         "select \"VALUE\" from SETTING where \"KEY\"='my-site-admin';"))))))
+                                               "select \"VALUE\" from SETTING where \"KEY\"='my-site-admin';"))))))
                   (is (not (= "{\"db\":\"/tmp/test.db\"}"
                               (:details (first (jdbc/query {:connection target-conn}
-                                                           "select details from metabase_database where id=1;"))))))))
+                                                 "select details from metabase_database where id=1;"))))))))
 
               (testing "defaults to not decrypting"
                 (with-open [target-conn (.getConnection (copy.h2/h2-data-source h2-file-default-enc))]
                   (is (not (= "baz"
                               (:value (first (jdbc/query {:connection target-conn}
-                                                         "select \"VALUE\" from SETTING where \"KEY\"='my-site-admin';"))))))
+                                               "select \"VALUE\" from SETTING where \"KEY\"='my-site-admin';"))))))
                   (is (not (= "{\"db\":\"/tmp/test.db\"}"
                               (:details (first (jdbc/query {:connection target-conn}
-                                                           "select details from metabase_database where id=1;")))))))))))))))
+                                                 "select details from metabase_database where id=1;")))))))))))))))

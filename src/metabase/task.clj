@@ -32,14 +32,13 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defonce ^:dynamic ^{:doc "Override the global Quartz scheduler by binding this var."}
-  *quartz-scheduler*
+ *quartz-scheduler*
   (atom nil))
 
 (defn- scheduler
   "Fetch the instance of our Quartz scheduler."
   ^Scheduler []
   @*quartz-scheduler*)
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            FINDING & LOADING TASKS                                             |
@@ -82,7 +81,6 @@
       (catch Throwable e
         (log/error e (trs "Error initializing task {0}" k))))))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                      Quartz Scheduler Connection Provider                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -109,7 +107,6 @@
 (when-not *compile-files*
   (System/setProperty "org.quartz.dataSource.db.connectionProvider.class" (.getName ConnectionProvider)))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       Quartz Scheduler Class Load Helper                                       |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -129,7 +126,6 @@
 
 (when-not *compile-files*
   (System/setProperty "org.quartz.scheduler.classLoadHelper.class" (.getName ClassLoadHelper)))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          STARTING/STOPPING SCHEDULER                                           |
@@ -176,7 +172,6 @@
   (let [[old-scheduler] (reset-vals! *quartz-scheduler* nil)]
     (when old-scheduler
       (qs/shutdown old-scheduler))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           SCHEDULING/DELETING TASKS                                            |
@@ -226,7 +221,6 @@
   [trigger-key :- TriggerKey]
   (when-let [scheduler (scheduler)]
     (qs/delete-trigger scheduler trigger-key)))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 Scheduler Info                                                 |

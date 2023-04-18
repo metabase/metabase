@@ -26,10 +26,10 @@
                 ["Lakeland"     11]]
                (mt/formatted-rows [str int]
                                   (mt/run-mbql-query sightings
-                                                     {:aggregation [[:count]]
-                                                      :breakout    [$city_id->cities.name]
-                                                      :order-by    [[:desc [:aggregation 0]]]
-                                                      :limit       10}))))))))
+                                    {:aggregation [[:count]]
+                                     :breakout    [$city_id->cities.name]
+                                     :order-by    [[:desc [:aggregation 0]]]
+                                     :limit       10}))))))))
 
 (deftest filter-by-fk-field-test
   (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys)
@@ -38,9 +38,9 @@
         ;; Number of Tupac sightings in the Expa office (he was spotted here 60 times)
         (is (= [[60]]
                (mt/formatted-rows [int]
-                 (mt/run-mbql-query sightings
-                   {:aggregation [[:count]]
-                    :filter      [:= $category_id->categories.id 8]}))))))))
+                                  (mt/run-mbql-query sightings
+                                    {:aggregation [[:count]]
+                                     :filter      [:= $category_id->categories.id 8]}))))))))
 
 (deftest fk-field-in-fields-test
   (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys)
@@ -58,10 +58,10 @@
                 [897 "Wearing a Biggie Shirt"]
                 [499 "In the Expa Office"]]
                (mt/formatted-rows [int str]
-                 (mt/run-mbql-query sightings
-                   {:fields   [$id $category_id->categories.name]
-                    :order-by [[:desc $timestamp]]
-                    :limit    10}))))))))
+                                  (mt/run-mbql-query sightings
+                                    {:fields   [$id $category_id->categories.name]
+                                     :order-by [[:desc $timestamp]]
+                                     :limit    10}))))))))
 
 (deftest join-multiple-tables-test
   (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys)
@@ -111,10 +111,10 @@
   (testing "Implicit joins should come back with `:fk->` field refs"
     (is (= (mt/$ids venues $category_id->categories.name)
            (-> (mt/cols
-                 (mt/run-mbql-query venues
-                   {:fields   [$category_id->categories.name]
-                    :order-by [[:asc $id]]
-                    :limit    1}))
+                (mt/run-mbql-query venues
+                  {:fields   [$category_id->categories.name]
+                   :order-by [[:asc $id]]
+                   :limit    1}))
                first
                :field_ref)))))
 
@@ -138,10 +138,10 @@
                 ["Peter Pelican"    5]
                 ["Ronald Raven"     1]]
                (mt/formatted-rows [str int]
-                 (mt/run-mbql-query messages
-                   {:aggregation [[:count]]
-                    :breakout    [$sender_id->users.name]
-                    :filter      [:= $receiver_id->users.name "Rasta Toucan"]}))))))))
+                                  (mt/run-mbql-query messages
+                                    {:aggregation [[:count]]
+                                     :breakout    [$sender_id->users.name]
+                                     :filter      [:= $receiver_id->users.name "Rasta Toucan"]}))))))))
 
 (deftest implicit-joins-with-expressions-test
   (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys :expressions)
@@ -166,4 +166,4 @@
                     ["Doohickey" "Google"   "2020-01-01T00:00:00Z" 0 100]
                     ["Gizmo"     "Facebook" "2019-01-01T00:00:00Z" 0 361]]
                    (mt/formatted-rows [str str str int int]
-                     (qp/process-query query))))))))))
+                                      (qp/process-query query))))))))))

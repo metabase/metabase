@@ -53,7 +53,6 @@
         (and original
              (nil? (:semantic_type original))))))
 
-
 (s/defn infer-semantic-type :- (s/maybe i/FieldInstance)
   "Do classification for `:type/Text` Fields with a valid `TextFingerprint`.
    Currently this only checks the various recorded percentages, but this is subject to change in the future."

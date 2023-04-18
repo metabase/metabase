@@ -113,8 +113,8 @@
         results       (ldap/test-ldap-connection ldap-details)]
     (if (= :SUCCESS (:status results))
       (t2/with-transaction [_conn]
-       (setting/set-many! ldap-settings)
-       (setting/set-value-of-type! :boolean :ldap-enabled (boolean (:ldap-enabled settings))))
+        (setting/set-many! ldap-settings)
+        (setting/set-value-of-type! :boolean :ldap-enabled (boolean (:ldap-enabled settings))))
       ;; test failed, return result message
       {:status 500
        :body   (humanize-error-messages results)})))

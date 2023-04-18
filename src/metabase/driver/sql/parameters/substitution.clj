@@ -94,7 +94,6 @@
   [_driver t]
   (make-stmt-subs "?" [t]))
 
-
 ;;; ------------------------------------------- ->replacement-snippet-info -------------------------------------------
 
 (def ^:private ParamSnippetInfo
@@ -161,8 +160,8 @@
     String   (u.date/parse x (qp.timezone/report-timezone-id-if-supported))
     Temporal x
     (throw (ex-info (tru "Don''t know how to parse {0} {1} as a temporal literal" (class x) (pr-str x))
-             {:type      qp.error-type/invalid-parameter
-              :parameter x}))))
+                    {:type      qp.error-type/invalid-parameter
+                     :parameter x}))))
 
 (defmethod ->replacement-snippet-info [:sql Date]
   [driver {:keys [s]}]
@@ -193,7 +192,6 @@
                            [start end])]
       {:replacement-snippet     (format "BETWEEN %s AND %s" (:sql-string start) (:sql-string end))
        :prepared-statement-args (concat (:param-values start) (:param-values end))})))
-
 
 ;;; ------------------------------------- Field Filter replacement snippet info --------------------------------------
 
@@ -305,14 +303,12 @@
     :else
     (field-filter->replacement-snippet-info driver field-filter)))
 
-
 ;;; ------------------------------------ Referenced Card replacement snippet info ------------------------------------
 
 (defmethod ->replacement-snippet-info [:sql ReferencedCardQuery]
   [_ {:keys [query params]}]
   {:prepared-statement-args (not-empty params)
    :replacement-snippet     (sql.qp/make-nestable-sql query)})
-
 
 ;;; ---------------------------------- Native Query Snippet replacement snippet info ---------------------------------
 

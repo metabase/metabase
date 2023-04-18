@@ -93,7 +93,6 @@
        form))
    query))
 
-
 ;;;; [[add-names]]
 
 (defn- field-and-table-name [field-id]
@@ -140,7 +139,6 @@
        x)
       ->sorted-mbql-query-map))
 
-
 ;;;; [[process-query-debug]]
 
 ;; see docstring for [[process-query-debug]] for descriptions of what these do.
@@ -149,7 +147,6 @@
 (def ^:private ^:dynamic *print-metadata?* false)
 (def ^:private ^:dynamic *print-names?*    true)
 (def ^:private ^:dynamic *validate-query?* false)
-
 
 (defn- remove-metadata
   "Replace field metadata in `x` with `...`."
@@ -500,7 +497,6 @@
         (if context
           (qp query context)
           (qp query))))))
-
 
 ;;;; [[to-mbql-shorthand]]
 

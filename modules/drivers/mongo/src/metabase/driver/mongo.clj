@@ -47,8 +47,8 @@
                      (.writeUTF data-output (.toHexString oid)))
 
 (nippy/extend-thaw :mongodb/ObjectId
-  [data-input]
-  (ObjectId. (.readUTF data-input)))
+                   [data-input]
+                   (ObjectId. (.readUTF data-input)))
 
 (driver/register! :mongo)
 
@@ -93,7 +93,6 @@
 
     message))
 
-
 ;;; ### Syncing
 
 (declare update-field-attrs)
@@ -135,9 +134,9 @@
       (update :types (fn [types]
                        (update types (type field-value) u/safe-inc)))
       (update :semantic-types (fn [semantic-types]
-                               (if-let [st (val->semantic-type field-value)]
-                                 (update semantic-types st u/safe-inc)
-                                 semantic-types)))
+                                (if-let [st (val->semantic-type field-value)]
+                                  (update semantic-types st u/safe-inc)
+                                  semantic-types)))
       (update :nested-fields (fn [nested-fields]
                                (if (map? field-value)
                                  (find-nested-fields field-value nested-fields)
@@ -174,10 +173,10 @@
               :database-position idx}
        (= :_id field-kw)           (assoc :pk? true)
        (:semantic-types field-info) (assoc :semantic-type (->> (:semantic-types field-info)
-                                                             (filterv #(some? (first %)))
-                                                             (sort-by second)
-                                                             last
-                                                             first))
+                                                               (filterv #(some? (first %)))
+                                                               (sort-by second)
+                                                               last
+                                                               first))
        (:nested-fields field-info) (assoc :nested-fields nested-fields)) idx-next]))
 
 (defmethod driver/dbms-version :mongo

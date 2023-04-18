@@ -44,7 +44,7 @@
     (ns-unmap *ns* 'qux)
     (mu/defn qux "Original docstring." [])
     (is (= (str/join "\n"
-                     [  "Inputs: []"
+                     ["Inputs: []"
                       "  Return: :any"
                       "          "
                       ""
@@ -59,7 +59,7 @@
     (ns-unmap *ns* 'qux)
     (mu/defn qux "Original docstring." [x :- :int] x)
     (is (= (str/join "\n"
-                     [  "Inputs: [x :- :int]"
+                     ["Inputs: [x :- :int]"
                       "  Return: :any"
                       "          "
                       ""
@@ -76,15 +76,13 @@
       "Original docstring."
       [x :- :int] x)
     (is (= (str/join "\n"
-                     [  "Inputs: [x :- :int]"
+                     ["Inputs: [x :- :int]"
                       "  Return: :int"
                       "          "
                       ""
                       "  Original docstring."])
            (:doc (meta #'qux))))
     (ns-unmap *ns* 'qux))
-
-
 
   (testing "multi-arity, and varargs doc strings should work"
     (mu/defn ^:private foo :- [:multi {:dispatch :type}
@@ -102,7 +100,7 @@
                                :address {:street (str  (+ a b (apply + c)) " ln")}}))
     (is (= (str/join "\n"
                      ;;v---doc inserts 2 spaces here, it's not misaligned!
-                     [  "Inputs: ([]"
+                     ["Inputs: ([]"
                       "           [a :- :int]"
                       "           [a :- :int b :- :int]"
                       "           [a b & c :- [:* :int]])"
@@ -143,8 +141,7 @@
                      (umd/describe special-lt-4-schema)))
 
               (is (= ["Número especial que tiene que ser menos de cuatro errores, recibió: 8"]
-                   (me/humanize (mc/explain special-lt-4-schema 8) {:wrap #'mu/humanize-include-value}))))))))
-
+                     (me/humanize (mc/explain special-lt-4-schema 8) {:wrap #'mu/humanize-include-value}))))))))
 
     (testing "inner schema"
       (let [special-lt-4-schema [:map [:ltf-key (mu/with-api-error-message

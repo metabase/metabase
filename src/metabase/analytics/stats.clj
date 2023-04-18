@@ -233,8 +233,8 @@
   {:style/indent 2}
   [model column & [additonal-honeysql]]
   (into {} (for [{:keys [k count]} (t2/select [model [column :k] [:%count.* :count]]
-                                     (merge {:group-by [column]}
-                                            additonal-honeysql))]
+                                              (merge {:group-by [column]}
+                                                     additonal-honeysql))]
              [k count])))
 
 (defn- num-notifications-with-xls-or-csv-cards
@@ -331,7 +331,6 @@
   []
   {:metrics (t2/count Metric)})
 
-
 ;;; Execution Metrics
 
 (defn summarize-executions
@@ -360,7 +359,6 @@
   (-> (summarize-executions)
       (update :num_per_user summarize-executions-per-user)))
 
-
 ;;; Cache Metrics
 
 (defn- cache-metrics
@@ -369,7 +367,6 @@
   (let [{:keys [length count]} (t2/select-one [QueryCache [[:avg [:length :results]] :length] [:%count.* :count]])]
     {:average_entry_size (int (or length 0))
      :num_queries_cached (bin-small-number count)}))
-
 
 ;;; System Metrics
 
@@ -415,15 +412,13 @@
                       :table      (table-metrics)
                       :user       (user-metrics)}}))
 
-
 (defn- send-stats!
   "send stats to Metabase tracking server"
   [stats]
   (try
-     (http/post metabase-usage-url {:form-params stats, :content-type :json, :throw-entire-message? true})
-     (catch Throwable e
-       (log/error e (trs "Sending usage stats FAILED")))))
-
+    (http/post metabase-usage-url {:form-params stats, :content-type :json, :throw-entire-message? true})
+    (catch Throwable e
+      (log/error e (trs "Sending usage stats FAILED")))))
 
 (defn phone-home-stats!
   "Collect usage stats and phone them home"

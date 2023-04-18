@@ -172,7 +172,7 @@
     (create-session-schema! conn)))
 
 (defonce ^:private ^{:arglists '([driver connection metadata _ _])}
-  original-filtered-syncable-schemas
+ original-filtered-syncable-schemas
   (get-method sql-jdbc.sync/filtered-syncable-schemas :redshift))
 
 (def ^:dynamic *use-original-filtered-syncable-schemas-impl?*

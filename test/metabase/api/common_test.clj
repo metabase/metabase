@@ -117,7 +117,7 @@
                               (compojure.core/let-request
                                [[id] #"request__\d+__auto__"]
                                (metabase.api.common.internal/auto-parse
-                                   [id]
+                                [id]
                                  (metabase.api.common.internal/validate-param 'id id metabase.util.schema/IntGreaterThanZero)
                                  (metabase.api.common.internal/wrap-response-if-needed (do (select-one Card :id id)))))))))
               (macroexpand '(metabase.api.common/defendpoint-schema compojure.core/GET "/:id" [id]
@@ -138,7 +138,7 @@
                               (compojure.core/let-request
                                [[id] #"request__\d+__auto__"]
                                (metabase.api.common.internal/auto-parse
-                                   [id]
+                                [id]
                                  (metabase.api.common.internal/validate-param 'id id metabase.util.schema/IntGreaterThanZero)
                                  (metabase.api.common.internal/wrap-response-if-needed (do (select-one Card :id id)))))))))
               (macroexpand '(metabase.api.common/defendpoint-schema ^:multipart compojure.core/GET "/:id" [id]

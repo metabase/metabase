@@ -61,7 +61,7 @@
     ;; agrees with is_superuser -- don't want to have ambiguous behavior
     (when (some? is-superuser?)
       (api/checkp (= is-superuser? (contains? (set (map :id new-user-group-memberships)) (u/the-id (perms-group/admin))))
-                  "is_superuser" (tru "Value of is_superuser must correspond to presence of Admin group ID in group_ids.")))
+        "is_superuser" (tru "Value of is_superuser must correspond to presence of Admin group ID in group_ids.")))
     (if-let [f (and (premium-features/enable-advanced-permissions?)
                     (resolve 'metabase-enterprise.advanced-permissions.models.permissions.group-manager/set-user-group-memberships!))]
       (f user-or-id new-user-group-memberships)
@@ -114,14 +114,14 @@
   "Columns of user table visible to current caller of API."
   []
   (cond
-   api/*is-superuser?*
-   user/admin-or-self-visible-columns
+    api/*is-superuser?*
+    user/admin-or-self-visible-columns
 
-   api/*is-group-manager?*
-   user/group-manager-visible-columns
+    api/*is-group-manager?*
+    user/group-manager-visible-columns
 
-   :else
-   user/non-admin-or-self-visible-columns))
+    :else
+    user/non-admin-or-self-visible-columns))
 
 (defn- user-clauses
   "Honeysql clauses for filtering on users
@@ -202,8 +202,8 @@
   "True when the user has permissions for at least one un-archived question and one un-archived dashboard."
   [user]
   (let [coll-ids-filter (collection/visible-collection-ids->honeysql-filter-clause
-                          :collection_id
-                          (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))
+                         :collection_id
+                         (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))
         perms-query {:where [:and
                              [:= :archived false]
                              coll-ids-filter]}]
@@ -236,12 +236,11 @@
   "Fetch a `User`. You must be fetching yourself *or* be a superuser *or* a Group Manager."
   [id]
   (try
-   (check-self-or-superuser id)
-   (catch clojure.lang.ExceptionInfo _e
-     (validation/check-group-manager)))
+    (check-self-or-superuser id)
+    (catch clojure.lang.ExceptionInfo _e
+      (validation/check-group-manager)))
   (-> (api/check-404 (fetch-user :id id, :is_active true))
       (hydrate :user_group_memberships)))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                     Creating a new User -- POST /api/user                                      |
@@ -270,7 +269,6 @@
                                                                            :source          "admin"})
       (-> (fetch-user :id new-user-id)
           (hydrate :user_group_memberships)))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                      Updating a User -- PUT /api/user/:id                                      |
@@ -380,7 +378,6 @@
       [400 {:message (tru "Not able to reactivate an active user")}])
     (reactivate-user! user)))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                               Updating a Password -- PUT /api/user/:id/password                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -396,8 +393,8 @@
     ;; `old_password` for them regular users have to know their password, however
     (when-not api/*is-superuser?*
       (api/checkp (u.password/bcrypt-verify (str (:password_salt user) old_password) (:password user))
-                  "old_password"
-                  (tru "Invalid password")))
+        "old_password"
+        (tru "Invalid password")))
     (user/set-password! id password)
     ;; after a successful password update go ahead and offer the client a new session that they can use
     (when (= id api/*current-user-id*)

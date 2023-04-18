@@ -26,7 +26,6 @@
      "Invalid cron schedule string.")
     "value must be a valid Quartz cron schedule string."))
 
-
 (def ^:private CronHour
   (s/constrained s/Int (fn [n] (<= 0 n 23))))
 
@@ -36,15 +35,14 @@
 (def ScheduleMap
   "Schema for a frontend-parsable schedule map. Used for Pulses and DB scheduling."
   (su/with-api-error-message
-      (s/named
-        {(s/optional-key :schedule_day)    (s/maybe (s/enum "sun" "mon" "tue" "wed" "thu" "fri" "sat"))
-         (s/optional-key :schedule_frame)  (s/maybe (s/enum "first" "mid" "last"))
-         (s/optional-key :schedule_hour)   (s/maybe CronHour)
-         (s/optional-key :schedule_minute) (s/maybe CronMinute)
-         :schedule_type                    (s/enum "hourly" "daily" "weekly" "monthly")}
-       "Expanded schedule map")
+    (s/named
+     {(s/optional-key :schedule_day)    (s/maybe (s/enum "sun" "mon" "tue" "wed" "thu" "fri" "sat"))
+      (s/optional-key :schedule_frame)  (s/maybe (s/enum "first" "mid" "last"))
+      (s/optional-key :schedule_hour)   (s/maybe CronHour)
+      (s/optional-key :schedule_minute) (s/maybe CronMinute)
+      :schedule_type                    (s/enum "hourly" "daily" "weekly" "monthly")}
+     "Expanded schedule map")
     "value must be a valid schedule map. See schema in metabase.util.cron for details."))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          SCHEDULE MAP -> CRON STRING                                           |
@@ -75,15 +73,15 @@
   (if day-of-week
     ;; specific days of week like Mon or Fri
     (assoc {:day-of-month "?"}
-      :day-of-week (case frame
-                     "first" (str (day-of-week->cron day-of-week) "#1")
-                     "last"  (str (day-of-week->cron day-of-week) "L")))
+           :day-of-week (case frame
+                          "first" (str (day-of-week->cron day-of-week) "#1")
+                          "last"  (str (day-of-week->cron day-of-week) "L")))
     ;; specific CALENDAR DAYS like 1st or 15th
     (assoc {:day-of-week "?"}
-      :day-of-month (case frame
-                      "first" "1"
-                      "mid"   "15"
-                      "last"  "L"))))
+           :day-of-month (case frame
+                           "first" "1"
+                           "mid"   "15"
+                           "last"  "L"))))
 
 (s/defn ^{:style/indent 0} schedule-map->cron-string :- CronScheduleString
   "Convert the frontend schedule map into a cron string."
@@ -96,7 +94,7 @@
                            :day-of-week (day-of-week->cron day-of-week)
                            :day-of-month "?"}
                  :monthly (assoc (frame->cron frame day-of-week)
-                            :hours hour))))
+                                 :hours hour))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          CRON STRING -> SCHEDULE MAP                                           |

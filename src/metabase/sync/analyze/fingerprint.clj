@@ -25,7 +25,6 @@
 (comment
   metadata-queries/keep-me-for-default-table-row-sample)
 
-
 (s/defn ^:private save-fingerprint!
   [field :- i/FieldInstance, fingerprint :- (s/maybe i/Fingerprint)]
   (log/debug (trs "Saving fingerprint for {0}" (sync-util/name-for-logging field)))
@@ -178,7 +177,7 @@
    This should include NEW fields that are active and visible."
   [table :- i/TableInstance]
   (seq (t2/select Field
-         (honeysql-for-fields-that-need-fingerprint-updating table))))
+                  (honeysql-for-fields-that-need-fingerprint-updating table))))
 
 ;; TODO - `fingerprint-fields!` and `fingerprint-table!` should probably have their names switched
 (s/defn fingerprint-fields!
@@ -186,7 +185,7 @@
   [table :- i/TableInstance]
   (if-let [fields (fields-to-fingerprint table)]
     (let [stats (sync-util/with-error-handling
-                  (format "Error fingerprinting %s" (sync-util/name-for-logging table))
+                 (format "Error fingerprinting %s" (sync-util/name-for-logging table))
                   (fingerprint-table! table fields))]
       (if (instance? Exception stats)
         (empty-stats-map 0)

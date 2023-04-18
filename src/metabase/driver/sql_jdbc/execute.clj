@@ -472,8 +472,8 @@
         ;; TODO - disabled for now since it breaks a lot of tests. We can re-enable it when the tests are in a better
         ;; state
         #_:original_name #_(.getColumnName rsmeta i)
-        #_:jdbc_type #_ (u/ignore-exceptions
-                          (.getName (JDBCType/valueOf (.getColumnType rsmeta i))))
+        #_:jdbc_type #_(u/ignore-exceptions
+                         (.getName (JDBCType/valueOf (.getColumnType rsmeta i))))
         #_:db_type   #_db-type-name
         :base_type   (or base-type :type/*)}))
    (column-range rsmeta)))
@@ -511,7 +511,6 @@
      (let [rsmeta           (.getMetaData rs)
            results-metadata {:cols (column-metadata driver rsmeta)}]
        (respond results-metadata (reducible-rows driver rs rsmeta (qp.context/canceled-chan context)))))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       Convenience Imports from Old Impl                                        |

@@ -127,18 +127,18 @@
                         percent?    (str "%"))
               fmtr (doto (DecimalFormat. fmt-str symbols) (.setRoundingMode RoundingMode/HALF_UP))]
           (map->NumericWrapper
-            {:num-value value
-             :num-str   (str (when prefix prefix)
-                             (when (and currency? (or (nil? currency-style)
-                                                      (= currency-style "symbol")))
-                               (get-in currency/currency [(keyword (or currency "USD")) :symbol]))
-                             (when (and currency? (= currency-style "code"))
-                               (str (get-in currency/currency [(keyword (or currency "USD")) :code]) \space))
-                             (cond-> (.format fmtr scaled-value)
-                               (not decimals) (strip-trailing-zeroes decimal))
-                             (when (and currency? (= currency-style "name"))
-                               (str \space (get-in currency/currency [(keyword (or currency "USD")) :name_plural])))
-                             (when suffix suffix))}))
+           {:num-value value
+            :num-str   (str (when prefix prefix)
+                            (when (and currency? (or (nil? currency-style)
+                                                     (= currency-style "symbol")))
+                              (get-in currency/currency [(keyword (or currency "USD")) :symbol]))
+                            (when (and currency? (= currency-style "code"))
+                              (str (get-in currency/currency [(keyword (or currency "USD")) :code]) \space))
+                            (cond-> (.format fmtr scaled-value)
+                              (not decimals) (strip-trailing-zeroes decimal))
+                            (when (and currency? (= currency-style "name"))
+                              (str \space (get-in currency/currency [(keyword (or currency "USD")) :name_plural])))
+                            (when suffix suffix))}))
         value))))
 
 (s/defn format-number :- NumericWrapper

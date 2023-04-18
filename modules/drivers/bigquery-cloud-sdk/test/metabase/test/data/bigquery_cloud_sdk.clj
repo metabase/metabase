@@ -37,7 +37,6 @@
 ;; relationships for FK tables
 (defmethod driver/supports? [:bigquery-cloud-sdk :foreign-keys] [_ _] (not config/is-test?))
 
-
 ;;; ----------------------------------------------- Connection Details -----------------------------------------------
 
 (defn- transient-dataset?
@@ -64,10 +63,10 @@
 
 (defn- test-db-details []
   (reduce
-     (fn [acc env-var]
-       (assoc acc env-var (tx/db-test-env-var :bigquery-cloud-sdk env-var)))
-     {}
-     [:project-id :service-account-json]))
+   (fn [acc env-var]
+     (assoc acc env-var (tx/db-test-env-var :bigquery-cloud-sdk env-var)))
+   {}
+   [:project-id :service-account-json]))
 
 (defn- bigquery
   "Get an instance of a `Bigquery` client."
@@ -87,7 +86,6 @@
   [_driver _context {:keys [database-name]}]
   (assoc (test-db-details) :dataset-id (normalize-name :db database-name) :include-user-id-and-hash true))
 
-
 ;;; -------------------------------------------------- Loading Data --------------------------------------------------
 
 (defmethod ddl.i/format-name :bigquery-cloud-sdk [_ table-or-field-name]
@@ -101,7 +99,7 @@
 (defn- destroy-dataset! [^String dataset-id]
   {:pre [(seq dataset-id)]}
   (.delete (bigquery) dataset-id (u/varargs
-                                   BigQuery$DatasetDeleteOption
+                                  BigQuery$DatasetDeleteOption
                                    [(BigQuery$DatasetDeleteOption/deleteContents)]))
   (log/error (u/format-color 'red "Deleted BigQuery dataset `%s.%s`." (project-id) dataset-id)))
 
@@ -132,13 +130,13 @@
    table-id           :- su/NonBlankString
    field-name->type   :- {ValidFieldName (apply s/enum valid-field-types)}]
   (u/ignore-exceptions
-   (delete-table! dataset-id table-id))
+    (delete-table! dataset-id table-id))
   (let [tbl-id (TableId/of dataset-id table-id)
         schema (Schema/of (u/varargs Field (for [[^String field-name field-type] field-name->type]
                                              (Field/of
-                                               field-name
-                                               (LegacySQLTypeName/valueOf (name field-type))
-                                               (u/varargs Field [])))))
+                                              field-name
+                                              (LegacySQLTypeName/valueOf (name field-type))
+                                              (u/varargs Field [])))))
         tbl    (TableInfo/of tbl-id (StandardTableDefinition/of schema))]
     (.create (bigquery) tbl (u/varargs BigQuery$TableOption)))
   ;; now verify that the Table was created
@@ -155,7 +153,7 @@
 
 (defprotocol ^:private Insertable
   (^:private ->insertable [this]
-   "Convert a value to an appropriate Google type when inserting a new row."))
+    "Convert a value to an appropriate Google type when inserting a new row."))
 
 (extend-protocol Insertable
   nil
@@ -214,8 +212,8 @@
                  req                         (rows->request dataset-id table-id chunk)
                  ^InsertAllResponse response (.insertAll (bigquery) req)]]
     (log/info  (u/format-color 'blue "Sent request to insert %d rows into `%s.%s.%s`"
-                (count (.getRows req))
-                (project-id) dataset-id table-id))
+                               (count (.getRows req))
+                               (project-id) dataset-id table-id))
     (when (seq (.getInsertErrors response))
       (log/errorf "Error inserting rows: %s" (u/pprint-to-str (seq (.getInsertErrors response))))
       (throw (ex-info "Error inserting rows"
@@ -327,14 +325,14 @@
   ;; fetch existing datasets if we haven't done so yet
   (when-not (seq @existing-datasets)
     (let [{transient-datasets true non-transient-datasets false} (group-by transient-dataset?
-                                                                   (existing-dataset-names))]
+                                                                           (existing-dataset-names))]
       (reset! existing-datasets (set non-transient-datasets))
       (log/infof "These BigQuery datasets have already been loaded:\n%s" (u/pprint-to-str (sort @existing-datasets)))
       (when-let [outdated-transient-datasets (seq (filter transient-dataset-outdated? transient-datasets))]
         (log/info (u/format-color
-                    'blue
-                    "These BigQuery datasets are transient, and more than two hours old; deleting them: %s`."
-                    (u/pprint-to-str (sort outdated-transient-datasets))))
+                   'blue
+                   "These BigQuery datasets are transient, and more than two hours old; deleting them: %s`."
+                   (u/pprint-to-str (sort outdated-transient-datasets))))
         (doseq [delete-ds outdated-transient-datasets]
           (u/ignore-exceptions
             (destroy-dataset! delete-ds))))))

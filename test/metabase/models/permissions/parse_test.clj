@@ -97,9 +97,9 @@
             :collection {:root :write
                          1     :read}}
            (perms-parse/->graph #{"/db/3/"
-                                             "/db/5/schema/PUBLIC/table/10/read/"
-                                             "/collection/root/"
-                                             "/collection/1/read/"})))))
+                                  "/db/5/schema/PUBLIC/table/10/read/"
+                                  "/collection/root/"
+                                  "/collection/1/read/"})))))
 
 (deftest block-permissions-test
   (testing "Should parse block permissions entries correctly"

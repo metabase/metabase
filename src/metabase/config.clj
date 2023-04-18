@@ -67,7 +67,6 @@
     (or (when-not (str/blank? env-val) env-val)
         (k app-defaults))))
 
-
 ;; These are convenience functions for accessing config values that ensures a specific return type
 ;;
 ;; TODO - These names are bad. They should be something like `int`, `boolean`, and `keyword`, respectively. See
@@ -118,12 +117,12 @@
 (defonce ^{:doc "This UUID is randomly-generated upon launch and used to identify this specific Metabase instance during
                 this specifc run. Restarting the server will change this UUID, and each server in a horizontal cluster
                 will have its own ID, making this different from the `site-uuid` Setting."}
-  local-process-uuid
+ local-process-uuid
   (str (UUID/randomUUID)))
 
 (defonce
-  ^{:doc "A string that contains identifying information about the Metabase version and the local process."}
-  mb-version-and-process-identifier
+ ^{:doc "A string that contains identifying information about the Metabase version and the local process."}
+ mb-version-and-process-identifier
   (format "%s [%s]" mb-app-id-string local-process-uuid))
 
 (defn- mb-session-cookie-samesite*

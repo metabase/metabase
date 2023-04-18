@@ -42,7 +42,6 @@
     (perms-check-fn object)
     true))
 
-
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
 (models/defmodel Activity :activity)
@@ -53,9 +52,9 @@
     (merge defaults activity)))
 
 (mi/define-methods
- Activity
- {:types      (constantly {:details :json, :topic :keyword})
-  :pre-insert pre-insert})
+  Activity
+  {:types      (constantly {:details :json, :topic :keyword})
+   :pre-insert pre-insert})
 
 (defmethod mi/can-read? Activity
   [& args]
@@ -64,7 +63,6 @@
 (defmethod mi/can-write? Activity
   [& args]
   (apply can-? mi/can-write? args))
-
 
 ;;; ------------------------------------------------------ Etc. ------------------------------------------------------
 

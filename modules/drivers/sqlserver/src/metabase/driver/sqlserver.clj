@@ -195,9 +195,9 @@
                         "datetimeoffset"
                         "datetime")]
     (hx/cast original-type
-      (date-add :day
-                (hx/- 1 (date-part :weekday expr))
-                (hx/->date expr)))))
+             (date-add :day
+                       (hx/- 1 (date-part :weekday expr))
+                       (hx/->date expr)))))
 
 (defmethod sql.qp/date [:sqlserver :week]
   [driver _ expr]
@@ -252,10 +252,10 @@
   (date-add :minute (hx// expr 60) (hx/literal "1970-01-01")))
 
 (defonce
-  ^{:private true
-    :doc     "A map of all zone-id to the corresponding window-zone.
+ ^{:private true
+   :doc     "A map of all zone-id to the corresponding window-zone.
              I.e {\"Asia/Tokyo\" \"Tokyo Standard Time\"}"}
-  zone-id->windows-zone
+ zone-id->windows-zone
   (let [data (-> (io/resource "timezones/windowsZones.xml")
                  io/reader
                  xml/parse
@@ -586,8 +586,8 @@
 (defmethod sql-jdbc.execute/statement :sqlserver
   [_ ^Connection conn]
   (let [stmt (.createStatement conn
-               ResultSet/TYPE_FORWARD_ONLY
-               ResultSet/CONCUR_READ_ONLY)]
+                               ResultSet/TYPE_FORWARD_ONLY
+                               ResultSet/CONCUR_READ_ONLY)]
     (try
       (try
         (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
@@ -648,7 +648,7 @@
 
 ;; instead of default `microsoft.sql.DateTimeOffset`
 (defmethod sql-jdbc.execute/read-column-thunk [:sqlserver microsoft.sql.Types/DATETIMEOFFSET]
-  [_^ResultSet rs _ ^Integer i]
+  [_ ^ResultSet rs _ ^Integer i]
   (fn []
     (.getObject rs i OffsetDateTime)))
 

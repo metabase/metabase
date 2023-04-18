@@ -48,7 +48,7 @@
   (let [bean-id   (.getCanonicalName jmx-bean)
         props     [:numConnections :numIdleConnections :numBusyConnections
                    :minPoolSize :maxPoolSize :numThreadsAwaitingCheckoutDefaultUser]]
-      (assoc acc (jmx/read bean-id :dataSourceName) (jmx/read bean-id props))))
+    (assoc acc (jmx/read bean-id :dataSourceName) (jmx/read bean-id props))))
 
 (defn connection-pool-info
   "Builds a map of info about the current c3p0 connection pools managed by this Metabase instance."

@@ -50,7 +50,7 @@
 
 (deftest card-create-test
   (testing ":card-create"
-    (mt/with-temp Card [{card-id :id, :as card} (card-properties)][]
+    (mt/with-temp Card [{card-id :id, :as card} (card-properties)] []
       (revision/process-revision-event! {:topic :card-create
                                          :item  card})
       (is (= {:model        "Card"
@@ -61,8 +61,8 @@
               :is_creation  true}
              (mt/derecordize
               (t2/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
-                :model       "Card"
-                :model_id    card-id)))))))
+                             :model       "Card"
+                             :model_id    card-id)))))))
 
 (deftest card-update-test
   (testing ":card-update"
@@ -77,8 +77,8 @@
               :is_creation  false}
              (mt/derecordize
               (t2/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
-                :model       "Card"
-                :model_id    card-id)))))))
+                             :model       "Card"
+                             :model_id    card-id)))))))
 
 (deftest dashboard-create-test
   (testing ":dashboard-create"
@@ -93,8 +93,8 @@
               :is_creation  true}
              (mt/derecordize
               (t2/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
-                :model "Dashboard"
-                :model_id dashboard-id)))))))
+                             :model "Dashboard"
+                             :model_id dashboard-id)))))))
 
 (deftest dashboard-update-test
   (testing ":dashboard-update"
@@ -109,8 +109,8 @@
               :is_creation  false}
              (mt/derecordize
               (t2/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
-                :model    "Dashboard"
-                :model_id dashboard-id)))))))
+                             :model    "Dashboard"
+                             :model_id dashboard-id)))))))
 
 (deftest dashboard-add-cards-test
   (testing ":dashboard-add-cards"
@@ -129,8 +129,8 @@
               :is_creation  false}
              (mt/derecordize
               (t2/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
-                :model    "Dashboard"
-                :model_id dashboard-id)))))))
+                             :model    "Dashboard"
+                             :model_id dashboard-id)))))))
 
 (deftest dashboard-remove-cards-test
   (testing ":dashboard-remove-cards"
@@ -150,8 +150,8 @@
               :is_creation  false}
              (mt/derecordize
               (t2/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
-                :model    "Dashboard"
-                :model_id dashboard-id)))))))
+                             :model    "Dashboard"
+                             :model_id dashboard-id)))))))
 
 (deftest dashboard-reposition-cards-test
   (testing ":dashboard-reposition-cards"
@@ -177,8 +177,8 @@
               :is_creation  false}
              (mt/derecordize
               (t2/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
-                :model    "Dashboard"
-                :model_id dashboard-id)))))))
+                             :model    "Dashboard"
+                             :model_id dashboard-id)))))))
 
 (deftest metric-create-test
   (testing ":metric-create"
@@ -188,8 +188,8 @@
       (revision/process-revision-event! {:topic :metric-create
                                          :item  metric})
       (let [revision (t2/select-one [Revision :model :user_id :object :is_reversion :is_creation :message]
-                       :model "Metric"
-                       :model_id (:id metric))]
+                                    :model "Metric"
+                                    :model_id (:id metric))]
         (is (= {:model        "Metric"
                 :user_id      (mt/user->id :rasta)
                 :object       {:name                    "Toucans in the rainforest"
@@ -218,8 +218,8 @@
                                                        :actor_id         (mt/user->id :crowberto)
                                                        :revision_message "updated")})
       (let [revision (t2/select-one [Revision :model :user_id :object :is_reversion :is_creation :message]
-                       :model "Metric"
-                       :model_id (:id metric))]
+                                    :model "Metric"
+                                    :model_id (:id metric))]
         (is (= {:model        "Metric"
                 :user_id      (mt/user->id :crowberto)
                 :object       {:name                    "Toucans in the rainforest"
@@ -246,8 +246,8 @@
       (revision/process-revision-event! {:topic :metric-delete
                                          :item  metric})
       (let [revision (t2/select-one [Revision :model :user_id :object :is_reversion :is_creation :message]
-                       :model "Metric"
-                       :model_id (:id metric))]
+                                    :model "Metric"
+                                    :model_id (:id metric))]
         (is (= {:model        "Metric"
                 :user_id      (mt/user->id :rasta)
                 :object       {:name                    "Toucans in the rainforest"
@@ -265,7 +265,6 @@
                 :message      nil}
                (mt/derecordize
                 (assoc revision :object (dissoc (:object revision) :id :table_id)))))))))
-
 
 (deftest segment-create-test
   (testing ":segment-create"
@@ -320,8 +319,8 @@
               :message      "updated"}
              (mt/derecordize
               (update (t2/select-one [Revision :model :user_id :object :is_reversion :is_creation :message]
-                        :model "Segment"
-                        :model_id (:id segment))
+                                     :model "Segment"
+                                     :model_id (:id segment))
                       :object dissoc :id :table_id)))))))
 
 (deftest segment-delete-test
@@ -349,6 +348,6 @@
               :message      nil}
              (mt/derecordize
               (update (t2/select-one [Revision :model :user_id :object :is_reversion :is_creation :message]
-                        :model "Segment"
-                        :model_id (:id segment))
+                                     :model "Segment"
+                                     :model_id (:id segment))
                       :object dissoc :id :table_id)))))))

@@ -82,7 +82,6 @@
   (-> (field-details field)
       (dissoc :dimension_options :default_dimension_option)))
 
-
 (deftest list-table-test
   (testing "GET /api/table"
     (testing "These should come back in alphabetical order and include relevant metadata"
@@ -318,9 +317,9 @@
     (testing "Don't change visibility_type when updating properties (#22287)"
       (doseq [property [:caveats :points_of_interest :description :display_name]]
         (mt/with-temp Table [table {:visibility_type "hidden"}]
-         (mt/user-http-request :crowberto :put 200 (format "table/%d" (u/the-id table))
-                                                   {property (mt/random-name)})
-         (is (= :hidden (t2/select-one-fn :visibility_type Table :id (:id table)))))))
+          (mt/user-http-request :crowberto :put 200 (format "table/%d" (u/the-id table))
+                                {property (mt/random-name)})
+          (is (= :hidden (t2/select-one-fn :visibility_type Table :id (:id table)))))))
 
     (testing "A table can only be updated by a superuser"
       (mt/with-temp Table [table]
@@ -416,7 +415,7 @@
                                             :table         (merge
                                                             (dissoc (table-defaults) :segments :field_values :metrics)
                                                             (t2/select-one [Table :id :created_at :updated_at :initial_sync_status]
-                                                              :id (mt/id :checkins))
+                                                                           :id (mt/id :checkins))
                                                             {:schema       "PUBLIC"
                                                              :name         "CHECKINS"
                                                              :display_name "Checkins"
@@ -433,7 +432,7 @@
                                             :table         (merge
                                                             (dissoc (table-defaults) :db :segments :field_values :metrics)
                                                             (t2/select-one [Table :id :created_at :updated_at :initial_sync_status]
-                                                              :id (mt/id :users))
+                                                                           :id (mt/id :users))
                                                             {:schema       "PUBLIC"
                                                              :name         "USERS"
                                                              :display_name "Users"
@@ -494,13 +493,13 @@
 
 (defn- with-numeric-dimension-options [field]
   (assoc field
-    :default_dimension_option (var-get #'api.table/numeric-default-index)
-    :dimension_options (var-get #'api.table/numeric-dimension-indexes)))
+         :default_dimension_option (var-get #'api.table/numeric-default-index)
+         :dimension_options (var-get #'api.table/numeric-dimension-indexes)))
 
 (defn- with-coordinate-dimension-options [field]
   (assoc field
-    :default_dimension_option (var-get #'api.table/coordinate-default-index)
-    :dimension_options (var-get #'api.table/coordinate-dimension-indexes)))
+         :default_dimension_option (var-get #'api.table/coordinate-default-index)
+         :dimension_options (var-get #'api.table/coordinate-dimension-indexes)))
 
 ;; Make sure metadata for 'virtual' tables comes back as expected
 (deftest virtual-table-metadata-test

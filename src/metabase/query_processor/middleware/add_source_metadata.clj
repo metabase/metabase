@@ -65,8 +65,8 @@
 (s/defn ^:private add-source-metadata :- {(s/optional-key :source-metadata) [mbql.s/SourceQueryMetadata], s/Keyword s/Any}
   [{{native-source-query? :native, :as source-query} :source-query, :as inner-query}]
   (let [metadata ((if native-source-query?
-                     native-source-query->metadata
-                     mbql-source-query->metadata) source-query)]
+                    native-source-query->metadata
+                    mbql-source-query->metadata) source-query)]
     (cond-> inner-query
       (seq metadata) (assoc :source-metadata metadata))))
 

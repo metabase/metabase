@@ -35,13 +35,12 @@
 ;;; |                                          get-or-create-database!; db                                           |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-
 (defonce ^:private ^{:arglists '([driver]), :doc "We'll have a very bad time if any sort of test runs that calls
   `data/db` for the first time calls it multiple times in parallel -- for example my Oracle test that runs 30 sync
   calls at the same time to make sure nothing explodes and cursors aren't leaked. To make sure this doesn't happen
   we'll keep a map of driver->lock and only allow a given driver to create one Database at a time. Because each DB has
   its own lock we can still create different DBs for different drivers at the same time."}
-  driver->create-database-lock
+ driver->create-database-lock
   (let [locks (atom {})]
     (fn [driver]
       (let [driver (driver/the-driver driver)]
@@ -185,7 +184,6 @@
   (binding [*get-db* (constantly db)]
     (f)))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                       id                                                       |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -246,31 +244,30 @@
       parent-id
       (recur (the-field-id* table-id nested-field-name, :parent-id parent-id) more))))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              with-temp-copy-of-db                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- copy-table-fields! [old-table-id new-table-id]
   (t2/insert! Field
-    (for [field (t2/select Field :table_id old-table-id {:order-by [[:id :asc]]})]
-      (-> field (dissoc :id :fk_target_field_id) (assoc :table_id new-table-id))))
+              (for [field (t2/select Field :table_id old-table-id {:order-by [[:id :asc]]})]
+                (-> field (dissoc :id :fk_target_field_id) (assoc :table_id new-table-id))))
   ;; now copy the FieldValues as well.
   (let [old-field-id->name (t2/select-pk->fn :name Field :table_id old-table-id)
         new-field-name->id (t2/select-fn->pk :name Field :table_id new-table-id)
         old-field-values   (t2/select FieldValues :field_id [:in (set (keys old-field-id->name))])]
     (t2/insert! FieldValues
-      (for [{old-field-id :field_id, :as field-values} old-field-values
-            :let                                       [field-name (get old-field-id->name old-field-id)]]
-        (-> field-values
-            (dissoc :id)
-            (assoc :field_id (get new-field-name->id field-name)))))))
+                (for [{old-field-id :field_id, :as field-values} old-field-values
+                      :let                                       [field-name (get old-field-id->name old-field-id)]]
+                  (-> field-values
+                      (dissoc :id)
+                      (assoc :field_id (get new-field-name->id field-name)))))))
 
 (defn- copy-db-tables! [old-db-id new-db-id]
   (let [old-tables    (t2/select Table :db_id old-db-id {:order-by [[:id :asc]]})
         new-table-ids (t2/insert-returning-pks! Table
-                        (for [table old-tables]
-                          (-> table (dissoc :id) (assoc :db_id new-db-id))))]
+                                                (for [table old-tables]
+                                                  (-> table (dissoc :id) (assoc :db_id new-db-id))))]
     (doseq [[old-table-id new-table-id] (zipmap (map :id old-tables) new-table-ids)]
       (copy-table-fields! old-table-id new-table-id))))
 
@@ -316,8 +313,8 @@
                :details
                (reduce (fn [details [id-prop old-id]]
                          (assoc details id-prop (get old-id->new-id old-id)))
-                 (:details database)
-                 prop->old-id)))
+                       (:details database)
+                       prop->old-id)))
       database)))
 
 (def ^:dynamic *db-is-temp-copy?*
@@ -337,7 +334,6 @@
         (do-with-db new-db f))
       (finally
         (t2/delete! Database :id new-db-id)))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                    dataset                                                     |

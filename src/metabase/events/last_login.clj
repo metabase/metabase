@@ -11,12 +11,10 @@
   #{:user-login})
 
 (defonce ^:private ^{:doc "Channel for receiving event notifications we want to subscribe to for last login events."}
-  last-login-channel
+ last-login-channel
   (a/chan))
 
-
 ;;; ## ---------------------------------------- EVENT PROCESSING ----------------------------------------
-
 
 (defn process-last-login-event
   "Handle processing for a single event notification received on the last-login-channel"
@@ -29,8 +27,6 @@
         (t2/update! User user-id {:last_login :%now})))
     (catch Throwable e
       (log/warn (format "Failed to process sync-database event. %s" (:topic last-login-event)) e))))
-
-
 
 ;;; ## ---------------------------------------- LIFECYLE ----------------------------------------
 

@@ -63,7 +63,7 @@
                                          timezone-id)
                                       "Make sure `results-timezone-id` is returning the bound value")
                                   (second (#'qp.wrap-value-literals/add-type-info datetime-str
-                                                                               {:unit :day})))))]
+                                                                                  {:unit :day})))))]
     (doseq [[timezone expected] {"UTC"        (t/zoned-date-time "2018-10-01T00:00:00Z[UTC]")
                                  "US/Pacific" (t/zoned-date-time "2018-10-01T00:00:00-07:00[US/Pacific]")}]
       (is (= expected

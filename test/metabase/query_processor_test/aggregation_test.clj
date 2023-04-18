@@ -22,34 +22,34 @@
               [9 "Krua Siri" 71 34.1018 -118.301 1]
               [10 "Fred 62" 20 34.1046 -118.292 2]]
              (mt/formatted-rows :venues
-               (mt/run-mbql-query venues
-                 {:limit 10, :order-by [[:asc $id]]})))))))
+                                (mt/run-mbql-query venues
+                                  {:limit 10, :order-by [[:asc $id]]})))))))
 
 (deftest basic-aggregations-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "count aggregation"
       (is (= [[100]]
              (mt/formatted-rows [int]
-               (mt/run-mbql-query venues
-                 {:aggregation [[:count]]})))))
+                                (mt/run-mbql-query venues
+                                  {:aggregation [[:count]]})))))
 
     (testing "sum aggregation"
       (is (= [[203]]
              (mt/formatted-rows [int]
-               (mt/run-mbql-query venues
-                 {:aggregation [[:sum $price]]})))))
+                                (mt/run-mbql-query venues
+                                  {:aggregation [[:sum $price]]})))))
 
     (testing "avg aggregation"
       (is (= [[35.5059]]
              (mt/formatted-rows [4.0]
-               (mt/run-mbql-query venues
-                 {:aggregation [[:avg $latitude]]})))))
+                                (mt/run-mbql-query venues
+                                  {:aggregation [[:avg $latitude]]})))))
 
     (testing "distinct count aggregation"
       (is (= [[15]]
              (mt/formatted-rows [int]
-               (mt/run-mbql-query checkins
-                 {:aggregation [[:distinct $user_id]]})))))))
+                                (mt/run-mbql-query checkins
+                                  {:aggregation [[:distinct $user_id]]})))))))
 
 (deftest standard-deviation-test
   (mt/test-drivers (mt/normal-drivers-with-feature :standard-deviation-aggregations)
@@ -60,7 +60,7 @@
                   :rows [[3.4]]}
                  (qp.test/rows-and-cols
                   (mt/format-rows-by [1.0]
-                    (mt/process-query query)))))))))
+                                     (mt/process-query query)))))))))
 
   (mt/test-drivers (mt/normal-drivers-without-feature :standard-deviation-aggregations)
     (testing "Make sure standard deviations fail for drivers that don't support it"
@@ -72,7 +72,6 @@
 
 ;;; other advanced aggregation types are tested in [[metabase.query-processor-test.advanced-math-test]]
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                   MIN & MAX                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -82,29 +81,28 @@
     (is (= [1]
            (mt/first-row
             (mt/format-rows-by [int]
-              (mt/run-mbql-query venues
-                {:aggregation [[:min $price]]})))))
+                               (mt/run-mbql-query venues
+                                 {:aggregation [[:min $price]]})))))
 
     (is (= [[1 34.0071] [2 33.7701] [3 10.0646] [4 33.983]]
            (mt/formatted-rows [int 4.0]
-             (mt/run-mbql-query venues
-               {:aggregation [[:min $latitude]]
-                :breakout    [$price]}))))))
+                              (mt/run-mbql-query venues
+                                {:aggregation [[:min $latitude]]
+                                 :breakout    [$price]}))))))
 
 (deftest max-test
   (mt/test-drivers (mt/normal-drivers)
     (is (= [4]
            (mt/first-row
-             (mt/format-rows-by [int]
-               (mt/run-mbql-query venues
-                 {:aggregation [[:max $price]]})))))
+            (mt/format-rows-by [int]
+                               (mt/run-mbql-query venues
+                                 {:aggregation [[:max $price]]})))))
 
     (is (= [[1 37.8078] [2 40.7794] [3 40.7262] [4 40.7677]]
            (mt/formatted-rows [int 4.0]
-             (mt/run-mbql-query venues
-               {:aggregation [[:max $latitude]]
-                :breakout    [$price]}))))))
-
+                              (mt/run-mbql-query venues
+                                {:aggregation [[:max $latitude]]
+                                 :breakout    [$price]}))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             MULTIPLE AGGREGATIONS                                              |
@@ -115,14 +113,14 @@
     (testing "two aggregations"
       (is (= [[100 203]]
              (mt/formatted-rows [int int]
-               (mt/run-mbql-query venues
-                 {:aggregation [[:count] [:sum $price]]})))))
+                                (mt/run-mbql-query venues
+                                  {:aggregation [[:count] [:sum $price]]})))))
 
     (testing "three aggregations"
       (is (= [[2 100 203]]
              (mt/formatted-rows [int int int]
-               (mt/run-mbql-query venues
-                 {:aggregation [[:avg $price] [:count] [:sum $price]]})))))))
+                                (mt/run-mbql-query venues
+                                  {:aggregation [[:avg $price] [:count] [:sum $price]]})))))))
 
 (deftest multiple-aggregations-metadata-test
   ;; TODO - this isn't tested against Mongo because those driver doesn't currently work correctly with multiple
@@ -135,9 +133,8 @@
       (is (= [(qp.test/aggregate-col :count)
               (assoc (qp.test/aggregate-col :count) :name "count_2", :field_ref [:aggregation 1])]
              (mt/cols
-               (mt/run-mbql-query venues
-                 {:aggregation [[:count] [:count]]})))))))
-
+              (mt/run-mbql-query venues
+                {:aggregation [[:count] [:count]]})))))))
 
 ;;; ------------------------------------------------- CUMULATIVE SUM -------------------------------------------------
 
@@ -146,19 +143,19 @@
     (testing "cum_sum w/o breakout should be treated the same as sum"
       (is (= [[120]]
              (mt/formatted-rows [int]
-               (mt/run-mbql-query users
-                 {:aggregation [[:cum-sum $id]]})))))
+                                (mt/run-mbql-query users
+                                  {:aggregation [[:cum-sum $id]]})))))
 
     (testing " Simple cumulative sum where breakout field is same as cum_sum field"
-      (is (= [[ 1   1]
-              [ 2   3]
-              [ 3   6]
-              [ 4  10]
-              [ 5  15]
-              [ 6  21]
-              [ 7  28]
-              [ 8  36]
-              [ 9  45]
+      (is (= [[1   1]
+              [2   3]
+              [3   6]
+              [4  10]
+              [5  15]
+              [6  21]
+              [7  28]
+              [8  36]
+              [9  45]
               [10  55]
               [11  66]
               [12  78]
@@ -166,9 +163,9 @@
               [14 105]
               [15 120]]
              (mt/formatted-rows [int int]
-               (mt/run-mbql-query users
-                 {:aggregation [[:cum-sum $id]]
-                  :breakout    [$id]})))))
+                                (mt/run-mbql-query users
+                                  {:aggregation [[:cum-sum $id]]
+                                   :breakout    [$id]})))))
 
     (testing " Cumulative sum w/ a different breakout field"
       (is (= [["Broen Olujimi"        14]
@@ -187,9 +184,9 @@
               ["Spiros Teofil"       112]
               ["Szymon Theutrich"    120]]
              (mt/formatted-rows [str int]
-               (mt/run-mbql-query users
-                 {:aggregation [[:cum-sum $id]]
-                  :breakout    [$name]})))))
+                                (mt/run-mbql-query users
+                                  {:aggregation [[:cum-sum $id]]
+                                   :breakout    [$name]})))))
 
     (testing " Cumulative sum w/ a different breakout field that requires grouping"
       (is (= [[1 1211]
@@ -197,10 +194,9 @@
               [3 4681]
               [4 5050]]
              (mt/formatted-rows [int int]
-               (mt/run-mbql-query venues
-                 {:aggregation [[:cum-sum $id]]
-                  :breakout    [$price]})))))))
-
+                                (mt/run-mbql-query venues
+                                  {:aggregation [[:cum-sum $id]]
+                                   :breakout    [$price]})))))))
 
 ;;; ------------------------------------------------ CUMULATIVE COUNT ------------------------------------------------
 (deftest cumulative-count-test
@@ -210,9 +206,9 @@
         (is (= {:rows [[15]]
                 :cols [(qp.test/aggregate-col :cum-count :users :id)]}
                (qp.test/rows-and-cols
-                 (mt/format-rows-by [int]
-                   (mt/run-mbql-query users
-                     {:aggregation [[:cum-count $id]]}))))))
+                (mt/format-rows-by [int]
+                                   (mt/run-mbql-query users
+                                     {:aggregation [[:cum-count $id]]}))))))
 
       (testing "w/ breakout on field with distinct values"
         (is (= {:rows [["Broen Olujimi"        1]
@@ -233,10 +229,10 @@
                 :cols [(qp.test/breakout-col :users :name)
                        (qp.test/aggregate-col :cum-count :users :id)]}
                (qp.test/rows-and-cols
-                 (mt/format-rows-by [str int]
-                   (mt/run-mbql-query users
-                     {:aggregation [[:cum-count $id]]
-                      :breakout    [$name]}))))))
+                (mt/format-rows-by [str int]
+                                   (mt/run-mbql-query users
+                                     {:aggregation [[:cum-count $id]]
+                                      :breakout    [$name]}))))))
 
       (testing "w/ breakout on field that requires grouping"
         (is (= {:cols [(qp.test/breakout-col :venues :price)
@@ -246,10 +242,10 @@
                        [3 94]
                        [4 100]]}
                (qp.test/rows-and-cols
-                 (mt/format-rows-by [int int]
-                   (mt/run-mbql-query venues
-                     {:aggregation [[:cum-count $id]]
-                      :breakout    [$price]})))))))))
+                (mt/format-rows-by [int int]
+                                   (mt/run-mbql-query venues
+                                     {:aggregation [[:cum-count $id]]
+                                      :breakout    [$price]})))))))))
 
 (deftest field-settings-for-aggregate-fields-test
   (testing "Does `:settings` show up for aggregate Fields?"
@@ -266,7 +262,7 @@
     (testing "Do we properly handle queries that have more than one of the same aggregation? (#5393)"
       (is (= [[5050 203]]
              (mt/formatted-rows [int int]
-               (mt/run-mbql-query venues
+                                (mt/run-mbql-query venues
                                   {:aggregation [[:sum $id] [:sum $price]]})))))))
 
 (deftest multiple-distinct-aggregations-test
@@ -274,9 +270,9 @@
     (mt/test-drivers (mt/normal-drivers)
       (is (= [[100 4]]
              (mt/formatted-rows [int int]
-               (mt/run-mbql-query venues
-                 {:aggregation [[:distinct $name]
-                                [:distinct $price]]})))))))
+                                (mt/run-mbql-query venues
+                                  {:aggregation [[:distinct $name]
+                                                 [:distinct $price]]})))))))
 
 ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ;; !                                                                                                                   !

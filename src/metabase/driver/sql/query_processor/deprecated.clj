@@ -44,21 +44,21 @@
 (p/deftype+ ^{:deprecated "0.46.0"} SQLSourceQuery [sql params]
   hformat/ToSql
   (to-sql [_]
-    (dorun (map hformat/add-anon-param params))
+          (dorun (map hformat/add-anon-param params))
     ;; strip off any trailing semicolons
-    (str "(" (str/replace sql #";+\s*$" "") ")"))
+          (str "(" (str/replace sql #";+\s*$" "") ")"))
 
   pretty/PrettyPrintable
   (pretty [_]
-    #_{:clj-kondo/ignore [:deprecated-var]}
-    (list `->SQLSourceQuery sql params))
+          #_{:clj-kondo/ignore [:deprecated-var]}
+          (list `->SQLSourceQuery sql params))
 
   Object
   (equals [_ other]
-    #_{:clj-kondo/ignore [:deprecated-var]}
-    (and (instance? SQLSourceQuery other)
-         (= sql    (.sql ^SQLSourceQuery other))
-         (= params (.params ^SQLSourceQuery other)))))
+          #_{:clj-kondo/ignore [:deprecated-var]}
+          (and (instance? SQLSourceQuery other)
+               (= sql    (.sql ^SQLSourceQuery other))
+               (= params (.params ^SQLSourceQuery other)))))
 
 (defn format-honeysql-1
   "Compile a `honeysql-form` map to a vector of `[sql & params]` with Honey SQL 1. `quote-style` is something like

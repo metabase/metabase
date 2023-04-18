@@ -85,11 +85,11 @@
                                      "\n"
                                      (pr-str explained))}))))
     (t2/with-transaction [_conn]
-     (perms/update-data-perms-graph! (dissoc graph :sandboxes))
-     (if-let [sandboxes (:sandboxes body)]
-       (let [new-sandboxes (upsert-sandboxes! sandboxes)]
-         (assoc (perms/data-perms-graph) :sandboxes new-sandboxes))
-       (perms/data-perms-graph)))))
+      (perms/update-data-perms-graph! (dissoc graph :sandboxes))
+      (if-let [sandboxes (:sandboxes body)]
+        (let [new-sandboxes (upsert-sandboxes! sandboxes)]
+          (assoc (perms/data-perms-graph) :sandboxes new-sandboxes))
+        (perms/data-perms-graph)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          PERMISSIONS GROUP ENDPOINTS                                           |
@@ -186,7 +186,6 @@
   (t2/delete! PermissionsGroup :id group-id)
   api/generic-204-no-content)
 
-
 ;;; ------------------------------------------- Group Membership Endpoints -------------------------------------------
 
 (api/defendpoint GET "/membership"
@@ -222,7 +221,7 @@
       (validation/check-advanced-permissions-enabled :group-manager)
       (api/check
        (t2/exists? User :id user_id :is_superuser false)
-       [400 (tru "Admin cant be a group manager.")]))
+        [400 (tru "Admin cant be a group manager.")]))
     (t2/insert! PermissionsGroupMembership
                 :group_id         group_id
                 :user_id          user_id
@@ -245,7 +244,7 @@
     (validation/check-manager-of-group (:group_id old))
     (api/check
      (t2/exists? User :id (:user_id old) :is_superuser false)
-     [400 (tru "Admin cant be a group manager.")])
+      [400 (tru "Admin cant be a group manager.")])
     (t2/update! PermissionsGroupMembership (:id old)
                 {:is_group_manager is_group_manager})
     (t2/select-one PermissionsGroupMembership :id (:id old))))
@@ -269,7 +268,6 @@
     (validation/check-manager-of-group (:group_id membership))
     (t2/delete! PermissionsGroupMembership :id id)
     api/generic-204-no-content))
-
 
 ;;; ------------------------------------------- Execution Endpoints -------------------------------------------
 

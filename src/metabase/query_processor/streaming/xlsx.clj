@@ -142,7 +142,7 @@
               base-strings)))]
     (map
      (fn [format-string]
-      (str
+       (str
         (when (::mb.viz/prefix format-settings) (str "\"" (::mb.viz/prefix format-settings) "\""))
         format-string
         (when (::mb.viz/suffix format-settings) (str "\"" (::mb.viz/suffix format-settings) "\""))))
@@ -164,19 +164,19 @@
 (defn- time-format
   [format-settings]
   (let [base-time-format (condp = (::mb.viz/time-enabled format-settings "minutes")
-                               "minutes"
-                               "h:mm"
+                           "minutes"
+                           "h:mm"
 
-                               "seconds"
-                               "h:mm:ss"
+                           "seconds"
+                           "h:mm:ss"
 
-                               "milliseconds"
-                               "h:mm:ss.000"
+                           "milliseconds"
+                           "h:mm:ss.000"
 
                                ;; {::mb.viz/time-enabled nil} indicates that time is explicitly disabled, rather than
                                ;; defaulting to "minutes"
-                               nil
-                               nil)]
+                           nil
+                           nil)]
     (when base-time-format
       (condp = (::mb.viz/time-style format-settings "h:mm A")
         "HH:mm"
@@ -284,8 +284,8 @@
 (defn- format-string-delay
   [^Workbook workbook ^DataFormat data-format format-string]
   (delay
-   (doto (.createCellStyle workbook)
-     (.setDataFormat (. data-format getFormat ^String format-string)))))
+    (doto (.createCellStyle workbook)
+      (.setDataFormat (. data-format getFormat ^String format-string)))))
 
 (defn- column-style-delays
   [^Workbook workbook data-format col-settings cols]

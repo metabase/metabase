@@ -18,12 +18,12 @@
   ;; stuff doesn't belong in the Dashboard QP namespace
   (binding [api/*current-user-permissions-set* (atom #{"/"})]
     (apply qp.dashboard/run-query-for-dashcard-async
-     :dashboard-id dashboard-id
-     :card-id      card-id
-     :dashcard-id  dashcard-id
-     :run          (fn [query info]
-                     (qp/process-query (assoc query :async? false) info))
-     options)))
+           :dashboard-id dashboard-id
+           :card-id      card-id
+           :dashcard-id  dashcard-id
+           :run          (fn [query info]
+                           (qp/process-query (assoc query :async? false) info))
+           options)))
 
 (deftest resolve-parameters-validation-test
   (api.dashboard-test/with-chain-filter-fixtures [{{dashboard-id :id} :dashboard
@@ -96,27 +96,27 @@
       (is (= 100 (count (mt/rows (run-query-for-dashcard dashboard-id card-id-1 dashcard-id-1))))))
 
     (testing "A 404 error should be thrown if the card-id is not valid for the dashboard"
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                              #"Not found"
-                              (run-query-for-dashcard dashboard-id (* card-id-1 2) dashcard-id-1))))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"Not found"
+                            (run-query-for-dashcard dashboard-id (* card-id-1 2) dashcard-id-1))))
 
     (testing "A 404 error should be thrown if the dashcard-id is not valid for the dashboard"
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                              #"Not found"
-                              (run-query-for-dashcard dashboard-id card-id-1 (* dashcard-id-1 2)))))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"Not found"
+                            (run-query-for-dashcard dashboard-id card-id-1 (* dashcard-id-1 2)))))
 
     (testing "A 404 error should be thrown if the dashcard-id is not valid for the card"
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                              #"Not found"
-                              (run-query-for-dashcard dashboard-id card-id-1 dashcard-id-2))))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"Not found"
+                            (run-query-for-dashcard dashboard-id card-id-1 dashcard-id-2))))
 
     (testing "Sanity check that a card-id in a dashboard card series executes successfully"
       (is (= 100 (count (mt/rows (run-query-for-dashcard dashboard-id card-id-3 dashcard-id-3))))))
 
     (testing "A 404 error should be thrown if the card-id is not valid for the dashcard series"
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                              #"Not found"
-                              (run-query-for-dashcard dashboard-id card-id-2 dashcard-id-3))))))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"Not found"
+                            (run-query-for-dashcard dashboard-id card-id-2 dashcard-id-3))))))
 
 (deftest default-value-precedence-test-field-filters
   (testing "If both Dashboard and Card have default values for a Field filter parameter, Card defaults should take precedence\n"

@@ -54,12 +54,12 @@
   [query]
   (try
    ;; `card-subquery-graph` will throw if there are circular references
-   (reduce card-subquery-graph (dep/graph) (qp.u.tag-referenced-cards/query->tag-card-ids query))
-   (catch ExceptionInfo e
-     (let [{:keys [reason node dependency]} (ex-data e)]
-       (if (= reason :weavejester.dependency/circular-dependency)
-         (throw (ex-info (circular-ref-error node dependency) {:original-exception e}))
-         (throw e)))))
+    (reduce card-subquery-graph (dep/graph) (qp.u.tag-referenced-cards/query->tag-card-ids query))
+    (catch ExceptionInfo e
+      (let [{:keys [reason node dependency]} (ex-data e)]
+        (if (= reason :weavejester.dependency/circular-dependency)
+          (throw (ex-info (circular-ref-error node dependency) {:original-exception e}))
+          (throw e)))))
   query)
 
 (defn resolve-referenced-card-resources

@@ -27,12 +27,10 @@
     :segment-delete})
 
 (defonce ^:private ^{:doc "Channel for receiving event notifications we want to subscribe to for revision events."}
-  revisions-channel
+ revisions-channel
   (a/chan))
 
-
 ;;; ## ---------------------------------------- EVENT PROCESSING ----------------------------------------
-
 
 (defn process-revision-event!
   "Handle processing for a single event notification received on the revisions-channel"
@@ -72,8 +70,6 @@
                                       :message      revision-message))))
     (catch Throwable e
       (log/warn (format "Failed to process revision event. %s" (:topic revision-event)) e))))
-
-
 
 ;;; ## ---------------------------------------- LIFECYLE ----------------------------------------
 

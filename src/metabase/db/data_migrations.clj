@@ -39,15 +39,15 @@
     (when-not (contains? ran-migrations migration-name)
       (log/info (format "Running data migration '%s'..." migration-name))
       (try
-       (t2/with-transaction [_conn]
-        (@migration-var))
-       (catch Exception e
-         (if catch?
-           (log/warn (format "Data migration %s failed: %s" migration-name (.getMessage e)))
-           (throw e))))
+        (t2/with-transaction [_conn]
+          (@migration-var))
+        (catch Exception e
+          (if catch?
+            (log/warn (format "Data migration %s failed: %s" migration-name (.getMessage e)))
+            (throw e))))
       (t2/insert! DataMigrations
-        :id        migration-name
-        :timestamp :%now))))
+                  :id        migration-name
+                  :timestamp :%now))))
 
 (def ^:private ^:deprecated data-migrations (atom []))
 
@@ -196,9 +196,9 @@
   [mapping-setting-key]
   (let [admin-group-id (:id (perms-group/admin))
         mapping        (try
-                        (json/parse-string (raw-setting mapping-setting-key))
-                        (catch Exception _e
-                          {}))]
+                         (json/parse-string (raw-setting mapping-setting-key))
+                         (catch Exception _e
+                           {}))]
     (when-not (empty? mapping)
       (t2/update! Setting (name mapping-setting-key)
                   {:value

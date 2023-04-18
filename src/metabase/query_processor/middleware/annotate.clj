@@ -53,8 +53,8 @@
 (defmethod column-info :default
   [{query-type :type, :as query} _]
   (throw (ex-info (tru "Unknown query type {0}" (pr-str query-type))
-           {:type  qp.error-type/invalid-query
-            :query query})))
+                  {:type  qp.error-type/invalid-query
+                   :query query})))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                      Adding :cols info for native queries                                      |
@@ -70,10 +70,10 @@
         (throw (ex-info (str (deferred-tru "Query processor error: number of columns returned by driver does not match results.")
                              "\n"
                              (deferred-tru "Expected {0} columns, but first row of resuls has {1} columns."
-                               expected-count actual-count))
-                 {:expected-columns (map :name cols)
-                  :first-row        (first rows)
-                  :type             qp.error-type/qp}))))))
+                                           expected-count actual-count))
+                        {:expected-columns (map :name cols)
+                         :first-row        (first rows)
+                         :type             qp.error-type/qp}))))))
 
 (defn- annotate-native-cols [cols]
   (let [unique-name-fn (mbql.u/unique-name-generator)]
@@ -94,7 +94,6 @@
   [_query {:keys [cols rows] :as _results}]
   (check-driver-native-columns cols rows)
   (annotate-native-cols cols))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       Adding :cols info for MBQL queries                                       |
@@ -119,8 +118,8 @@
   (let [qualifier (if fk-field-id
                     ;; strip off trailing ` id` from FK display name
                     (str/replace (:display_name (qp.store/field fk-field-id))
-                                 #"(?i)\sid$"
-                                 "")
+                      #"(?i)\sid$"
+                      "")
                     join-alias)]
     (format "%s → %s" qualifier field-display-name)))
 
@@ -192,7 +191,7 @@
     ;; maybe this `infer-expression-type` should takes an `inner-query` and look up the
     ;; source expresison as well?
     (merge (select-keys (infer-expression-type (second expression)) [:converted_timezone])
-     {:base_type :type/DateTime})
+           {:base_type :type/DateTime})
 
     (mbql.u/is-clause? mbql.s/string-functions expression)
     {:base_type :type/Text}
@@ -306,7 +305,6 @@
     _
     (throw (ex-info (tru "Don''t know how to get information about Field: {0}" &match)
                     {:field &match}))))
-
 
 ;;; ---------------------------------------------- Aggregate Field Info ----------------------------------------------
 
@@ -478,7 +476,6 @@
      (col-info-for-aggregation-clause inner-query arg)
      (ag->name-info inner-query &match))))
 
-
 ;;; ----------------------------------------- Putting it all together (MBQL) -----------------------------------------
 
 (defn- check-correct-number-of-columns-returned [returned-mbql-columns results]
@@ -521,14 +518,12 @@
    (cols-for-ags-and-breakouts inner-query)
    (cols-for-fields inner-query)))
 
-
-
 (s/defn ^:private merge-source-metadata-col :- (s/maybe su/Map)
   [source-metadata-col :- (s/maybe su/Map) col :- (s/maybe su/Map)]
   (merge
-    {} ;; ensure the type is not FieldInstance
-    (when-let [field-id (:id source-metadata-col)]
-      (dissoc (qp.store/field field-id) :database_type))
+   {} ;; ensure the type is not FieldInstance
+   (when-let [field-id (:id source-metadata-col)]
+     (dissoc (qp.store/field field-id) :database_type))
    source-metadata-col
    col
    ;; pass along the unit from the source query metadata if the top-level metadata has unit `:default`. This way the
@@ -595,7 +590,6 @@
   (u/prog1 (mbql-cols inner-query results)
     (check-correct-number-of-columns-returned <> results)))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Deduplicating names                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -609,7 +603,6 @@
          (assoc col :name unique-name))
        cols
        (mbql.u/uniquify-names (map :name cols))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           add-column-info middleware                                           |

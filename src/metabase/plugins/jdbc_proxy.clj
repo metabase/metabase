@@ -18,7 +18,7 @@
 ;; TODO -- why not use `java.sql.Wrapper` here instead of defining a new protocol that basically does the same thing?
 (p.types/defprotocol+ ^:private ProxyDriver
   (wrapped-driver [this]
-    "Get the JDBC driver wrapped by a Metabase JDBC proxy driver."))
+                  "Get the JDBC driver wrapped by a Metabase JDBC proxy driver."))
 
 (defn- proxy-driver ^Driver [^Driver driver]
   (reify

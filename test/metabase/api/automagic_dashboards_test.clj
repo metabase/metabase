@@ -43,7 +43,6 @@
                         (perms/grant-permissions! (perms-group/all-users) (perms/data-perms-path (mt/id))))))
            result))))))
 
-
 ;;; ------------------- X-ray  -------------------
 
 (deftest table-xray-test
@@ -82,7 +81,6 @@
 
     (testing "GET /api/automagic-dashboards/segment/:id/rule/example/indepth"
       (is (some? (api-call "segment/%s/rule/example/indepth" [segment-id]))))))
-
 
 (deftest field-xray-test
   (testing "GET /api/automagic-dashboards/field/:id"
@@ -133,7 +131,6 @@
 
     (testing "GET /api/automagic-dashboards/adhoc/:query/cell/:cell-query/rule/example/indepth"
       (is (some? (api-call "adhoc/%s/cell/%s/rule/example/indepth" [query cell-query]))))))
-
 
 ;;; ------------------- Comparisons -------------------
 
@@ -191,7 +188,6 @@
                                            [(format "card__%d" card-id)])
                                    #(revoke-collection-permissions! collection-id)))))))))))
 
-
 ;;; ------------------- Transforms -------------------
 
 (deftest transforms-test
@@ -205,14 +201,14 @@
                     [2 "Stout Burgers & Beers" 11 34.1 -118.329 2 1.1 11 2 1 1]
                     [3 "The Apple Pan" 11 34.041 -118.428 2 1.1 11 2 1 1]]
                    (mt/formatted-rows [int str int 3.0 3.0 int 1.0 int int int int]
-                     (api-call "transform/%s" ["Test transform"]
-                               #(revoke-collection-permissions!
-                                 (tf.materialize/get-collection "Test transform"))
-                               (fn [dashboard]
-                                 (->> dashboard
-                                      :ordered_cards
-                                      (sort-by (juxt :row :col))
-                                      last
-                                      :card
-                                      :dataset_query
-                                      qp/process-query))))))))))))
+                                      (api-call "transform/%s" ["Test transform"]
+                                                #(revoke-collection-permissions!
+                                                  (tf.materialize/get-collection "Test transform"))
+                                                (fn [dashboard]
+                                                  (->> dashboard
+                                                       :ordered_cards
+                                                       (sort-by (juxt :row :col))
+                                                       last
+                                                       :card
+                                                       :dataset_query
+                                                       qp/process-query))))))))))))

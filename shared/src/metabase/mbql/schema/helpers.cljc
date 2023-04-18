@@ -28,7 +28,6 @@
     (for [[arg-name arg-schema] (partition 2 arg-schemas)]
       (clause-arg-schema arg-name arg-schema)))))
 
-
 ;; TODO - this is a copy of the one in the `metabase.mbql.util` namespace. We need to reorganize things a bit so we
 ;; can use the same fn and avoid circular refs
 (defn is-clause?

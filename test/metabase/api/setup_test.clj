@@ -215,8 +215,8 @@
 
 (s/def ::setup!-args
   (s/cat :expected-status (s/? integer?)
-            :f               any?
-            :args            (s/* any?)))
+         :f               any?
+         :args            (s/* any?)))
 
 (defn- setup!
   {:arglists '([expected-status? f & args])}
@@ -325,8 +325,8 @@
           (is (setup/has-user-setup))
           ;; use do-with-setup* to delete the random user that was created
           (do-with-setup* body
-            #(is (= "The /api/setup route can only be used to create the first user, however a user currently exists."
-                   (client/client :post 403 "setup" (assoc-in body [:user :email] (mt/random-email)))))))))))
+                          #(is (= "The /api/setup route can only be used to create the first user, however a user currently exists."
+                                  (client/client :post 403 "setup" (assoc-in body [:user :email] (mt/random-email)))))))))))
 
 (deftest transaction-test
   (testing "POST /api/setup/"
@@ -371,7 +371,6 @@
              (is (= setup-token
                     (setup/setup-token))))))))))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            POST /api/setup/validate                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -400,7 +399,6 @@
              (client/client :post 204 "setup/validate" {:token   (setup/setup-token)
                                                         :details {:engine  "h2"
                                                                   :details (:details (mt/db))}}))))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         GET /api/setup/admin_checklist                                         |

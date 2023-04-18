@@ -11,14 +11,14 @@
 (p/deftype+ ClojureJDBCSpecDataSource [jdbc-spec]
   pretty/PrettyPrintable
   (pretty [_]
-    (list `->ClojureJDBCSpecDataSource jdbc-spec))
+          (list `->ClojureJDBCSpecDataSource jdbc-spec))
 
   javax.sql.DataSource
   (getConnection [_]
-    (jdbc/get-connection jdbc-spec))
+                 (jdbc/get-connection jdbc-spec))
 
   (getConnection [_ _user _password]
-    (throw (UnsupportedOperationException. "Use (.getConnection this) instead."))))
+                 (throw (UnsupportedOperationException. "Use (.getConnection this) instead."))))
 
 (alter-meta!
  #'->ClojureJDBCSpecDataSource

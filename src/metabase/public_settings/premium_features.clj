@@ -75,8 +75,8 @@
   :default    0
   :getter     (fn []
                 (if-not ((requiring-resolve 'metabase.db/db-is-set-up?))
-                 0
-                 (cached-active-users-count))))
+                  0
+                  (cached-active-users-count))))
 
 (defn- token-status-url [token base-url]
   (when (seq token)
@@ -336,7 +336,7 @@
   (str/starts-with? (ns-name *ns*) "metabase-enterprise"))
 
 (defonce
-  ^{:doc "A map from fully-qualified EE function names to maps which include their EE and OSS implementations, as well
+ ^{:doc "A map from fully-qualified EE function names to maps which include their EE and OSS implementations, as well
          as any additional options. This information is used to dynamically dispatch a call to the right implementation,
          depending on the available feature flags.
 
@@ -345,7 +345,7 @@
                               :ee       ee-fn
                               :feature  :embedding
                               :fallback :oss}"}
-  registry
+ registry
   (atom {}))
 
 (defn register-mapping!

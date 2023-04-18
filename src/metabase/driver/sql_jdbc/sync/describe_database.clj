@@ -128,7 +128,7 @@
            (filter (fn [{table-schema :schema, table-name :name}]
                      (sql-jdbc.sync.interface/have-select-privilege? driver conn table-schema table-name))))
      (sql-jdbc.sync.interface/filtered-syncable-schemas driver conn metadata
-                                                schema-inclusion-filters schema-exclusion-filters))))
+                                                        schema-inclusion-filters schema-exclusion-filters))))
 
 (defmethod sql-jdbc.sync.interface/active-tables :sql-jdbc
   [driver connection schema-inclusion-filters schema-exclusion-filters]

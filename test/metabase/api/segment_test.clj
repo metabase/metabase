@@ -94,7 +94,6 @@
                                                     :table_id                id
                                                     :definition              {:filter [:= [:field 10 nil] 20]}}))))))
 
-
 ;; ## PUT /api/segment
 
 (deftest update-permissions-test
@@ -182,7 +181,6 @@
         (is (= false
                (t2/select-one-fn :archived Segment :id id)))))))
 
-
 ;; ## DELETE /api/segment/:id
 
 (deftest delete-permissions-test
@@ -224,7 +222,6 @@
                 (-> (mt/user-http-request :crowberto :get 200 (format "segment/%d" id))
                     segment-response)))))))
 
-
 ;; ## GET /api/segment/:id
 
 (deftest fetch-segment-permissions-test
@@ -260,7 +257,6 @@
                  segment-response
                  (dissoc :query_description)))))))
 
-
 ;; ## GET /api/segment/:id/revisions
 
 (deftest revisions-permissions-test
@@ -272,7 +268,6 @@
         (perms/revoke-data-perms! (perms-group/all-users) db)
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :get 403 (format "segment/%d/revisions" (u/the-id segment)))))))))
-
 
 (deftest revisions-test
   (testing "GET /api/segment/:id/revisions"
@@ -310,7 +305,6 @@
                :description  nil}]
              (for [revision (mt/user-http-request :rasta :get 200 (format "segment/%d/revisions" id))]
                (dissoc revision :timestamp :id)))))))
-
 
 ;; ## POST /api/segment/:id/revert
 

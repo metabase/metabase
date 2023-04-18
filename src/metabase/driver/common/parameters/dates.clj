@@ -107,7 +107,7 @@
 
 (defn- maybe-reduce-resolution [unit dt]
   (if
-    (contains? #{"second" "minute" "hour"} unit)
+   (contains? #{"second" "minute" "hour"} unit)
     dt
     ; for units that are a day or longer, convert back to LocalDate
     (t/local-date dt)))

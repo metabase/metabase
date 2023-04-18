@@ -94,7 +94,7 @@
   (throw (RuntimeException. (tru "You can''t update a LoginHistory after it has been created."))))
 
 (mi/define-methods
- LoginHistory
- {:post-select post-select
-  :post-insert post-insert
-  :pre-update  pre-update})
+  LoginHistory
+  {:post-select post-select
+   :post-insert post-insert
+   :pre-update  pre-update})

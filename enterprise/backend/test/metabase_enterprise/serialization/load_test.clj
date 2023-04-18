@@ -149,7 +149,7 @@
           (is (some? (:column_settings vs)))
           (is (integer? field-id))
           (is (= "latitude" (-> (t2/select-one-fn :name Field :id field-id)
-                              u/lower-case-en)))
+                                u/lower-case-en)))
           (is (= {:show_mini_bar true
                   :column_title "Parallel"} col-val))
           (is (= "Venue Category" col-name))

@@ -37,8 +37,8 @@
 ;; HELPER FNS
 
 (driver/register! ::test-driver
-  :parent :sql-jdbc
-  :abstract? true)
+                  :parent :sql-jdbc
+                  :abstract? true)
 
 (defmethod driver/connection-properties ::test-driver
   [_]
@@ -71,8 +71,8 @@
 
 (defn- expected-tables [db-or-id]
   (map table-details (t2/select Table
-                       :db_id (u/the-id db-or-id), :active true, :visibility_type nil
-                       {:order-by [[:%lower.schema :asc] [:%lower.display_name :asc]]})))
+                                :db_id (u/the-id db-or-id), :active true, :visibility_type nil
+                                {:order-by [[:%lower.schema :asc] [:%lower.display_name :asc]]})))
 
 (defn- field-details [field]
   (mt/derecordize
@@ -111,7 +111,7 @@
 
 (defn- ok-mbql-card []
   (assoc (card-with-mbql-query "OK Card"
-                               :source-table (mt/id :checkins))
+           :source-table (mt/id :checkins))
          :result_metadata [{:name "num_toucans"}]))
 
 (deftest get-database-test
@@ -559,8 +559,7 @@
                         Database [_ {:engine ::test-driver}]]
           (is (< 1 (count (:data (mt/user-http-request :rasta :get 200 "database" :limit 1 :offset 0))))))))
 
-
-    ;; ?include=tables and ?include_tables=true mean the same thing so test them both the same way
+;; ?include=tables and ?include_tables=true mean the same thing so test them both the same way
     (doseq [query-param ["?include_tables=true"
                          "?include=tables"]]
       (testing query-param
@@ -761,7 +760,6 @@
                (mt/user-http-request :crowberto :get 200
                                      (format "database/%d/metadata" mbql.s/saved-questions-virtual-database-id))))))))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                CRON SCHEDULES!                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -873,10 +871,10 @@
       (mt/user-http-request :crowberto :post 200 (format "database/%d/dismiss_spinner" (u/the-id db)))
       (testing "dismissed db spinner"
         (is (= "complete" (:initial_sync_status
-                            (mt/user-http-request :crowberto :get 200 (format "database/%d" (u/the-id db)))))))
+                           (mt/user-http-request :crowberto :get 200 (format "database/%d" (u/the-id db)))))))
       (testing "dismissed table spinner"
         (is (= "complete" (:initial_sync_status
-                            (mt/user-http-request :crowberto :get 200 (format "table/%d" (u/the-id table))))))))))
+                           (mt/user-http-request :crowberto :get 200 (format "table/%d" (u/the-id table))))))))))
 
 (deftest non-admins-cant-trigger-sync
   (testing "Non-admins should not be allowed to trigger sync"
@@ -987,7 +985,6 @@
                  (#'api.database/test-connection-details "postgres" {:ssl false})))
           (is (= 1 @call-count))
           (is (= [true] @ssl-values)))))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                      GET /api/database/:id/schemas & GET /api/database/:id/schema/:schema                      |
@@ -1375,7 +1372,6 @@
                                                   :access-token                  protected-password
                                                   :refresh-token                 protected-password})))))
 
-
 (deftest db-ids-with-deprecated-drivers-test
   (mt/with-driver :driver-deprecation-test-legacy
     (testing "GET /api/database/db-ids-with-deprecated-drivers"
@@ -1396,10 +1392,10 @@
         (is (= {:password-source "file-path"
                 :password-value  "/path/to/password.txt"}
                (as-> (u/the-id database) d
-                     (format "database/%d" d)
-                     (mt/user-http-request :crowberto :get 200 d)
-                     (:details d)
-                     (select-keys d [:password-source :password-value]))))))))
+                 (format "database/%d" d)
+                 (mt/user-http-request :crowberto :get 200 d)
+                 (:details d)
+                 (select-keys d [:password-source :password-value]))))))))
 
 ;; these descriptions use deferred-tru because the `defsetting` macro complains if they're not, but since these are in
 ;; tests they won't get scraped for i18n purposes so it's ok.

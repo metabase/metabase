@@ -18,9 +18,7 @@
   events."} driver-notifications-channel
   (a/chan))
 
-
 ;;; ------------------------------------------------ EVENT PROCESSING ------------------------------------------------
-
 
 (defn process-driver-notifications-event
   "Handle processing for a single event notification received on the driver-notifications-channel"
@@ -32,8 +30,6 @@
       (driver/notify-database-updated (:engine database) database)
       (catch Throwable e
         (log/warn (format "Failed to process driver notifications event. %s" (:topic driver-notifications-event)) e)))))
-
-
 
 ;;; ---------------------------------------------------- LIFECYLE ----------------------------------------------------
 

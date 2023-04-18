@@ -21,8 +21,8 @@
 (deftest email-api-test
   (testing "/api/email"
     (mt/with-user-in-groups
-      [group {:name "New Group"}
-       user  [group]]
+     [group {:name "New Group"}
+      user  [group]]
       (letfn [(set-email-setting [user status]
                 (testing (format "set email setting with %s user" (mt/user-descriptor user))
                   (with-redefs [email/test-smtp-settings (constantly {::email/error nil})]
@@ -72,8 +72,8 @@
 (deftest slack-api-test
   (testing "/api/slack"
     (mt/with-user-in-groups
-      [group {:name "New Group"}
-       user  [group]]
+     [group {:name "New Group"}
+      user  [group]]
       (letfn [(set-slack-settings [user status]
                 (testing (format "set slack setting with %s user" (mt/user-descriptor user))
                   (with-redefs [slack/valid-token? (constantly true)
@@ -113,8 +113,8 @@
 (deftest geojson-api-test
   (testing "/api/geojson"
     (mt/with-user-in-groups
-      [group {:name "New Group"}
-       user  [group]]
+     [group {:name "New Group"}
+      user  [group]]
       (letfn [(get-geojson [user status]
                 (testing (format "get geojson with %s user" (mt/user-descriptor user))
                   (mt/user-http-request user :get status "geojson"
@@ -139,8 +139,8 @@
 (deftest permissions-group-api-test
   (testing "/api/permissions"
     (mt/with-user-in-groups
-      [group {:name "New Group"}
-       user  [group]]
+     [group {:name "New Group"}
+      user  [group]]
       (letfn [(get-permission-groups [user status]
                 (testing (format "get permission groups with %s user" (mt/user-descriptor user))
                   (mt/user-http-request user :get status "permissions/group")))]
@@ -166,8 +166,8 @@
     (mt/with-temporary-setting-values [enable-public-sharing true
                                        enable-embedding      true]
       (mt/with-user-in-groups
-        [group {:name "New Group"}
-         user  [group]]
+       [group {:name "New Group"}
+        user  [group]]
         (letfn [(get-public-dashboards [user status]
                   (testing (format "get public dashboards with %s user" (mt/user-descriptor user))
                     (mt/user-http-request user :get status "dashboard/public")))
@@ -212,8 +212,8 @@
                                        enable-embedding      true]
       (mt/with-actions-enabled
         (mt/with-user-in-groups
-          [group {:name "New Group"}
-           user  [group]]
+         [group {:name "New Group"}
+          user  [group]]
           (letfn [(get-public-actions [user status]
                     (testing (format "get public actions with %s user" (mt/user-descriptor user))
                       (mt/user-http-request user :get status "action/public")))
@@ -248,15 +248,15 @@
     (mt/with-temporary-setting-values [enable-public-sharing true
                                        enable-embedding      true]
       (mt/with-user-in-groups
-        [group {:name "New Group"}
-         user  [group]]
+       [group {:name "New Group"}
+        user  [group]]
         (letfn [(get-public-cards [user status]
                   (testing (format "get public cards with %s user" (mt/user-descriptor user))
                     (mt/user-http-request user :get status "card/public")))
 
                 (get-embeddable-cards [user status]
                   (testing (format "get embeddable dashboards with %s user" (mt/user-descriptor user))
-                    (mt/with-temp Card[_ {:enable_embedding true}]
+                    (mt/with-temp Card [_ {:enable_embedding true}]
                       (mt/user-http-request user :get status "card/embeddable"))))
 
                 (delete-public-card [user status]

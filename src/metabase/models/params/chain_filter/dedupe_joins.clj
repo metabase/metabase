@@ -18,11 +18,11 @@
   [g coll]
   (l/conda
    ((l/fresh [head]
-      (l/firsto coll head)
-      (g head)))
+             (l/firsto coll head)
+             (g head)))
    ((l/fresh [more]
-      (l/resto coll more)
-      (anyg g more)))))
+             (l/resto coll more)
+             (anyg g more)))))
 
 (defn- has-joino
   "A relation such that `joins` has a join whose RHS is `rhs`."
@@ -34,26 +34,26 @@
   needed for `join-2` (its LHS)."
   [join-1 join-2]
   (l/fresh [id]
-    (rhso join-1 id)
-    (lhso join-2 id)))
+           (rhso join-1 id)
+           (lhso join-2 id)))
 
 (defn- list-beforeo
   "A relation such that `sublist` is all items in `lst` up to (but not including) `item`."
   [lst sublist item]
   #_:clj-kondo/ignore
   (l/matcha [lst sublist]
-    ([[] []])
-    ([[item . _] []])
-    ([[?x . ?list-more] [?x . ?sublist-more]]
-     (list-beforeo ?list-more ?sublist-more item))))
+            ([[] []])
+            ([[item . _] []])
+            ([[?x . ?list-more] [?x . ?sublist-more]]
+             (list-beforeo ?list-more ?sublist-more item))))
 
 (defn- parent-beforeo
   "A relationship such that the parent join of `join` appears before it in `joins`."
   [joins join]
   (l/fresh [joins-before parent]
-    (list-beforeo joins joins-before join)
-    (parent-joino parent join)
-    (l/membero parent joins-before)))
+           (list-beforeo joins joins-before join)
+           (parent-joino parent join)
+           (l/membero parent joins-before)))
 
 (defn- distinct-rhso
   "A relationship such that all RHS tables in `joins` are distinct."
@@ -79,24 +79,24 @@
       (for [num-joins (range (count keep-ids) (inc (count in-joins)))]
         (let [out-joins (vec (l/lvars num-joins))]
           (l/run 1 [q]
-            (l/== q out-joins)
+                 (l/== q out-joins)
             ;; every join in out-joins must be present in the original non-deduped set of joins
-            (l/everyg (fn [join]
-                        (l/membero join in-joins))
-                      out-joins)
+                 (l/everyg (fn [join]
+                             (l/membero join in-joins))
+                           out-joins)
             ;; no duplicate joins (this is mostly for optimization since we also deduplicate RHSes below)
-            (l/distincto out-joins)
+                 (l/distincto out-joins)
             ;; a join for every rhs must be present
-            (l/everyg (fn [id]
-                        (has-joino out-joins id))
-                      keep-ids)
+                 (l/everyg (fn [id]
+                             (has-joino out-joins id))
+                           keep-ids)
             ;; no duplicate rhses
-            (distinct-rhso out-joins)
+                 (distinct-rhso out-joins)
             ;; joins must be in order (e.g. parent join must come first)
-            (l/everyg (fn [join]
-                        (l/conda
+                 (l/everyg (fn [join]
+                             (l/conda
                          ;; either the LHS is the source Table...
-                         ((lhso join source-id))
+                              ((lhso join source-id))
                          ;; or its LHS must have already been joined
-                         ((parent-beforeo out-joins join))))
-                      out-joins))))))))
+                              ((parent-beforeo out-joins join))))
+                           out-joins))))))))

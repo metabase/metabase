@@ -90,37 +90,37 @@
 (def TimezoneId
   "Valid timezone id."
   (s/named
-    #?(:clj  (apply s/enum (ZoneId/getAvailableZoneIds)) ;; 600 timezones on java 17
-       :cljs (apply s/enum (.names (.-tz moment))))      ;; 596 timezones on moment-timezone 0.5.38
-    "timezone-id"))
+   #?(:clj  (apply s/enum (ZoneId/getAvailableZoneIds)) ;; 600 timezones on java 17
+      :cljs (apply s/enum (.names (.-tz moment))))      ;; 596 timezones on moment-timezone 0.5.38
+   "timezone-id"))
 
 (def TemporalExtractUnits
   "Valid units to extract from a temporal."
   (s/named
-    (apply s/enum #{:year-of-era
-                    :quarter-of-year
-                    :month-of-year
-                    :week-of-year-iso
-                    :week-of-year-us
-                    :week-of-year-instance
-                    :day-of-month
-                    :day-of-week
-                    :hour-of-day
-                    :minute-of-hour
-                    :second-of-minute})
-    "temporal-extract-units"))
+   (apply s/enum #{:year-of-era
+                   :quarter-of-year
+                   :month-of-year
+                   :week-of-year-iso
+                   :week-of-year-us
+                   :week-of-year-instance
+                   :day-of-month
+                   :day-of-week
+                   :hour-of-day
+                   :minute-of-hour
+                   :second-of-minute})
+   "temporal-extract-units"))
 
 (def DatetimeDiffUnits
   "Valid units for a datetime-diff clause."
   (s/named
-    (apply s/enum #{:second :minute :hour :day :week :month :quarter :year})
-    "datetime-diff-units"))
+   (apply s/enum #{:second :minute :hour :day :week :month :quarter :year})
+   "datetime-diff-units"))
 
 (def ExtractWeekModes
   "Valid modes to extract weeks."
   (s/named
-    (apply s/enum #{:iso :us :instance})
-    "extract-week-modes"))
+   (apply s/enum #{:iso :us :instance})
+   "extract-week-modes"))
 
 (def ^:private RelativeDatetimeUnit
   (s/named
@@ -216,7 +216,6 @@
     "unit"
     DateTimeUnit)))
 
-
 ;; almost exactly the same as `absolute-datetime`, but generated in some sitations where the literal in question was
 ;; clearly a time (e.g. "08:00:00.000") and/or the Field derived from `:type/Time` and/or the unit was a
 ;; time-bucketing unit
@@ -283,7 +282,6 @@
   `relative-datetime` form."
   (one-of absolute-datetime relative-datetime time))
 
-
 ;;; -------------------------------------------------- Other Values --------------------------------------------------
 
 (def ValueTypeInfo
@@ -306,7 +304,6 @@
 (defclause ^:internal value
   value    s/Any
   type-info (s/maybe ValueTypeInfo))
-
 
 ;;; ----------------------------------------------------- Fields -----------------------------------------------------
 
@@ -483,7 +480,6 @@
   (s/if (partial is-clause? :aggregation)
     aggregation
     Field))
-
 
 ;;; -------------------------------------------------- Expressions ---------------------------------------------------
 
@@ -777,8 +773,8 @@
 
 (def ^:private FieldOrRelativeDatetime
   (s/if (partial is-clause? :relative-datetime)
-   relative-datetime
-   Field))
+    relative-datetime
+    Field))
 
 (def ^:private EqualityComparable
   "Schema for things that make sense in a `=` or `!=` filter, i.e. things that can be compared for equality."
@@ -988,7 +984,6 @@
 (defclause ^{:requires-features #{:percentile-aggregations}} percentile
   field-or-expression FieldOrExpressionDef, percentile NumericExpressionArg)
 
-
 ;; Metrics are just 'macros' (placeholders for other aggregations with optional filter and breakout clauses) that get
 ;; expanded to other aggregations/etc. in the expand-macros middleware
 ;;
@@ -1029,7 +1024,6 @@
     aggregation-options
     UnnamedAggregation))
 
-
 ;;; ---------------------------------------------------- Order-By ----------------------------------------------------
 
 ;; order-by is just a series of `[<direction> <field>]` clauses like
@@ -1044,7 +1038,6 @@
 (def OrderBy
   "Schema for an `order-by` clause subclause."
   (one-of asc desc))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                    Queries                                                     |
@@ -1197,10 +1190,10 @@
   (-> {helpers/NonBlankString TemplateTag}
       ;; make sure people don't try to pass in a `:name` that's different from the actual key in the map.
       (s/constrained (fn [m]
-                      (every? (fn [[tag-name tag-definition]]
-                                (core/= tag-name (:name tag-definition)))
-                              m))
-                    "keys in template tag map must match the :name of their values")))
+                       (every? (fn [[tag-name tag-definition]]
+                                 (core/= tag-name (:name tag-definition)))
+                               m))
+                     "keys in template tag map must match the :name of their values")))
 
 (def NativeQuery
   "Schema for a valid, normalized native [inner] query."
@@ -1211,7 +1204,6 @@
    ;; other stuff gets added in my different bits of QP middleware to record bits of state or pass info around.
    ;; Everyone else can ignore them.
    s/Keyword                       s/Any})
-
 
 ;;; ----------------------------------------------- MBQL [Inner] Query -----------------------------------------------
 
@@ -1402,7 +1394,6 @@
     (fn [{:keys [breakout fields]}]
       (empty? (set/intersection (set breakout) (set fields))))
     "Fields specified in `:breakout` should not be specified in `:fields`; this is implied.")))
-
 
 ;;; ----------------------------------------------------- Params -----------------------------------------------------
 
@@ -1622,7 +1613,7 @@
   because native queries don't support the MBQL `:limit` clause. For MBQL queries, if `:limit` is set, it will
   override these values."
   (s/constrained
-   { ;; maximum number of results to allow for a query with aggregations. If `max-results-bare-rows` is unset, this
+   {;; maximum number of results to allow for a query with aggregations. If `max-results-bare-rows` is unset, this
     ;; applies to all queries
     (s/optional-key :max-results)           helpers/IntGreaterThanOrEqualToZero
     ;; maximum number of results to allow for a query with no aggregations.
@@ -1682,7 +1673,6 @@
    s/Keyword
    s/Any})
 
-
 ;;; ------------------------------------------------------ Info ------------------------------------------------------
 
 ;; This stuff is used for informational purposes, primarily to record QueryExecution entries when a query is ran. Pass
@@ -1727,8 +1717,7 @@
    ;; these in yourself. In fact, I would like this a lot better if we could take these keys out of `:info` entirely
    ;; and have the code that saves QueryExceutions figure out their values when it goes to save them
    (s/optional-key :query-hash)                (s/maybe #?(:clj (Class/forName "[B")
-                                            :cljs s/Any))})
-
+                                                           :cljs s/Any))})
 
 ;;; --------------------------------------------- Metabase [Outer] Query ---------------------------------------------
 
@@ -1812,7 +1801,6 @@
    (s/constrained
     (complement :source-metadata)
     "`:source-metadata` should be added in the same level as `:source-query` (i.e., the 'inner' MBQL query.)")))
-
 
 ;;; --------------------------------------------------- Validators ---------------------------------------------------
 

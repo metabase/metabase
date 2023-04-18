@@ -38,7 +38,6 @@
 
 (driver/register! :bigquery-cloud-sdk, :parent :sql)
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                     Client                                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -246,8 +245,8 @@
 
 (defn- throw-invalid-query [e sql parameters]
   (throw (ex-info (tru "Error executing query: {0}" (ex-message e))
-           {:type qp.error-type/invalid-query, :sql sql, :parameters parameters}
-           e)))
+                  {:type qp.error-type/invalid-query, :sql sql, :parameters parameters}
+                  e)))
 
 (defn- execute-bigquery
   ^TableResult [^BigQuery client ^String sql parameters cancel-chan cancel-requested?]
@@ -295,23 +294,23 @@
 (defn- execute-bigquery-on-db
   ^TableResult [database sql parameters cancel-chan cancel-requested?]
   (execute-bigquery
-    (database->client database)
-    sql
-    parameters
-    cancel-chan
-    cancel-requested?))
+   (database->client database)
+   sql
+   parameters
+   cancel-chan
+   cancel-requested?))
 
 (defn- fetch-page [^TableResult response cancel-requested?]
   (when response
     (when *page-callback*
       (*page-callback*))
     (lazy-cat
-      (.getValues response)
-      (when (some? (.getNextPageToken response))
-        (if @cancel-requested?
-          (do (log/debug "Cancellation requested; terminating fetching of BigQuery pages")
-              [])
-          (fetch-page (.getNextPage response) cancel-requested?))))))
+     (.getValues response)
+     (when (some? (.getNextPageToken response))
+       (if @cancel-requested?
+         (do (log/debug "Cancellation requested; terminating fetching of BigQuery pages")
+             [])
+         (fetch-page (.getNextPage response) cancel-requested?))))))
 
 (defn- post-process-native
   "Parse results of a BigQuery query. `respond` is the same function passed to

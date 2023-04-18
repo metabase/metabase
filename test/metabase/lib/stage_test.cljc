@@ -99,8 +99,8 @@
                                   (lib/with-join-alias "Cat")
                                   (lib/with-join-fields :all))
                               [(lib/=
-                                 (lib/field "VENUES" "CATEGORY_ID")
-                                 (-> (lib/field "CATEGORIES" "ID") (lib/with-join-alias "Cat")))]))]
+                                (lib/field "VENUES" "CATEGORY_ID")
+                                (-> (lib/field "CATEGORIES" "ID") (lib/with-join-alias "Cat")))]))]
       (is (=? {:stages [{:joins       [{:alias      "Cat"
                                         :stages     [{:source-table (meta/id :categories)}]
                                         :conditions [[:=

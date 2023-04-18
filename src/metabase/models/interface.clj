@@ -57,7 +57,6 @@
 
 (models/set-root-namespace! 'metabase.models)
 
-
 ;;; types
 
 (defn json-in
@@ -88,12 +87,12 @@
   (json-out obj false))
 
 (models/add-type! :json
-  :in  json-in
-  :out json-out-with-keywordization)
+                  :in  json-in
+                  :out json-out-with-keywordization)
 
 (models/add-type! :json-no-keywordization
-  :in  json-in
-  :out json-out-without-keywordization)
+                  :in  json-in
+                  :out json-out-without-keywordization)
 
 ;; `metabase-query` type is for *outer* queries like Card.dataset_query. Normalizes them on the way in & out
 (defn- maybe-normalize [query]
@@ -114,8 +113,8 @@
         nil))))
 
 (models/add-type! :metabase-query
-  :in  (comp json-in maybe-normalize)
-  :out (comp (catch-normalization-exceptions maybe-normalize) json-out-with-keywordization))
+                  :in  (comp json-in maybe-normalize)
+                  :out (comp (catch-normalization-exceptions maybe-normalize) json-out-with-keywordization))
 
 (defn normalize-parameters-list
   "Normalize `parameters` or `parameter-mappings` when coming out of the application database or in via an API request."
@@ -124,8 +123,8 @@
       []))
 
 (models/add-type! :parameters-list
-  :in  (comp json-in normalize-parameters-list)
-  :out (comp (catch-normalization-exceptions normalize-parameters-list) json-out-with-keywordization))
+                  :in  (comp json-in normalize-parameters-list)
+                  :out (comp (catch-normalization-exceptions normalize-parameters-list) json-out-with-keywordization))
 
 (def ^:private MetricSegmentDefinition
   {(schema/optional-key :filter)      (schema/maybe mbql.s/Filter)
@@ -143,8 +142,8 @@
 
 ;; For inner queries like those in Metric definitions
 (models/add-type! :metric-segment-definition
-  :in  (comp json-in normalize-metric-segment-definition)
-  :out (comp (catch-normalization-exceptions normalize-metric-segment-definition) json-out-with-keywordization))
+                  :in  (comp json-in normalize-metric-segment-definition)
+                  :out (comp (catch-normalization-exceptions normalize-metric-segment-definition) json-out-with-keywordization))
 
 (defn normalize-visualization-settings
   "The frontend uses JSON-serialized versions of MBQL clauses as keys in `:column_settings`. This normalizes them
@@ -196,14 +195,14 @@
 ;; See sample code in SHA d597b445333f681ddd7e52b2e30a431668d35da8
 
 (models/add-type! :visualization-settings
-  :in  (comp json-in migrate-viz-settings)
-  :out (comp migrate-viz-settings normalize-visualization-settings json-out-without-keywordization))
+                  :in  (comp json-in migrate-viz-settings)
+                  :out (comp migrate-viz-settings normalize-visualization-settings json-out-without-keywordization))
 
 ;; json-set is just like json but calls `set` on it when coming out of the DB. Intended for storing things like a
 ;; permissions set
 (models/add-type! :json-set
-  :in  json-in
-  :out #(some-> % json-out-with-keywordization set))
+                  :in  json-in
+                  :out #(some-> % json-out-with-keywordization set))
 
 (def ^:private encrypted-json-in  (comp encryption/maybe-encrypt json-in))
 (def ^:private encrypted-json-out (comp json-out-with-keywordization encryption/maybe-decrypt))
@@ -213,12 +212,12 @@
 (def ^:private cached-encrypted-json-out (memoize/ttl encrypted-json-out :ttl/threshold (* 60 60 1000)))
 
 (models/add-type! :encrypted-json
-  :in  encrypted-json-in
-  :out cached-encrypted-json-out)
+                  :in  encrypted-json-in
+                  :out cached-encrypted-json-out)
 
 (models/add-type! :encrypted-text
-  :in  encryption/maybe-encrypt
-  :out encryption/maybe-decrypt)
+                  :in  encryption/maybe-encrypt
+                  :out encryption/maybe-decrypt)
 
 (defn- blob->bytes [^Blob b]
   (.getBytes ^Blob b 0 (.length ^Blob b)))
@@ -229,8 +228,8 @@
     v))
 
 (models/add-type! :secret-value
-  :in  (comp encryption/maybe-encrypt-bytes codecs/to-bytes)
-  :out (comp encryption/maybe-decrypt maybe-blob->bytes))
+                  :in  (comp encryption/maybe-encrypt-bytes codecs/to-bytes)
+                  :out (comp encryption/maybe-decrypt maybe-blob->bytes))
 
 (defn decompress
   "Decompress `compressed-bytes`."
@@ -244,22 +243,22 @@
       (nippy/thaw-from-in! data-in))))
 
 (models/add-type! :compressed
-  :in  identity
-  :out decompress)
+                  :in  identity
+                  :out decompress)
 
 (defn- validate-cron-string [s]
   (schema/validate (schema/maybe u.cron/CronScheduleString) s))
 
 (models/add-type! :cron-string
-  :in  validate-cron-string
-  :out identity)
+                  :in  validate-cron-string
+                  :out identity)
 
 ;; Toucan ships with a Keyword type, but on columns that are marked 'TEXT' it doesn't work properly since the values
 ;; might need to get de-CLOB-bered first. So replace the default Toucan `:keyword` implementation with one that
 ;; handles those cases.
 (models/add-type! :keyword
-  :in  u/qualified-name
-  :out keyword)
+                  :in  u/qualified-name
+                  :out keyword)
 
 ;;; properties
 
@@ -374,16 +373,15 @@
   :args ::define-hydration-method
   :ret  any?)
 
-
 (methodical/defmethod t2.model/resolve-model :around clojure.lang.Symbol
   "Handle models deriving from :metabase/model."
   [symb]
   (or
-    (when (simple-symbol? symb)
-      (let [metabase-models-keyword (keyword "model" (name symb))]
-        (when (isa? metabase-models-keyword :metabase/model)
-          metabase-models-keyword)))
-    (next-method symb)))
+   (when (simple-symbol? symb)
+     (let [metabase-models-keyword (keyword "model" (name symb))]
+       (when (isa? metabase-models-keyword :metabase/model)
+         metabase-models-keyword)))
+   (next-method symb)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             New Permissions Stuff                                              |

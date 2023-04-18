@@ -63,7 +63,6 @@
         (is (= ["foo" "miz"]
                (mt/user-http-request :crowberto :get 200 "mt/user/attributes")))))))
 
-
 (deftest update-user-attributes-test
   (testing "requires sandbox enabled"
     (is (= "This API endpoint is only enabled if you have a premium token with the :sandboxes feature."

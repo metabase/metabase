@@ -142,8 +142,8 @@
             (when-not (= all-schemas #{session-schema})
               (log/warn (u/format-color 'yellow
                                         (str "[oracle] At least one table's schema for the existing '%s' Database"
-                                            " (id %d), which include all of [%s], does not match current session-schema"
-                                            " of %s; deleting this DB so it can be recreated")
+                                             " (id %d), which include all of [%s], does not match current session-schema"
+                                             " of %s; deleting this DB so it can be recreated")
                                         database-name
                                         existing-db-id
                                         (str/join "," all-schemas)
@@ -280,7 +280,6 @@
    ;; "session schemas" that don't match the current test
    (non-session-schemas)))
 
-
 ;;; Clear out the session schema before and after tests run
 ;; TL;DR Oracle schema == Oracle user. Create new user for session-schema
 (defn- execute! [format-string & args]
@@ -300,7 +299,7 @@
 
 (defn drop-user! [username]
   (u/ignore-exceptions
-   (execute! "DROP USER %s CASCADE" username)))
+    (execute! "DROP USER %s CASCADE" username)))
 
 (defmethod tx/before-run :oracle
   [_]

@@ -73,12 +73,11 @@
       model (update :object (partial models/do-post-select model)))))
 
 (mi/define-methods
- Revision
- {:types       (constantly {:object :json})
-  :pre-insert  pre-insert
-  :pre-update  (fn [& _] (throw (Exception. (tru "You cannot update a Revision!"))))
-  :post-select do-post-select-for-object})
-
+  Revision
+  {:types       (constantly {:object :json})
+   :pre-insert  pre-insert
+   :pre-update  (fn [& _] (throw (Exception. (tru "You cannot update a Revision!"))))
+   :post-select do-post-select-for-object})
 
 ;;; # Functions
 
@@ -115,9 +114,9 @@
   [model id]
   {:pre [(models/model? model) (integer? id)]}
   (when-let [old-revisions (seq (drop max-revisions (map :id (t2/select [Revision :id]
-                                                               :model    (name model)
-                                                               :model_id id
-                                                               {:order-by [[:timestamp :desc]]}))))]
+                                                                        :model    (name model)
+                                                                        :model_id id
+                                                                        {:order-by [[:timestamp :desc]]}))))]
     (t2/delete! Revision :id [:in old-revisions])))
 
 (defn push-revision!
@@ -137,13 +136,13 @@
     ;; make sure we still have a map after calling out serialization function
     (assert (map? object))
     (t2/insert! Revision
-      :model        (name entity)
-      :model_id     id
-      :user_id      user-id
-      :object       object
-      :is_creation  is-creation?
-      :is_reversion false
-      :message      message))
+                :model        (name entity)
+                :model_id     id
+                :user_id      user-id
+                :object       object
+                :is_creation  is-creation?
+                :is_reversion false
+                :message      message))
   (delete-old-revisions! entity id)
   object)
 

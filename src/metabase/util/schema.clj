@@ -41,7 +41,6 @@
 
 (alter-var-root #'schema.core/validator (constantly schema-core-validator))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                            Plumatic API Schema Validation & Error Messages                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -82,8 +81,8 @@
     (= existing-schema s/Str)                           (deferred-tru "value must be a string.")
     (= existing-schema s/Bool)                          (deferred-tru "value must be a boolean.")
     (instance? java.util.regex.Pattern existing-schema) (deferred-tru
-                                                          "value must be a string that matches the regex `{0}`."
-                                                          existing-schema)))
+                                                         "value must be a string that matches the regex `{0}`."
+                                                         existing-schema)))
 
 (declare api-error-message)
 
@@ -144,18 +143,18 @@
        (when (map? schema)
          (let [spaces (str/join (repeat indent-depth "  "))]
            (str (deferred-tru "value must be a map with schema: (\n{0}{1}{2}{3}{4}{5}"
-                  spaces
-                  "  "
-                  (str/join
-                   (str "\n" spaces "  ")
-                   (for [k (sort-by pr-str (keys schema))] ;; keep order of keys deterministic
-                     (str
-                      (api-error-message k (inc indent-depth))
-                      " : "
-                      (api-error-message (get schema k) (inc indent-depth)))))
-                  "\n"
-                  spaces
-                  ")")))))))
+                              spaces
+                              "  "
+                              (str/join
+                               (str "\n" spaces "  ")
+                               (for [k (sort-by pr-str (keys schema))] ;; keep order of keys deterministic
+                                 (str
+                                  (api-error-message k (inc indent-depth))
+                                  " : "
+                                  (api-error-message (get schema k) (inc indent-depth)))))
+                              "\n"
+                              spaces
+                              ")")))))))
 
 (defn non-empty
   "Add an addditonal constraint to `schema` (presumably an array) that requires it to be non-empty
@@ -197,7 +196,6 @@
                     (assoc (dissoc x (s/find-extra-keys-schema x)) s/Any s/Any)
                     x))
                 m))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 USEFUL SCHEMAS                                                 |
@@ -293,8 +291,8 @@
 (def Field
   "Schema for a valid Field for API usage."
   (with-api-error-message (s/pred
-                            (comp (complement (s/checker mbql.s/Field))
-                                  mbql.normalize/normalize-tokens))
+                           (comp (complement (s/checker mbql.s/Field))
+                                 mbql.normalize/normalize-tokens))
     (deferred-tru "value must an array with :field id-or-name and an options map")))
 
 (def CoercionStrategyKeywordOrString
@@ -367,8 +365,8 @@
 
 (def ^:private keyword-or-non-blank-str
   (s/conditional
-    string?  NonBlankString
-    keyword? s/Keyword))
+   string?  NonBlankString
+   keyword? s/Keyword))
 
 (def ValuesSourceConfig
   "Schema for valid source_options within a Parameter"

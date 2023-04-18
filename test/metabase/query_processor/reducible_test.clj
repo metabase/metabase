@@ -67,7 +67,7 @@
              (str/split-lines (slurp filename))))
       (finally
         (u/ignore-exceptions
-         (.delete (io/file filename)))))))
+          (.delete (io/file filename)))))))
 
 (defn- maps-rff [metadata]
   (let [ks (mapv (comp keyword :name) (:cols metadata))]
@@ -84,11 +84,11 @@
     (is (= [{:ID 1, :CATEGORY_ID 4,  :LATITUDE 10.0646, :LONGITUDE -165.374, :NAME "Red Medicine",          :PRICE 3}
             {:ID 2, :CATEGORY_ID 11, :LATITUDE 34.0996, :LONGITUDE -118.329, :NAME "Stout Burgers & Beers", :PRICE 2}]
            (mt/rows
-             (qp/process-query
-              {:database (mt/id)
-               :type     :query
-               :query    {:source-table (mt/id :venues), :limit 2, :order-by [[:asc (mt/id :venues :id)]]}}
-              {:rff maps-rff}))))))
+            (qp/process-query
+             {:database (mt/id)
+              :type     :query
+              :query    {:source-table (mt/id :venues), :limit 2, :order-by [[:asc (mt/id :venues :id)]]}}
+             {:rff maps-rff}))))))
 
 (deftest cancelation-test
   (testing "Example of canceling a query early before results are returned."

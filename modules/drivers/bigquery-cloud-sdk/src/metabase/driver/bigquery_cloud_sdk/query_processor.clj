@@ -142,7 +142,6 @@
   [_ column-mode timezone-id v]
   (parse-value column-mode v (fn [v] (u.date/parse v timezone-id))))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               SQL Driver Methods                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -245,7 +244,7 @@
 
 (defn- throw-unsupported-conversion [from to]
   (throw (ex-info (tru "Cannot convert a {0} to a {1}" from to)
-           {:type qp.error-type/invalid-query})))
+                  {:type qp.error-type/invalid-query})))
 
 (defmethod ->temporal-type [:date LocalTime]           [_ _t] (throw-unsupported-conversion "time" "date"))
 (defmethod ->temporal-type [:date OffsetTime]          [_ _t] (throw-unsupported-conversion "time" "date"))
@@ -367,12 +366,12 @@
 
 (defrecord AtTimeZone
   ;; record type to support applying BigQuery's `AT TIME ZONE` operator to an expression
-  [expr zone]
+           [expr zone]
   hformat/ToSql
   (to-sql [_]
     (format "%s AT TIME ZONE %s"
-      (hformat/to-sql expr)
-      (hformat/to-sql (hx/literal zone)))))
+            (hformat/to-sql expr)
+            (hformat/to-sql (hx/literal zone)))))
 
 (defn- extract [unit expr]
   (condp = (temporal-type expr)
@@ -481,9 +480,9 @@
       hformat/ToSql
       (to-sql [_]
         (format "APPROX_QUANTILES(%s, %s)[OFFSET(%s)]"
-          (hformat/to-sql expr-hsql)
-          quantiles
-          offset))
+                (hformat/to-sql expr-hsql)
+                quantiles
+                offset))
       PrettyPrintable
       (pretty [_]
         (format "APPROX_QUANTILES(%s, %s)[OFFSET(%s)]" (pr-str expr) (pr-str quantiles) (pr-str offset))))))
@@ -496,7 +495,6 @@
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :median]
   [driver [_ arg]]
   (sql.qp/->honeysql driver [:percentile arg 0.5]))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                Query Processor                                                 |
@@ -721,7 +719,6 @@
       driver
       (reconcile-temporal-types clause)))))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                Other Driver / SQLDriver Method Implementations                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -803,9 +800,9 @@
               :timestamp :current_timestamp),
           report-zone (when (not= f :current_timestamp) (qp.timezone/report-timezone-id-if-supported :bigquery-cloud-sdk))]
       (hformat/to-sql
-        (if report-zone
-          (hx/call f (hx/literal report-zone))
-          (hx/call f))))))
+       (if report-zone
+         (hx/call f (hx/literal report-zone))
+         (hx/call f))))))
 
 (defmethod temporal-type CurrentMomentForm
   [^CurrentMomentForm current-moment]

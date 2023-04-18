@@ -184,7 +184,6 @@
                (mt/user-http-request
                 :rasta :delete 403 (str "metric/" id) :revision_message "yeeeehaw!")))))
 
-
     (testing "test validations"
       (is (= {:errors {:revision_message "value must be a non-blank string."}}
              (mt/user-http-request

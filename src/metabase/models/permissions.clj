@@ -213,7 +213,6 @@
    prevent accidental tragedy, but you can enable it here when creating the default entry for `Admin`."
   false)
 
-
 ;;; --------------------------------------------------- Validation ---------------------------------------------------
 
 (def ^:private path-char
@@ -226,7 +225,7 @@
   (u.regex/rx [:or #"[^\\/]" #"\\/" #"\\\\"]))
 
 (def ^:private data-rx->data-kind
-  {      #"db/\d+/"                                                                  :dk/db
+  {#"db/\d+/"                                                                  :dk/db
    [:and #"db/\d+/" "native" "/"]                                                    :dk/db-native
    [:and #"db/\d+/" "schema" "/"]                                                    :dk/db-schema
    [:and #"db/\d+/" "schema" "/" path-char "*" "/"]                                  :dk/db-schema-name
@@ -236,7 +235,6 @@
    [:and #"db/\d+/" "schema" "/" path-char "*" "/table/\\d+/" "query/" "segmented/"] :dk/db-schema-name-table-and-segmented})
 
 (def ^:private DataKind (into [:enum] (vals data-rx->data-kind)))
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; *-permissions-rx
@@ -434,7 +432,7 @@
   (when (and (= group_id (:id (perms-group/admin)))
              (not *allow-admin-permissions-changes*))
     (throw (ex-info (tru "You cannot create or revoke permissions for the ''Admin'' group.")
-             {:status-code 400}))))
+                    {:status-code 400}))))
 
 (defn- assert-valid-object
   "Check to make sure the value of `:object` for `permissions` entry is valid."
@@ -444,7 +442,7 @@
              (or (not= object "/")
                  (not *allow-root-entries*)))
     (throw (ex-info (tru "Invalid permissions object path: ''{0}''." object)
-             {:status-code 400, :path object}))))
+                    {:status-code 400, :path object}))))
 
 (defn- assert-valid
   "Check to make sure this `permissions` entry is something that's allowed to be saved (i.e. it has a valid `:object`
@@ -453,7 +451,6 @@
   (doseq [f [assert-not-admin-group
              assert-valid-object]]
     (f permissions)))
-
 
 ;;; ------------------------------------------------- Path Util Fns --------------------------------------------------
 
@@ -585,8 +582,8 @@
   permissions path for the table. Otherwise, defaults to the root path ('/'), thus restricting writes to admins."
   [& path-components]
   (let [f (u/ignore-exceptions
-           (classloader/require 'metabase-enterprise.advanced-permissions.models.permissions)
-           (resolve 'metabase-enterprise.advanced-permissions.models.permissions/data-model-write-perms-path))]
+            (classloader/require 'metabase-enterprise.advanced-permissions.models.permissions)
+            (resolve 'metabase-enterprise.advanced-permissions.models.permissions/data-model-write-perms-path))]
     (if (and f (premium-features/enable-advanced-permissions?))
       (apply f path-components)
       "/")))
@@ -597,8 +594,8 @@
   permissions path for the table. Otherwise, defaults to the root path ('/'), thus restricting writes to admins."
   [db-id]
   (let [f (u/ignore-exceptions
-           (classloader/require 'metabase-enterprise.advanced-permissions.models.permissions)
-           (resolve 'metabase-enterprise.advanced-permissions.models.permissions/db-details-write-perms-path))]
+            (classloader/require 'metabase-enterprise.advanced-permissions.models.permissions)
+            (resolve 'metabase-enterprise.advanced-permissions.models.permissions/db-details-write-perms-path))]
     (if (and f (premium-features/enable-advanced-permissions?))
       (f db-id)
       "/")))
@@ -685,7 +682,6 @@
   [instance read-or-write]
   (perms-objects-set-for-parent-collection instance read-or-write))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               ENTITY + LIFECYCLE                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -709,11 +705,10 @@
   (assert-not-admin-group permissions))
 
 (mi/define-methods
- Permissions
- {:pre-insert pre-insert
-  :pre-update pre-update
-  :pre-delete pre-delete})
-
+  Permissions
+  {:pre-insert pre-insert
+   :pre-update pre-update
+   :pre-delete pre-delete})
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  GRAPH SCHEMA                                                  |
@@ -791,8 +786,8 @@
 
 (def ^:private DataModelSchemaPermissionsGraph
   (s/named
-    (s/cond-pre (s/enum :all :none)
-                {su/IntGreaterThanZero DataModelTablePermissionsGraph})
+   (s/cond-pre (s/enum :all :none)
+               {su/IntGreaterThanZero DataModelTablePermissionsGraph})
    "Valid data model perms graph for a schema"))
 
 (def DataModelPermissionsGraph
@@ -828,13 +823,13 @@
         (map (fn [db-id]
                [db-id {:data       {:native :write :schemas :all}
                        :download   {:native :full  :schemas :full}
-                       :data-model {               :schemas :all}
+                       :data-model {:schemas :all}
                        :details :yes}])
              db-ids)))
 
 (defn- permissions-by-group-ids [where-clause]
   (let [permissions (t2/select [Permissions [:group_id :group-id] [:object :path]]
-                      {:where where-clause})]
+                               {:where where-clause})]
     (reduce (fn [m {:keys [group-id path]}]
               (update m group-id conj path))
             {}
@@ -907,7 +902,7 @@
                                 (m/map-vals (fn [paths]
                                               ;; remove v1 paths, implicitly keep v2 paths
                                               (remove (fn [path] (mc/validate [:re (u.regex/rx "^/" v1-data-permissions-rx "$")]
-                                                                  path))
+                                                                              path))
                                                       paths))))]
     {:revision (perms-revision/latest-id)
      :groups   (generate-graph @db-ids group-id->v2-paths)}))
@@ -1144,31 +1139,31 @@
    token with the advanced-permissions feature."
   [perm-type]
   (ex-info
-    (tru "The {0} permissions functionality is only enabled if you have a premium token with the advanced-permissions feature."
-         (str/replace (name perm-type) "-" " "))
-    {:status-code 402}))
+   (tru "The {0} permissions functionality is only enabled if you have a premium token with the advanced-permissions feature."
+        (str/replace (name perm-type) "-" " "))
+   {:status-code 402}))
 
 (defn- download-permissions-set
   [group-id]
   (t2/select-fn-set :object
-                   [Permissions :object]
-                   {:where [:and
-                            [:= :group_id group-id]
-                            [:or
-                             [:= :object (h2x/literal "/")]
-                             [:like :object (h2x/literal "/download/%")]]]}))
+                    [Permissions :object]
+                    {:where [:and
+                             [:= :group_id group-id]
+                             [:or
+                              [:= :object (h2x/literal "/")]
+                              [:like :object (h2x/literal "/download/%")]]]}))
 
 (defn- download-permissions-level
   [permissions-set db-id & [schema-name table-id]]
   (cond
-   (set-has-full-permissions? permissions-set (feature-perms-path :download :full db-id schema-name table-id))
-   :full
+    (set-has-full-permissions? permissions-set (feature-perms-path :download :full db-id schema-name table-id))
+    :full
 
-   (set-has-full-permissions? permissions-set (feature-perms-path :download :limited db-id schema-name table-id))
-   :limited
+    (set-has-full-permissions? permissions-set (feature-perms-path :download :limited db-id schema-name table-id))
+    :limited
 
-   :else
-   :none))
+    :else
+    :none))
 
 (s/defn update-native-download-permissions!
   "Native download permissions control the ability of users to download the results of native questions for a given
@@ -1365,8 +1360,8 @@
   [old-graph new-graph]
   (when (not= (:revision old-graph) (:revision new-graph))
     (throw (ex-info (tru
-                      (str "Looks like someone else edited the permissions and your data is out of date. "
-                           "Please fetch new data and try again."))
+                     (str "Looks like someone else edited the permissions and your data is out of date. "
+                          "Please fetch new data and try again."))
                     {:status-code 409}))))
 
 (defn save-perms-revision!
@@ -1390,9 +1385,9 @@
   "Log changes to the permissions graph."
   [old new]
   (log/debug
-   (trs "Changing permissions")
-   "\n" (trs "FROM:") (u/pprint-to-str 'magenta old)
-   "\n" (trs "TO:")   (u/pprint-to-str 'blue    new)))
+    (trs "Changing permissions")
+    "\n" (trs "FROM:") (u/pprint-to-str 'magenta old)
+    "\n" (trs "TO:")   (u/pprint-to-str 'blue    new)))
 
 (mu/defn update-data-perms-graph!
   "Update the *data* permissions graph, making any changes necessary to make it match NEW-GRAPH.
@@ -1411,10 +1406,10 @@
        (log-permissions-changes old new)
        (check-revision-numbers old-graph new-graph)
        (t2/with-transaction [_conn]
-        (doseq [[group-id changes] new]
-          (update-group-permissions! group-id changes))
-        (save-perms-revision! PermissionsRevision (:revision old-graph) old new)
-        (delete-gtaps-if-needed-after-permissions-change! new)))))
+         (doseq [[group-id changes] new]
+           (update-group-permissions! group-id changes))
+         (save-perms-revision! PermissionsRevision (:revision old-graph) old new)
+         (delete-gtaps-if-needed-after-permissions-change! new)))))
 
   ;; The following arity is provided soley for convenience for tests/REPL usage
   ([ks :- [:vector :any] new-value]

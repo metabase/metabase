@@ -82,8 +82,8 @@
   "Internal impl for `match` and `replace` macros."
   [& args]
   (macros/case
-    :clj  `(clojure.core.match/match ~@args)
-    :cljs `(cljs.core.match/match ~@args)))
+   :clj  `(clojure.core.match/match ~@args)
+   :cljs `(cljs.core.match/match ~@args)))
 
 (defmacro match*
   "Internal impl for `match`. Generate a pattern-matching function using `core.match`, and call it with `form`."
@@ -94,9 +94,9 @@
        some?
        ((fn ~match-fn-symb [~'&parents ~'&match]
           (match** [~'&match]
-            ~@(generate-patterns-and-results match-fn-symb patterns-and-results, :wrap-result-forms? true)
-            ~@(when-not (skip-else-clause? patterns-and-results)
-                [:else `(metabase.mbql.util.match.impl/match-in-collection ~match-fn-symb ~'&parents ~'&match)])))
+                   ~@(generate-patterns-and-results match-fn-symb patterns-and-results, :wrap-result-forms? true)
+                   ~@(when-not (skip-else-clause? patterns-and-results)
+                       [:else `(metabase.mbql.util.match.impl/match-in-collection ~match-fn-symb ~'&parents ~'&match)])))
         []
         ~form)))))
 
@@ -220,9 +220,9 @@
   (let [replace-fn-symb (gensym "replace-")]
     `((fn ~replace-fn-symb [~'&parents ~'&match]
         (match** [~'&match]
-          ~@(generate-patterns-and-results replace-fn-symb patterns-and-results, :wrap-result-forms? false)
-          ~@(when-not (skip-else-clause? patterns-and-results)
-              [:else `(metabase.mbql.util.match.impl/replace-in-collection ~replace-fn-symb ~'&parents ~'&match)])))
+                 ~@(generate-patterns-and-results replace-fn-symb patterns-and-results, :wrap-result-forms? false)
+                 ~@(when-not (skip-else-clause? patterns-and-results)
+                     [:else `(metabase.mbql.util.match.impl/replace-in-collection ~replace-fn-symb ~'&parents ~'&match)])))
       []
       ~form)))
 

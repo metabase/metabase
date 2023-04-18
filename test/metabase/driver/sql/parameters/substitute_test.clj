@@ -79,7 +79,6 @@
                                                 (optional " AND color = " (param "bird_color")))]
             {"bird_type" "Steller's Jay"})))))
 
-
 ;;; ------------------------------------------------- Field Filters --------------------------------------------------
 
 (defn date-field-filter-value
@@ -292,7 +291,6 @@
       (is (= ["SELECT * FROM test_scores WHERE symbol = 'A'" nil]
              (substitute query {"snippet:symbol_is_A" (params/->ReferencedQuerySnippet 123 "symbol = 'A'")}))))))
 
-
 ;;; ------------------------------------------ simple substitution — {{x}} ------------------------------------------
 
 (defn- substitute-e2e {:style/indent 1} [sql params]
@@ -323,111 +321,110 @@
          (substitute-e2e "SELECT * FROM bird_facts WHERE toucans_are_cool = {{toucans_are_cool}} AND bird_type = {{bird_type}}"
            {"toucans_are_cool" true})))))
 
-
 ;;; ---------------------------------- optional substitution — [[ ... {{x}} ... ]] ----------------------------------
 
 (deftest ^:parallel optional-substitution-test
   (is (= {:query  "SELECT * FROM bird_facts WHERE toucans_are_cool = TRUE"
           :params []}
          (substitute-e2e "SELECT * FROM bird_facts [[WHERE toucans_are_cool = {{toucans_are_cool}}]]"
-                         {"toucans_are_cool" true})))
+           {"toucans_are_cool" true})))
 
   (is (= {:query  "SELECT * FROM bird_facts WHERE toucans_are_cool = TRUE"
           :params []}
          (substitute-e2e "SELECT * FROM bird_facts [[WHERE toucans_are_cool = {{ toucans_are_cool }}]]"
-                         {"toucans_are_cool" true})))
+           {"toucans_are_cool" true})))
 
   (is (= {:query  "SELECT * FROM bird_facts WHERE toucans_are_cool = TRUE"
           :params []}
          (substitute-e2e "SELECT * FROM bird_facts [[WHERE toucans_are_cool = {{toucans_are_cool }}]]"
-                         {"toucans_are_cool" true})))
+           {"toucans_are_cool" true})))
 
   (is (= {:query  "SELECT * FROM bird_facts WHERE toucans_are_cool = TRUE"
           :params []}
          (substitute-e2e "SELECT * FROM bird_facts [[WHERE toucans_are_cool = {{ toucans_are_cool}}]]"
-                         {"toucans_are_cool" true})))
+           {"toucans_are_cool" true})))
 
   (is (= {:query  "SELECT * FROM bird_facts WHERE toucans_are_cool = TRUE"
           :params []}
          (substitute-e2e "SELECT * FROM bird_facts [[WHERE toucans_are_cool = {{toucans_are_cool_2}}]]"
-                         {"toucans_are_cool_2" true})))
+           {"toucans_are_cool_2" true})))
 
   (is (= {:query  "SELECT * FROM bird_facts WHERE toucans_are_cool = TRUE AND bird_type = 'toucan'"
           :params []}
          (substitute-e2e "SELECT * FROM bird_facts [[WHERE toucans_are_cool = {{toucans_are_cool}} AND bird_type = 'toucan']]"
-                         {"toucans_are_cool" true})))
+           {"toucans_are_cool" true})))
 
   (testing "Two parameters in an optional"
     (is (= {:query  "SELECT * FROM bird_facts WHERE toucans_are_cool = TRUE AND bird_type = ?"
             :params ["toucan"]}
            (substitute-e2e "SELECT * FROM bird_facts [[WHERE toucans_are_cool = {{toucans_are_cool}} AND bird_type = {{bird_type}}]]"
-                           {"toucans_are_cool" true, "bird_type" "toucan"}))))
+             {"toucans_are_cool" true, "bird_type" "toucan"}))))
 
   (is (= {:query  "SELECT * FROM bird_facts"
           :params []}
          (substitute-e2e "SELECT * FROM bird_facts [[WHERE toucans_are_cool = {{toucans_are_cool}}]]"
-                         nil)))
+           nil)))
 
   (is (= {:query  "SELECT * FROM toucanneries WHERE TRUE AND num_toucans > 5"
           :params []}
          (substitute-e2e "SELECT * FROM toucanneries WHERE TRUE [[AND num_toucans > {{num_toucans}}]]"
-                         {"num_toucans" 5})))
+           {"num_toucans" 5})))
 
   (testing "make sure nil gets substitute-e2ed in as `NULL`"
     (is (= {:query  "SELECT * FROM toucanneries WHERE TRUE AND num_toucans > NULL"
             :params []}
            (substitute-e2e "SELECT * FROM toucanneries WHERE TRUE [[AND num_toucans > {{num_toucans}}]]"
-                           {"num_toucans" nil}))))
+             {"num_toucans" nil}))))
 
   (is (= {:query  "SELECT * FROM toucanneries WHERE TRUE AND num_toucans > TRUE"
           :params []}
          (substitute-e2e "SELECT * FROM toucanneries WHERE TRUE [[AND num_toucans > {{num_toucans}}]]"
-                         {"num_toucans" true})))
+           {"num_toucans" true})))
 
   (is (= {:query  "SELECT * FROM toucanneries WHERE TRUE AND num_toucans > FALSE"
           :params []}
          (substitute-e2e "SELECT * FROM toucanneries WHERE TRUE [[AND num_toucans > {{num_toucans}}]]"
-                         {"num_toucans" false})))
+           {"num_toucans" false})))
 
   (is (= {:query  "SELECT * FROM toucanneries WHERE TRUE AND num_toucans > ?"
           :params ["abc"]}
          (substitute-e2e "SELECT * FROM toucanneries WHERE TRUE [[AND num_toucans > {{num_toucans}}]]"
-                         {"num_toucans" "abc"})))
+           {"num_toucans" "abc"})))
 
   (is (= {:query  "SELECT * FROM toucanneries WHERE TRUE AND num_toucans > ?"
           :params ["yo' mama"]}
          (substitute-e2e "SELECT * FROM toucanneries WHERE TRUE [[AND num_toucans > {{num_toucans}}]]"
-                         {"num_toucans" "yo' mama"})))
+           {"num_toucans" "yo' mama"})))
 
   (is (= {:query  "SELECT * FROM toucanneries WHERE TRUE"
           :params []}
          (substitute-e2e "SELECT * FROM toucanneries WHERE TRUE [[AND num_toucans > {{num_toucans}}]]"
-                         nil)))
+           nil)))
 
   (is (= {:query  "SELECT * FROM toucanneries WHERE TRUE AND num_toucans > 2 AND total_birds > 5"
           :params []}
          (substitute-e2e "SELECT * FROM toucanneries WHERE TRUE [[AND num_toucans > {{num_toucans}}]] [[AND total_birds > {{total_birds}}]]"
-                         {"num_toucans" 2, "total_birds" 5})))
+           {"num_toucans" 2, "total_birds" 5})))
 
   (is (= {:query  "SELECT * FROM toucanneries WHERE TRUE  AND total_birds > 5"
           :params []}
          (substitute-e2e "SELECT * FROM toucanneries WHERE TRUE [[AND num_toucans > {{num_toucans}}]] [[AND total_birds > {{total_birds}}]]"
-                         {"total_birds" 5})))
+           {"total_birds" 5})))
 
   (is (= {:query  "SELECT * FROM toucanneries WHERE TRUE AND num_toucans > 3"
           :params []}
          (substitute-e2e "SELECT * FROM toucanneries WHERE TRUE [[AND num_toucans > {{num_toucans}}]] [[AND total_birds > {{total_birds}}]]"
-                         {"num_toucans" 3})))
+           {"num_toucans" 3})))
 
   (is (= {:query  "SELECT * FROM toucanneries WHERE TRUE"
           :params []}
          (substitute-e2e "SELECT * FROM toucanneries WHERE TRUE [[AND num_toucans > {{num_toucans}}]] [[AND total_birds > {{total_birds}}]]"
-                         nil)))
+           nil)))
 
   (is (= {:query  "SELECT * FROM toucanneries WHERE bird_type = ? AND num_toucans > 2 AND total_birds > 5"
           :params ["toucan"]}
          (substitute-e2e "SELECT * FROM toucanneries WHERE bird_type = {{bird_type}} [[AND num_toucans > {{num_toucans}}]] [[AND total_birds > {{total_birds}}]]"
-                         {"bird_type" "toucan", "num_toucans" 2, "total_birds" 5})))
+           {"bird_type" "toucan", "num_toucans" 2, "total_birds" 5})))
 
   (testing "should throw an Exception if a required param is missing"
     (is (thrown?
@@ -438,14 +435,13 @@
   (is (= {:query  "SELECT * FROM toucanneries WHERE TRUE AND num_toucans > 5 AND num_toucans < 5"
           :params []}
          (substitute-e2e "SELECT * FROM toucanneries WHERE TRUE [[AND num_toucans > {{num_toucans}}]] [[AND num_toucans < {{num_toucans}}]]"
-                         {"num_toucans" 5})))
+           {"num_toucans" 5})))
 
   (testing "Make sure that substitutions still work if the substitution contains brackets inside it (#3657)"
     (is (= {:query  "select * from foobars  where foobars.id in (string_to_array(100, ',')::integer[])"
             :params []}
            (substitute-e2e "select * from foobars [[ where foobars.id in (string_to_array({{foobar_id}}, ',')::integer[]) ]]"
-                           {"foobar_id" 100})))))
-
+             {"foobar_id" 100})))))
 
 ;;; ------------------------------------------- expansion tests: variables -------------------------------------------
 
@@ -506,7 +502,6 @@
            (expand* {:native     {:query         "SELECT * FROM products WHERE category = {{category}};"
                                   :template-tags {"category" {:name "category", :display-name "Category", :type :text}}}
                      :parameters [{:type "category", :target [:variable [:template-tag "category"]], :value "Gizmo"}]})))))
-
 
 ;;; ----------------------------------------- expansion tests: field filters -----------------------------------------
 
@@ -622,7 +617,6 @@
             "SELECT * FROM ORDERS WHERE TOTAL > 100 [[AND {{created}} #]] AND CREATED_AT < now()"
             nil)))))
 
-
 ;;; -------------------------------------------- "REAL" END-TO-END-TESTS ---------------------------------------------
 
 (s/defn ^:private checkins-identifier :- su/NonBlankString
@@ -642,38 +636,38 @@
 
 (defn- process-native {:style/indent 0} [& kvs]
   (qp/process-query
-    (apply assoc {:database (mt/id), :type :native} kvs)))
+   (apply assoc {:database (mt/id), :type :native} kvs)))
 
 (deftest ^:paralllel e2e-basic-test
   (mt/test-drivers (sql-parameters-engines)
     (is (= [29]
            (mt/first-row
-             (mt/format-rows-by [int]
-               (process-native
-                 :native     {:query         (format "SELECT COUNT(*) FROM %s WHERE {{checkin_date}}" (checkins-identifier))
-                              :template-tags {"checkin_date" {:name         "checkin_date"
-                                                              :display-name "Checkin Date"
-                                                              :type         :dimension
-                                                              :widget-type  :date/range
-                                                              :dimension    [:field (mt/id :checkins :date) nil]}}}
-                 :parameters [{:type   :date/range
-                               :target [:dimension [:template-tag "checkin_date"]]
-                               :value  "2015-04-01~2015-05-01"}])))))))
+            (mt/format-rows-by [int]
+                               (process-native
+                                 :native     {:query         (format "SELECT COUNT(*) FROM %s WHERE {{checkin_date}}" (checkins-identifier))
+                                              :template-tags {"checkin_date" {:name         "checkin_date"
+                                                                              :display-name "Checkin Date"
+                                                                              :type         :dimension
+                                                                              :widget-type  :date/range
+                                                                              :dimension    [:field (mt/id :checkins :date) nil]}}}
+                                 :parameters [{:type   :date/range
+                                               :target [:dimension [:template-tag "checkin_date"]]
+                                               :value  "2015-04-01~2015-05-01"}])))))))
 
 (deftest ^:parallel e2e-no-parameter-test
   (mt/test-drivers (sql-parameters-engines)
     (testing "no parameter — should give us a query with \"WHERE 1 = 1\""
       (is (= [1000]
              (mt/first-row
-               (mt/format-rows-by [int]
-                 (process-native
-                   :native     {:query         (format "SELECT COUNT(*) FROM %s WHERE {{checkin_date}}" (checkins-identifier))
-                                :template-tags {"checkin_date" {:name         "checkin_date"
-                                                                :display-name "Checkin Date"
-                                                                :type         :dimension
-                                                                :widget-type  :date/all-options
-                                                                :dimension    [:field (mt/id :checkins :date) nil]}}}
-                   :parameters []))))))))
+              (mt/format-rows-by [int]
+                                 (process-native
+                                   :native     {:query         (format "SELECT COUNT(*) FROM %s WHERE {{checkin_date}}" (checkins-identifier))
+                                                :template-tags {"checkin_date" {:name         "checkin_date"
+                                                                                :display-name "Checkin Date"
+                                                                                :type         :dimension
+                                                                                :widget-type  :date/all-options
+                                                                                :dimension    [:field (mt/id :checkins :date) nil]}}}
+                                   :parameters []))))))))
 
 (deftest ^:parallel e2e-relative-dates-test
   (mt/test-drivers (sql-parameters-engines)
@@ -682,39 +676,39 @@
                   "which is fully-tested :D")
       (is (= [0]
              (mt/first-row
-               (mt/format-rows-by [int]
-                 (process-native
-                   :native     {:query         (format "SELECT COUNT(*) FROM %s WHERE {{checkin_date}}"
-                                                       (checkins-identifier))
-                                :template-tags {"checkin_date" {:name         "checkin_date"
-                                                                :display-name "Checkin Date"
-                                                                :type         :dimension
-                                                                :widget-type  :date/relative
-                                                                :dimension    [:field (mt/id :checkins :date) nil]}}}
-                   :parameters [{:type   :date/relative
-                                 :target [:dimension [:template-tag "checkin_date"]]
-                                 :value  "thismonth"}]))))))))
+              (mt/format-rows-by [int]
+                                 (process-native
+                                   :native     {:query         (format "SELECT COUNT(*) FROM %s WHERE {{checkin_date}}"
+                                                                       (checkins-identifier))
+                                                :template-tags {"checkin_date" {:name         "checkin_date"
+                                                                                :display-name "Checkin Date"
+                                                                                :type         :dimension
+                                                                                :widget-type  :date/relative
+                                                                                :dimension    [:field (mt/id :checkins :date) nil]}}}
+                                   :parameters [{:type   :date/relative
+                                                 :target [:dimension [:template-tag "checkin_date"]]
+                                                 :value  "thismonth"}]))))))))
 
 (deftest ^:parallel e2e-combine-multiple-filters-test
   (mt/test-drivers (sql-parameters-engines)
     (testing "test that multiple filters applied to the same variable combine into `AND` clauses (#3539)"
       (is (= [4]
              (mt/first-row
-               (mt/format-rows-by [int]
-                 (process-native
-                   :native     {:query         (format "SELECT COUNT(*) FROM %s WHERE {{checkin_date}}"
-                                                       (checkins-identifier))
-                                :template-tags {"checkin_date" {:name         "checkin_date"
-                                                                :display-name "Checkin Date"
-                                                                :type         :dimension
-                                                                :widget-type  :date/all-options
-                                                                :dimension    [:field (mt/id :checkins :date) nil]}}}
-                   :parameters [{:type   :date/range
-                                 :target [:dimension [:template-tag "checkin_date"]]
-                                 :value  "2015-01-01~2016-09-01"}
-                                {:type   :date/single
-                                 :target [:dimension [:template-tag "checkin_date"]]
-                                 :value  "2015-07-01"}]))))))))
+              (mt/format-rows-by [int]
+                                 (process-native
+                                   :native     {:query         (format "SELECT COUNT(*) FROM %s WHERE {{checkin_date}}"
+                                                                       (checkins-identifier))
+                                                :template-tags {"checkin_date" {:name         "checkin_date"
+                                                                                :display-name "Checkin Date"
+                                                                                :type         :dimension
+                                                                                :widget-type  :date/all-options
+                                                                                :dimension    [:field (mt/id :checkins :date) nil]}}}
+                                   :parameters [{:type   :date/range
+                                                 :target [:dimension [:template-tag "checkin_date"]]
+                                                 :value  "2015-01-01~2016-09-01"}
+                                                {:type   :date/single
+                                                 :target [:dimension [:template-tag "checkin_date"]]
+                                                 :value  "2015-07-01"}]))))))))
 
 (deftest e2e-parse-native-dates-test
   (mt/test-drivers (disj (sql-parameters-engines) :sqlite)
@@ -730,14 +724,14 @@
               "2018-04-18T00:00:00Z")]
            (mt/with-report-timezone-id "America/Los_Angeles"
              (mt/first-row
-               (process-native
-                 :native     {:query (case driver/*driver*
-                                       :oracle
-                                       "SELECT cast({{date}} as date) from dual"
+              (process-native
+                :native     {:query (case driver/*driver*
+                                      :oracle
+                                      "SELECT cast({{date}} as date) from dual"
 
-                                       "SELECT cast({{date}} as date)")
-                              :template-tags {"date" {:name "date" :display-name "Date" :type :date}}}
-                 :parameters [{:type :date/single :target [:variable [:template-tag "date"]] :value "2018-04-18"}]))))
+                                      "SELECT cast({{date}} as date)")
+                             :template-tags {"date" {:name "date" :display-name "Date" :type :date}}}
+                :parameters [{:type :date/single :target [:variable [:template-tag "date"]] :value "2018-04-18"}]))))
         "Native dates should be parsed with the report timezone")))
 
 ;; Some random end-to-end param expansion tests added as part of the SQL Parameters 2.0 rewrite
@@ -793,7 +787,6 @@
            (expand* {:native     {:query         "SELECT * FROM ORDERS WHERE true [[ AND ID = {{id}} OR USER_ID = {{id}} ]]"
                                   :template-tags {"id" {:name "id", :display-name "ID", :type :text}}}
                      :parameters [{:type "category", :target [:variable [:template-tag "id"]], :value "2"}]})))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                            RELATIVE DATES & DEFAULTS IN "DIMENSION" PARAMS (#6059)                             |
@@ -862,16 +855,16 @@
   (testing "Make sure queries with newlines are parsed correctly (#11526)"
     (is (= [[1]]
            (mt/rows
-             (qp/process-query
-               {:database   (mt/id)
-                :type       "native"
-                :native     {:query         "SELECT count(*)\nFROM venues\n WHERE name = {{name}}"
-                             :template-tags {:name {:name         "name"
-                                                    :display_name "Name"
-                                                    :type         "text"
-                                                    :required     true
-                                                    :default      "Fred 62"}}}
-                :parameters []}))))))
+            (qp/process-query
+             {:database   (mt/id)
+              :type       "native"
+              :native     {:query         "SELECT count(*)\nFROM venues\n WHERE name = {{name}}"
+                           :template-tags {:name {:name         "name"
+                                                  :display_name "Name"
+                                                  :type         "text"
+                                                  :required     true
+                                                  :default      "Fred 62"}}}
+              :parameters []}))))))
 
 (deftest ^:parallel multiple-value-test
   (testing "Make sure using commas in numeric params treats them as separate IDs (#5457)"

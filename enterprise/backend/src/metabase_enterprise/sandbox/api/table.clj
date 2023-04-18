@@ -37,9 +37,9 @@
   [table :- (mi/InstanceOf Table)]
   (and
    (not (perms/set-has-full-permissions? @api/*current-user-permissions-set*
-          (perms/table-query-path table)))
+                                         (perms/table-query-path table)))
    (perms/set-has-full-permissions? @api/*current-user-permissions-set*
-     (perms/table-segmented-query-path table))))
+                                    (perms/table-segmented-query-path table))))
 
 (s/defn ^:private query->fields-ids :- (s/maybe [s/Int])
   [{{{:keys [fields]} :query} :dataset_query}]

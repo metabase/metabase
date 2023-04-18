@@ -52,9 +52,7 @@
     (find-and-load-event-handlers!)
     (reset! events-initialized? true)))
 
-
 ;;; -------------------------------------------------- PUBLICATION ---------------------------------------------------
-
 
 (defonce ^:private ^{:doc "Channel to host events publications."} events-channel
   (a/chan))
@@ -72,7 +70,6 @@
     (log/tracef "Publish event %s" (pr-str event))
     (a/put! events-channel event))
   event-item)
-
 
 ;;; -------------------------------------------------- SUBSCRIPTION --------------------------------------------------
 
@@ -106,7 +103,6 @@
         (catch Throwable e
           (log/error e (trs "Unexpected error listening on events"))))
       (recur))))
-
 
 ;;; ------------------------------------------------ HELPER FUNCTIONS ------------------------------------------------
 

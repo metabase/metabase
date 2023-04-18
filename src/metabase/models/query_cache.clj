@@ -13,5 +13,5 @@
   [:query_hash])
 
 (mi/define-methods
- QueryCache
- {:properties (constantly {::mi/updated-at-timestamped? true})})
+  QueryCache
+  {:properties (constantly {::mi/updated-at-timestamped? true})})

@@ -70,8 +70,8 @@
   {:style/indent 2}
   [user collection & body]
   `(do-with-french-user-and-personal-collection
-     (fn [~user ~collection]
-       ~@body)))
+    (fn [~user ~collection]
+      ~@body)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                GET /collection                                                 |
@@ -126,19 +126,19 @@
                                                                  :authority_level "official"}
                                  Collection _                   {:name     "Crowberto's Child Collection"
                                                                  :location (collection/location-path crowberto-root)}]
-                                (let [public-collections       #{"Our analytics" (:name collection) "Collection with Items" "subcollection"}
-                                      crowbertos               (set (map :name (mt/user-http-request :crowberto :get 200 "collection")))
-                                      crowbertos-with-excludes (set (map :name (mt/user-http-request :crowberto :get 200 "collection" :exclude-other-user-collections true)))
-                                      luckys                   (set (map :name (mt/user-http-request :lucky :get 200 "collection")))]
-                                  (is (= (into (set (map :name (t2/select Collection))) public-collections)
-                                         crowbertos))
-                                  (is (= (into public-collections #{"Crowberto Corv's Personal Collection" "Crowberto's Child Collection"})
-                                         crowbertos-with-excludes))
-                                  (is (true? (contains? crowbertos "Lucky Pigeon's Personal Collection")))
-                                  (is (false? (contains? crowbertos-with-excludes "Lucky Pigeon's Personal Collection")))
-                                  (is (= (conj public-collections (:name collection) "Lucky Pigeon's Personal Collection")
-                                         luckys))
-                                  (is (false? (contains? luckys "Crowberto Corv's Personal Collection")))))))
+          (let [public-collections       #{"Our analytics" (:name collection) "Collection with Items" "subcollection"}
+                crowbertos               (set (map :name (mt/user-http-request :crowberto :get 200 "collection")))
+                crowbertos-with-excludes (set (map :name (mt/user-http-request :crowberto :get 200 "collection" :exclude-other-user-collections true)))
+                luckys                   (set (map :name (mt/user-http-request :lucky :get 200 "collection")))]
+            (is (= (into (set (map :name (t2/select Collection))) public-collections)
+                   crowbertos))
+            (is (= (into public-collections #{"Crowberto Corv's Personal Collection" "Crowberto's Child Collection"})
+                   crowbertos-with-excludes))
+            (is (true? (contains? crowbertos "Lucky Pigeon's Personal Collection")))
+            (is (false? (contains? crowbertos-with-excludes "Lucky Pigeon's Personal Collection")))
+            (is (= (conj public-collections (:name collection) "Lucky Pigeon's Personal Collection")
+                   luckys))
+            (is (false? (contains? luckys "Crowberto Corv's Personal Collection")))))))
 
     (testing "Personal Collection's name and slug should be returned in user's locale"
       (with-french-user-and-personal-collection user _collection
@@ -403,7 +403,6 @@
                       (select-keys collection [:name :children]))))
                 (mt/user-http-request :rasta :get 200 "collection/tree"))))))))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              GET /collection/:id                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -505,7 +504,7 @@
              :authority_level nil
              :entity_id       true
              :name            collection-name}
-            personal-collection (assoc :personal_owner_id personal-collection))
+             personal-collection (assoc :personal_owner_id personal-collection))
            extra-keypairs)))
 
 (deftest collection-items-test
@@ -520,20 +519,20 @@
                                            :moderator_id        user-id
                                            :most_recent         true}]]
         (is (= (mt/obj->json->obj
-                 [{:id                  card-id
-                   :name                (:name card)
-                   :collection_position nil
-                   :collection_preview  true
-                   :database_id         nil
-                   :display             "table"
-                   :description         nil
-                   :entity_id           (:entity_id card)
-                   :moderated_status    "verified"
-                   :model               "card"
-                   :fully_parametrized  true}])
+                [{:id                  card-id
+                  :name                (:name card)
+                  :collection_position nil
+                  :collection_preview  true
+                  :database_id         nil
+                  :display             "table"
+                  :description         nil
+                  :entity_id           (:entity_id card)
+                  :moderated_status    "verified"
+                  :model               "card"
+                  :fully_parametrized  true}])
                (mt/obj->json->obj
-                 (:data (mt/user-http-request :crowberto :get 200
-                                              (str "collection/" (u/the-id collection) "/items"))))))))
+                (:data (mt/user-http-request :crowberto :get 200
+                                             (str "collection/" (u/the-id collection) "/items"))))))))
     (testing "Database id is returned for items in which dataset is true"
       (mt/with-temp* [Collection [collection]
                       User [_               {:first_name "x" :last_name "x" :email "zzzz@example.com"}]
@@ -607,8 +606,8 @@
                                default-item
                                (assoc :fully_parametrized true))
                            (default-item {:name "Dine & Dashboard", :description nil, :model "dashboard", :entity_id true})]
-                   (mt/boolean-ids-and-timestamps
-                    (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items?models=dashboard&models=card"))))))))))
+                          (mt/boolean-ids-and-timestamps
+                           (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items?models=dashboard&models=card"))))))))))
 
     (testing "Let's make sure the `archived` option works."
       (mt/with-temp Collection [collection {:name "Art Collection"}]
@@ -617,7 +616,7 @@
           (t2/update! Dashboard {:collection_id (u/the-id collection)} {:archived true})
           (is (partial= [(default-item {:name "Dine & Dashboard", :description nil, :model "dashboard", :entity_id true})]
                         (mt/boolean-ids-and-timestamps
-                  (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items?archived=true")))))))))
+                         (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items?archived=true")))))))))
     (mt/with-temp* [Collection [{collection-id :id} {:name "Collection with Items"}]
                     User       [{user1-id :id} {:first_name "Test" :last_name "AAAA" :email "aaaa@example.com"}]
                     User       [{user2-id :id} {:first_name "Test" :last_name "ZZZZ" :email "zzzz@example.com"}]
@@ -845,7 +844,6 @@
                           :model     "snippet"}]
                         (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items?model=snippet" (:id collection)))))))))))
 
-
 ;;; --------------------------------- Fetching Personal Collections (Ours & Others') ---------------------------------
 
 (defn- lucky-personal-collection []
@@ -910,7 +908,6 @@
       (is (partial= lucky-personal-subcollection-item
                     (api-get-lucky-personal-collection-with-subcollection :crowberto))))))
 
-
 ;;; ------------------------------------ Effective Ancestors & Effective Children ------------------------------------
 
 (defn- format-ancestors
@@ -932,8 +929,8 @@
 (defn- api-get-collection-children
   [collection-or-id & additional-get-params]
   (mt/boolean-ids-and-timestamps (:data (apply mt/user-http-request :rasta
-                                         :get 200 (str "collection/" (u/the-id collection-or-id) "/items")
-                                         additional-get-params))))
+                                               :get 200 (str "collection/" (u/the-id collection-or-id) "/items")
+                                               additional-get-params))))
 
 (deftest effective-ancestors-and-children-test
   ;; Create hierarchy like
@@ -1032,7 +1029,7 @@
                (api-get-collection-ancestors a :archived true))))
       (testing "children"
         (is (partial= [(collection-item "B")]
-                       (api-get-collection-children a :archived true)))))))
+                      (api-get-collection-children a :archived true)))))))
 
 (deftest personal-collection-ancestors-test
   (testing "Effective ancestors of a personal collection will contain a :personal_owner_id"
@@ -1352,13 +1349,12 @@
           (testing "\nShould be able to fetch archived Snippets"
             (is (= ["Archived Snippet"]
                    (only-test-item-names (:data (mt/user-http-request :rasta :get 200
-                                                               "collection/root/items?namespace=snippets&archived=true"))))))
+                                                                      "collection/root/items?namespace=snippets&archived=true"))))))
 
           (testing "\nShould be able to pass ?model=snippet, even though it makes no difference in this case"
             (is (= ["My Snippet", "My Snippet 2"]
                    (only-test-item-names (:data (mt/user-http-request :rasta :get 200
-                                                               "collection/root/items?namespace=snippets&model=snippet")))))))))))
-
+                                                                      "collection/root/items?namespace=snippets&model=snippet")))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              POST /api/collection                                              |

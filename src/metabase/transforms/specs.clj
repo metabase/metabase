@@ -73,8 +73,8 @@
   [spec]
   (update spec :steps (partial m/map-kv-vals (fn [step-name step]
                                                (assoc step
-                                                 :name      step-name
-                                                 :transform (:name spec))))))
+                                                      :name      step-name
+                                                      :transform (:name spec))))))
 
 (def ^:private transform-spec-parser
   (sc/coercer!

@@ -44,12 +44,12 @@
     (mi/perms-objects-set table read-or-write)))
 
 (mi/define-methods
- Segment
- {:types          (constantly {:definition :metric-segment-definition})
-  :properties     (constantly {::mi/timestamped? true
-                               ::mi/entity-id    true})
-  :hydration-keys (constantly [:segment])
-  :pre-update     pre-update})
+  Segment
+  {:types          (constantly {:definition :metric-segment-definition})
+   :properties     (constantly {::mi/timestamped? true
+                                ::mi/entity-id    true})
+   :hydration-keys (constantly [:segment])
+   :pre-update     pre-update})
 
 (mu/defn ^:private definition-description :- [:maybe ::lib.schema.common/non-blank-string]
   "Calculate a nice description of a Segment's definition."
@@ -84,7 +84,6 @@
     (for [segment segments]
       (assoc segment :definition_description (definition-description metadata-provider segment)))))
 
-
 ;;; --------------------------------------------------- Revisions ----------------------------------------------------
 
 (defmethod revision/serialize-instance Segment
@@ -107,7 +106,6 @@
         (or (get-in base-diff [:after :definition])
             (get-in base-diff [:before :definition])) (assoc :definition {:before (get-in segment1 [:definition])
                                                                           :after  (get-in segment2 [:definition])})))))
-
 
 ;;; ------------------------------------------------ Serialization ---------------------------------------------------
 

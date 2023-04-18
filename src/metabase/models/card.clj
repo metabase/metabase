@@ -77,7 +77,6 @@
 ;; There's more hydration in the shared metabase.moderation namespace, but it needs to be required:
 (comment moderation/keep-me)
 
-
 ;;; --------------------------------------------------- Revisions ----------------------------------------------------
 
 (defmethod revision/serialize-instance Card
@@ -88,7 +87,6 @@
      ;; datasets should preserve edits to metadata
      (not (:dataset instance))
      (dissoc :result_metadata))))
-
 
 ;;; --------------------------------------------------- Lifecycle ----------------------------------------------------
 
@@ -264,14 +262,14 @@
     (parameter-card/upsert-or-delete-from-parameters! "card" (:id card) (:parameters card))))
 
 (defonce
-  ^{:doc "Atom containing a function used to check additional sandboxing constraints for Metabase Enterprise Edition.
+ ^{:doc "Atom containing a function used to check additional sandboxing constraints for Metabase Enterprise Edition.
   This is called as part of the `pre-update` method for a Card.
 
   For the OSS edition, there is no implementation for this function -- it is a no-op. For Metabase Enterprise Edition,
   the implementation of this function is
   [[metabase-enterprise.sandbox.models.group-table-access-policy/update-card-check-gtaps]] and is installed by that
   namespace."}
-  pre-update-check-sandbox-constraints
+ pre-update-check-sandbox-constraints
   (atom identity))
 
 (defn- update-parameters-using-card-as-values-source
@@ -298,8 +296,8 @@
                                             (filter (fn [param-card]
                                                       ;; if cant find the value-field in result_metadata, then we should remove it
                                                       (nil? (qp.util/field->field-info
-                                                              (get-in (param-id->parameter (:parameter_id param-card)) [:values_source_config :value_field])
-                                                              (:result_metadata changes)))))
+                                                             (get-in (param-id->parameter (:parameter_id param-card)) [:values_source_config :value_field])
+                                                             (:result_metadata changes)))))
                                             (map :parameter_id)
                                             set))
 
@@ -401,29 +399,29 @@
     (seq (map mbql.normalize/normalize-source-metadata metadata))))
 
 (models/add-type! ::result-metadata
-  :in mi/json-in
-  :out result-metadata-out)
+                  :in mi/json-in
+                  :out result-metadata-out)
 
 (mi/define-methods
- Card
- {:hydration-keys (constantly [:card])
-  :types          (constantly {:dataset_query          :metabase-query
-                               :display                :keyword
-                               :embedding_params       :json
-                               :query_type             :keyword
-                               :result_metadata        ::result-metadata
-                               :visualization_settings :visualization-settings
-                               :parameters             :parameters-list
-                               :parameter_mappings     :parameters-list})
-  :properties     (constantly {::mi/timestamped? true
-                               ::mi/entity-id    true})
+  Card
+  {:hydration-keys (constantly [:card])
+   :types          (constantly {:dataset_query          :metabase-query
+                                :display                :keyword
+                                :embedding_params       :json
+                                :query_type             :keyword
+                                :result_metadata        ::result-metadata
+                                :visualization_settings :visualization-settings
+                                :parameters             :parameters-list
+                                :parameter_mappings     :parameters-list})
+   :properties     (constantly {::mi/timestamped? true
+                                ::mi/entity-id    true})
   ;; Make sure we normalize the query before calling `pre-update` or `pre-insert` because some of the
   ;; functions those fns call assume normalized queries
-  :pre-update     (comp populate-query-fields pre-update populate-result-metadata maybe-normalize-query)
-  :pre-insert     (comp populate-query-fields pre-insert populate-result-metadata maybe-normalize-query)
-  :post-insert    post-insert
-  :pre-delete     pre-delete
-  :post-select    public-settings/remove-public-uuid-if-public-sharing-is-disabled})
+   :pre-update     (comp populate-query-fields pre-update populate-result-metadata maybe-normalize-query)
+   :pre-insert     (comp populate-query-fields pre-insert populate-result-metadata maybe-normalize-query)
+   :post-insert    post-insert
+   :pre-delete     pre-delete
+   :post-select    public-settings/remove-public-uuid-if-public-sharing-is-disabled})
 
 (defmethod serdes/hash-fields Card
   [_card]
@@ -515,15 +513,15 @@
         parameters-card-id (some->> card :parameters (keep (comp :card_id :values_source_config)))
         snippets           (some->> card :dataset_query :native :template-tags vals (keep :snippet-id))]
     (set/union
-      (when (and (string? source-table)
-                 (str/starts-with? source-table "card__"))
-        #{["Card" (Integer/parseInt (.substring ^String source-table 6))]})
-      (when (seq template-tags)
-        (set (for [card-id template-tags]
-               ["Card" card-id])))
-      (when (seq parameters-card-id)
-        (set (for [card-id parameters-card-id]
-               ["Card" card-id])))
-      (when (seq snippets)
-        (set (for [snippet-id snippets]
-               ["NativeQuerySnippet" snippet-id]))))))
+     (when (and (string? source-table)
+                (str/starts-with? source-table "card__"))
+       #{["Card" (Integer/parseInt (.substring ^String source-table 6))]})
+     (when (seq template-tags)
+       (set (for [card-id template-tags]
+              ["Card" card-id])))
+     (when (seq parameters-card-id)
+       (set (for [card-id parameters-card-id]
+              ["Card" card-id])))
+     (when (seq snippets)
+       (set (for [snippet-id snippets]
+              ["NativeQuerySnippet" snippet-id]))))))

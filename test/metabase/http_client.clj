@@ -129,7 +129,6 @@
                       {:credentials credentials}
                       e)))))
 
-
 ;;; client
 
 (defn build-request-map

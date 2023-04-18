@@ -134,7 +134,7 @@
               (actual-rows []
                 (u/ignore-exceptions
                   (jdbc/query {:connection conn}
-                              (format "SELECT * FROM %s ORDER BY id ASC;" table-identifier))))]
+                    (format "SELECT * FROM %s ORDER BY id ASC;" table-identifier))))]
         (try
           ;; make sure the Table is empty
           (execute! (format "TRUNCATE TABLE %s" table-identifier))
@@ -148,7 +148,7 @@
                               {:inserted-rows (take 100 (actual-rows))}))))
           ;; make sure SELECT COUNT(*) matches as well
           (let [[{actual-num-rows :count}] (jdbc/query {:connection conn}
-                                                       (format "SELECT count(*) FROM %s;" table-identifier))]
+                                             (format "SELECT count(*) FROM %s;" table-identifier))]
             (when-not (= actual-num-rows (count rows))
               (throw (ex-info (format "Expected count(*) to return %d, but only got %d" (count rows) actual-num-rows)
                               {:inserted-rows (take 100 (actual-rows))}))))

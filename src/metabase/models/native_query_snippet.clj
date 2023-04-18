@@ -32,11 +32,11 @@
     (collection/check-collection-namespace NativeQuerySnippet (:collection_id updates))))
 
 (mi/define-methods
- NativeQuerySnippet
- {:properties (constantly {::mi/timestamped? true
-                           ::mi/entity-id    true})
-  :pre-insert pre-insert
-  :pre-update pre-update})
+  NativeQuerySnippet
+  {:properties (constantly {::mi/timestamped? true
+                            ::mi/entity-id    true})
+   :pre-insert pre-insert
+   :pre-update pre-update})
 
 (defmethod serdes/hash-fields NativeQuerySnippet
   [_snippet]
@@ -57,7 +57,6 @@
 (defmethod mi/can-update? NativeQuerySnippet
   [& args]
   (apply snippet.perms/can-update? args))
-
 
 ;;; ---------------------------------------------------- Schemas -----------------------------------------------------
 
