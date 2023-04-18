@@ -124,9 +124,19 @@
       normalized
       (format "unnamed-column-%s" (inc index)))))
 
+(defn- deduplicate
+  "Add `new-name` to the vector (must be a vector so that `conj` works!) of `names-so-far`, adding a unique suffix if
+  necessary."
+  [names-so-far new-name]
+  (if (some #(= % new-name) names-so-far)
+    (if-let [dupe-number (second (re-matches #".*-duplicate-(\d+)" new-name))]
+      (recur names-so-far (str/replace new-name #"-\d+$" (str "-" (inc (parse-long dupe-number)))))
+      (recur names-so-far (str new-name "-duplicate-1")))
+    (conj names-so-far new-name)))
+
 (defn- rows->schema
   [header rows]
-  (let [normalized-header (map normalize-column-name (map vector header (range)))
+  (let [normalized-header (reduce deduplicate [] (mapv normalize-column-name (map vector header (range))))
         column-count      (count normalized-header)]
     (->> rows
          (map row->types)
@@ -183,10 +193,12 @@
 ;;;; +------------------+
 
 (defn unique-table-name
-  "Append the current datetime to the given name to create a unique table name."
-  [table-name]
-  (str (u/slugify table-name)
-       (t/format "_yyyyMMddHHmmss" (t/local-date-time))))
+  "Append the current datetime to the given name to create a unique table name. The resulting name will be short enough for the given driver (truncating the supplised `table-name` if necessary)."
+  [driver table-name]
+  (let [time-format "_yyyyMMddHHmmss"]
+    (str (subs (u/slugify table-name) 0 (min (count table-name)
+                                             (- (driver/table-name-length-limit driver) (count time-format))))
+         (t/format time-format (t/local-date-time)))))
 
 (defn detect-schema
   "Returns an ordered map of `normalized-column-name -> type` for the given CSV file. The CSV file *must* have headers as the
