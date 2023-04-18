@@ -90,14 +90,7 @@ const DashboardHeader = ({
         className="Header-buttonSection"
         isNavBarOpen={isNavBarOpen}
       >
-        {/* Reminder to change these keys to something useful, since we need them for the tests to actually work
-         and also just for good practice (and to avoid the ultra annoying React warning)
-        */}
-        {headerButtons.map((headerButton, index) => (
-          <div key={index} style={{ display: "contents" }}>
-            {headerButton}
-          </div>
-        ))}
+        {headerButtons}
       </HeaderButtonSection>
     ),
     [headerButtons, isNavBarOpen],
