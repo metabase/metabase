@@ -103,8 +103,8 @@ export const getDashboardComplete = createSelector(
           dc =>
             !dc.isRemoved &&
             (!selectedTabId ||
-              dc.dashboardtab_id === selectedTabId ||
-              dc.dashboardtab_id === null),
+              dc.dashboard_tab_id === selectedTabId ||
+              dc.dashboard_tab_id === null),
         ),
     },
 );

@@ -42,7 +42,7 @@ export const addCardToDashboard =
     const dashcard = {
       id: generateTemporaryDashcardId(),
       dashboard_id: dashId,
-      dashboardtab_id: tabId ?? null,
+      dashboard_tab_id: tabId ?? null,
       card_id: card.id,
       card: card,
       series: [],
