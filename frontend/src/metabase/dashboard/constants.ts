@@ -11,7 +11,7 @@ export const INITIAL_DASHBOARD_STATE = {
   selectedTabId: null,
   isEditing: null,
   dashboards: {},
-  dashcards: [],
+  dashcards: {},
   dashcardData: {},
   parameterValues: {},
   loadingDashCards: {
@@ -24,4 +24,5 @@ export const INITIAL_DASHBOARD_STATE = {
   isAddParameterPopoverOpen: false,
   slowCards: {},
   sidebar: { props: {} },
+  missingActionParameters: null,
 };
