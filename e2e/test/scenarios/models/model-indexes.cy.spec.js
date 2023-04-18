@@ -20,7 +20,8 @@ describe("scenarios > model indexes", () => {
     cy.signInAsAdmin();
     cy.intercept("GET", "/api/search?q=*").as("searchQuery");
     cy.intercept("POST", "/api/dataset").as("dataset");
-    cy.intercept("POST", "/api/model-index").as("modelIndex");
+    cy.intercept("POST", "/api/model-index").as("modelIndexCreate");
+    cy.intercept("DELETE", "/api/model-index/*").as("modelIndexDelete");
 
     cy.createQuestion({
       name: "Products Model",
@@ -29,17 +30,11 @@ describe("scenarios > model indexes", () => {
     });
   });
 
-  it("should create a model index on product titles", () => {
+  it("should create and delete a model index on product titles", () => {
     cy.visit(`/model/${modelId}`);
     cy.wait("@dataset");
-    openQuestionActions();
-    popover().findByText("Edit metadata").click();
 
-    cy.url().should("include", "/metadata");
-
-    cy.findByTestId("TableInteractive-root").findByTextEnsureVisible("Title");
-
-    openColumnOptions("Title");
+    editTitleMetadata();
 
     sidebar()
       .findByLabelText(/surface individual records/i)
@@ -49,7 +44,7 @@ describe("scenarios > model indexes", () => {
       cy.button("Save changes").click();
     });
 
-    cy.wait("@modelIndex").then(({ request, response }) => {
+    cy.wait("@modelIndexCreate").then(({ request, response }) => {
       expect(request.body.pk_ref).to.deep.equal(pkRef);
       expect(request.body.value_ref).to.deep.equal(valueRef);
       expect(request.body.model_id).to.equal(modelId);
@@ -57,6 +52,21 @@ describe("scenarios > model indexes", () => {
       // this will likely change when this becomes an async process
       expect(response.body.state).to.equal("indexed");
       expect(response.body.id).to.equal(1);
+    });
+
+    editTitleMetadata();
+
+    sidebar()
+      .findByLabelText(/surface individual records/i)
+      .click();
+
+    cy.findByTestId("dataset-edit-bar").within(() => {
+      cy.button("Save changes").click();
+    });
+
+    cy.wait("@modelIndexDelete").then(({ request, response }) => {
+      expect(request.url).to.include("/api/model-index/1");
+      expect(response.statusCode).to.equal(200);
     });
   });
 
@@ -111,6 +121,17 @@ describe("scenarios > model indexes", () => {
     });
   });
 });
+
+function editTitleMetadata() {
+  openQuestionActions();
+  popover().findByText("Edit metadata").click();
+
+  cy.url().should("include", "/metadata");
+
+  cy.findByTestId("TableInteractive-root").findByTextEnsureVisible("Title");
+
+  openColumnOptions("Title");
+}
 
 function createModelIndex({ pkRef, valueRef, modelId }) {
   cy.request("POST", "/api/model-index", {

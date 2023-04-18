@@ -9,7 +9,7 @@ import type Field from "metabase-lib/metadata/Field";
 
 import ModelIndexes from "./model-indexes";
 
-type FieldWithMaybeIndex = Field & {
+export type FieldWithMaybeIndex = Field & {
   should_index?: boolean;
   field_ref: FieldReference;
 };
