@@ -518,13 +518,13 @@
                                         [:to-create [:sequential [:map [:id ms/NegativeInt]]]]
                                         [:to-update [:sequential [:map [:id ms/PositiveInt]]]]
                                         [:to-delete [:sequential [:map [:id ms/PositiveInt]]]]]
-  "Given 2 lists of seq maps changes, where each map an `id` keys,
+  "Given 2 lists of seq maps items, where each map an `id` keys,
   return a map of 3 keys, `:to-create`, `:to-update`, `:to-delete`.
 
   Where:
-    :to-create is a list of maps that has negative ids in `new-changes`
-    :to-update is a list of maps that has ids in both `current-changes` and `new-changes`
-    :to delete is a list of maps that has ids only in `current-changes`"
+    :to-create is a list of maps that has negative ids in `new-items`
+    :to-update is a list of maps that has ids in both `current-items` and `new-items`
+    :to delete is a list of maps that has ids only in `current-items`"
   [current-items :- [:sequential [:map [:id ms/PositiveInt]]]
    new-items     :- [:sequential [:map [:id int?]]]]
   (let [new-change-ids     (set (map :id new-items))
@@ -646,8 +646,8 @@
 (def ^:private UpdatedDashboardTab
   [:map
    ;; id can be negative, it indicates a new card and BE should create them
-   [:id           int?]
-   [:name         ms/NonBlankString]])
+   [:id   ms/Int]
+   [:name ms/NonBlankString]])
 
 (api/defendpoint PUT "/:id/cards"
   "Update `Cards` and `Tabs` on a Dashboard. Request body should have the form:

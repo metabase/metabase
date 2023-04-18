@@ -56,6 +56,12 @@
     ;; FIXME: greater than _or equal to_ zero.
     (deferred-tru "value must be an integer greater than zero.")))
 
+(def Int
+  "Schema representing an integer."
+  (mu/with-api-error-message
+    int?
+    (deferred-tru "value must be an integer.")))
+
 (def PositiveInt
   "Schema representing an integer than must also be greater than zero."
   (mu/with-api-error-message
