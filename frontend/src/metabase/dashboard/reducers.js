@@ -51,7 +51,7 @@ const dashboardId = handleActions(
     },
     [RESET]: { next: state => null },
   },
-  null, // TODO refactor these to use values from constant
+  INITIAL_DASHBOARD_STATE.dashboardId,
 );
 
 const isEditing = handleActions(
@@ -62,7 +62,7 @@ const isEditing = handleActions(
     },
     [RESET]: { next: state => null },
   },
-  null,
+  INITIAL_DASHBOARD_STATE.isEditing,
 );
 
 const loadingControls = handleActions(
@@ -77,7 +77,7 @@ const loadingControls = handleActions(
     }),
     [RESET]: { next: state => ({}) },
   },
-  {},
+  INITIAL_DASHBOARD_STATE.loadingControls,
 );
 
 function newDashboard(before, after, isDirty) {
@@ -148,7 +148,7 @@ const dashboards = handleActions(
         ),
     },
   },
-  {},
+  INITIAL_DASHBOARD_STATE.dashboards,
 );
 
 const dashcards = handleActions(
@@ -228,7 +228,7 @@ const dashcards = handleActions(
       [dashcardId]: { ...state[dashcardId], justAdded: false },
     }),
   },
-  {},
+  INITIAL_DASHBOARD_STATE.dashcards,
 );
 
 const isAddParameterPopoverOpen = handleActions(
@@ -238,7 +238,7 @@ const isAddParameterPopoverOpen = handleActions(
     [INITIALIZE]: () => false,
     [RESET]: () => false,
   },
-  false,
+  INITIAL_DASHBOARD_STATE.isAddParameterPopoverOpen,
 );
 
 const dashcardData = handleActions(
@@ -255,7 +255,7 @@ const dashcardData = handleActions(
     },
     [RESET]: { next: state => ({}) },
   },
-  {},
+  INITIAL_DASHBOARD_STATE.dashcardData,
 );
 
 const slowCards = handleActions(
@@ -267,7 +267,7 @@ const slowCards = handleActions(
       }),
     },
   },
-  {},
+  INITIAL_DASHBOARD_STATE.slowCards,
 );
 
 const parameterValues = handleActions(
@@ -293,7 +293,7 @@ const parameterValues = handleActions(
     },
     [RESET]: { next: state => ({}) },
   },
-  {},
+  INITIAL_DASHBOARD_STATE.parameterValues,
 );
 
 const draftParameterValues = handleActions(
@@ -393,12 +393,7 @@ const loadingDashCards = handleActions(
       }),
     },
   },
-  {
-    dashcardIds: [],
-    loadingIds: [],
-    startTime: null,
-    loadingStatus: "idle",
-  },
+  INITIAL_DASHBOARD_STATE.loadingDashCards,
 );
 
 const DEFAULT_SIDEBAR = { props: {} };
@@ -426,7 +421,7 @@ const sidebar = handleActions(
       next: () => DEFAULT_SIDEBAR,
     },
   },
-  DEFAULT_SIDEBAR,
+  INITIAL_DASHBOARD_STATE.sidebar,
 );
 
 const missingActionParameters = handleActions(
@@ -438,7 +433,7 @@ const missingActionParameters = handleActions(
       next: (state, payload) => null,
     },
   },
-  null,
+  INITIAL_DASHBOARD_STATE.missingActionParameters,
 );
 
 export default reduceReducers(
@@ -458,7 +453,7 @@ export default reduceReducers(
     sidebar,
     missingActionParameters,
     // Combined reducer needs to init state for every slice
-    selectedTabId: (state = null) => state,
+    selectedTabId: (state = INITIAL_DASHBOARD_STATE.selectedTabId) => state,
   }),
   tabsReducer,
 );

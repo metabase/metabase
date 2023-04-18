@@ -2,8 +2,14 @@ import React from "react";
 import { t } from "ttag";
 
 import TabRow from "metabase/core/components/TabRow";
+import { SelectedTabId } from "metabase-types/store";
 
-import { Container, TabButton, CreateTabButton } from "./DashboardTabs.styled";
+import {
+  Container,
+  Tab,
+  CreateTabButton,
+  PlaceholderTab,
+} from "./DashboardTabs.styled";
 import { useDashboardTabs } from "./useDashboardTabs";
 
 interface DashboardTabsProps {
@@ -17,19 +23,10 @@ export function DashboardTabs({ isEditing }: DashboardTabsProps) {
 
   return (
     <Container>
-      {/* TODO TabRow should handle null */}
-      <TabRow value={selectedTabId ?? undefined} onChange={selectTab}>
-        {showPlaceholder && (
-          // TODO make this a separate styled component (PlaceholderTabButton)
-          <TabButton
-            label={t`Page 1`}
-            onRename={() => null}
-            showMenu={false}
-            disabled
-          />
-        )}
+      <TabRow<SelectedTabId> value={selectedTabId} onChange={selectTab}>
+        {showPlaceholder && <PlaceholderTab />}
         {tabs.map(tab => (
-          <TabButton
+          <Tab<SelectedTabId>
             key={tab.id}
             value={tab.id}
             label={tab.name}
@@ -39,9 +36,7 @@ export function DashboardTabs({ isEditing }: DashboardTabsProps) {
             menuItems={[
               {
                 label: t`Delete`,
-                action: (_, value) =>
-                  // TODO improve typesafety of TabButton (use generic?)
-                  deleteTab(typeof value === "number" ? value : 0),
+                action: (_, value) => deleteTab(value),
               },
             ]}
           />

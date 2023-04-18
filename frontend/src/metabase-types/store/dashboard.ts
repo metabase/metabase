@@ -5,7 +5,6 @@ import type {
   DashCardId,
   DashCardDataMap,
   ParameterId,
-  DashboardTabId,
   ParameterValueOrArray,
 } from "metabase-types/api";
 
@@ -25,9 +24,11 @@ export type StoreDashcard = DashboardOrderedCard & {
   isRemoved?: boolean;
 };
 
+export type SelectedTabId = DashboardId | null;
+
 export interface DashboardState {
   dashboardId: DashboardId | null;
-  selectedTabId: DashboardTabId | null;
+  selectedTabId: SelectedTabId;
   dashboards: Record<DashboardId, StoreDashboard>;
 
   dashcards: Record<DashCardId, StoreDashcard>;
