@@ -1,4 +1,4 @@
-import { CardApi } from "metabase/services";
+import fetchMock from "fetch-mock";
 
 import reducer, {
   uploadFile,
@@ -9,6 +9,19 @@ import reducer, {
 } from "./uploads";
 
 const now = Date.now();
+
+const mockUploadCSV = (valid = true) => {
+  fetchMock.post(
+    "path:/api/card/from-csv",
+    valid
+      ? {
+          model_id: 3,
+        }
+      : {
+          throws: { data: { message: "It's dead Jim" } },
+        },
+  );
+};
 
 describe("csv uploads", () => {
   describe("actions", () => {
@@ -24,18 +37,14 @@ describe("csv uploads", () => {
     beforeEach(() => {
       dispatch = jest.fn();
       jest.useFakeTimers().setSystemTime(now);
-      CardApi.uploadCSV = jest.fn();
     });
 
     afterAll(() => {
       jest.useRealTimers();
-      CardApi.uploadCSV.mockRestore();
     });
 
     it("should handle file upload success", async () => {
-      CardApi.uploadCSV.mockImplementation(() =>
-        Promise.resolve({ model_id: 3 }),
-      );
+      mockUploadCSV();
 
       await uploadFile(file, "root")(dispatch);
       jest.advanceTimersByTime(6000);
@@ -66,14 +75,7 @@ describe("csv uploads", () => {
     });
 
     it("should handle file upload error", async () => {
-      CardApi.uploadCSV.mockImplementation(() =>
-        Promise.reject({
-          status: 500,
-          data: {
-            message: "It's dead Jim",
-          },
-        }),
-      );
+      mockUploadCSV(false);
 
       await uploadFile(file, "root")(dispatch);
       jest.advanceTimersByTime(6000);
