@@ -158,7 +158,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
               .eq(0)
               .click({ force: true });
             cy.findByText(/Zoom in/i);
-            cy.findByText(/View these Orders/i);
+            cy.findByText(/See these Orders/i);
 
             // Click anywhere else to close the first action panel
             cy.findByText("11442D").click();
@@ -170,7 +170,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
               .eq(0)
               .click({ force: true });
             cy.findByText(/Zoom in/i);
-            cy.findByText(/View these Products/i);
+            cy.findByText(/See these Products/i);
           },
         );
       });
@@ -227,7 +227,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
               .eq(0)
               .click({ force: true });
             cy.findByText(/Zoom in/i);
-            cy.findByText(/View these Orders/i);
+            cy.findByText(/See these Orders/i);
 
             // Click anywhere else to close the first action panel
             cy.findByText("13457D").click();
@@ -239,7 +239,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
               .eq(0)
               .click({ force: true });
             cy.findByText(/Zoom in/i);
-            cy.findByText(/View these Orders/i);
+            cy.findByText(/See these Orders/i);
           },
         );
       });
@@ -296,7 +296,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
 
     // drill into a recent week
     cy.get(".dot").eq(-4).click({ force: true });
-    cy.contains("View these Orders").click();
+    cy.contains("See these Orders").click();
 
     // check that filter is applied and rows displayed
     cy.contains("Showing 127 rows");
@@ -337,7 +337,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     cy.get(".dot")
       .eq(10) // random dot
       .click({ force: true });
-    cy.findByText("View these Orders").click();
+    cy.findByText("See these Orders").click();
 
     cy.log("Reproduced on 0.34.3, 0.35.4, 0.36.7 and 0.37.0-rc2");
     // when the bug is present, filter is missing a name (showing only "is 256")
@@ -454,7 +454,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
 
         // Initial visualization has rendered and we can now drill-through
         cy.get(".Visualization .bar").eq(4).click({ force: true });
-        cy.findByText(/View these People/i).click();
+        cy.findByText(/See these People/i).click();
 
         // We should see the resulting dataset of that drill-through
         cy.wait("@dataset").then(xhr => {
@@ -486,7 +486,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       .next()
       .contains("85")
       .click();
-    cy.findByText("View these Orders").click();
+    cy.findByText("See these Orders").click();
     cy.findByText("Quantity is greater than or equal to 10");
     cy.findByText("Quantity is less than 20");
     cy.findByText("Showing 85 rows");
@@ -511,7 +511,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
 
     // click on the Count column cell showing the count of null rows
     cy.findByText("16,845").click();
-    cy.findByText("View these Orders").click();
+    cy.findByText("See these Orders").click();
 
     // count number of distinct values in the Discount column
     cy.findByText("Discount ($)").click();
@@ -576,7 +576,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
 
       // Drill-through the last bar (Widget)
       cy.get(".bar").last().click({ force: true });
-      cy.findByText("View these Products").click();
+      cy.findByText("See these Products").click();
     });
 
     // [quarantine] flaky

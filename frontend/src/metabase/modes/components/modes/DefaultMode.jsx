@@ -13,13 +13,13 @@ import DashboardClickDrill from "../drill/DashboardClickDrill";
 const DefaultMode = {
   name: "default",
   drills: [
+    UnderlyingRecordsDrill,
     ZoomDrill,
     SortDrill,
     ObjectDetailDrill,
     QuickFilterDrill,
     ForeignKeyDrill,
     ColumnFilterDrill,
-    UnderlyingRecordsDrill,
     AutomaticDashboardDrill,
     CompareToRestDrill,
     FormatDrill,

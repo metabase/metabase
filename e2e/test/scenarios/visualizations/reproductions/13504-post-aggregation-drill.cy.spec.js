@@ -32,7 +32,7 @@ describe("issue 13504", () => {
     cy.createQuestion(questionDetails, { visitQuestion: true });
 
     cy.get(".dot").eq(0).click({ force: true });
-    cy.findByText(/View these Orders/).click();
+    cy.findByText(/See these Orders/).click();
     cy.wait("@dataset");
 
     cy.findByText("Total is greater than 50").should("be.visible");

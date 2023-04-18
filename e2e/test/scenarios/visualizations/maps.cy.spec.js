@@ -115,7 +115,7 @@ describe("scenarios > visualizations > maps", () => {
 
     // open drill-through menu and drill within it
     cy.get("@texas").click();
-    cy.findByText(/View these People/i).click();
+    cy.findByText(/See these People/i).click();
 
     cy.log("Reported as a regression since v0.37.0");
     cy.wait("@dataset").then(xhr => {
