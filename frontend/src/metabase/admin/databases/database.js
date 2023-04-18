@@ -222,8 +222,8 @@ export const deleteDatabase = function (databaseId, isDetailView = true) {
   return async function (dispatch, getState) {
     try {
       dispatch.action(DELETE_DATABASE_STARTED, { databaseId });
-      dispatch(push("/admin/databases/"));
       await dispatch(Databases.actions.delete({ id: databaseId }));
+      dispatch(push("/admin/databases/"));
       MetabaseAnalytics.trackStructEvent(
         "Databases",
         "Delete",
