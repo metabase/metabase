@@ -39,7 +39,6 @@ docker run -d -p 3000:3000 -e MB_SITE_NAME="Awesome Company" --name metabase met
 
 ### `MAX_SESSION_AGE`
 
-Only available on [paid plans](https://www.metabase.com/pricing).<br>
 Type: integer<br>
 Default: `20160`
 
