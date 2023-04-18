@@ -1,5 +1,6 @@
 (ns metabase.lib.temporal-bucket
   (:require
+   [clojure.string :as str]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -91,3 +92,73 @@
   "Get a set of available temporal bucketing units for `x`. Returns nil if no units are available."
   [x]
   (not-empty (temporal-bucket-method x)))
+
+;;;; Alternate description implementation
+
+;;; MLv1 had like 2 or maybe 3 duplicate versions of temporal description logic, no one is really sure why, but my
+;;; strategy is to port first and then consolidate second. The stuff in this namespace is just simple ports of the JS
+;;; code so I can bring everything into one place; after that I will consolidate things so we don't have so many
+;;; duplicate implementations. [[unit->i18n]] and [[interval->i18n]] are ports of the JS query description logic from
+;;; `frontend/src/metabase-lib/queries/utils/description.js`. The stuff below is a port of
+;;; `frontend/src/metabase-lib/queries/utils/query-time.js`. Why two versions of the same stuff? Who knows!
+;;;
+;;; I know usually we want to export this via [[metabase.lib.js]], but these are hopefully short-term exports to
+;;; replace stuff in the JS code that is going to eventually disappear entirely, so not really worth creating a JS
+;;; wrapper for it now because this stuff is going to get consolidated soon and not hit directly from JS in the long
+;;; run anyway
+(defn ^:export format-bucketing
+  "Temporal bucketing formatting logic ported from `frontend/src/metabase-lib/queries/utils/query-time.js`."
+  ([]
+   (format-bucketing nil 1))
+
+  ([bucketing]
+   (format-bucketing bucketing 1))
+
+  ([bucketing n]
+   (if-not bucketing
+     ""
+     (case (keyword bucketing)
+       :default         (i18n/trun "Default period"  "Default periods"  n)
+       :minute          (i18n/trun "Minute"          "Minutes"          n)
+       :hour            (i18n/trun "Hour"            "Hours"            n)
+       :day             (i18n/trun "Day"             "Days"             n)
+       :week            (i18n/trun "Week"            "Weeks"            n)
+       :month           (i18n/trun "Month"           "Months"           n)
+       :quarter         (i18n/trun "Quarter"         "Quarters"         n)
+       :year            (i18n/trun "Year"            "Years"            n)
+       :minute-of-hour  (i18n/trun "Minute of hour"  "Minutes of hour"  n)
+       :hour-of-day     (i18n/trun "Hour of day"     "Hours of day"     n)
+       :day-of-week     (i18n/trun "Day of week"     "Days of week"     n)
+       :day-of-month    (i18n/trun "Day of month"    "Days of month"    n)
+       :day-of-year     (i18n/trun "Day of year"     "Days of year"     n)
+       :week-of-year    (i18n/trun "Week of year"    "Weeks of year"    n)
+       :month-of-year   (i18n/trun "Month of year"   "Months of year"   n)
+       :quarter-of-year (i18n/trun "Quarter of year" "Quarters of year" n)
+       ;; e.g. :unknown-unit => "Unknown unit"
+       (as-> (str/split (name bucketing) #"-") <>
+         (update (vec <>) 0 str/capitalize)
+         (str/join \space <>))))))
+
+(defn ^:export time-interval-description
+  "Temporal bucketing formatting logic ported from `frontend/src/metabase-lib/queries/utils/query-time.js`."
+  [n unit]
+  (let [n    (if (number? n)
+               n
+               (condp = (keyword n)
+                 :current 0
+                 :next    1
+                 0))
+        unit (keyword unit)]
+    (cond
+      (zero? n) (cond
+                  (= unit :day) (i18n/tru "Today")
+                  unit          (i18n/tru "This {0}" (format-bucketing unit))
+                  :else         (i18n/tru "Today"))
+      (= n 1)   (if (= unit :day)
+                  (i18n/tru "Tomorrow")
+                  (i18n/tru "Next {0}" (format-bucketing unit)))
+      (= n -1)  (if (= unit :day)
+                  (i18n/tru "Yesterday")
+                  (i18n/tru "Previous {0}" (format-bucketing unit)))
+      (neg? n)  (i18n/tru "Previous {0} {1}" (- n) (format-bucketing unit (- n)))
+      (pos? n)  (i18n/tru "Next {0} {1}" n (format-bucketing unit n)))))

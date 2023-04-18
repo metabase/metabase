@@ -16,7 +16,7 @@ import ScalarValue, {
   ScalarTitle,
 } from "metabase/visualizations/components/ScalarValue";
 import { isDate } from "metabase-lib/types/utils/isa";
-import { formatBucketing } from "metabase-lib/queries/utils/query-time";
+import * as ML_TemporalBucket from "cljs/metabase.lib.temporal_bucket";
 
 import {
   PreviousValueContainer,
@@ -116,7 +116,9 @@ export default class Smart extends React.Component {
       return null;
     }
 
-    const granularity = formatBucketing(insight["unit"]).toLowerCase();
+    const granularity = ML_TemporalBucket.format_bucketing(
+      insight["unit"],
+    ).toLowerCase();
 
     const lastChange = insight["last-change"];
     const previousValue = insight["previous-value"];

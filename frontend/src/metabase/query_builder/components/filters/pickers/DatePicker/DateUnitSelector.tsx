@@ -1,10 +1,10 @@
 import React from "react";
 
 import Select, { Option } from "metabase/core/components/Select";
-import { formatBucketing } from "metabase-lib/queries/utils/query-time";
+import * as ML_TemporalBucket from "cljs/metabase.lib.temporal_bucket";
 
 const defaultDisplayName = (period: string, intervals: number) =>
-  formatBucketing(period, intervals).toLowerCase();
+  ML_TemporalBucket.format_bucketing(period, intervals).toLowerCase();
 
 type Props = {
   className?: string;
