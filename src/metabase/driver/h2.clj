@@ -528,3 +528,8 @@
     ::upload/boolean     "BOOLEAN"
     ::upload/date        "DATE"
     ::upload/datetime    "TIMESTAMP"))
+
+(defmethod driver/table-name-length-limit :h2
+  [_driver]
+  ;; http://www.h2database.com/html/advanced.html#limits_limitations
+  256)
