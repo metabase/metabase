@@ -3,7 +3,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import _ from "underscore";
-import { useUnmount, useBeforeUnload } from "react-use";
+import { useBeforeUnload, useUnmount } from "react-use";
 
 import { t } from "ttag";
 
@@ -18,12 +18,12 @@ import { useLoadingTimer } from "metabase/hooks/use-loading-timer";
 import { useWebNotification } from "metabase/hooks/use-web-notification";
 
 import { fetchDatabaseMetadata } from "metabase/redux/metadata";
-import { getIsNavbarOpen, closeNavbar, setErrorPage } from "metabase/redux/app";
+import { closeNavbar, getIsNavbarOpen, setErrorPage } from "metabase/redux/app";
 
 import { getDatabases, getMetadata } from "metabase/selectors/metadata";
 import {
-  getUserIsAdmin,
   canManageSubscriptions,
+  getUserIsAdmin,
 } from "metabase/selectors/user";
 
 import { getEmbedOptions } from "metabase/selectors/embed";
@@ -33,29 +33,30 @@ import * as Urls from "metabase/lib/urls";
 
 import Dashboards from "metabase/entities/dashboards";
 
+import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/dashboard/constants";
 import * as dashboardActions from "../actions";
 import {
-  getIsEditing,
-  getIsSharing,
-  getDashboardBeforeEditing,
-  getIsEditingParameter,
-  getIsDirty,
-  getDashboardComplete,
   getCardData,
-  getSlowCards,
+  getClickBehaviorSidebarDashcard,
+  getDashboardBeforeEditing,
+  getDashboardComplete,
+  getDocumentTitle,
   getEditingParameter,
+  getFavicon,
+  getIsAdditionalInfoVisible,
+  getIsAddParameterPopoverOpen,
+  getIsDirty,
+  getIsEditing,
+  getIsEditingParameter,
+  getIsHeaderVisible,
+  getIsLoadingComplete,
+  getIsRunning,
+  getIsSharing,
+  getLoadingStartTime,
   getParameters,
   getParameterValues,
-  getLoadingStartTime,
-  getClickBehaviorSidebarDashcard,
-  getIsAddParameterPopoverOpen,
   getSidebar,
-  getFavicon,
-  getDocumentTitle,
-  getIsRunning,
-  getIsLoadingComplete,
-  getIsHeaderVisible,
-  getIsAdditionalInfoVisible,
+  getSlowCards,
 } from "../selectors";
 
 function getDashboardId({ dashboardId, params }) {
@@ -107,10 +108,6 @@ const mapDispatchToProps = {
   onChangeLocation: push,
 };
 
-// most browsers don't use a custom message anymore, just putting here to retain compatibility
-// https://developer.mozilla.org/en-US/docs/Web/API/Window/beforeunload_event#compatibility_notes
-const UNSAVED_CHANGE_MESSAGE = t`You have unsaved changes.`;
-
 // NOTE: should use DashboardControls and DashboardData HoCs here?
 const DashboardApp = props => {
   const { isRunning, isLoadingComplete, dashboard, isEditing, isDirty } = props;
@@ -136,7 +133,7 @@ const DashboardApp = props => {
 
   useUnmount(props.reset);
 
-  useBeforeUnload(isEditing && isDirty, UNSAVED_CHANGE_MESSAGE);
+  useBeforeUnload(isEditing && isDirty, BEFORE_UNLOAD_UNSAVED_MESSAGE);
 
   useEffect(() => {
     if (isLoadingComplete) {

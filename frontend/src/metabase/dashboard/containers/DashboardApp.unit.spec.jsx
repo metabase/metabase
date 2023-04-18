@@ -12,6 +12,7 @@ import {
   setupDashboardEndpoints,
 } from "__support__/server-mocks";
 import { createMockDashboardState } from "metabase-types/store/mocks";
+import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/dashboard/constants";
 
 const mockDashboard = createMockDashboard({
   id: 1,
@@ -92,7 +93,7 @@ describe("DashboardApp", function () {
 
     events.beforeunload?.();
     expect(mockEvent.preventDefault).toHaveBeenCalled();
-    expect(mockEvent.returnValue).toEqual("You have unsaved changes.");
+    expect(mockEvent.returnValue).toEqual(BEFORE_UNLOAD_UNSAVED_MESSAGE);
   });
 
   it("should not have a beforeunload event when the dashboard is unedited", async function () {
