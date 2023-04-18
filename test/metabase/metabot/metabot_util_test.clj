@@ -355,20 +355,21 @@
 (deftest inner-query-name-collisions-test
   (testing "When column names collide, each conflict is disambiguated with an _X postfix"
     (mt/dataset sample-dataset
-      (t2.with-temp/with-temp
-        [Card orders-model {:name    "Orders Model"
-                            :dataset_query
-                            {:database (mt/id)
-                             :type     :query
-                             :query    {:source-table (mt/id :orders)}}
-                            :dataset true}]
-        (let [orders-model (update orders-model :result_metadata
-                                   (fn [v]
-                                     (map #(assoc % :display_name "ABC") v)))
-              {:keys [column_aliases create_table_ddl]} (metabot-util/denormalize-model orders-model)]
-          (is (= 9 (count (re-seq #"ABC(?:_\d+)?" column_aliases))))
-          ;; Ensure that the same aliases are used in the create table ddl
-          (is (= 9 (count (re-seq #"ABC" create_table_ddl))))))))
+      (tu/with-temporary-setting-values [metabot-settings/enum-cardinality-threshold 0]
+        (t2.with-temp/with-temp
+         [Card orders-model {:name    "Orders Model"
+                             :dataset_query
+                             {:database (mt/id)
+                              :type     :query
+                              :query    {:source-table (mt/id :orders)}}
+                             :dataset true}]
+         (let [orders-model (update orders-model :result_metadata
+                                    (fn [v]
+                                      (map #(assoc % :display_name "ABC") v)))
+               {:keys [column_aliases create_table_ddl]} (metabot-util/denormalize-model orders-model)]
+           (is (= 9 (count (re-seq #"ABC(?:_\d+)?" column_aliases))))
+           ;; Ensure that the same aliases are used in the create table ddl
+           (is (= 9 (count (re-seq #"ABC" create_table_ddl)))))))))
   (testing "Models with name collisions across joins are also correctly disambiguated"
     (mt/dataset sample-dataset
       (t2.with-temp/with-temp
