@@ -100,5 +100,15 @@
   #_exp [:schema [:ref ::expression/number]])
 
 (defmethod expression/type-of* :power
-  [[_tag _opts & args]]
-  (type-of-arithmetic-args args))
+  [[_tag _opts expr exponent]]
+  ;; if both expr and exponent are integers, this will return an integer.
+  (if (and (isa? (expression/type-of expr) :type/Integer)
+           (isa? (expression/type-of exponent) :type/Integer))
+    :type/Integer
+    ;; otherwise this will return some sort of number with a decimal place. e.g.
+    ;;
+    ;;    (Math/pow 2 2.1) => 4.2870938501451725
+    ;;
+    ;; If we don't know the type of `expr` or `exponent` it's safe to assume `:type/Float` anyway, maybe not as
+    ;; specific as `:type/Integer` but better than `:type/*` or `::expression/type.unknown`.
+    :type/Float))

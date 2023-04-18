@@ -1,3 +1,5 @@
+import { LocalFieldReference } from "metabase-types/types/Query";
+import { ParameterType } from "metabase-types/types/Parameter";
 import { Card } from "./card";
 import { DatabaseId } from "./database";
 import { FieldId } from "./field";
@@ -64,3 +66,33 @@ export type SingleSeries = {
 export type RawSeries = SingleSeries[];
 export type TransformedSeries = RawSeries & { _raw: Series };
 export type Series = RawSeries | TransformedSeries;
+
+export type TemplateTagId = string;
+export type TemplateTagName = string;
+export type TemplateTagType =
+  | "card"
+  | "text"
+  | "number"
+  | "date"
+  | "dimension"
+  | "snippet";
+
+export interface TemplateTag {
+  id: TemplateTagId;
+  name: TemplateTagName;
+  "display-name": string;
+  type: TemplateTagType;
+  dimension?: LocalFieldReference;
+  "widget-type"?: ParameterType;
+  required?: boolean;
+  default?: string;
+
+  // Card template specific
+  "card-id"?: number;
+
+  // Snippet specific
+  "snippet-id"?: number;
+  "snippet-name"?: string;
+}
+
+export type TemplateTags = { [key: TemplateTagName]: TemplateTag };

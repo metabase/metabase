@@ -30,7 +30,7 @@ export const AdminNavbar = ({
   adminPaths,
 }: AdminNavbarProps) => {
   return (
-    <AdminNavbarRoot className="Nav">
+    <AdminNavbarRoot className="Nav" aria-label={t`Navigation bar`}>
       <AdminLogoLink to="/admin" data-metabase-event="Navbar;Logo">
         <AdminLogoContainer>
           <LogoIcon className="text-brand my2" dark />

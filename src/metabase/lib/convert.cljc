@@ -1,10 +1,60 @@
 (ns metabase.lib.convert
   (:require
    [clojure.set :as set]
+   [malli.core :as mc]
    [medley.core :as m]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.options :as lib.options]
-   [metabase.lib.util :as lib.util]))
+   [metabase.lib.schema :as lib.schema]
+   [metabase.lib.util :as lib.util]
+   [metabase.util :as u]))
+
+(defn- clean-location [almost-stage error-type error-location]
+  (let [operate-on-parent? #{:malli.core/missing-key :malli.core/end-of-input}
+        location (if (operate-on-parent? error-type)
+                   (drop-last 2 error-location)
+                   (drop-last 1 error-location))
+        [location-key] (if (operate-on-parent? error-type)
+                         (take-last 2 error-location)
+                         (take-last 1 error-location))]
+    (if (seq location)
+      (update-in almost-stage
+                 location
+                 (fn [error-loc]
+                   (let [result (assoc error-loc location-key nil)]
+                     (cond
+                       (vector? error-loc) (into [] (remove nil?) result)
+                       (map? error-loc) (u/remove-nils result)
+                       :else result))))
+      (dissoc almost-stage location-key))))
+
+(def ^:private stage-keys-to-clean
+  #{:expressions :joins :filters :order-by :aggregation :fields :breakout})
+
+(defn- clean-stage [almost-stage]
+  (loop [almost-stage almost-stage
+         removals []]
+    (if-let [[error-type error-location] (->> (mc/explain ::lib.schema/stage.mbql almost-stage)
+                                              :errors
+                                              (filter (comp stage-keys-to-clean first :in))
+                                              (map (juxt :type :in))
+                                              first)]
+      (let [new-stage (clean-location almost-stage error-type error-location)]
+        (if (= new-stage almost-stage)
+          almost-stage
+          (recur new-stage (conj removals [error-type error-location]))))
+      almost-stage)))
+
+(defn- clean [almost-query]
+  (loop [almost-query almost-query
+         stage-index 0]
+    (let [current-stage (nth (:stages almost-query) stage-index)
+          new-stage (clean-stage current-stage)]
+      (if (= current-stage new-stage)
+        (if (= stage-index (dec (count (:stages almost-query))))
+          almost-query
+          (recur almost-query (inc stage-index)))
+        (recur (update almost-query :stages assoc stage-index new-stage) stage-index)))))
 
 (defmulti ->pMBQL
   "Coerce something to pMBQL (the version of MBQL manipulated by Metabase Lib v2) if it's not already pMBQL."
@@ -41,9 +91,14 @@
 
 (defmethod ->pMBQL :mbql/join
   [join]
-  (-> join
-      (update :conditions ->pMBQL)
-      (update :stages ->pMBQL)))
+  (let [join (-> join
+                 (update :conditions ->pMBQL)
+                 (update :stages ->pMBQL))]
+    (cond-> join
+      (:fields join) (update :fields (fn [fields]
+                                       (if (seqable? fields)
+                                         (mapv ->pMBQL fields)
+                                         (keyword fields)))))))
 
 (defmethod ->pMBQL :dispatch-type/sequential
   [xs]
@@ -54,7 +109,8 @@
   (if (:type m)
     (-> (lib.util/pipeline m)
         (update :stages (fn [stages]
-                          (mapv ->pMBQL stages))))
+                          (mapv ->pMBQL stages)))
+        clean)
     (update-vals m ->pMBQL)))
 
 (defmethod ->pMBQL :field
@@ -64,9 +120,10 @@
                                [x y])]
     (lib.options/ensure-uuid [:field options id-or-name])))
 
-(defmethod ->pMBQL :value
-  [[_tag value opts]]
-  (lib.options/ensure-uuid [:value opts value]))
+(doseq [tag [:value :aggregation :expression]]
+  (defmethod ->pMBQL tag
+    [[tag value opts]]
+    (lib.options/ensure-uuid [tag opts value])))
 
 (defmethod ->pMBQL :aggregation-options
   [[_tag aggregation options]]

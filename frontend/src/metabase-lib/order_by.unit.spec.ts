@@ -39,9 +39,15 @@ describe("order by", () => {
           name: "ID",
           display_name: "ID",
           effective_type: "type/BigInteger",
+          semantic_type: "type/PK",
+          is_calculated: false,
+          is_from_join: false,
+          is_from_previous_stage: false,
+          is_implicitly_joinable: false,
           table: {
             name: "ORDERS",
             display_name: "Orders",
+            is_source_table: true,
           },
         }),
       );
@@ -55,9 +61,15 @@ describe("order by", () => {
           name: "TITLE",
           display_name: "Title",
           effective_type: "type/Text",
+          semantic_type: "type/Category",
+          is_calculated: false,
+          is_from_join: false,
+          is_from_previous_stage: false,
+          is_implicitly_joinable: true,
           table: {
             name: "PRODUCTS",
             display_name: "Products",
+            is_source_table: false,
           },
         }),
       );
@@ -122,9 +134,7 @@ describe("order by", () => {
       const orderBys = ML.orderBys(nextQuery);
 
       expect(orderBys).toHaveLength(1);
-      expect(ML.displayName(nextQuery, orderBys[0])).toBe(
-        "Products → Title ascending",
-      );
+      expect(ML.displayName(nextQuery, orderBys[0])).toBe("Title ascending");
     });
   });
 
@@ -150,7 +160,7 @@ describe("order by", () => {
       );
       const nextOrderBys = ML.orderBys(nextQuery);
       expect(ML.displayName(nextQuery, nextOrderBys[0])).toBe(
-        "Products → Category descending",
+        "Category descending",
       );
       expect(orderBys[0]).not.toEqual(nextOrderBys[0]);
     });

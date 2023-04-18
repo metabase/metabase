@@ -1,7 +1,6 @@
 (ns dev.debug-qp
   "TODO -- I think this should be moved to something like [[metabase.test.util.debug-qp]]"
   (:require
-   [clojure.data :as data]
    [clojure.pprint :as pprint]
    [clojure.string :as str]
    [clojure.walk :as walk]
@@ -14,7 +13,6 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.util :as u]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 ;;;; [[->sorted-mbql-query-map]]

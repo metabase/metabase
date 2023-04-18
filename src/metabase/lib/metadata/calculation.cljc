@@ -15,10 +15,20 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
+(def DisplayNameStyle
+  "Schema for valid values of `display-name-style` as passed to [[display-name-method]].
+
+  * `:default`: normal style used for 99% of FE stuff. For example a column that comes from a joined table might return
+    \"Price\".
+
+  * `:long`: Slightly longer style that includes a little bit of extra context, used for stuff like query suggested
+    name generation. For a joined column, this might look like \"Venues → Price\"."
+  [:enum :default :long])
+
 (defmulti display-name-method
   "Calculate a nice human-friendly display name for something."
-  {:arglists '([query stage-number x])}
-  (fn [_query _stage-number x]
+  {:arglists '([query stage-number x display-name-style])}
+  (fn [_query _stage-number x _display-name-style]
     (lib.dispatch/dispatch-value x))
   :hierarchy lib.hierarchy/hierarchy)
 
@@ -29,21 +39,24 @@
     (lib.dispatch/dispatch-value x))
   :hierarchy lib.hierarchy/hierarchy)
 
-(mu/defn ^:export display-name :- ::lib.schema.common/non-blank-string
-  "Calculate a nice human-friendly display name for something."
+(mu/defn ^:export display-name :- :string
+  "Calculate a nice human-friendly display name for something. See [[DisplayNameStyle]] for a the difference between
+  different `style`s."
   ([query x]
    (display-name query -1 x))
 
+  ([query stage-number x]
+   (display-name query stage-number x :default))
+
   ([query        :- ::lib.schema/query
     stage-number :- :int
-    x]
+    x
+    style        :- DisplayNameStyle]
    (or
     ;; if this is an MBQL clause with `:display-name` in the options map, then use that rather than calculating a name.
     (:display-name (lib.options/options x))
     (try
-      (display-name-method query stage-number x)
-      ;; if this errors, just catch the error and return something like `Unknown :field`. We shouldn't blow up the
-      ;; whole Query Builder if there's a bug
+      (display-name-method query stage-number x style)
       (catch #?(:clj Throwable :cljs js/Error) e
         (throw (ex-info (i18n/tru "Error calculating display name for {0}: {1}" (pr-str x) (ex-message e))
                         {:query query, :x x}
@@ -70,7 +83,7 @@
                         e)))))))
 
 (defmethod display-name-method :default
-  [_query _stage-number x]
+  [_query _stage-number x _stage]
   ;; hopefully this is dev-facing only, so not i18n'ed.
   (log/warnf "Don't know how to calculate display name for %s. Add an impl for %s for %s"
              (pr-str x)
@@ -101,7 +114,9 @@
 
 (defmulti describe-top-level-key-method
   "Implementation for [[describe-top-level-key]]. Describe part of a stage of a query, e.g. the `:filters` part or the
-  `:aggregation` part. Return `nil` if there is nothing to describe."
+  `:aggregation` part. Return `nil` if there is nothing to describe.
+
+  Implementations that call [[display-name]] should specify the `:long` display name style."
   {:arglists '([query stage-number top-level-key])}
   (fn [_query _stage-number top-level-key]
     top-level-key)
@@ -155,7 +170,7 @@
   (type-of query stage-number expr))
 
 (defmulti metadata-method
-  "Impl for [[metadata]]."
+  "Impl for [[metadata]]. Implementations that call [[display-name]] should use the `:default` display name style."
   {:arglists '([query stage-number x])}
   (fn [_query _stage-number x]
     (lib.dispatch/dispatch-value x))
@@ -163,11 +178,16 @@
 
 (defmethod metadata-method :default
   [query stage-number x]
-  {:lib/type     :metadata/field
-   ;; TODO -- effective-type
-   :base_type    (type-of query stage-number x)
-   :name         (column-name query stage-number x)
-   :display_name (display-name query stage-number x)})
+  (try
+    {:lib/type     :metadata/field
+     ;; TODO -- effective-type
+     :base_type    (type-of query stage-number x)
+     :name         (column-name query stage-number x)
+     :display_name (display-name query stage-number x)}
+    (catch #?(:clj Throwable :cljs js/Error) e
+      (throw (ex-info (i18n/tru "Error calculating metadata {0}" (ex-message e))
+                      {:query query, :stage-number stage-number, :x x}
+                      e)))))
 
 (def ColumnMetadataWithSource
   "Schema for the column metadata that should be returned by [[metadata]]."
@@ -208,7 +228,8 @@
         nil))))
 
 (defmulti display-info-method
-  "Implementation for [[display-info]]."
+  "Implementation for [[display-info]]. Implementations that call [[display-name]] should use the `:default` display
+  name style."
   {:arglists '([query stage-number x])}
   (fn [_query _stage-number x]
     (lib.dispatch/dispatch-value x))
@@ -216,7 +237,7 @@
 
 (mr/register! ::display-info
   [:map
-   [:display_name ::lib.schema.common/non-blank-string]
+   [:display_name :string]
    ;; For Columns. `base_type` not included here, FE doesn't need to know about that.
    [:effective_type {:optional true} [:maybe [:ref ::lib.schema.common/base-type]]]
    [:semantic_type  {:optional true} [:maybe [:ref ::lib.schema.common/semantic-type]]]
@@ -234,7 +255,9 @@
    [:is_calculated {:optional true} [:maybe :boolean]]
    ;; if this is a Column, is it an implicitly joinable one? I.e. is it from a different table that we have not
    ;; already joined, but could implicitly join against?
-   [:is_implicitly_joinable {:optional true} [:maybe :boolean]]])
+   [:is_implicitly_joinable {:optional true} [:maybe :boolean]]
+   ;; For the `:table` field of a Column, is this the source table, or a joined table?
+   [:is_source_table {:optional true} [:maybe :boolean]]])
 
 (mu/defn display-info :- ::display-info
   "Given some sort of Cljs object, return a map with the info you'd need to implement UI for it. This is mostly meant to
@@ -246,7 +269,12 @@
   ([query        :- ::lib.schema/query
     stage-number :- :int
     x]
-   (display-info-method query stage-number x)))
+   (try
+     (display-info-method query stage-number x)
+     (catch #?(:clj Throwable :cljs js/Error) e
+       (throw (ex-info (i18n/tru "Error calculating display info for {0}: {1}" (lib.dispatch/dispatch-value x) (ex-message e))
+                       {:query query, :stage-number stage-number, :x x}
+                       e))))))
 
 (defn default-display-info
   "Default implementation of [[display-info-method]], available in case you want to use this in a different
@@ -272,3 +300,103 @@
 (defmethod display-info-method :default
   [query stage-number x]
   (default-display-info query stage-number x))
+
+(defmethod display-info-method :metadata/table
+  [query stage-number table]
+  (merge (default-display-info query stage-number table)
+         {:is_source_table (= (lib.util/source-table query) (:id table))}))
+
+(defmulti default-columns-method
+  "Impl for [[default-columns]]. This should mostly be similar to the implementation for [[metadata-method]], but needs
+  to include `:lib/source-column-alias` and `:lib/desired-column-alias`. `:lib/source-column-alias` should probably be
+  the same as `:name`; use the supplied `unique-name-fn` with the signature `(f str) => str` to ensure
+  `:lib/desired-column-alias` is unique."
+  {:arglists '([query stage-number x unique-name-fn])}
+  (fn [_query _stage-number x _unique-name-fn]
+    (lib.dispatch/dispatch-value x))
+  :hierarchy lib.hierarchy/hierarchy)
+
+#_(defmethod default-columns-method :default
+  [query stage-number x unique-name-fn]
+  (mapv (fn [col]
+          (assoc col
+                 :lib/source-column-alias  (:name col)
+                 :lib/desired-column-alias (unique-name-fn (:name col))))
+        (metadata query stage-number x)))
+
+(def ColumnsWithUniqueAliases
+  "Schema for column metadata that should be returned by [[default-columns]]. This is mostly used
+  to power metadata calculation for stages (see [[metabase.lib.stage]]."
+  [:and
+   [:sequential
+    [:merge
+     ColumnMetadataWithSource
+     [:map
+      [:lib/source-column-alias  ::lib.schema.common/non-blank-string]
+      [:lib/desired-column-alias [:string {:min 1, :max 60}]]]]]
+   [:fn
+    ;; should be dev-facing only, so don't need to i18n
+    {:error/message "Column :lib/desired-column-alias values must be distinct, regardless of case, for each stage!"
+     :error/fn      (fn [{:keys [value]} _]
+                      (str "Column :lib/desired-column-alias values must be distinct, got: "
+                           (pr-str (mapv :lib/desired-column-alias value))))}
+    (fn [columns]
+      (or
+       (empty? columns)
+       (apply distinct? (map (comp u/lower-case-en :lib/desired-column-alias) columns))))]])
+
+(mu/defn default-columns :- ColumnsWithUniqueAliases
+  "Return a sequence of column metadatas for columns that are returned 'by default' for a table/join/query stage.
+
+  These columns will include `:lib/source-column-alias` and `:lib/desired-column-alias`. `:lib/desired-column-alias`
+  is guaranteed to be unique; `unique-name-fn` is a function with the signature
+
+    (f column-alias-string) => unique-alias-string
+
+  Used to generate unique names."
+  ([query]
+   (default-columns query (lib.util/query-stage query -1)))
+
+  ([query x]
+   (default-columns query -1 x))
+
+  ([query stage-number x]
+   (default-columns query stage-number x (lib.util/unique-name-generator)))
+
+  ([query          :- ::lib.schema/query
+    stage-number   :- :int
+    x
+    unique-name-fn :- fn?]
+   (default-columns-method query stage-number x unique-name-fn)))
+
+(defmulti visible-columns-method
+  "Impl for [[visible-columns]]."
+  {:arglists '([query stage-number x unique-name-fn])}
+  (fn [_query _stage-number x _unique-name-fn]
+    (lib.dispatch/dispatch-value x))
+  :hierarchy lib.hierarchy/hierarchy)
+
+(defmethod visible-columns-method :default
+  [query stage-number x unique-name-fn]
+  (default-columns query stage-number x unique-name-fn))
+
+(mu/defn visible-columns :- ColumnsWithUniqueAliases
+  "Return a sequence of columns that should be *visible* for something, e.g. a query stage or a join. Visible means
+  both columns that are 'returned' by the query *AND* ones that are implicitly joinable.
+
+  Default implementation is just [[default-columns]]; currently only stages have a specific implementation
+  for [[visible-columns-method]], but this might change in the future."
+  ([query]
+   (visible-columns query (lib.util/query-stage query -1)))
+
+  ([query x]
+   (visible-columns query -1 x))
+
+  ([query stage-number x]
+   (visible-columns query stage-number x (lib.util/unique-name-generator)))
+
+  ([query          :- ::lib.schema/query
+    stage-number   :- :int
+    x
+    unique-name-fn :- fn?]
+   (visible-columns-method query stage-number x unique-name-fn)))

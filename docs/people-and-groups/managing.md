@@ -6,15 +6,15 @@ redirect_from:
 
 # Managing people and groups
 
-To start managing people, click on the **gear** icon > **Admin settings** > **People**. You'll see a list f all the people in your organization.
+To start managing people, click on the **gear** icon > **Admin settings** > **People**. You'll see a list of all the people in your organization.
 
 ![Admin menu](images/AdminBar.png)
 
 ## Creating an account
 
-To add a new person, click **Invite someone** in the upper right corner. You’ll be prompted to enter their first and last names and their email address. 
+To add a new person, click **Invite someone** in the upper right corner. You’ll be prompted to enter their email, and optionally their first and last names–only the email is required.
 
-You can optionally add attributes to that user account, though you can add attributes to accounts at any time (as well as [via SSO](../people-and-groups/start.md#authentication)). Metabase uses attributes to create [data sandboxes](../permissions/data-sandboxes.md).
+On some [paid plans](https://www.metabase.com/pricing), you can also add attributes to that user account. But you don't have to right away; you can add attributes to accounts at any time (as well as [via SSO](../people-and-groups/start.md#authentication)). Metabase uses attributes to create [data sandboxes](../permissions/data-sandboxes.md).
 
 Click **Create** to activate an account. An account becomes active once you click **Create**, even if the person never signs into the account. The account remains active until you [deactivate the account](#deactivating-an-account). If you're on a paid Metabase plan, all active accounts will count toward your user account total. If one person has more than one account, each account will count toward the total (see [how billing works](https://www.metabase.com/pricing/how-billing-works)).
 
@@ -22,7 +22,7 @@ If you’ve already [configured Metabase to use email](../configuring-metabase/e
 
 ## Editing an account
 
-You can edit someone's name and email address by clicking the three dots icon and choosing **Edit Details**.
+You can edit someone's name and email address by clicking the three dots icon and choosing **Edit user**.
 
 > Be careful: changing an account's email address _will change the address the person will use to log in to Metabase_.
 
