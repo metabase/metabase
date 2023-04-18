@@ -8,6 +8,7 @@
    [honey.sql :as sql]
    [metabase.db.query :as mdb.query]
    [metabase.mbql.util :as mbql.u]
+   [metabase.metabot.client :as metabot-client]
    [metabase.metabot.settings :as metabot-settings]
    [metabase.models :refer [Card Field FieldValues Table]]
    [metabase.query-processor :as qp]
@@ -106,7 +107,7 @@
           (assoc :possible_values (vec field-vals)))
         (dissoc :field_ref :id))))
 
-(defn- create-enum-ddl
+(defn- model->enum-ddl
   "Create the postgres enum for any item in result_metadata that has enumerated/low cardinality values."
   [{:keys [result_metadata]}]
   (into {}
@@ -124,10 +125,10 @@
                         (quot nchars 4))
             [sql_name ddl-str]))))
 
-(defn- create-table-ddl
+(defn- model->pseudo-ddl
   "Create an equivalent DDL for this model"
   [{model-name :name :keys [sql_name result_metadata] :as model}]
-  (let [enums   (create-enum-ddl model)
+  (let [enums   (model->enum-ddl model)
         [ddl] (sql/format
                {:create-table sql_name
                 :with-columns (for [{:keys [sql_name base_type]} result_metadata
@@ -146,7 +147,7 @@
     ddl-str))
 
 (defn- add-create-table-ddl [model]
-  (assoc model :create_table_ddl (create-table-ddl model)))
+  (assoc model :create_table_ddl (model->pseudo-ddl model)))
 
 (defn- disambiguate
   "Given a seq of names that are potentially the same, provide a seq of tuples of
@@ -228,7 +229,8 @@
         ddl-str))))
 
 (defn- table->pseudo-ddl
-  "Create an 'approximate' ddl to represent how this table might be created as SQL."
+  "Create an 'approximate' ddl to represent how this table might be created as SQL.
+  This can be very expensive if performed over an entire database, so the memoized version is preferred."
   [{table-name :name table-id :id :as table}]
   (let [fields       (t2/select [Field
                                  :base_type
@@ -283,25 +285,25 @@
                 (quot nchars 4))
     ddl-str))
 
-(defn- database->pseudo-ddl
-  "Create an 'approximate' ddl to represent how this database might be created as SQL."
-  [{db-name :name db_id :id :as _database}]
-  (let [tables  (t2/select Table :db_id db_id)
-        ddl-str (->> tables
-                     (map table->pseudo-ddl)
-                     (str/join "\n\n"))
-        nchars  (count ddl-str)]
-    (log/debugf "Pseudo-ddl for db %s describes %s tables and contains %s chars (~%s tokens)."
-                db-name
-                (count tables)
-                nchars
-                (quot nchars 4))
-    ddl-str))
+(def ^:private memoized-table->pseudo-ddl
+  "Memoized version of table->pseudo-ddl.
+  Should probably have the same threshold as metabot-client/memoized-create-embedding."
+  (memoize/ttl
+   ^{::memoize/args-fn (fn [{:keys [id]}] id)}
+   table->pseudo-ddl
+   ;; 24-hour ttl
+   :ttl/threshold (* 1000 60 60 24)))
 
-(defn add-pseudo-database-ddl
+(defn- database->create_table_ddls
+  "Create an 'approximate' ddl to represent how each table in the db is created."
+  [{db_id :id :as _database}]
+  (let [tables (t2/select Table :db_id db_id)]
+    (mapv memoized-table->pseudo-ddl tables)))
+
+(defn add-pseudo-table-ddls
   "Add a create_database_ddl entry to the denormalized database suitable for raw sql inference input."
   [database]
-  (assoc database :create_database_ddl (database->pseudo-ddl database)))
+  (assoc database :create_table_ddls (database->create_table_ddls database)))
 
 (defn denormalize-database
   "Create a 'denormalized' version of the database which is optimized for querying.
@@ -333,22 +335,26 @@
                                             :status-code 400}))))))))]
     (map (fn [prompt] (update prompt :content update-contents)) messages)))
 
+(defn- default-prompt-templates
+  "Retrieve prompt templates from the metabot-get-prompt-templates-url."
+  []
+  (log/info "Refreshing metabot prompt templates.")
+  (let [all-templates (-> (metabot-settings/metabot-get-prompt-templates-url)
+                          slurp
+                          (json/parse-string keyword))]
+    (-> (group-by (comp keyword :prompt_template) all-templates)
+        (update-vals
+         (fn [templates]
+           (let [ordered (vec (sort-by :version templates))]
+             {:latest    (peek ordered)
+              :templates ordered}))))))
+
 (def ^:private ^:dynamic *prompt-templates*
   "Return a map of prompt templates with keys of template type and values
   which are objects containing keys 'latest' (the latest template version)
    and 'templates' (all template versions)."
   (memoize/ttl
-   (fn []
-     (log/info "Refreshing metabot prompt templates.")
-     (let [all-templates (-> (metabot-settings/metabot-get-prompt-templates-url)
-                             slurp
-                             (json/parse-string keyword))]
-       (-> (group-by (comp keyword :prompt_template) all-templates)
-           (update-vals
-            (fn [templates]
-              (let [ordered (vec (sort-by :version templates))]
-                {:latest    (peek ordered)
-                 :templates ordered}))))))
+   default-prompt-templates
    ;; Check for updates every hour
    :ttl/threshold (* 1000 60 60)))
 
@@ -424,3 +430,46 @@
       {:display                :table
        :name                   description
        :visualization_settings {:title description}})))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Embedding Selection ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn score-prompt-embeddings
+  "Given a set of 'prompt objects' (a seq of items with keys :embedding :tokens :prompt),
+  and a prompt will add the :prompt and :prompt_match to each object."
+  [prompt-objects user-prompt]
+  (let [dot (fn dot [a b] (reduce + (map * a b)))
+        {prompt-embedding :embedding} (metabot-client/create-embedding user-prompt)]
+    (map
+     (fn [{:keys [embedding] :as prompt-object}]
+       (assoc prompt-object
+         :user_prompt user-prompt
+         :prompt_match (dot prompt-embedding embedding)))
+     prompt-objects)))
+
+(defn generate-prompt
+  "Given a set of 'prompt objects' (a seq of items with keys :embedding :tokens :prompt),
+  will determine the set of prompts that best match the given prompt whose token sum
+  does not exceed the token limit."
+  ([prompt-objects prompt token-limit]
+   (->> (score-prompt-embeddings prompt-objects prompt)
+        (sort-by (comp - :prompt_match))
+        (reduce
+         (fn [{:keys [total-tokens] :as acc} {:keys [prompt tokens]}]
+           (if (> (+ tokens total-tokens) token-limit)
+             (reduced acc)
+             (-> acc
+                 (update :total-tokens + tokens)
+                 (update :prompts conj prompt))))
+         {:total-tokens 0 :prompts []})
+        :prompts
+        (str/join "\n")))
+  ([prompt-objects prompt]
+   (generate-prompt prompt-objects prompt (metabot-settings/metabot-prompt-generator-token-limit))))
+
+(defn best-prompt-object
+  "Given a set of 'prompt objects' (a seq of items with keys :embedding :tokens :prompt),
+  will return the item that best matches the input prompt."
+  ([prompt-objects prompt]
+   (some->> (score-prompt-embeddings prompt-objects prompt)
+            seq
+            (apply max-key :prompt_match))))
