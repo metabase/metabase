@@ -309,6 +309,7 @@ const getProps = (
   collection: createMockCollection(),
   isAdmin: false,
   isBookmarked: false,
+  canUpload: false,
   isPersonalCollectionChild: false,
   onUpdateCollection: jest.fn(),
   onCreateBookmark: jest.fn(),

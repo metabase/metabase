@@ -17,12 +17,12 @@ import {
   StatusBody,
 } from "./StatusLarge.styled";
 
-type status = {
+type Status = {
   title: string;
-  items: statusItem[];
+  items: StatusItem[];
 };
 
-type statusItem = {
+type StatusItem = {
   id?: number;
   title: string;
   icon: string;
@@ -33,7 +33,7 @@ type statusItem = {
 };
 
 export interface StatusLargeProps {
-  status: status;
+  status: Status;
   isActive?: boolean;
   onCollapse?: () => void;
 }
@@ -63,7 +63,7 @@ const StatusLarge = ({
 };
 
 interface StatusCardProps {
-  item: statusItem;
+  item: StatusItem;
   isActive?: boolean;
 }
 
