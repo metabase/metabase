@@ -55,7 +55,7 @@ const MetadataSchemaList = ({
   );
 
   useEffect(() => {
-    if (schemas.length === 1 && selectedSchemaName === null) {
+    if (schemas.length === 1 && selectedSchemaName == null) {
       onSelectSchema(selectedDatabaseId, schemas[0].name);
     }
   }, [selectedDatabaseId, selectedSchemaName, schemas, onSelectSchema]);
@@ -113,7 +113,7 @@ const SchemaRow = ({ schema, isSelected, onSelectSchema }: SchemaRowProps) => {
         )}
         onClick={handleSelect}
       >
-        {schema}
+        {schema.name}
       </a>
     </li>
   );

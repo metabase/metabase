@@ -40,7 +40,7 @@ const MetadataHeader = ({
   onSelectDatabase,
 }: MetadataHeaderProps) => {
   useEffect(() => {
-    if (databases.length === 1 && selectedDatabaseId == null) {
+    if (databases.length > 0 && selectedDatabaseId == null) {
       onSelectDatabase(databases[0].id);
     }
   }, [databases, selectedDatabaseId, onSelectDatabase]);

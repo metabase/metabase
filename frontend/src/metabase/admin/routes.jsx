@@ -36,14 +36,13 @@ import DatabaseEditApp from "metabase/admin/databases/containers/DatabaseEditApp
 
 // Metadata / Data model
 import DataModelApp from "metabase/admin/datamodel/containers/DataModelApp";
-import MetadataEditorApp from "metabase/admin/datamodel/containers/MetadataEditorApp";
+import MetadataEditor from "metabase/admin/datamodel/metadata/components/MetadataEditor";
 import MetricListApp from "metabase/admin/datamodel/containers/MetricListApp";
 import MetricApp from "metabase/admin/datamodel/containers/MetricApp";
 import SegmentListApp from "metabase/admin/datamodel/containers/SegmentListApp";
 import SegmentApp from "metabase/admin/datamodel/containers/SegmentApp";
 import RevisionHistoryApp from "metabase/admin/datamodel/containers/RevisionHistoryApp";
 import AdminPeopleApp from "metabase/admin/people/containers/AdminPeopleApp";
-import FieldApp from "metabase/admin/datamodel/containers/FieldApp";
 import TableSettingsApp from "metabase/admin/datamodel/containers/TableSettingsApp";
 
 import TroubleshootingApp from "metabase/admin/tasks/containers/TroubleshootingApp";
@@ -110,24 +109,20 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
       <Route path="datamodel" component={createAdminRouteGuard("data-model")}>
         <Route title={t`Data Model`} component={DataModelApp}>
           <IndexRedirect to="database" />
-          <Route path="database" component={MetadataEditorApp} />
-          <Route path="database/:databaseId" component={MetadataEditorApp} />
+          <Route path="database" component={MetadataEditor} />
+          <Route path="database/:databaseId" component={MetadataEditor} />
           <Route
-            path="database/:databaseId/:mode"
-            component={MetadataEditorApp}
+            path="database/:databaseId/schema/:schemaName"
+            component={MetadataEditor}
           />
           <Route
-            path="database/:databaseId/:mode/:tableId"
-            component={MetadataEditorApp}
+            path="database/:databaseId/schema/:schemaName/table/:tableId"
+            component={MetadataEditor}
           />
           <Route
-            path="database/:databaseId/:mode/:tableId/settings"
+            path="database/:databaseId/schema/:schemaName/table/:tableId/settings"
             component={TableSettingsApp}
           />
-          <Route path="database/:databaseId/:mode/:tableId/:fieldId">
-            <IndexRedirect to="general" />
-            <Route path=":section" component={FieldApp} />
-          </Route>
           <Route path="metrics" component={MetricListApp} />
           <Route path="metric/create" component={MetricApp} />
           <Route path="metric/:id" component={MetricApp} />
