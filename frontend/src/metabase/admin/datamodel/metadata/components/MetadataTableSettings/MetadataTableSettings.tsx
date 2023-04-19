@@ -141,6 +141,7 @@ export default _.compose(
     query: {
       ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
     },
+    requestType: "fetchMetadata",
     selectorName: "getObjectUnfiltered",
   }),
   connect(null, mapDispatchToProps),
