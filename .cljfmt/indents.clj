@@ -1,6 +1,7 @@
 ;; https://github.com/weavejester/cljfmt/blob/master/cljfmt/resources/cljfmt/indents/clojure.clj
 {auto-parse                              [[:inner 0]]
  check                                   [[:inner 0]]
+ defprotocol+                            [[:block 1] [:inner 1]]
  ex-info                                 [[:inner 0]]
  let-404                                 [[:block 1]]
  perms/set-has-full-permissions-for-set? [[:inner 0]]
