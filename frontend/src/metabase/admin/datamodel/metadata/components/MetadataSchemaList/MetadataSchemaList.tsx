@@ -4,6 +4,7 @@ import { push } from "react-router-redux";
 import cx from "classnames";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
+import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import * as Urls from "metabase/lib/urls";
 import Schemas from "metabase/entities/schemas";
 import Icon from "metabase/components/Icon/Icon";
@@ -123,6 +124,7 @@ export default _.compose(
   Schemas.loadList({
     query: (_: State, { selectedDatabaseId }: OwnProps) => ({
       dbId: selectedDatabaseId,
+      ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
     }),
   }),
   connect(null, mapDispatchToProps),
