@@ -83,10 +83,9 @@ const MetadataTableSettings = ({
             <Breadcrumbs
               crumbs={[
                 [database.name, Urls.dataModelDatabase(database.id)],
-                schemas.length > 1 && [
-                  schemaName,
-                  Urls.dataModelSchema(database.id, schemaName),
-                ],
+                ...(schemas.length > 1
+                  ? [schemaName, Urls.dataModelSchema(database.id, schemaName)]
+                  : []),
                 [
                   table.display_name,
                   Urls.dataModelTable(database.id, schemaName, table.id),
@@ -132,7 +131,9 @@ export default _.compose(
     },
   }),
   Schemas.loadList({
-    query: (_: State, { database }: DatabaseLoaderProps) => database.id,
+    query: (_: State, { database }: DatabaseLoaderProps) => ({
+      dbId: database.id,
+    }),
   }),
   Tables.load({
     id: (_: State, { params }: RouterProps) =>
