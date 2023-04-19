@@ -1,12 +1,11 @@
 import React, { useCallback, useMemo } from "react";
 
+import AccordionList from "metabase/core/components/AccordionList";
 import Icon from "metabase/components/Icon";
 import { singularize } from "metabase/lib/formatting";
 
 import * as Lib from "metabase-lib";
 import { getIconForField } from "metabase-lib/metadata/utils/fields";
-
-import AccordionList from "../../../core/components/AccordionList";
 
 const DEFAULT_MAX_HEIGHT = 610;
 
