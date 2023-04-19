@@ -37,6 +37,19 @@ function getMLv2StageIndex(
   return index;
 }
 
+function convertStageQueryToLegacyStageQuery(
+  query: Query,
+  legacyQuery: StructuredQuery,
+  stageIndex: number,
+) {
+  const legacyDatasetQuery = Lib.toLegacyQuery(query);
+  const legacyStructuredQuery = legacyQuery.setDatasetQuery(legacyDatasetQuery);
+  const stagedLegacyQueries = legacyStructuredQuery.queries();
+  const safeStageIndex =
+    stageIndex === -1 ? stagedLegacyQueries.length - 1 : stageIndex;
+  return stagedLegacyQueries[safeStageIndex];
+}
+
 const STEPS: NotebookStepDef[] = [
   {
     type: "data",
@@ -105,7 +118,14 @@ const STEPS: NotebookStepDef[] = [
       (!query.hasAggregations() || query.hasBreakouts()) &&
       (!query.sourceQuery() || query.hasAnyClauses()),
     active: query => query.hasSorts(),
-    revert: query => query.clearSort(),
+    revert: (legacyQuery, itemIndex, query, stageIndex) => {
+      const reverted = Lib.clearOrderBys(query, stageIndex);
+      return convertStageQueryToLegacyStageQuery(
+        reverted,
+        legacyQuery,
+        stageIndex,
+      );
+    },
     clean: query => query.cleanSorts(),
   },
   {
@@ -118,13 +138,11 @@ const STEPS: NotebookStepDef[] = [
       Lib.hasLimit(query, stageIndex),
     revert: (legacyQuery, itemIndex, query, stageIndex) => {
       const reverted = Lib.limit(query, stageIndex, null);
-      const revertedLegacyQuery = Lib.toLegacyQuery(reverted);
-      const revertedStructuredQuery =
-        legacyQuery.setDatasetQuery(revertedLegacyQuery);
-      const stagedQueries = revertedStructuredQuery.queries();
-      const safeStageIndex =
-        stageIndex === -1 ? stagedQueries.length - 1 : stageIndex;
-      return stagedQueries[safeStageIndex];
+      return convertStageQueryToLegacyStageQuery(
+        reverted,
+        legacyQuery,
+        stageIndex,
+      );
     },
     clean: query => query,
   },
