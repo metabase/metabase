@@ -12,6 +12,8 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.ref]
+   [metabase.lib.schema.temporal-bucketing
+    :as lib.schema.temporal-bucketing]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
    [metabase.shared.util.i18n :as i18n]
@@ -117,13 +119,25 @@
     (update metadata :name (fn [field-name]
                              (str parent-name \. field-name)))))
 
+(defn- column-metadata-effective-type
+  "Effective type of a column when taking the `::temporal-unit` into account. If we have a temporal extraction like
+  `:month-of-year`, then this actually returns an integer rather than the 'original` effective type of `:type/Date` or
+  whatever."
+  [{::keys [temporal-unit], :as column-metadata}]
+  (if (and temporal-unit
+           (contains? lib.schema.temporal-bucketing/datetime-extraction-units temporal-unit))
+    :type/Integer
+    ((some-fn :effective_type :base_type) column-metadata)))
+
 (defmethod lib.metadata.calculation/type-of-method :metadata/field
-  [_query _stage-number field-metadata]
-  ((some-fn :effective_type :base_type) field-metadata))
+  [_query _stage-number column-metadata]
+  (column-metadata-effective-type column-metadata))
 
 (defmethod lib.metadata.calculation/type-of-method :field
-  [query stage-number field-ref]
-  (lib.metadata.calculation/type-of query stage-number (resolve-field-metadata query stage-number field-ref)))
+  [query stage-number [_tag {:keys [temporal-unit], :as _opts} _id-or-name :as field-ref]]
+  (let [metadata (cond-> (resolve-field-metadata query stage-number field-ref)
+                   temporal-unit (assoc ::temporal-unit temporal-unit))]
+    (lib.metadata.calculation/type-of query stage-number metadata)))
 
 (defmethod lib.metadata.calculation/metadata-method :metadata/field
   [_query _stage-number {field-name :name, :as field-metadata}]
@@ -213,23 +227,59 @@
        (when-let [card (lib.metadata/card query card-id)]
          {:table {:name (:name card), :display_name (:name card)}})))))
 
-(defmethod lib.temporal-bucket/current-temporal-bucket-method :field
+(defmethod lib.temporal-bucket/temporal-bucket-method :field
   [[_tag opts _id-or-name]]
   (:temporal-unit opts))
 
-(defmethod lib.temporal-bucket/current-temporal-bucket-method :metadata/field
+(defmethod lib.temporal-bucket/temporal-bucket-method :metadata/field
   [metadata]
   (::temporal-unit metadata))
 
-(defmethod lib.temporal-bucket/temporal-bucket-method :field
+(defmethod lib.temporal-bucket/with-temporal-bucket-method :field
   [[_tag options id-or-name] unit]
+  ;; if `unit` is an extraction unit like `:month-of-year`, then the `:effective-type` of the ref changes to
+  ;; `:type/Integer` (month of year returns an int). We need to record the ORIGINAL effective type somewhere in case
+  ;; we need to refer back to it, e.g. to see what temporal buckets are available if we want to change the unit, or if
+  ;; we want to remove it later. We will record this with the key `::original-effective-type`. Note that changing the
+  ;; unit multiple times should keep the original first value of `::original-effective-type`.
   (if unit
-    [:field (assoc options :temporal-unit unit) id-or-name]
-    [:field (dissoc options :temporal-unit) id-or-name]))
+    (let [extraction-unit?        (contains? lib.schema.temporal-bucketing/datetime-extraction-units unit)
+          original-effective-type ((some-fn ::original-effective-type :effective-type :base-type) options)
+          new-effective-type      (if extraction-unit?
+                                    :type/Integer
+                                    original-effective-type)
+          options                 (assoc options
+                                         :temporal-unit unit
+                                         :effective-type new-effective-type
+                                         ::original-effective-type original-effective-type)]
+      [:field options id-or-name])
+    ;; `unit` is `nil`: remove the temporal bucket.
+    (let [options (if-let [original-effective-type (::original-effective-type options)]
+                    (-> options
+                        (assoc :effective-type original-effective-type)
+                        (dissoc ::original-effective-type))
+                    options)
+          options (dissoc options :temporal-unit)]
+      [:field options id-or-name])))
 
-(defmethod lib.temporal-bucket/temporal-bucket-method :metadata/field
+(defmethod lib.temporal-bucket/with-temporal-bucket-method :metadata/field
   [metadata unit]
-  (assoc metadata ::temporal-unit unit))
+  (if unit
+    (assoc metadata ::temporal-unit unit)
+    (dissoc metadata ::temporal-unit)))
+
+(defmethod lib.temporal-bucket/available-temporal-buckets-method :field
+  [query stage-number field-ref]
+  (lib.temporal-bucket/available-temporal-buckets query stage-number (resolve-field-metadata query stage-number field-ref)))
+
+(defmethod lib.temporal-bucket/available-temporal-buckets-method :metadata/field
+  [_query _stage-number field-metadata]
+  (let [effective-type ((some-fn :effective_type :base_type) field-metadata)]
+    (cond
+      (isa? effective-type :type/DateTime) lib.schema.temporal-bucketing/datetime-bucketing-units
+      (isa? effective-type :type/Date)     lib.schema.temporal-bucketing/date-bucketing-units
+      (isa? effective-type :type/Time)     lib.schema.temporal-bucketing/time-bucketing-units
+      :else                                #{})))
 
 (defmethod lib.join/current-join-alias-method :field
   [[_tag opts]]
@@ -261,7 +311,7 @@
     (let [options          (merge
                             {:lib/uuid       (str (random-uuid))
                              :base-type      (:base_type metadata)
-                             :effective-type ((some-fn :effective_type :base_type) metadata)}
+                             :effective-type (column-metadata-effective-type metadata)}
                             (when-let [join-alias (::join-alias metadata)]
                               {:join-alias join-alias})
                             (when-let [temporal-unit (::temporal-unit metadata)]
