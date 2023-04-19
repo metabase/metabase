@@ -280,51 +280,52 @@
 (deftest fetch-dashboard-test
   (testing "GET /api/dashboard/:id"
     (testing "fetch a dashboard WITH a dashboard card on it"
-      (mt/with-temp* [Dashboard     [{dashboard-id :id
-                                      :as          dashboard}    {:name "Test Dashboard"}]
-                      Card          [{card-id :id
-                                      :as     card}         {:name "Dashboard Test Card"}]
-                      DashboardCard [dashcard           {:dashboard_id dashboard-id, :card_id card-id}]
-                      User          [{user-id :id}      {:first_name "Test" :last_name "User"
-                                                         :email      "test@example.com"}]
-                      Revision      [_                  {:user_id  user-id
-                                                         :model    "Dashboard"
-                                                         :model_id dashboard-id
-                                                         :object   (revision/serialize-instance dashboard
-                                                                                                dashboard-id
-                                                                                                dashboard)}]]
+      (mt/with-temp* [Dashboard           [{dashboard-id :id
+                                            :as          dashboard}    {:name "Test Dashboard"}]
+                      Card                [{card-id :id
+                                            :as     card}         {:name "Dashboard Test Card"}]
+                      :model/DashboardTab [{dashtab-id :id}   {:name "Test Dashboard Tab" :position 0 :dashboard_id dashboard-id}]
+                      DashboardCard       [dashcard           {:dashboard_id dashboard-id :card_id card-id :dashboard_tab_id dashtab-id}]
+                      User                [{user-id :id}      {:first_name "Test" :last_name "User"
+                                                               :email      "test@example.com"}]
+                      Revision            [_                  {:user_id  user-id
+                                                               :model    "Dashboard"
+                                                               :model_id dashboard-id
+                                                               :object   (revision/serialize-instance dashboard
+                                                                                                      dashboard-id
+                                                                                                      dashboard)}]]
         (with-dashboards-in-readable-collection [dashboard-id]
           (api.card-test/with-cards-in-readable-collection [card-id]
-            (is (= (merge
-                    dashboard-defaults
-                    {:name                       "Test Dashboard"
-                     :creator_id                 (mt/user->id :rasta)
-                     :collection_id              true
-                     :collection_authority_level nil
-                     :can_write                  false
-                     :param_fields               nil
-                     :last-edit-info             {:timestamp true :id true :first_name "Test" :last_name "User" :email "test@example.com"}
-                     :ordered_tabs               []
-                     :ordered_cards              [{:size_x                     4
-                                                   :size_y                     4
-                                                   :col                        0
-                                                   :row                        0
-                                                   :collection_authority_level nil
-                                                   :updated_at                 true
-                                                   :created_at                 true
-                                                   :entity_id                  (:entity_id dashcard)
-                                                   :parameter_mappings         []
-                                                   :visualization_settings     {}
-                                                   :dashboard_tab_id           nil
-                                                   :card                       (merge api.card-test/card-defaults-no-hydrate
-                                                                                      {:name                   "Dashboard Test Card"
-                                                                                       :creator_id             (mt/user->id :rasta)
-                                                                                       :collection_id          true
-                                                                                       :display                "table"
-                                                                                       :entity_id              (:entity_id card)
-                                                                                       :visualization_settings {}
-                                                                                       :result_metadata        nil})
-                                                   :series                     []}]})
+            (is (=? (merge
+                     dashboard-defaults
+                     {:name                       "Test Dashboard"
+                      :creator_id                 (mt/user->id :rasta)
+                      :collection_id              true
+                      :collection_authority_level nil
+                      :can_write                  false
+                      :param_fields               nil
+                      :last-edit-info             {:timestamp true :id true :first_name "Test" :last_name "User" :email "test@example.com"}
+                      :ordered_tabs               [{:name "Test Dashboard Tab" :position 0 :id dashtab-id :dashboard_id dashboard-id}]
+                      :ordered_cards              [{:size_x                     4
+                                                    :size_y                     4
+                                                    :col                        0
+                                                    :row                        0
+                                                    :collection_authority_level nil
+                                                    :updated_at                 true
+                                                    :created_at                 true
+                                                    :entity_id                  (:entity_id dashcard)
+                                                    :parameter_mappings         []
+                                                    :visualization_settings     {}
+                                                    :dashboard_tab_id           dashtab-id
+                                                    :card                       (merge api.card-test/card-defaults-no-hydrate
+                                                                                       {:name                   "Dashboard Test Card"
+                                                                                        :creator_id             (mt/user->id :rasta)
+                                                                                        :collection_id          true
+                                                                                        :display                "table"
+                                                                                        :entity_id              (:entity_id card)
+                                                                                        :visualization_settings {}
+                                                                                        :result_metadata        nil})
+                                                    :series                     []}]})
                    (dashboard-response (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id)))))))))
 
     (testing "a dashboard that has link cards on it"
