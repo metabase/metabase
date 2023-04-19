@@ -22,10 +22,16 @@ export function setWidgetType(type) {
  * Adds string filter value explicitly through the filter widget.
  *
  * @param {string} value
+ * @param {'add'|'update'} action
  */
-export function addWidgetStringFilter(value) {
+export function addWidgetStringFilter(value, action = "add") {
   setWidgetStringFilter(value);
-  cy.button("Add filter").click();
+  if (action === "add") {
+    cy.button("Add filter").click();
+  }
+  if (action === "update") {
+    cy.button("Update filter").click();
+  }
 }
 
 export function setWidgetStringFilter(value) {
