@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { connect } from "react-redux";
 import { Link } from "react-router";
 import { push } from "react-router-redux";
@@ -38,6 +38,12 @@ const MetadataHeader = ({
   selectedTableId,
   onSelectDatabase,
 }: MetadataHeaderProps) => {
+  useEffect(() => {
+    if (databases.length === 1 && selectedDatabaseId == null) {
+      onSelectDatabase(databases[0].id);
+    }
+  }, [databases, selectedDatabaseId, onSelectDatabase]);
+
   return (
     <div className="MetadataEditor-header flex align-center flex-no-shrink pb2">
       <Icon

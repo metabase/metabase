@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import cx from "classnames";
@@ -53,6 +53,12 @@ const SchemaList = ({
     },
     [selectedDatabaseId, onSelectSchema],
   );
+
+  useEffect(() => {
+    if (schemas.length === 1 && selectedSchemaName === null) {
+      onSelectSchema(selectedDatabaseId, schemas[0].name);
+    }
+  }, [selectedDatabaseId, selectedSchemaName, schemas, onSelectSchema]);
 
   return (
     <div className="MetadataEditor-table-list AdminList flex-no-shrink">
