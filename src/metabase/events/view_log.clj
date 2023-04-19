@@ -139,7 +139,7 @@
     (let [view        {:model    (name model)
                        :model_id model-id}
           prior-views (remove #{view} (user-recent-views))]
-      (when (= model :dashboard) (most-recently-viewed-dashboard! model-id))
+      (when (= model "dashboard") (most-recently-viewed-dashboard! model-id))
       (when-not ((set prior-views) view)
         (let [new-views (vec (take 10 (conj prior-views view)))]
           (user-recent-views! new-views))))))
@@ -155,7 +155,7 @@
             user-id                        (events/object->user-id object)
             {:keys [context] :as metadata} (events/object->metadata object)]
         (when (and (#{:card-read :dashboard-read :table-read} topic)
-                   (not= (name context) "collection")) ;; we don't want to count pinned card views
+                   (not= context "collection")) ;; we don't want to count pinned card views
           (update-users-recent-views! user-id model model-id))
         (record-view! model model-id user-id metadata)))
     (catch Throwable e

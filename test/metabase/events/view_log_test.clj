@@ -41,7 +41,7 @@
     (is (= {:user_id  (:id user)
             :model    "card"
             :model_id (:id card)
-            :metadata {:cached false :ignore_cache true}}
+            :metadata {:cached false :ignore_cache true :context nil}}
            (mt/derecordize
             (t2/select-one [ViewLog :user_id :model :model_id :metadata], :user_id (:id user)))))))
 
@@ -121,6 +121,7 @@
     (testing "When a user views a dashboard, most-recently-viewed-dashboard is updated with that id."
       (mt/with-test-user :crowberto (setting/set-value-of-type! :json :most-recently-viewed-dashboard nil))
       (view-log/handle-view-event! {:topic :dashboard-read
+                                    :metadata {:context "question"}
                                     :item  (assoc dash :actor_id (mt/user->id :crowberto))})
       (is (= (u/the-id dash) (mt/with-test-user :crowberto (view-log/most-recently-viewed-dashboard)))))
     (testing "When the user's most recent dashboard view is older than 24 hours, return `nil`."
