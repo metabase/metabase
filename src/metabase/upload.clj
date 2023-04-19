@@ -129,9 +129,9 @@
   necessary."
   [names-so-far new-name]
   (if (some #(= % new-name) names-so-far)
-    (if-let [dupe-number (second (re-matches #".*-duplicate-(\d+)" new-name))]
+    (if-let [dupe-number (second (re-matches #".*-(\d+)" new-name))]
       (recur names-so-far (str/replace new-name #"-\d+$" (str "-" (inc (parse-long dupe-number)))))
-      (recur names-so-far (str new-name "-duplicate-1")))
+      (recur names-so-far (str new-name "-1")))
     (conj names-so-far new-name)))
 
 (defn- rows->schema
