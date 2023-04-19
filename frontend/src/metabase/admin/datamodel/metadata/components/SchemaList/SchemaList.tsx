@@ -4,12 +4,12 @@ import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 import Schemas from "metabase/entities/schemas";
 import Icon from "metabase/components/Icon/Icon";
-import { DatabaseId, Schema, SchemaId } from "metabase-types/api";
+import { DatabaseId, Schema } from "metabase-types/api";
 import { State } from "metabase-types/store";
 
 interface OwnProps {
   selectedDatabaseId: DatabaseId;
-  selectedSchemaId: SchemaId | undefined;
+  selectedSchema?: Schema;
   onSelectSchema: (schema: Schema) => void;
 }
 
@@ -21,7 +21,7 @@ type SchemaListProps = OwnProps & SchemaLoaderProps;
 
 const SchemaList = ({
   schemas: allSchemas,
-  selectedSchemaId,
+  selectedSchema,
   onSelectSchema,
 }: SchemaListProps) => {
   const [searchText, setSearchText] = useState("");
@@ -59,7 +59,7 @@ const SchemaList = ({
           <SchemaRow
             key={schema.id}
             schema={schema}
-            isSelected={schema.id === selectedSchemaId}
+            isSelected={schema.id === selectedSchema?.id}
             onSelectSchema={onSelectSchema}
           />
         ))}
