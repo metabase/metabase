@@ -254,11 +254,7 @@ class QueryModals extends React.Component<QueryModalsProps> {
               ? question.collectionId()
               : initialCollectionId,
           }}
-          copy={async (formValues: {
-            name: any;
-            collection_id: any;
-            description: any;
-          }) => {
+          copy={async formValues => {
             const object = await this.props.onCreate(
               question
                 .setDisplayName(formValues.name)
