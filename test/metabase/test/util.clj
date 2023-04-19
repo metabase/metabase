@@ -820,16 +820,6 @@
     :else
     x))
 
-(defmacro exception-and-message
-  "Invokes `body`, catches the exception and returns a map with the exception class, message and data"
-  [& body]
-  `(try
-     ~@body
-     (catch Exception e#
-       {:ex-class (class e#)
-        :msg      (.getMessage e#)
-        :data     (ex-data e#)})))
-
 (defn call-with-locale
   "Sets the default locale temporarily to `locale-tag`, then invokes `f` and reverts the locale change"
   [locale-tag f]

@@ -5,6 +5,7 @@
    [metabase.db.query :as mdb.query]
    [metabase.lib.native :as lib-native]
    [metabase.metabot-test :as metabot-test]
+   [metabase.metabot.client :as metabot-client]
    [metabase.metabot.settings :as metabot-settings]
    [metabase.metabot.util :as metabot-util]
    [metabase.models :refer [Card Database]]
@@ -51,7 +52,7 @@
                  "create type SIZES_t as enum '1', '2', '3';"
                  "CREATE TABLE \"TABLE\" ('NAME' TEXT,'FROOBY' BOOLEAN, 'AGE' INTEGER, 'SIZES' 'SIZES_t','BIGCARDINALITY' INTEGER)"))
              (mdb.query/format-sql
-               (#'metabot-util/create-table-ddl model)))))))
+              (#'metabot-util/model->pseudo-ddl model)))))))
 
 (deftest denormalize-field-cardinality-test
   (testing "Ensure enum-cardinality-threshold is respected in model denormalization"
@@ -183,52 +184,38 @@
                                                      (fn [m] (update m :id str)))}})]
             (is (some? (seq (get-in results [:data :rows]))))))))))
 
-(deftest create-database-ddl-test
-  (testing "Ensure the generated pseudo-ddl contains the expected tables and enums."
-    (mt/dataset sample-dataset
-      (tu/with-temporary-setting-values [metabot-settings/enum-cardinality-threshold 50]
-        (let [{:keys [create_database_ddl]} (->> (metabot-util/denormalize-database {:id (mt/id)})
-                                                 metabot-util/add-pseudo-database-ddl)]
-          (is (str/includes? create_database_ddl "create type PRODUCTS_CATEGORY_t as enum 'Doohickey', 'Gadget', 'Gizmo', 'Widget';"))
-          (is (str/includes? create_database_ddl "create type PEOPLE_STATE_t as enum 'AK', 'AL', 'AR', 'AZ', 'CA', 'CO', 'CT',"))
-          (is (str/includes? create_database_ddl "create type PEOPLE_SOURCE_t as enum 'Affiliate', 'Facebook', 'Google', 'Organic', 'Twitter';"))
-          (is (str/includes? create_database_ddl "create type REVIEWS_RATING_t as enum '1', '2', '3', '4', '5';"))
-          (is (str/includes? create_database_ddl "CREATE TABLE \"PRODUCTS\" ("))
-          (is (str/includes? create_database_ddl "CREATE TABLE \"ORDERS\" ("))
-          (is (str/includes? create_database_ddl "CREATE TABLE \"PEOPLE\" ("))
-          (is (str/includes? create_database_ddl "CREATE TABLE \"REVIEWS\" (")))))))
-
 (deftest inner-query-test
   (testing "Ensure that a dataset-based query contains expected AS aliases"
     (mt/dataset sample-dataset
-      (t2.with-temp/with-temp
-        [Card orders-model {:name    "Orders Model"
-                            :dataset_query
-                            {:database (mt/id)
-                             :type     :query
-                             :query    {:source-table (mt/id :orders)}}
-                            :dataset true}]
-        (let [{:keys [column_aliases inner_query create_table_ddl sql_name]} (metabot-util/denormalize-model orders-model)]
-          (is (= 9 (count (re-seq #"\s+AS\s+" column_aliases))))
-          (is (= 10 (count (re-seq #"\s+AS\s+" inner_query))))
-          (is (= (mdb.query/format-sql
+      (tu/with-temporary-setting-values [metabot-settings/enum-cardinality-threshold 0]
+        (t2.with-temp/with-temp
+         [Card orders-model {:name    "Orders Model"
+                             :dataset_query
+                             {:database (mt/id)
+                              :type     :query
+                              :query    {:source-table (mt/id :orders)}}
+                             :dataset true}]
+         (let [{:keys [column_aliases inner_query create_table_ddl sql_name]} (metabot-util/denormalize-model orders-model)]
+           (is (= 9 (count (re-seq #"\s+AS\s+" column_aliases))))
+           (is (= 10 (count (re-seq #"\s+AS\s+" inner_query))))
+           (is (= (mdb.query/format-sql
                    (str/join
-                     [(format "CREATE TABLE \"%s\" (" sql_name)
-                      "'ID' BIGINTEGER,"
-                      "'USER_ID' INTEGER,"
-                      "'PRODUCT_ID' INTEGER,"
-                      "'SUBTOTAL' FLOAT,"
-                      "'TAX' FLOAT,"
-                      "'TOTAL' FLOAT,"
-                      "'DISCOUNT' FLOAT,"
-                      "'CREATED_AT' DATETIMEWITHLOCALTZ,"
-                      "'QUANTITY' INTEGER)"]))
-                 create_table_ddl)))))))
+                    [(format "CREATE TABLE \"%s\" (" sql_name)
+                     "'ID' BIGINTEGER,"
+                     "'USER_ID' INTEGER,"
+                     "'PRODUCT_ID' INTEGER,"
+                     "'SUBTOTAL' FLOAT,"
+                     "'TAX' FLOAT,"
+                     "'TOTAL' FLOAT,"
+                     "'DISCOUNT' FLOAT,"
+                     "'CREATED_AT' DATETIMEWITHLOCALTZ,"
+                     "'QUANTITY' INTEGER)"]))
+                  create_table_ddl))))))))
 
 (deftest native-inner-query-test
   (testing "A SELECT * will produce column all column names in th resulting DDLs"
     (mt/dataset sample-dataset
-      (let [q (mt/native-query {:query "SELECT * FROM ORDERS;"})
+      (let [q               (mt/native-query {:query "SELECT * FROM ORDERS;"})
             result-metadata (get-in (qp/process-query q) [:data :results_metadata :columns])]
         (t2.with-temp/with-temp
           [Card orders-model {:name          "Orders Model"
@@ -255,7 +242,7 @@
             create_table_ddl)))))
   (testing "A SELECT of columns will produce those column names in th resulting DDLs"
     (mt/dataset sample-dataset
-      (let [q (mt/native-query {:query "SELECT TOTAL, QUANTITY, TAX, CREATED_AT FROM ORDERS;"})
+      (let [q               (mt/native-query {:query "SELECT TOTAL, QUANTITY, TAX, CREATED_AT FROM ORDERS;"})
             result-metadata (get-in (qp/process-query q) [:data :results_metadata :columns])]
         (t2.with-temp/with-temp
           [Card orders-model {:name          "Orders Model"
@@ -277,7 +264,7 @@
             create_table_ddl)))))
   (testing "Duplicate native column aliases will be deduplicated"
     (mt/dataset sample-dataset
-      (let [q (mt/native-query {:query "SELECT TOTAL AS X, QUANTITY AS X FROM ORDERS;"})
+      (let [q               (mt/native-query {:query "SELECT TOTAL AS X, QUANTITY AS X FROM ORDERS;"})
             result-metadata (get-in (qp/process-query q) [:data :results_metadata :columns])]
         (t2.with-temp/with-temp
           [Card orders-model {:name          "Orders Model"
@@ -368,20 +355,21 @@
 (deftest inner-query-name-collisions-test
   (testing "When column names collide, each conflict is disambiguated with an _X postfix"
     (mt/dataset sample-dataset
-      (t2.with-temp/with-temp
-        [Card orders-model {:name    "Orders Model"
-                            :dataset_query
-                            {:database (mt/id)
-                             :type     :query
-                             :query    {:source-table (mt/id :orders)}}
-                            :dataset true}]
-        (let [orders-model (update orders-model :result_metadata
-                                   (fn [v]
-                                     (map #(assoc % :display_name "ABC") v)))
-              {:keys [column_aliases create_table_ddl]} (metabot-util/denormalize-model orders-model)]
-          (is (= 9 (count (re-seq #"ABC(?:_\d+)?" column_aliases))))
-          ;; Ensure that the same aliases are used in the create table ddl
-          (is (= 9 (count (re-seq #"ABC" create_table_ddl))))))))
+      (tu/with-temporary-setting-values [metabot-settings/enum-cardinality-threshold 0]
+        (t2.with-temp/with-temp
+         [Card orders-model {:name    "Orders Model"
+                             :dataset_query
+                             {:database (mt/id)
+                              :type     :query
+                              :query    {:source-table (mt/id :orders)}}
+                             :dataset true}]
+         (let [orders-model (update orders-model :result_metadata
+                                    (fn [v]
+                                      (map #(assoc % :display_name "ABC") v)))
+               {:keys [column_aliases create_table_ddl]} (metabot-util/denormalize-model orders-model)]
+           (is (= 9 (count (re-seq #"ABC(?:_\d+)?" column_aliases))))
+           ;; Ensure that the same aliases are used in the create table ddl
+           (is (= 9 (count (re-seq #"ABC" create_table_ddl)))))))))
   (testing "Models with name collisions across joins are also correctly disambiguated"
     (mt/dataset sample-dataset
       (t2.with-temp/with-temp
@@ -429,3 +417,66 @@
                {:display_name "ABC"}
                {:display_name "ABC_1"}
                {:display_name "ABC"}]}))))))
+
+(defn- size-embedder [{:keys [_model input]} _options]
+  (let [embedding (cond
+                    (str/includes? input "turtles") [1]
+                    (str/includes? input "love") [0.5]
+                    :else [0])]
+    {:data  [{:embedding embedding}]
+     :usage {:prompt_tokens (* 10 (count input))}}))
+
+(deftest score-prompt-embeddings-test
+  (testing "score-prompt-embeddings scores a single prompt against a seq of existing embeddings."
+    (with-redefs [metabot-client/*create-embedding-endpoint* size-embedder]
+      (let [prompt-objects [(metabot-client/create-embedding "This is awesome!")
+                            (metabot-client/create-embedding "Teenage mutant ninja turtles!")
+                            (metabot-client/create-embedding "All you need is love")]]
+        (is
+         (= [{:prompt "This is awesome!", :embedding [0], :tokens 160, :user_prompt "I <3 turtles!", :prompt_match 0}
+             {:prompt "Teenage mutant ninja turtles!", :embedding [1], :tokens 290, :user_prompt "I <3 turtles!", :prompt_match 1}
+             {:prompt "All you need is love", :embedding [0.5], :tokens 200, :user_prompt "I <3 turtles!", :prompt_match 0.5}]
+            (metabot-util/score-prompt-embeddings prompt-objects "I <3 turtles!")))))))
+
+(deftest generate-prompt-test
+  (testing "generate-prompt will create a single prompt that is the join of the best of all inputs under the token limit."
+    (with-redefs [metabot-client/*create-embedding-endpoint* size-embedder]
+      (let [prompt-objects [(metabot-client/create-embedding "This is awesome!")
+                            (metabot-client/create-embedding "Teenage mutant ninja turtles!")
+                            (metabot-client/create-embedding "All you need is love")]]
+        (testing "With large token limit, all input is concatenated."
+          (is
+           (=
+            (str/join
+             "\n"
+             ["Teenage mutant ninja turtles!"
+              "All you need is love"
+              "This is awesome!"])
+            (metabot-util/generate-prompt prompt-objects "I <3 turtles!"))))
+        (testing "generate-prompt will only retain the most relevant prompts under the token limit."
+          (tu/with-temporary-setting-values [metabot-settings/metabot-prompt-generator-token-limit 500]
+            (is
+             (=
+              (str/join
+               "\n"
+               ["Teenage mutant ninja turtles!"
+                "All you need is love"])
+              (metabot-util/generate-prompt prompt-objects "I <3 turtles!")))))
+        (testing "This is a terminal case, but if the prompts are too large for the token limit nothing is returned."
+          ;; In reality, this will only happen if you have a massive input to encode, which is bad news anyways.
+          (tu/with-temporary-setting-values [metabot-settings/metabot-prompt-generator-token-limit 0]
+            (is
+             (= ""
+                (metabot-util/generate-prompt prompt-objects "I <3 turtles!")))))))))
+
+(deftest best-prompt-object-test
+  (testing "best-prompt-object selects the best-match object based on embedding distance."
+    (with-redefs [metabot-client/*create-embedding-endpoint* size-embedder]
+      (let [prompt-objects [(metabot-client/create-embedding "This is awesome!")
+                            (metabot-client/create-embedding "Teenage mutant ninja turtles!")
+                            (metabot-client/create-embedding "All you need is love")]]
+        (= {:prompt       "Teenage mutant ninja turtles!"
+            :embedding    [1]
+            :tokens       290, :user_prompt "I <3 turtles!"
+            :prompt_match 1}
+           (metabot-util/best-prompt-object prompt-objects "I <3 turtles!"))))))
