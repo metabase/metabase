@@ -101,212 +101,257 @@ class QueryModals extends React.Component<QueryModalsProps> {
       setQueryBuilderMode,
     } = this.props;
 
-    return modal === MODAL_TYPES.SAVE ? (
-      <Modal form onClose={onCloseModal}>
-        <SaveQuestionModal
-          question={this.props.question}
-          originalQuestion={this.props.originalQuestion}
-          initialCollectionId={this.props.initialCollectionId}
-          onSave={async (question: Question) => {
-            // if saving modified question, don't show "add to dashboard" modal
-            await this.props.onSave(question);
-            onCloseModal();
-          }}
-          onCreate={async question => {
-            await this.props.onCreate(question);
-            if (question.isDataset()) {
-              onCloseModal();
-              setQueryBuilderMode("view");
-            } else {
-              onOpenModal(MODAL_TYPES.SAVED);
-            }
-          }}
-          onClose={onCloseModal}
-        />
-      </Modal>
-    ) : modal === MODAL_TYPES.SAVED ? (
-      <Modal small onClose={onCloseModal}>
-        <QuestionSavedModal
-          onClose={onCloseModal}
-          addToDashboard={() => {
-            onOpenModal(MODAL_TYPES.ADD_TO_DASHBOARD);
-          }}
-        />
-      </Modal>
-    ) : modal === MODAL_TYPES.ADD_TO_DASHBOARD_SAVE ? (
-      <Modal onClose={onCloseModal}>
-        <SaveQuestionModal
-          question={this.props.question}
-          originalQuestion={this.props.originalQuestion}
-          initialCollectionId={this.props.initialCollectionId}
-          onSave={async question => {
-            await this.props.onSave(question);
-            onOpenModal(MODAL_TYPES.ADD_TO_DASHBOARD);
-          }}
-          onCreate={async question => {
-            await this.props.onCreate(question);
-            onOpenModal(MODAL_TYPES.ADD_TO_DASHBOARD);
-          }}
-          onClose={onCloseModal}
-          multiStep
-        />
-      </Modal>
-    ) : modal === MODAL_TYPES.ADD_TO_DASHBOARD ? (
-      <Modal onClose={onCloseModal}>
-        <AddToDashSelectDashModal
-          card={this.props.card}
-          onClose={onCloseModal}
-          onChangeLocation={this.props.onChangeLocation}
-        />
-      </Modal>
-    ) : modal === MODAL_TYPES.CREATE_ALERT ? (
-      <Modal full onClose={onCloseModal}>
-        <CreateAlertModalContent
-          onCancel={onCloseModal}
-          onAlertCreated={onCloseModal}
-        />
-      </Modal>
-    ) : modal === MODAL_TYPES.SAVE_QUESTION_BEFORE_ALERT ? (
-      <Modal onClose={onCloseModal}>
-        <SaveQuestionModal
-          question={this.props.question}
-          originalQuestion={this.props.originalQuestion}
-          onSave={async question => {
-            await this.props.onSave(question, false);
-            this.showAlertsAfterQuestionSaved();
-          }}
-          onCreate={async question => {
-            await this.props.onCreate(question, false);
-            this.showAlertsAfterQuestionSaved();
-          }}
-          onClose={onCloseModal}
-          multiStep
-          initialCollectionId={this.props.initialCollectionId}
-        />
-      </Modal>
-    ) : modal === MODAL_TYPES.SAVE_QUESTION_BEFORE_EMBED ? (
-      <Modal onClose={onCloseModal}>
-        <SaveQuestionModal
-          question={this.props.question}
-          originalQuestion={this.props.originalQuestion}
-          onSave={async question => {
-            await this.props.onSave(question, false);
-            onOpenModal(MODAL_TYPES.EMBED);
-          }}
-          onCreate={async question => {
-            await this.props.onCreate(question, false);
-            onOpenModal(MODAL_TYPES.EMBED);
-          }}
-          onClose={onCloseModal}
-          multiStep
-          initialCollectionId={this.props.initialCollectionId}
-        />
-      </Modal>
-    ) : modal === MODAL_TYPES.FILTERS ? (
-      <Modal fit onClose={onCloseModal}>
-        <BulkFilterModal
-          question={question}
-          onQueryChange={this.onQueryChange}
-          onClose={onCloseModal}
-        />
-      </Modal>
-    ) : modal === MODAL_TYPES.MOVE ? (
-      <Modal onClose={onCloseModal}>
-        <CollectionMoveModal
-          title={t`Which collection should this be in?`}
-          initialCollectionId={question.collectionId()}
-          onClose={onCloseModal}
-          onMove={(collection: Collection) => {
-            this.props.setQuestionCollection(
-              { id: question.id() },
-              collection,
-              {
-                notify: {
-                  message: (
-                    <QuestionMoveToast
-                      isModel={question.isDataset()}
-                      collectionId={collection.id || ROOT_COLLECTION.id}
-                    />
-                  ),
-                  undo: false,
-                },
-              },
-            );
-            onCloseModal();
-          }}
-        />
-      </Modal>
-    ) : modal === MODAL_TYPES.ARCHIVE ? (
-      <Modal onClose={onCloseModal}>
-        <ArchiveQuestionModal question={question} onClose={onCloseModal} />
-      </Modal>
-    ) : modal === MODAL_TYPES.EMBED ? (
-      <Modal full onClose={onCloseModal}>
-        <QuestionEmbedWidget card={this.props.card} onClose={onCloseModal} />
-      </Modal>
-    ) : modal === MODAL_TYPES.CLONE ? (
-      <Modal onClose={onCloseModal}>
-        <EntityCopyModal
-          entityType="questions"
-          entityObject={{
-            ...question.card(),
-            collection_id: question.canWrite()
-              ? question.collectionId()
-              : initialCollectionId,
-          }}
-          copy={async formValues => {
-            const object = await this.props.onCreate(
-              question
-                .setDisplayName(formValues.name)
-                .setCollectionId(formValues.collection_id)
-                .setDescription(formValues.description || null),
-            );
-            return { payload: { object } };
-          }}
-          onClose={onCloseModal}
-          onSaved={() => onOpenModal(MODAL_TYPES.SAVED)}
-        />
-      </Modal>
-    ) : modal === MODAL_TYPES.TURN_INTO_DATASET ? (
-      <Modal small onClose={onCloseModal}>
-        <NewDatasetModal onClose={onCloseModal} />
-      </Modal>
-    ) : modal === MODAL_TYPES.CAN_NOT_CREATE_MODEL ? (
-      <Modal onClose={onCloseModal}>
-        <ImpossibleToCreateModelModal onClose={onCloseModal} />
-      </Modal>
-    ) : modal === MODAL_TYPES.NEW_EVENT ? (
-      <Modal onClose={onCloseModal}>
-        <NewEventModal
-          cardId={question.id()}
-          collectionId={question.collectionId()}
-          onClose={onCloseModal}
-        />
-      </Modal>
-    ) : modal === MODAL_TYPES.EDIT_EVENT ? (
-      <Modal onClose={onCloseModal}>
-        <EditEventModal eventId={modalContext} onClose={onCloseModal} />
-      </Modal>
-    ) : modal === MODAL_TYPES.MOVE_EVENT ? (
-      <Modal onClose={onCloseModal}>
-        <MoveEventModal
-          eventId={modalContext}
-          collectionId={question.collectionId()}
-          onClose={onCloseModal}
-        />
-      </Modal>
-    ) : modal === MODAL_TYPES.PREVIEW_QUERY ? (
-      <Modal fit onClose={onCloseModal}>
-        <PreviewQueryModal onClose={onCloseModal} />
-      </Modal>
-    ) : modal === MODAL_TYPES.CONVERT_QUERY ? (
-      <Modal fit onClose={onCloseModal}>
-        <ConvertQueryModal
-          onUpdateQuestion={updateQuestion}
-          onClose={onCloseModal}
-        />
-      </Modal>
-    ) : null;
+    switch (modal) {
+      case MODAL_TYPES.SAVE:
+        return (
+          <Modal form onClose={onCloseModal}>
+            <SaveQuestionModal
+              question={this.props.question}
+              originalQuestion={this.props.originalQuestion}
+              initialCollectionId={this.props.initialCollectionId}
+              onSave={async (question: Question) => {
+                // if saving modified question, don't show "add to dashboard" modal
+                await this.props.onSave(question);
+                onCloseModal();
+              }}
+              onCreate={async question => {
+                await this.props.onCreate(question);
+                if (question.isDataset()) {
+                  onCloseModal();
+                  setQueryBuilderMode("view");
+                } else {
+                  onOpenModal(MODAL_TYPES.SAVED);
+                }
+              }}
+              onClose={onCloseModal}
+            />
+          </Modal>
+        );
+      case MODAL_TYPES.SAVED:
+        return (
+          <Modal small onClose={onCloseModal}>
+            <QuestionSavedModal
+              onClose={onCloseModal}
+              addToDashboard={() => {
+                onOpenModal(MODAL_TYPES.ADD_TO_DASHBOARD);
+              }}
+            />
+          </Modal>
+        );
+      case MODAL_TYPES.ADD_TO_DASHBOARD_SAVE:
+        return (
+          <Modal onClose={onCloseModal}>
+            <SaveQuestionModal
+              question={this.props.question}
+              originalQuestion={this.props.originalQuestion}
+              initialCollectionId={this.props.initialCollectionId}
+              onSave={async question => {
+                await this.props.onSave(question);
+                onOpenModal(MODAL_TYPES.ADD_TO_DASHBOARD);
+              }}
+              onCreate={async question => {
+                await this.props.onCreate(question);
+                onOpenModal(MODAL_TYPES.ADD_TO_DASHBOARD);
+              }}
+              onClose={onCloseModal}
+              multiStep
+            />
+          </Modal>
+        );
+      case MODAL_TYPES.ADD_TO_DASHBOARD:
+        return (
+          <Modal onClose={onCloseModal}>
+            <AddToDashSelectDashModal
+              card={this.props.card}
+              onClose={onCloseModal}
+              onChangeLocation={this.props.onChangeLocation}
+            />
+          </Modal>
+        );
+      case MODAL_TYPES.CREATE_ALERT:
+        return (
+          <Modal full onClose={onCloseModal}>
+            <CreateAlertModalContent
+              onCancel={onCloseModal}
+              onAlertCreated={onCloseModal}
+            />
+          </Modal>
+        );
+      case MODAL_TYPES.SAVE_QUESTION_BEFORE_ALERT:
+        return (
+          <Modal onClose={onCloseModal}>
+            <SaveQuestionModal
+              question={this.props.question}
+              originalQuestion={this.props.originalQuestion}
+              onSave={async question => {
+                await this.props.onSave(question, false);
+                this.showAlertsAfterQuestionSaved();
+              }}
+              onCreate={async question => {
+                await this.props.onCreate(question, false);
+                this.showAlertsAfterQuestionSaved();
+              }}
+              onClose={onCloseModal}
+              multiStep
+              initialCollectionId={this.props.initialCollectionId}
+            />
+          </Modal>
+        );
+      case MODAL_TYPES.SAVE_QUESTION_BEFORE_EMBED:
+        return (
+          <Modal onClose={onCloseModal}>
+            <SaveQuestionModal
+              question={this.props.question}
+              originalQuestion={this.props.originalQuestion}
+              onSave={async question => {
+                await this.props.onSave(question, false);
+                onOpenModal(MODAL_TYPES.EMBED);
+              }}
+              onCreate={async question => {
+                await this.props.onCreate(question, false);
+                onOpenModal(MODAL_TYPES.EMBED);
+              }}
+              onClose={onCloseModal}
+              multiStep
+              initialCollectionId={this.props.initialCollectionId}
+            />
+          </Modal>
+        );
+      case MODAL_TYPES.FILTERS:
+        return (
+          <Modal fit onClose={onCloseModal}>
+            <BulkFilterModal
+              question={question}
+              onQueryChange={this.onQueryChange}
+              onClose={onCloseModal}
+            />
+          </Modal>
+        );
+
+      case MODAL_TYPES.MOVE:
+        return (
+          <Modal onClose={onCloseModal}>
+            <CollectionMoveModal
+              title={t`Which collection should this be in?`}
+              initialCollectionId={question.collectionId()}
+              onClose={onCloseModal}
+              onMove={(collection: Collection) => {
+                this.props.setQuestionCollection(
+                  { id: question.id() },
+                  collection,
+                  {
+                    notify: {
+                      message: (
+                        <QuestionMoveToast
+                          isModel={question.isDataset()}
+                          collectionId={collection.id || ROOT_COLLECTION.id}
+                        />
+                      ),
+                      undo: false,
+                    },
+                  },
+                );
+                onCloseModal();
+              }}
+            />
+          </Modal>
+        );
+      case MODAL_TYPES.ARCHIVE:
+        return (
+          <Modal onClose={onCloseModal}>
+            <ArchiveQuestionModal question={question} onClose={onCloseModal} />
+          </Modal>
+        );
+      case MODAL_TYPES.EMBED:
+        return (
+          <Modal full onClose={onCloseModal}>
+            <QuestionEmbedWidget
+              card={this.props.card}
+              onClose={onCloseModal}
+            />
+          </Modal>
+        );
+      case MODAL_TYPES.CLONE:
+        return (
+          <Modal onClose={onCloseModal}>
+            <EntityCopyModal
+              entityType="questions"
+              entityObject={{
+                ...question.card(),
+                collection_id: question.canWrite()
+                  ? question.collectionId()
+                  : initialCollectionId,
+              }}
+              copy={async formValues => {
+                const object = await this.props.onCreate(
+                  question
+                    .setDisplayName(formValues.name)
+                    .setCollectionId(formValues.collection_id)
+                    .setDescription(formValues.description || null),
+                );
+                return { payload: { object } };
+              }}
+              onClose={onCloseModal}
+              onSaved={() => onOpenModal(MODAL_TYPES.SAVED)}
+            />
+          </Modal>
+        );
+      case MODAL_TYPES.TURN_INTO_DATASET:
+        return (
+          <Modal small onClose={onCloseModal}>
+            <NewDatasetModal onClose={onCloseModal} />
+          </Modal>
+        );
+      case MODAL_TYPES.CAN_NOT_CREATE_MODEL:
+        return (
+          <Modal onClose={onCloseModal}>
+            <ImpossibleToCreateModelModal onClose={onCloseModal} />
+          </Modal>
+        );
+      case MODAL_TYPES.NEW_EVENT:
+        return (
+          <Modal onClose={onCloseModal}>
+            <NewEventModal
+              cardId={question.id()}
+              collectionId={question.collectionId()}
+              onClose={onCloseModal}
+            />
+          </Modal>
+        );
+      case MODAL_TYPES.EDIT_EVENT:
+        return (
+          <Modal onClose={onCloseModal}>
+            <EditEventModal eventId={modalContext} onClose={onCloseModal} />
+          </Modal>
+        );
+      case MODAL_TYPES.MOVE_EVENT:
+        return (
+          <Modal onClose={onCloseModal}>
+            <MoveEventModal
+              eventId={modalContext}
+              collectionId={question.collectionId()}
+              onClose={onCloseModal}
+            />
+          </Modal>
+        );
+      case MODAL_TYPES.PREVIEW_QUERY:
+        return (
+          <Modal fit onClose={onCloseModal}>
+            <PreviewQueryModal onClose={onCloseModal} />
+          </Modal>
+        );
+      case MODAL_TYPES.CONVERT_QUERY:
+        return (
+          <Modal fit onClose={onCloseModal}>
+            <ConvertQueryModal
+              onUpdateQuestion={updateQuestion}
+              onClose={onCloseModal}
+            />
+          </Modal>
+        );
+      default:
+        return null;
+    }
   }
 }
 
