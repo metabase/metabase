@@ -67,6 +67,7 @@ You can add events to collections, and organize those events into timelines. See
 ## Further reading
 
 - [Keeping your analytics organized](https://www.metabase.com/learn/administration/same-page)
+- [Multiple environments](https://www.metabase.com/learn/administration/multi-env#one-collection-per-environment)
 
 [dashboards]: ../dashboards/introduction.md
 [models]: ../data-modeling/models.md
