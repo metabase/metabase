@@ -63,7 +63,6 @@ import AggregationWrapper from "./structured/Aggregation";
 import BreakoutWrapper from "./structured/Breakout";
 import FilterWrapper from "./structured/Filter";
 import JoinWrapper from "./structured/Join";
-import OrderByWrapper from "./structured/OrderBy";
 
 import { getStructuredQueryTable } from "./utils/structured-query-table";
 
@@ -1028,16 +1027,8 @@ class StructuredQueryInner extends AtomicQuery {
     return Q.getOrderBys(this.query());
   }
 
-  addSort(orderBy: OrderBy | OrderByWrapper) {
+  addSort(orderBy: OrderBy) {
     return this._updateQuery(Q.addOrderBy, arguments);
-  }
-
-  updateSort(index: number, orderBy: OrderBy | OrderByWrapper) {
-    return this._updateQuery(Q.updateOrderBy, arguments);
-  }
-
-  removeSort(index: number) {
-    return this._updateQuery(Q.removeOrderBy, arguments);
   }
 
   clearSort() {
