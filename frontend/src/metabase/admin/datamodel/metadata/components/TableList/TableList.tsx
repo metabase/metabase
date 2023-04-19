@@ -11,6 +11,7 @@ import { useAsyncFn } from "react-use";
 import cx from "classnames";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
+import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import * as Urls from "metabase/lib/urls";
 import Tables from "metabase/entities/tables";
 import Icon from "metabase/components/Icon/Icon";
@@ -337,6 +338,8 @@ export default _.compose(
     ) => ({
       dbId: selectedDatabaseId,
       schemaName: selectedSchemaName,
+      include_hidden: true,
+      ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
     }),
   }),
   connect(null, mapDispatchToProps),
