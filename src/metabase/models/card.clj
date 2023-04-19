@@ -19,6 +19,7 @@
    [metabase.moderation :as moderation]
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings :as public-settings]
+   [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
    [metabase.query-processor.util :as qp.util]
    [metabase.server.middleware.session :as mw.session]
    [metabase.util :as u]
@@ -264,16 +265,10 @@
       (field-values/update-field-values-for-on-demand-dbs! field-ids))
     (parameter-card/upsert-or-delete-from-parameters! "card" (:id card) (:parameters card))))
 
-(defonce
-  ^{:doc "Atom containing a function used to check additional sandboxing constraints for Metabase Enterprise Edition.
-  This is called as part of the `pre-update` method for a Card.
-
-  For the OSS edition, there is no implementation for this function -- it is a no-op. For Metabase Enterprise Edition,
-  the implementation of this function is
-  [[metabase-enterprise.sandbox.models.group-table-access-policy/update-card-check-gtaps]] and is installed by that
-  namespace."}
-  pre-update-check-sandbox-constraints
-  (atom identity))
+(defenterprise pre-update-check-sandbox-constraints
+ "Checks additional sandboxing constraints for Metabase Enterprise Edition. The OSS implementation is a no-op."
+  metabase-enterprise.sandbox.models.group-table-access-policy
+  [_])
 
 (defn- update-parameters-using-card-as-values-source
   "Update the config of parameter on any Dashboard/Card use this `card` as values source .
@@ -383,7 +378,7 @@
       (update-parameters-using-card-as-values-source changes)
       (parameter-card/upsert-or-delete-from-parameters! "card" id (:parameters changes))
       ;; additional checks (Enterprise Edition only)
-      (@pre-update-check-sandbox-constraints changes)
+      (pre-update-check-sandbox-constraints changes)
       (assert-valid-model (merge old-card-info changes)))))
 
 ;; Cards don't normally get deleted (they get archived instead) so this mostly affects tests
