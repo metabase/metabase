@@ -59,38 +59,43 @@
         (log/infof "No sql inferred for model '%s' with prompt '%s'." (:id model) user_prompt)))
     (log/warn "Metabot is not enabled")))
 
-(defn infer-model
-  "Find the model in the db that best matches the prompt. Return nil if no good model found."
-  [{{database-id :id :keys [models]} :database :keys [user_prompt] :as context}]
+(defn match-best-model
+  "Find the model in the db that best matches the prompt using embedding matching."
+  [{{database-id :id :keys [models]} :database :keys [user_prompt]}]
   (log/infof "Metabot is inferring model for database '%s' with prompt '%s'." database-id user_prompt)
   (if (metabot-settings/is-metabot-enabled)
-    (let [{:keys [prompt_template version] :as prompt} (metabot-util/create-prompt context)
-          ids->models   (zipmap (map :id models) models)
-          candidates    (set (keys ids->models))
-          best-model-id (metabot-util/find-result
-                         (fn [message]
-                           (some->> message
-                                    (re-seq #"\d+")
-                                    (map parse-long)
-                                    (some candidates)))
-                         (metabot-client/invoke-metabot prompt))]
-      (if-some [model (ids->models best-model-id)]
+    (let [models (->> models
+                      (map (fn [{:keys [create_table_ddl] :as model}]
+                             (let [{:keys [prompt embedding tokens]} (metabot-client/create-embedding create_table_ddl)]
+                               (assoc model
+                                 :prompt prompt
+                                 :embedding embedding
+                                 :tokens tokens)))))]
+      (if-some [{best-mode-name :name
+                 best-model-id :id
+                 :as model} (metabot-util/best-prompt-object models user_prompt)]
         (do
-          (log/infof "Metabot selected best model for database '%s' with prompt '%s' as '%s'."
-                     database-id user_prompt best-model-id)
-          (update model
-                  :prompt_template_versions
-                  (fnil conj [])
-                  (format "%s:%s" prompt_template version)))
+          (log/infof "Metabot selected best model for database '%s' with prompt '%s' as '%s' (%s)."
+                     database-id user_prompt best-model-id best-mode-name)
+          model)
         (log/infof "No model inferred for database '%s' with prompt '%s'." database-id user_prompt)))
     (log/warn "Metabot is not enabled")))
 
 (defn infer-native-sql-query
   "Given a database and user prompt, determine a sql query to answer my question."
-  [{:keys [database user_prompt prompt_template_versions] :as context}]
-  (log/infof "Metabot is inferring sql for database '%s' with prompt '%s'." (:id database) user_prompt)
+  [{{database-id :id :keys [create_table_ddls]} :database
+    :keys                                       [user_prompt prompt_template_versions] :as context}]
+  (log/infof "Metabot is inferring sql for database '%s' with prompt '%s'." database-id user_prompt)
   (if (metabot-settings/is-metabot-enabled)
-    (let [{:keys [prompt_template version] :as prompt} (metabot-util/create-prompt context)]
+    (let [prompt-objects (map (fn [ddl]
+                                (let [{:keys [prompt embedding tokens]} (metabot-client/create-embedding ddl)]
+                                  {:prompt    prompt
+                                   :embedding embedding
+                                   :tokens    tokens}))
+                              create_table_ddls)
+          ddl            (metabot-util/generate-prompt prompt-objects user_prompt)
+          context        (assoc-in context [:database :create_database_ddl] ddl)
+          {:keys [prompt_template version] :as prompt} (metabot-util/create-prompt context)]
       (if-some [sql (metabot-util/find-result
                      metabot-util/extract-sql
                      (metabot-client/invoke-metabot prompt))]
@@ -98,5 +103,5 @@
          :prompt_template_versions (conj
                                     (vec prompt_template_versions)
                                     (format "%s:%s" prompt_template version))}
-        (log/infof "No sql inferred for database '%s' with prompt '%s'." (:id database) user_prompt)))
+        (log/infof "No sql inferred for database '%s' with prompt '%s'." database-id user_prompt)))
     (log/warn "Metabot is not enabled")))

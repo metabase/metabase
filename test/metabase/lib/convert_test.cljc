@@ -128,6 +128,19 @@
                                         :aggregation  [[:aggregation-options
                                                         [:sum [:field 1 nil]]
                                                         {:display-name "Revenue"}]]}}))))
+(deftest ^:parallel effective-type-drop-test
+  (testing ":effective_type values should be dropped in ->legacy-MBQL"
+    (is (=? {:type  :query
+             :query {:source-table 1
+                     :aggregation  [[:sum [:field 1 nil]]]
+                     :breakout     [[:aggregation 0 {:display-name "Revenue"}]]}}
+          (lib.convert/->legacy-MBQL
+              {:lib/type :mbql/query
+               :stages   [{:lib/type     :mbql.stage/mbql
+                           :source-table 1
+                           :aggregation  [[:sum {:lib/uuid string?} [:field {:lib/uuid string?} 1]]]
+                           :breakout     [[:aggregation 0 {:display-name   "Revenue"
+                                                           :effective_type :type/Integer}]]}]})))))
 
 (deftest ^:parallel round-trip-test
   ;; Miscellaneous queries that have caused test failures in the past, captured here for quick feedback.
@@ -166,9 +179,9 @@
 
     [:value nil {:base_type :type/Number}]
 
-    [:aggregation 0 {:effective-type "type/Integer"}]
+    [:aggregation 0 {:display-name "Bean Count"}]
 
-    [:expression "expr" {:effective-type "type/Integer"}]
+    [:expression "expr" {:display-name "Iambic Diameter"}]
 
     [:case [[[:< [:field 1 nil] 10] [:value nil {:base_type :type/Number}]] [[:> [:field 2 nil] 2] 10]]]
 
@@ -192,6 +205,14 @@
                             :metabase.query-processor.util.add-alias-info/source-table 224}] 1]]
              :source-table 224}
      :type :query}
+
+    {:database 1,
+     :type :query,
+     :query
+     {:source-table 2,
+      :aggregation [[:count]],
+      :breakout [[:field 14 {:temporal-unit :month}]],
+      :order-by [[:asc [:aggregation 0]]]}}
 
     {:database 23001
      :type     :query

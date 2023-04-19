@@ -1,12 +1,14 @@
 (ns metabuild-common.aws
   (:require
+   [environ.core]
    [metabuild-common.env :as env]
    [metabuild-common.output :as out]
    [metabuild-common.shell :as sh]
    [metabuild-common.steps :as steps]))
 
 (defn aws-profile []
-  (env/env-or-throw :aws-default-profile))
+  (when (not (contains? environ.core/env :ci))
+    (env/env-or-throw :aws-default-profile)))
 
 (defn s3-copy!
   ([source dest]
