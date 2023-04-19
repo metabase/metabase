@@ -31,7 +31,7 @@ import MoveEventModal from "metabase/timelines/questions/containers/MoveEventMod
 import PreviewQueryModal from "metabase/query_builder/components/view/PreviewQueryModal";
 import ConvertQueryModal from "metabase/query_builder/components/view/ConvertQueryModal";
 import QuestionMoveToast from "metabase/questions/components/QuestionMoveToast";
-import { Card, User } from "metabase-types/api";
+import { Card, Collection, User } from "metabase-types/api";
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import Question from "metabase-lib/Question";
 
@@ -59,9 +59,9 @@ interface QueryModalsProps {
   onOpenModal: (modal: _Modal) => void;
   onChangeLocation: (location: string) => void;
   setQuestionCollection: (
-    config: any,
-    collection: any,
-    anotherConfig: any,
+    { id }: Collection,
+    collection: Collection,
+    opts: Record<string, unknown>,
   ) => void;
 }
 
@@ -216,8 +216,9 @@ class QueryModals extends React.Component<QueryModalsProps> {
           title={t`Which collection should this be in?`}
           initialCollectionId={question.collectionId()}
           onClose={onCloseModal}
-          onMove={(collection: any) => {
+          onMove={(collection: Collection) => {
             this.props.setQuestionCollection(
+              // @ts-expect-error question id has a different type from collection
               { id: question.id() },
               collection,
               {
