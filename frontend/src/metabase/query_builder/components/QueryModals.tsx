@@ -31,12 +31,41 @@ import MoveEventModal from "metabase/timelines/questions/containers/MoveEventMod
 import PreviewQueryModal from "metabase/query_builder/components/view/PreviewQueryModal";
 import ConvertQueryModal from "metabase/query_builder/components/view/ConvertQueryModal";
 import QuestionMoveToast from "metabase/questions/components/QuestionMoveToast";
+import { Card, User } from "metabase-types/api";
+import StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import Question from "metabase-lib/Question";
 
 const mapDispatchToProps = {
   setQuestionCollection: Questions.actions.setCollection,
 };
 
-class QueryModals extends React.Component {
+// TODO: choose a better name
+type _Modal = typeof MODAL_TYPES[keyof typeof MODAL_TYPES];
+
+interface QueryModalsProps {
+  questionAlerts: any;
+  user: User;
+  modal: _Modal;
+  modalContext: number;
+  question: Question;
+  initialCollectionId: number;
+  updateQuestion: (question: Question, config?: object) => void;
+  setQueryBuilderMode: (mode: string) => void;
+  originalQuestion: Question;
+  card: Card;
+  onCreate: (question: Question, flag?: boolean) => void;
+  onSave: (question: Question, flag?: boolean) => void;
+  onCloseModal: () => void;
+  onOpenModal: (modal: _Modal) => void;
+  onChangeLocation: (location: string) => void;
+  setQuestionCollection: (
+    config: any,
+    collection: any,
+    anotherConfig: any,
+  ) => void;
+}
+
+class QueryModals extends React.Component<QueryModalsProps> {
   showAlertsAfterQuestionSaved = () => {
     const { questionAlerts, user, onCloseModal, onOpenModal } = this.props;
 
@@ -55,7 +84,7 @@ class QueryModals extends React.Component {
     }
   };
 
-  onQueryChange = query => {
+  onQueryChange = (query: StructuredQuery) => {
     const question = query.question();
     this.props.updateQuestion(question, { run: true });
   };
@@ -78,7 +107,7 @@ class QueryModals extends React.Component {
           question={this.props.question}
           originalQuestion={this.props.originalQuestion}
           initialCollectionId={this.props.initialCollectionId}
-          onSave={async question => {
+          onSave={async (question: any) => {
             // if saving modified question, don't show "add to dashboard" modal
             await this.props.onSave(question);
             onCloseModal();
@@ -99,7 +128,7 @@ class QueryModals extends React.Component {
       <Modal small onClose={onCloseModal}>
         <QuestionSavedModal
           onClose={onCloseModal}
-          addToDashboardFn={() => {
+          addToDashboard={() => {
             onOpenModal(MODAL_TYPES.ADD_TO_DASHBOARD);
           }}
         />
@@ -187,7 +216,7 @@ class QueryModals extends React.Component {
           title={t`Which collection should this be in?`}
           initialCollectionId={question.collectionId()}
           onClose={onCloseModal}
-          onMove={collection => {
+          onMove={(collection: any) => {
             this.props.setQuestionCollection(
               { id: question.id() },
               collection,
@@ -225,7 +254,11 @@ class QueryModals extends React.Component {
               ? question.collectionId()
               : initialCollectionId,
           }}
-          copy={async formValues => {
+          copy={async (formValues: {
+            name: any;
+            collection_id: any;
+            description: any;
+          }) => {
             const object = await this.props.onCreate(
               question
                 .setDisplayName(formValues.name)

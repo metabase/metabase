@@ -12,17 +12,27 @@ import { canonicalCollectionId } from "metabase/collections/utils";
 
 import "./SaveQuestionModal.css";
 
-const getSingleStepTitle = (questionType, showSaveType) => {
+const getSingleStepTitle = (questionType: string, showSaveType: boolean) => {
   if (questionType === "model") {
     return t`Save model`;
   } else if (showSaveType) {
     return t`Save question`;
-  } else {
-    return t`Save new question`;
   }
+
+  return t`Save new question`;
 };
 
-export default class SaveQuestionModal extends Component {
+interface SaveQuestionModalProps {
+  question: any;
+  originalQuestion?: any;
+  onCreate: (question: any) => void;
+  onSave: (question: any) => void;
+  onClose: () => void;
+  multiStep?: boolean;
+  initialCollectionId: any;
+}
+
+export default class SaveQuestionModal extends Component<SaveQuestionModalProps> {
   static propTypes = {
     question: PropTypes.object.isRequired,
     originalQuestion: PropTypes.object,
@@ -32,7 +42,7 @@ export default class SaveQuestionModal extends Component {
     multiStep: PropTypes.bool,
   };
 
-  validateName = (name, { values }) => {
+  validateName = (name: any, { values }: any) => {
     if (values.saveType !== "overwrite") {
       // We don't care if the form is valid when overwrite mode is enabled,
       // as original question's data will be submitted instead of the form values
@@ -40,7 +50,12 @@ export default class SaveQuestionModal extends Component {
     }
   };
 
-  handleSubmit = async details => {
+  handleSubmit = async (details: {
+    saveType: string;
+    collection_id: string | number | null | undefined;
+    name: string;
+    description: string;
+  }) => {
     const { question, originalQuestion, onCreate, onSave } = this.props;
 
     const collectionId = canonicalCollectionId(
@@ -125,6 +140,7 @@ export default class SaveQuestionModal extends Component {
             { name: "saveType" },
             {
               name: "name",
+              // @ts-expect-error provide correct types for validator
               validate: this.validateName,
             },
             { name: "description" },
@@ -138,6 +154,7 @@ export default class SaveQuestionModal extends Component {
               <FormField
                 name="saveType"
                 title={t`Replace or save as new?`}
+                // @ts-expect-error old type
                 type={SaveTypeInput}
                 hidden={!showSaveType}
                 originalQuestion={originalQuestion}
@@ -182,7 +199,12 @@ export default class SaveQuestionModal extends Component {
   }
 }
 
-const SaveTypeInput = ({ field, originalQuestion }) => (
+interface SaveTypeInputProps {
+  field: any;
+  originalQuestion: any;
+}
+
+const SaveTypeInput = ({ field, originalQuestion }: SaveTypeInputProps) => (
   <Radio
     {...field}
     type={""}
