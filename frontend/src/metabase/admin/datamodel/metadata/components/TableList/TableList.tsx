@@ -9,6 +9,7 @@ import { useAsyncFn } from "react-use";
 import cx from "classnames";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
+import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { useDispatch } from "metabase/lib/redux";
 import Tables from "metabase/entities/tables";
 import Icon from "metabase/components/Icon/Icon";
@@ -299,6 +300,8 @@ export default Tables.loadList({
   query: (_: State, { selectedDatabaseId, selectedSchema }: OwnProps) => ({
     dbId: selectedDatabaseId,
     schemaName: selectedSchema,
+    include_hidden: true,
+    ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
   }),
   selectorName: "getListUnfiltered",
 })(TableList);
