@@ -20,6 +20,7 @@ import {
   Table,
   TableVisibilityType,
 } from "metabase-types/api";
+import { State } from "metabase-types/store";
 
 interface OwnProps {
   selectedDatabaseId: DatabaseId;
@@ -294,4 +295,9 @@ const getToggleTooltip = (isHidden: boolean, hasMultipleTables?: boolean) => {
   }
 };
 
-export default TableList;
+export default Tables.loadList({
+  query: (_: State, { selectedDatabaseId, selectedSchema }: OwnProps) => ({
+    dbId: selectedDatabaseId,
+    schemaName: selectedSchema,
+  }),
+})(TableList);
