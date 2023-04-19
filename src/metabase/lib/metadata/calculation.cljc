@@ -414,10 +414,3 @@
     x
     unique-name-fn :- fn?]
    (visible-columns-method query stage-number x unique-name-fn)))
-
-(defn isa
-  "Decide if `_column` is a subtype of the type denoted by the keyword `type-kw`.
-  Both effective and semantic types are taken into account."
-  [{:keys [effective_type semantic_type] :as _column} type-kw]
-  (or (isa? effective_type type-kw)
-      (isa? semantic_type type-kw)))

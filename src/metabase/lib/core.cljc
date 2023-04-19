@@ -156,7 +156,6 @@
    describe-top-level-key
    display-name
    display-info
-   isa
    suggested-name
    type-of]
   [lib.native
