@@ -11,7 +11,7 @@ You've connected Metabase to a database, but:
 - the tables don't show up as possible data sources when you create a query using the Notebook Editor, or
 - you can no longer see tables that you used to be able to see.
 
-## Check browser
+## Check for browser issues
 
 1. Clear your browser cache.
 2. Check if a browser extension or plugin is interfering with Metabase:
@@ -23,7 +23,7 @@ You've connected Metabase to a database, but:
 
 Sometimes your browser will show an old cached list of tables. Browser extensions can also prevent pages from loading correctly.
 
-## Test database connection
+## Test the database connection
 
 1. Go to the Metabase [SQL editor](../questions/native-editor/writing-sql.md).
 2. Test the connection to your database by running:
