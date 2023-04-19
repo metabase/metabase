@@ -49,8 +49,8 @@ export function getColumnsGroupColumns(group: ColumnGroup): ColumnMetadata[] {
 }
 
 export function describeTemporalUnit(
-  unit?: string = null,
-  n?: number = 1,
+  unit: string | null = null,
+  n: number = 1,
 ): string {
   return ML.describe_temporal_unit(n, unit);
 }
@@ -64,6 +64,9 @@ export function describeTemporalInterval(
   return ML.describe_temporal_interval(n, unit);
 }
 
-export function describeRelativeDatetime(n, unit?: string): string {
+export function describeRelativeDatetime(
+  n: IntervalAmount,
+  unit?: string,
+): string {
   return ML.describe_relative_datetime(n, unit);
 }
