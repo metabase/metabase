@@ -47,3 +47,23 @@ export function groupColumns(columns: ColumnMetadata[]): ColumnGroup {
 export function getColumnsGroupColumns(group: ColumnGroup): ColumnMetadata[] {
   return ML_ColumnGroup.columns_group_columns(group);
 }
+
+export function describeTemporalUnit(
+  unit?: string = null,
+  n?: number = 1,
+): string {
+  return ML.describe_temporal_unit(n, unit);
+}
+
+type IntervalAmount = number | "current" | "next" | "last";
+
+export function describeTemporalInterval(
+  n: IntervalAmount,
+  unit?: string,
+): string {
+  return ML.describe_temporal_interval(n, unit);
+}
+
+export function describeRelativeDatetime(n, unit?: string): string {
+  return ML.describe_relative_datetime(n, unit);
+}
