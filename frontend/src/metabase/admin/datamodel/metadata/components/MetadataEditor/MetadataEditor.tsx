@@ -1,15 +1,16 @@
 import React from "react";
 import { t } from "ttag";
+import * as Urls from "metabase/lib/urls";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import Databases from "metabase/entities/databases";
-import { Database, DatabaseId, TableId } from "metabase-types/api";
+import { Database } from "metabase-types/api";
 import MetadataHeader from "../MetadataHeader";
 import MetadataTablePicker from "../MetadataTablePicker";
 
 interface RouteParams {
-  databaseId?: DatabaseId;
+  databaseId?: string;
   schemaName?: string;
-  tableId?: TableId;
+  tableId?: string;
 }
 
 interface RouterProps {
@@ -22,10 +23,11 @@ interface DatabaseLoaderProps {
 
 type MetadataEditorProps = RouterProps & DatabaseLoaderProps;
 
-const MetadataEditor = ({
-  databases,
-  params: { databaseId, schemaName, tableId },
-}: MetadataEditorProps) => {
+const MetadataEditor = ({ databases, params }: MetadataEditorProps) => {
+  const databaseId = Urls.extractEntityId(params.databaseId);
+  const schemaName = params.schemaName;
+  const tableId = Urls.extractEntityId(params.tableId);
+
   return (
     <div className="p4">
       <MetadataHeader
