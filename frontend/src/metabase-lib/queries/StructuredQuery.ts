@@ -1023,18 +1023,30 @@ class StructuredQueryInner extends AtomicQuery {
   }
 
   // SORTS
+  /**
+   * @deprecated use the orderBys function from metabase-lib v2
+   */
   sorts(): OrderBy[] {
     return Q.getOrderBys(this.query());
   }
 
+  /**
+   * @deprecated use the orderBy function from metabase-lib v2
+   */
   addSort(orderBy: OrderBy) {
     return this._updateQuery(Q.addOrderBy, arguments);
   }
 
+  /**
+   * @deprecated use the clearOrderBys function from metabase-lib v2
+   */
   clearSort() {
     return this._updateQuery(Q.clearOrderBy, arguments);
   }
 
+  /**
+   * @deprecated use the replaceClause function from metabase-lib v2
+   */
   replaceSort(orderBy: OrderBy) {
     return this.clearSort().addSort(orderBy);
   }
