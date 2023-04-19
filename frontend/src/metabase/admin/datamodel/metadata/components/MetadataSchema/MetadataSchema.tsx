@@ -1,10 +1,7 @@
 import React, { useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
-import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
-import Tables from "metabase/entities/tables";
 import { Field, Table } from "metabase-types/api";
-import { State } from "metabase-types/store";
 import {
   ColumnNameCell,
   DataTypeCell,
@@ -78,12 +75,4 @@ const FieldRow = ({ field, isBordered, isSecondary }: FieldRowProps) => (
   </tr>
 );
 
-export default _.compose(
-  Tables.load({
-    id: (_state: State, { tableId }: { tableId: number }) => tableId,
-    query: {
-      ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
-    },
-    requestType: "fetchMetadata",
-  }),
-)(MetadataSchema);
+export default MetadataSchema;
