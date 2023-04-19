@@ -2,7 +2,6 @@ import React, { ChangeEvent, useCallback, useState } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
-import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import Tables from "metabase/entities/tables";
 import Radio from "metabase/core/components/Radio/Radio";
 import { Table, TableId, TableVisibilityType } from "metabase-types/api";
@@ -240,7 +239,6 @@ export default _.compose(
     id: (_: State, { selectedTableId }: OwnProps) => selectedTableId,
     query: {
       include_sensitive_fields: true,
-      ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
     },
     requestType: "fetchMetadata",
     selectorName: "getObjectUnfiltered",

@@ -2,7 +2,6 @@ import React, { useCallback } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
-import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import * as Urls from "metabase/lib/urls";
 import Databases from "metabase/entities/databases";
 import Tables from "metabase/entities/tables";
@@ -126,9 +125,6 @@ export default _.compose(
   Databases.load({
     id: (_: State, { params }: RouterProps) =>
       Urls.extractEntityId(params.databaseId),
-    query: {
-      ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
-    },
   }),
   Schemas.loadList({
     query: (_: State, { database }: DatabaseLoaderProps) => ({
@@ -138,9 +134,6 @@ export default _.compose(
   Tables.load({
     id: (_: State, { params }: RouterProps) =>
       Urls.extractEntityId(params.tableId),
-    query: {
-      ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
-    },
     requestType: "fetchMetadata",
     selectorName: "getObjectUnfiltered",
   }),
