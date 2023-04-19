@@ -8,6 +8,7 @@
    [metabase.sync :as sync]
    [metabase.test :as mt]
    [metabase.upload :as upload]
+   [metabase.util :as u]
    [toucan2.core :as t2])
   (:import
    [java.io File]))
@@ -345,7 +346,7 @@
                                    (mt/cols)
                                    (map :name))]
                 (is (= ["unnamed_column_1", "ship_name", "unnamed_column_3"]
-                       col-names))))))))))
+                       (map u/lower-case-en col-names)))))))))))
 
 (deftest load-from-csv-duplicate-names-test
   (testing "Upload a CSV file with duplicate column names"
