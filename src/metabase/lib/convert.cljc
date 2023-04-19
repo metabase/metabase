@@ -168,29 +168,38 @@
   lib.dispatch/dispatch-value
   :hierarchy lib.hierarchy/hierarchy)
 
-(defn- drop-option? [x]
-  (or (and (qualified-keyword? x)
-           (= (namespace x) "lib"))
-      (#{:effective-type} x)))
-
 (defn- disqualify
-  "Remove any keys starting with the `:lib/` namespace from map `m`."
+  "Remove any keys starting with the `:lib/` namespace from map `m`.
+
+  No args = return transducer to remove `:lib/` keys from a map. One arg = update a map `m`."
+  ([]
+   (remove (fn [[k _v]]
+             (and (qualified-keyword? k)
+                  (= (namespace k) "lib")))))
+  ([m]
+   (into {} (disqualify) m)))
+
+(defn- options->legacy-MBQL
+  "Convert an options map in an MBQL clause to the equivalent shape for legacy MBQL. Remove `:lib/*` keys and
+  `:effective-type`, which is not used in options maps in legacy MBQL."
   [m]
-  (->> m
-       keys
-       (remove drop-option?)
-       (select-keys m)))
+  (not-empty
+   (into {}
+         (comp (disqualify)
+               (remove (fn [[k _v]]
+                         (= k :effective-type))))
+         m)))
 
 (defn- aggregation->legacy-MBQL [[tag options & args]]
   (let [inner (into [tag] (map ->legacy-MBQL args))]
-    (if-let [aggregation-opts (not-empty (disqualify options))]
+    (if-let [aggregation-opts (not-empty (options->legacy-MBQL options))]
       [:aggregation-options inner aggregation-opts]
       inner)))
 
 (defn- clause-with-options->legacy-MBQL [[k options & args]]
   (if (map? options)
     (into [k] (concat (map ->legacy-MBQL args)
-                      (when-let [options (not-empty (disqualify options))]
+                      (when-let [options (options->legacy-MBQL options)]
                         [options])))
     (into [k] (map ->legacy-MBQL (cons options args)))))
 
@@ -244,9 +253,11 @@
                  stages)))
 
 (defmethod ->legacy-MBQL :dispatch-type/map [m]
-  (-> m
-      disqualify
-      (update-vals ->legacy-MBQL)))
+  (into {}
+        (comp (disqualify)
+              (map (fn [[k v]]
+                     [k (->legacy-MBQL v)])))
+        m))
 
 (defmethod ->legacy-MBQL :dispatch-type/sequential [xs]
   (mapv ->legacy-MBQL xs))
@@ -268,11 +279,7 @@
                  (set/rename-keys  {:base-type     :base_type
                                     :semantic-type :semantic_type
                                     :database-type :database_type})
-                 ;; remove `:effective-type`, which is not used for `:value` in legacy MBQL and is just going to
-                 ;; confuse things.
-                 (dissoc :effective-type)
-                 disqualify
-                 not-empty)]
+                 options->legacy-MBQL)]
     ;; in legacy MBQL, `:value` has to be three args; `opts` has to be present, but it should can be `nil` if it is
     ;; empty.
     [:value value opts]))

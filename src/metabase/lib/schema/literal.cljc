@@ -190,12 +190,13 @@
 
 ;;; [:value <opts> <value>] clauses are mostly used internally by the query processor to add type information to
 ;;; literals, to make it easier for drivers to process queries; see
-;;; the [[metabase.query-processor.middleware.wrap-value-literals]] middleware. It is also used to differentiate
-;;; `nil` (literally `nil`) from something intended to be `NULL` in a compiled query, and to associate type
+;;; the [[metabase.query-processor.middleware.wrap-value-literals]] middleware. It is also used to differentiate `nil`
+;;; (as in no clause or value) from something intended to be `NULL` in a compiled query, and to associate type
 ;;; information with that `nil`. Even if this is mostly used internally, the schema still needs to know about it.
 ;;;
-;;; The schema itself does not enforce that the actual <value> matches up with the `:effective-type` or
-;;; `:effective-type` in
+;;; The schema itself does not currently enforce that the actual <value> matches up with the `:effective-type` in the
+;;; options map; this is only enforced in the QP. For now, it assumes you know what you are doing and takes your word
+;;; for it when you say something has a given `:effective-type`.
 (mbql-clause/define-mbql-clause :value
   [:tuple
    {:error/message "Value :value clause"}

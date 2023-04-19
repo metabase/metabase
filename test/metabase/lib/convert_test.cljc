@@ -240,6 +240,46 @@
                 :limit        1
                 :source-table 4}}))
 
+(deftest ^:parallel round-trip-preserve-metadata-test
+  (testing "Round-tripping should not affect embedded metadata"
+    (let [query {:database 2445
+                 :type     :query
+                 :query    {:limit        5
+                            :source-query {:source-table 1}
+                            :source-metadata
+                            [{:semantic_type   :type/PK
+                              :table_id        32598
+                              :name            "id"
+                              :source          :fields
+                              :field_ref       [:field 134528 nil]
+                              :effective_type  :type/Integer
+                              :id              134528
+                              :visibility_type :normal
+                              :display_name    "ID"
+                              :base_type       :type/Integer}]}
+
+                 :metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions/original-metadata
+                 [{:base-type       :type/Text
+                   :semantic-type   :type/Category
+                   :table-id        32600
+                   :name            "category"
+                   :source          :breakout
+                   :effective-type  :type/Text
+                   :id              134551
+                   :source-alias    "products__via__product_id"
+                   :visibility-type :normal
+                   :display-name    "Product → Category"
+                   :field-ref       [:field 134551 {:source-field 134534}]
+                   :fk-field-id     134534
+                   :fingerprint     {:global {:distinct-count 4, :nil% 0.0}
+                                     :type   {:type/text {:percent-json   0.0
+                                                          :percent-url    0.0
+                                                          :percent-email  0.0
+                                                          :percent-state  0.0
+                                                          :average-length 6.375}}}}]}]
+      (is (= query
+             (-> query lib.convert/->pMBQL lib.convert/->legacy-MBQL))))))
+
 (deftest ^:parallel value-test
   (testing "For some crazy person reason legacy `:value` has `snake_case` options."
     (let [original [:value
