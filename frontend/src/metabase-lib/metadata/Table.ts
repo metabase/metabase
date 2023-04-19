@@ -4,7 +4,11 @@
 // NOTE: this needs to be imported first due to some cyclical dependency nonsense
 import Question from "../Question"; // eslint-disable-line import/order
 import { singularize } from "metabase/lib/formatting";
-import type { Table as ITable, TableId } from "metabase-types/api";
+import type {
+  Table as ITable,
+  TableId,
+  TableVisibilityType,
+} from "metabase-types/api";
 import { isVirtualCardId } from "metabase-lib/metadata/utils/saved-questions";
 import { getAggregationOperators } from "metabase-lib/operators/utils";
 import { createLookupByProperty, memoizeClass } from "metabase-lib/utils";
@@ -38,6 +42,7 @@ class TableInner extends Base {
   segments: Segment[];
   metadata?: Metadata;
   db?: Database | undefined | null;
+  visibility_type: TableVisibilityType;
 
   getPlainObject(): ITable {
     return this._plainObject;

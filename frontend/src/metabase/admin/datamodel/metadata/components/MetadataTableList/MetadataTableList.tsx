@@ -17,13 +17,9 @@ import Tables from "metabase/entities/tables";
 import Icon from "metabase/components/Icon/Icon";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import Tooltip from "metabase/core/components/Tooltip";
-import {
-  DatabaseId,
-  Table,
-  TableId,
-  TableVisibilityType,
-} from "metabase-types/api";
+import { DatabaseId, TableId, TableVisibilityType } from "metabase-types/api";
 import { Dispatch, State } from "metabase-types/store";
+import Table from "metabase-lib/metadata/Table";
 
 interface OwnProps {
   selectedDatabaseId: DatabaseId;
@@ -81,8 +77,8 @@ const MetadataTableList = ({
     const searchValue = searchText.toLowerCase();
 
     return _.chain(allTables)
-      .filter(table => table.display_name.toLowerCase().includes(searchValue))
-      .sortBy(table => table.display_name)
+      .filter(table => table.displayName().toLowerCase().includes(searchValue))
+      .sortBy(table => table.displayName())
       .partition(table => table.visibility_type != null)
       .value();
   }, [allTables, searchText]);
@@ -268,7 +264,7 @@ const TableRow = ({
         )}
         onClick={handleSelect}
       >
-        {table.display_name}
+        {table.displayName()}
         <div className="hover-child float-right">
           <ToggleVisibilityButton
             tables={tables}

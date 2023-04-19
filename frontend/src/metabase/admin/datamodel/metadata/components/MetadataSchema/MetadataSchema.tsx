@@ -1,7 +1,8 @@
 import React, { useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
-import { Field, Table } from "metabase-types/api";
+import Table from "metabase-lib/metadata/Table";
+import Field from "metabase-lib/metadata/Field";
 import {
   ColumnNameCell,
   DataTypeCell,
@@ -32,15 +33,15 @@ const MetadataSchema = ({ table }: MetadataSchemaProps) => {
           </tr>
         </thead>
         <tbody>
-          {rootFields.map(field => {
+          {rootFields.map((field, index) => {
             const nestedFields = fieldByParent[field.name] ?? [];
 
             return (
-              <React.Fragment key={field.id}>
+              <React.Fragment key={index}>
                 <FieldRow field={field} isBordered={nestedFields.length > 0} />
                 {nestedFields.map((field, index) => (
                   <FieldRow
-                    key={field.id}
+                    key={index}
                     field={field}
                     isBordered={index < nestedFields.length - 1}
                     isSecondary

@@ -72,6 +72,7 @@ class FieldInner extends Base {
   values: any[];
   metadata?: Metadata;
   source?: string;
+  nfc_path?: string[];
 
   // added when creating "virtual fields" that are associated with a given query
   query?: StructuredQuery | NativeQuery;
