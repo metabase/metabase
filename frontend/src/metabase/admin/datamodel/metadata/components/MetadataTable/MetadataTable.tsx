@@ -1,8 +1,14 @@
 import React, { ChangeEvent, useCallback, useState } from "react";
+import { connect } from "react-redux";
 import { t } from "ttag";
+import _ from "underscore";
+import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
+import Tables from "metabase/entities/tables";
 import Radio from "metabase/core/components/Radio/Radio";
-import { TableVisibilityType } from "metabase-types/api";
+import { TableId, TableVisibilityType } from "metabase-types/api";
+import { State } from "metabase-types/store";
 import Table from "metabase-lib/metadata/Table";
+import MetadataSchema from "../MetadataSchema";
 import {
   TableDescription,
   TableDescriptionInput,
@@ -11,12 +17,16 @@ import {
   VisibilityBadge,
 } from "./MetadataTable.styled";
 
-type MetadataTabType = "metadata" | "schema";
+type MetadataTabType = "columns" | "original_schema";
 
 const METADATA_TAB_OPTIONS = [
   { name: t`Columns`, value: "metadata" },
   { name: t`Original schema`, value: "original_schema" },
 ];
+
+interface OwnProps {
+  tableId: TableId;
+}
 
 interface TableLoaderProps {
   table: Table;
@@ -26,10 +36,14 @@ interface DispatchProps {
   onUpdateProperty: (table: Table, name: keyof Table, value: unknown) => void;
 }
 
-type MetadataTableProps = TableLoaderProps & DispatchProps;
+type MetadataTableProps = OwnProps & TableLoaderProps & DispatchProps;
+
+const mapDispatchToProps: DispatchProps = {
+  onUpdateProperty: Tables.actions.updateProperty,
+};
 
 const MetadataTable = ({ table, onUpdateProperty }: MetadataTableProps) => {
-  const [tab, setTab] = useState<MetadataTabType>("metadata");
+  const [tab, setTab] = useState<MetadataTabType>("columns");
 
   const handleChangeName = useCallback(
     (name: string) => {
@@ -65,6 +79,7 @@ const MetadataTable = ({ table, onUpdateProperty }: MetadataTableProps) => {
         onChangeVisibility={handleChangeVisibility}
       />
       <TableTabSection tab={tab} onChangeTab={setTab} />
+      {tab === "original_schema" && <MetadataSchema table={table} />}
     </div>
   );
 };
@@ -102,7 +117,7 @@ const TableTitleSection = ({
 
   return (
     <div className="MetadataTable-title flex flex-column">
-      {tab === "metadata" ? (
+      {tab === "columns" ? (
         <>
           <TableNameInput
             name="display_name"
@@ -219,4 +234,14 @@ const TableTabSection = ({ tab, onChangeTab }: MetadataTabSectionProps) => {
   );
 };
 
-export default MetadataTable;
+export default _.compose(
+  Tables.load({
+    id: (_: State, { tableId }: OwnProps) => tableId,
+    query: {
+      ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
+    },
+    requestType: "fetchMetadata",
+    selectorName: "getObjectUnfiltered",
+  }),
+  connect(null, mapDispatchToProps),
+)(MetadataTable);
