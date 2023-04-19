@@ -367,7 +367,7 @@
               (let [col-names (->> (mt/run-mbql-query upload_test)
                                    (mt/cols)
                                    (map :name))]
-                (is (= ["unknown", "unknown_duplicate_1", "unknown_duplicate_2"]
+                (is (= ["unknown", "unknown_1", "unknown_2"]
                        col-names))))))))))
 
 (deftest load-from-csv-failed-test
