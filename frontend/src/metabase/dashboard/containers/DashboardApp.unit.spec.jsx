@@ -19,20 +19,19 @@ import {
 import { createMockDashboardState } from "metabase-types/store/mocks";
 import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/hooks/use-before-unload";
 
-const mockDashboard = createMockDashboard({
+const TEST_DASHBOARD = createMockDashboard({
   id: 1,
   name: "Example",
-  parameters: [
-    { id: "1", name: "Example", type: "type/Text", slug: "my_param" },
-  ],
 });
 
-const mockCollection = createMockCollection();
+const TEST_COLLECTION = createMockCollection({
+  id: "root",
+});
 
 async function setup(user = createMockUser()) {
-  setupDashboardEndpoints(createMockDashboard(mockDashboard));
+  setupDashboardEndpoints(createMockDashboard(TEST_DASHBOARD));
   setupCollectionsEndpoints([]);
-  setupCollectionItemsEndpoint(mockCollection);
+  setupCollectionItemsEndpoint(TEST_COLLECTION);
 
   fetchMock.get("path:/api/bookmark", []);
 
@@ -49,7 +48,7 @@ async function setup(user = createMockUser()) {
   renderWithProviders(
     <Route path="/dashboard/:slug" component={DashboardAppContainer} />,
     {
-      initialRoute: `/dashboard/${mockDashboard.id}`,
+      initialRoute: `/dashboard/${TEST_DASHBOARD.id}`,
       currentUser: user,
       withRouter: true,
       storeInitialState: {

@@ -2,7 +2,6 @@ import fetchMock from "fetch-mock";
 import _ from "underscore";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import { Card, Collection } from "metabase-types/api";
-import { createMockCollectionItem } from "metabase-types/api/mocks";
 import {
   convertSavedQuestionToVirtualTable,
   getCollectionVirtualSchemaName,
@@ -62,32 +61,7 @@ export function setupCollectionVirtualSchemaEndpoints(
 
 export function setupCollectionItemsEndpoint(
   collection: Collection,
-  collectionItems = [
-    createMockCollectionItem({
-      id: 1,
-      collection,
-      name: "a",
-      model: "card",
-    }),
-    createMockCollectionItem({
-      id: 2,
-      collection,
-      name: "b",
-      model: "dataset",
-    }),
-    createMockCollectionItem({
-      id: 3,
-      collection,
-      name: "c",
-      model: "dashboard",
-    }),
-    createMockCollectionItem({
-      id: 4,
-      collection,
-      name: "d",
-      model: "collection",
-    }),
-  ],
+  collectionItems = [],
 ) {
   fetchMock.get(`path:/api/collection/${collection.id}/items`, uri => {
     const url = new URL(uri);
