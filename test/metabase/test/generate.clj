@@ -168,6 +168,7 @@
 (s/def ::dashboard (s/keys :req-un [::id ::name ::description ::parameters]))
 
 (s/def ::dashboard-card (s/keys :req-un [::id ::size_x ::size_y ::row ::col ::parameter_mappings ::visualization_settings]))
+(s/def ::dashboard-tab (s/keys :req-un [::id ::name ::position]))
 (s/def ::pulse-card (s/keys :req-un [::id ::position]))
 
 (s/def ::channel_type ::not-empty-string)
@@ -252,11 +253,16 @@
                                   :insert!   {:model Dashboard}
                                   :relations {:creator_id    [:core-user :id]
                                               :collection_id [:collection :id]}}
+   :dashboard-tab                {:prefix    :dt
+                                  :spec      ::dashboard-tab
+                                  :insert    {:model :model/DashboardTab}
+                                  :relations {:dashboard_id [:dashboard :id]}}
    :dashboard-card               {:prefix    :dc
                                   :spec      ::dashboard-card
                                   :insert!   {:model DashboardCard}
-                                  :relations {:card_id      [:card :id]
-                                              :dashboard_id [:dashboard :id]}}
+                                  :relations {:card_id          [:card :id]
+                                              :dashboard_id     [:dashboard :id]
+                                              :dashboard_tab_id [:dashboard-tab :id]}}
    :dashboard-card-series        {:prefix  :dcs
                                   :spec    ::dashboard_card_series
                                   :insert! {:model DashboardCardSeries}}

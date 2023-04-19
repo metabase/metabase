@@ -357,10 +357,14 @@
 
 ;;; ----------------------------------------------- SERIALIZATION ----------------------------------------------------
 ;; DashboardCards are not serialized as their own, separate entities. They are inlined onto their parent Dashboards.
+;; And if the parent dashboard has tabs, it'll be inlined inside DashboardTab.
 ;; However, we can reuse some of the serdes machinery (especially load-one!) by implementing a few serdes methods.
 (defmethod serdes/generate-path "DashboardCard" [_ dashcard]
-  [(serdes/infer-self-path "Dashboard" (t2/select-one 'Dashboard :id (:dashboard_id dashcard)))
-   (serdes/infer-self-path "DashboardCard" dashcard)])
+  (remove nil?
+          [(serdes/infer-self-path "Dashboard" (t2/select-one 'Dashboard :id (:dashboard_id dashcard)))
+           (when (:dashboard_tab_id dashcard)
+             (serdes/infer-self-path "DashboardTab" (t2/select-one :model/DashboardTab :id (:dashboard_tab_id dashcard))))
+           (serdes/infer-self-path "DashboardCard" dashcard)]))
 
 (defmethod serdes/load-xform "DashboardCard"
   [dashcard]
@@ -369,6 +373,7 @@
       (update :card_id                serdes/*import-fk* 'Card)
       (update :action_id              serdes/*import-fk* 'Action)
       (update :dashboard_id           serdes/*import-fk* 'Dashboard)
+      (update :dashboard_tab_id       serdes/*import-fk* :model/DashboardTab)
       (update :created_at             #(if (string? %) (u.date/parse %) %))
       (update :parameter_mappings     serdes/import-parameter-mappings)
       (update :visualization_settings serdes/import-visualization-settings)))

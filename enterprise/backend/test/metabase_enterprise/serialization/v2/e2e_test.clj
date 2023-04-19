@@ -629,3 +629,118 @@
                            (-> (t2/select-one Dashboard :name dashboard-name)
                                (t2/hydrate :ordered_cards)
                                dashboard->link-cards)))))))))))))
+(deftest dashboard-with-tabs-test
+  (testing "Dashboard and Card that has parameter with source is a card must be deserialized correctly"
+    (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+      (ts/with-source-and-dest-dbs
+        (ts/with-source-db
+          ;; preparation
+          (t2.with-temp/with-temp
+            [Dashboard           {dashboard-id :id
+                                  :as dashboard}    {:name "Dashboard with tab"}
+             Card                {card-id-1 :id}    {:name "Card 1"}
+             Card                {card-id-2 :id}    {:name "Card 2"}
+             :model/DashboardTab {tab-id-1 :id}     {:name "Tab 1" :position 0 :dashboard_id dashboard-id}
+             :model/DashboardTab {tab-id-2 :id}     {:name "Tab 2" :position 1 :dashboard_id dashboard-id}
+             DashboardCard       _                  {:dashboard_id     dashboard-id
+                                                     :card_id          card-id-1
+                                                     :dashboard_tab_id tab-id-1}
+             DashboardCard       _                  {:dashboard_id     dashboard-id
+                                                     :card_id          card-id-2
+                                                     :dashboard_tab_id tab-id-1}
+             DashboardCard       _                  {:dashboard_id     dashboard-id
+                                                     :card_id          card-id-1
+                                                     :dashboard_tab_id tab-id-2}
+             DashboardCard       _                  {:dashboard_id     dashboard-id
+                                                     :card_id          card-id-2
+                                                     :dashboard_tab_id tab-id-2}]
+            (testing "extract and store"
+              (let [extraction (serdes/with-cache (into [] (extract/extract-metabase {})))]
+                (storage/store! (seq extraction) dump-dir)))
+
+           (testing "ingest and load"
+             (ts/with-dest-db
+               ;; ingest
+               (testing "doing ingestion"
+                 (is (serdes/with-cache (serdes.load/load-metabase (ingest/ingest-yaml dump-dir)))
+                     "successful"))
+
+               (is (some? (:ordered-tabs (t2/hydrate (t2/select-one Dashboard :name (:name dashboard)) :ordered_tabs :ordered_cards))))
+               #_(let [dash1d (t2/select-one Dashboard :name (:name dash1s))
+                       card1d (t2/select-one Card :name (:name card1s))
+                       card2d (t2/select-one Card :name (:name card2s))
+                       field1d (t2/select-one Field :name (:name field1s))]
+                   (testing "parameter on dashboard is loaded correctly"
+                     (is (= {:card_id     (:id card1d),
+                             :value_field [:field (:id field1d) nil]}
+                            (-> dash1d
+                                :parameters
+                                first
+                                :values_source_config)))
+                     (is (some? (t2/select-one 'ParameterCard :parameterized_object_type "dashboard" :parameterized_object_id (:id dash1d)))))
+
+                   (testing "parameter on card is loaded correctly"
+                     (is (= {:card_id     (:id card1d),
+                             :value_field [:field (:id field1d) nil]}
+                            (-> card2d
+                                :parameters
+                                first
+                                :values_source_config)))
+                     (is (some? (t2/select-one 'ParameterCard :parameterized_object_type "card" :parameterized_object_id (:id card2d))))))))))))))
+
+(ts/with-random-dump-dir [dump-dir "serdesv2-"]
+  (ts/with-source-and-dest-dbs
+    (ts/with-source-db
+      ;; preparation
+      (t2.with-temp/with-temp
+        [Dashboard           {dashboard-id :id
+                              :as dashboard}    {:name "Dashboard with tab"}
+         Card                {card-id-1 :id}    {:name "Card 1"}
+         Card                {card-id-2 :id}    {:name "Card 2"}
+         :model/DashboardTab {tab-id-1 :id}     {:name "Tab 1" :position 0 :dashboard_id dashboard-id}
+         :model/DashboardTab {tab-id-2 :id}     {:name "Tab 2" :position 1 :dashboard_id dashboard-id}
+         DashboardCard       _                  {:dashboard_id     dashboard-id
+                                                 :card_id          card-id-1
+                                                 :dashboard_tab_id tab-id-1}
+         DashboardCard       _                  {:dashboard_id     dashboard-id
+                                                 :card_id          card-id-2
+                                                 :dashboard_tab_id tab-id-1}
+         DashboardCard       _                  {:dashboard_id     dashboard-id
+                                                 :card_id          card-id-1
+                                                 :dashboard_tab_id tab-id-2}
+         DashboardCard       _                  {:dashboard_id     dashboard-id
+                                                 :card_id          card-id-2
+                                                 :dashboard_tab_id tab-id-2}]
+        (testing "extract and store"
+          (let [extraction (serdes/with-cache (into [] (extract/extract-metabase {})))]
+            (storage/store! (seq extraction) dump-dir)))
+
+       (testing "ingest and load"
+         (ts/with-dest-db
+           ;; ingest
+           (testing "doing ingestion"
+             (is (serdes/with-cache (serdes.load/load-metabase (ingest/ingest-yaml dump-dir)))
+                 "successful"))
+
+           (is (some? (:ordered_tabs (t2/hydrate (t2/select-one Dashboard :name (:name dashboard)) :ordered_tabs :ordered_cards))))
+           #_(let [dash1d (t2/select-one Dashboard :name (:name dash1s))
+                   card1d (t2/select-one Card :name (:name card1s))
+                   card2d (t2/select-one Card :name (:name card2s))
+                   field1d (t2/select-one Field :name (:name field1s))]
+               (testing "parameter on dashboard is loaded correctly"
+                 (is (= {:card_id     (:id card1d),
+                         :value_field [:field (:id field1d) nil]}
+                        (-> dash1d
+                            :parameters
+                            first
+                            :values_source_config)))
+                 (is (some? (t2/select-one 'ParameterCard :parameterized_object_type "dashboard" :parameterized_object_id (:id dash1d)))))
+
+               (testing "parameter on card is loaded correctly"
+                 (is (= {:card_id     (:id card1d),
+                         :value_field [:field (:id field1d) nil]}
+                        (-> card2d
+                            :parameters
+                            first
+                            :values_source_config)))
+                 (is (some? (t2/select-one 'ParameterCard :parameterized_object_type "card" :parameterized_object_id (:id card2d))))))))))))
