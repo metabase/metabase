@@ -37,13 +37,13 @@ import DatabaseEditApp from "metabase/admin/databases/containers/DatabaseEditApp
 // Metadata / Data model
 import DataModelApp from "metabase/admin/datamodel/containers/DataModelApp";
 import MetadataEditor from "metabase/admin/datamodel/metadata/components/MetadataEditor";
+import MetadataTableSettings from "metabase/admin/datamodel/metadata/components/MetadataTableSettings";
 import MetricListApp from "metabase/admin/datamodel/containers/MetricListApp";
 import MetricApp from "metabase/admin/datamodel/containers/MetricApp";
 import SegmentListApp from "metabase/admin/datamodel/containers/SegmentListApp";
 import SegmentApp from "metabase/admin/datamodel/containers/SegmentApp";
 import RevisionHistoryApp from "metabase/admin/datamodel/containers/RevisionHistoryApp";
 import AdminPeopleApp from "metabase/admin/people/containers/AdminPeopleApp";
-import TableSettingsApp from "metabase/admin/datamodel/containers/TableSettingsApp";
 
 import TroubleshootingApp from "metabase/admin/tasks/containers/TroubleshootingApp";
 import {
@@ -121,7 +121,7 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
           />
           <Route
             path="database/:databaseId/schema/:schemaName/table/:tableId/settings"
-            component={TableSettingsApp}
+            component={MetadataTableSettings}
           />
           <Route path="metrics" component={MetricListApp} />
           <Route path="metric/create" component={MetricApp} />
