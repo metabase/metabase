@@ -62,12 +62,12 @@ const MetadataTableSettings = ({
   onRescanTableFieldValues,
   onDiscardTableFieldValues,
 }: MetadataTableSettingsProps) => {
-  const handleRescanTableFieldValues = useCallback(() => {
-    onRescanTableFieldValues(table.id);
+  const handleRescanTableFieldValues = useCallback(async () => {
+    await onRescanTableFieldValues(table.id);
   }, [table, onRescanTableFieldValues]);
 
-  const handleDiscardTableFieldValues = useCallback(() => {
-    onDiscardTableFieldValues(table.id);
+  const handleDiscardTableFieldValues = useCallback(async () => {
+    await onDiscardTableFieldValues(table.id);
   }, [table, onDiscardTableFieldValues]);
 
   return (
