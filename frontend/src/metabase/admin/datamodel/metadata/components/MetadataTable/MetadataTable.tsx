@@ -19,7 +19,7 @@ import {
 type MetadataTabType = "columns" | "original_schema";
 
 const METADATA_TAB_OPTIONS = [
-  { name: t`Columns`, value: "metadata" },
+  { name: t`Columns`, value: "columns" },
   { name: t`Original schema`, value: "original_schema" },
 ];
 
@@ -182,7 +182,9 @@ const TableVisibilitySection = ({
         <VisibilityBadge
           isSelected={table.visibility_type === null}
           onClick={handleChangeVisible}
-        >{t`Queryable`}</VisibilityBadge>
+        >
+          {t`Queryable`}
+        </VisibilityBadge>
         <VisibilityBadge
           isSelected={
             table.visibility_type == null || table.visibility_type === "hidden"

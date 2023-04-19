@@ -47,14 +47,17 @@ const MetadataEditor = ({ databases, params }: MetadataEditorProps) => {
             selectedTableId={tableId}
           />
         )}
-        {tableId != null && <MetadataTable selectedTableId={tableId} />}
-        <div style={{ paddingTop: "10rem" }} className="full text-centered">
-          <h2 className="text-medium">
-            {databases.length === 0
-              ? t`The page you asked for couldn't be found.`
-              : t`Select any table to see its schema and add or edit metadata.`}
-          </h2>
-        </div>
+        {tableId ? (
+          <MetadataTable selectedTableId={tableId} />
+        ) : (
+          <div style={{ paddingTop: "10rem" }} className="full text-centered">
+            <h2 className="text-medium">
+              {databases.length === 0
+                ? t`The page you asked for couldn't be found.`
+                : t`Select any table to see its schema and add or edit metadata.`}
+            </h2>
+          </div>
+        )}
       </div>
     </div>
   );
