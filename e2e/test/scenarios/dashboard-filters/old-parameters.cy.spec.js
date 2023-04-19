@@ -1,4 +1,10 @@
-import { restore, popover, visitDashboard } from "e2e/support/helpers";
+import {
+  restore,
+  popover,
+  visitDashboard,
+  rightSidebar,
+  filterWidget,
+} from "e2e/support/helpers";
 // NOTE: some overlap with parameters-embedded.cy.spec.js
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -63,7 +69,7 @@ describe("scenarios > dashboard > OLD parameters", () => {
     it("should work", () => {
       cy.findAllByText("Doohickey");
 
-      cy.contains("Category").click();
+      cy.button("Category").click();
       popover().within(() => {
         cy.findByText("Gadget").click();
         cy.findByText("Add filter").click();
@@ -71,6 +77,23 @@ describe("scenarios > dashboard > OLD parameters", () => {
 
       // verify that the filter is applied
       cy.findByText("Doohickey").should("not.exist");
+
+      // test prevent auto-apply filters in slow dashboards metabase#29267
+      openDashboardSidebar();
+
+      filterWidget().findByText("Gadget").should("be.visible");
+      rightSidebar().findByLabelText("Auto-apply filters").click();
+      filterWidget().button("Apply").should("not.exist");
+
+      cy.button("Category").click();
+      popover().within(() => {
+        cy.findByText("Gadget").click();
+        cy.findByText("Add filter").click();
+      });
+
+      cy.findByText("Rows 1-6 of 200").should("be.visible");
+      cy.button("Apply").click();
+      cy.findByText("Rows 1-6 of 53").should("be.visible");
     });
   });
 
@@ -202,3 +225,9 @@ describe("scenarios > dashboard > OLD parameters", () => {
     });
   });
 });
+
+function openDashboardSidebar() {
+  cy.get("main header").within(() => {
+    cy.icon("info").click();
+  });
+}

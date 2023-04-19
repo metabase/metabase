@@ -55,4 +55,6 @@
         (test-urls-are-valid dashboard))
       (testing "Dashboard's cards should be valid"
         (doseq [card (keep :card (:ordered_cards dashboard))]
-          (test-card-is-valid card))))))
+          (test-card-is-valid card)))
+      (testing "Dashboard should have `auto_apply_filters` set to true"
+        (is (true? (:auto_apply_filters dashboard)))))))
