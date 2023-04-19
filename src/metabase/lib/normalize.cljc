@@ -35,13 +35,15 @@
 
 (def default-map-value-fns
   "Default normalization functions keys when doing map normalization."
-  {:base-type   keyword
-   :type        keyword
+  {:base-type      keyword
+   :effective-type keyword
+   :semantic-type  keyword
+   :type           keyword
    ;; we can calculate `:field_ref` now using [[metabase.lib.ref/ref]]; `:field_ref` is wrong half of the time anyway,
    ;; so ignore it.
-   :field_ref   (constantly ::do-not-use-me)
-   :lib/type    keyword
-   :lib/options normalize})
+   :field_ref      (constantly ::do-not-use-me)
+   :lib/type       keyword
+   :lib/options    normalize})
 
 (defn normalize-map
   "[[normalize]] a map using `key-fn` (default [[clojure.core/keyword]]) for keys and
