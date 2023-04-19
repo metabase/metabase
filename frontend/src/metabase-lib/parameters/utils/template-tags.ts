@@ -58,7 +58,9 @@ export function getTemplateTagParameters(
   return tags
     .filter(
       tag =>
-        tag.type != null && (tag["widget-type"] || tag.type !== "dimension"),
+        tag.type != null &&
+        ((tag["widget-type"] && tag["widget-type"] !== "none") ||
+          tag.type !== "dimension"),
     )
     .map(tag => getTemplateTagParameter(tag, parametersById[tag.id]));
 }
