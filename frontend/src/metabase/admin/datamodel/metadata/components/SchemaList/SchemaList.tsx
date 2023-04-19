@@ -1,20 +1,39 @@
 import React, { useCallback, useMemo, useState } from "react";
+import { connect } from "react-redux";
+import { push } from "react-router-redux";
 import cx from "classnames";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
+import * as Urls from "metabase/lib/urls";
+import Schemas from "metabase/entities/schemas";
 import Icon from "metabase/components/Icon/Icon";
 import { DatabaseId, Schema } from "metabase-types/api";
+import { Dispatch, State } from "metabase-types/store";
 
-interface SchemaListProps {
-  schemas: Schema[];
+interface OwnProps {
   selectedDatabaseId: DatabaseId;
-  selectedSchema?: Schema;
-  onSelectSchema: (schemaName: string) => void;
+  selectedSchemaName?: string;
 }
+
+interface SchemaLoaderProps {
+  schemas: Schema[];
+}
+
+interface DispatchProps {
+  onSelectSchema: (databaseId: DatabaseId, schemaName: string) => void;
+}
+
+type SchemaListProps = OwnProps & SchemaLoaderProps & DispatchProps;
+
+const mapDispatchToProps = (dispatch: Dispatch): DispatchProps => ({
+  onSelectSchema: (databaseId, schemaName) =>
+    dispatch(push(Urls.dataModelSchema(databaseId, schemaName))),
+});
 
 const SchemaList = ({
   schemas: allSchemas,
-  selectedSchema,
+  selectedDatabaseId,
+  selectedSchemaName,
   onSelectSchema,
 }: SchemaListProps) => {
   const [searchText, setSearchText] = useState("");
@@ -27,6 +46,13 @@ const SchemaList = ({
       .sortBy(schema => schema.name)
       .value();
   }, [allSchemas, searchText]);
+
+  const handleSelectSchema = useCallback(
+    (schemaName: string) => {
+      onSelectSchema(selectedDatabaseId, schemaName);
+    },
+    [selectedDatabaseId, onSelectSchema],
+  );
 
   return (
     <div className="MetadataEditor-table-list AdminList flex-no-shrink">
@@ -52,8 +78,8 @@ const SchemaList = ({
           <SchemaRow
             key={schema.id}
             schema={schema}
-            isSelected={schema.id === selectedSchema?.id}
-            onSelectSchema={onSelectSchema}
+            isSelected={schema.name === selectedSchemaName}
+            onSelectSchema={handleSelectSchema}
           />
         ))}
       </ul>
@@ -87,4 +113,11 @@ const SchemaRow = ({ schema, isSelected, onSelectSchema }: SchemaRowProps) => {
   );
 };
 
-export default SchemaList;
+export default _.compose(
+  Schemas.loadList({
+    query: (_: State, { selectedDatabaseId }: OwnProps) => ({
+      dbId: selectedDatabaseId,
+    }),
+  }),
+  connect(null, mapDispatchToProps),
+)(SchemaList);

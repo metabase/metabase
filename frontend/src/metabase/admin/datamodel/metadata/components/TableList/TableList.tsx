@@ -5,41 +5,76 @@ import React, {
   useMemo,
   useState,
 } from "react";
+import { connect } from "react-redux";
+import { push } from "react-router-redux";
 import { useAsyncFn } from "react-use";
 import cx from "classnames";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
-import { useDispatch } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
 import Tables from "metabase/entities/tables";
 import Icon from "metabase/components/Icon/Icon";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import Tooltip from "metabase/core/components/Tooltip";
 import {
   DatabaseId,
-  Schema,
   Table,
   TableId,
   TableVisibilityType,
 } from "metabase-types/api";
+import { Dispatch, State } from "metabase-types/store";
 
-interface TableListProps {
-  tables: Table[];
+interface OwnProps {
   selectedDatabaseId: DatabaseId;
-  selectedSchema: Schema;
-  selectedTable?: Table;
-  onSelectTable: (tableId: TableId) => void;
-  onBack?: () => void;
+  selectedSchemaName: string;
+  selectedTableId?: TableId;
+  canGoBack: boolean;
 }
 
+interface TableLoaderProps {
+  tables: Table[];
+}
+
+interface DispatchProps {
+  onSelectDatabase: (databaseId: DatabaseId) => void;
+  onSelectTable: (
+    databaseId: DatabaseId,
+    schemaName: string,
+    tableId: TableId,
+  ) => void;
+  onUpdateTableVisibility: (
+    tables: Table[],
+    visibility: TableVisibilityType,
+  ) => Promise<void>;
+}
+
+type TableListProps = OwnProps & TableLoaderProps & DispatchProps;
+
+const mapDispatchToProps = (dispatch: Dispatch): DispatchProps => ({
+  onSelectDatabase: databaseId =>
+    dispatch(push(Urls.dataModelDatabase(databaseId))),
+  onSelectTable: (databaseId, schemaName, tableId) =>
+    dispatch(push(Urls.dataModelTable(databaseId, schemaName, tableId))),
+  onUpdateTableVisibility: async (tables, visibility) =>
+    dispatch(
+      Tables.actions.bulkUpdate({
+        ids: tables.map(table => table.id),
+        visibility_type: visibility,
+      }),
+    ),
+});
+
 const TableList = ({
-  selectedSchema,
-  selectedTable,
   tables: allTables,
+  selectedDatabaseId,
+  selectedSchemaName,
+  selectedTableId,
+  canGoBack,
+  onSelectDatabase,
   onSelectTable,
-  onBack,
+  onUpdateTableVisibility,
 }: TableListProps) => {
   const [searchText, setSearchText] = useState("");
-  const dispatch = useDispatch();
 
   const [hiddenTables, visibleTables] = useMemo(() => {
     const searchValue = searchText.toLowerCase();
@@ -51,53 +86,57 @@ const TableList = ({
       .value();
   }, [allTables, searchText]);
 
-  const handleUpdateVisibility = useCallback(
-    async (tables: Table[], visibility: TableVisibilityType) => {
-      const payload = {
-        ids: tables.map(({ id }) => id),
-        visibility_type: visibility,
-      };
-
-      await dispatch(Tables.actions.bulkUpdate(payload));
+  const handleSelectTable = useCallback(
+    (tableId: TableId) => {
+      onSelectTable(selectedDatabaseId, selectedSchemaName, tableId);
     },
-    [dispatch],
+    [selectedDatabaseId, selectedSchemaName, onSelectTable],
   );
+
+  const handleSelectDatabase = useCallback(() => {
+    onSelectDatabase(selectedDatabaseId);
+  }, [selectedDatabaseId, onSelectDatabase]);
 
   return (
     <div className="MetadataEditor-table-list AdminList flex-no-shrink">
       <TableSearch searchText={searchText} onChangeSearchText={setSearchText} />
-      {onBack && <TableBreadcrumbs schema={selectedSchema} onBack={onBack} />}
+      {canGoBack && (
+        <TableBreadcrumbs
+          schemaName={selectedSchemaName}
+          onBack={handleSelectDatabase}
+        />
+      )}
       <ul className="AdminList-items">
         {visibleTables.length > 0 && (
           <TableHeader
             tables={visibleTables}
             isHidden={false}
-            onUpdateTableVisibility={handleUpdateVisibility}
+            onUpdateTableVisibility={onUpdateTableVisibility}
           />
         )}
         {visibleTables.map(table => (
           <TableRow
             key={table.id}
             table={table}
-            isSelected={table.id === selectedTable?.id}
-            onSelectTable={onSelectTable}
-            onUpdateTableVisibility={handleUpdateVisibility}
+            isSelected={table.id === selectedTableId}
+            onSelectTable={handleSelectTable}
+            onUpdateTableVisibility={onUpdateTableVisibility}
           />
         ))}
         {hiddenTables.length > 0 && (
           <TableHeader
             tables={hiddenTables}
             isHidden={true}
-            onUpdateTableVisibility={handleUpdateVisibility}
+            onUpdateTableVisibility={onUpdateTableVisibility}
           />
         )}
         {hiddenTables.map(table => (
           <TableRow
             key={table.id}
             table={table}
-            isSelected={table.id === selectedTable?.id}
-            onSelectTable={onSelectTable}
-            onUpdateTableVisibility={handleUpdateVisibility}
+            isSelected={table.id === selectedTableId}
+            onSelectTable={handleSelectTable}
+            onUpdateTableVisibility={onUpdateTableVisibility}
           />
         ))}
         {visibleTables.length === 0 && hiddenTables.length === 0 && (
@@ -136,11 +175,11 @@ const TableSearch = ({ searchText, onChangeSearchText }: TableSearchProps) => {
 };
 
 interface TableBreadcrumbsProps {
-  schema: Schema;
+  schemaName: string;
   onBack: () => void;
 }
 
-const TableBreadcrumbs = ({ schema, onBack }: TableBreadcrumbsProps) => {
+const TableBreadcrumbs = ({ schemaName, onBack }: TableBreadcrumbsProps) => {
   return (
     <h4 className="p2 border-bottom break-anywhere">
       <span className="text-brand cursor-pointer" onClick={onBack}>
@@ -148,7 +187,7 @@ const TableBreadcrumbs = ({ schema, onBack }: TableBreadcrumbsProps) => {
         {t`Schemas`}
       </span>
       <span className="mx1">-</span>
-      <span>{schema.name}</span>
+      <span>{schemaName}</span>
     </h4>
   );
 };
@@ -290,4 +329,15 @@ const getToggleTooltip = (isHidden: boolean, hasMultipleTables?: boolean) => {
   }
 };
 
-export default TableList;
+export default _.compose(
+  Tables.loadList({
+    query: (
+      _: State,
+      { selectedDatabaseId, selectedSchemaName }: OwnProps,
+    ) => ({
+      dbId: selectedDatabaseId,
+      schemaName: selectedSchemaName,
+    }),
+  }),
+  connect(null, mapDispatchToProps),
+)(TableList);
