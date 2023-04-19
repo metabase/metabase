@@ -19,7 +19,12 @@ interface DashboardTabsProps {
 export function DashboardTabs({ isEditing }: DashboardTabsProps) {
   const { tabs, createNewTab, deleteTab, renameTab, selectTab, selectedTabId } =
     useDashboardTabs();
+  const showTabs = tabs.length > 1 || isEditing;
   const showPlaceholder = tabs.length === 0 && isEditing;
+
+  if (!showTabs) {
+    return null;
+  }
 
   return (
     <Container>
