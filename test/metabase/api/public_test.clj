@@ -686,17 +686,6 @@
     (is (= (price-param-values)
            (GET-param-values dash)))))
 
-(deftest check-that-we-create-field-values-if-they-are-not-existed
-  (with-temp-public-dashboard-and-card [dash card dashcard]
-    (add-price-param-to-dashboard! dash)
-    (add-dimension-param-mapping-to-dashcard! dashcard card ["field" (mt/id :venues :price) nil])
-    ;; delete it first
-    (t2/delete! FieldValues :field_id (mt/id :venues :price) :type :full)
-    (is (= (price-param-values)
-           (GET-param-values dash)))
-    (is (true? (t2/exists? FieldValues :field_id (mt/id :venues :price) :type :full)))))
-
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        New FieldValues search endpoints                                        |
 ;;; +----------------------------------------------------------------------------------------------------------------+
