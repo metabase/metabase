@@ -122,6 +122,13 @@
         sqls       (map #(sql/format {:insert-into table-name
                                       :columns     columns
                                       :values      %})
-                        (partition-all 25 values))]
+                        (partition-all 100 values))]
+    ;; We need to partition the insert into multiple statements for both performance and correctness.
+    ;;
+    ;; On Postgres with a large file, 100 (3.76m) was significantly faster than 50 (4.03m) and 25 (4.27m). 1,000 was a
+    ;; little faster but not by much (3.63m), and 10,000 threw an error:
+    ;;     PreparedStatement can have at most 65,535 parameters
+    ;; One imagines that `(long (/ 65535 (count columns)))` might be best, but I don't trust the 65K limit to apply
+    ;; across all drivers. With that in mind, 100 seems like a safe compromise.
     (doseq [sql sqls]
       (qp.writeback/execute-write-sql! db-id sql))))
