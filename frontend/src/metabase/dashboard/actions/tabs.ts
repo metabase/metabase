@@ -1,6 +1,7 @@
 import type { Action } from "redux-actions";
 
 import {
+  DashboardId,
   DashboardOrderedCard,
   DashboardOrderedTab,
   DashboardTabId,
@@ -31,10 +32,14 @@ const SELECT_TAB = "metabase/dashboard/SELECT_TAB";
 const SAVE_CARDS_AND_TABS = "metabase/dashboard/SAVE_CARDS_AND_TABS";
 const INIT_TABS = "metabase/dashboard/INIT_TABS";
 
-let tempNewTabId = -1;
+let tempNewTabId = -2;
 export function createNewTab() {
+  // Decrement by 2 to leave space for two new tabs if dash doesn't have tabs already
+  const tabId = tempNewTabId;
+  tempNewTabId -= 2;
+
   const action = createAction<CreateNewTabPayload>(CREATE_NEW_TAB);
-  return action({ tabId: tempNewTabId-- });
+  return action({ tabId });
 }
 
 export const deleteTab = createAction<DeleteTabPayload>(DELETE_TAB);
@@ -56,6 +61,21 @@ function getPrevDashAndTabs(state: DashboardState) {
   return { dashId, prevDash, prevTabs };
 }
 
+function getDefaultTab(
+  tabId: DashboardTabId,
+  dashId: DashboardId,
+  name: string,
+) {
+  return {
+    id: tabId,
+    dashboard_id: dashId,
+    name,
+    entity_id: "",
+    created_at: "",
+    updated_at: "",
+  };
+}
+
 export const tabsReducer = handleActions<DashboardState, TabsReducerPayload>(
   {
     [CREATE_NEW_TAB]: (
@@ -69,34 +89,56 @@ export const tabsReducer = handleActions<DashboardState, TabsReducerPayload>(
         );
       }
 
-      // 1. Create new tab, add to dashboard
-      const newTab: DashboardOrderedTab = {
-        id: tabId,
-        dashboard_id: dashId,
-        name: `Page ${prevTabs.length + 1}`,
-        entity_id: "",
-        created_at: "",
-        updated_at: "",
-      };
+      // Case 1: Dashboard already has tabs
+      if (prevTabs.length !== 0) {
+        // 1. Create new tab, add to dashboard
+        const newTab = getDefaultTab(
+          tabId,
+          dashId,
+          `Page ${prevTabs.length + 1}`,
+        );
+        const dashboards: DashboardState["dashboards"] = {
+          ...state.dashboards,
+          [dashId]: {
+            ...prevDash,
+            ordered_tabs: [...prevTabs, newTab],
+          },
+        };
+
+        // 2. Select new tab
+        const selectedTabId = tabId;
+
+        return { ...state, dashboards, selectedTabId };
+      }
+
+      // Case 2: Dashboard doesn't have tabs
+
+      // 1. Create two new tabs, add to dashboard
+      const firstTabId = tabId - 1;
+      const secondTabId = tabId;
+      const newTabs = [
+        getDefaultTab(firstTabId, dashId, "Page 1"),
+        getDefaultTab(secondTabId, dashId, "Page 2"),
+      ];
       const dashboards: DashboardState["dashboards"] = {
         ...state.dashboards,
         [dashId]: {
           ...prevDash,
-          ordered_tabs: [...prevTabs, newTab],
+          ordered_tabs: [...prevTabs, ...newTabs],
         },
       };
 
-      // 2. Select new tab
-      const selectedTabId = tabId;
+      // 2. Select second tab
+      const selectedTabId = secondTabId;
 
-      // 3. Update tab id on existing dashcards if this is the first tab added
+      // 3. Assign existing dashcards to first tab
       const dashcards: DashboardState["dashcards"] = { ...state.dashcards };
       if (prevTabs.length === 0) {
         prevDash.ordered_cards.forEach(id => {
           dashcards[id] = {
             ...state.dashcards[id],
             isDirty: true,
-            dashboard_tab_id: tabId,
+            dashboard_tab_id: firstTabId,
           };
         });
       }
