@@ -1455,17 +1455,19 @@
     (with-simple-dashboard-with-tabs [{:keys [dashboard-id dashtab-id-1 dashtab-id-2]}]
       (with-dashboards-in-writeable-collection [dashboard-id]
         ;; send a request that update and create and delete some cards at the same time
+        (is (some? (t2/select-one :model/DashboardTab :id dashtab-id-2)))
         (let [tabs (:ordered_tabs (mt/user-http-request :rasta :put 200 (format "dashboard/%d/cards" dashboard-id)
-                                                {:ordered_tabs [{:name     "Tab 1 edited"
-                                                                 :id       dashtab-id-1}
-                                                                {:name     "Tab new"
-                                                                 :id       -1}]}))]
-          (is (=? [{:id           dashtab-id-1
-                    :dashboard_id dashboard-id
-                    :name         "Tab 1 edited"
-                    :position     0}
-                   {:dashboard_id dashboard-id
+                                                        {:ordered_tabs [{:name     "Tab new"
+                                                                         :id       -1}
+                                                                        {:name     "Tab 1 moved to second position"
+                                                                         :id       dashtab-id-1}]}))]
+
+          (is (=? [{:dashboard_id dashboard-id
                     :name         "Tab new"
+                    :position     0}
+                   {:id           dashtab-id-1
+                    :dashboard_id dashboard-id
+                    :name         "Tab 1 moved to second position"
                     :position     1}]
                   tabs))
           ;; dashtab 2 is deleted
@@ -1863,25 +1865,25 @@
 
 (deftest delete-tabs-test
   (testing "PUT /api/dashboard/id/:cards to delete"
-    #_(testing "partial delete"
-        (with-simple-dashboard-with-tabs [{:keys [dashboard-id dashtab-id-1 dashtab-id-2]}]
-          (testing "we have 2 tabs, each has 1 card to begin with"
-            (is (= 2
-                   (t2/count DashboardCard, :dashboard_id dashboard-id)))
-            (is (= 2
-                   (t2/count :model/DashboardTab :dashboard_id dashboard-id))))
-          (is (=? {:ordered_tabs [{:id dashtab-id-1}]}
-                  (mt/user-http-request :rasta :put 200
-                                        (format "dashboard/%d/cards" dashboard-id)
-                                        {:ordered_tabs [(t2/select-one :model/DashboardTab :id dashtab-id-1)]
-                                         :cards (current-cards dashboard-id)})))
-          (testing "deteted 1 tab, we should have"
-            (testing "1 card left"
-              (is (= 1
-                     (t2/count DashboardCard :dashboard_id dashboard-id))))
-            (testing "1 tab left"
-              (is (= 1
-                     (t2/count :model/DashboardTab :dashboard_id dashboard-id)))))))
+    (testing "partial delete"
+      (with-simple-dashboard-with-tabs [{:keys [dashboard-id dashtab-id-1 dashtab-id-2]}]
+        (testing "we have 2 tabs, each has 1 card to begin with"
+          (is (= 2
+                 (t2/count DashboardCard, :dashboard_id dashboard-id)))
+          (is (= 2
+                 (t2/count :model/DashboardTab :dashboard_id dashboard-id))))
+        (is (=? {:ordered_tabs [{:id dashtab-id-1}]}
+                (mt/user-http-request :rasta :put 200
+                                      (format "dashboard/%d/cards" dashboard-id)
+                                      {:ordered_tabs [(t2/select-one :model/DashboardTab :id dashtab-id-1)]
+                                       :cards (current-cards dashboard-id)})))
+        (testing "deteted 1 tab, we should have"
+          (testing "1 card left"
+            (is (= 1
+                   (t2/count DashboardCard :dashboard_id dashboard-id))))
+          (testing "1 tab left"
+            (is (= 1
+                   (t2/count :model/DashboardTab :dashboard_id dashboard-id)))))))
     (testing "prune"
       (with-simple-dashboard-with-tabs [{:keys [dashboard-id dashtab-id-1 dashtab-id-2]}]
         (testing "we have 2 tabs, each has 1 card to begin with"

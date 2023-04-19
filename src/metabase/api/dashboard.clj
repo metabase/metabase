@@ -217,9 +217,8 @@
       ;; i'm a bit worried that this is an n+1 situation here. The cards can be batch hydrated i think because they
       ;; have a hydration key and an id. moderation_reviews currently aren't batch hydrated but i'm worried they
       ;; cannot be in this situation
-      (hydrate :ordered_tabs
-               [:ordered_cards [:card [:moderation_reviews :moderator_details]] :series :dashcard/action :dashcard/linkcard-info]
-               :collection_authority_level :can_write :param_fields)
+      (hydrate :collection_authority_level :can_write :param_fields :ordered_tabs
+               [:ordered_cards [:card [:moderation_reviews :moderator_details]] :series :dashcard/action :dashcard/linkcard-info])
       api/read-check
       api/check-not-archived
       hide-unreadable-cards
@@ -518,19 +517,19 @@
                                         [:to-create [:sequential [:map [:id ms/NegativeInt]]]]
                                         [:to-update [:sequential [:map [:id ms/PositiveInt]]]]
                                         [:to-delete [:sequential [:map [:id ms/PositiveInt]]]]]
-  "Given 2 lists of seq maps items, where each map an `id` keys,
-  return a map of 3 keys, `:to-create`, `:to-update`, `:to-delete`.
+  "Given 2 lists of seq maps of changes, where each map an has an `id` key,
+  return a map of 3 keys: `:to-create`, `:to-update`, `:to-delete`.
 
   Where:
     :to-create is a list of maps that has negative ids in `new-items`
     :to-update is a list of maps that has ids in both `current-items` and `new-items`
     :to delete is a list of maps that has ids only in `current-items`"
   [current-items :- [:sequential [:map [:id ms/PositiveInt]]]
-   new-items     :- [:sequential [:map [:id int?]]]]
+   new-items     :- [:sequential [:map [:id ms/Int]]]]
   (let [new-change-ids     (set (map :id new-items))
-        to-create          (remove (comp pos? :id) new-items)
+        to-create          (filter (comp neg? :id) new-items)
         ;; to-update items are new items with id in the current items
-        to-update          (remove (comp neg? :id) new-items)
+        to-update          (filter (comp pos? :id) new-items)
         ;; to delete items in current but not new items
         to-delete          (remove (comp new-change-ids :id) current-items)]
     {:to-update to-update
@@ -548,7 +547,9 @@
     (zipmap (map :id new-tabs) new-tab-ids)))
 
 (mu/defn ^:private update-tabs! :- nil?
-  [dashboard new-tabs]
+  [dashboard :- [:map [:id pos-int?]
+                      [:ordered_tabs [:maybe [:sequential map?]]]]
+   new-tabs  :- [:sequential [:map [:id ms/PositiveInt]]]]
   (let [current-tabs    (:ordered_tabs dashboard)
         update-ks       [:name :position]
         id->current-tab (group-by :id current-tabs)
@@ -565,14 +566,16 @@
     nil))
 
 (mu/defn ^:private delete-tabs! :- nil?
-  [tab-ids :- [:sequential ms/PositiveInt]]
-  ;; TODO: Malli has repeat pattern `:+` that'll automatically do empty check, but `mu/defn` currently
-  ;; has bug with it https://github.com/metabase/metabase/issues/29921
+  [tab-ids :- [:sequential {:min 1} ms/PositiveInt]]
   (when (seq tab-ids)
     (t2/delete! :model/DashboardTab :id [:in tab-ids]))
   nil)
 
-(mu/defn ^:private update-dashtabs!
+(defn ^:private do-update-tabs!
+  "Given current tabs and new tabs, do the necessary create/update/delete to apply new tab changes.
+  Returns:
+  - a map of temporary tab ID to the new real tab ID
+  - a list of deleted tab ids"
   [dashboard current-tabs new-tabs]
   (when-not (= (range (count new-tabs))
                (sort (map :position new-tabs)))
@@ -649,6 +652,27 @@
    [:id   ms/Int]
    [:name ms/NonBlankString]])
 
+(defn- update-dashboard-with-tabs!
+  [dashboard new-tabs new-cards]
+  (let [{:keys [temp->real-tab-ids
+                deleted-tab-ids]}  (do-update-tabs! dashboard (:ordered_tabs dashboard) new-tabs)
+        current-cards              (if (seq deleted-tab-ids)
+                                       (remove (fn [card]
+                                                 (contains? deleted-tab-ids (:dashboard_tab_id card)))
+                                               (:ordered_cards dashboard))
+                                       (:ordered_cards dashboard))
+        new-cards                  (cond->> new-cards
+                                     ;; fixup the temporary tab ids with the real ones
+                                     (seq temp->real-tab-ids)
+                                     (map (fn [card]
+                                            (if-let [real-tab-id (get temp->real-tab-ids (:dashboard_tab_id card))]
+                                              (assoc card :dashboard_tab_id real-tab-id)
+                                              card)))
+                                     ;; if there are deleted tabs, we need to remove the dashcards from those tabs
+                                     (seq deleted-tab-ids)
+                                     (remove #(contains? deleted-tab-ids (:dashboard_tab_id %))))]
+    (do-update-dashcards! dashboard current-cards new-cards)))
+
 (api/defendpoint PUT "/:id/cards"
   "Update `Cards` and `Tabs` on a Dashboard. Request body should have the form:
 
@@ -670,32 +694,14 @@
   (let [dashboard     (-> (api/write-check Dashboard id)
                           api/check-not-archived
                           (t2/hydrate [:ordered_cards :series :card] :ordered_tabs))
-        current-cards (:ordered_cards dashboard)
         ordered-tabs  (when-not (nil? ordered_tabs)
                         (map-indexed (fn [idx tab] (assoc tab :position idx)) ordered_tabs))]
     (api/check-500
       (t2/with-transaction [_conn]
         (if-not (nil? ordered-tabs)
-          (let [{:keys [temp->real-tab-ids deleted-tab-ids]} (update-dashtabs! dashboard (:ordered_tabs dashboard) ordered-tabs)
-                new-cards     (cond->> cards
-                                (seq temp->real-tab-ids)
-                                (map (fn [card]
-                                       (if-let [real-tab-id (get temp->real-tab-ids (:dashboard_tab_id card))]
-                                         (assoc card :dashboard_tab_id real-tab-id)
-                                         card)))
-
-                                (seq deleted-tab-ids)
-                                (remove (fn [card]
-                                          (contains? deleted-tab-ids (:dashboard_tab_id card)))))
-
-                current-cards (if (seq deleted-tab-ids)
-                                (remove (fn [card]
-                                          (contains? deleted-tab-ids (:dashboard_tab_id card)))
-                                        current-cards)
-                                current-cards)]
-            (do-update-dashcards! dashboard current-cards new-cards))
+          (update-dashboard-with-tabs! dashboard ordered-tabs cards)
           ;; dashboard with no tabs cases
-          (do-update-dashcards! dashboard current-cards cards))
+          (do-update-dashcards! dashboard (:ordered_cards dashboard) cards))
         true))
     {:cards        (t2/hydrate (dashboard/ordered-cards id) :series)
      :ordered_tabs (dashboard/ordered-tabs id)}))
