@@ -66,15 +66,15 @@ GRANT CONNECT ON DATABASE <your_database> TO analytics;
 To give the `metabase` user permission to connect, query, and write to a specific table:
 
 ```sql
-USE <database>;
-GRANT ALL ON <table> IN SCHEMA <schema> TO metabase;
+USE <your_database>;
+GRANT ALL ON <your_table> IN SCHEMA <your_schema> TO metabase;
 ```
 
 To give the `metabase` user permission to connect, query, and write to any of the tables in a specific schema:
 
 ```sql
-USE <database>;
-GRANT ALL ON <table> TO metabase;
+USE <your_database>;
+GRANT ALL ON <your_table> TO metabase;
 ```
 
 ## Syncing and scanning databases
