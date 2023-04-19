@@ -170,10 +170,11 @@
                             "2022-02-01,2023-02-29,2022-01-01T00:00:00,2023-02-29T00:00:00"]))))))
 
 (deftest unique-table-name-test
-  (testing "File name is slugified"
-    (is (=? #"my_file_name_\d+" (#'upload/unique-table-name "my file name"))))
-  (testing "semicolons are removed"
-    (is (nil? (re-find #";" (#'upload/unique-table-name "some text; -- DROP TABLE.csv"))))))
+  (mt/test-driver (mt/normal-drivers-with-feature :uploads)
+    (testing "File name is slugified"
+      (is (=? #"my_file_name_\d+" (#'upload/unique-table-name driver/*driver* "my file name"))))
+    (testing "semicolons are removed"
+      (is (nil? (re-find #";" (#'upload/unique-table-name driver/*driver* "some text; -- DROP TABLE.csv")))))))
 
 (deftest load-from-csv-table-name-test
   (testing "Upload a CSV file"
