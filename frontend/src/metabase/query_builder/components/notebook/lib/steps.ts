@@ -126,7 +126,11 @@ const STEPS: NotebookStepDef[] = [
         stageIndex,
       );
     },
-    clean: query => query.cleanSorts(),
+
+    // Order-bys can only be added from the notebook editor, and they're ported to MLv2.
+    // MLv2 guarantees that a query is valid in any given point of time,
+    // so cleaning order-bys can be skipped for order-bys.
+    clean: query => query,
   },
   {
     type: "limit",
