@@ -127,9 +127,9 @@ const STEPS: NotebookStepDef[] = [
       );
     },
 
-    // Order-bys can only be added from the notebook editor, and they're ported to MLv2.
-    // MLv2 guarantees that a query is valid in any given point of time,
-    // so cleaning order-bys can be skipped for order-bys.
+    // Order-bys can only be added from the notebook editor with MLv2.
+    // MLv2 guarantees that a query is valid at any given point of time,
+    // so we can skip order-bys cleaning.
     clean: query => query,
   },
   {
