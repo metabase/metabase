@@ -109,16 +109,16 @@
       (mt/with-model-cleanup [ViewLog]
         (mt/with-test-user :crowberto
           (mt/with-temporary-setting-values [user-recent-views []]
-            (doseq [event [{:topic :card-read :item dataset}
-                           {:topic :card-read :item dataset}
-                           {:topic :card-read :item card1}
-                           {:topic :card-read :item card1}
-                           {:topic :card-read :item card1}
+            (doseq [event [{:topic :card-query :item dataset}
+                           {:topic :card-query :item dataset}
+                           {:topic :card-query :item card1}
+                           {:topic :card-query :item card1}
+                           {:topic :card-query :item card1}
                            {:topic :dashboard-read :item dash}
-                           {:topic :card-read :item card1}
+                           {:topic :card-query :item card1}
                            {:topic :dashboard-read :item dash}
                            {:topic :table-read :item table1}
-                           {:topic :card-read :item archived}
+                           {:topic :card-query :item archived}
                            {:topic :table-read :item hidden-table}]]
               (view-log/handle-view-event!
                ;; view log entries look for the `:actor_id` in the item being viewed to set that view's :user_id
@@ -133,8 +133,8 @@
                      recent-views))))))
         (mt/with-test-user :rasta
           (mt/with-temporary-setting-values [user-recent-views []]
-            (view-log/handle-view-event! {:topic :card-read :item (assoc dataset :actor_id (mt/user->id :rasta))})
-            (view-log/handle-view-event! {:topic :card-read :item (assoc card1 :actor_id (mt/user->id :crowberto))})
+            (view-log/handle-view-event! {:topic :card-query :item (assoc dataset :actor_id (mt/user->id :rasta))})
+            (view-log/handle-view-event! {:topic :card-query :item (assoc card1 :actor_id (mt/user->id :crowberto))})
             (testing "Only the user's own views are returned."
               (let [recent-views (mt/user-http-request :rasta :get 200 "activity/recent_views")]
                 (is (partial=

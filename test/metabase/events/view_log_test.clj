@@ -92,16 +92,16 @@
     (testing "User's recent views are updated when card/dashboard/table-read events occur."
       (mt/with-test-user :crowberto
         (view-log/user-recent-views! []) ;; ensure no views from any other tests/temp items exist
-        (doseq [event [{:topic :card-read :item dataset} ;; oldest view
-                       {:topic :card-read :item dataset}
-                       {:topic :card-read :item card1}
-                       {:topic :card-read :item card1}
-                       {:topic :card-read :item card1}
+        (doseq [event [{:topic :card-query :item dataset} ;; oldest view
+                       {:topic :card-query :item dataset}
+                       {:topic :card-query :item card1}
+                       {:topic :card-query :item card1}
+                       {:topic :card-query :item card1}
                        {:topic :dashboard-read :item dash}
-                       {:topic :card-read :item card1}
+                       {:topic :card-query :item card1}
                        {:topic :dashboard-read :item dash}
                        {:topic :table-read :item table1}
-                       {:topic :card-read :item archived}
+                       {:topic :card-query :item archived}
                        {:topic :table-read :item hidden-table}]]
           (view-log/handle-view-event!
            ;; view log entries look for the `:actor_id` in the item being viewed to set that view's :user_id
