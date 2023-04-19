@@ -9,12 +9,20 @@ import { useAsyncFn } from "react-use";
 import cx from "classnames";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
+import { useDispatch } from "metabase/lib/redux";
+import Tables from "metabase/entities/tables";
 import Icon from "metabase/components/Icon/Icon";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import Tooltip from "metabase/core/components/Tooltip";
-import { Schema, Table, TableVisibilityType } from "metabase-types/api";
+import {
+  DatabaseId,
+  Schema,
+  Table,
+  TableVisibilityType,
+} from "metabase-types/api";
 
 interface OwnProps {
+  selectedDatabaseId: DatabaseId;
   selectedSchema: Schema;
   selectedTable?: Table;
   onSelectTable: (table: Table) => void;
@@ -25,24 +33,17 @@ interface TableLoaderProps {
   tables: Table[];
 }
 
-interface DispatchProps {
-  onUpdateTableVisibility: (
-    tables: Table[],
-    visibility: TableVisibilityType,
-  ) => Promise<void>;
-}
-
-type TableListProps = OwnProps & TableLoaderProps & DispatchProps;
+type TableListProps = OwnProps & TableLoaderProps;
 
 const TableList = ({
   selectedSchema,
   selectedTable,
   tables: allTables,
   onSelectTable,
-  onUpdateTableVisibility,
   onBack,
 }: TableListProps) => {
   const [searchText, setSearchText] = useState("");
+  const dispatch = useDispatch();
 
   const [hiddenTables, visibleTables] = useMemo(() => {
     const searchValue = searchText.toLowerCase();
@@ -54,6 +55,18 @@ const TableList = ({
       .value();
   }, [allTables, searchText]);
 
+  const handleUpdateVisibility = useCallback(
+    async (tables: Table[], visibility: TableVisibilityType) => {
+      const payload = {
+        ids: tables.map(({ id }) => id),
+        visibility_type: visibility,
+      };
+
+      await dispatch(Tables.actions.bulkUpdate(payload));
+    },
+    [dispatch],
+  );
+
   return (
     <div className="MetadataEditor-table-list AdminList flex-no-shrink">
       <TableSearch searchText={searchText} onChangeSearchText={setSearchText} />
@@ -63,7 +76,7 @@ const TableList = ({
           <TableHeader
             tables={visibleTables}
             isHidden={false}
-            onUpdateTableVisibility={onUpdateTableVisibility}
+            onUpdateTableVisibility={handleUpdateVisibility}
           />
         )}
         {visibleTables.map(table => (
@@ -72,14 +85,14 @@ const TableList = ({
             table={table}
             isSelected={table.id === selectedTable?.id}
             onSelectTable={onSelectTable}
-            onUpdateTableVisibility={onUpdateTableVisibility}
+            onUpdateTableVisibility={handleUpdateVisibility}
           />
         ))}
         {hiddenTables.length > 0 && (
           <TableHeader
             tables={hiddenTables}
             isHidden={true}
-            onUpdateTableVisibility={onUpdateTableVisibility}
+            onUpdateTableVisibility={handleUpdateVisibility}
           />
         )}
         {hiddenTables.map(table => (
@@ -88,7 +101,7 @@ const TableList = ({
             table={table}
             isSelected={table.id === selectedTable?.id}
             onSelectTable={onSelectTable}
-            onUpdateTableVisibility={onUpdateTableVisibility}
+            onUpdateTableVisibility={handleUpdateVisibility}
           />
         ))}
         {visibleTables.length === 0 && hiddenTables.length === 0 && (
