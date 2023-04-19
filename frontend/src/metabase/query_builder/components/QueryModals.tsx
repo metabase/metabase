@@ -59,7 +59,7 @@ interface QueryModalsProps {
   onOpenModal: (modal: _Modal) => void;
   onChangeLocation: (location: string) => void;
   setQuestionCollection: (
-    { id }: Collection,
+    { id }: Partial<Collection>,
     collection: Collection,
     opts: Record<string, unknown>,
   ) => void;
@@ -218,7 +218,6 @@ class QueryModals extends React.Component<QueryModalsProps> {
           onClose={onCloseModal}
           onMove={(collection: Collection) => {
             this.props.setQuestionCollection(
-              // @ts-expect-error question id has a different type from collection
               { id: question.id() },
               collection,
               {
