@@ -602,13 +602,6 @@ class StructuredQueryInner extends AtomicQuery {
   }
 
   /**
-   * @returns alias for addSort
-   */
-  sort(sort: OrderBy) {
-    return this.addSort(sort);
-  }
-
-  /**
    * @returns alias for addJoin
    */
   join(join) {

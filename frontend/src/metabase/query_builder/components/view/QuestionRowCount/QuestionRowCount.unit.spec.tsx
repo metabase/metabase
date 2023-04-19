@@ -39,7 +39,7 @@ type SetupOpts = {
 function patchQuestion(question: Question) {
   if (question.isStructured()) {
     const query = question.query() as StructuredQuery;
-    return query.sort(["asc", ["field", 1, null]]).question();
+    return query.addSort(["asc", ["field", 1, null]]).question();
   } else {
     const query = question.query() as NativeQuery;
     return query.setQueryText("SELECT * FROM __ORDERS__").question();
