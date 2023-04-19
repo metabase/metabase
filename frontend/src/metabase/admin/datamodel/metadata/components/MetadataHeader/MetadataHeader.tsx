@@ -12,7 +12,7 @@ import { Database, DatabaseId, TableId } from "metabase-types/api";
 import { Dispatch } from "metabase-types/store";
 
 interface OwnProps {
-  selectedDatabaseId: DatabaseId;
+  selectedDatabaseId?: DatabaseId;
   selectedSchemaName?: string;
   selectedTableId?: TableId;
 }
@@ -59,8 +59,8 @@ const MetadataHeader = ({
           style={{ padding: 0, paddingLeft: 8 }}
         />
       </div>
-      <div className="MetadataEditor-headerSection flex flex-align-right align-center flex-no-shrink">
-        {selectedSchemaName != null && selectedTableId != null && (
+      {selectedDatabaseId && selectedSchemaName && selectedTableId && (
+        <div className="MetadataEditor-headerSection flex flex-align-right align-center flex-no-shrink">
           <span className="ml4 mr3">
             <Link
               to={Urls.dataModelTableSettings(
@@ -72,8 +72,8 @@ const MetadataHeader = ({
               <Icon name="gear" className="text-brand-hover" />
             </Link>
           </span>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 };
