@@ -49,7 +49,7 @@ interface DispatchProps {
   ) => Promise<void>;
 }
 
-type TableListProps = OwnProps & TableLoaderProps & DispatchProps;
+type MetadataTableListProps = OwnProps & TableLoaderProps & DispatchProps;
 
 const mapDispatchToProps = (dispatch: Dispatch): DispatchProps => ({
   onSelectDatabase: databaseId =>
@@ -65,7 +65,7 @@ const mapDispatchToProps = (dispatch: Dispatch): DispatchProps => ({
     ),
 });
 
-const TableList = ({
+const MetadataTableList = ({
   tables: allTables,
   selectedDatabaseId,
   selectedSchemaName,
@@ -74,7 +74,7 @@ const TableList = ({
   onSelectDatabase,
   onSelectTable,
   onUpdateTableVisibility,
-}: TableListProps) => {
+}: MetadataTableListProps) => {
   const [searchText, setSearchText] = useState("");
 
   const [hiddenTables, visibleTables] = useMemo(() => {
@@ -343,4 +343,4 @@ export default _.compose(
     }),
   }),
   connect(null, mapDispatchToProps),
-)(TableList);
+)(MetadataTableList);

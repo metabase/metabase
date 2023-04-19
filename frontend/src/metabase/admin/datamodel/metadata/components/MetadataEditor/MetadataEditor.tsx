@@ -4,7 +4,7 @@ import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import Databases from "metabase/entities/databases";
 import { Database, DatabaseId, TableId } from "metabase-types/api";
 import MetadataHeader from "../MetadataHeader";
-import TablePicker from "../TablePicker";
+import MetadataTablePicker from "../MetadataTablePicker";
 
 interface RouteParams {
   databaseId?: DatabaseId;
@@ -38,7 +38,7 @@ const MetadataEditor = ({
         className="flex flex-row flex-full mt2 full-height"
       >
         {databaseId != null && (
-          <TablePicker
+          <MetadataTablePicker
             selectedDatabaseId={databaseId}
             selectedSchemaName={schemaName}
             selectedTableId={tableId}

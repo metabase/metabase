@@ -2,8 +2,8 @@ import React from "react";
 import Schemas from "metabase/entities/schemas";
 import { DatabaseId, Schema, TableId } from "metabase-types/api";
 import { State } from "metabase-types/store";
-import SchemaList from "../SchemaList";
-import TableList from "../TableList";
+import MetadataSchemaList from "../MetadataSchemaList";
+import MetadataTableList from "../MetadataTableList";
 
 interface OwnProps {
   selectedDatabaseId: DatabaseId;
@@ -15,17 +15,17 @@ interface SchemaLoaderProps {
   schemas: Schema[];
 }
 
-type TablePickerProps = OwnProps & SchemaLoaderProps;
+type MetadataTablePickerProps = OwnProps & SchemaLoaderProps;
 
-const TablePicker = ({
+const MetadataTablePicker = ({
   schemas,
   selectedDatabaseId,
   selectedSchemaName,
   selectedTableId,
-}: TablePickerProps) => {
+}: MetadataTablePickerProps) => {
   if (selectedSchemaName) {
     return (
-      <TableList
+      <MetadataTableList
         selectedDatabaseId={selectedDatabaseId}
         selectedSchemaName={selectedSchemaName}
         selectedTableId={selectedTableId}
@@ -34,7 +34,7 @@ const TablePicker = ({
     );
   } else {
     return (
-      <SchemaList
+      <MetadataSchemaList
         selectedDatabaseId={selectedDatabaseId}
         selectedSchemaName={selectedSchemaName}
       />
@@ -46,4 +46,4 @@ export default Schemas.loadList({
   query: (_: State, { selectedDatabaseId }: OwnProps) => ({
     dbId: selectedDatabaseId,
   }),
-})(TablePicker);
+})(MetadataTablePicker);

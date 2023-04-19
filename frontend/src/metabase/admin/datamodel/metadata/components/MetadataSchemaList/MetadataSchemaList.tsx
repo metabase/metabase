@@ -23,19 +23,19 @@ interface DispatchProps {
   onSelectSchema: (databaseId: DatabaseId, schemaName: string) => void;
 }
 
-type SchemaListProps = OwnProps & SchemaLoaderProps & DispatchProps;
+type MetadataSchemaListProps = OwnProps & SchemaLoaderProps & DispatchProps;
 
 const mapDispatchToProps = (dispatch: Dispatch): DispatchProps => ({
   onSelectSchema: (databaseId, schemaName) =>
     dispatch(push(Urls.dataModelSchema(databaseId, schemaName))),
 });
 
-const SchemaList = ({
+const MetadataSchemaList = ({
   schemas: allSchemas,
   selectedDatabaseId,
   selectedSchemaName,
   onSelectSchema,
-}: SchemaListProps) => {
+}: MetadataSchemaListProps) => {
   const [searchText, setSearchText] = useState("");
 
   const schemas = useMemo(() => {
@@ -126,4 +126,4 @@ export default _.compose(
     }),
   }),
   connect(null, mapDispatchToProps),
-)(SchemaList);
+)(MetadataSchemaList);
