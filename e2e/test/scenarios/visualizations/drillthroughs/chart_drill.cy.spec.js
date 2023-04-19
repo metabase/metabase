@@ -11,6 +11,7 @@ import {
   visitDashboard,
   startNewQuestion,
   addOrUpdateDashboardCard,
+  addSummaryField,
 } from "e2e/support/helpers";
 
 import { USER_GROUPS, SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -157,8 +158,8 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
               .find(".dot")
               .eq(0)
               .click({ force: true });
-            cy.findByText(/Zoom in/i);
-            cy.findByText(/See these Orders/i);
+            cy.findByText("See this year by quarter");
+            cy.findByText("See these Orders");
 
             // Click anywhere else to close the first action panel
             cy.findByText("11442D").click();
@@ -169,8 +170,8 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
               .find(".dot")
               .eq(0)
               .click({ force: true });
-            cy.findByText(/Zoom in/i);
-            cy.findByText(/See these Products/i);
+            cy.findByText("See this year by quarter");
+            cy.findByText("See these Products");
           },
         );
       });
@@ -226,8 +227,8 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
               .find(".dot")
               .eq(0)
               .click({ force: true });
-            cy.findByText(/Zoom in/i);
-            cy.findByText(/See these Orders/i);
+            cy.findByText("See this year by quarter");
+            cy.findByText("See these Orders");
 
             // Click anywhere else to close the first action panel
             cy.findByText("13457D").click();
@@ -238,22 +239,17 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
               .find(".dot")
               .eq(0)
               .click({ force: true });
-            cy.findByText(/Zoom in/i);
-            cy.findByText(/See these Orders/i);
+            cy.findByText("See this year by quarter");
+            cy.findByText("See these Orders");
           },
         );
       });
     });
   });
 
-  // this test was very flaky
-  it.skip("should drill through a nested query", () => {
-    // There's a slight hiccup in the UI with nested questions when we Summarize by City below.
-    // Because there's only 5 rows, it automatically switches to the chart, but issues another
-    // dataset request. So we wait for the dataset to load.
+  it("should drill through a nested query", () => {
     cy.intercept("POST", "/api/dataset").as("dataset");
 
-    // People in CA
     cy.createQuestion({
       name: "CA People",
       query: { "source-table": PEOPLE_ID, limit: 5 },
@@ -262,18 +258,22 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     startNewQuestion();
     cy.contains("Saved Questions").click();
     cy.contains("CA People").click();
-    cy.contains("Hudson Borer");
-    summarize();
-    cy.contains("Summarize by").parent().parent().contains("City").click();
 
-    // wait for chart to load
+    addSummaryField({ metric: "Count of rows" });
+
+    cy.findByText("Pick a column to group by").click();
+    popover().within(() => {
+      cy.findByText("City").click();
+    });
+
+    cy.findByText("Visualize").click();
+
     cy.wait("@dataset");
     cy.contains("Count by City");
-    // drill into the first bar
-    cy.get(".bar").first().click({ force: true });
-    cy.contains("View this CA People").click();
 
-    // check that filter is applied and person displayed
+    cy.get(".bar").first().click({ force: true });
+    cy.contains("See this CA Person").click();
+
     cy.contains("City is Beaver Dams");
     cy.contains("Dominique Leffler");
   });
@@ -454,7 +454,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
 
         // Initial visualization has rendered and we can now drill-through
         cy.get(".Visualization .bar").eq(4).click({ force: true });
-        cy.findByText(/See these People/i).click();
+        cy.findByText("See these People").click();
 
         // We should see the resulting dataset of that drill-through
         cy.wait("@dataset").then(xhr => {

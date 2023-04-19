@@ -46,7 +46,7 @@ describe("issue 13289", () => {
         .click({ force: true });
     });
 
-    cy.findByText("Zoom in").click();
+    cy.findByText("See this month by week").click();
     cy.wait("@dataset");
 
     cy.findByText("There was a problem with your question").should("not.exist");
