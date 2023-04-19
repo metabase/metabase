@@ -1,14 +1,22 @@
 import React, { ChangeEvent, useCallback, useState } from "react";
 import { t } from "ttag";
+import Radio from "metabase/core/components/Radio/Radio";
+import { TableVisibilityType } from "metabase-types/api";
 import Table from "metabase-lib/metadata/Table";
 import {
   TableDescription,
   TableDescriptionInput,
   TableName,
   TableNameInput,
+  VisibilityBadge,
 } from "./MetadataTable.styled";
 
 type MetadataTabType = "metadata" | "schema";
+
+const METADATA_TAB_OPTIONS = [
+  { name: t`Columns`, value: "metadata" },
+  { name: t`Original schema`, value: "original_schema" },
+];
 
 interface TableLoaderProps {
   table: Table;
@@ -21,7 +29,7 @@ interface DispatchProps {
 type MetadataTableProps = TableLoaderProps & DispatchProps;
 
 const MetadataTable = ({ table, onUpdateProperty }: MetadataTableProps) => {
-  const [tab] = useState<MetadataTabType>("metadata");
+  const [tab, setTab] = useState<MetadataTabType>("metadata");
 
   const handleChangeName = useCallback(
     (name: string) => {
@@ -37,32 +45,43 @@ const MetadataTable = ({ table, onUpdateProperty }: MetadataTableProps) => {
     [table, onUpdateProperty],
   );
 
+  const handleChangeVisibility = useCallback(
+    (visibility: TableVisibilityType) => {
+      onUpdateProperty(table, "visibility_type", visibility);
+    },
+    [table, onUpdateProperty],
+  );
+
   return (
     <div className="MetadataTable full px3">
-      {tab === "metadata" ? (
-        <TableMetadataTitle
-          table={table}
-          onChangeName={handleChangeName}
-          onChangeDescription={handleChangeDescription}
-        />
-      ) : (
-        <TableSchemaTitle table={table} />
-      )}
+      <TableTitleSection
+        table={table}
+        tab={tab}
+        onChangeName={handleChangeName}
+        onChangeDescription={handleChangeDescription}
+      />
+      <TableVisibilitySection
+        table={table}
+        onChangeVisibility={handleChangeVisibility}
+      />
+      <TableTabSection tab={tab} onChangeTab={setTab} />
     </div>
   );
 };
 
-interface TableMetadataTitleProps {
+interface TableTitleSectionProps {
   table: Table;
+  tab: MetadataTabType;
   onChangeName: (name: string) => void;
   onChangeDescription: (description: string) => void;
 }
 
-const TableMetadataTitle = ({
+const TableTitleSection = ({
   table,
+  tab,
   onChangeName,
   onChangeDescription,
-}: TableMetadataTitleProps) => {
+}: TableTitleSectionProps) => {
   const handleNameChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
       if (event.target.value) {
@@ -83,36 +102,119 @@ const TableMetadataTitle = ({
 
   return (
     <div className="MetadataTable-title flex flex-column">
-      <TableNameInput
-        name="display_name"
-        type="text"
-        value={table.displayName() ?? ""}
-        data-testid="table-name"
-        onBlurChange={handleNameChange}
-      />
-      <TableDescriptionInput
-        name="description"
-        type="text"
-        value={table.description ?? ""}
-        placeholder={t`No table description yet`}
-        data-testid="table-description"
-        onBlurChange={handleDescriptionChange}
-      />
+      {tab === "metadata" ? (
+        <>
+          <TableNameInput
+            name="display_name"
+            type="text"
+            value={table.displayName() ?? ""}
+            data-testid="table-name"
+            onBlurChange={handleNameChange}
+          />
+          <TableDescriptionInput
+            name="description"
+            type="text"
+            value={table.description ?? ""}
+            placeholder={t`No table description yet`}
+            data-testid="table-description"
+            onBlurChange={handleDescriptionChange}
+          />
+        </>
+      ) : (
+        <>
+          <TableName>{table.name}</TableName>
+          <TableDescription>
+            {table.description ?? t`No table description yet`}
+          </TableDescription>
+        </>
+      )}
     </div>
   );
 };
 
-interface TableSchemaTitleProps {
+interface TableVisibilitySectionProps {
   table: Table;
+  onChangeVisibility: (visibility: TableVisibilityType) => void;
 }
 
-const TableSchemaTitle = ({ table }: TableSchemaTitleProps) => {
+const TableVisibilitySection = ({
+  table,
+  onChangeVisibility,
+}: TableVisibilitySectionProps) => {
+  const handleChangeVisible = useCallback(
+    () => onChangeVisibility(null),
+    [onChangeVisibility],
+  );
+
+  const handleChangeHidden = useCallback(
+    () => onChangeVisibility("hidden"),
+    [onChangeVisibility],
+  );
+
+  const handleChangeTechnical = useCallback(
+    () => onChangeVisibility("technical"),
+    [onChangeVisibility],
+  );
+
+  const handleChangeCruft = useCallback(
+    () => onChangeVisibility("cruft"),
+    [onChangeVisibility],
+  );
+
   return (
-    <div className="MetadataTable-title flex flex-column">
-      <TableName>{table.name}</TableName>
-      <TableDescription>
-        {table.description ?? t`No table description yet`}
-      </TableDescription>
+    <div className="MetadataTable-header flex align-center py2 text-medium">
+      <span className="mx1 text-uppercase">{t`Visibility`}</span>
+      <span id="VisibilityTypes">
+        <VisibilityBadge
+          isSelected={table.visibility_type === null}
+          onClick={handleChangeVisible}
+        >{t`Queryable`}</VisibilityBadge>
+        <VisibilityBadge
+          isSelected={
+            table.visibility_type == null || table.visibility_type === "hidden"
+          }
+          onClick={handleChangeHidden}
+        >
+          {t`Hidden`}
+        </VisibilityBadge>
+
+        {table.visibility_type && (
+          <span id="VisibilitySubTypes" className="border-left mx2">
+            <span className="mx2 text-uppercase text-medium">{t`Why Hide?`}</span>
+            <VisibilityBadge
+              isSelected={table.visibility_type === "technical"}
+              onClick={handleChangeTechnical}
+            >
+              {t`Technical Data`}
+            </VisibilityBadge>
+            <VisibilityBadge
+              isSelected={table.visibility_type === "cruft"}
+              onClick={handleChangeCruft}
+            >
+              {t`Irrelevant/Cruft`}
+            </VisibilityBadge>
+          </span>
+        )}
+      </span>
+    </div>
+  );
+};
+
+interface MetadataTabSectionProps {
+  tab: MetadataTabType;
+  onChangeTab: (tab: MetadataTabType) => void;
+}
+
+const TableTabSection = ({ tab, onChangeTab }: MetadataTabSectionProps) => {
+  return (
+    <div className="mx1 border-bottom">
+      <Radio
+        colorScheme="default"
+        value={tab}
+        options={METADATA_TAB_OPTIONS}
+        onOptionClick={onChangeTab}
+        variant="underlined"
+      />
     </div>
   );
 };
