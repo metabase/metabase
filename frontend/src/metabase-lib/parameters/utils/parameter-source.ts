@@ -87,7 +87,10 @@ export const canListParameterValues = (parameter: Parameter) => {
   console.log(`canListParameterValues > queryType = ${queryType}`);
   console.log(`canListParameterValues > sourceType = ${sourceType}`);
 
-  const ret = sourceType ? queryType === "list" : queryType !== "none"; // && canListFields;
+  const ret = sourceType
+    ? queryType === "list"
+    : // can only search on string params
+      queryType !== "none" && isStringParam;
   console.log(`canListParameterValues returns: ${ret}`);
   return ret;
 };
