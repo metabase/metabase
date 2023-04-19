@@ -218,17 +218,17 @@
   (clojure.core/isa? (:semantic_type column) :type/URL))
 
 (defn ^:export email?
-  "Is `column` a comment?"
+  "Is `column` an email?"
   [column]
   (clojure.core/isa? (:semantic_type column) :type/Email))
 
 (defn ^:export avatar-URL?
-  "Is `column` a URL?"
+  "Is `column` an avatar URL?"
   [column]
   (clojure.core/isa? (:semantic_type column) :type/AvatarURL))
 
 (defn ^:export image-URL?
-  "Is `column` a comment?"
+  "Is `column` an image URL?"
   [column]
   (clojure.core/isa? (:semantic_type column) :type/ImageURL))
 
