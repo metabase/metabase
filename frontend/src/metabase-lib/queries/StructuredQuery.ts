@@ -1068,14 +1068,6 @@ class StructuredQueryInner extends AtomicQuery {
     }
   }
 
-  canAddSort() {
-    const sorts = this.sorts();
-    return (
-      this.sortOptions().count > 0 &&
-      (sorts.length === 0 || sorts[sorts.length - 1][0] != null)
-    );
-  }
-
   addSort(orderBy: OrderBy | OrderByWrapper) {
     return this._updateQuery(Q.addOrderBy, arguments);
   }
