@@ -8,6 +8,7 @@ import {
 import { FieldDimension } from "metabase-lib/Dimension";
 import { formatBucketing } from "metabase-lib/queries/utils/query-time";
 import type { Drill } from "../../types";
+import { QuestionChangeClickAction } from "../../types";
 
 const generateDrillTitle = (
   dimensions: DimensionValue[],
@@ -42,7 +43,10 @@ const generateDrillTitle = (
   return t`Zoom in`;
 };
 
-const ZoomDrill: Drill = ({ question, clicked }) => {
+const ZoomDrill: Drill = ({
+  question,
+  clicked,
+}): QuestionChangeClickAction[] => {
   const result = getNextZoomDrilldown(question, clicked);
 
   if (!result) {
