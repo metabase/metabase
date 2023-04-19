@@ -4,7 +4,7 @@ import { getAllUploads } from "metabase/redux/uploads";
 import Collections from "metabase/entities/collections/collections";
 import { Collection } from "metabase-types/api";
 import { FileUpload } from "metabase-types/store/upload";
-import { uploadInProgress } from "metabase/lib/uploads";
+import { isUploadInProgress } from "metabase/lib/uploads";
 
 import useStatusVisibility from "../../hooks/use-status-visibility";
 import FileUploadStatusLarge from "../FileUploadStatusLarge";
@@ -46,7 +46,7 @@ const FileUploadStatusContent = ({
   collection: Collection;
   uploads: FileUpload[];
 }) => {
-  const isActive = uploads.some(uploadInProgress);
+  const isActive = uploads.some(isUploadInProgress);
   const isVisible = useStatusVisibility(isActive);
 
   if (!isVisible) {

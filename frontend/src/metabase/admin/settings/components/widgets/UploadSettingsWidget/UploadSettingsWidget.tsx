@@ -10,10 +10,6 @@ const getDatabaseOptions = (databases: DatabaseType[]) =>
     .filter(db => db?.settings?.["database-enable-actions"])
     .map(db => ({ name: db.name, value: db.id }));
 
-// const enginesWithSchema = ["postgres"];
-// const dbHasSchema = (dbId: number) => (databases: DatabaseType[]) =>
-//   enginesWithSchema.includes(databases.find((db: DatabaseType) => db.id === dbId)?.engine ?? '');
-
 interface UploadSettingProps {
   databases: DatabaseType[];
   setting: any;
