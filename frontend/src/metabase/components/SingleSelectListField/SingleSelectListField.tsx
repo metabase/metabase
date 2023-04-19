@@ -38,7 +38,7 @@ const SingleSelectListField = ({
     createOptionsFromValuesWithoutOptions(value, options),
   );
 
-  const augmentedOptions = useMemo(() => {
+  const augmentedOptions = useMemo<Option[]>(() => {
     return [...options.filter(option => option[0] != null), ...addedOptions];
   }, [addedOptions, options]);
 
