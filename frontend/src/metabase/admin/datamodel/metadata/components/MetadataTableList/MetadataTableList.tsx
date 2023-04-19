@@ -311,7 +311,7 @@ const ToggleVisibilityButton = ({
       <IconButtonWrapper
         className={cx(
           "float-right",
-          loading ? "cursor-not-allowed" : "brand-hover",
+          loading ? "cursor-not-allowed" : "text-brand-hover",
         )}
         disabled={loading}
         onClick={handleClick}
