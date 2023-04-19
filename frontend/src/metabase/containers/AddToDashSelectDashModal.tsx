@@ -16,7 +16,7 @@ import * as Urls from "metabase/lib/urls";
 import CreateDashboardModal from "metabase/dashboard/containers/CreateDashboardModal";
 
 import { LinkContent } from "./AddToDashSelectDashModal.styled";
-import { Dashboard } from "metabase-types/api";
+import { Card, Dashboard } from "metabase-types/api";
 
 function mapStateToProps(state: State) {
   return {
@@ -29,7 +29,7 @@ interface AddToDashSelectDashModalState {
 }
 
 interface AddToDashSelectDashModalProps {
-  card: any;
+  card: Card;
   onChangeLocation: (location: string) => void;
   onClose: () => void;
   dashboards: Record<Dashboard["id"], Dashboard>;
@@ -67,6 +67,7 @@ class AddToDashSelectDashModal extends Component<
     if (this.state.shouldCreateDashboard) {
       return (
         <CreateDashboardModal
+          // @ts-expect-error collection_id can be null?
           collectionId={this.props.card.collection_id}
           onCreate={this.navigateToDashboard}
           onClose={() => this.setState({ shouldCreateDashboard: false })}
