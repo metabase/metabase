@@ -59,6 +59,9 @@ describe("scenarios > metabot", () => {
     cy.intercept("POST", "/api/metabot/database/*", PROMPT_RESPONSE).as(
       "databasePrompt",
     );
+    cy.intercept("POST", "/api/metabot/feedback", {
+      message: "Thanks for your feedback",
+    });
   });
 
   it("should allow to submit prompts based on the database", () => {
