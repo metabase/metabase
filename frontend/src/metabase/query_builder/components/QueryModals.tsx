@@ -107,7 +107,7 @@ class QueryModals extends React.Component<QueryModalsProps> {
           question={this.props.question}
           originalQuestion={this.props.originalQuestion}
           initialCollectionId={this.props.initialCollectionId}
-          onSave={async (question: any) => {
+          onSave={async (question: Question) => {
             // if saving modified question, don't show "add to dashboard" modal
             await this.props.onSave(question);
             onCloseModal();
