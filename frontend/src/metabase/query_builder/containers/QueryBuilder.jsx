@@ -11,7 +11,7 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { useMount, useUnmount, usePrevious } from "react-use";
+import { useBeforeUnload, useMount, useUnmount, usePrevious } from "react-use";
 import { PLUGIN_SELECTORS } from "metabase/plugins";
 import Bookmark from "metabase/entities/bookmarks";
 import Collections from "metabase/entities/collections";
@@ -89,7 +89,7 @@ import {
   getIsActionListVisible,
   getIsAdditionalInfoVisible,
   getAutocompleteResultsFn,
-  getCardAutocompleteResultsFn,
+  getCardAutocompleteResultsFn, isResultsMetadataDirty
 } from "../selectors";
 import * as actions from "../actions";
 
@@ -103,7 +103,7 @@ const mapStateToProps = (state, props) => {
     user: getUser(state, props),
     canManageSubscriptions: canManageSubscriptions(state, props),
     isAdmin: getUserIsAdmin(state, props),
-    fromUrl: props.location.query.from,
+    fromUrl: props.location.query?.from,
 
     mode: getMode(state),
 
@@ -143,6 +143,7 @@ const mapStateToProps = (state, props) => {
     isBookmarked: getIsBookmarked(state, props),
     isDirty: getIsDirty(state),
     isNew: getIsNew(state),
+
     isObjectDetail: getIsObjectDetail(state),
     isNativeEditorOpen: getIsNativeEditorOpen(state),
     isNavBarOpen: getIsNavbarOpen(state),
@@ -159,6 +160,7 @@ const mapStateToProps = (state, props) => {
 
     isRunnable: getIsRunnable(state),
     isResultDirty: getIsResultDirty(state),
+    isMetadataDirty: isResultsMetadataDirty(state),
 
     questionAlerts: getQuestionAlerts(state),
     visualizationSettings: getVisualizationSettings(state),
@@ -217,6 +219,9 @@ function QueryBuilder(props) {
     showTimelinesForCollection,
     card,
     isLoadingComplete,
+    isNew,
+    isResultDirty,
+    isMetadataDirty,
   } = props;
 
   const forceUpdate = useForceUpdate();
@@ -297,6 +302,11 @@ function QueryBuilder(props) {
     window.addEventListener("resize", forceUpdateDebounced);
     return () => window.removeEventListener("resize", forceUpdateDebounced);
   }, []);
+
+  useBeforeUnload(
+    !isNew && (isResultDirty || isMetadataDirty),
+    t`You have unsaved changes`,
+  );
 
   useUnmount(() => {
     cancelQuery();
