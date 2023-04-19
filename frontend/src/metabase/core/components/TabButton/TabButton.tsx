@@ -105,6 +105,7 @@ const TabButton = forwardRef(function TabButton<T>(
       aria-selected={isSelected}
       aria-controls={getTabPanelId(idPrefix, value)}
       aria-disabled={disabled}
+      aria-label={label}
       id={getTabId(idPrefix, value)}
     >
       <TabButtonInput
@@ -116,6 +117,7 @@ const TabButton = forwardRef(function TabButton<T>(
         onKeyPress={handleInputKeyPress}
         onFocus={e => e.currentTarget.select()}
         onBlur={onFinishEditing}
+        aria-labelledby={getTabId(idPrefix, value)}
         id={getTabButtonInputId(idPrefix, value)}
         ref={inputRef}
       />

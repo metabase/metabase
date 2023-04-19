@@ -33,5 +33,6 @@ export function useDashboardTabs() {
   const selectTab = (tabId: SelectedTabId) =>
     dispatch(selectTabAction({ tabId }));
 
+  // TODO define the functions here?
   return { tabs, selectedTabId, createNewTab, deleteTab, renameTab, selectTab };
 }

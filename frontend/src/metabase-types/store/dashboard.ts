@@ -10,6 +10,7 @@ import { ParameterValueOrArray } from "metabase-types/types/Parameter";
 
 export type DashboardSidebarName =
   | "addQuestion"
+  | "action"
   | "clickBehavior"
   | "editParameter"
   | "sharing"
@@ -56,4 +57,6 @@ export interface DashboardState {
     name?: DashboardSidebarName;
     props: Record<string, unknown>;
   };
+
+  missingActionParameters: unknown;
 }

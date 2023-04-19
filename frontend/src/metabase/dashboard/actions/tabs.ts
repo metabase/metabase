@@ -61,7 +61,7 @@ function getPrevDashAndTabs(state: DashboardState) {
   return { dashId, prevDash, prevTabs };
 }
 
-function getDefaultTab(
+export function getDefaultTab(
   tabId: DashboardTabId,
   dashId: DashboardId,
   name: string,
@@ -114,7 +114,7 @@ export const tabsReducer = handleActions<DashboardState, TabsReducerPayload>(
       // Case 2: Dashboard doesn't have tabs
 
       // 1. Create two new tabs, add to dashboard
-      const firstTabId = tabId - 1;
+      const firstTabId = tabId + 1;
       const secondTabId = tabId;
       const newTabs = [
         getDefaultTab(firstTabId, dashId, "Page 1"),
