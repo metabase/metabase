@@ -11,8 +11,12 @@ interface TablePickerProps {
   selectedSchemaName?: string;
   selectedTableId?: TableId;
   onSelectDatabase: (databaseId: DatabaseId) => void;
-  onSelectSchema: (schemaName: string) => void;
-  onSelectTable: (tableId: TableId) => void;
+  onSelectSchema: (databaseId: DatabaseId, schemaName: string) => void;
+  onSelectTable: (
+    databaseId: DatabaseId,
+    schemaName: string,
+    tableId: TableId,
+  ) => void;
 }
 
 const TablePicker = ({
@@ -29,6 +33,22 @@ const TablePicker = ({
   const selectedTable = _.findWhere(tables, { id: selectedTableId });
   const canChangeSchema = schemas.length > 1;
 
+  const handleSelectSchema = useCallback(
+    (schemaName: string) => {
+      onSelectSchema(selectedDatabaseId, schemaName);
+    },
+    [selectedDatabaseId, onSelectSchema],
+  );
+
+  const handleSelectTable = useCallback(
+    (tableId: TableId) => {
+      if (selectedSchemaName) {
+        onSelectTable(selectedDatabaseId, selectedSchemaName, tableId);
+      }
+    },
+    [selectedDatabaseId, selectedSchemaName, onSelectTable],
+  );
+
   const handleBack = useCallback(() => {
     onSelectDatabase(selectedDatabaseId);
   }, [selectedDatabaseId, onSelectDatabase]);
@@ -40,7 +60,7 @@ const TablePicker = ({
         selectedDatabaseId={selectedDatabaseId}
         selectedSchema={selectedSchema}
         selectedTable={selectedTable}
-        onSelectTable={onSelectTable}
+        onSelectTable={handleSelectTable}
         onBack={canChangeSchema ? handleBack : undefined}
       />
     );
@@ -50,7 +70,7 @@ const TablePicker = ({
         schemas={schemas}
         selectedDatabaseId={selectedDatabaseId}
         selectedSchema={selectedSchema}
-        onSelectSchema={onSelectSchema}
+        onSelectSchema={handleSelectSchema}
       />
     );
   }
