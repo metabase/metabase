@@ -1024,11 +1024,8 @@ class StructuredQueryInner extends AtomicQuery {
   }
 
   // SORTS
-  // TODO: standardize SORT vs ORDER_BY terminology
-  sorts(): OrderByWrapper[] {
-    return Q.getOrderBys(this.query()).map(
-      (sort, index) => new OrderByWrapper(sort, index, this),
-    );
+  sorts(): OrderBy[] {
+    return Q.getOrderBys(this.query());
   }
 
   addSort(orderBy: OrderBy | OrderByWrapper) {
