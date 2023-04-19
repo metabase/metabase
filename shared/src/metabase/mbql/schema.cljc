@@ -442,14 +442,6 @@
      (integer? id-or-name))
    "Must be a :field with an integer Field ID."))
 
-(def ^{:clause-name :field, :added "0.39.0"} field:name
-  "Schema for a `:field` clause, with the added constraint that it must use an string Field name."
-  (s/constrained
-   field
-   (fn [[_ id-or-name]]
-     (string? id-or-name))
-   "Must be a :field with a string Field name."))
-
 (def ^:private Field*
   (one-of expression field))
 
@@ -781,7 +773,7 @@
    Field))
 
 (def ^:private EqualityComparable
-  "Schema for things things that make sense in a `=` or `!=` filter, i.e. things that can be compared for equality."
+  "Schema for things that make sense in a `=` or `!=` filter, i.e. things that can be compared for equality."
   (s/maybe
    (s/cond-pre
     s/Bool
@@ -979,7 +971,6 @@
 (defclause ^{:requires-features #{:standard-deviation-aggregations}} stddev
   field-or-expression FieldOrExpressionDef)
 
-(declare ag:var) ;; for clj-kondo
 (defclause ^{:requires-features #{:standard-deviation-aggregations}} [ag:var var]
   field-or-expression FieldOrExpressionDef)
 
@@ -1523,11 +1514,6 @@
    :string/does-not-contain {:type :string, :operator :unary, :allowed-for #{:string/does-not-contain}}
    :string/ends-with        {:type :string, :operator :unary, :allowed-for #{:string/ends-with}}
    :string/starts-with      {:type :string, :operator :unary, :allowed-for #{:string/starts-with}}})
-
-(defn valid-parameter-type?
-  "Whether `param-type` is a valid non-abstract parameter type."
-  [param-type]
-  (get parameter-types param-type))
 
 (def ParameterType
   "Schema for valid values of `:type` for a [[Parameter]]."
