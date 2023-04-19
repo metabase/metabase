@@ -1,9 +1,15 @@
 import React, { useCallback } from "react";
 import { t } from "ttag";
+import _ from "underscore";
+import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import * as Urls from "metabase/lib/urls";
+import Databases from "metabase/entities/databases";
+import Tables from "metabase/entities/tables";
+import Schemas from "metabase/entities/schemas";
 import ActionButton from "metabase/components/ActionButton";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import { Database, Schema, Table, TableId } from "metabase-types/api";
+import { State } from "metabase-types/store";
 import MetadataSection from "../MetadataSection";
 import MetadataSectionHeader from "../MetadataSectionHeader";
 import MetadataBackButton from "../MetadataBackButton";
@@ -110,4 +116,23 @@ const MetadataTableSettings = ({
   );
 };
 
-export default MetadataTableSettings;
+export default _.compose(
+  Databases.load({
+    id: (_: State, { params }: RouterProps) =>
+      Urls.extractEntityId(params.databaseId),
+    query: {
+      ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
+    },
+  }),
+  Schemas.loadList({
+    query: (_: State, { database }: DatabaseLoaderProps) => database.id,
+  }),
+  Tables.load({
+    id: (_: State, { params }: RouterProps) =>
+      Urls.extractEntityId(params.tableId),
+    query: {
+      ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
+    },
+    selectorName: "getObjectUnfiltered",
+  }),
+)(MetadataTableSettings);
