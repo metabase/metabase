@@ -490,6 +490,7 @@ export function isReducedMotionPreferred() {
 
 export function getMainElement() {
   const [main] = document.getElementsByTagName("main");
+  console.log(main);
   return main;
 }
 

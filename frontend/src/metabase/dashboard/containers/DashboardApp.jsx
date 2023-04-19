@@ -3,9 +3,9 @@ import React, { useCallback, useEffect, useState } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import _ from "underscore";
-import { useBeforeUnload, useUnmount } from "react-use";
-
+import { useUnmount } from "react-use";
 import { t } from "ttag";
+import useBeforeUnload from "metabase/hooks/use-before-unload";
 
 import title from "metabase/hoc/Title";
 import favicon from "metabase/hoc/Favicon";
@@ -33,7 +33,6 @@ import * as Urls from "metabase/lib/urls";
 
 import Dashboards from "metabase/entities/dashboards";
 
-import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/dashboard/constants";
 import * as dashboardActions from "../actions";
 import {
   getCardData,
@@ -133,7 +132,7 @@ const DashboardApp = props => {
 
   useUnmount(props.reset);
 
-  useBeforeUnload(isEditing && isDirty, BEFORE_UNLOAD_UNSAVED_MESSAGE);
+  useBeforeUnload(isEditing && isDirty);
 
   useEffect(() => {
     if (isLoadingComplete) {

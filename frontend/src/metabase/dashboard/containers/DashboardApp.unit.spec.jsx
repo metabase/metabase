@@ -1,6 +1,7 @@
 import React from "react";
 import { Route } from "react-router";
 import { screen } from "@testing-library/react";
+
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import { renderWithProviders, waitForElementToBeRemoved } from "__support__/ui";
@@ -16,7 +17,7 @@ import {
   setupDashboardEndpoints,
 } from "__support__/server-mocks";
 import { createMockDashboardState } from "metabase-types/store/mocks";
-import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/dashboard/constants";
+import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/hooks/use-before-unload";
 
 const mockDashboard = createMockDashboard({
   id: 1,
@@ -35,23 +36,18 @@ async function setup(user = createMockUser()) {
 
   fetchMock.get("path:/api/bookmark", []);
 
-  jest.spyOn(document, "querySelector").mockImplementation(() => ({
-    setAttribute: jest.fn(),
-    classList: {
-      remove: jest.fn(),
-    },
-  }));
-
-  jest
-    .spyOn(document, "getElementsByTagName")
-    .mockImplementation(() => [
-      { addEventListener: jest.fn(), removeEventListener: jest.fn() },
-    ]);
-
   const { mockEvent, events } = createMockEventListener();
 
+  const DashboardAppContainer = props => {
+    return (
+      <main>
+        <DashboardApp {...props} />
+      </main>
+    );
+  };
+
   renderWithProviders(
-    <Route path="/dashboard/:slug" component={DashboardApp} />,
+    <Route path="/dashboard/:slug" component={DashboardAppContainer} />,
     {
       initialRoute: `/dashboard/${mockDashboard.id}`,
       currentUser: user,
@@ -90,6 +86,12 @@ function createMockEventListener() {
 }
 
 describe("DashboardApp", function () {
+  beforeAll(() => {
+    const linkElem = document.createElement("link");
+    linkElem.rel = "icon";
+    document.head.append(linkElem);
+  });
+
   afterEach(() => {
     jest.clearAllMocks();
   });

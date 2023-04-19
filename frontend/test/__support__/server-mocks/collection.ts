@@ -62,9 +62,7 @@ export function setupCollectionVirtualSchemaEndpoints(
 
 export function setupCollectionItemsEndpoint(
   collection: Collection,
-  opts: Record<string, unknown> = {},
-) {
-  const collectionItems = [
+  collectionItems = [
     createMockCollectionItem({
       id: 1,
       collection,
@@ -89,9 +87,9 @@ export function setupCollectionItemsEndpoint(
       name: "d",
       model: "collection",
     }),
-  ];
-
-  fetchMock.get("path:/api/collection/root/items", uri => {
+  ],
+) {
+  fetchMock.get(`path:/api/collection/${collection.id}/items`, uri => {
     const url = new URL(uri);
     const models = url.searchParams.getAll("models");
     const matchedItems = collectionItems.filter(({ model }) =>
