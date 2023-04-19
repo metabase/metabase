@@ -300,4 +300,5 @@ export default Tables.loadList({
     dbId: selectedDatabaseId,
     schemaName: selectedSchema,
   }),
+  selectorName: "getListUnfiltered",
 })(TableList);
