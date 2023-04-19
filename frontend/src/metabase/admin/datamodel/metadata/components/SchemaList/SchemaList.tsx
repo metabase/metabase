@@ -20,20 +20,20 @@ interface SchemaLoaderProps {
 type SchemaListProps = OwnProps & SchemaLoaderProps;
 
 const SchemaList = ({
-  schemas,
+  schemas: allSchemas,
   selectedSchemaId,
   onSelectSchema,
 }: SchemaListProps) => {
   const [searchText, setSearchText] = useState("");
 
-  const filteredSchemas = useMemo(() => {
+  const schemas = useMemo(() => {
     const searchValue = searchText.toLowerCase();
 
-    return _.chain(schemas)
+    return _.chain(allSchemas)
       .filter(schema => schema.name.toLowerCase().includes(searchValue))
       .sortBy(schema => schema.name)
       .value();
-  }, [schemas, searchText]);
+  }, [allSchemas, searchText]);
 
   return (
     <div className="MetadataEditor-table-list AdminList flex-no-shrink">
@@ -55,7 +55,7 @@ const SchemaList = ({
             schemas.length,
           )}
         </li>
-        {filteredSchemas.map(schema => (
+        {schemas.map(schema => (
           <SchemaRow
             key={schema.id}
             schema={schema}

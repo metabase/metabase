@@ -8,6 +8,7 @@ import React, {
 import { useAsyncFn } from "react-use";
 import cx from "classnames";
 import { msgid, ngettext, t } from "ttag";
+import _ from "underscore";
 import Icon from "metabase/components/Icon/Icon";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import Tooltip from "metabase/core/components/Tooltip";
@@ -36,25 +37,36 @@ type TableListProps = OwnProps & TableLoaderProps & DispatchProps;
 const TableList = ({
   selectedSchema,
   selectedTable,
-  tables,
+  tables: allTables,
   onSelectTable,
   onUpdateTableVisibility,
   onBack,
 }: TableListProps) => {
   const [searchText, setSearchText] = useState("");
 
+  const [hiddenTables, visibleTables] = useMemo(() => {
+    const searchValue = searchText.toLowerCase();
+
+    return _.chain(allTables)
+      .filter(table => table.display_name.toLowerCase().includes(searchValue))
+      .sortBy(table => table.display_name)
+      .partition(table => table.visibility_type != null)
+      .value();
+  }, [allTables, searchText]);
+
   return (
     <div className="MetadataEditor-table-list AdminList flex-no-shrink">
       <TableSearch searchText={searchText} onChangeSearchText={setSearchText} />
       {onBack && <TableBreadcrumbs schema={selectedSchema} onBack={onBack} />}
       <ul className="AdminList-items">
-        <TableEmptyState />
-        <TableHeader
-          tables={tables}
-          isHidden={false}
-          onUpdateTableVisibility={onUpdateTableVisibility}
-        />
-        {tables.map(table => (
+        {visibleTables.length > 0 && (
+          <TableHeader
+            tables={visibleTables}
+            isHidden={false}
+            onUpdateTableVisibility={onUpdateTableVisibility}
+          />
+        )}
+        {visibleTables.map(table => (
           <TableRow
             key={table.id}
             table={table}
@@ -63,12 +75,14 @@ const TableList = ({
             onUpdateTableVisibility={onUpdateTableVisibility}
           />
         ))}
-        <TableHeader
-          tables={tables}
-          isHidden={true}
-          onUpdateTableVisibility={onUpdateTableVisibility}
-        />
-        {tables.map(table => (
+        {hiddenTables.length > 0 && (
+          <TableHeader
+            tables={hiddenTables}
+            isHidden={true}
+            onUpdateTableVisibility={onUpdateTableVisibility}
+          />
+        )}
+        {hiddenTables.map(table => (
           <TableRow
             key={table.id}
             table={table}
@@ -77,6 +91,9 @@ const TableList = ({
             onUpdateTableVisibility={onUpdateTableVisibility}
           />
         ))}
+        {visibleTables.length === 0 && hiddenTables.length === 0 && (
+          <TableEmptyState />
+        )}
       </ul>
     </div>
   );
