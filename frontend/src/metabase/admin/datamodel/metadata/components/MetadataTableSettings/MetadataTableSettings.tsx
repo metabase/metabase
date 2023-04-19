@@ -9,10 +9,8 @@ import Tables from "metabase/entities/tables";
 import Schemas from "metabase/entities/schemas";
 import ActionButton from "metabase/components/ActionButton";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
-import { Schema, TableId } from "metabase-types/api";
+import { Database, Schema, Table, TableId } from "metabase-types/api";
 import { State } from "metabase-types/store";
-import Database from "metabase-lib/metadata/Database";
-import Table from "metabase-lib/metadata/Table";
 import { discardTableFieldValues, rescanTableFieldValues } from "../../actions";
 import MetadataSection from "../MetadataSection";
 import MetadataSectionHeader from "../MetadataSectionHeader";
@@ -89,7 +87,7 @@ const MetadataTableSettings = ({
                   ? [schemaName, Urls.dataModelSchema(database.id, schemaName)]
                   : []),
                 [
-                  table.displayName(),
+                  table.display_name,
                   Urls.dataModelTable(database.id, schemaName, table.id),
                 ],
                 t`Settings`,

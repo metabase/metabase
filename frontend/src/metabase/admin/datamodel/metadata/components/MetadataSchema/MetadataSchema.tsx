@@ -1,8 +1,7 @@
 import React, { useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
-import Table from "metabase-lib/metadata/Table";
-import Field from "metabase-lib/metadata/Field";
+import { Field, Table } from "metabase-types/api";
 import {
   ColumnNameCell,
   DataTypeCell,

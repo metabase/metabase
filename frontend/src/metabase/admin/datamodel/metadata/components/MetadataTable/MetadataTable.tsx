@@ -5,9 +5,8 @@ import _ from "underscore";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import Tables from "metabase/entities/tables";
 import Radio from "metabase/core/components/Radio/Radio";
-import { TableId, TableVisibilityType } from "metabase-types/api";
+import { Table, TableId, TableVisibilityType } from "metabase-types/api";
 import { State } from "metabase-types/store";
-import Table from "metabase-lib/metadata/Table";
 import MetadataSchema from "../MetadataSchema";
 import {
   TableDescription,
@@ -122,7 +121,7 @@ const TableTitleSection = ({
           <TableNameInput
             name="display_name"
             type="text"
-            value={table.displayName() ?? ""}
+            value={table.display_name ?? ""}
             data-testid="table-name"
             onBlurChange={handleNameChange}
           />
@@ -238,6 +237,7 @@ export default _.compose(
   Tables.load({
     id: (_: State, { selectedTableId }: OwnProps) => selectedTableId,
     query: {
+      include_sensitive_fields: true,
       ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
     },
     requestType: "fetchMetadata",
