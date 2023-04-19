@@ -9,7 +9,6 @@ import { useAsyncFn } from "react-use";
 import cx from "classnames";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
-import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { useDispatch } from "metabase/lib/redux";
 import Tables from "metabase/entities/tables";
 import Icon from "metabase/components/Icon/Icon";
@@ -19,23 +18,18 @@ import {
   DatabaseId,
   Schema,
   Table,
+  TableId,
   TableVisibilityType,
 } from "metabase-types/api";
-import { State } from "metabase-types/store";
 
-interface OwnProps {
+interface TableListProps {
+  tables: Table[];
   selectedDatabaseId: DatabaseId;
   selectedSchema: Schema;
   selectedTable?: Table;
-  onSelectTable: (table: Table) => void;
+  onSelectTable: (tableId: TableId) => void;
   onBack?: () => void;
 }
-
-interface TableLoaderProps {
-  tables: Table[];
-}
-
-type TableListProps = OwnProps & TableLoaderProps;
 
 const TableList = ({
   selectedSchema,
@@ -154,7 +148,7 @@ const TableBreadcrumbs = ({ schema, onBack }: TableBreadcrumbsProps) => {
         {t`Schemas`}
       </span>
       <span className="mx1">-</span>
-      <span> {schema.name}</span>
+      <span>{schema.name}</span>
     </h4>
   );
 };
@@ -204,7 +198,7 @@ const TableEmptyState = () => {
 interface TableRowProps {
   table: Table;
   isSelected: boolean;
-  onSelectTable: (table: Table) => void;
+  onSelectTable: (tableId: TableId) => void;
   onUpdateTableVisibility: (
     tables: Table[],
     visibility: TableVisibilityType,
@@ -222,7 +216,7 @@ const TableRow = ({
   }, [table]);
 
   const handleSelect = useCallback(() => {
-    onSelectTable(table);
+    onSelectTable(table.id);
   }, [table, onSelectTable]);
 
   return (
@@ -296,12 +290,4 @@ const getToggleTooltip = (isHidden: boolean, hasMultipleTables?: boolean) => {
   }
 };
 
-export default Tables.loadList({
-  query: (_: State, { selectedDatabaseId, selectedSchema }: OwnProps) => ({
-    dbId: selectedDatabaseId,
-    schemaName: selectedSchema,
-    include_hidden: true,
-    ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
-  }),
-  selectorName: "getListUnfiltered",
-})(TableList);
+export default TableList;

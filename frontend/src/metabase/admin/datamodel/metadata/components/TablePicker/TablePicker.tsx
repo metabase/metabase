@@ -1,53 +1,59 @@
-import React, { useCallback, useState } from "react";
-import Schemas from "metabase/entities/schemas";
-import { DatabaseId, Schema, Table } from "metabase-types/api";
-import { State } from "metabase-types/store";
+import React, { useCallback } from "react";
+import _ from "underscore";
+import { DatabaseId, Schema, Table, TableId } from "metabase-types/api";
 import SchemaList from "../SchemaList";
 import TableList from "../TableList";
 
-interface OwnProps {
-  selectedDatabaseId: DatabaseId;
-}
-
-interface SchemaLoaderProps {
+interface TablePickerProps {
   schemas: Schema[];
+  tables: Table[];
+  selectedDatabaseId: DatabaseId;
+  selectedSchemaName?: string;
+  selectedTableId?: TableId;
+  onSelectDatabase: (databaseId: DatabaseId) => void;
+  onSelectSchema: (schemaName: string) => void;
+  onSelectTable: (tableId: TableId) => void;
 }
 
-type TablePickerProps = OwnProps & SchemaLoaderProps;
-
-const TablePicker = ({ selectedDatabaseId, schemas }: TablePickerProps) => {
+const TablePicker = ({
+  schemas,
+  tables,
+  selectedDatabaseId,
+  selectedSchemaName,
+  selectedTableId,
+  onSelectDatabase,
+  onSelectSchema,
+  onSelectTable,
+}: TablePickerProps) => {
+  const selectedSchema = _.findWhere(schemas, { name: selectedSchemaName });
+  const selectedTable = _.findWhere(tables, { id: selectedTableId });
   const canChangeSchema = schemas.length > 1;
-  const initialSchema = canChangeSchema ? undefined : schemas[0];
-  const [selectedSchema, setSelectedSchema] = useState(initialSchema);
-  const [selectedTable, setSelectedTable] = useState<Table>();
 
   const handleBack = useCallback(() => {
-    setSelectedSchema(undefined);
-  }, []);
+    onSelectDatabase(selectedDatabaseId);
+  }, [selectedDatabaseId, onSelectDatabase]);
 
   if (selectedSchema) {
     return (
       <TableList
+        tables={tables}
         selectedDatabaseId={selectedDatabaseId}
         selectedSchema={selectedSchema}
         selectedTable={selectedTable}
-        onSelectTable={setSelectedTable}
+        onSelectTable={onSelectTable}
         onBack={canChangeSchema ? handleBack : undefined}
       />
     );
   } else {
     return (
       <SchemaList
+        schemas={schemas}
         selectedDatabaseId={selectedDatabaseId}
         selectedSchema={selectedSchema}
-        onSelectSchema={setSelectedSchema}
+        onSelectSchema={onSelectSchema}
       />
     );
   }
 };
 
-export default Schemas.loadList({
-  query: (state: State, { selectedDatabaseId }: OwnProps) => ({
-    dbId: selectedDatabaseId,
-  }),
-})(TablePicker);
+export default TablePicker;

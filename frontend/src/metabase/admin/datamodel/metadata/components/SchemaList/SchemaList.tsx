@@ -2,22 +2,15 @@ import React, { useCallback, useMemo, useState } from "react";
 import cx from "classnames";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
-import Schemas from "metabase/entities/schemas";
 import Icon from "metabase/components/Icon/Icon";
 import { DatabaseId, Schema } from "metabase-types/api";
-import { State } from "metabase-types/store";
 
-interface OwnProps {
+interface SchemaListProps {
+  schemas: Schema[];
   selectedDatabaseId: DatabaseId;
   selectedSchema?: Schema;
-  onSelectSchema: (schema: Schema) => void;
+  onSelectSchema: (schemaName: string) => void;
 }
-
-interface SchemaLoaderProps {
-  schemas: Schema[];
-}
-
-type SchemaListProps = OwnProps & SchemaLoaderProps;
 
 const SchemaList = ({
   schemas: allSchemas,
@@ -71,12 +64,12 @@ const SchemaList = ({
 interface SchemaRowProps {
   schema: Schema;
   isSelected: boolean;
-  onSelectSchema: (schema: Schema) => void;
+  onSelectSchema: (schemaName: string) => void;
 }
 
 const SchemaRow = ({ schema, isSelected, onSelectSchema }: SchemaRowProps) => {
   const handleSelect = useCallback(() => {
-    onSelectSchema(schema);
+    onSelectSchema(schema.name);
   }, [schema, onSelectSchema]);
 
   return (
@@ -94,8 +87,4 @@ const SchemaRow = ({ schema, isSelected, onSelectSchema }: SchemaRowProps) => {
   );
 };
 
-export default Schemas.loadList({
-  query: (state: State, { selectedDatabaseId }: OwnProps) => ({
-    dbId: selectedDatabaseId,
-  }),
-})(SchemaList);
+export default SchemaList;
