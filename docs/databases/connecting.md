@@ -45,6 +45,38 @@ For provider-specific connection details, like connecting to a PostgreSQL data w
 
 - [AWS's Relational Database Service (RDS)](./connections/aws-rds.md)
 
+## Granting database privileges
+
+For Metabase to connect, query, or write to your database, you must set up Metabase with a database user account that has the correct database role and database privileges. 
+
+For example, you could create a database user account named `metabase` with the database role `analytics`. You can then assign `CONNECT`, `SELECT` (read), `INSERT` (write), and other privileges to `metabase` or `analytics` for a specific database, schema, or table.
+
+For example, to allow a `metabase` user to connect to a Postgres database:
+
+```sql
+GRANT CONNECT ON DATABASE <your_database> TO metabase;
+```
+
+Or, to allow all user accounts with the role `analytics` to connect to the Postgres database:
+
+```sql
+GRANT CONNECT ON DATABASE <your_database> TO analytics;
+```
+
+To give the `metabase` user permission to connect, query, and write to a specific table:
+
+```sql
+USE <database>;
+GRANT ALL ON <table> IN SCHEMA <schema> TO metabase;
+```
+
+To give the `metabase` user permission to connect, query, and write to any of the tables in a specific schema:
+
+```sql
+USE <database>;
+GRANT ALL ON <table> TO metabase;
+```
+
 ## Syncing and scanning databases
 
 See [Syncing and scanning](./sync-scan.md).
