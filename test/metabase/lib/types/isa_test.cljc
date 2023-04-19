@@ -188,7 +188,7 @@
           (testing negative
             (is (false? (pred (column negative))))))))))
 
-(deftest has-latitude-and-longitude?-test
+(deftest ^:parallel has-latitude-and-longitude?-test
   (is (true? (lib.types.isa/has-latitude-and-longitude?
               [{:semantic_type :type/Latitude} {:semantic_type :type/Longitude}])))
   (are [columns] (false? (lib.types.isa/has-latitude-and-longitude?
@@ -199,7 +199,7 @@
     []
     nil))
 
-(deftest primary-key-pred-test
+(deftest ^:parallel primary-key-pred-test
   (let [integer-table-id 1
         columns [{:semantic_type :type/PK, :table-id (inc integer-table-id), :name "column0"}
                  {:semantic_type :type/PK, :name "column1"}
