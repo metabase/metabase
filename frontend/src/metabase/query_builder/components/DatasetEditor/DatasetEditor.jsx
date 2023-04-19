@@ -4,7 +4,7 @@ import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 import { merge } from "icepick";
-import { usePrevious } from "react-use";
+import { usePrevious, useBeforeUnload } from "react-use";
 
 import ActionButton from "metabase/components/ActionButton";
 import Button from "metabase/core/components/Button";
@@ -60,6 +60,7 @@ const propTypes = {
   result: PropTypes.object,
   height: PropTypes.number,
   isDirty: PropTypes.bool.isRequired,
+  isResultDirty: PropTypes.bool.isRequired,
   isRunning: PropTypes.bool.isRequired,
   setQueryBuilderMode: PropTypes.func.isRequired,
   setDatasetEditorTab: PropTypes.func.isRequired,
@@ -190,7 +191,13 @@ function DatasetEditor(props) {
     onSave,
     handleResize,
     onOpenModal,
+    isResultDirty,
   } = props;
+
+  useBeforeUnload(
+    isResultDirty || isModelQueryDirty || isMetadataDirty,
+    t`You have unsaved changes`,
+  );
 
   const fields = useMemo(
     () => getSortedModelFields(dataset, resultsMetadata?.columns),
