@@ -154,8 +154,8 @@
             model-id                       (events/object->model-id topic object)
             user-id                        (events/object->user-id object)
             {:keys [context] :as metadata} (events/object->metadata object)]
-        (when (and (#{:card-read :dashboard-read :table-read} topic)
-                   (not= context "collection")) ;; we don't want to count pinned card views
+        (when (and (#{:card-query :dashboard-read :table-read} topic)
+                   (not= context :collection)) ;; we don't want to count pinned card views
           (update-users-recent-views! user-id model model-id))
         (record-view! model model-id user-id metadata)))
     (catch Throwable e
