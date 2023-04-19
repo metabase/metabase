@@ -1,4 +1,5 @@
 import React, { useCallback } from "react";
+import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
@@ -10,6 +11,7 @@ import ActionButton from "metabase/components/ActionButton";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import { Database, Schema, Table, TableId } from "metabase-types/api";
 import { State } from "metabase-types/store";
+import { discardTableFieldValues, rescanTableFieldValues } from "../../actions";
 import MetadataSection from "../MetadataSection";
 import MetadataSectionHeader from "../MetadataSectionHeader";
 import MetadataBackButton from "../MetadataBackButton";
@@ -37,9 +39,14 @@ interface TableLoaderProps {
 }
 
 interface DispatchProps {
-  onRescanFieldValues: (tableId: TableId) => void;
-  onDiscardFieldValues: (tableId: TableId) => void;
+  onRescanTableFieldValues: (tableId: TableId) => void;
+  onDiscardTableFieldValues: (tableId: TableId) => void;
 }
+
+const mapDispatchToProps: DispatchProps = {
+  onRescanTableFieldValues: rescanTableFieldValues,
+  onDiscardTableFieldValues: discardTableFieldValues,
+};
 
 type MetadataTableSettingsProps = RouterProps &
   DatabaseLoaderProps &
@@ -52,16 +59,16 @@ const MetadataTableSettings = ({
   schemas,
   table,
   params: { schemaName },
-  onRescanFieldValues,
-  onDiscardFieldValues,
+  onRescanTableFieldValues,
+  onDiscardTableFieldValues,
 }: MetadataTableSettingsProps) => {
-  const handleRescanFieldValues = useCallback(() => {
-    onRescanFieldValues(table.id);
-  }, [table, onRescanFieldValues]);
+  const handleRescanTableFieldValues = useCallback(() => {
+    onRescanTableFieldValues(table.id);
+  }, [table, onRescanTableFieldValues]);
 
-  const handleDiscardFieldvalues = useCallback(() => {
-    onDiscardFieldValues(table.id);
-  }, [table, onDiscardFieldValues]);
+  const handleDiscardTableFieldValues = useCallback(() => {
+    onDiscardTableFieldValues(table.id);
+  }, [table, onDiscardTableFieldValues]);
 
   return (
     <div className="relative">
@@ -96,7 +103,7 @@ const MetadataTableSettings = ({
           />
           <ActionButton
             className="Button mr2"
-            actionFn={handleRescanFieldValues}
+            actionFn={handleRescanTableFieldValues}
             normalText={t`Re-scan this table`}
             activeText={t`Starting…`}
             failedText={t`Failed to start scan`}
@@ -104,7 +111,7 @@ const MetadataTableSettings = ({
           />
           <ActionButton
             className="Button Button--danger"
-            actionFn={handleDiscardFieldvalues}
+            actionFn={handleDiscardTableFieldValues}
             normalText={t`Discard cached field values`}
             activeText={t`Starting…`}
             failedText={t`Failed to discard values`}
@@ -135,4 +142,5 @@ export default _.compose(
     },
     selectorName: "getObjectUnfiltered",
   }),
+  connect(null, mapDispatchToProps),
 )(MetadataTableSettings);
