@@ -184,7 +184,8 @@
   ;; NOTE: this should mirror `getTemplateTagParameters` in frontend/src/metabase/parameters/utils/cards.js
   (for [[_ {tag-type :type, widget-type :widget-type, :as tag}] (get-in card [:dataset_query :native :template-tags])
         :when                         (and tag-type
-                                           (or widget-type (not= tag-type :dimension)))]
+                                           (or (and widget-type (not= widget-type :none))
+                                               (not= tag-type :dimension)))]
     {:id      (:id tag)
      :type    (or widget-type (cond (= tag-type :date)   :date/single
                                     (= tag-type :string) :string/=
