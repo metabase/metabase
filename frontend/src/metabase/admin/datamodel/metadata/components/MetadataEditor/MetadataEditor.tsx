@@ -5,6 +5,7 @@ import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import Databases from "metabase/entities/databases";
 import Database from "metabase-lib/metadata/Database";
 import MetadataHeader from "../MetadataHeader";
+import MetadataTable from "../MetadataTable";
 import MetadataTablePicker from "../MetadataTablePicker";
 
 interface RouteParams {
@@ -46,6 +47,7 @@ const MetadataEditor = ({ databases, params }: MetadataEditorProps) => {
             selectedTableId={tableId}
           />
         )}
+        {tableId != null && <MetadataTable selectedTableId={tableId} />}
         <div style={{ paddingTop: "10rem" }} className="full text-centered">
           <h2 className="text-medium">
             {databases.length === 0

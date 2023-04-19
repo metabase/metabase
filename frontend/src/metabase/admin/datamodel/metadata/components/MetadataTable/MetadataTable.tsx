@@ -25,7 +25,7 @@ const METADATA_TAB_OPTIONS = [
 ];
 
 interface OwnProps {
-  tableId: TableId;
+  selectedTableId: TableId;
 }
 
 interface TableLoaderProps {
@@ -236,7 +236,7 @@ const TableTabSection = ({ tab, onChangeTab }: MetadataTabSectionProps) => {
 
 export default _.compose(
   Tables.load({
-    id: (_: State, { tableId }: OwnProps) => tableId,
+    id: (_: State, { selectedTableId }: OwnProps) => selectedTableId,
     query: {
       ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
     },
