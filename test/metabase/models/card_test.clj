@@ -600,16 +600,16 @@
   (let [metadata (qp/query->expected-cols (mt/mbql-query venues))
         query    (mt/mbql-query venues)]
     (testing "normal cards omit result_metadata"
-      (mt/with-temp Card [{card-id :id} {:dataset_query   query
-                                         :result_metadata metadata}]
-        (let [extracted (serdes/extract-one "Card" nil (t2/select-one Card :id card-id))]
+      (mt/with-temp :model/Card [{card-id :id} {:dataset_query   query
+                                                :result_metadata metadata}]
+        (let [extracted (serdes/extract-one "Card" nil (t2/select-one :model/Card :id card-id))]
           (is (not (:dataset extracted)))
           (is (nil? (:result_metadata extracted))))))
     (testing "dataset cards (models) retain result_metadata"
-      (mt/with-temp Card [{card-id :id} {:dataset         true
-                                         :dataset_query   query
-                                         :result_metadata metadata}]
-        (let [extracted (serdes/extract-one "Card" nil (t2/select-one Card :id card-id))]
+      (mt/with-temp :model/Card [{card-id :id} {:dataset         true
+                                                :dataset_query   query
+                                                :result_metadata metadata}]
+        (let [extracted (serdes/extract-one "Card" nil (t2/select-one :model/Card :id card-id))]
           (is (:dataset extracted))
           (is (string? (:display_name (first (:result_metadata extracted)))))
           ;; this is a quick comparison, since the actual stored metadata is quite complex
