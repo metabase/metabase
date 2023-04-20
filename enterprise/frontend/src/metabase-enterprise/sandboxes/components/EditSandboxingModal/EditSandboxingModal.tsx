@@ -123,9 +123,9 @@ const EditSandboxingModal = ({
           <Radio
             value={!shouldUseSavedQuestion}
             options={[
-              { name: "Filter by a column in the table", value: true },
+              { name: t`Filter by a column in the table`, value: true },
               {
-                name: "Use a saved question to create a custom view for this table",
+                name: t`Use a saved question to create a custom view for this table`,
                 value: false,
               },
             ]}
@@ -234,7 +234,7 @@ const PolicySummary = ({ policy }: PolicySummaryProps) => {
   return (
     <div>
       <div className="px1 pb2 text-uppercase text-small text-grey-4">
-        Summary
+        {t`Summary`}
       </div>
       <SummaryRow
         icon="group"
