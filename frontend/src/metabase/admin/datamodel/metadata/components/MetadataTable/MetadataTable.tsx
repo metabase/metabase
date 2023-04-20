@@ -2,7 +2,6 @@ import React, { ChangeEvent, useCallback, useState } from "react";
 import { connect } from "react-redux";
 import { useAsync } from "react-use";
 import { t } from "ttag";
-import _ from "underscore";
 import Tables from "metabase/entities/tables";
 import Radio from "metabase/core/components/Radio/Radio";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
@@ -29,24 +28,40 @@ const METADATA_TAB_OPTIONS = [
   { name: t`Original schema`, value: "original_schema" },
 ];
 
+interface HasTableId {
+  id: TableId;
+}
+
+interface HasEntityQuery {
+  entityQuery: unknown;
+}
+
 interface OwnProps {
   selectedTableId: TableId;
 }
 
-interface TableLoaderProps {
-  table: Table;
-}
-
-interface TableLoaderOpts {
-  entityQuery: unknown;
+interface StateProps {
+  table?: Table;
 }
 
 interface DispatchProps {
-  onFetchForeignTables: (table: Table, opts: TableLoaderOpts) => void;
-  onUpdateProperty: (table: Table, name: keyof Table, value: unknown) => void;
+  onFetchForeignTables: (
+    table: HasTableId,
+    opts: HasEntityQuery,
+  ) => Promise<void>;
+  onUpdateProperty: (table: Table, name: string, value: unknown) => void;
 }
 
-type MetadataTableProps = OwnProps & TableLoaderProps & DispatchProps;
+type MetadataTableProps = OwnProps & StateProps & DispatchProps;
+
+const mapStateToProps = (
+  state: State,
+  { selectedTableId }: OwnProps,
+): StateProps => ({
+  table: Tables.selectors.getObjectUnfiltered(state, {
+    entityId: selectedTableId,
+  }),
+});
 
 const mapDispatchToProps: DispatchProps = {
   onFetchForeignTables: Tables.actions.fetchMetadataAndForeignTables,
@@ -55,15 +70,36 @@ const mapDispatchToProps: DispatchProps = {
 
 const MetadataTable = ({
   table,
+  selectedTableId,
   onFetchForeignTables,
   onUpdateProperty,
 }: MetadataTableProps) => {
-  const [tab, setTab] = useState<MetadataTabType>("columns");
-
   const { loading, error } = useAsync(
-    async () => onFetchForeignTables(table, { entityQuery: TABLE_QUERY }),
-    [table],
+    () =>
+      onFetchForeignTables(
+        { id: selectedTableId },
+        { entityQuery: TABLE_QUERY },
+      ),
+    [selectedTableId],
   );
+
+  return table == null || loading || error != null ? (
+    <LoadingAndErrorWrapper loading={loading} error={error} />
+  ) : (
+    <MetadataTableView table={table} onUpdateProperty={onUpdateProperty} />
+  );
+};
+
+interface MetadataTableViewProps {
+  table: Table;
+  onUpdateProperty: (table: Table, name: string, value: unknown) => void;
+}
+
+const MetadataTableView = ({
+  table,
+  onUpdateProperty,
+}: MetadataTableViewProps) => {
+  const [tab, setTab] = useState<MetadataTabType>("columns");
 
   const handleChangeName = useCallback(
     (name: string) => {
@@ -87,22 +123,20 @@ const MetadataTable = ({
   );
 
   return (
-    <LoadingAndErrorWrapper loading={loading} error={error} noWrapper>
-      <div className="MetadataTable full px3">
-        <TableTitleSection
-          table={table}
-          tab={tab}
-          onChangeName={handleChangeName}
-          onChangeDescription={handleChangeDescription}
-        />
-        <TableVisibilitySection
-          table={table}
-          onChangeVisibility={handleChangeVisibility}
-        />
-        <TableTabSection tab={tab} onChangeTab={setTab} />
-        {tab === "original_schema" && <MetadataSchema table={table} />}
-      </div>
-    </LoadingAndErrorWrapper>
+    <div className="MetadataTable full px3">
+      <TableTitleSection
+        table={table}
+        tab={tab}
+        onChangeName={handleChangeName}
+        onChangeDescription={handleChangeDescription}
+      />
+      <TableVisibilitySection
+        table={table}
+        onChangeVisibility={handleChangeVisibility}
+      />
+      <TableTabSection tab={tab} onChangeTab={setTab} />
+      {tab === "original_schema" && <MetadataSchema table={table} />}
+    </div>
   );
 };
 
@@ -258,12 +292,4 @@ const TableTabSection = ({ tab, onChangeTab }: MetadataTabSectionProps) => {
   );
 };
 
-export default _.compose(
-  Tables.load({
-    id: (_: State, { selectedTableId }: OwnProps) => selectedTableId,
-    query: TABLE_QUERY,
-    requestType: "fetchMetadata",
-    selectorName: "getObjectUnfiltered",
-  }),
-  connect(null, mapDispatchToProps),
-)(MetadataTable);
+export default connect(mapStateToProps, mapDispatchToProps)(MetadataTable);
