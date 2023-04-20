@@ -8,7 +8,7 @@
    [metabase.metabot.client :as metabot-client]
    [metabase.metabot.settings :as metabot-settings]
    [metabase.metabot.util :as metabot-util]
-   [metabase.models :refer [Card Database]]
+   [metabase.models :refer [Card Database Table]]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.test.util :as tu]
@@ -45,8 +45,8 @@
                                     {:display_name    "Sizes"
                                      :base_type       :type/Integer
                                      :possible_values [1 2 3]}
-                                    {:display_name    "BigCardinality"
-                                     :base_type       :type/Integer}])}]
+                                    {:display_name "BigCardinality"
+                                     :base_type    :type/Integer}])}]
       (is (= (mdb.query/format-sql
               (str
                "create type SIZES_t as enum '1', '2', '3';"
@@ -217,10 +217,10 @@
       (let [q               (mt/native-query {:query "SELECT * FROM ORDERS;"})
             result-metadata (get-in (qp/process-query q) [:data :results_metadata :columns])]
         (t2.with-temp/with-temp
-         [Card orders-model {:name          "Orders Model"
-                             :dataset_query q
+         [Card orders-model {:name            "Orders Model"
+                             :dataset_query   q
                              :result_metadata result-metadata
-                             :dataset       true}]
+                             :dataset         true}]
           (let [{:keys [column_aliases inner_query create_table_ddl sql_name]} (metabot-util/denormalize-model orders-model)]
             (is (= (mdb.query/format-sql
                     (format "SELECT %s FROM {{#%s}} AS INNER_QUERY" column_aliases (:id orders-model)))
@@ -244,10 +244,10 @@
       (let [q               (mt/native-query {:query "SELECT TOTAL, QUANTITY, TAX, CREATED_AT FROM ORDERS;"})
             result-metadata (get-in (qp/process-query q) [:data :results_metadata :columns])]
         (t2.with-temp/with-temp
-         [Card orders-model {:name          "Orders Model"
-                             :dataset_query q
+         [Card orders-model {:name            "Orders Model"
+                             :dataset_query   q
                              :result_metadata result-metadata
-                             :dataset       true}]
+                             :dataset         true}]
           (let [{:keys [column_aliases inner_query create_table_ddl sql_name]} (metabot-util/denormalize-model orders-model)]
             (is (= (mdb.query/format-sql
                     (format "SELECT %s FROM {{#%s}} AS INNER_QUERY" column_aliases (:id orders-model)))
@@ -266,10 +266,10 @@
       (let [q               (mt/native-query {:query "SELECT TOTAL AS X, QUANTITY AS X FROM ORDERS;"})
             result-metadata (get-in (qp/process-query q) [:data :results_metadata :columns])]
         (t2.with-temp/with-temp
-         [Card orders-model {:name          "Orders Model"
-                             :dataset_query q
+         [Card orders-model {:name            "Orders Model"
+                             :dataset_query   q
                              :result_metadata result-metadata
-                             :dataset       true}]
+                             :dataset         true}]
           (let [{:keys [column_aliases inner_query create_table_ddl sql_name]} (metabot-util/denormalize-model orders-model)]
             (is (= (mdb.query/format-sql
                     (format "SELECT %s FROM {{#%s}} AS INNER_QUERY" column_aliases (:id orders-model)))
@@ -367,7 +367,7 @@
                                        (map #(assoc % :display_name "ABC") v)))
                 {:keys [column_aliases create_table_ddl]} (metabot-util/denormalize-model orders-model)]
             (is (= 9 (count (re-seq #"ABC(?:_\d+)?" column_aliases))))
-           ;; Ensure that the same aliases are used in the create table ddl
+            ;; Ensure that the same aliases are used in the create table ddl
             (is (= 9 (count (re-seq #"ABC" create_table_ddl)))))))))
   (testing "Models with name collisions across joins are also correctly disambiguated"
     (mt/dataset sample-dataset
@@ -479,3 +479,43 @@
             :tokens       290, :user_prompt "I <3 turtles!"
             :prompt_match 1}
            (metabot-util/best-prompt-object prompt-objects "I <3 turtles!"))))))
+
+(defn- max-size-embedder [max-tokens {:keys [_model input]} _options]
+  (let [embedding   (cond
+                      (str/includes? input "turtles") [1]
+                      (str/includes? input "love") [0.5]
+                      :else [0])
+        used-tokens (count input)]
+    (if (> used-tokens max-tokens)
+      (let [message (format "Too many tokens (%s)!" used-tokens)]
+        (throw
+         (ex-info
+          message
+          {:message message
+           :status  400})))
+      {:data  [{:embedding embedding}]
+       :usage {:prompt_tokens used-tokens}})))
+
+(deftest create-table-embedding-test
+  (testing "Baseline case -- the default prompt doesn't need any shrinking"
+    (mt/dataset sample-dataset
+      (let [max-tokens 5000]
+        (tu/with-temporary-setting-values [metabot-settings/enum-cardinality-threshold 100]
+          (with-redefs [metabot-client/*create-embedding-endpoint* (partial max-size-embedder max-tokens)]
+            (let [{:keys [tokens]} (metabot-util/create-table-embedding (t2/select-one Table :id (mt/id :people)))]
+              (is (<= 800 tokens max-tokens))
+              tokens))))))
+  (testing "The token limit is too high, we reduce the size of the prompt"
+    (mt/dataset sample-dataset
+      (let [max-tokens 500]
+        (tu/with-temporary-setting-values [metabot-settings/enum-cardinality-threshold 100]
+          (with-redefs [metabot-client/*create-embedding-endpoint* (partial max-size-embedder max-tokens)]
+            (let [{:keys [tokens]} (metabot-util/create-table-embedding (t2/select-one Table :id (mt/id :people)))]
+              (is (<= 400 tokens max-tokens))))))))
+  (testing "The token limit is reduced to demonstrate that we produce nothing when we can't create a small enough prompt."
+    (mt/dataset sample-dataset
+      (let [max-tokens 1]
+        (tu/with-temporary-setting-values [metabot-settings/enum-cardinality-threshold 100]
+          (with-redefs [metabot-client/*create-embedding-endpoint* (partial max-size-embedder max-tokens)]
+            (let [response (metabot-util/create-table-embedding (t2/select-one Table :id (mt/id :people)))]
+              (is (nil? response)))))))))
