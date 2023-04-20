@@ -18,8 +18,7 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.http-client :as client]
    [metabase.models
-    :refer [Card
-            CardBookmark
+    :refer [CardBookmark
             Collection
             Dashboard
             Database
