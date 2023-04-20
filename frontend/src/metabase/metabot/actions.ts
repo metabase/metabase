@@ -7,11 +7,13 @@ import {
   GetState,
   MetabotEntityId,
   MetabotEntityType,
+  State,
 } from "metabase-types/store";
 import { defer, Deferred } from "metabase/lib/promise";
 import Question from "metabase-lib/Question";
 import {
   getCancelQueryDeferred,
+  getCard,
   getEntityId,
   getEntityType,
   getFeedbackType,
@@ -19,8 +21,27 @@ import {
   getNativeQueryText,
   getPrompt,
   getPromptTemplateVersions,
+  getQueryResultsError,
   getQuestion,
 } from "./selectors";
+import {
+  MetabotQueryRunResult,
+  trackMetabotFeedbackReceived,
+  trackMetabotQueryRun,
+} from "./analytics";
+
+const trackQueryRun = (state: State, result: MetabotQueryRunResult) => {
+  const entityType = getEntityType(state);
+  const promptTemplateVersions = getPromptTemplateVersions(state);
+  const visualizationType = getCard(state)?.display ?? null;
+
+  trackMetabotQueryRun(
+    entityType,
+    promptTemplateVersions,
+    result,
+    visualizationType,
+  );
+};
 
 export interface InitPayload {
   entityId: MetabotEntityId;
@@ -75,8 +96,12 @@ export const runPromptQuery =
       await dispatch(fetchQuestion(cancelQueryDeferred));
       await dispatch(fetchQueryResults(cancelQueryDeferred));
       dispatch({ type: RUN_PROMPT_QUERY_FULFILLED });
+
+      const queryResultsError = getQueryResultsError(getState());
+      trackQueryRun(getState(), queryResultsError ? "bad-sql" : "success");
     } catch (error) {
       if (getIsQueryRunning(getState())) {
+        trackQueryRun(getState(), "failure");
         dispatch({ type: RUN_PROMPT_QUERY_REJECTED, payload: error });
       }
     }
@@ -157,6 +182,12 @@ export const submitFeedback =
       feedback_type: feedbackType,
       prompt_template_versions,
     });
+
+    trackMetabotFeedbackReceived(
+      entityType,
+      prompt_template_versions,
+      feedbackType,
+    );
 
     dispatch({ type: SUBMIT_FEEDBACK });
   };
