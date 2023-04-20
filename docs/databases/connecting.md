@@ -74,7 +74,7 @@ For example, most BI tools need the same privileges to connect and read from you
 - Create a database user called `metabase`.
 - Give `metabase` the `bi_tool` role.
 
-In PostgreSQL, you'd log in as an admin and run the DML commands:
+In PostgreSQL, you'd log in as an admin and run the SQL statements:
 
 ```sql
 CREATE ROLE bi_tool;
