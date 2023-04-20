@@ -35,7 +35,15 @@ async function setup(user = createMockUser()) {
 
   fetchMock.get("path:/api/bookmark", []);
 
-  const { mockEvent, events } = createMockEventListener();
+  const mockEventListener = jest.spyOn(window, "addEventListener");
+  const mockEvent = {
+    preventDefault: jest.fn(),
+  };
+  const callMockEvent = eventNames => {
+    mockEventListener.mock.calls
+      .filter(([event]) => eventNames.includes(event))
+      .forEach(([_, callback]) => callback(mockEvent));
+  };
 
   const DashboardAppContainer = props => {
     return (
@@ -61,27 +69,7 @@ async function setup(user = createMockUser()) {
     screen.queryAllByTestId("loading-spinner"),
   );
 
-  return { mockEvent, events };
-}
-
-function createMockEventListener() {
-  const events = {};
-  const mockEvent = {
-    preventDefault: jest.fn(),
-    returnValue: undefined,
-  };
-
-  jest
-    .spyOn(window, "addEventListener")
-    .mockImplementation((event, callback) => {
-      events[event] = () => callback(mockEvent);
-    });
-
-  jest.spyOn(window, "removeEventListener").mockImplementation((event, _) => {
-    delete events[event];
-  });
-
-  return { mockEvent, events };
+  return { mockEvent, mockEventListener, callMockEvent };
 }
 
 describe("DashboardApp", function () {
@@ -96,7 +84,7 @@ describe("DashboardApp", function () {
   });
 
   it("should have a beforeunload event when the user tries to leave a dirty dashboard", async function () {
-    const { events, mockEvent } = await setup();
+    const { callMockEvent, mockEvent } = await setup();
 
     userEvent.click(screen.getByLabelText("Edit dashboard"));
     userEvent.click(screen.getByTestId("dashboard-name-heading"));
@@ -104,17 +92,18 @@ describe("DashboardApp", function () {
     // need to click away from the input to trigger the isDirty flag
     userEvent.tab();
 
-    events.beforeunload?.();
+    callMockEvent(["beforeunload"]);
+
     expect(mockEvent.preventDefault).toHaveBeenCalled();
     expect(mockEvent.returnValue).toEqual(BEFORE_UNLOAD_UNSAVED_MESSAGE);
   });
 
   it("should not have a beforeunload event when the dashboard is unedited", async function () {
-    const { events, mockEvent } = await setup();
+    const { mockEvent, callMockEvent } = await setup();
 
     userEvent.click(screen.getByLabelText("Edit dashboard"));
 
-    events.beforeunload?.();
+    callMockEvent(["beforeunload"]);
     expect(mockEvent.preventDefault).not.toHaveBeenCalled();
     expect(mockEvent.returnValue).toBe(undefined);
   });
