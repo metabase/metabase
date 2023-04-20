@@ -267,14 +267,14 @@ const TableVisibilitySection = ({
       <span className="mx1 text-uppercase">{t`Visibility`}</span>
       <span id="VisibilityTypes">
         <VisibilityBadge
-          isSelected={table.visibility_type === null}
+          isSelected={table.visibility_type == null}
           onClick={handleChangeVisible}
         >
           {t`Queryable`}
         </VisibilityBadge>
         <VisibilityBadge
           isSelected={
-            table.visibility_type == null || table.visibility_type === "hidden"
+            table.visibility_type != null || table.visibility_type === "hidden"
           }
           onClick={handleChangeHidden}
         >
