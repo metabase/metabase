@@ -80,7 +80,7 @@
         context {:database    (metabot-util/denormalize-database database)
                  :user_prompt question
                  :prompt_task :infer_model}]
-    (if-some [model (metabot/match-best-model context)]
+    (if-some [model (metabot/infer-model context)]
       (let [context (merge context {:model model :prompt_task :infer_sql})
             dataset (infer-sql-or-throw context question)]
         (add-viz-to-dataset context dataset))
