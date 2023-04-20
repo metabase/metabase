@@ -383,7 +383,7 @@
   (sql-jdbc/query driver database {:select [:*]
                                    :from   [[(qp.store/with-store
                                                (qp.store/fetch-and-store-database! (u/the-id database))
-                                               (binding [hx/*honey-sql-version* (sql.qp/honey-sql-version driver)]
+                                               (sql.qp/with-driver-honey-sql-version driver
                                                  (sql.qp/->honeysql driver table)))]]}))
 
 (defmethod driver/describe-database :snowflake [driver database]
