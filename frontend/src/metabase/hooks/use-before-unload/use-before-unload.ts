@@ -5,7 +5,9 @@ import { t } from "ttag";
 // https://developer.mozilla.org/en-US/docs/Web/API/Window/beforeunload_event#compatibility_notes
 export const BEFORE_UNLOAD_UNSAVED_MESSAGE = t`You have unsaved changes.`;
 
-const useBeforeUnload = (condition: (() => boolean) | boolean) => {
+const useBeforeUnload = (
+  condition: Parameters<typeof useBeforeUnloadHook>[0],
+) => {
   return useBeforeUnloadHook(condition, BEFORE_UNLOAD_UNSAVED_MESSAGE);
 };
 
