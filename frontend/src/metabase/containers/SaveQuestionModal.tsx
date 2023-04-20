@@ -11,6 +11,7 @@ import validate from "metabase/lib/validate";
 import { canonicalCollectionId } from "metabase/collections/utils";
 
 import "./SaveQuestionModal.css";
+import Question from "metabase-lib/Question";
 
 const getSingleStepTitle = (questionType: string, showSaveType: boolean) => {
   if (questionType === "model") {
@@ -23,13 +24,13 @@ const getSingleStepTitle = (questionType: string, showSaveType: boolean) => {
 };
 
 interface SaveQuestionModalProps {
-  question: any;
-  originalQuestion?: any;
-  onCreate: (question: any) => void;
-  onSave: (question: any) => void;
+  question: Question;
+  originalQuestion: Question;
+  onCreate: (question: Question) => void;
+  onSave: (question: Question) => void;
   onClose: () => void;
   multiStep?: boolean;
-  initialCollectionId: any;
+  initialCollectionId: number;
 }
 
 export default class SaveQuestionModal extends Component<SaveQuestionModalProps> {
@@ -42,7 +43,8 @@ export default class SaveQuestionModal extends Component<SaveQuestionModalProps>
     multiStep: PropTypes.bool,
   };
 
-  validateName = (name: any, { values }: any) => {
+  // @ts-expect-error provide better types for validation
+  validateName = (name, { values }) => {
     if (values.saveType !== "overwrite") {
       // We don't care if the form is valid when overwrite mode is enabled,
       // as original question's data will be submitted instead of the form values
@@ -199,12 +201,8 @@ export default class SaveQuestionModal extends Component<SaveQuestionModalProps>
   }
 }
 
-interface SaveTypeInputProps {
-  field: any;
-  originalQuestion: any;
-}
-
-const SaveTypeInput = ({ field, originalQuestion }: SaveTypeInputProps) => (
+// @ts-expect-error provide correct Props type
+const SaveTypeInput = ({ field, originalQuestion }) => (
   <Radio
     {...field}
     type={""}
