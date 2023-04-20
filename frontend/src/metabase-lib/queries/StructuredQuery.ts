@@ -1052,17 +1052,26 @@ class StructuredQueryInner extends AtomicQuery {
   }
 
   // LIMIT
+  /**
+   * @deprecated use metabase-lib v2's currentLimit function
+   */
   limit(): Limit {
     const query = this.getMLv2Query();
     return ML.currentLimit(query);
   }
 
+  /**
+   * @deprecated use metabase-lib v2's limit function
+   */
   updateLimit(limit: Limit) {
     const query = this.getMLv2Query();
     const nextQuery = ML.limit(query, limit);
     return this.updateWithMLv2(nextQuery);
   }
 
+  /**
+   * @deprecated use metabase-lib v2's limit function
+   */
   clearLimit() {
     return this.updateLimit(null);
   }
