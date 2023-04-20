@@ -54,9 +54,6 @@ const ChartClickActionsView = ({
           {SECTIONS[key].icon === "sum" && (
             <p className="mt0 text-medium text-small">{t`Summarize`}</p>
           )}
-          {SECTIONS[key].icon === "breakout" && (
-            <p className="my1 text-medium text-small">{t`Break out by a…`}</p>
-          )}
           {SECTIONS[key].icon === "bolt" && (
             <p className="mt2 text-medium text-small">
               {t`Automatic explorations`}

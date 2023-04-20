@@ -1,10 +1,9 @@
-import PivotByCategoryDrill from "../drill/PivotByCategoryDrill";
-import PivotByTimeDrill from "../drill/PivotByTimeDrill";
+import PivotDrill from "../drill/PivotDrill";
 import DefaultMode from "./DefaultMode";
 
 const GeoMode = {
   name: "geo",
-  drills: [...DefaultMode.drills, PivotByCategoryDrill, PivotByTimeDrill],
+  drills: [...DefaultMode.drills, PivotDrill],
 };
 
 export default GeoMode;
