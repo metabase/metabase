@@ -184,11 +184,13 @@ class QueryModals extends React.Component<QueryModalsProps> {
               question={this.props.question}
               originalQuestion={this.props.originalQuestion}
               onSave={async question => {
+                console.log("on save!");
                 await this.props.onSave(question, false);
                 this.showAlertsAfterQuestionSaved();
               }}
               onCreate={async question => {
                 await this.props.onCreate(question, false);
+                console.log("on create!");
                 this.showAlertsAfterQuestionSaved();
               }}
               onClose={onCloseModal}

@@ -1,5 +1,3 @@
-/* eslint-disable import/order */
-/* eslint-disable react/prop-types */
 import React, { Component, ComponentPropsWithoutRef } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
@@ -10,13 +8,10 @@ import ModalContent from "metabase/components/ModalContent";
 import DashboardPicker from "metabase/containers/DashboardPicker";
 import type { State } from "metabase-types/store";
 import { CreateDashboardFormOwnProps } from "metabase/dashboard/containers/CreateDashboardForm";
-
 import * as Urls from "metabase/lib/urls";
-
 import CreateDashboardModal from "metabase/dashboard/containers/CreateDashboardModal";
-
-import { LinkContent } from "./AddToDashSelectDashModal.styled";
 import { Card, Dashboard } from "metabase-types/api";
+import { LinkContent } from "./AddToDashSelectDashModal.styled";
 
 function mapStateToProps(state: State) {
   return {
@@ -88,7 +83,7 @@ class AddToDashSelectDashModal extends Component<
         <DashboardPicker onChange={this.onDashboardSelected} />
         <Link
           onClick={() => this.setState({ shouldCreateDashboard: true })}
-          // `to` needs to be verifies additionally
+          // Link expects `to`, but we override the default behavior with onClick
           to={""}
         >
           <LinkContent>
