@@ -1,5 +1,4 @@
 import React from "react";
-import _ from "underscore";
 import { useSelector } from "react-redux";
 import { getAllUploads } from "metabase/redux/uploads";
 import Collections from "metabase/entities/collections/collections";
@@ -57,6 +56,6 @@ const FileUploadStatusContent = ({
   return <FileUploadStatusLarge uploads={uploads} collection={collection} />;
 };
 
-export default _.compose(
-  Collections.loadList({ loadingAndErrorWrapper: false }),
-)(FileUploadStatus);
+export default Collections.loadList({ loadingAndErrorWrapper: false })(
+  FileUploadStatus,
+);
