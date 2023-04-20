@@ -4,7 +4,12 @@ import { createEntitiesState } from "__support__/store";
 import { defer } from "metabase/lib/promise";
 import { getMetadata } from "metabase/selectors/metadata";
 
-import type { Card, UnsavedCard } from "metabase-types/api";
+import type {
+  Card,
+  DashboardId,
+  DashCardId,
+  UnsavedCard,
+} from "metabase-types/api";
 import {
   createMockCard,
   createMockUnsavedCard,
@@ -40,7 +45,12 @@ function createMockMetadata(card?: Card) {
   return getMetadata(state);
 }
 
-function createMockSavedQuestion(card?: Partial<Card>) {
+type DashboardAwareCard = Card & {
+  dashboardId?: DashboardId;
+  dashcardId?: DashCardId;
+};
+
+function createMockSavedQuestion(card?: Partial<DashboardAwareCard>) {
   const savedCard = createMockCard({ dataset_query: MOCK_QUERY, ...card });
   return createMockMetadata(savedCard).question(savedCard.id) as Question;
 }
