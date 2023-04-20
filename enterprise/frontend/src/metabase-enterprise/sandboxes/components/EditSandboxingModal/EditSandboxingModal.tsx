@@ -240,7 +240,7 @@ const PolicySummary = ({ policy }: PolicySummaryProps) => {
       <SummaryRow
         icon="group"
         content={jt`Users in ${(
-          <strong>
+          <strong key="group-name">
             <EntityName entityType="groups" entityId={policy.group_id} />
           </strong>
         )} can view`}
@@ -250,7 +250,7 @@ const PolicySummary = ({ policy }: PolicySummaryProps) => {
         content={
           policy.card_id
             ? jt`rows in the ${(
-                <strong>
+                <strong key="question-name">
                   <EntityName
                     entityType="questions"
                     entityId={policy.card_id}
@@ -258,7 +258,7 @@ const PolicySummary = ({ policy }: PolicySummaryProps) => {
                 </strong>
               )} question`
             : jt`rows in the ${(
-                <strong>
+                <strong key="table-name">
                   <EntityName
                     entityType="tables"
                     entityId={policy.table_id}
@@ -276,11 +276,19 @@ const PolicySummary = ({ policy }: PolicySummaryProps) => {
             content={
               index === 0
                 ? jt`where ${(
-                    <TargetName policy={policy} target={target} />
-                  )} equals ${(<span className="text-code">{attribute}</span>)}`
+                    <TargetName key="target" policy={policy} target={target} />
+                  )} equals ${(
+                    <span key="attr" className="text-code">
+                      {attribute}
+                    </span>
+                  )}`
                 : jt`and ${(
-                    <TargetName policy={policy} target={target} />
-                  )} equals ${(<span className="text-code">{attribute}</span>)}`
+                    <TargetName key="target" policy={policy} target={target} />
+                  )} equals ${(
+                    <span key="attr" className="text-code">
+                      {attribute}
+                    </span>
+                  )}`
             }
           />
         ),
