@@ -92,14 +92,15 @@ const MetadataTable = ({
   onUpdateTable,
 }: MetadataTableProps) => {
   const { loading, error } = useAsync(() => {
-    return Promise.all([
-      onFetchForeignTables(
-        { id: selectedTableId },
-        { entityQuery: TABLE_QUERY },
-      ),
-      onFetchIdFields({ id: selectedDatabaseId }),
-    ]);
+    return onFetchForeignTables(
+      { id: selectedTableId },
+      { entityQuery: TABLE_QUERY },
+    );
   }, [selectedTableId]);
+
+  useAsync(() => {
+    return onFetchIdFields({ id: selectedDatabaseId });
+  }, [selectedDatabaseId]);
 
   if (table == null || loading || error != null) {
     return <LoadingAndErrorWrapper loading={loading} error={error} />;
