@@ -292,8 +292,7 @@
   [{:keys [sso_source] :as user} name-key new-name]
   (or
    (= (get user name-key) new-name)
-   (and
-    (not sso_source))))
+   (not sso_source)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema PUT "/:id"
