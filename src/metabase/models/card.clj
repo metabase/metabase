@@ -8,7 +8,7 @@
    [metabase.db.query :as mdb.query]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.util :as mbql.u]
-   [metabase.models.audit_log :as audit-log]
+   [metabase.models.audit-log :as audit-log]
    [metabase.models.collection :as collection]
    [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
@@ -553,7 +553,7 @@
 ;;; -------------------------------------------------- Audit Log -------------------------------------------------------
 
 (defmethod audit-log/model-details Card
-  [_model {query :dataset_query, dataset? :dataset :as card} _event-type]
+  [{query :dataset_query, dataset? :dataset :as card} _event-type]
   (let [query (when (seq query)
                 (try (qp/preprocess query)
                      (catch Throwable e

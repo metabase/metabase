@@ -26,6 +26,7 @@
    [metabase.models
     :refer [Card CardBookmark Collection Database PersistedInfo Pulse Table
             ViewLog]]
+   [metabase.models.audit-log :as audit-log]
    [metabase.models.card :as card]
    [metabase.models.collection :as collection]
    [metabase.models.collection.root :as collection.root]
@@ -536,7 +537,7 @@ saved later when it is ready."
                                                                              (and metadata (not timed-out?))
                                                                              (assoc :result_metadata metadata)))))]
      (when-not delay-event?
-       (events/publish-event! :card-create card))
+       (audit-log/record-event! :card-create card))
      (when timed-out?
        (log/info (trs "Metadata not available soon enough. Saving new card and asynchronously updating metadata")))
      ;; include same information returned by GET /api/card/:id since frontend replaces the Card it currently has with

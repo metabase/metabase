@@ -14626,16 +14626,6 @@ databaseChangeLog:
                   constraints:
                     nullable: true
               - column:
-                  name: database_id
-                  type: int
-                  constraints:
-                    nullable: true
-              - column:
-                  name: table_id
-                  type: int
-                  constraints:
-                    nullable: true
-              - column:
                   name: details
                   type: ${text.type}
                   constraints:
