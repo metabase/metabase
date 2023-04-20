@@ -70,8 +70,8 @@ To organize your database privileges, you can create database roles for each typ
 
 For example, most BI tools need the same privileges to connect and read from your database, so you can:
 
-- Create a new role called `bi_tool`.
-- Create a database user account called `metabase`.
+- Create a database role called `bi_tool`.
+- Create a database user called `metabase`.
 - Give `metabase` the `bi_tool` role.
 
 In PostgreSQL, you'd log in as an admin and run the DML commands:
@@ -79,7 +79,7 @@ In PostgreSQL, you'd log in as an admin and run the DML commands:
 ```sql
 CREATE ROLE bi_tool;
 CREATE USER metabase;
-GRANT bi_tool to metabase;
+GRANT bi_tool TO metabase;
 ```
 
 ### Database privileges
