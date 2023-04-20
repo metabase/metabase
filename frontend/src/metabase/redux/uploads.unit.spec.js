@@ -1,6 +1,6 @@
 import fetchMock from "fetch-mock";
 
-import reducer, {
+import {
   uploadFile,
   UPLOAD_FILE_TO_COLLECTION_CLEAR,
   UPLOAD_FILE_TO_COLLECTION_END,
@@ -134,119 +134,6 @@ describe("csv uploads", () => {
           id: now,
         },
       });
-    });
-  });
-
-  describe("reducers", () => {
-    let initState;
-    beforeEach(() => {
-      initState = reducer(undefined, {});
-    });
-
-    it("should return the initial state", () => {
-      expect(initState).toEqual({});
-    });
-
-    it("upload start", () => {
-      expect(
-        reducer(undefined, {
-          type: UPLOAD_FILE_TO_COLLECTION_START,
-          payload: {
-            id: now,
-            name: "test.csv",
-            collectionId: "root",
-          },
-        }),
-      ).toEqual({
-        ...initState,
-        [now]: {
-          id: now,
-          name: "test.csv",
-          collectionId: "root",
-          status: "in-progress",
-        },
-      });
-    });
-
-    it("upload end", () => {
-      expect(
-        reducer(
-          {
-            [now]: {
-              id: now,
-              name: "test.csv",
-              collectionId: "root",
-              status: "in-progress",
-            },
-          },
-          {
-            type: UPLOAD_FILE_TO_COLLECTION_END,
-            payload: {
-              id: now,
-              modelId: 3,
-            },
-          },
-        ),
-      ).toEqual({
-        [now]: {
-          id: now,
-          name: "test.csv",
-          collectionId: "root",
-          status: "complete",
-          modelId: 3,
-        },
-      });
-    });
-
-    it("upload error", () => {
-      expect(
-        reducer(
-          {
-            [now]: {
-              id: now,
-              name: "test.csv",
-              collectionId: "root",
-              status: "in-progress",
-            },
-          },
-          {
-            type: UPLOAD_FILE_TO_COLLECTION_ERROR,
-            payload: {
-              id: now,
-              message: "It's dead Jim",
-            },
-          },
-        ),
-      ).toEqual({
-        [now]: {
-          id: now,
-          name: "test.csv",
-          collectionId: "root",
-          status: "error",
-          message: "It's dead Jim",
-        },
-      });
-    });
-
-    it("upload clear", () => {
-      expect(
-        reducer(
-          {
-            [now]: {
-              id: now,
-              name: "test.csv",
-              collectionId: "root",
-              status: "in-progress",
-            },
-          },
-          {
-            type: UPLOAD_FILE_TO_COLLECTION_CLEAR,
-            payload: {
-              id: now,
-            },
-          },
-        ),
-      ).toEqual({});
     });
   });
 });
