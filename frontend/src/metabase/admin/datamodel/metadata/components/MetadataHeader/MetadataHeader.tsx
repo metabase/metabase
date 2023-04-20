@@ -8,8 +8,9 @@ import * as Urls from "metabase/lib/urls";
 import Databases from "metabase/entities/databases";
 import Icon from "metabase/components/Icon/Icon";
 import { DatabaseDataSelector } from "metabase/query_builder/components/DataSelector";
-import { Database, DatabaseId, TableId } from "metabase-types/api";
+import { DatabaseId, TableId } from "metabase-types/api";
 import { Dispatch } from "metabase-types/store";
+import Database from "metabase-lib/metadata/Database";
 
 interface OwnProps {
   selectedDatabaseId?: DatabaseId;

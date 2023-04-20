@@ -8,8 +8,10 @@ import Tables from "metabase/entities/tables";
 import Schemas from "metabase/entities/schemas";
 import ActionButton from "metabase/components/ActionButton";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
-import { Database, Schema, Table, TableId } from "metabase-types/api";
+import { Schema, TableId } from "metabase-types/api";
 import { State } from "metabase-types/store";
+import Database from "metabase-lib/metadata/Database";
+import Table from "metabase-lib/metadata/Table";
 import { discardTableFieldValues, rescanTableFieldValues } from "../../actions";
 import MetadataSection from "../MetadataSection";
 import MetadataSectionHeader from "../MetadataSectionHeader";
@@ -135,7 +137,6 @@ export default _.compose(
     id: (_: State, { params }: RouterProps) =>
       Urls.extractEntityId(params.tableId),
     requestType: "fetchMetadata",
-    selectorName: "getObjectUnfiltered",
   }),
   connect(null, mapDispatchToProps),
 )(MetadataTableSettings);

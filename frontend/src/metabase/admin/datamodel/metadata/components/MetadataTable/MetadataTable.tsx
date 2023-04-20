@@ -4,8 +4,9 @@ import { t } from "ttag";
 import _ from "underscore";
 import Tables from "metabase/entities/tables";
 import Radio from "metabase/core/components/Radio/Radio";
-import { Table, TableId, TableVisibilityType } from "metabase-types/api";
+import { TableId, TableVisibilityType } from "metabase-types/api";
 import { State } from "metabase-types/store";
+import Table from "metabase-lib/metadata/Table";
 import MetadataSchema from "../MetadataSchema";
 import {
   TableDescription,

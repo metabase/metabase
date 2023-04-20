@@ -5,7 +5,8 @@ import * as MetabaseCore from "metabase/lib/core";
 import Select, {
   SelectChangeEvent,
 } from "metabase/core/components/Select/Select";
-import { Field, FieldVisibilityType } from "metabase-types/api";
+import { FieldVisibilityType } from "metabase-types/api";
+import Field from "metabase-lib/metadata/Field";
 
 interface FieldVisibilityPickerProps {
   className?: string;

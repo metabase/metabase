@@ -17,13 +17,9 @@ import Tables from "metabase/entities/tables";
 import Icon from "metabase/components/Icon/Icon";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import Tooltip from "metabase/core/components/Tooltip";
-import {
-  DatabaseId,
-  Table,
-  TableId,
-  TableVisibilityType,
-} from "metabase-types/api";
+import { DatabaseId, TableId, TableVisibilityType } from "metabase-types/api";
 import { Dispatch, State } from "metabase-types/store";
+import Table from "metabase-lib/metadata/Table";
 
 interface OwnProps {
   selectedDatabaseId: DatabaseId;
