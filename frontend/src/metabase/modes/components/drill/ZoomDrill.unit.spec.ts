@@ -1,6 +1,6 @@
 import { ORDERS, PEOPLE } from "__support__/sample_database_fixture";
 import { DatasetColumn, DatetimeUnit } from "metabase-types/api";
-import { ClickObject, QuestionChangeClickAction } from "metabase/modes/types";
+import { ClickObject } from "metabase/modes/types";
 import { StructuredDatasetQuery } from "metabase-types/types/Card";
 import type Question from "metabase-lib/Question";
 import ZoomDrill from "./ZoomDrill";
@@ -15,7 +15,7 @@ describe("ZoomDrill", () => {
 
     expect(actions).toHaveLength(1);
 
-    const action = actions[0] as QuestionChangeClickAction;
+    const action = actions[0];
     const question = action.question();
     expect((question.datasetQuery() as StructuredDatasetQuery).query).toEqual({
       "source-table": ORDERS.id,
@@ -42,19 +42,19 @@ describe("ZoomDrill", () => {
 
         expect(actions).toHaveLength(1);
 
-        const action = actions[0] as QuestionChangeClickAction;
+        const action = actions[0];
         expect(action.title).toBe(
           `See this ${granularity} by ${newGranularity}`,
         );
       },
     );
 
-    it("should return generic title for non-date field", () => {
+    it("should return generic title for drillable non-date field", () => {
       const actions = ZoomDrill(setupCategoryFieldQuery());
 
       expect(actions).toHaveLength(1);
 
-      const action = actions[0] as QuestionChangeClickAction;
+      const action = actions[0];
       expect(action.title).toBe(`Zoom in`);
     });
   });
