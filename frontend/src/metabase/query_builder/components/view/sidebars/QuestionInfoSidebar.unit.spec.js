@@ -8,63 +8,39 @@ import {
   screen,
   waitForElementToBeRemoved,
 } from "__support__/ui";
-import {
-  SAMPLE_DATABASE,
-  ORDERS,
-  metadata,
-} from "__support__/sample_database_fixture";
+import { metadata } from "__support__/sample_database_fixture";
 import { setupEnterpriseTest } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 
-import { createMockUser } from "metabase-types/api/mocks";
+import {
+  createMockCard,
+  createMockModerationReview,
+  createMockUser,
+} from "metabase-types/api/mocks";
 
 import Question from "metabase-lib/Question";
 
 import { QuestionInfoSidebar } from "./QuestionInfoSidebar";
 
-const BASE_QUESTION = {
-  id: 1,
-  name: "Q1",
-  description: null,
-  collection_id: null,
-  can_write: true,
-  dataset: false,
-  display: "table",
-  visualization_settings: {},
-  dataset_query: {
-    type: "query",
-    database: SAMPLE_DATABASE.id,
-    query: {
-      "source-table": ORDERS.id,
-    },
-  },
-  moderation_reviews: [
-    {
-      status: "verified",
-      moderator_id: 1,
-      created_at: Date.now(),
-      most_recent: true,
-    },
-  ],
-};
+const VERIFIED_REVIEW = createMockModerationReview({ status: "verified" });
 
 function getQuestion(card) {
   return new Question(
-    {
-      ...BASE_QUESTION,
+    createMockCard({
+      moderation_reviews: [VERIFIED_REVIEW],
       ...card,
-    },
+    }),
     metadata,
   );
 }
 
-function getDataset(card) {
+function getModel(card) {
   return new Question(
-    {
-      ...BASE_QUESTION,
+    createMockCard({
+      moderation_reviews: [VERIFIED_REVIEW],
       ...card,
       dataset: true,
-    },
+    }),
     metadata,
   );
 }
@@ -109,7 +85,7 @@ describe("QuestionInfoSidebar", () => {
   describe("common features", () => {
     [
       { type: "Saved Question", getObject: getQuestion },
-      { type: "Dataset", getObject: getDataset },
+      { type: "Model", getObject: getModel },
     ].forEach(testCase => {
       const { type, getObject } = testCase;
 
@@ -169,7 +145,7 @@ describe("QuestionInfoSidebar", () => {
 
   describe("model detail link", () => {
     it("is shown for models", async () => {
-      const model = getDataset();
+      const model = getModel();
       await setup({ question: model });
 
       const link = screen.getByText("Model details");
