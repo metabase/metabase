@@ -69,7 +69,7 @@
    var]
   [lib.breakout
    breakout
-   current-breakouts]
+   breakouts]
   [lib.column-group
    columns-group-columns
    group-columns]
