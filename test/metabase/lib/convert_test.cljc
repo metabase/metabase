@@ -240,37 +240,70 @@
                 :limit        1
                 :source-table 4}}))
 
-(deftest ^:parallel round-trip-metadata-test
-  (let [query {:database 2471,
-               :type     :query,
-               :query    {:source-query {:source-table 32700, :fields [[:field 134689 nil] [:field 134690 nil]]},
-                          :source-metadata
-                          [{:semantic_type  :type/PK,
-                            :table_id       32700,
-                            :name           "ID",
-                            :field_ref      [:field 134689 nil],
-                            :effective_type :type/BigInteger,
-                            :id             134689,
-                            :display_name   "ID",
-                            :base_type      :type/BigInteger}
-                           {:semantic_type  :type/Name,
-                            :table_id       32700,
-                            :name           "NAME",
-                            :field_ref      [:field 134690 nil],
-                            :effective_type :type/Text,
-                            :id             134690,
-                            :display_name   "Name",
-                            :fingerprint
-                            {:global {:distinct-count 100, :nil% 0.0},
-                             :type   #:type{:Text {:percent-json   0.0
-                                                   :percent-url    0.0
-                                                   :percent-email  0.0
-                                                   :percent-state  0.0
-                                                   :average-length 15.63}}},
-                            :base_type      :type/Text}],
-                          :middleware   {:disable-remaps? true}}}]
-    (is (= query
-           (-> query lib.convert/->pMBQL lib.convert/->legacy-MBQL)))))
+(deftest ^:parallel round-trip-preserve-metadata-test
+  (testing "Round-tripping should not affect embedded metadata"
+    (let [query {:database 2445
+                 :type     :query
+                 :query    {:limit        5
+                            :source-query {:source-table 1}
+                            :source-metadata
+                            [{:semantic_type   :type/PK
+                              :table_id        32598
+                              :name            "id"
+                              :source          :fields
+                              :field_ref       [:field 134528 nil]
+                              :effective_type  :type/Integer
+                              :id              134528
+                              :visibility_type :normal
+                              :display_name    "ID"
+                              :base_type       :type/Integer}]}
+
+                 :metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions/original-metadata
+                 [{:base-type       :type/Text
+                   :semantic-type   :type/Category
+                   :table-id        32600
+                   :name            "category"
+                   :source          :breakout
+                   :effective-type  :type/Text
+                   :id              134551
+                   :source-alias    "products__via__product_id"
+                   :visibility-type :normal
+                   :display-name    "Product → Category"
+                   :field-ref       [:field 134551 {:source-field 134534}]
+                   :fk-field-id     134534
+                   :fingerprint     {:global {:distinct-count 4, :nil% 0.0}
+                                     :type   {:type/text {:percent-json   0.0
+                                                          :percent-url    0.0
+                                                          :percent-email  0.0
+                                                          :percent-state  0.0
+                                                          :average-length 6.375}}}}]}]
+      (is (= query
+             (-> query lib.convert/->pMBQL lib.convert/->legacy-MBQL))))))
+
+(deftest ^:parallel value-test
+  (testing "For some crazy person reason legacy `:value` has `snake_case` options."
+    (let [original [:value
+                    3
+                    {:base_type     :type/Integer
+                     :semantic_type :type/Quantity
+                     :database_type "INTEGER"
+                     :name          "QUANTITY"
+                     :unit          :quarter}]
+          pMBQL    (lib.convert/->pMBQL original)]
+      (testing "Normalize keys when converting to pMBQL. Add `:effective-type`."
+        (is (=? [:value
+                 {:lib/uuid       string?
+                  :effective-type :type/Integer
+                  :base-type      :type/Integer
+                  :semantic-type  :type/Quantity
+                  :database-type  "INTEGER"
+                  :name           "QUANTITY"
+                  :unit           :quarter}
+                 3]
+                pMBQL)))
+      (testing "Round trip: make sure we convert back to `snake_case` when converting back."
+        (is (= original
+               (lib.convert/->legacy-MBQL pMBQL)))))))
 
 (deftest ^:parallel clean-test
   (testing "irrecoverable queries"
