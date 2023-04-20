@@ -103,7 +103,8 @@
 (defn- create-table-sql
   [table-name col->type]
   (first (sql/format {:create-table (keyword table-name)
-                      :with-columns (map (fn [kv] (map keyword kv)) col->type)})))
+                      :with-columns (map (fn [kv] (map keyword kv)) col->type)}
+                     :quoted true)))
 
 (defmethod driver/create-table :sql-jdbc
   [_driver db-id table-name col->type]
@@ -112,7 +113,8 @@
 
 (defmethod driver/drop-table :sql-jdbc
   [_driver db-id table-name]
-  (let [sql (first (sql/format {:drop-table [:if-exists (keyword table-name)]}))]
+  (let [sql (first (sql/format {:drop-table [:if-exists (keyword table-name)]}
+                               :quoted true))]
     (qp.writeback/execute-write-sql! db-id sql)))
 
 (defmethod driver/insert-into :sql-jdbc
@@ -121,7 +123,8 @@
         columns    (map keyword column-names)
         sqls       (map #(sql/format {:insert-into table-name
                                       :columns     columns
-                                      :values      %})
+                                      :values      %}
+                                     :quoted true)
                         (partition-all 100 values))]
     ;; We need to partition the insert into multiple statements for both performance and correctness.
     ;;

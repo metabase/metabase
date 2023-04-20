@@ -122,16 +122,16 @@
   (let [normalized (u/slugify (str/trim raw-name))]
     (if-not (str/blank? normalized)
       normalized
-      (format "unnamed-column-%s" (inc index)))))
+      (format "unnamed_column_%s" (inc index)))))
 
 (defn- deduplicate
   "Add `new-name` to the vector (must be a vector so that `conj` works!) of `names-so-far`, adding a unique suffix if
   necessary."
   [names-so-far new-name]
   (if (some #(= % new-name) names-so-far)
-    (if-let [dupe-number (second (re-matches #".*-(\d+)" new-name))]
-      (recur names-so-far (str/replace new-name #"-\d+$" (str "-" (inc (parse-long dupe-number)))))
-      (recur names-so-far (str new-name "-1")))
+    (if-let [dupe-number (second (re-matches #".*_(\d+)" new-name))]
+      (recur names-so-far (str/replace new-name #"_\d+$" (str "_" (inc (parse-long dupe-number)))))
+      (recur names-so-far (str new-name "_1")))
     (conj names-so-far new-name)))
 
 (defn- rows->schema
