@@ -10,12 +10,15 @@ export type MetadataProvider = unknown & { _opaque: typeof MetadataProvider };
 
 export type Limit = number | null;
 
+declare const BreakoutClause: unique symbol;
+export type BreakoutClause = unknown & { _opaque: typeof BreakoutClause };
+
 declare const OrderByClause: unique symbol;
 export type OrderByClause = unknown & { _opaque: typeof OrderByClause };
 
 export type OrderByDirection = "asc" | "desc";
 
-export type Clause = OrderByClause;
+export type Clause = BreakoutClause | OrderByClause;
 
 declare const ColumnMetadata: unique symbol;
 export type ColumnMetadata = unknown & { _opaque: typeof ColumnMetadata };
