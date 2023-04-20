@@ -52,6 +52,11 @@ export type ColumnDisplayInfo = {
   orderByPosition?: number;
 };
 
+export type BreakoutClauseDisplayInfo = Pick<
+  ColumnDisplayInfo,
+  "name" | "display_name" | "effective_type" | "semantic_type" | "table"
+>;
+
 export type OrderByClauseDisplayInfo = Pick<
   ColumnDisplayInfo,
   "name" | "displayName" | "table"
