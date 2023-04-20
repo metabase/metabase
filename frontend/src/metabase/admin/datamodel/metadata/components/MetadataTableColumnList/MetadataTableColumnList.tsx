@@ -14,8 +14,8 @@ import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/Tipp
 import { TableFieldOrder } from "metabase-types/api";
 import Table from "metabase-lib/metadata/Table";
 import Field from "metabase-lib/metadata/Field";
-import MetadataField from "../MetadataField";
-import { SortButtonContainer } from "./MetadataFieldList.styled";
+import MetadataTableColumn from "../MetadataTableColumn";
+import { SortButtonContainer } from "./MetadataTableColumnList.styled";
 
 const ORDER_SECTIONS = [
   {
@@ -37,17 +37,17 @@ interface DispatchProps {
   onUpdateTable: (table: Table, updates: Partial<Table>) => void;
 }
 
-type MetadataFieldListProps = OwnProps & DispatchProps;
+type MetadataTableColumnListProps = OwnProps & DispatchProps;
 
 const mapDispatchToProps: DispatchProps = {
   onUpdateTable: Tables.actions.updateProperty,
 };
 
-const MetadataFieldList = ({
+const MetadataTableColumnList = ({
   table,
   idFields,
   onUpdateTable,
-}: MetadataFieldListProps) => {
+}: MetadataTableColumnListProps) => {
   const { fields = [] } = table;
 
   return (
@@ -65,13 +65,16 @@ const MetadataFieldList = ({
             </div>
           </div>
           <SortButtonContainer>
-            <FieldOrderPopover table={table} onUpdateTable={onUpdateTable} />
+            <TableFieldOrderDropdown
+              table={table}
+              onUpdateTable={onUpdateTable}
+            />
           </SortButtonContainer>
         </div>
       </div>
-      <SortableFieldList helperClass="ColumnSortHelper" useDragHandle={true}>
+      <SortableColumnList helperClass="ColumnSortHelper" useDragHandle={true}>
         {fields.map((field, index) => (
-          <SortableField
+          <SortableColumn
             key={field.getId()}
             index={index}
             field={field}
@@ -79,40 +82,40 @@ const MetadataFieldList = ({
             selectedDatabaseId={table.db_id}
             selectedSchemaName={table.schema_name}
             selectedTableId={table.id}
-            dragHandle={<SortableFieldHandle />}
+            dragHandle={<SortableColumnHandle />}
           />
         ))}
-      </SortableFieldList>
+      </SortableColumnList>
     </div>
   );
 };
 
-interface FieldListProps {
+interface ColumnListProps {
   children?: ReactNode;
 }
 
-const FieldList = ({ children, ...props }: FieldListProps) => {
+const ColumnList = ({ children, ...props }: ColumnListProps) => {
   return <div {...props}>{children}</div>;
 };
 
-const FieldGrabber = () => {
+const ColumnGrabber = () => {
   return <Grabber style={{ width: 10 }} />;
 };
-
-interface FieldOrderPopoverProps {
-  table: Table;
-  onUpdateTable: (table: Table, updates: Partial<Table>) => void;
-}
 
 interface TableFieldOrderOption {
   name: string;
   value: TableFieldOrder;
 }
 
-const FieldOrderPopover = ({
+interface TableFieldOrderDropdownProps {
+  table: Table;
+  onUpdateTable: (table: Table, updates: Partial<Table>) => void;
+}
+
+const TableFieldOrderDropdown = ({
   table,
   onUpdateTable,
-}: FieldOrderPopoverProps) => {
+}: TableFieldOrderDropdownProps) => {
   return (
     <TippyPopoverWithTrigger
       triggerContent={
@@ -146,8 +149,8 @@ const FieldOrderPopover = ({
   );
 };
 
-const SortableField = SortableElement(MetadataField);
-const SortableFieldList = SortableContainer(FieldList);
-const SortableFieldHandle = SortableHandle(FieldGrabber);
+const SortableColumn = SortableElement(MetadataTableColumn);
+const SortableColumnList = SortableContainer(ColumnList);
+const SortableColumnHandle = SortableHandle(ColumnGrabber);
 
-export default connect(null, mapDispatchToProps)(MetadataFieldList);
+export default connect(null, mapDispatchToProps)(MetadataTableColumnList);

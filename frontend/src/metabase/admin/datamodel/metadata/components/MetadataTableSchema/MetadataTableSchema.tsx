@@ -7,13 +7,13 @@ import {
   ColumnNameCell,
   DataTypeCell,
   HeaderCell,
-} from "./MetadataSchema.styled";
+} from "./MetadataTableSchema.styled";
 
-interface MetadataSchemaProps {
+interface MetadataTableSchemaProps {
   table: Table;
 }
 
-const MetadataSchema = ({ table }: MetadataSchemaProps) => {
+const MetadataTableSchema = ({ table }: MetadataTableSchemaProps) => {
   const rootFields = useMemo(() => {
     return table.fields?.filter(field => field.nfc_path === null) ?? [];
   }, [table]);
@@ -38,9 +38,9 @@ const MetadataSchema = ({ table }: MetadataSchemaProps) => {
 
             return (
               <React.Fragment key={index}>
-                <FieldRow field={field} isBordered={nestedFields.length > 0} />
+                <ColumnRow field={field} isBordered={nestedFields.length > 0} />
                 {nestedFields.map((field, index) => (
-                  <FieldRow
+                  <ColumnRow
                     key={index}
                     field={field}
                     isBordered={index < nestedFields.length - 1}
@@ -56,13 +56,13 @@ const MetadataSchema = ({ table }: MetadataSchemaProps) => {
   );
 };
 
-interface FieldRowProps {
+interface ColumnRowProps {
   field: Field;
   isBordered?: boolean;
   isSecondary?: boolean;
 }
 
-const FieldRow = ({ field, isBordered, isSecondary }: FieldRowProps) => (
+const ColumnRow = ({ field, isBordered, isSecondary }: ColumnRowProps) => (
   <tr>
     <ColumnNameCell
       data-testid="table-name"
@@ -76,4 +76,4 @@ const FieldRow = ({ field, isBordered, isSecondary }: FieldRowProps) => (
   </tr>
 );
 
-export default MetadataSchema;
+export default MetadataTableSchema;

@@ -10,8 +10,8 @@ import { DatabaseId, TableId, TableVisibilityType } from "metabase-types/api";
 import { State } from "metabase-types/store";
 import Field from "metabase-lib/metadata/Field";
 import Table from "metabase-lib/metadata/Table";
-import MetadataSchema from "../MetadataSchema";
-import MetadataFieldList from "../MetadataFieldList";
+import MetadataTableSchema from "../MetadataTableSchema";
+import MetadataTableColumnList from "../MetadataTableColumnList";
 import {
   TableDescription,
   TableDescriptionInput,
@@ -161,9 +161,9 @@ const MetadataTableView = ({
         onChangeVisibility={handleChangeVisibility}
       />
       <TableTabSection tab={tab} onChangeTab={setTab} />
-      {tab === "original_schema" && <MetadataSchema table={table} />}
+      {tab === "original_schema" && <MetadataTableSchema table={table} />}
       {tab === "columns" && (
-        <MetadataFieldList table={table} idFields={idFields} />
+        <MetadataTableColumnList table={table} idFields={idFields} />
       )}
     </div>
   );

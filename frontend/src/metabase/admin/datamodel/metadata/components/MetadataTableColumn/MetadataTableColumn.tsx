@@ -9,7 +9,7 @@ import { DatabaseId, TableId } from "metabase-types/api";
 import Field from "metabase-lib/metadata/Field";
 import FieldVisibilityPicker from "../FieldVisibilityPicker";
 import SemanticTypeAndTargetPicker from "../SemanticTypeAndTargetPicker";
-import { FieldInput } from "./MetadataField.styled";
+import { ColumnInput } from "./MetadataTableColumn.styled";
 
 interface OwnProps {
   field: Field;
@@ -24,20 +24,20 @@ interface DispatchProps {
   onUpdateField: (updates: Partial<Field>) => void;
 }
 
-type MetadataFieldProps = OwnProps & DispatchProps;
+type MetadataTableColumnProps = OwnProps & DispatchProps;
 
 const mapDispatchToProps: DispatchProps = {
   onUpdateField: Fields.actions.updateField,
 };
 
-const MetadataField = ({
+const MetadataTableColumn = ({
   field,
   idFields,
   selectedDatabaseId,
   selectedSchemaName,
   selectedTableId,
   onUpdateField,
-}: MetadataFieldProps) => {
+}: MetadataTableColumnProps) => {
   const handleChangeName = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
       if (event.target.value) {
@@ -67,7 +67,7 @@ const MetadataField = ({
         </div>
         <div className="flex flex-column">
           <div>
-            <FieldInput
+            <ColumnInput
               style={{ minWidth: 420 }}
               className="float-left inline-block"
               type="text"
@@ -106,7 +106,7 @@ const MetadataField = ({
             </div>
           </div>
           <div className="MetadataTable-title flex flex-column flex-full mt1 mr1">
-            <FieldInput
+            <ColumnInput
               className="TableEditor-field-description rounded"
               type="text"
               value={field.description ?? ""}
@@ -125,4 +125,4 @@ export const getFieldRawName = (field: Field) => {
   return field.nfc_path ? field.nfc_path.join(".") : field.name;
 };
 
-export default connect(null, mapDispatchToProps)(MetadataField);
+export default connect(null, mapDispatchToProps)(MetadataTableColumn);
