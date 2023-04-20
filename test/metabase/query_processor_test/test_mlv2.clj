@@ -45,10 +45,6 @@
      (mbql.u/match-one joins
        {:fields (join-fields :guard (partial not= :none))}
        "#29904"))
-   ;; #29895: `:value` is not supported
-   (mbql.u/match-one legacy-query
-     :value
-     "#29895")
    ;; #29908: native queries do not round trip correctly
    (when (:native legacy-query)
      "#29908")
@@ -120,18 +116,14 @@
      {:aggregation aggregations}
      (mbql.u/match-one aggregations
        :metric
-       "#28689"))
+       "#29936"))
    ;; #29941 : metadata resolution for query with a `card__` source-table does not work correctly for `:field` <name>
    ;; #clauses
    (mbql.u/match-one legacy-query
      {:source-table (_id :guard #(str/starts-with? % "card__"))}
      (mbql.u/match-one &match
        [:field (_field-name :guard string?) _opts]
-       "#29941"))
-   ;; #29947: `:ends-with` broken
-   (mbql.u/match-one legacy-query
-     :ends-with
-     "#29947")))
+       "#29941"))))
 
 (defn- test-mlv2-metadata [original-query _qp-metadata]
   {:pre [(map? original-query)]}

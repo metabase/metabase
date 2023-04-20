@@ -18,7 +18,7 @@ describe("issue 11580", () => {
     assertVariablesOrder();
 
     // change the parameter to a number.
-    cy.contains("Variable type").first().next().as("variableType").click();
+    cy.findAllByLabelText("Variable type").first().as("variableType").click();
     SQLFilter.chooseType("Number");
 
     cy.get("@variableType").should("have.text", "Number");

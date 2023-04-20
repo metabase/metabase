@@ -18,7 +18,6 @@
 (deftest ^:parallel expression-test
   (is (=? {:lib/type :mbql/query
            :database (meta/id)
-           :type :pipeline
            :stages [{:lib/type :mbql.stage/mbql
                      :source-table (meta/id :venues)
                      :lib/options {:lib/uuid string?}
@@ -50,7 +49,7 @@
                           (lib/ceil float-field) :type/Integer
                           (lib/floor float-field) :type/Integer
                           (lib/round float-field) :type/Integer
-                          (lib/power int-field float-field) :type/Number
+                          (lib/power int-field float-field) :type/Float
                           (lib/interval 1 :month) :type/Integer ;; Need an interval type
                           #_#_(lib/relative-datetime "2020-01-01" :default) :type/DateTime
                           (lib/time "08:00:00" :hour) :type/Time

@@ -10,10 +10,9 @@
 (deftest ^:parallel query-name-with-breakouts-test
   (let [query (-> (lib/query-for-table-name meta/metadata-provider "CHECKINS")
                   (lib/aggregate (lib/count))
-                  (lib/breakout (lib/temporal-bucket (lib/field (meta/id :checkins :date)) :year)))]
+                  (lib/breakout (lib/with-temporal-bucket (lib/field (meta/id :checkins :date)) :year)))]
     (is (=? {:lib/type :mbql/query
              :database (meta/id)
-             :type     :pipeline
              :stages   [{:lib/type     :mbql.stage/mbql
                          :source-table (meta/id :checkins)
                          :aggregation  [[:count {}]]

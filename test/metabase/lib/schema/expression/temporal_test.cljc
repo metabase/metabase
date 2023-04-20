@@ -3,7 +3,10 @@
    [clojure.test :refer [are deftest is testing]]
    [malli.core :as mc]
    [malli.error :as me]
+   [metabase.lib.schema]
    [metabase.lib.schema.expression :as expression]))
+
+(comment metabase.lib.schema/keep-me)
 
 (deftest ^:parallel absolute-datetime-type-of-test
   (are [literal expected] (= expected
@@ -49,12 +52,13 @@
      :day]))
 
 (deftest ^:parallel temporal-extract-test
-  (is (not (mc/explain
-            :mbql.clause/temporal-extract
-            [:temporal-extract
-             {:lib/uuid "202ec127-f7b9-49ce-b785-cd7b96996660"}
-             [:field {:temporal-unit :default, :lib/uuid "cde9c9d4-c399-4808-8476-24b65842ba82"} 1]
-             :year-of-era]))))
+  (is (not (me/humanize
+            (mc/explain
+             :mbql.clause/temporal-extract
+             [:temporal-extract
+              {:lib/uuid "202ec127-f7b9-49ce-b785-cd7b96996660"}
+              [:field {:temporal-unit :default, :lib/uuid "cde9c9d4-c399-4808-8476-24b65842ba82"} 1]
+              :year-of-era])))))
 
 (deftest ^:parallel relative-datetime-test
   (are [clause] (not (mc/explain :mbql.clause/relative-datetime clause))

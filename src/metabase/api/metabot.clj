@@ -80,7 +80,7 @@
         context {:database    (metabot-util/denormalize-database database)
                  :user_prompt question
                  :prompt_task :infer_model}]
-    (if-some [model (metabot/infer-model context)]
+    (if-some [model (metabot/match-best-model context)]
       (let [context (merge context {:model model :prompt_task :infer_sql})
             dataset (infer-sql-or-throw context question)]
         (add-viz-to-dataset context dataset))
@@ -108,7 +108,9 @@
    question)
   (let [{:as database} (api/check-404 (t2/select-one Database :id database-id))
         _       (check-database-support (:id database))
-        context {:database    (metabot-util/denormalize-database database)
+        context {:database    (->> database
+                                   metabot-util/denormalize-database
+                                   metabot-util/add-pseudo-table-ddls)
                  :user_prompt question
                  :prompt_task :infer_native_sql}]
     (metabot/infer-native-sql-query context)))

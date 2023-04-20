@@ -1,4 +1,5 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { addOrUpdateDashboardCard } from "e2e/support/helpers";
 
 const { PEOPLE_ID, PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
@@ -66,32 +67,6 @@ export function setup() {
   );
 }
 
-function addCardToDashboard({ card_id, dashboard_id, card } = {}) {
-  const url = `/api/dashboard/${dashboard_id}/cards`;
-
-  return cy
-    .request("POST", url, {
-      cardId: card_id,
-    })
-    .then(({ body: { id } }) => {
-      cy.request("PUT", url, {
-        cards: [
-          {
-            id,
-            card_id,
-            row: 0,
-            col: 0,
-            size_x: 8,
-            size_y: 8,
-            visualization_settings: {},
-            parameter_mappings: [],
-            ...card,
-          },
-        ],
-      });
-    });
-}
-
 function addEmptyDashboard(name, alias) {
   return cy.createDashboard(name).then(({ body: { id } }) => {
     cy.wrap(id).as(alias);
@@ -100,7 +75,7 @@ function addEmptyDashboard(name, alias) {
 
 function addMarkdownDashboard(name, alias) {
   return cy.createDashboard(name).then(({ body: { id: dashboard_id } }) => {
-    addCardToDashboard({
+    addOrUpdateDashboardCard({
       card_id: null,
       dashboard_id,
       card: {
@@ -150,7 +125,7 @@ function addNativeDashboard(name, alias) {
 
 function addMultiDashboard(name, alias) {
   return cy.createDashboard(name).then(({ body: { id: dashboard_id } }) => {
-    addCardToDashboard({
+    addOrUpdateDashboardCard({
       card_id: null,
       dashboard_id,
       card: {
@@ -165,7 +140,7 @@ function addMultiDashboard(name, alias) {
 
     cy.createNativeQuestion(nativeQuestionDetails).then(
       ({ body: { id: card_id } }) => {
-        addCardToDashboard({
+        addOrUpdateDashboardCard({
           card_id,
           dashboard_id,
           card: { row: 2, col: 0, size_x: 9, size_y: 8 },
@@ -174,7 +149,7 @@ function addMultiDashboard(name, alias) {
     );
 
     cy.createQuestion(modelDetails).then(({ body: { id: card_id } }) => {
-      addCardToDashboard({
+      addOrUpdateDashboardCard({
         card_id,
         dashboard_id,
         card: { row: 2, col: 10, size_x: 9, size_y: 8 },
@@ -182,7 +157,7 @@ function addMultiDashboard(name, alias) {
     });
 
     cy.createQuestion(questionDetails).then(({ body: { id: card_id } }) => {
-      addCardToDashboard({
+      addOrUpdateDashboardCard({
         card_id,
         dashboard_id,
         card: { row: 11, col: 0, size_x: 12, size_y: 8 },
@@ -190,7 +165,7 @@ function addMultiDashboard(name, alias) {
     });
 
     cy.createQuestion(pivotTable).then(({ body: { id: card_id } }) => {
-      addCardToDashboard({
+      addOrUpdateDashboardCard({
         card_id,
         dashboard_id,
         card: { row: 11, col: 12, size_x: 6, size_y: 8 },

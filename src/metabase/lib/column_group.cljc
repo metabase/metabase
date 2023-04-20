@@ -33,7 +33,7 @@
       [:join-alias [:ref ::lib.schema.common/non-blank-string]]]]
     [:group-type/join.implicit
      [:map
-      [:table-id [:ref ::lib.schema.id/table]]]]]])
+      [:fk-field-id [:ref ::lib.schema.id/field]]]]]])
 
 (defmethod lib.metadata.calculation/metadata-method :metadata/column-group
   [_query _stage-number column-group]
@@ -51,6 +51,9 @@
           ;; that here.
           (when-let [table (lib.metadata/table query table-id)]
             (lib.metadata.calculation/display-info query stage-number table)))
+        ;; for multi-stage queries return an empty string (#30108)
+        (when (next (:stages query))
+          {:display_name ""})
         ;; if this is a native query or something else that doesn't have a source Table or source Card then use the
         ;; stage display name.
         {:display_name (lib.metadata.calculation/display-name query stage-number stage)}))
@@ -67,9 +70,15 @@
 
     :group-type/join.implicit
     (merge
-     (let [table-id (:table-id column-group)]
-       (when-let [table (lib.metadata/table query table-id)]
-         (lib.metadata.calculation/display-info query stage-number table)))
+     (let [fk-field-id (:fk-field-id column-group)]
+       (when-let [field (lib.metadata/field query fk-field-id)]
+         (let [field-info (lib.metadata.calculation/display-info query stage-number field)]
+           ;; Implicitly joined column pickers don't use the target table's name, they use the FK field's name with
+           ;; "ID" dropped instead.
+           ;; This is very intentional: one table might have several FKs to one foreign table, each with different
+           ;; meaning (eg. ORDERS.customer_id vs. ORDERS.supplier_id both linking to a PEOPLE table).
+           ;; See #30109 for more details.
+           (assoc field-info :fk_reference_name (lib.util/strip-id (:display_name field-info))))))
      {:is_from_join           false
       :is_implicitly_joinable true})))
 
@@ -78,14 +87,14 @@
   [{source :lib/source, :as column-metadata} :- lib.metadata/ColumnMetadata]
   (case source
     :source/implicitly-joinable
-    {::group-type :group-type/join.implicit, :table-id (:table_id column-metadata)}
+    {::group-type :group-type/join.implicit, :fk-field-id (:fk_field_id column-metadata)}
 
     :source/joins
     {::group-type :group-type/join.explicit, :join-alias (lib.join/current-join-alias column-metadata)}
 
     {::group-type :group-type/main}))
 
-(mu/defn ^:export group-columns :- [:sequential ColumnGroup]
+(mu/defn group-columns :- [:sequential ColumnGroup]
   "Given a group of columns returned by a function like [[metabase.lib.order-by/orderable-columns]], group the columns
   by Table or equivalent (e.g. Saved Question) so that they're in an appropriate shape for showing in the Query
   Builder. e.g a sequence of columns like
@@ -114,7 +123,7 @@
                  ::columns columns))
         (group-by column-group-info column-metadatas)))
 
-(mu/defn ^:export columns-group-columns :- [:sequential lib.metadata/ColumnMetadata]
+(mu/defn columns-group-columns :- [:sequential lib.metadata/ColumnMetadata]
   "Get the columns associated with a column group"
   [column-group :- ColumnGroup]
   (::columns column-group))

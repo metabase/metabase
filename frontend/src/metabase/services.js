@@ -121,8 +121,6 @@ export const DashboardApi = {
   get: GET("/api/dashboard/:dashId"),
   update: PUT("/api/dashboard/:id"),
   delete: DELETE("/api/dashboard/:dashId"),
-  addCard: POST("/api/dashboard/:dashId/cards"),
-  removeCard: DELETE("/api/dashboard/:dashId/cards"),
   updateCards: PUT("/api/dashboard/:dashId/cards"),
   favorite: POST("/api/dashboard/:dashId/favorite"),
   unfavorite: DELETE("/api/dashboard/:dashId/favorite"),
@@ -214,6 +212,10 @@ export const SlackApi = {
 
 export const LdapApi = {
   updateSettings: PUT("/api/ldap/settings"),
+};
+
+export const SamlApi = {
+  updateSettings: PUT("/api/saml/settings"),
 };
 
 export const GoogleApi = {
