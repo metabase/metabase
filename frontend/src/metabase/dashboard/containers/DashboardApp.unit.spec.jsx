@@ -94,7 +94,7 @@ describe("DashboardApp", function () {
     // need to click away from the input to trigger the isDirty flag
     userEvent.tab();
 
-    const mockEvent = callMockEvent(mockEventListener, ["beforeunload"]);
+    const mockEvent = callMockEvent(mockEventListener, "beforeunload");
 
     expect(mockEvent.preventDefault).toHaveBeenCalled();
     expect(mockEvent.returnValue).toEqual(BEFORE_UNLOAD_UNSAVED_MESSAGE);
@@ -105,7 +105,7 @@ describe("DashboardApp", function () {
 
     userEvent.click(screen.getByLabelText("Edit dashboard"));
 
-    const mockEvent = callMockEvent(mockEventListener, ["beforeunload"]);
+    const mockEvent = callMockEvent(mockEventListener, "beforeunload");
     expect(mockEvent.preventDefault).not.toHaveBeenCalled();
     expect(mockEvent.returnValue).toBe(undefined);
   });
