@@ -60,13 +60,13 @@ describe("ChartCaption", () => {
   it("should render markdown in description", () => {
     setup({
       series: getSeries({ card: createMockCard({ name: "card name" }) }),
-      settings: { "card.description": "# header" },
+      settings: { "card.description": "[link](https://metabase.com)" },
     });
 
     userEvent.hover(getIcon("info"));
 
-    const tooltipContent = screen.getByRole("heading");
+    const tooltipContent = screen.getByRole("link");
     expect(tooltipContent).toBeInTheDocument();
-    expect(tooltipContent).toHaveTextContent("header");
+    expect(tooltipContent).toHaveTextContent("link");
   });
 });

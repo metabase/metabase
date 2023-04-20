@@ -7,6 +7,7 @@
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.breakout :as lib.breakout]
    [metabase.lib.card :as lib.card]
+   [metabase.lib.column-group :as lib.column-group]
    [metabase.lib.dev :as lib.dev]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.field :as lib.field]
@@ -30,6 +31,7 @@
 (comment lib.aggregation/keep-me
          lib.breakout/keep-me
          lib.card/keep-me
+         lib.column-group/keep-me
          lib.dev/keep-me
          lib.expression/keep-me
          lib.field/keep-me
@@ -68,6 +70,9 @@
   [lib.breakout
    breakout
    current-breakouts]
+  [lib.column-group
+   columns-group-columns
+   group-columns]
   [lib.dev
    field
    query-for-table-id
@@ -117,7 +122,8 @@
    upper
    lower]
   [lib.field
-   fields]
+   fields
+   with-fields]
   [lib.filter
    filter
    filters
@@ -178,4 +184,6 @@
    append-stage
    drop-stage]
   [lib.temporal-bucket
-   temporal-bucket])
+   available-temporal-buckets
+   temporal-bucket
+   with-temporal-bucket])

@@ -23,10 +23,6 @@
   ;; TODO -- should this be stricter?
   [:string {:min 36, :max 36}])
 
-(mr/def ::options
-  [:map
-   [:lib/uuid ::uuid]])
-
 (defn- semantic-type? [x]
   (or (isa? x :Semantic/*)
       (isa? x :Relation/*)))
@@ -35,7 +31,7 @@
   [:fn
    {:error/message "valid semantic type"
     :error/fn      (fn [{:keys [value]} _]
-                     (str "Not a valid semantic type: " value))}
+                     (str "Not a valid semantic type: " (pr-str value)))}
    semantic-type?])
 
 (defn- base-type? [x]
@@ -46,8 +42,19 @@
   [:fn
    {:error/message "valid base type"
     :error/fn      (fn [{:keys [value]} _]
-                (str "Not a valid base type: " value))}
+                     (str "Not a valid base type: " (pr-str value)))}
    base-type?])
+
+(mr/def ::options
+  [:map
+   [:lib/uuid ::uuid]
+   ;; these options aren't required for any clause in particular, but if they're present they must follow these schemas.
+   [:base-type      {:optional true} [:maybe ::base-type]]
+   [:effective-type {:optional true} [:maybe ::base-type]]
+   [:semantic-type  {:optional true} [:maybe ::semantic-type]]
+   [:database-type  {:optional true} [:maybe ::non-blank-string]]
+   [:name           {:optional true} [:maybe ::non-blank-string]]
+   [:display-name   {:optional true} [:maybe ::non-blank-string]]])
 
 (mr/def ::external-op
   [:map

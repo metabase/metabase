@@ -12,11 +12,13 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.order-by :as lib.schema.order-by]
-   [metabase.lib.stage :as lib.stage]
    [metabase.lib.util :as lib.util]
    [metabase.mbql.util.match :as mbql.u.match]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
+
+(lib.hierarchy/derive :asc  ::order-by-clause)
+(lib.hierarchy/derive :desc ::order-by-clause)
 
 (defmethod lib.metadata.calculation/describe-top-level-key-method :order-by
   [query stage-number _k]
@@ -25,21 +27,19 @@
               (lib.util/join-strings-with-conjunction
                (i18n/tru "and")
                (for [order-by order-bys]
-                 (lib.metadata.calculation/display-name query stage-number order-by))))))
+                 (lib.metadata.calculation/display-name query stage-number order-by :long))))))
 
-(defmethod lib.metadata.calculation/display-name-method :asc
-  [query stage-number [_tag _opts expr]]
-  (i18n/tru "{0} ascending" (lib.metadata.calculation/display-name query stage-number expr)))
+(defmethod lib.metadata.calculation/display-name-method ::order-by-clause
+  [query stage-number [tag _opts expr] style]
+  (let [expr-display-name (lib.metadata.calculation/display-name query stage-number expr style)]
+    (case tag
+      :asc  (i18n/tru "{0} ascending"  expr-display-name)
+      :desc (i18n/tru "{0} descending" expr-display-name))))
 
-(defmethod lib.metadata.calculation/display-name-method :desc
-  [query stage-number [_tag _opts expr]]
-  (i18n/tru "{0} descending" (lib.metadata.calculation/display-name query stage-number expr)))
-
-(doseq [tag [:asc :desc]]
-  (defmethod lib.metadata.calculation/display-info-method tag
-    [query stage-number [tag _opts expr]]
-    (assoc (lib.metadata.calculation/display-info query stage-number expr)
-           :direction tag)))
+(defmethod lib.metadata.calculation/display-info-method ::order-by-clause
+  [query stage-number [tag _opts expr]]
+  (assoc (lib.metadata.calculation/display-info query stage-number expr)
+         :direction tag))
 
 (defmulti ^:private ->order-by-clause
   {:arglists '([query stage-number x])}
@@ -47,11 +47,7 @@
     (lib.dispatch/dispatch-value x))
   :hierarchy lib.hierarchy/hierarchy)
 
-(defmethod ->order-by-clause :asc
-  [_query _stage-number clause]
-  (lib.options/ensure-uuid clause))
-
-(defmethod ->order-by-clause :desc
+(defmethod ->order-by-clause ::order-by-clause
   [_query _stage-number clause]
   (lib.options/ensure-uuid clause))
 
@@ -62,6 +58,8 @@
 ;;; by default, try to convert `x` to a ref and then order by `:asc`
 (defmethod ->order-by-clause :default
   [_query _stage-number x]
+  (when (nil? x)
+    (throw (ex-info (i18n/tru "Can''t order by nil") {})))
   (lib.options/ensure-uuid [:asc (lib.ref/ref x)]))
 
 (mu/defn ^:private with-direction :- ::lib.schema.order-by/order-by
@@ -104,7 +102,7 @@
 
   ([query
     stage-number :- [:maybe :int]
-    x
+    x            :- some?
     direction    :- [:maybe [:enum :asc :desc]]]
    (let [stage-number (or stage-number -1)
          new-order-by (cond-> (->order-by-clause query stage-number x)
@@ -161,7 +159,8 @@
          aggregations       (not-empty (lib.aggregation/aggregations query stage-number))
          columns            (if (or breakouts aggregations)
                               (concat breakouts aggregations)
-                              (lib.stage/visible-columns query stage-number))]
+                              (let [stage (lib.util/query-stage query stage-number)]
+                                (lib.metadata.calculation/visible-columns query stage-number stage)))]
      (some->> (not-empty columns)
               (into [] (comp (filter orderable-column?)
                              (remove existing-order-by?)))))))

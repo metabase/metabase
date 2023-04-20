@@ -99,6 +99,20 @@
           (is (= #{coll-eid child-eid}
                  (by-model "Collection" (extract/extract-metabase {:user 218921})))))))))
 
+(deftest database-test
+  (mt/with-empty-h2-app-db
+    (ts/with-temp-dpc [Database   [_ {:name "My Database"}]]
+      (testing "without :include-database-secrets"
+        (let [extracted (extract/extract-metabase {})
+              dbs       (filter #(= "Database" (:model (last (serdes/path %)))) extracted)]
+          (is (= 1 (count dbs)))
+          (is (not-any? :details dbs))))
+      (testing "with :include-database-secrets"
+        (let [extracted (extract/extract-metabase {:include-database-secrets true})
+              dbs       (filter #(= "Database" (:model (last (serdes/path %)))) extracted)]
+          (is (= 1 (count dbs)))
+          (is (every? :details dbs)))))))
+
 (deftest dashboard-and-cards-test
   (mt/with-empty-h2-app-db
     (ts/with-temp-dpc [Collection [{coll-id    :id

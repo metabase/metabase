@@ -3,8 +3,8 @@ import { t } from "ttag";
 
 import BreakoutPopover from "metabase/query_builder/components/BreakoutPopover";
 
-import type { NotebookStepUiComponentProps } from "../types";
-import ClauseStep from "./ClauseStep";
+import type { NotebookStepUiComponentProps } from "../../types";
+import ClauseStep from "../ClauseStep";
 
 const breakoutTetherOptions = {
   attachment: "top left",
@@ -27,13 +27,13 @@ function BreakoutStep({
 }: NotebookStepUiComponentProps) {
   return (
     <ClauseStep
-      data-testid="breakout-step"
-      color={color}
-      initialAddText={t`Pick a column to group by`}
       items={query.breakouts()}
-      renderName={item => item.displayName() ?? ""}
-      tetherOptions={breakoutTetherOptions}
+      initialAddText={t`Pick a column to group by`}
       readOnly={readOnly}
+      color={color}
+      isLastOpened={isLastOpened}
+      tetherOptions={breakoutTetherOptions}
+      renderName={item => item.displayName() ?? ""}
       renderPopover={breakout => (
         <BreakoutPopover
           query={query}
@@ -45,8 +45,8 @@ function BreakoutStep({
           }
         />
       )}
-      isLastOpened={isLastOpened}
       onRemove={breakout => updateQuery(breakout.remove())}
+      data-testid="breakout-step"
     />
   );
 }

@@ -48,11 +48,12 @@
   possible types."
   [expr]
   (or
-   ;; for MBQL clauses with `:base-type` in their options: ignore their dumb [[type-of*]] methods and return that type
-   ;; directly. Ignore everything else! Life hack!
+   ;; for MBQL clauses with `:effective-type` or `:base-type` in their options: ignore their dumb [[type-of*]] methods
+   ;; and return that type directly. Ignore everything else! Life hack!
    (and (mbql-clause? expr)
         (map? (second expr))
-        (:base-type (second expr)))
+        (or (:effective-type (second expr))
+            (:base-type (second expr))))
    (type-of* expr)))
 
 (defmethod type-of* :default

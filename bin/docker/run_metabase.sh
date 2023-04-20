@@ -1,5 +1,4 @@
 #!/bin/bash
-
 # if nobody manually set a host to listen on then go with all available interfaces and host names
 if [ -z "$MB_JETTY_HOST" ]; then
     export MB_JETTY_HOST=0.0.0.0
@@ -74,7 +73,7 @@ else
     getent group metabase > /dev/null 2>&1
     group_exists=$?
     if [ $group_exists -ne 0 ]; then
-        addgroup -g $MGID -S metabase
+        addgroup --gid $MGID --system metabase
     fi
 
     # create the user if it does not exist
@@ -82,7 +81,7 @@ else
     id -u metabase > /dev/null 2>&1
     user_exists=$?
     if [[ $user_exists -ne 0 ]]; then
-        adduser -D -u $MUID -G metabase metabase
+        adduser --disabled-password -u $MUID --ingroup metabase metabase
     fi
 
     db_file=${MB_DB_FILE:-/metabase.db}

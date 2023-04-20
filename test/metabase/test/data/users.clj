@@ -123,14 +123,6 @@
     {:username email
      :password password}))
 
-(def ^{:arglists '([id])} id->user
-  "Reverse of `user->id`.
-
-    (id->user 4) -> :rasta"
-  (let [m (delay (zipmap (map user->id usernames) usernames))]
-    (fn [id]
-      (@m id))))
-
 (defonce ^:private tokens (atom {}))
 
 (s/defn username->token :- u/uuid-regex

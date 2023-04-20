@@ -6,6 +6,9 @@
    [metabase.lib.util :as lib.util]
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
 
+#?(:cljs
+   (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
+
 (deftest ^:parallel pipeline-test
   (are [query expected] (=? expected
                             (lib.util/pipeline query))
@@ -18,7 +21,6 @@
                                [:field 3 {:lib/uuid "1cb2a996-6ba1-45fb-8101-63dc3105c311"}]
                                "wow"]}}
     {:database 1
-     :type     :pipeline
      :stages   [{:lib/type     :mbql.stage/mbql
                  :source-table 2}
                 {:lib/type :mbql.stage/mbql}
@@ -33,20 +35,17 @@
      :type     :native
      :native   {:query "SELECT * FROM VENUES;"}}
     {:database 1
-     :type     :pipeline
      :stages   [{:lib/type :mbql.stage/native
                  :native   "SELECT * FROM VENUES;"}]}
 
     ;; already a pipeline: nothing to do
     {:database 1
      :lib/type :mbql/query
-     :type     :pipeline
      :stages   [{:lib/type    :mbql.stage/native
                  :lib/options {:lib/uuid "ef87e113-7436-41dd-9f78-3232c6778436"}
                  :native      "SELECT * FROM VENUES;"}]}
     {:database 1
      :lib/type :mbql/query
-     :type     :pipeline
      :stages   [{:lib/type :mbql.stage/native
                  :native   "SELECT * FROM VENUES;"}]}))
 
@@ -55,9 +54,7 @@
   ;; shape, just to make sure we have `:stages` and stuff looking the way they should. [[metabase.lib.convert]] uses
   ;; this as part of what it does
   (is (=? {:lib/type :mbql/query
-           :type     :pipeline
            :stages   [{:lib/type    :mbql.stage/mbql
-                       :lib/options {:lib/uuid string?}
                        :fields      [[:field (meta/id :categories :name) {:join-alias "CATEGORIES__via__CATEGORY_ID"}]]
                        :joins       [{:lib/type    :mbql/join
                                       :lib/options {:lib/uuid string?}
@@ -68,7 +65,6 @@
                                       :strategy    :left-join
                                       :fk-field-id (meta/id :venues :category-id)
                                       :stages      [{:lib/type     :mbql.stage/mbql
-                                                     :lib/options  {:lib/uuid string?}
                                                      :source-table (meta/id :venues)}]}]}]
            :database (meta/id)}
           (lib.util/pipeline
@@ -86,7 +82,6 @@
 (deftest ^:parallel pipeline-source-metadata-test
   (testing "`:source-metadata` should get moved to the previous stage as `:lib/stage-metadata`"
     (is (=? {:lib/type :mbql/query
-             :type     :pipeline
              :stages   [{:lib/type           :mbql.stage/mbql
                          :source-table       (meta/id :venues)
                          :lib/stage-metadata {:lib/type :metadata/results
@@ -140,7 +135,6 @@
 
 (deftest ^:parallel update-query-stage-test
   (is (=? {:database 1
-           :type     :pipeline
            :stages   [{:lib/type     :mbql.stage/mbql
                        :source-table 1
                        :aggregation  [[:count]]}]}
@@ -162,19 +156,16 @@
                                                          conj
                                                          [:count]))
     0 {:database 1
-       :type     :pipeline
        :stages   [{:lib/type     :mbql.stage/mbql
                    :source-table 1
                    :aggregation  [[:count]]}
                   {:lib/type :mbql.stage/mbql}]}
     1 {:database 1
-       :type     :pipeline
        :stages   [{:lib/type     :mbql.stage/mbql
                    :source-table 1}
                   {:lib/type    :mbql.stage/mbql
                    :aggregation [[:count]]}]}
     -1 {:database 1
-        :type     :pipeline
         :stages   [{:lib/type     :mbql.stage/mbql
                     :source-table 1}
                    {:lib/type    :mbql.stage/mbql
@@ -194,14 +185,12 @@
 
 (deftest ^:parallel ensure-mbql-final-stage-test
   (is (=? {:database 1
-           :type     :pipeline
            :stages   [{:lib/type     :mbql.stage/mbql
                        :source-table 2}]}
           (lib.util/ensure-mbql-final-stage {:database 1
                                              :type     :query
                                              :query    {:source-table 2}})))
   (is (=? {:database 1
-           :type     :pipeline
            :stages   [{:lib/type :mbql.stage/native
                        :native   "SELECT * FROM venues;"}
                       {:lib/type :mbql.stage/mbql}]}
@@ -306,3 +295,26 @@
       (testing (pr-str (list `lib.util/truncate-alias s max-bytes))
         (is (= expected
                (truncate-alias s max-bytes)))))))
+
+(deftest ^:parallel unique-name-generator-test
+  (let [unique-name-fn (lib.util/unique-name-generator)]
+    (is (= "wow"
+           (unique-name-fn "wow")))
+    (is (= "wow_2"
+           (unique-name-fn "wow")))
+    (testing "should be case-insensitive distinct"
+      (is (= "WOW_3"
+             (unique-name-fn "WOW"))))
+    (testing "should truncate long names"
+      (is (= "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXY_2dc86ef1"
+             (unique-name-fn "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")))
+      (is (= "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXY_1380b38f"
+             (unique-name-fn "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"))))))
+
+(deftest ^:parallel strip-id-test
+  (are [exp in] (= exp (lib.util/strip-id in))
+    "foo"            "foo"
+    "Fancy Name"     "Fancy Name"
+    "Customer"       "Customer ID"
+    "Customer"       "Customer id"
+    "some id number" "some id number"))

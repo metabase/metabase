@@ -26,7 +26,8 @@
    [metabase.util.log :as log]
    [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
-   [toucan2.core :as t2])
+   [toucan2.core :as t2]
+   [toucan2.model :as t2.model])
   (:refer-clojure :exclude [descendants]))
 
 (set! *warn-on-reflection* true)
@@ -92,7 +93,7 @@
 (defn infer-self-path
   "Returns `{:model \"ModelName\" :id \"id-string\"}`"
   [model-name entity]
-  (let [model (mdb.u/resolve-model (symbol model-name))
+  (let [model (t2.model/resolve-model (symbol model-name))
         pk    (mdb.u/primary-key model)]
     {:model model-name
      :id    (or (entity-id model-name entity)
@@ -197,7 +198,7 @@
 
   Returns the Clojure map."
   [model-name entity]
-  (let [model (mdb.u/resolve-model (symbol model-name))
+  (let [model (t2.model/resolve-model (symbol model-name))
         pk    (mdb.u/primary-key model)]
     (-> (into {} entity)
         (assoc :serdes/meta (generate-path model-name entity))
@@ -242,13 +243,13 @@
   (fn [path]
     (-> path last :model)))
 
-(declare *lookup-by-id*)
+(declare lookup-by-id)
 
 (defmethod load-find-local :default [path]
   (let [{id :id model-name :model} (last path)
-        model                      (mdb.u/resolve-model (symbol model-name))]
+        model                      (t2.model/resolve-model (symbol model-name))]
     (when model
-      (*lookup-by-id* model id))))
+      (lookup-by-id model id))))
 
 (defmulti dependencies
   "Given an entity map as ingested (not a Toucan entity) returns a (possibly empty) list of its dependencies, where each
@@ -300,7 +301,7 @@
   (fn [model _ _] model))
 
 (defmethod load-update! :default [model-name ingested local]
-  (let [model    (mdb.u/resolve-model (symbol model-name))
+  (let [model    (t2.model/resolve-model (symbol model-name))
         pk       (mdb.u/primary-key model)
         id       (get local pk)]
     (log/tracef "Upserting %s %d: old %s new %s" model-name id (pr-str local) (pr-str ingested))
@@ -325,7 +326,7 @@
 
 (defmethod load-insert! :default [model-name ingested]
   (log/tracef "Inserting %s: %s" model-name (pr-str ingested))
-  (first (t2/insert-returning-instances! (symbol model-name) ingested)))
+  (first (t2/insert-returning-instances! (t2.model/resolve-model (symbol model-name)) ingested)))
 
 (defmulti load-one!
   "Black box for integrating a deserialized entity into this appdb.
@@ -372,7 +373,7 @@
                       (take 1)))
        first))
 
-(defn ^:dynamic ^::cache *lookup-by-id*
+(defn lookup-by-id
   "Given an ID string, this endeavours to find the matching entity, whether it's an entity ID or identity hash.
   This is useful when writing [[load-xform]] to turn a foreign key from a portable form to an appdb ID.
   Returns a Toucan entity or nil."
@@ -445,7 +446,7 @@
   [id model]
   (when id
     (let [model-name (name model)
-          model      (mdb.u/resolve-model (symbol model-name))
+          model      (t2.model/resolve-model (symbol model-name))
           entity     (t2/select-one model (mdb.u/primary-key model) id)
           path       (mapv :id (generate-path model-name entity))]
       (if (= (count path) 1)
@@ -466,11 +467,11 @@
   [eid model]
   (when eid
     (let [model-name (name model)
-          model      (mdb.u/resolve-model (symbol model-name))
+          model      (t2.model/resolve-model (symbol model-name))
           eid        (if (vector? eid)
                        (last eid)
                        eid)
-          entity     (*lookup-by-id* model eid)]
+          entity     (lookup-by-id model eid)]
       (if entity
         (get entity (mdb.u/primary-key model))
         (throw (ex-info "Could not find foreign key target - bad serdes-dependencies or other serialization error"

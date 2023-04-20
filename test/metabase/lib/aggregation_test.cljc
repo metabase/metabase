@@ -96,7 +96,10 @@
      [:min {} (lib.tu/field-clause :venues :id)]
      [:* {} 2 [:avg {} (lib.tu/field-clause :venues :price)]]]
     {:column-name  "min_ID_plus_2_times_avg_PRICE"
-     :display-name "User-specified Name"}))
+     :display-name "User-specified Name"}
+
+    [:percentile {} (lib.tu/field-clause :venues :id) 0.95]
+    {:column-name "p95_ID", :display-name "0.95th percentile of ID"}))
 
 ;;; the following tests use raw legacy MBQL because they're direct ports of JavaScript tests from MLv1 and I wanted to
 ;;; make sure that given an existing query, the expected description was generated correctly.
@@ -176,7 +179,6 @@
         result-query
         {:lib/type :mbql/query
          :database (meta/id)
-         :type :pipeline
          :stages [{:lib/type :mbql.stage/mbql
                    :source-table (meta/id :venues)
                    :lib/options {:lib/uuid string?}
@@ -261,3 +263,21 @@
             query))
     (is (= "Venues, Variance of Price"
            (lib.metadata.calculation/describe-query query)))))
+
+(deftest ^:parallel aggregation-ref-display-info-test
+  (let [query  (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
+                   (lib/aggregate (lib/avg (lib/+ (lib/field "VENUES" "PRICE") 1))))
+        ag-ref [:aggregation {:lib/uuid "8e76cd35-465d-4a2b-a03a-55857f07c4e0", :effective-type :type/Float} 0]]
+    (is (= :type/Float
+           (lib.metadata.calculation/type-of query ag-ref)))
+    (is (= "Average of Price + 1"
+           (lib.metadata.calculation/display-name query ag-ref)))
+    (is (=? {:lib/type                                   :metadata/field
+             :lib/source                                 :source/aggregations
+             :display_name                               "Average of Price + 1"
+             :effective_type                             :type/Float
+             :metabase.lib.aggregation/aggregation-index 0}
+            (lib.metadata.calculation/metadata query ag-ref)))
+    (is (=? {:display_name   "Average of Price + 1"
+             :effective_type :type/Float}
+            (lib.metadata.calculation/display-info query ag-ref)))))

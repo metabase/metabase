@@ -21,6 +21,22 @@
                  (lib/order-bys)
                  count)))))
 
+(deftest ^:parallel remove-clause-filters-test
+  (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
+                  (lib/filter (lib/= (lib/field "VENUES" "PRICE") 4))
+                  (lib/filter (lib/= (lib/field "VENUES" "NAME") "x")))
+        filters (lib/filters query)]
+    (is (= 2 (count filters)))
+    (is (= 1 (-> query
+                 (lib/remove-clause (first filters))
+                 (lib/filters)
+                 count)))
+    (is (= 0 (-> query
+                 (lib/remove-clause (first filters))
+                 (lib/remove-clause (second filters))
+                 (lib/filters)
+                 count)))))
+
 (deftest ^:parallel remove-clause-breakout-test
   (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
                   (lib/breakout (lib/field "VENUES" "ID"))
@@ -50,7 +66,7 @@
             #"Clause cannot be removed as it has dependents"
             (-> query
                 (lib/append-stage)
-                (lib/fields [[:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} "ID"]])
+                (lib/with-fields [[:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} "ID"]])
                 (lib/append-stage)
                 ;; TODO Should be able to create a ref with lib/field [#29763]
                 (lib/filter (lib/= [:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} "ID"] 1))
@@ -62,6 +78,48 @@
                    (lib/filter (lib/= [:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} "ID"] 1))
                    (lib/remove-clause 0 (first breakouts))
                    (lib/current-breakouts 0)
+                   count))))))
+
+(deftest ^:parallel remove-clause-fields-test
+  (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
+                  (lib/with-fields [(lib/field "VENUES" "ID") (lib/field "VENUES" "NAME")]))
+        fields (lib/fields query)]
+    (is (= 2 (count fields)))
+    (is (= 1 (-> query
+                 (lib/remove-clause (first fields))
+                 (lib/fields)
+                 count)))
+    (is (= 0 (-> query
+                 (lib/remove-clause (first fields))
+                 (lib/remove-clause (second fields))
+                 (lib/fields)
+                 count)))
+    (testing "removing breakout with dependent should not be allowed"
+      (is (thrown-with-msg?
+            #?(:clj Exception :cljs js/Error)
+            #"Clause cannot be removed as it has dependents"
+            (-> query
+                (lib/append-stage)
+                ;; TODO Should be able to create a ref with lib/field [#29763]
+                (lib/filter (lib/= [:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} "ID"] 1))
+                (lib/remove-clause 0 (first fields)))))
+      (is (thrown-with-msg?
+            #?(:clj Exception :cljs js/Error)
+            #"Clause cannot be removed as it has dependents"
+            (-> query
+                (lib/append-stage)
+                (lib/with-fields [[:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} "ID"]])
+                (lib/append-stage)
+                ;; TODO Should be able to create a ref with lib/field [#29763]
+                (lib/filter (lib/= [:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} "ID"] 1))
+                (lib/remove-clause 0 (first fields)))))
+      (is (= 0 (-> query
+                   (lib/remove-clause 0 (second fields))
+                   (lib/append-stage)
+                   ;; TODO Should be able to create a ref with lib/field [#29763]
+                   (lib/filter (lib/= [:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} "ID"] 1))
+                   (lib/remove-clause 0 (first fields))
+                   (lib/fields 0)
                    count))))))
 
 (deftest ^:parallel replace-clause-order-by-test
@@ -79,6 +137,21 @@
               (first replaced-order-bys)))
       (is (= 2 (count replaced-order-bys)))
       (is (= (second order-bys) (second replaced-order-bys))))))
+
+(deftest ^:parallel replace-clause-filters-test
+  (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
+                  (lib/filter (lib/= (lib/field (meta/id :venues :name)) "myvenue"))
+                  (lib/filter (lib/= (lib/field (meta/id :venues :price)) 2)))
+        filters (lib/filters query)]
+    (is (= 2 (count filters)))
+    (let [replaced (-> query
+                       (lib/replace-clause (first filters) (lib/= (lib/field (meta/id :venues :id)) 1)))
+          replaced-filters (lib/filters replaced)]
+      (is (not= filters replaced-filters))
+      (is (=? {:operator "=" :args [[:field {} (meta/id :venues :id)] 1]}
+              (first replaced-filters)))
+      (is (= 2 (count replaced-filters)))
+      (is (= (second filters) (second replaced-filters))))))
 
 (deftest ^:parallel replace-clause-breakout-by-test
   (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
@@ -109,3 +182,32 @@
                               (lib/filter (lib/= [:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} "ID"] 1))
                               (lib/replace-clause 0 (second breakouts) (lib/field "VENUES" "PRICE"))
                               (lib/current-breakouts 0)))))))
+
+(deftest ^:parallel replace-clause-fields-by-test
+  (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
+                  (lib/with-fields [(lib/field (meta/id :venues :id)) (lib/field (meta/id :venues :name))]))
+        fields (lib/fields query)
+        replaced (-> query
+                     (lib/replace-clause (first fields) (lib/field (meta/id :venues :price))))
+        replaced-fields (lib/fields replaced)]
+    (is (= 2 (count fields)))
+    (is (=? [:field {} (meta/id :venues :price)]
+            (first replaced-fields)))
+    (is (not= fields replaced-fields))
+    (is (= 2 (count replaced-fields)))
+    (is (= (second fields) (second replaced-fields)))
+    (testing "replacing breakout with dependent should not be allowed"
+      (is (thrown-with-msg?
+            #?(:clj Exception :cljs js/Error)
+            #"Clause cannot be removed as it has dependents"
+            (-> query
+                (lib/append-stage)
+                ;; TODO Should be able to create a ref with lib/field [#29763]
+                (lib/filter (lib/= [:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} "ID"] 1))
+                (lib/replace-clause 0 (first fields) (lib/field "VENUES" "PRICE")))))
+      (is (not= fields (-> query
+                              (lib/append-stage)
+                              ;; TODO Should be able to create a ref with lib/field [#29763]
+                              (lib/filter (lib/= [:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} "ID"] 1))
+                              (lib/replace-clause 0 (second fields) (lib/field "VENUES" "PRICE"))
+                              (lib/fields 0)))))))
