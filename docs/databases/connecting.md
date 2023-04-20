@@ -86,7 +86,7 @@ GRANT bi_tool TO metabase;
 
 ### Database privileges
 
-Once you've set up your [database roles and users](#database-roles-and-users), you can assign database privileges to those roles (the privileges will cascade to all users with that role).
+Once you've set up your [database roles and users](#database-roles-and-users), you can assign database privileges to those roles. When you grant privileges to a role, all users with that role will get those privileges.
 
 At minimum, the `bi_tool` role should be able to connect to and query your database:
 
@@ -95,7 +95,7 @@ GRANT CONNECT ON DATABASE "your_database" TO bi_tool;
 GRANT pg_read_all_data TO bi_tool;
 ```
 
-If you don't want to give read access to the entire database at once, you can set up read permissions to specific tables like this:
+If you don't want to give read access to the entire database at once, you can set up read permissions to specific schemas or tables. The example below grants access to a specific table (not the entire schema):
 
 ```sql
 GRANT USAGE ON SCHEMA "your_schema" TO bi_tool;
