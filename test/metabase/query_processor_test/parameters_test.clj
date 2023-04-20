@@ -373,3 +373,21 @@
               (is (some (fn [[_orders-id _orders-created-at _people-state people-name _people-source :as _row]]
                           (= people-name "Emilie Goyette"))
                         rows)))))))))
+
+(deftest inlined-number-test
+  (testing "Number parameters are inlined into the SQL query and not parameterized (#29690)"
+    (mt/dataset sample-dataset
+      (is (= {:query  "SELECT NOW() - INTERVAL '30 DAYS'"
+              :params []}
+             (qp/compile-and-splice-parameters
+              {:type       :native
+               :native     {:query         "SELECT NOW() - INTERVAL '{{n}} DAYS'"
+                            :template-tags {"n"
+                                            {:name         "n"
+                                             :display-name "n"
+                                             :type         :number}}}
+               :database   (mt/id)
+               :parameters [{:type :number
+                             :target [:variable [:template-tag "n"]]
+                             :slug "n"
+                             :value "30"}]}))))))
