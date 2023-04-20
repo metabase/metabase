@@ -8,6 +8,8 @@ import type {
   DatasetColumn,
   Field as IField,
   FieldFingerprint,
+  FieldId,
+  FieldFormattingSettings,
 } from "metabase-types/api";
 import type { Field as FieldRef } from "metabase-types/types/Query";
 import {
@@ -73,6 +75,8 @@ class FieldInner extends Base {
   metadata?: Metadata;
   source?: string;
   nfc_path?: string[];
+  fk_target_field_id: FieldId | null;
+  settings?: FieldFormattingSettings;
 
   // added when creating "virtual fields" that are associated with a given query
   query?: StructuredQuery | NativeQuery;
