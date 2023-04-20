@@ -47,8 +47,11 @@ const MetadataEditor = ({ databases, params }: MetadataEditorProps) => {
             selectedTableId={tableId}
           />
         )}
-        {tableId ? (
-          <MetadataTable selectedTableId={tableId} />
+        {databaseId != null && tableId != null ? (
+          <MetadataTable
+            selectedDatabaseId={databaseId}
+            selectedTableId={tableId}
+          />
         ) : (
           <div style={{ paddingTop: "10rem" }} className="full text-centered">
             <h2 className="text-medium">

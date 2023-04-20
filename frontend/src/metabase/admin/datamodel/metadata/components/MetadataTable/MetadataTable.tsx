@@ -2,13 +2,16 @@ import React, { ChangeEvent, useCallback, useState } from "react";
 import { connect } from "react-redux";
 import { useAsync } from "react-use";
 import { t } from "ttag";
+import Databases from "metabase/entities/databases";
 import Tables from "metabase/entities/tables";
 import Radio from "metabase/core/components/Radio/Radio";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import { TableId, TableVisibilityType } from "metabase-types/api";
+import { DatabaseId, TableId, TableVisibilityType } from "metabase-types/api";
 import { State } from "metabase-types/store";
+import Field from "metabase-lib/metadata/Field";
 import Table from "metabase-lib/metadata/Table";
 import MetadataSchema from "../MetadataSchema";
+import MetadataFieldList from "../MetadataFieldList";
 import {
   TableDescription,
   TableDescriptionInput,
@@ -28,6 +31,10 @@ const METADATA_TAB_OPTIONS = [
   { name: t`Original schema`, value: "original_schema" },
 ];
 
+interface HasDatabaseId {
+  id: DatabaseId;
+}
+
 interface HasTableId {
   id: TableId;
 }
@@ -37,11 +44,13 @@ interface HasEntityQuery {
 }
 
 interface OwnProps {
+  selectedDatabaseId: DatabaseId;
   selectedTableId: TableId;
 }
 
 interface StateProps {
   table?: Table;
+  idFields?: Field[];
 }
 
 interface DispatchProps {
@@ -49,77 +58,94 @@ interface DispatchProps {
     table: HasTableId,
     opts: HasEntityQuery,
   ) => Promise<void>;
-  onUpdateProperty: (table: Table, name: string, value: unknown) => void;
+  onFetchIdFields: (database: HasDatabaseId) => Promise<void>;
+  onUpdateTable: (table: Table, name: string, value: unknown) => void;
 }
 
 type MetadataTableProps = OwnProps & StateProps & DispatchProps;
 
 const mapStateToProps = (
   state: State,
-  { selectedTableId }: OwnProps,
+  { selectedDatabaseId, selectedTableId }: OwnProps,
 ): StateProps => ({
   table: Tables.selectors.getObjectUnfiltered(state, {
     entityId: selectedTableId,
+  }),
+  idFields: Databases.selectors.getIdfields(state, {
+    databaseId: selectedDatabaseId,
   }),
 });
 
 const mapDispatchToProps: DispatchProps = {
   onFetchForeignTables: Tables.actions.fetchMetadataAndForeignTables,
-  onUpdateProperty: Tables.actions.updateProperty,
+  onFetchIdFields: Databases.objectActions.fetchIdfields,
+  onUpdateTable: Tables.actions.updateProperty,
 };
 
 const MetadataTable = ({
   table,
+  idFields = [],
+  selectedDatabaseId,
   selectedTableId,
   onFetchForeignTables,
-  onUpdateProperty,
+  onFetchIdFields,
+  onUpdateTable,
 }: MetadataTableProps) => {
-  const { loading, error } = useAsync(
-    () =>
+  const { loading, error } = useAsync(() => {
+    return Promise.all([
       onFetchForeignTables(
         { id: selectedTableId },
         { entityQuery: TABLE_QUERY },
       ),
-    [selectedTableId],
-  );
+      onFetchIdFields({ id: selectedDatabaseId }),
+    ]);
+  }, [selectedTableId]);
 
-  return table == null || loading || error != null ? (
-    <LoadingAndErrorWrapper loading={loading} error={error} />
-  ) : (
-    <MetadataTableView table={table} onUpdateProperty={onUpdateProperty} />
+  if (table == null || loading || error != null) {
+    return <LoadingAndErrorWrapper loading={loading} error={error} />;
+  }
+
+  return (
+    <MetadataTableView
+      table={table}
+      idFields={idFields}
+      onUpdateTable={onUpdateTable}
+    />
   );
 };
 
 interface MetadataTableViewProps {
   table: Table;
-  onUpdateProperty: (table: Table, name: string, value: unknown) => void;
+  idFields: Field[];
+  onUpdateTable: (table: Table, name: string, value: unknown) => void;
 }
 
 const MetadataTableView = ({
   table,
-  onUpdateProperty,
+  idFields,
+  onUpdateTable,
 }: MetadataTableViewProps) => {
   const [tab, setTab] = useState<MetadataTabType>("columns");
 
   const handleChangeName = useCallback(
     (name: string) => {
-      onUpdateProperty(table, "display_name", name);
+      onUpdateTable(table, "display_name", name);
     },
-    [table, onUpdateProperty],
+    [table, onUpdateTable],
   );
 
   const handleChangeDescription = useCallback(
     (description: string) => {
-      onUpdateProperty(table, "description", description);
+      onUpdateTable(table, "description", description);
     },
-    [table, onUpdateProperty],
+    [table, onUpdateTable],
   );
 
   const handleChangeVisibility = useCallback(
     (visibility: TableVisibilityType) => {
-      onUpdateProperty(table, "visibility_type", visibility);
+      onUpdateTable(table, "visibility_type", visibility);
     },
-    [table, onUpdateProperty],
+    [table, onUpdateTable],
   );
 
   return (
@@ -136,6 +162,9 @@ const MetadataTableView = ({
       />
       <TableTabSection tab={tab} onChangeTab={setTab} />
       {tab === "original_schema" && <MetadataSchema table={table} />}
+      {tab === "columns" && (
+        <MetadataFieldList table={table} idFields={idFields} />
+      )}
     </div>
   );
 };
