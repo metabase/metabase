@@ -222,7 +222,7 @@
                      :base_type :type/Date}
                     (t2/select-one Field :database_position 5 :table_id (:id table))))
             (is (=? {:name      #"(?i)datetime"
-                     :base_type :type/DateTime}
+                     :base_type (if (= driver/*driver* :mysql) :type/DateTimeWithLocalTZ :type/DateTime)}
                     (t2/select-one Field :database_position 6 :table_id (:id table))))
             (testing "Check the data was uploaded into the table"
               (is (= [[2]] (-> (mt/process-query {:database (mt/id)
@@ -248,7 +248,7 @@
             (is (=? {:name #"(?i)upload_test"} table))
             (testing "Check the datetime column the correct base_type"
               (is (=? {:name      #"(?i)datetime"
-                       :base_type :type/DateTime}
+                       :base_type (if (= driver/*driver* :mysql) :type/DateTimeWithLocalTZ :type/DateTime)}
                       (t2/select-one Field :database_position 0 :table_id (:id table)))))
             (is (some? table))))))))
 
