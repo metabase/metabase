@@ -29,6 +29,7 @@ const ChartClickActionsView = ({
   onClick,
 }: Props): JSX.Element => {
   const sections = getGroupedAndSortedActions(clickActions);
+
   const hasOnlyOneSection = sections.length === 1;
 
   return (
@@ -37,6 +38,7 @@ const ChartClickActionsView = ({
         <Section
           key={key}
           type={key}
+          hasOnlyOneSection={hasOnlyOneSection}
           className={cx(
             { pb2: SECTIONS[key].icon === "bolt" },
             {
