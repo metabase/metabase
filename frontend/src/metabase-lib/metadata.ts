@@ -23,11 +23,11 @@ export function displayName(query: Query, clause: Clause): string {
 }
 
 export type DisplayInfo = {
-  display_name: string;
+  displayName: string;
   name?: string;
   table?: {
     name: string;
-    display_name: string;
+    displayName: string;
   };
 };
 

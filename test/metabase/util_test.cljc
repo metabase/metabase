@@ -227,18 +227,31 @@
     {}  nil
     nil nil))
 
-;; TODO Can we achieve something like with-locale in CLJS?
-#?(:clj
-   (deftest lower-case-en-test
-     (mt/with-locale "tr"
-       (is (= "id"
-              (u/lower-case-en "ID"))))))
+(deftest lower-case-en-test
+  (is (= "id"
+         (u/lower-case-en "ID")))
+  ;; TODO Can we achieve something like with-locale in CLJS?
+  #?(:clj (mt/with-locale "tr"
+            (is (= "id"
+                   (u/lower-case-en "ID"))))))
 
-#?(:clj
-   (deftest upper-case-en-test
-     (mt/with-locale "tr"
-       (is (= "ID"
-              (u/upper-case-en "id"))))))
+(deftest upper-case-en-test
+  (is (= "ID"
+         (u/upper-case-en "id")))
+  #?(:clj (mt/with-locale "tr"
+            (is (= "ID"
+                   (u/upper-case-en "id"))))))
+
+(deftest capitalize-en-test
+  (is (= "Ibis"
+         (u/capitalize-en "ibis")
+         (u/capitalize-en "IBIS")
+         (u/capitalize-en "Ibis")))
+  #?(:clj (mt/with-locale "tr"
+            (is (= "Ibis"
+                   (u/capitalize-en "ibis")
+                   (u/capitalize-en "IBIS")
+                   (u/capitalize-en "Ibis"))))))
 
 (deftest ^:parallel parse-currency-test
   (are [s expected] (= expected
@@ -290,7 +303,7 @@
                              (= x m)
                              (= ys (concat non-pos rest))))))))
 
-(deftest normalize-map-test
+(deftest ^:parallel normalize-map-test
   (testing "nil and empty maps return empty maps"
     (is (= {} (u/normalize-map nil)))
     (is (= {} (u/normalize-map {}))))
@@ -305,6 +318,12 @@
     #?(:cljs
        (testing "JS objects get turned into Clojure maps"
          (is (= exp (u/normalize-map #js {"kebab-key" 1 "snake_key" 2 "camelKey" 3})))))))
+
+#?(:clj
+   (deftest normalize-map-turkish-test
+     (mt/with-locale "tr"
+       (is (= {:bird "Toucan"}
+              (u/normalize-map {:BIRD "Toucan"}))))))
 
 (deftest ^:parallel or-with-test
   (testing "empty case"

@@ -198,9 +198,9 @@
   (try
     {:lib/type     :metadata/field
      ;; TODO -- effective-type
-     :base_type    (type-of query stage-number x)
+     :base-type    (type-of query stage-number x)
      :name         (column-name query stage-number x)
-     :display_name (display-name query stage-number x)}
+     :display-name (display-name query stage-number x)}
     (catch #?(:clj Throwable :cljs js/Error) e
       (throw (ex-info (i18n/tru "Error calculating metadata {0}" (ex-message e))
                       {:query query, :stage-number stage-number, :x x}
@@ -254,10 +254,10 @@
 
 (mr/register! ::display-info
   [:map
-   [:display_name :string]
-   ;; For Columns. `base_type` not included here, FE doesn't need to know about that.
-   [:effective_type {:optional true} [:maybe [:ref ::lib.schema.common/base-type]]]
-   [:semantic_type  {:optional true} [:maybe [:ref ::lib.schema.common/semantic-type]]]
+   [:display-name :string]
+   ;; For Columns. `base-type` not included here, FE doesn't need to know about that.
+   [:effective-type {:optional true} [:maybe [:ref ::lib.schema.common/base-type]]]
+   [:semantic-type  {:optional true} [:maybe [:ref ::lib.schema.common/semantic-type]]]
    ;; for things that have a Table, e.g. a Field
    [:table {:optional true} [:maybe [:ref ::display-info]]]
    ;; these are derived from the `:lib/source`/`:metabase.lib.metadata/column-source`, but instead of using that value
@@ -265,16 +265,16 @@
    ;; e.g. if we consolidate or split some of those keys. This is all the FE really needs to know.
    ;;
    ;; if this is a Column, does it come from a previous stage?
-   [:is_from_previous_stage {:optional true} [:maybe :boolean]]
+   [:is-from-previous-stage {:optional true} [:maybe :boolean]]
    ;; if this is a Column, does it come from a join in this stage?
-   [:is_from_join {:optional true} [:maybe :boolean]]
+   [:is-from-join {:optional true} [:maybe :boolean]]
    ;; if this is a Column, is it 'calculated', i.e. does it come from an expression in this stage?
-   [:is_calculated {:optional true} [:maybe :boolean]]
+   [:is-calculated {:optional true} [:maybe :boolean]]
    ;; if this is a Column, is it an implicitly joinable one? I.e. is it from a different table that we have not
    ;; already joined, but could implicitly join against?
-   [:is_implicitly_joinable {:optional true} [:maybe :boolean]]
+   [:is-implicitly-joinable {:optional true} [:maybe :boolean]]
    ;; For the `:table` field of a Column, is this the source table, or a joined table?
-   [:is_source_table {:optional true} [:maybe :boolean]]])
+   [:is-source-table {:optional true} [:maybe :boolean]]])
 
 (mu/defn display-info :- ::display-info
   "Given some sort of Cljs object, return a map with the info you'd need to implement UI for it. This is mostly meant to
@@ -289,7 +289,9 @@
    (try
      (display-info-method query stage-number x)
      (catch #?(:clj Throwable :cljs js/Error) e
-       (throw (ex-info (i18n/tru "Error calculating display info for {0}: {1}" (lib.dispatch/dispatch-value x) (ex-message e))
+       (throw (ex-info (i18n/tru "Error calculating display info for {0}: {1}"
+                                 (lib.dispatch/dispatch-value x)
+                                 (ex-message e))
                        {:query query, :stage-number stage-number, :x x}
                        e))))))
 
@@ -299,20 +301,20 @@
   [query stage-number x]
   (let [x-metadata (metadata query stage-number x)]
     (merge
-     ;; TODO -- not 100% convinced the FE should actually have access to `:name`, can't it use `:display_name`
+     ;; TODO -- not 100% convinced the FE should actually have access to `:name`, can't it use `:display-name`
      ;; everywhere? Determine whether or not this is the case.
-     (select-keys x-metadata [:name :display_name :semantic_type])
-     ;; don't return `:base_type`, FE should just use `:effective_type` everywhere and not even need to know
-     ;; `:base_type` exists.
-     (when-let [effective-type ((some-fn :effective_type :base_type) x-metadata)]
-       {:effective_type effective-type})
-     (when-let [table-id (:table_id x-metadata)]
+     (select-keys x-metadata [:name :display-name :semantic-type])
+     ;; don't return `:base-type`, FE should just use `:effective-type` everywhere and not even need to know
+     ;; `:base-type` exists.
+     (when-let [effective-type ((some-fn :effective-type :base-type) x-metadata)]
+       {:effective-type effective-type})
+     (when-let [table-id (:table-id x-metadata)]
        {:table (display-info query stage-number (lib.metadata/table query table-id))})
      (when-let [source (:lib/source x-metadata)]
-       {:is_from_previous_stage (= source :source/previous-stage)
-        :is_from_join           (= source :source/joins)
-        :is_calculated          (= source :source/expressions)
-        :is_implicitly_joinable (= source :source/implicitly-joinable)}))))
+       {:is-from-previous-stage (= source :source/previous-stage)
+        :is-from-join           (= source :source/joins)
+        :is-calculated          (= source :source/expressions)
+        :is-implicitly-joinable (= source :source/implicitly-joinable)}))))
 
 (defmethod display-info-method :default
   [query stage-number x]
@@ -321,7 +323,7 @@
 (defmethod display-info-method :metadata/table
   [query stage-number table]
   (merge (default-display-info query stage-number table)
-         {:is_source_table (= (lib.util/source-table query) (:id table))}))
+         {:is-source-table (= (lib.util/source-table query) (:id table))}))
 
 (defmulti default-columns-method
   "Impl for [[default-columns]]. This should mostly be similar to the implementation for [[metadata-method]], but needs

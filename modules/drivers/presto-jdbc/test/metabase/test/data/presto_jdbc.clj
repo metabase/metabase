@@ -173,7 +173,7 @@
              (sql.tx/create-table-sql :presto-jdbc db-def table-def))))))
 
 (defmethod ddl.i/format-name :presto-jdbc [_ table-or-field-name]
-  (u/snake-key table-or-field-name))
+  (u/->snake_case_en table-or-field-name))
 
 ;; Presto doesn't support FKs, at least not adding them via DDL
 (defmethod sql.tx/add-fk-sql :presto-jdbc

@@ -17,7 +17,7 @@
   "Given `:metadata/field` column metadata for an aggregation, construct an `:aggregation` reference."
   [metadata :- lib.metadata/ColumnMetadata]
   (let [options {:lib/uuid       (str (random-uuid))
-                 :effective-type ((some-fn :effective_type :base_type) metadata)}
+                 :effective-type ((some-fn :effective-type :base-type) metadata)}
         index   (::aggregation-index metadata)]
     (assert (integer? index) "Metadata for an aggregation reference should include ::aggregation-index")
     [:aggregation options index]))
@@ -51,9 +51,9 @@
      {:lib/source         :source/aggregations
       ::aggregation-index index}
      (when base-type
-       {:base_type base-type})
+       {:base-type base-type})
      (when effective-type
-       {:effective_type effective-type}))))
+       {:effective-type effective-type}))))
 
 ;;; TODO -- merge this stuff into `defop` somehow.
 

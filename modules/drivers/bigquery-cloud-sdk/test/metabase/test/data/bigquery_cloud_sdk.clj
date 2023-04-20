@@ -91,7 +91,7 @@
 ;;; -------------------------------------------------- Loading Data --------------------------------------------------
 
 (defmethod ddl.i/format-name :bigquery-cloud-sdk [_ table-or-field-name]
-  (u/snake-key table-or-field-name))
+  (u/->snake_case_en table-or-field-name))
 
 (defn- create-dataset! [^String dataset-id]
   {:pre [(seq dataset-id)]}

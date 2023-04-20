@@ -1,7 +1,6 @@
 (ns metabase.models.interface
   (:require
    [buddy.core.codecs :as codecs]
-   [camel-snake-kebab.core :as csk]
    [cheshire.core :as json]
    [cheshire.generate :as json.generate]
    [clojure.core.memoize :as memoize]
@@ -603,4 +602,4 @@
 (methodical/defmethod t2.hydrate/fk-keys-for-automagic-hydration :default
   "In Metabase the FK key used for automagic hydration should use underscores (work around upstream Toucan 2 issue)."
   [_original-model dest-key _hydrated-key]
-  [(csk/->snake_case (keyword (str (name dest-key) "_id")))])
+  [(u/->snake_case_en (keyword (str (name dest-key) "_id")))])

@@ -9,6 +9,7 @@
    [metabase.shared.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
 
+;;; TODO -- duplicated with [[metabase.lib.expression/interval-unit-str]]
 (defn unit->i18n
   "Get a translated description of a temporal bucketing unit."
   ([unit]

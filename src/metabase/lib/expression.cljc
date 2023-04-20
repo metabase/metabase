@@ -22,8 +22,8 @@
   "Given `:metadata/field` column metadata for an expression, construct an `:expression` reference."
   [metadata :- lib.metadata/ColumnMetadata]
   (let [options {:lib/uuid       (str (random-uuid))
-                 :base-type      (:base_type metadata)
-                 :effective-type ((some-fn :effective_type :base_type) metadata)}]
+                 :base-type      (:base-type metadata)
+                 :effective-type ((some-fn :effective-type :base-type) metadata)}]
     [:expression options (:name metadata)]))
 
 (mu/defn resolve-expression :- ::lib.schema.expression/expression
@@ -48,8 +48,8 @@
   [query stage-number [_expression _opts expression-name, :as expression-ref]]
   {:lib/type     :metadata/field
    :name         expression-name
-   :display_name (lib.metadata.calculation/display-name query stage-number expression-ref)
-   :base_type    (lib.metadata.calculation/type-of query stage-number expression-ref)
+   :display-name (lib.metadata.calculation/display-name query stage-number expression-ref)
+   :base-type    (lib.metadata.calculation/type-of query stage-number expression-ref)
    :lib/source   :source/expressions})
 
 (defmethod lib.metadata.calculation/display-name-method :dispatch-type/integer
@@ -132,6 +132,7 @@
    (for [arg args]
      (lib.metadata.calculation/type-of query stage-number arg))))
 
+;;; TODO -- duplicated with [[metabase.lib.temporal-bucket/unit->i18n]]
 (defn- interval-unit-str [amount unit]
   (clojure.core/case unit
     :millisecond (i18n/trun "millisecond" "milliseconds" (clojure.core/abs amount))
@@ -252,4 +253,4 @@
                     (-> (lib.metadata.calculation/metadata query stage-number expression-definition)
                         (assoc :lib/source   :source/expressions
                                :name         expression-name
-                               :display_name expression-name)))))))
+                               :display-name expression-name)))))))

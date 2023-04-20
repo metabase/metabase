@@ -141,29 +141,29 @@
                              (col-info-for-aggregation-clause clause))
     ;; :count, no field
     [:/ {} [:count {}] 2]
-    {:base_type    :type/Float
+    {:base-type    :type/Float
      :name         "count_divided_by_2"
-     :display_name "Count ÷ 2"}
+     :display-name "Count ÷ 2"}
 
     ;; :sum
     [:sum {} [:+ {} (lib.tu/field-clause :venues :price) 1]]
-    {:base_type    :type/Integer
+    {:base-type    :type/Integer
      :name         "sum_PRICE_plus_1"
-     :display_name "Sum of Price + 1"}
+     :display-name "Sum of Price + 1"}
 
     ;; options map
     [:sum
      {:name "sum_2", :display-name "My custom name", :base-type :type/BigInteger}
      (lib.tu/field-clause :venues :price)]
-    {:base_type    :type/BigInteger
+    {:base-type    :type/BigInteger
      :name         "sum_2"
-     :display_name "My custom name"}))
+     :display-name "My custom name"}))
 
 (deftest ^:parallel col-info-named-aggregation-test
   (testing "col info for an `expression` aggregation w/ a named expression should work as expected"
-    (is (=? {:base_type    :type/Integer
+    (is (=? {:base-type    :type/Integer
              :name         "sum_double-price"
-             :display_name "Sum of double-price"}
+             :display-name "Sum of double-price"}
             (col-info-for-aggregation-clause
              (lib.tu/venues-query-with-last-stage
               {:expressions {"double-price" [:*
@@ -181,7 +181,6 @@
          :database (meta/id)
          :stages [{:lib/type :mbql.stage/mbql
                    :source-table (meta/id :venues)
-                   :lib/options {:lib/uuid string?}
                    :aggregation [[:sum {:lib/uuid string?}
                                   [:field
                                    {:base-type :type/Integer, :lib/uuid string?}
@@ -237,9 +236,9 @@
                   (lib/expression "double-price" (lib/* (lib/field (meta/id :venues :price)) 2))
                   (lib/aggregate (lib/sum [:expression {:lib/uuid (str (random-uuid))} "double-price"])))]
     (is (=? [{:lib/type     :metadata/field
-              :base_type    :type/Integer
+              :base-type    :type/Integer
               :name         "sum_double-price"
-              :display_name "Sum of double-price"}]
+              :display-name "Sum of double-price"}]
             (lib/aggregations query)))
     (is (= :type/Integer
            (lib/type-of query (first (lib/aggregations query)))))))
@@ -250,9 +249,9 @@
                     (lib/aggregate (lib/sum (lib/field (meta/id :venues :price)))))]
       (is (=? {:settings     {:is_priceless true}
                :lib/type     :metadata/field
-               :base_type    :type/Integer
+               :base-type    :type/Integer
                :name         "sum_PRICE"
-               :display_name "Sum of Price"
+               :display-name "Sum of Price"
                :lib/source   :source/aggregations}
               (lib.metadata.calculation/metadata query (first (lib/aggregations query -1))))))))
 
@@ -274,10 +273,10 @@
            (lib.metadata.calculation/display-name query ag-ref)))
     (is (=? {:lib/type                                   :metadata/field
              :lib/source                                 :source/aggregations
-             :display_name                               "Average of Price + 1"
-             :effective_type                             :type/Float
+             :display-name                               "Average of Price + 1"
+             :effective-type                             :type/Float
              :metabase.lib.aggregation/aggregation-index 0}
             (lib.metadata.calculation/metadata query ag-ref)))
-    (is (=? {:display_name   "Average of Price + 1"
-             :effective_type :type/Float}
+    (is (=? {:display-name   "Average of Price + 1"
+             :effective-type :type/Float}
             (lib.metadata.calculation/display-info query ag-ref)))))

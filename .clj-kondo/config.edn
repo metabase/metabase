@@ -161,8 +161,9 @@
    toucan.models/primary-key     {:message "Use metabase.db.util/primary-key instead of toucan.models/primary-key"}}
 
   :discouraged-namespace
-  {clojure.tools.logging {:message "Use metabase.util.log instead of clojure.tools.logging directly"}
-   metabase.util.jvm     {:message "All of metabase.util.jvm is re-exported from metabase.util; prefer that"}}
+  {camel-snake-kebab.core {:message "CSK is not Turkish-safe, use the versions in metabase.util instead."}
+   clojure.tools.logging  {:message "Use metabase.util.log instead of clojure.tools.logging directly"}
+   metabase.util.jvm      {:message "All of metabase.util.jvm is re-exported from metabase.util; prefer that"}}
 
   :unresolved-var
   {:exclude
@@ -711,10 +712,16 @@
   ;; to the new stricter rules from day 1
   metabase-lib
   {:linters
-   {:docstring-leading-trailing-whitespace                 {:level :warning}
-    :reduce-without-init                                   {:level :warning}
-    :used-underscored-binding                              {:level :warning}
-    :single-key-in                                         {:level :warning}
-    :keyword-binding                                       {:level :warning}
-    :shadowed-var                                          {:level :warning}
-    :metabase/deftest-not-marked-parallel-or-synchronized  {:level :warning}}}}}
+   {:docstring-leading-trailing-whitespace                {:level :warning}
+    :reduce-without-init                                  {:level :warning}
+    :used-underscored-binding                             {:level :warning}
+    :single-key-in                                        {:level :warning}
+    :keyword-binding                                      {:level :warning}
+    :shadowed-var                                         {:level :warning}
+    :metabase/deftest-not-marked-parallel-or-synchronized {:level :warning}
+
+    ;; eventually we should do this for the whole codebase, but the args are in the opposite order so switching them
+    ;; all at once isn't trivial, at least we can stop using it in new code.
+    :discouraged-var
+    {medley.core/map-keys {:message "Use clojure.core/update-keys"}
+     medley.core/map-vals {:message "Use clojure.core/update-vals"}}}}}}

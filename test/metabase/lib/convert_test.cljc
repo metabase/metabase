@@ -240,6 +240,38 @@
                 :limit        1
                 :source-table 4}}))
 
+(deftest ^:parallel round-trip-metadata-test
+  (let [query {:database 2471,
+               :type     :query,
+               :query    {:source-query {:source-table 32700, :fields [[:field 134689 nil] [:field 134690 nil]]},
+                          :source-metadata
+                          [{:semantic_type  :type/PK,
+                            :table_id       32700,
+                            :name           "ID",
+                            :field_ref      [:field 134689 nil],
+                            :effective_type :type/BigInteger,
+                            :id             134689,
+                            :display_name   "ID",
+                            :base_type      :type/BigInteger}
+                           {:semantic_type  :type/Name,
+                            :table_id       32700,
+                            :name           "NAME",
+                            :field_ref      [:field 134690 nil],
+                            :effective_type :type/Text,
+                            :id             134690,
+                            :display_name   "Name",
+                            :fingerprint
+                            {:global {:distinct-count 100, :nil% 0.0},
+                             :type   #:type{:Text {:percent-json   0.0
+                                                   :percent-url    0.0
+                                                   :percent-email  0.0
+                                                   :percent-state  0.0
+                                                   :average-length 15.63}}},
+                            :base_type      :type/Text}],
+                          :middleware   {:disable-remaps? true}}}]
+    (is (= query
+           (-> query lib.convert/->pMBQL lib.convert/->legacy-MBQL)))))
+
 (deftest ^:parallel clean-test
   (testing "irrecoverable queries"
     ;; Eventually we should get to a place where ->pMBQL throws an exception here,
