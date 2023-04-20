@@ -1,3 +1,15 @@
-Cypress.Commands.add("icon", icon_name => {
-  cy.get(`.Icon-${icon_name}`);
-});
+Cypress.Commands.add(
+  "icon",
+  {
+    prevSubject: "optional",
+  },
+  (subject, icon_name) => {
+    if (subject) {
+      cy.wrap(subject).within(() => {
+        cy.get(`.Icon-${icon_name}`);
+      });
+    } else {
+      cy.get(`.Icon-${icon_name}`);
+    }
+  },
+);

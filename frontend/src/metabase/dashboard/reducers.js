@@ -317,6 +317,9 @@ const draftParameterValues = handleActions(
         return state;
       },
     },
+    [FETCH_DASHBOARD]: {
+      next: (state, { payload: { parameterValues } }) => parameterValues,
+    },
     [RESET]: { next: _state => ({}) },
     [Dashboards.actionTypes.UPDATE]: {
       next: (state, { payload }) => {
