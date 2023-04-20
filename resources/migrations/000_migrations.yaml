@@ -14413,6 +14413,17 @@ databaseChangeLog:
       author: qwef
       comment: Added 0.47.0 - Replace user google_auth and ldap_auth columns with sso_source values
       changes:
+        - sql:
+            sql: UPDATE core_user SET sso_source = 'ldap' WHERE ldap_auth = true;
+      rollback:
+        - sql:
+            sql: UPDATE core_user SET ldap_auth = true, sso_source = NULL WHERE sso_source = 'ldap';
+
+  - changeSet:
+      id: v47.00-014
+      author: qwef
+      comment: Added 0.47.0 - Replace user google_auth and ldap_auth columns with sso_source values
+      changes:
         - dropColumn:
             tableName: core_user
             columnName: ldap_auth
@@ -14426,17 +14437,6 @@ databaseChangeLog:
                   defaultValueBoolean: false
                   constraints:
                     nullable: false
-
-  - changeSet:
-      id: v47.00-014
-      author: qwef
-      comment: Added 0.47.0 - Replace user google_auth and ldap_auth columns with sso_source values
-      changes:
-        - sql:
-            sql: UPDATE core_user SET sso_source = 'ldap' WHERE ldap_auth = true;
-      rollback:
-        - sql:
-            sql: UPDATE core_user SET ldap_auth = true, sso_source = NULL WHERE sso_source = 'ldap';
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
