@@ -66,7 +66,7 @@ You can always revoke specific privileges later. If you'd prefer to set things u
 
 ### Database roles and users
 
-To organize your database privileges, you can create database roles for each type of application that needs access to your database. 
+To organize your database privileges, you can create database roles for each type of application that needs access to your database.
 
 For example, most BI tools need the same privileges to connect and read from your database, so you can:
 
@@ -81,6 +81,8 @@ CREATE ROLE bi_tool;
 CREATE USER metabase;
 GRANT bi_tool TO metabase;
 ```
+
+> If you're setting up multi-tenant permissions for people who need SQL access to specific schemas or tables, you may want to create [multiple database users](https://www.metabase.com/learn/permissions/multi-tenant-permissions#option-2-granting-customers-native-sql-access-to-their-schema) for Metabase, such as `metabase_customer_1` and `metabase_customer_2`.
 
 ### Database privileges
 
