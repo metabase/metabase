@@ -127,8 +127,10 @@
                                                  (for [column columns]
                                                    (assoc column :lib/type :metadata/field))))
                               (assoc :lib/type :metadata/results)))
+        previous-stage  (dec (count previous-stages))
         previous-stages (cond-> previous-stages
-                          source-metadata (assoc-in [(dec (count previous-stages)) :lib/stage-metadata] source-metadata))
+                          (and source-metadata
+                               (not (neg? previous-stage))) (assoc-in [previous-stage :lib/stage-metadata] source-metadata))
         stage-type      (if (:native inner-query)
                           :mbql.stage/native
                           :mbql.stage/mbql)

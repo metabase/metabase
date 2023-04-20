@@ -128,6 +128,19 @@
                                         :aggregation  [[:aggregation-options
                                                         [:sum [:field 1 nil]]
                                                         {:display-name "Revenue"}]]}}))))
+(deftest ^:parallel effective-type-drop-test
+  (testing ":effective_type values should be dropped in ->legacy-MBQL"
+    (is (=? {:type  :query
+             :query {:source-table 1
+                     :aggregation  [[:sum [:field 1 nil]]]
+                     :breakout     [[:aggregation 0 {:display-name "Revenue"}]]}}
+          (lib.convert/->legacy-MBQL
+              {:lib/type :mbql/query
+               :stages   [{:lib/type     :mbql.stage/mbql
+                           :source-table 1
+                           :aggregation  [[:sum {:lib/uuid string?} [:field {:lib/uuid string?} 1]]]
+                           :breakout     [[:aggregation 0 {:display-name   "Revenue"
+                                                           :effective_type :type/Integer}]]}]})))))
 
 (deftest ^:parallel round-trip-test
   ;; Miscellaneous queries that have caused test failures in the past, captured here for quick feedback.
@@ -166,9 +179,9 @@
 
     [:value nil {:base_type :type/Number}]
 
-    [:aggregation 0 {:effective-type "type/Integer"}]
+    [:aggregation 0 {:display-name "Bean Count"}]
 
-    [:expression "expr" {:effective-type "type/Integer"}]
+    [:expression "expr" {:display-name "Iambic Diameter"}]
 
     [:case [[[:< [:field 1 nil] 10] [:value nil {:base_type :type/Number}]] [[:> [:field 2 nil] 2] 10]]]
 
@@ -192,6 +205,14 @@
                             :metabase.query-processor.util.add-alias-info/source-table 224}] 1]]
              :source-table 224}
      :type :query}
+
+    {:database 1,
+     :type :query,
+     :query
+     {:source-table 2,
+      :aggregation [[:count]],
+      :breakout [[:field 14 {:temporal-unit :month}]],
+      :order-by [[:asc [:aggregation 0]]]}}
 
     {:database 23001
      :type     :query
@@ -218,6 +239,71 @@
                                 :fields       [[:field 1 {:join-alias "Cat"}]]}]
                 :limit        1
                 :source-table 4}}))
+
+(deftest ^:parallel round-trip-preserve-metadata-test
+  (testing "Round-tripping should not affect embedded metadata"
+    (let [query {:database 2445
+                 :type     :query
+                 :query    {:limit        5
+                            :source-query {:source-table 1}
+                            :source-metadata
+                            [{:semantic_type   :type/PK
+                              :table_id        32598
+                              :name            "id"
+                              :source          :fields
+                              :field_ref       [:field 134528 nil]
+                              :effective_type  :type/Integer
+                              :id              134528
+                              :visibility_type :normal
+                              :display_name    "ID"
+                              :base_type       :type/Integer}]}
+
+                 :metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions/original-metadata
+                 [{:base-type       :type/Text
+                   :semantic-type   :type/Category
+                   :table-id        32600
+                   :name            "category"
+                   :source          :breakout
+                   :effective-type  :type/Text
+                   :id              134551
+                   :source-alias    "products__via__product_id"
+                   :visibility-type :normal
+                   :display-name    "Product → Category"
+                   :field-ref       [:field 134551 {:source-field 134534}]
+                   :fk-field-id     134534
+                   :fingerprint     {:global {:distinct-count 4, :nil% 0.0}
+                                     :type   {:type/text {:percent-json   0.0
+                                                          :percent-url    0.0
+                                                          :percent-email  0.0
+                                                          :percent-state  0.0
+                                                          :average-length 6.375}}}}]}]
+      (is (= query
+             (-> query lib.convert/->pMBQL lib.convert/->legacy-MBQL))))))
+
+(deftest ^:parallel value-test
+  (testing "For some crazy person reason legacy `:value` has `snake_case` options."
+    (let [original [:value
+                    3
+                    {:base_type     :type/Integer
+                     :semantic_type :type/Quantity
+                     :database_type "INTEGER"
+                     :name          "QUANTITY"
+                     :unit          :quarter}]
+          pMBQL    (lib.convert/->pMBQL original)]
+      (testing "Normalize keys when converting to pMBQL. Add `:effective-type`."
+        (is (=? [:value
+                 {:lib/uuid       string?
+                  :effective-type :type/Integer
+                  :base-type      :type/Integer
+                  :semantic-type  :type/Quantity
+                  :database-type  "INTEGER"
+                  :name           "QUANTITY"
+                  :unit           :quarter}
+                 3]
+                pMBQL)))
+      (testing "Round trip: make sure we convert back to `snake_case` when converting back."
+        (is (= original
+               (lib.convert/->legacy-MBQL pMBQL)))))))
 
 (deftest ^:parallel clean-test
   (testing "irrecoverable queries"

@@ -6,9 +6,10 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.schema.expression :as lib.schema.expression]
-   [metabase.lib.temporal-bucket :as lib.temporal-bucket]
+   [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.util :as u]
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
@@ -127,17 +128,98 @@
     (is (=? {:display_name "Name"}
             (lib.metadata.calculation/metadata query -1 field)))))
 
-(deftest ^:parallel field-with-temporal-unit-test
+(deftest ^:parallel unresolved-lib-field-with-temporal-bucket-test
   (let [query (lib/query-for-table-name meta/metadata-provider "CHECKINS")
-        f (lib/temporal-bucket (lib/field (meta/id :checkins :date)) :year)]
+        f (lib/with-temporal-bucket (lib/field (meta/id :checkins :date)) :year)]
     (is (fn? f))
     (let [field (f query -1)]
       (is (=? [:field {:temporal-unit :year} (meta/id :checkins :date)]
               field))
-      (is (=? :year
-              (lib.temporal-bucket/current-temporal-bucket (lib.metadata.calculation/metadata query -1 field))))
+      (testing "(lib/temporal-bucket <column-metadata>)"
+        (is (= :year
+               (lib/temporal-bucket (lib.metadata.calculation/metadata query -1 field)))))
+      (testing "(lib/temporal-bucket <field-ref>)"
+        (is (= :year
+               (lib/temporal-bucket field))))
       (is (= "Date (year)"
              (lib.metadata.calculation/display-name query -1 field))))))
+
+(def ^:private temporal-bucketing-mock-metadata
+  "Mock metadata for testing temporal bucketing stuff.
+
+  * Includes a date field where the `:base_type` is `:type/Text`, but `:effective_type` is `:type/Date` because of a
+    `:Coercion/ISO8601->Date`, so we can test that `:effective_type` is preserved properly
+
+  * Includes a mocked Field with `:type/Time`"
+  (let [date-field        (assoc (meta/field-metadata :people :birth-date)
+                                 :base_type         :type/Text
+                                 :effective_type    :type/Date
+                                 :coercion_strategy :Coercion/ISO8601->Date)
+        time-field        (assoc (meta/field-metadata :orders :created-at)
+                                 :base_type      :type/Time
+                                 :effective_type :type/Time)
+        metadata-provider (lib.tu/composed-metadata-provider
+                           (lib.tu/mock-metadata-provider
+                            {:fields [date-field
+                                      time-field]})
+                           meta/metadata-provider)
+        query             (lib/query-for-table-name metadata-provider "VENUES")]
+    {:fields            {:date     date-field
+                         :datetime (meta/field-metadata :reviews :created-at)
+                         :time     time-field}
+     :metadata-provider metadata-provider
+     :query             query}))
+
+(deftest ^:parallel with-temporal-bucket-test
+  (doseq [[unit effective-type] {:month         :type/Date
+                                 :month-of-year :type/Integer}
+          :let                  [field-metadata (get-in temporal-bucketing-mock-metadata [:fields :date])]
+          [what x]              {"column metadata" field-metadata
+                                 "field ref"       (lib/ref field-metadata)}
+          :let                  [x' (lib/with-temporal-bucket x unit)]]
+    (testing (str what " unit = " unit "\n\n" (u/pprint-to-str x') "\n")
+      (testing "should calculate correct effective type"
+        (is (= effective-type
+               (lib.metadata.calculation/type-of (:query temporal-bucketing-mock-metadata) x'))))
+      (testing "lib/temporal-bucket should return the unit"
+        (is (= unit
+               (lib/temporal-bucket x')))
+        (testing "should generate a :field ref with correct :temporal-unit"
+          (is (=? [:field
+                   {:lib/uuid       string?
+                    :base-type      :type/Text
+                    :effective-type effective-type
+                    :temporal-unit  unit}
+                   integer?]
+                  (lib/ref x')))))
+      (testing "remove the temporal unit"
+        (let [x'' (lib/with-temporal-bucket x' nil)]
+          (is (nil? (lib/temporal-bucket x'')))
+          (is (= x
+                 x''))))
+      (testing "change the temporal unit, THEN remove it"
+        (let [x''  (lib/with-temporal-bucket x' :quarter-of-year)
+              x''' (lib/with-temporal-bucket x'' nil)]
+          (is (nil? (lib/temporal-bucket x''')))
+          (is (= x
+                 x''')))))))
+
+(deftest ^:parallel available-temporal-buckets-test
+  (doseq [{:keys [metadata expected-units]} [{:metadata       (get-in temporal-bucketing-mock-metadata [:fields :date])
+                                              :expected-units lib.schema.temporal-bucketing/date-bucketing-units}
+                                             {:metadata       (get-in temporal-bucketing-mock-metadata [:fields :datetime])
+                                              :expected-units lib.schema.temporal-bucketing/datetime-bucketing-units}
+                                             {:metadata       (get-in temporal-bucketing-mock-metadata [:fields :time])
+                                              :expected-units lib.schema.temporal-bucketing/time-bucketing-units}]]
+    (testing (str (:base_type metadata) " Field")
+      (doseq [[what x] {"column metadata" metadata, "field ref" (lib/ref metadata)}]
+        (testing (str what "\n\n" (u/pprint-to-str x))
+          (is (= expected-units
+                 (lib/available-temporal-buckets (:query temporal-bucketing-mock-metadata) x)))
+          (testing "Bucket it, should still return the same available units"
+            (is (= expected-units
+                   (lib/available-temporal-buckets (:query temporal-bucketing-mock-metadata)
+                                                   (lib/with-temporal-bucket x :month-of-year))))))))))
 
 (deftest ^:parallel joined-field-column-name-test
   (let [card  {:dataset_query {:database (meta/id)
