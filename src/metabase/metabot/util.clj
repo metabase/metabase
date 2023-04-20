@@ -203,18 +203,18 @@
    (when-let [values (and
                       (not= :type/Boolean base_type)
                       (t2/select-one-fn :values FieldValues :field_id field-id))]
-     (when (<= (count values) enum-cardinality-threshold))
-     (let [ddl-str (format "create type %s_%s_t as enum %s;"
-                           table-name
-                           field-name
-                           (str/join ", " (map (partial format "'%s'") values)))
-           nchars  (count ddl-str)]
-       (log/debugf "Pseudo-ddl for field enum %s describes %s values and contains %s chars (~%s tokens)."
-                   field-name
-                   (count values)
-                   nchars
-                   (quot nchars 4))
-       ddl-str)))
+     (when (<= (count values) enum-cardinality-threshold)
+       (let [ddl-str (format "create type %s_%s_t as enum %s;"
+                             table-name
+                             field-name
+                             (str/join ", " (map (partial format "'%s'") values)))
+             nchars  (count ddl-str)]
+         (log/debugf "Pseudo-ddl for field enum %s describes %s values and contains %s chars (~%s tokens)."
+                     field-name
+                     (count values)
+                     nchars
+                     (quot nchars 4))
+         ddl-str))))
   ([table field]
    (field->pseudo-enums table field (metabot-settings/enum-cardinality-threshold))))
 
