@@ -45,7 +45,7 @@ interface SemanticTypeAndTargetPickerProps {
   field: Field;
   idFields: Field[];
   hasSeparator?: boolean;
-  onUpdateField: (field: Field, updates: Partial<Field>) => void;
+  onUpdateField: (updates: Partial<Field>) => void;
 }
 
 const SemanticTypeAndTargetPicker = ({
@@ -68,12 +68,13 @@ const SemanticTypeAndTargetPicker = ({
         field.target.id != null &&
         isTypeFK(field.semantic_type)
       ) {
-        onUpdateField(field, {
+        onUpdateField({
+          id: field.id,
           semantic_type: semanticType,
           fk_target_field_id: null,
         });
       } else {
-        onUpdateField(field, { semantic_type: semanticType });
+        onUpdateField({ id: field.id, semantic_type: semanticType });
       }
 
       trackStructEvent("Data Model", "Update Field Special-Type", semanticType);
@@ -83,7 +84,10 @@ const SemanticTypeAndTargetPicker = ({
 
   const handleChangeCurrency = useCallback(
     ({ target: { value: currency } }: SelectChangeEvent<string>) => {
-      onUpdateField(field, { settings: { ...field.settings, currency } });
+      onUpdateField({
+        id: field.id,
+        settings: { ...field.settings, currency },
+      });
       trackStructEvent("Data Model", "Update Currency Type", currency);
     },
     [field, onUpdateField],
@@ -91,7 +95,7 @@ const SemanticTypeAndTargetPicker = ({
 
   const handleChangeTarget = useCallback(
     ({ target: { value: fk_target_field_id } }: SelectChangeEvent<FieldId>) => {
-      onUpdateField(field, { fk_target_field_id });
+      onUpdateField({ id: field.id, fk_target_field_id });
       trackStructEvent("Data Model", "Update Field Target");
     },
     [field, onUpdateField],

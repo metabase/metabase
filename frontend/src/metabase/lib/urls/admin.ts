@@ -1,4 +1,4 @@
-import { DatabaseId, TableId, UserId } from "metabase-types/api";
+import { DatabaseId, FieldId, TableId, UserId } from "metabase-types/api";
 
 export function newUser() {
   return `/admin/people/new`;
@@ -46,6 +46,15 @@ export function dataModelTable(
   tableId: TableId,
 ) {
   return `${dataModelSchema(databaseId, schemaName)}/table/${tableId}`;
+}
+
+export function dataModelField(
+  databaseId: DatabaseId,
+  schemaName: string,
+  tableId: TableId,
+  fieldId: FieldId,
+) {
+  return `${dataModelTable(databaseId, schemaName, tableId)}/field/${fieldId}`;
 }
 
 export function dataModelTableSettings(
