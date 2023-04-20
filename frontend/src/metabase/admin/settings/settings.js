@@ -43,8 +43,7 @@ export const initializeSettings = createThunkAction(
     try {
       await dispatch(reloadSettings());
     } catch (error) {
-      // eslint-disable-next-line no-console
-      console.log("error fetching settings", error);
+      console.error("error fetching settings", error);
       throw error;
     }
   },
@@ -58,8 +57,7 @@ export const updateSetting = createThunkAction(
       try {
         await SettingsApi.put(setting);
       } catch (error) {
-        // eslint-disable-next-line no-console
-        console.log("error updating setting", setting, error);
+        console.error("error updating setting", setting, error);
         throw error;
       } finally {
         await dispatch(reloadSettings());
@@ -76,8 +74,7 @@ export const updateSettings = createThunkAction(
       try {
         await SettingsApi.putAll(settings);
       } catch (error) {
-        // eslint-disable-next-line no-console
-        console.log("error updating settings", settings, error);
+        console.error("error updating settings", settings, error);
         throw error;
       } finally {
         await dispatch(reloadSettings());
@@ -97,8 +94,7 @@ export const updateEmailSettings = createThunkAction(
         await dispatch(reloadSettings());
         return result;
       } catch (error) {
-        // eslint-disable-next-line no-console
-        console.log("error updating email settings", settings, error);
+        console.error("error updating email settings", settings, error);
         throw error;
       }
     };
@@ -111,8 +107,7 @@ export const sendTestEmail = createThunkAction(SEND_TEST_EMAIL, function () {
     try {
       await EmailApi.sendTest();
     } catch (error) {
-      // eslint-disable-next-line no-console
-      console.log("error sending test email", error);
+      console.error("error sending test email", error);
       throw error;
     }
   };

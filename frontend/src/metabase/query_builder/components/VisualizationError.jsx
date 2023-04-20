@@ -95,8 +95,7 @@ class VisualizationError extends Component {
 
   render() {
     const { via, question, duration, error, className } = this.props;
-    // eslint-disable-next-line no-console
-    console.log("error", error);
+    console.error(error);
 
     if (error && typeof error.status === "number") {
       // Assume if the request took more than 15 seconds it was due to a timeout

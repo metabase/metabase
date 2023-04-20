@@ -92,8 +92,7 @@ const migrateDatabaseToNewSchedulingSettings = database => {
         },
       });
     } else {
-      // eslint-disable-next-line no-console
-      console.log(
+      console.error(
         `${MIGRATE_TO_NEW_SCHEDULING_SETTINGS} is no-op as scheduling settings are already set`,
       );
     }
@@ -235,8 +234,7 @@ export const deleteDatabase = function (databaseId, isDetailView = true) {
       );
       dispatch({ type: DELETE_DATABASE, payload: { databaseId } });
     } catch (error) {
-      // eslint-disable-next-line no-console
-      console.log("error deleting database", error);
+      console.error("error deleting database", error);
       dispatch({
         type: DELETE_DATABASE_FAILED,
         payload: { databaseId, error },
@@ -256,8 +254,7 @@ export const syncDatabaseSchema = createThunkAction(
         MetabaseAnalytics.trackStructEvent("Databases", "Manual Sync");
         return call;
       } catch (error) {
-        // eslint-disable-next-line no-console
-        console.log("error syncing database", error);
+        console.error("error syncing database", error);
       }
     };
   },
@@ -270,8 +267,7 @@ export const dismissSyncSpinner = createThunkAction(
       try {
         await MetabaseApi.db_dismiss_sync_spinner({ dbId: databaseId });
       } catch (error) {
-        // eslint-disable-next-line no-console
-        console.log("error dismissing sync spinner for database", error);
+        console.error("error dismissing sync spinner for database", error);
       }
     };
   },
@@ -287,8 +283,7 @@ export const rescanDatabaseFields = createThunkAction(
         MetabaseAnalytics.trackStructEvent("Databases", "Manual Sync");
         return call;
       } catch (error) {
-        // eslint-disable-next-line no-console
-        console.log("error syncing database", error);
+        console.error("error syncing database", error);
       }
     };
   },
@@ -304,8 +299,7 @@ export const discardSavedFieldValues = createThunkAction(
         MetabaseAnalytics.trackStructEvent("Databases", "Manual Sync");
         return call;
       } catch (error) {
-        // eslint-disable-next-line no-console
-        console.log("error syncing database", error);
+        console.error("error syncing database", error);
       }
     };
   },
