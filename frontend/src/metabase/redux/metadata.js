@@ -318,12 +318,7 @@ export const loadMetadataForQueries =
       .push(...(extraDependencies ?? []))
       .flatten()
       .uniq(false, dep => dep.type + dep.id)
-      .map(dep => {
-        console.log(dep)
-        return dep
-      })
       .map(({ type, id, foreignTables }) => {
-        console.log("loadMetadataForQueries", type, id, foreignTables);
         if (type === "table") {
           return (
             foreignTables

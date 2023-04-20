@@ -18,10 +18,14 @@ function ResizableNotebook({
   resizableBoxProps,
   ...notebookProps
 }) {
+  {
+    /*reminder for me to handle width better*/
+  }
   return (
     <ResizableBox
       className="border-top flex"
       axis="y"
+      width={Infinity}
       handle={<Handle />}
       {...resizableBoxProps}
       onResizeStop={(...args) => {

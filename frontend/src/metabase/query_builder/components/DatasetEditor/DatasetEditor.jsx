@@ -4,7 +4,7 @@ import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 import { merge } from "icepick";
-import { usePrevious, useBeforeUnload } from "react-use";
+import { usePrevious } from "react-use";
 
 import ActionButton from "metabase/components/ActionButton";
 import Button from "metabase/core/components/Button";
@@ -191,13 +191,7 @@ function DatasetEditor(props) {
     onSave,
     handleResize,
     onOpenModal,
-    isResultDirty,
   } = props;
-
-  useBeforeUnload(
-    isResultDirty || isModelQueryDirty || isMetadataDirty,
-    t`You have unsaved changes`,
-  );
 
   const fields = useMemo(
     () => getSortedModelFields(dataset, resultsMetadata?.columns),
