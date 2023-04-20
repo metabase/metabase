@@ -38,8 +38,8 @@
   (derive :hook/entity-id))
 
 (t2/deftransforms :model/DashboardCard
-  {:parameter_mappings     mi/tf-parameters-list
-   :visualization_settings mi/tf-visualization-settings})
+  {:parameter_mappings     mi/transform-parameters-list
+   :visualization_settings mi/transform-visualization-settings})
 
 (t2/define-before-insert :model/DashboardCard
  [dashcard]

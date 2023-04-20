@@ -51,8 +51,8 @@
  (derive :hook/entity-id))
 
 (t2/deftransforms :model/Dashboard
-  {:parameters       mi/tf-parameters-list
-   :embedding_params mi/tf-json})
+  {:parameters       mi/transform-parameters-list
+   :embedding_params mi/transform-json})
 
 (t2/define-before-delete :model/Dashboard
   [dashboard]
