@@ -188,6 +188,22 @@
             (Thread/sleep 1000)
             (is (some? (upload/load-from-csv driver/*driver* (mt/id) "table_name" file)))))))))
 
+(defn- query-table!
+  [table]
+  (qp/process-query {:database (:db_id table)
+                     :type     :query
+                     :query    {:source-table (:id table)}}))
+
+(defn- column-names-for-table
+  [table]
+  (->> (query-table! table)
+       mt/cols
+       (map (comp u/lower-case-en :name))))
+
+(defn- rows-for-table
+  [table]
+  (mt/rows (query-table! table)))
+
 (deftest load-from-csv-test
   (testing "Upload a CSV file"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
@@ -228,11 +244,8 @@
                      :base_type (if (= driver/*driver* :mysql) :type/DateTimeWithLocalTZ :type/DateTime)}
                     (t2/select-one Field :database_position 6 :table_id (:id table))))
             (testing "Check the data was uploaded into the table"
-              (is (= [[2]] (-> (mt/process-query {:database (mt/id)
-                                                  :type :query
-                                                  :query {:source-table (:id table)
-                                                          :aggregation [[:count]]}})
-                               mt/rows))))))))))
+              (is (= 2
+                     (count (rows-for-table table)))))))))))
 
 (deftest load-from-csv-date-test
   (testing "Upload a CSV file with a datetime column"
@@ -291,11 +304,7 @@
                        :base_type :type/Boolean}
                       (t2/select-one Field :database_position 1 :table_id (:id table)))))
             (testing "Check the data was uploaded into the table correctly"
-              (let [bool-column (->> (mt/run-mbql-query upload_test
-                                       {:fields [$bool]
-                                        :order-by [[:asc $id]]})
-                                     mt/rows
-                                     (map first))
+              (let [bool-column (map second (rows-for-table table))
                     alternating (map even? (range (count bool-column)))]
                 (is (= alternating bool-column))))))))))
 
@@ -320,11 +329,7 @@
                   table-re (re-pattern (str "(?i)" short-name "_\\d{14}"))]
               (is (re-matches table-re (:name table)))
               (testing "Check the data was uploaded into the table correctly"
-                (let [rows (->> (qp/process-query {:database (:db_id table)
-                                                   :type     :query
-                                                   :query    {:source-table (:id table)}})
-                                mt/rows)]
-                  (is (= [[1 true] [2 false]] rows)))))))))))
+                (is (= [[1 true] [2 false]] (rows-for-table table)))))))))))
 
 (deftest load-from-csv-empty-header-test
   (testing "Upload a CSV file with a blank column name"
@@ -342,11 +347,8 @@
           (let [table (t2/select-one Table :db_id (mt/id))]
             (is (=? {:name #"(?i)upload_test"} table))
             (testing "Check the data was uploaded into the table correctly"
-              (let [col-names (->> (mt/run-mbql-query upload_test)
-                                   (mt/cols)
-                                   (map :name))]
-                (is (= ["unnamed_column_1", "ship_name", "unnamed_column_3"]
-                       (map u/lower-case-en col-names)))))))))))
+              (is (= ["unnamed_column_1", "ship_name", "unnamed_column_3"]
+                     (column-names-for-table table))))))))))
 
 (deftest load-from-csv-duplicate-names-test
   (testing "Upload a CSV file with duplicate column names"
@@ -364,11 +366,27 @@
           (let [table (t2/select-one Table :db_id (mt/id))]
             (is (=? {:name #"(?i)upload_test"} table))
             (testing "Check the data was uploaded into the table correctly"
-              (let [col-names (->> (mt/run-mbql-query upload_test)
-                                   (mt/cols)
-                                   (map :name))]
-                (is (= ["unknown", "unknown_1", "unknown_2"]
-                       col-names))))))))))
+              (is (= ["unknown", "unknown_1", "unknown_2"]
+                     (column-names-for-table table))))))))))
+
+(deftest load-from-csv-reserved-db-words-test
+  (testing "Upload a CSV file with column names that are reserved by the DB"
+    (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+      (mt/with-empty-db
+        (upload/load-from-csv
+         driver/*driver*
+         (mt/id)
+         "upload_test"
+         (csv-file-with ["true,false,group"
+                         "1,Serenity,Malcolm Reynolds"
+                         "2,Millennium Falcon, Han Solo"]))
+        (testing "Table and Fields exist after sync"
+          (sync/sync-database! (mt/db))
+          (let [table (t2/select-one Table :db_id (mt/id))]
+            (is (=? {:name #"(?i)upload_test"} table))
+            (testing "Check the data was uploaded into the table correctly"
+              (is (= ["true", "false", "group"]
+                     (column-names-for-table table))))))))))
 
 (deftest load-from-csv-failed-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
