@@ -1,4 +1,5 @@
 import React from "react";
+import { Route } from "react-router";
 import fetchMock from "fetch-mock";
 
 import userEvent from "@testing-library/user-event";
@@ -20,11 +21,6 @@ import { createMockUser } from "metabase-types/api/mocks";
 import Question from "metabase-lib/Question";
 
 import { QuestionInfoSidebar } from "./QuestionInfoSidebar";
-
-// eslint-disable-next-line react/display-name, react/prop-types
-jest.mock("metabase/core/components/Link", () => ({ to, ...props }) => (
-  <a {...props} href={to} />
-));
 
 const BASE_QUESTION = {
   id: 1,
@@ -90,10 +86,15 @@ async function setup({ question, cachingEnabled = true } = {}) {
 
   const onSave = jest.fn();
 
+  function WrappedQuestionInfoSidebar() {
+    return <QuestionInfoSidebar question={question} onSave={onSave} />;
+  }
+
   renderWithProviders(
-    <QuestionInfoSidebar question={question} onSave={onSave} />,
+    <Route path="*" component={WrappedQuestionInfoSidebar} />,
     {
       withSampleDatabase: true,
+      withRouter: true,
       storeInitialState: {
         settings: settings,
         currentUser: user,
