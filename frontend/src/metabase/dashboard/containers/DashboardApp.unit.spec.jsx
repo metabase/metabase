@@ -1,23 +1,25 @@
 import React from "react";
 import { Route } from "react-router";
-import { screen } from "@testing-library/react";
-
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { renderWithProviders, waitForElementToBeRemoved } from "__support__/ui";
+import {
+  screen,
+  renderWithProviders,
+  waitForElementToBeRemoved,
+} from "__support__/ui";
 import DashboardApp from "metabase/dashboard/containers/DashboardApp";
+import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/hooks/use-before-unload";
 import {
   createMockCollection,
   createMockDashboard,
   createMockUser,
 } from "metabase-types/api/mocks";
+import { createMockDashboardState } from "metabase-types/store/mocks";
 import {
   setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
   setupDashboardEndpoints,
 } from "__support__/server-mocks";
-import { createMockDashboardState } from "metabase-types/store/mocks";
-import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/hooks/use-before-unload";
 
 const TEST_DASHBOARD = createMockDashboard({
   id: 1,
@@ -28,7 +30,20 @@ const TEST_COLLECTION = createMockCollection({
   id: "root",
 });
 
-async function setup(user = createMockUser()) {
+// calls event handler in the mockEventListener that matches the eventName
+// and uses the mockEvent to hold the callback's return value
+const callMockEvent = (mockEventListener, eventName) => {
+  const mockEvent = {
+    preventDefault: jest.fn(),
+  };
+
+  mockEventListener.mock.calls
+    .filter(([event]) => eventName === event)
+    .forEach(([_, callback]) => callback(mockEvent));
+  return mockEvent;
+};
+
+async function setup({ user = createMockUser() }) {
   setupDashboardEndpoints(createMockDashboard(TEST_DASHBOARD));
   setupCollectionsEndpoints([]);
   setupCollectionItemsEndpoint(TEST_COLLECTION);
@@ -36,18 +51,11 @@ async function setup(user = createMockUser()) {
   fetchMock.get("path:/api/bookmark", []);
 
   const mockEventListener = jest.spyOn(window, "addEventListener");
-  const mockEvent = {
-    preventDefault: jest.fn(),
-  };
-  const callMockEvent = eventNames => {
-    mockEventListener.mock.calls
-      .filter(([event]) => eventNames.includes(event))
-      .forEach(([_, callback]) => callback(mockEvent));
-  };
 
   const DashboardAppContainer = props => {
     return (
       <main>
+        <link rel="icon" />
         <DashboardApp {...props} />
       </main>
     );
@@ -69,22 +77,16 @@ async function setup(user = createMockUser()) {
     screen.queryAllByTestId("loading-spinner"),
   );
 
-  return { mockEvent, mockEventListener, callMockEvent };
+  return { mockEventListener };
 }
 
 describe("DashboardApp", function () {
-  beforeAll(() => {
-    const linkElem = document.createElement("link");
-    linkElem.rel = "icon";
-    document.head.append(linkElem);
-  });
-
   afterEach(() => {
     jest.clearAllMocks();
   });
 
   it("should have a beforeunload event when the user tries to leave a dirty dashboard", async function () {
-    const { callMockEvent, mockEvent } = await setup();
+    const { mockEventListener } = await setup({});
 
     userEvent.click(screen.getByLabelText("Edit dashboard"));
     userEvent.click(screen.getByTestId("dashboard-name-heading"));
@@ -92,18 +94,18 @@ describe("DashboardApp", function () {
     // need to click away from the input to trigger the isDirty flag
     userEvent.tab();
 
-    callMockEvent(["beforeunload"]);
+    const mockEvent = callMockEvent(mockEventListener, ["beforeunload"]);
 
     expect(mockEvent.preventDefault).toHaveBeenCalled();
     expect(mockEvent.returnValue).toEqual(BEFORE_UNLOAD_UNSAVED_MESSAGE);
   });
 
   it("should not have a beforeunload event when the dashboard is unedited", async function () {
-    const { mockEvent, callMockEvent } = await setup();
+    const { mockEventListener } = await setup({});
 
     userEvent.click(screen.getByLabelText("Edit dashboard"));
 
-    callMockEvent(["beforeunload"]);
+    const mockEvent = callMockEvent(mockEventListener, ["beforeunload"]);
     expect(mockEvent.preventDefault).not.toHaveBeenCalled();
     expect(mockEvent.returnValue).toBe(undefined);
   });
