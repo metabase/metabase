@@ -42,14 +42,14 @@
   :model/Card)
 
 (t2/deftransforms :model/Card
-  {:dataset_query          mi/tf-metabase-query
-   :display                mi/tf-keyword
-   :embedding_params       mi/tf-json
-   :query_type             mi/tf-keyword
-   :result_metadata        mi/tf-result-metadata
-   :visualization_settings mi/tf-visualization-settings
-   :parameters             mi/tf-parameters-list
-   :parameter_mappings     mi/tf-parameters-list})
+  {:dataset_query          mi/transform-metabase-query
+   :display                mi/transform-keyword
+   :embedding_params       mi/transform-json
+   :query_type             mi/transform-keyword
+   :result_metadata        mi/transform-result-metadata
+   :visualization_settings mi/transform-visualization-settings
+   :parameters             mi/transform-parameters-list
+   :parameter_mappings     mi/transform-parameters-list})
 
 ;;; You can read/write a Card if you can read/write its parent Collection
 (doto :model/Card
