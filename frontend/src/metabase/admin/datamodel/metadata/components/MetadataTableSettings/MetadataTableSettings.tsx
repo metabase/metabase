@@ -136,7 +136,7 @@ export default _.compose(
   Tables.load({
     id: (_: State, { params }: RouterProps) =>
       Urls.extractEntityId(params.tableId),
-    requestType: "fetchMetadata",
+    selectorName: "getTableUnfiltered",
   }),
   connect(null, mapDispatchToProps),
 )(MetadataTableSettings);

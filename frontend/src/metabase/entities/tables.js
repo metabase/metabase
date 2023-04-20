@@ -23,7 +23,10 @@ import Fields from "metabase/entities/fields";
 import Questions from "metabase/entities/questions";
 
 import { GET, PUT } from "metabase/lib/api";
-import { getMetadata } from "metabase/selectors/metadata";
+import {
+  getMetadata,
+  getMetadataUnfiltered,
+} from "metabase/selectors/metadata";
 import {
   convertSavedQuestionToVirtualTable,
   getQuestionVirtualTableId,
@@ -277,6 +280,15 @@ const Tables = createEntity({
       [state => getMetadata(state), (state, props) => props.entityId],
       (metadata, id) => metadata.table(id),
     ),
+    getTableUnfiltered: (state, { entityId }) => {
+      return getMetadataUnfiltered(state).table(entityId);
+    },
+    getTableListUnfiltered: (state, { entityQuery }) => {
+      const { entities } = state;
+      const { list } = entities.tables_list[JSON.stringify(entityQuery)] ?? {};
+      const metadata = getMetadataUnfiltered(state);
+      return list?.map(id => metadata.table(id)) ?? [];
+    },
   },
 });
 

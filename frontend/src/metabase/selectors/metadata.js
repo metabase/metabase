@@ -204,15 +204,15 @@ export const getMetadata = createSelector(
   },
 );
 
-export const getFullMetadata = state => {
+export const getMetadataWithHiddenTables = (state, props) => {
+  return getMetadata(state, { ...props, includeHiddenTables: true });
+};
+
+export const getMetadataUnfiltered = state => {
   return getMetadata(state, {
     includeHiddenTables: true,
     includeSensitiveFields: true,
   });
-};
-
-export const getMetadataWithHiddenTables = (state, props) => {
-  return getMetadata(state, { ...props, includeHiddenTables: true });
 };
 
 export const getDatabases = createSelector(
