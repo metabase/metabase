@@ -102,7 +102,7 @@ describe("DashboardApp", function () {
     userEvent.click(screen.getByTestId("dashboard-name-heading"));
     userEvent.type(screen.getByTestId("dashboard-name-heading"), "a");
     // need to click away from the input to trigger the isDirty flag
-    userEvent.click(screen.getByLabelText("Add questions"));
+    userEvent.tab();
 
     events.beforeunload?.();
     expect(mockEvent.preventDefault).toHaveBeenCalled();

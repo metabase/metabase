@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import React, { Component, Fragment } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import PropTypes from "prop-types";
@@ -228,7 +228,7 @@ class DashboardHeader extends Component {
           : t`Add questions`;
 
       buttons.push(
-        <Tooltip tooltip={addQuestionButtonHint}>
+        <Tooltip key="add-question-element" tooltip={addQuestionButtonHint}>
           <DashboardHeaderButton
             icon="add"
             isActive={activeSidebarName === SIDEBAR_NAME.addQuestion}
@@ -301,7 +301,7 @@ class DashboardHeader extends Component {
 
       if (canEdit) {
         buttons.push(
-          <>
+          <Fragment key="add-action-element">
             <DashboardHeaderActionDivider />
             <Tooltip key="add-action-button" tooltip={t`Add action button`}>
               <DashboardHeaderButton
@@ -312,7 +312,7 @@ class DashboardHeader extends Component {
                 <Icon name="click" size={18} />
               </DashboardHeaderButton>
             </Tooltip>
-          </>,
+          </Fragment>,
         );
       }
 
