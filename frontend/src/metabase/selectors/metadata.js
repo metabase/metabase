@@ -30,15 +30,22 @@ export const getNormalizedTables = createSelector(
 );
 
 const getNormalizedFieldsUnfiltered = state => state.entities.fields;
+const getIncludeSensitiveFields = (_state, props) =>
+  props?.includeSensitiveFields;
 export const getNormalizedFields = createSelector(
-  [getNormalizedFieldsUnfiltered, getNormalizedTablesUnfiltered],
-  (fields, tables) =>
+  [
+    getNormalizedFieldsUnfiltered,
+    getNormalizedTablesUnfiltered,
+    getIncludeHiddenTables,
+    getIncludeSensitiveFields,
+  ],
+  (fields, tables, includeHiddenTables, includeSensitiveFields) =>
     filterValues(fields, field => {
       // remove fields that are sensitive or belong to hidden tables
       const table = tables[field.table_id];
       return (
-        (!table || table.visibility_type == null) &&
-        field.visibility_type !== "sensitive"
+        (!table || table.visibility_type == null || includeHiddenTables) &&
+        (field.visibility_type !== "sensitive" || includeSensitiveFields)
       );
     }),
 );
@@ -196,6 +203,13 @@ export const getMetadata = createSelector(
     return meta;
   },
 );
+
+export const getFullMetadata = state => {
+  return getMetadata(state, {
+    includeHiddenTables: true,
+    includeSensitiveFields: true,
+  });
+};
 
 export const getMetadataWithHiddenTables = (state, props) => {
   return getMetadata(state, { ...props, includeHiddenTables: true });
