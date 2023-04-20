@@ -34,7 +34,7 @@ interface OwnProps {
 }
 
 interface DispatchProps {
-  onUpdateTable: (table: Table, updates: Partial<Table>) => void;
+  onUpdateTable: (table: Table, name: string, value: unknown) => void;
 }
 
 type MetadataTableColumnListProps = OwnProps & DispatchProps;
@@ -109,7 +109,7 @@ interface TableFieldOrderOption {
 
 interface TableFieldOrderDropdownProps {
   table: Table;
-  onUpdateTable: (table: Table, updates: Partial<Table>) => void;
+  onUpdateTable: (table: Table, name: string, value: unknown) => void;
 }
 
 const TableFieldOrderDropdown = ({
@@ -140,7 +140,7 @@ const TableFieldOrderDropdown = ({
             value === table.field_order
           }
           onChange={({ value }: TableFieldOrderOption) => {
-            onUpdateTable(table, { field_order: value });
+            onUpdateTable(table, "field_order", value);
             closePopover();
           }}
         />
