@@ -1,9 +1,11 @@
 import React, { ChangeEvent, useCallback, useState } from "react";
 import { connect } from "react-redux";
+import { useAsync } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 import Tables from "metabase/entities/tables";
 import Radio from "metabase/core/components/Radio/Radio";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { TableId, TableVisibilityType } from "metabase-types/api";
 import { State } from "metabase-types/store";
 import Table from "metabase-lib/metadata/Table";
@@ -18,6 +20,10 @@ import {
 
 type MetadataTabType = "columns" | "original_schema";
 
+const TABLE_QUERY = {
+  include_sensitive_fields: true,
+};
+
 const METADATA_TAB_OPTIONS = [
   { name: t`Columns`, value: "columns" },
   { name: t`Original schema`, value: "original_schema" },
@@ -31,18 +37,33 @@ interface TableLoaderProps {
   table: Table;
 }
 
+interface TableLoaderOpts {
+  entityQuery: unknown;
+}
+
 interface DispatchProps {
+  onFetchForeignTables: (table: Table, opts: TableLoaderOpts) => void;
   onUpdateProperty: (table: Table, name: keyof Table, value: unknown) => void;
 }
 
 type MetadataTableProps = OwnProps & TableLoaderProps & DispatchProps;
 
 const mapDispatchToProps: DispatchProps = {
+  onFetchForeignTables: Tables.actions.fetchMetadataAndForeignTables,
   onUpdateProperty: Tables.actions.updateProperty,
 };
 
-const MetadataTable = ({ table, onUpdateProperty }: MetadataTableProps) => {
+const MetadataTable = ({
+  table,
+  onFetchForeignTables,
+  onUpdateProperty,
+}: MetadataTableProps) => {
   const [tab, setTab] = useState<MetadataTabType>("columns");
+
+  const { loading, error } = useAsync(
+    async () => onFetchForeignTables(table, { entityQuery: TABLE_QUERY }),
+    [table],
+  );
 
   const handleChangeName = useCallback(
     (name: string) => {
@@ -66,20 +87,22 @@ const MetadataTable = ({ table, onUpdateProperty }: MetadataTableProps) => {
   );
 
   return (
-    <div className="MetadataTable full px3">
-      <TableTitleSection
-        table={table}
-        tab={tab}
-        onChangeName={handleChangeName}
-        onChangeDescription={handleChangeDescription}
-      />
-      <TableVisibilitySection
-        table={table}
-        onChangeVisibility={handleChangeVisibility}
-      />
-      <TableTabSection tab={tab} onChangeTab={setTab} />
-      {tab === "original_schema" && <MetadataSchema table={table} />}
-    </div>
+    <LoadingAndErrorWrapper loading={loading} error={error} noWrapper>
+      <div className="MetadataTable full px3">
+        <TableTitleSection
+          table={table}
+          tab={tab}
+          onChangeName={handleChangeName}
+          onChangeDescription={handleChangeDescription}
+        />
+        <TableVisibilitySection
+          table={table}
+          onChangeVisibility={handleChangeVisibility}
+        />
+        <TableTabSection tab={tab} onChangeTab={setTab} />
+        {tab === "original_schema" && <MetadataSchema table={table} />}
+      </div>
+    </LoadingAndErrorWrapper>
   );
 };
 
@@ -238,9 +261,7 @@ const TableTabSection = ({ tab, onChangeTab }: MetadataTabSectionProps) => {
 export default _.compose(
   Tables.load({
     id: (_: State, { selectedTableId }: OwnProps) => selectedTableId,
-    query: {
-      include_sensitive_fields: true,
-    },
+    query: TABLE_QUERY,
     requestType: "fetchMetadata",
     selectorName: "getObjectUnfiltered",
   }),
