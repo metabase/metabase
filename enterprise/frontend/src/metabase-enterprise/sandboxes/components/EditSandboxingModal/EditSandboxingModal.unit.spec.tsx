@@ -1,20 +1,45 @@
 import React from "react";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
+
 import {
   renderWithProviders,
   screen,
   waitForElementToBeRemoved,
 } from "__support__/ui";
+import { createEntitiesState } from "__support__/store";
+import {
+  setupCardsEndpoints,
+  setupDatabasesEndpoints,
+} from "__support__/server-mocks";
 
 import { GroupTableAccessPolicy } from "metabase-types/api";
+import { createMockCard } from "metabase-types/api/mocks";
+import {
+  createSampleDatabase,
+  PEOPLE,
+  PEOPLE_ID,
+  SAMPLE_DB_ID,
+} from "metabase-types/api/mocks/presets";
 import EditSandboxingModal from "./EditSandboxingModal";
 
 const attributes = ["foo", "bar"];
 const params = {
   groupId: "1",
-  tableId: "2",
+  tableId: String(PEOPLE_ID),
 };
+
+const TEST_CARD = createMockCard({
+  id: 1,
+  name: "sandbox question",
+  dataset_query: {
+    type: "query",
+    database: SAMPLE_DB_ID,
+    query: {
+      "source-table": PEOPLE_ID,
+    },
+  },
+});
 
 const setup = ({
   shouldMockQuestions = false,
@@ -23,7 +48,11 @@ const setup = ({
   shouldMockQuestions?: boolean;
   policy?: GroupTableAccessPolicy;
 } = {}) => {
+  const database = createSampleDatabase();
+
+  setupDatabasesEndpoints([database]);
   fetchMock.post("path:/api/mt/gtap/validate", 204);
+  fetchMock.get("path:/api/permissions/group/1", {});
 
   if (shouldMockQuestions) {
     fetchMock.get("path:/api/collection", [
@@ -34,8 +63,9 @@ const setup = ({
       },
     ]);
     fetchMock.get("path:/api/collection/root/items", {
-      data: [{ id: 1, name: "sandbox question", model: "card" }],
+      data: [{ id: TEST_CARD.id, name: TEST_CARD.name, model: "card" }],
     });
+    setupCardsEndpoints([TEST_CARD]);
   }
 
   const onSave = jest.fn();
@@ -49,7 +79,11 @@ const setup = ({
       policy={policy}
     />,
     {
-      withSampleDatabase: true,
+      storeInitialState: {
+        entities: createEntitiesState({
+          databases: [database],
+        }),
+      },
     },
   );
 
@@ -82,11 +116,11 @@ describe("EditSandboxingModal", () => {
 
         expect(onSave).toHaveBeenCalledWith({
           attribute_remappings: {
-            foo: ["dimension", ["field", 13, null]],
+            foo: ["dimension", ["field", PEOPLE.ID, null]],
           },
           card_id: null,
           group_id: 1,
-          table_id: 2,
+          table_id: PEOPLE_ID,
         });
       });
 
@@ -115,7 +149,7 @@ describe("EditSandboxingModal", () => {
           attribute_remappings: {},
           card_id: 1,
           group_id: 1,
-          table_id: 2,
+          table_id: PEOPLE_ID,
         });
       });
     });
