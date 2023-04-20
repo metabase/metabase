@@ -171,7 +171,7 @@
                       (merge (common-context)
                              {:emailType        "password_reset"
                               :google           google-sso?
-                              :nonGoogleSSO     (and (not google-sso?) (nil? sso-source))
+                              :nonGoogleSSO     (and (not google-sso?) (some? sso-source))
                               :passwordResetUrl password-reset-url
                               :logoHeader       true
                               :isActive         is-active?
