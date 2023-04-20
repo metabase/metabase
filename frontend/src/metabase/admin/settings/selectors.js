@@ -629,7 +629,7 @@ const SECTIONS = updateSectionsWithPlugins({
   },
   metabot: {
     name: t`Metabot`,
-    order: 13,
+    order: 130,
     settings: [
       {
         key: "is-metabot-enabled",
