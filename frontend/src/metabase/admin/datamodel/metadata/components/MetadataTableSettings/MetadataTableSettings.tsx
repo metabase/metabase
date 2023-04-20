@@ -88,7 +88,7 @@ const MetadataTableSettings = ({
                   ? [schemaName, Urls.dataModelSchema(database.id, schemaName)]
                   : []),
                 [
-                  table.display_name,
+                  table.displayName(),
                   Urls.dataModelTable(database.id, schemaName, table.id),
                 ],
                 t`Settings`,

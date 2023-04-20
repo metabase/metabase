@@ -77,8 +77,8 @@ const MetadataTableList = ({
     const searchValue = searchText.toLowerCase();
 
     return _.chain(allTables)
-      .filter(table => table.display_name.toLowerCase().includes(searchValue))
-      .sortBy(table => table.display_name)
+      .filter(table => table.displayName().toLowerCase().includes(searchValue))
+      .sortBy(table => table.displayName())
       .partition(table => table.visibility_type != null)
       .value();
   }, [allTables, searchText]);
@@ -264,7 +264,7 @@ const TableRow = ({
         )}
         onClick={handleSelect}
       >
-        {table.display_name}
+        {table.displayName()}
         <div className="hover-child float-right">
           <ToggleVisibilityButton
             tables={tables}

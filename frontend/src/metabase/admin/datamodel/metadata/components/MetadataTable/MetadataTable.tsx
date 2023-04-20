@@ -121,7 +121,7 @@ const TableTitleSection = ({
           <TableNameInput
             name="display_name"
             type="text"
-            value={table.display_name ?? ""}
+            value={table.displayName() ?? ""}
             data-testid="table-name"
             onBlurChange={handleNameChange}
           />
