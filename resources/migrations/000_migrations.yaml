@@ -14383,6 +14383,17 @@ databaseChangeLog:
       author: qwef
       comment: Added 0.47.0 - Replace user google_auth and ldap_auth columns with sso_source values
       changes:
+        - sql:
+            sql: UPDATE core_user SET sso_source = 'google' WHERE google_auth = true;
+      rollback:
+        - sql:
+            sql: UPDATE core_user SET google_auth = true, sso_source = NULL WHERE sso_source = 'google';
+
+  - changeSet:
+      id: v47.00-012
+      author: qwef
+      comment: Added 0.47.0 - Replace user google_auth and ldap_auth columns with sso_source values
+      changes:
         - dropColumn:
             tableName: core_user
             columnName: google_auth
@@ -14396,17 +14407,6 @@ databaseChangeLog:
                   defaultValueBoolean: false
                   constraints:
                     nullable: false
-
-  - changeSet:
-      id: v47.00-012
-      author: qwef
-      comment: Added 0.47.0 - Replace user google_auth and ldap_auth columns with sso_source values
-      changes:
-        - sql:
-            sql: UPDATE core_user SET sso_source = 'google' WHERE google_auth = true;
-      rollback:
-        - sql:
-            sql: UPDATE core_user SET google_auth = true, sso_source = NULL WHERE sso_source = 'google';
 
   - changeSet:
       id: v47.00-013
