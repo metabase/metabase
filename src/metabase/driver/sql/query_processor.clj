@@ -108,6 +108,7 @@
 
 (defmacro with-driver-honey-sql-version
   "Evaluates body with the appropriate driver version of honey sql bound"
+  {:style/indent 1}
   [driver & body]
   `(binding [hx/*honey-sql-version* (honey-sql-version ~driver)]
      ~@body))
