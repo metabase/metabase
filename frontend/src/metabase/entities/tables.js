@@ -19,7 +19,6 @@ import { TableSchema } from "metabase/schema";
 
 import Metrics from "metabase/entities/metrics";
 import Segments from "metabase/entities/segments";
-import Fields from "metabase/entities/fields";
 import Questions from "metabase/entities/questions";
 
 import { GET, PUT } from "metabase/lib/api";
@@ -256,39 +255,20 @@ const Tables = createEntity({
   selectors: {
     getObject: (state, { entityId }) => getMetadata(state).table(entityId),
     // these unfiltered selectors include hidden tables/fields for display in the admin panel
-    getObjectUnfiltered: (state, { entityId }) => {
-      const table = state.entities.tables[entityId];
-      return (
-        table && {
-          ...table,
-          fields: (table.fields || []).map(entityId =>
-            Fields.selectors.getObjectUnfiltered(state, { entityId }),
-          ),
-          metrics: (table.metrics || []).map(id => state.entities.metrics[id]),
-          segments: (table.segments || []).map(
-            id => state.entities.segments[id],
-          ),
-        }
+    getObjectUnfiltered: (state, { entityId }) =>
+      getMetadataUnfiltered(state).table(entityId),
+    getListUnfiltered: (state, { entityQuery }) => {
+      const entityIds =
+        Tables.selectors.getEntityIds(state, { entityQuery }) ?? [];
+      return entityIds.map(entityId =>
+        Tables.selectors.getObjectUnfiltered(state, { entityId }),
       );
-    },
-    getListUnfiltered: ({ entities }, { entityQuery }) => {
-      const { list } = entities.tables_list[JSON.stringify(entityQuery)] || {};
-      return (list || []).map(id => entities.tables[id]);
     },
     getTable: createSelector(
       // we wrap getMetadata to handle a circular dep issue
       [state => getMetadata(state), (state, props) => props.entityId],
       (metadata, id) => metadata.table(id),
     ),
-    getTableUnfiltered: (state, { entityId }) => {
-      return getMetadataUnfiltered(state).table(entityId);
-    },
-    getTableListUnfiltered: (state, { entityQuery }) => {
-      const { entities } = state;
-      const { list } = entities.tables_list[JSON.stringify(entityQuery)] ?? {};
-      const metadata = getMetadataUnfiltered(state);
-      return list?.map(id => metadata.table(id)) ?? [];
-    },
   },
 });
 

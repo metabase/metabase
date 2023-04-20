@@ -242,7 +242,7 @@ export default _.compose(
       include_sensitive_fields: true,
     },
     requestType: "fetchMetadata",
-    selectorName: "getTableUnfiltered",
+    selectorName: "getObjectUnfiltered",
   }),
   connect(null, mapDispatchToProps),
 )(MetadataTable);

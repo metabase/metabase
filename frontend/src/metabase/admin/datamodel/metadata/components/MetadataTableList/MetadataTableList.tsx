@@ -337,7 +337,7 @@ export default _.compose(
       include_hidden: true,
       ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
     }),
-    selectorName: "getTableListUnfiltered",
+    selectorName: "getListUnfiltered",
   }),
   connect(null, mapDispatchToProps),
 )(MetadataTableList);
