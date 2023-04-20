@@ -39,7 +39,6 @@
       :id               true
       :is_active        true
       :last_login       false
-      :ldap_auth        false
       :sso_source       nil
       :login_attributes nil
       :updated_at       true
@@ -724,7 +723,7 @@
                   "as we get that from the LDAP server")
       (mt/with-temp User [user {:email     "anemail@metabase.com"
                                 :password  "def123"
-                                :ldap_auth true}]
+                                :sso_source "ldap"}]
         (let [creds {:username "anemail@metabase.com"
                      :password "def123"}]
           (is (= "You don't have permissions to do that."

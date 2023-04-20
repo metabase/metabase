@@ -203,13 +203,12 @@
   [email]
   (future
     (when-let [{user-id      :id
-                ldap-auth?   :ldap_auth
                 sso-source   :sso_source
                 is-active?   :is_active}
-               (t2/select-one [User :id :ldap_auth :sso_source :is_active]
+               (t2/select-one [User :id :sso_source :is_active]
                               :%lower.email
                               (u/lower-case-en email))]
-      (if (or ldap-auth? sso-source)
+      (if sso-source
         ;; If user uses any SSO method to log in, no need to generate a reset token
         (messages/send-password-reset-email! email sso-source nil is-active?)
         (let [reset-token        (user/set-password-reset-token! user-id)
