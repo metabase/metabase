@@ -1005,9 +1005,9 @@
               mysql-field-1-id :type/SerializedJSON
               mysql-field-2-id :type/Text)))))))
 
-(deftest migrate-google-auth-auth-test
-  (testing "Migration v47.00-009: migrate google_auth into sso_source"
-    (impl/test-migrations ["v47.00-009"] [migrate!]
+(deftest migrate-google-auth-test
+  (testing "Migrations v47.00-009 and v47.00-012: migrate google_auth into sso_source"
+    (impl/test-migrations ["v47.00-009" "v47.00-012"] [migrate!]
                           (t2/query-one {:insert-into :core_user
                                          :values      [{:first_name    "Cam"
                                                         :last_name     "Era"
@@ -1031,8 +1031,8 @@
                                                    :order-by [[:id :asc]]}))))))
 
 (deftest migrate-ldap-auth-test
-  (testing "Migration v47.00-012: migrate ldap_auth into sso_source"
-    (impl/test-migrations ["v47.00-012"] [migrate!]
+  (testing "Migration v47.00-013 and v47.00-014: migrate ldap_auth into sso_source"
+    (impl/test-migrations ["v47.00-013" "v47.00-014"] [migrate!]
                           (t2/query-one {:insert-into :core_user
                                          :values      [{:first_name    "Cam"
                                                         :last_name     "Era"
