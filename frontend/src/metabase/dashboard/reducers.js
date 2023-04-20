@@ -317,6 +317,15 @@ const draftParameterValues = handleActions(
         return state;
       },
     },
+    [FETCH_DASHBOARD]: {
+      next: (state, { payload }) => {
+        if (payload.dashboard.auto_apply_filters) {
+          return state;
+        }
+
+        return payload.parameterValues;
+      },
+    },
     [RESET]: { next: _state => ({}) },
     [Dashboards.actionTypes.UPDATE]: {
       next: (state, { payload }) => {
