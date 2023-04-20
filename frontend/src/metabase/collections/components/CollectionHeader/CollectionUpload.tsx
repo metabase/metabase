@@ -49,6 +49,7 @@ export default function ColllectionUpload({
         type="file"
         accept="text/csv"
         onChange={handleFileUpload}
+        data-testid="upload-input"
       />
     </>
   );
