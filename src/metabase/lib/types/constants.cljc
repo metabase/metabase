@@ -31,6 +31,8 @@
 
 ;; NOTE: be sure not to create cycles using the "other" types
 (def type-hierarchies
+  "A front-end specific type hierarchy used by [[metabase.lib.types.isa/field-type?]].
+  It is not meant to be used directly."
   {TEMPORAL    {:effective_type [:type/Temporal]
                 :semantic_type  [:type/Temporal]}
    NUMBER      {:effective_type [:type/Number]
