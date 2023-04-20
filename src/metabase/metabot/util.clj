@@ -463,6 +463,19 @@
                 sql))]
     (mdb.query/format-sql sql)))
 
+(defn extract-json
+  "Search a provided string for a JSON block"
+  [s]
+  (let [json (if (and
+                  (str/starts-with? s "{")
+                  (str/ends-with? s "}"))
+               ;; Assume this is raw json
+               s
+               ;; It looks like markdown
+               (let [[_pre json _post] (str/split s #"```(json|JSON)?")]
+                 json))]
+    (json/parse-string json keyword)))
+
 (defn bot-sql->final-sql
   "Produce the final query usable by the UI but converting the model to a CTE
   and calling the bot sql on top of it."

@@ -3,11 +3,16 @@
   where X is the thing we want to extract from the bot response."
   (:require
    [cheshire.core :as json]
+   [malli.core :as m]
+   [malli.generator :as mg]
+   [malli.json-schema :as mjs]
+   [malli.transform :as mt]
    [metabase.lib.native :as lib-native]
    [metabase.metabot.client :as metabot-client]
    [metabase.metabot.settings :as metabot-settings]
    [metabase.metabot.util :as metabot-util]
    [metabase.models :refer [Table]]
+   [metabase.query-processor :as qp]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
@@ -104,3 +109,74 @@
                                     (format "%s:%s" prompt_template version))}
         (log/infof "No sql inferred for database '%s' with prompt '%s'." database-id user_prompt)))
     (log/warn "Metabot is not enabled")))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn schema [available-fields]
+  (m/schema
+   [:map {:registry
+          {:metabot/available_fields
+           (into [:enum
+                  {:title       "Field id"
+                   :description "The id for a field to be used in the query"}]
+                 (map :id (:available_fields available-fields)))
+           :metabot/available_aggregations
+           (into [:enum
+                  {:title       "Aggregation"
+                   :description "An aggregation that can be performed on data"}]
+                 [:avg :count :count-where :distinct :max :median
+                  :min :percentile :share :stddev :sum :sum-where :var])}}
+    [:breakout
+     {:optional true}
+     [:vector {:min 1} :metabot/available_fields]]
+    [:aggregation
+     {:optional true}
+     [:vector
+      [:tuple {:title       "Aggregation"
+               :description "A single aggregate operation over a field"}
+       :metabot/available_aggregations :metabot/available_fields]]]]))
+
+(defn infer-mbql [{:keys [model user_prompt] :as context}]
+  (let [{model-id :id :keys [result_metadata database_id]} model
+        available-fields    {:available_fields (mapv #(select-keys % [:id :name]) result_metadata)}
+        field-id->field-ref (zipmap
+                             (map :id result_metadata)
+                             (map :field_ref result_metadata))
+        malli-schema        (schema available-fields)
+        json-schema         (mjs/transform malli-schema)
+        prompt              {:messages
+                             [{:role    "system"
+                               :content "You are a pedantic assistant that provides schema-compliant json and nothing else."}
+                              {:role "assistant" :content "This is my data:"}
+                              {:role "assistant" :content (json/generate-string available-fields {:pretty true})}
+                              {:role "assistant" :content "This is the json schema that the response MUST conform to:"}
+                              {:role "assistant" :content (json/generate-string json-schema {:pretty true})}
+                              {:role "assistant" :content "Only give me the generated json that conforms to the schema."}
+                              {:role "user" :content user_prompt}]}
+        json-response       (metabot-util/find-result
+                             (fn [message]
+                               (tap> message)
+                               (metabot-util/extract-json message))
+                             (metabot-client/invoke-metabot prompt))
+        coerced-response    (m/coerce malli-schema json-response mt/json-transformer)]
+    (if (m/validate malli-schema coerced-response)
+      (let [inner-mbql (-> coerced-response
+                           (select-keys [:breakout :aggregation])
+                           (assoc :source-table (format "card__%s" model-id))
+                           (update :breakout (partial mapv field-id->field-ref))
+                           (update :aggregation (partial mapv (fn [[op id]]
+                                                                [(keyword op) (field-id->field-ref id)]))))]
+        (tap> inner-mbql)
+        {:database database_id
+         :type     :query
+         :query    inner-mbql})
+      {:fail coerced-response})))
+
+(comment
+  (let [{:keys [fail] :as mbql} (infer-mbql
+                                 {:user_prompt "Provide descriptive stats for sales per state"
+                                  :model       (t2/select-one 'Card :id 1)})]
+    (if fail
+      fail)
+    (qp/process-query mbql)))
+
