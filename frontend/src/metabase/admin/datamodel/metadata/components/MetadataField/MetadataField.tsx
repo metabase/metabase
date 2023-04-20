@@ -9,7 +9,7 @@ import { DatabaseId, TableId } from "metabase-types/api";
 import Field from "metabase-lib/metadata/Field";
 import FieldVisibilityPicker from "../FieldVisibilityPicker";
 import SemanticTypeAndTargetPicker from "../SemanticTypeAndTargetPicker";
-import { FieldInput } from "./MetadataFieldList.styled";
+import { FieldInput } from "./MetadataField.styled";
 
 interface OwnProps {
   field: Field;
@@ -24,20 +24,20 @@ interface DispatchProps {
   onUpdateField: (updates: Partial<Field>) => void;
 }
 
-type MetadataFieldListProps = OwnProps & DispatchProps;
+type MetadataFieldProps = OwnProps & DispatchProps;
 
 const mapDispatchToProps: DispatchProps = {
   onUpdateField: Fields.actions.updateField,
 };
 
-const MetadataFieldList = ({
+const MetadataField = ({
   field,
   idFields,
   selectedDatabaseId,
   selectedSchemaName,
   selectedTableId,
   onUpdateField,
-}: MetadataFieldListProps) => {
+}: MetadataFieldProps) => {
   const handleChangeName = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
       if (event.target.value) {
@@ -125,4 +125,4 @@ export const getFieldRawName = (field: Field) => {
   return field.nfc_path ? field.nfc_path.join(".") : field.name;
 };
 
-export default connect(null, mapDispatchToProps)(MetadataFieldList);
+export default connect(null, mapDispatchToProps)(MetadataField);
