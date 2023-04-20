@@ -28,6 +28,7 @@ export const Default: Story = {
 const IconBlock = styled.div`
   display: inline-block;
   width: 100px;
-
   margin: 20px;
+
+  text-align: center;
 `;
