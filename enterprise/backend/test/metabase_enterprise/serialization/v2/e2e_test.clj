@@ -696,6 +696,3 @@
                            :dashboard_id     (:id new-dashboard)
                            :dashboard_tab_id new-tab-id-2}]
                          (:ordered_cards new-dashboard))))))))))))
-
-
-
