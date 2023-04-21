@@ -50,13 +50,21 @@ const setup = async ({ databases = [TEST_DB] }: SetupOpts = {}) => {
 };
 
 describe("MetadataEditor", () => {
-  it("should be able switch between tables and view fields", async () => {
+  it("should select the first database and the only schema by default", async () => {
+    await setup();
+
+    expect(screen.getByText("Sample Database")).toBeInTheDocument();
+    expect(screen.getByText("Orders")).toBeInTheDocument();
+    expect(screen.queryByText("PUBLIC")).not.toBeInTheDocument();
+  });
+
+  it("should allow to change the title of a table", async () => {
     await setup();
 
     userEvent.click(screen.getByText("Orders"));
-    expect(await screen.findByText("TOTAL")).toBeInTheDocument();
+    userEvent.type(await screen.findByDisplayValue("Orders"), "2");
+    userEvent.tab();
 
-    userEvent.click(screen.getByText("People"));
-    expect(await screen.findByText("EMAIL")).toBeInTheDocument();
+    expect(await screen.findByText("Orders2")).toBeInTheDocument();
   });
 });

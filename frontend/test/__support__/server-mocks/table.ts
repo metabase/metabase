@@ -8,9 +8,11 @@ export function setupTableEndpoints(table: Table) {
   fetchMock.get(`path:/api/table/${table.id}/fks`, []);
   table.fields?.forEach(field => setupFieldEndpoints(field));
 
-  fetchMock.put(`path:/api/table/${table.id}`, url =>
-    fetchMock.lastCall(url)?.request?.json(),
-  );
+  fetchMock.put(`path:/api/table/${table.id}`, async url => {
+    const request = await fetchMock.lastCall(url)?.request?.json();
+    return { id: table.id, ...request };
+  });
+
   fetchMock.put(`path:/api/table/${table.id}/fields/order`, []);
 }
 
