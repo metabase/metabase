@@ -17,16 +17,19 @@ export const Container = styled.div`
   font-weight: 700;
 `;
 
-export const Section = styled.div<{ type: SectionType }>`
+export const Section = styled.div<{
+  type: SectionType;
+  hasOnlyOneSection: boolean;
+}>`
   padding-bottom: 1rem;
 
-  ${({ type }) =>
+  ${({ type, hasOnlyOneSection }) =>
     type === "records" &&
     css`
       padding-bottom: 0;
 
       &:after {
-        content: "";
+        ${!hasOnlyOneSection ? `content: "";` : ""};
         height: 1px;
         background-color: ${color("border")};
         margin: 1rem -1.5rem 1rem;

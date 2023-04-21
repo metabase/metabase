@@ -62,7 +62,7 @@ type ReduxClickAction = ClickActionBase & {
   action: () => ReduxAction | Dispatcher;
 };
 
-type QuestionChangeClickAction = ClickActionBase & {
+export type QuestionChangeClickAction = ClickActionBase & {
   question: () => Question;
 };
 
