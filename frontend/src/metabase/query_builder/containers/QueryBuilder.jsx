@@ -11,7 +11,7 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { useBeforeUnload, useMount, useUnmount, usePrevious } from "react-use";
+import { useMount, useUnmount, usePrevious } from "react-use";
 import { PLUGIN_SELECTORS } from "metabase/plugins";
 import Bookmark from "metabase/entities/bookmarks";
 import Collections from "metabase/entities/collections";
@@ -35,6 +35,7 @@ import title from "metabase/hoc/Title";
 import titleWithLoadingTime from "metabase/hoc/TitleWithLoadingTime";
 import favicon from "metabase/hoc/Favicon";
 
+import useBeforeUnload from "metabase/hooks/use-before-unload";
 import View from "../components/view/View";
 
 import {
@@ -89,7 +90,8 @@ import {
   getIsActionListVisible,
   getIsAdditionalInfoVisible,
   getAutocompleteResultsFn,
-  getCardAutocompleteResultsFn, isResultsMetadataDirty
+  getCardAutocompleteResultsFn,
+  isResultsMetadataDirty,
 } from "../selectors";
 import * as actions from "../actions";
 
@@ -220,6 +222,7 @@ function QueryBuilder(props) {
     card,
     isLoadingComplete,
     isNew,
+    isDirty: isModelQueryDirty,
     isResultDirty,
     isMetadataDirty,
   } = props;
@@ -303,10 +306,18 @@ function QueryBuilder(props) {
     return () => window.removeEventListener("resize", forceUpdateDebounced);
   }, []);
 
-  useBeforeUnload(
-    !isNew && (isResultDirty || isMetadataDirty),
-    t`You have unsaved changes`,
-  );
+  const isExistingModelDirty = useCallback(() => {
+    console.table({
+      isNew,
+      isModelQueryDirty,
+      isResultDirty,
+      isMetadataDirty,
+      total: !isNew && (isModelQueryDirty || isResultDirty || isMetadataDirty),
+    });
+    return !isNew && (isModelQueryDirty || isResultDirty || isMetadataDirty);
+  }, [isMetadataDirty, isModelQueryDirty, isNew, isResultDirty]);
+
+  useBeforeUnload(isExistingModelDirty);
 
   useUnmount(() => {
     cancelQuery();

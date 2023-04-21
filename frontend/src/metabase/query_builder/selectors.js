@@ -413,6 +413,15 @@ function areQueriesEquivalent({
   currentQuestion,
   tableMetadata,
 }) {
+  console.log(
+    areLegacyQueriesEqual(
+      lastRunQuestion?.datasetQuery(),
+      currentQuestion?.datasetQuery(),
+      tableMetadata,
+    ),
+    lastRunQuestion,
+    currentQuestion,
+  );
   return (
     areLegacyQueriesEqual(
       lastRunQuestion?.datasetQuery(),
@@ -446,6 +455,21 @@ export const getIsResultDirty = createSelector(
     tableMetadata,
   ) => {
     const haveParametersChanged = !_.isEqual(lastParameters, nextParameters);
+
+    console.table({
+      haveParametersChanged,
+      isQuestionEditable: isQuestionEditable(question),
+      areQueriesEquivalent: areQueriesEquivalent({
+        originalQuestion,
+        lastRunQuestion,
+        currentQuestion: question,
+        tableMetadata,
+      }),
+      // originalQuestion,
+      // lastRunQuestion,
+      // currentQuestion: question,
+      // tableMetadata,
+    });
 
     return (
       haveParametersChanged ||
