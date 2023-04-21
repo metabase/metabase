@@ -184,20 +184,21 @@ const updateFieldOrder = (
   newIndex: number,
 ) => {
   const fieldOrder = new Array<FieldId>(fields.length);
+  const hasCustomPosition = fields.some(field => field.position !== 0);
 
-  fields.forEach(field => {
-    const index = field.position;
+  fields.forEach((field, fieldIndex) => {
+    const prevIndex = hasCustomPosition ? field.position : fieldIndex;
 
-    const idx =
-      newIndex <= index && index < oldIndex
-        ? index + 1 // shift down
-        : oldIndex < index && index <= newIndex
-        ? index - 1 // shift up
-        : index === oldIndex
+    const nextIndex =
+      newIndex <= prevIndex && prevIndex < oldIndex
+        ? prevIndex + 1 // shift down
+        : oldIndex < prevIndex && prevIndex <= newIndex
+        ? prevIndex - 1 // shift up
+        : prevIndex === oldIndex
         ? newIndex // move dragged column to new location
-        : index; // otherwise, leave it where it is
+        : prevIndex; // otherwise, leave it where it is
 
-    fieldOrder[idx] = Number(field.id);
+    fieldOrder[nextIndex] = Number(field.id);
   });
 
   return fieldOrder;
