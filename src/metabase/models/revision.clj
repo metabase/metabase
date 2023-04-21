@@ -135,16 +135,16 @@
          (integer? id)
          (t2/exists? entity :id id)
          (map? object)]}
-  (let [object      (serialize-instance entity id (dissoc object :message))
-        last-object (t2/select-one-fn :object Revision :model (name entity) :model_id id {:order-by [[:id :desc]]})]
+  (let [serialized-object (serialize-instance entity id (dissoc object :message))
+        last-object       (t2/select-one-fn :object Revision :model (name entity) :model_id id {:order-by [[:id :desc]]})]
     ;; make sure we still have a map after calling out serialization function
-    (assert (map? object))
-    (when-not (= object last-object)
+    (assert (map? serialized-object))
+    (when-not (= serialized-object last-object)
       (t2/insert! Revision
                   :model        (name entity)
                   :model_id     id
                   :user_id      user-id
-                  :object       object
+                  :object       serialized-object
                   :is_creation  is-creation?
                   :is_reversion false
                   :message      message)
