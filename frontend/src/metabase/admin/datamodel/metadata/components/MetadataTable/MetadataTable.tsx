@@ -2,6 +2,7 @@ import React, { ChangeEvent, useCallback, useState } from "react";
 import { connect } from "react-redux";
 import { useAsync } from "react-use";
 import { t } from "ttag";
+import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import Databases from "metabase/entities/databases";
 import Tables from "metabase/entities/tables";
 import Radio from "metabase/core/components/Radio/Radio";
@@ -24,6 +25,7 @@ type MetadataTabType = "columns" | "original_schema";
 
 const TABLE_QUERY = {
   include_sensitive_fields: true,
+  ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
 };
 
 const METADATA_TAB_OPTIONS = [

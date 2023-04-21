@@ -67,7 +67,5 @@ const MetadataEditor = ({ databases, params }: MetadataEditorProps) => {
 };
 
 export default Databases.loadList({
-  query: {
-    ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
-  },
+  query: PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
 })(MetadataEditor);

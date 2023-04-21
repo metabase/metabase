@@ -10,6 +10,7 @@ import ActionButton from "metabase/components/ActionButton";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import { Schema, TableId } from "metabase-types/api";
 import { State } from "metabase-types/store";
+import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import Database from "metabase-lib/metadata/Database";
 import Table from "metabase-lib/metadata/Table";
 import { discardTableFieldValues, rescanTableFieldValues } from "../../actions";
@@ -127,6 +128,7 @@ export default _.compose(
   Databases.load({
     id: (_: State, { params }: RouterProps) =>
       Urls.extractEntityId(params.databaseId),
+    query: PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
   }),
   Schemas.loadList({
     query: (_: State, { database }: DatabaseLoaderProps) => ({
@@ -136,6 +138,7 @@ export default _.compose(
   Tables.load({
     id: (_: State, { params }: RouterProps) =>
       Urls.extractEntityId(params.tableId),
+    query: PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
     selectorName: "getObjectUnfiltered",
   }),
   connect(null, mapDispatchToProps),

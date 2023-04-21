@@ -81,9 +81,7 @@ const MetadataHeader = ({
 
 export default _.compose(
   Databases.loadList({
-    query: {
-      ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
-    },
+    query: PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
   }),
   connect(null, mapDispatchToProps),
 )(MetadataHeader);
