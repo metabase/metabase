@@ -1,4 +1,4 @@
-import React, { ReactNode } from "react";
+import React, { ReactNode, useCallback } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import Tables from "metabase/entities/tables";
@@ -11,7 +11,7 @@ import {
   SortableHandle,
 } from "metabase/components/sortable";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
-import { TableFieldOrder } from "metabase-types/api";
+import { FieldId, TableFieldOrder } from "metabase-types/api";
 import Table from "metabase-lib/metadata/Table";
 import Field from "metabase-lib/metadata/Field";
 import MetadataTableColumn from "../MetadataTableColumn";
@@ -35,20 +35,40 @@ interface OwnProps {
 
 interface DispatchProps {
   onUpdateTable: (table: Table, name: string, value: unknown) => void;
+  onUpdateFieldOrder: (table: Table, fieldOrder: FieldId[]) => void;
+}
+
+interface DragProps {
+  oldIndex: number;
+  newIndex: number;
 }
 
 type MetadataTableColumnListProps = OwnProps & DispatchProps;
 
 const mapDispatchToProps: DispatchProps = {
   onUpdateTable: Tables.actions.updateProperty,
+  onUpdateFieldOrder: Tables.actions.setFieldOrder,
 };
 
 const MetadataTableColumnList = ({
   table,
   idFields,
   onUpdateTable,
+  onUpdateFieldOrder,
 }: MetadataTableColumnListProps) => {
   const { fields = [] } = table;
+
+  const handleSortStart = useCallback(() => {
+    document.body.classList.add("grabbing");
+  }, []);
+
+  const handleSortEnd = useCallback(
+    ({ oldIndex, newIndex }: DragProps) => {
+      document.body.classList.remove("grabbing");
+      onUpdateFieldOrder(table, updateFieldOrder(fields, oldIndex, newIndex));
+    },
+    [table, fields, onUpdateFieldOrder],
+  );
 
   return (
     <div id="ColumnsList" className="my3">
@@ -72,7 +92,12 @@ const MetadataTableColumnList = ({
           </SortButtonContainer>
         </div>
       </div>
-      <SortableColumnList helperClass="ColumnSortHelper" useDragHandle={true}>
+      <SortableColumnList
+        helperClass="ColumnSortHelper"
+        useDragHandle={true}
+        onSortStart={handleSortStart}
+        onSortEnd={handleSortEnd}
+      >
         {fields.map((field, index) => (
           <SortableColumn
             key={field.getId()}
@@ -152,5 +177,30 @@ const TableFieldOrderDropdown = ({
 const SortableColumn = SortableElement(MetadataTableColumn);
 const SortableColumnList = SortableContainer(ColumnList);
 const SortableColumnHandle = SortableHandle(ColumnGrabber);
+
+const updateFieldOrder = (
+  fields: Field[],
+  oldIndex: number,
+  newIndex: number,
+) => {
+  const fieldOrder = new Array<FieldId>(fields.length);
+
+  fields.forEach(field => {
+    const index = field.position;
+
+    const idx =
+      newIndex <= index && index < oldIndex
+        ? index + 1 // shift down
+        : oldIndex < index && index <= newIndex
+        ? index - 1 // shift up
+        : index === oldIndex
+        ? newIndex // move dragged column to new location
+        : index; // otherwise, leave it where it is
+
+    fieldOrder[idx] = Number(field.id);
+  });
+
+  return fieldOrder;
+};
 
 export default connect(null, mapDispatchToProps)(MetadataTableColumnList);

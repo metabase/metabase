@@ -73,6 +73,7 @@ class FieldInner extends Base {
   has_field_values?: "list" | "search" | "none";
   has_more_values?: boolean;
   values: any[];
+  position: number;
   metadata?: Metadata;
   source?: string;
   nfc_path?: string[];
