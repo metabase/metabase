@@ -168,6 +168,24 @@
                                            :data-model {:schemas :all}}}
         (mt/user-http-request :rasta :get 200 (format "database/%d/idfields?include_editable_data_model=true" (mt/id)))))))
 
+(deftest get-schema-with-advanced-perms-test
+  (testing "Permissions: We can verify include_editable_data_model flag works for the /:id/schema/:schema endpoint"
+    (mt/with-temp* [Database [{db-id :id}]
+                    Table    [t1 {:db_id db-id, :schema "schema1", :name "t1"}]
+                    Table    [_t2 {:db_id db-id, :schema "schema2"}]
+                    Table    [t3 {:db_id db-id, :schema "schema1", :name "t3"}]]
+      (with-all-users-data-perms {db-id {:data       {:schemas :all :native :write}
+                                           :data-model {:schemas :all}}}
+        (testing "Testing /:id/schema/:schema variants"
+          (perms/revoke-data-perms! (perms-group/all-users) db-id)
+          (testing "/:id/schema/:schema when permissions are revoked but include_editable_data_model=true returns values"
+            (is (= ["t1" "t3"]
+                   (map :name (mt/user-http-request :rasta :get 200 (format "database/%d/schema/%s" db-id "schema1")
+                                                    :include_editable_data_model true)))))
+          (testing "/:id/schema/:schema when permissions are revoked ins a 403"
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :rasta :get 403 (format "database/%d/schema/%s" db-id "schema1"))))))))))
+
 (deftest update-field-test
   (mt/with-temp Field [{field-id :id, table-id :table_id} {:name "Field Test"}]
     (let [{table-id :id, schema :schema, db-id :db_id} (t2/select-one Table :id table-id)]
