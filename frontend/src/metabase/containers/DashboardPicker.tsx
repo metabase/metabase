@@ -3,9 +3,7 @@ import React from "react";
 import ItemPicker, { PickerValue, PickerItemId } from "./ItemPicker";
 
 export interface DashboardPickerProps {
-  // a dashboard ID or undefined
   value?: PickerValue;
-  // callback that takes a dashboard id
   onChange: (dashboardId: PickerItemId | undefined) => void;
 }
 
