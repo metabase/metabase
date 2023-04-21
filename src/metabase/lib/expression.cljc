@@ -8,6 +8,7 @@
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
@@ -253,3 +254,7 @@
                         (assoc :lib/source   :source/expressions
                                :name         expression-name
                                :display_name expression-name)))))))
+
+(defmethod lib.ref/ref-method :expression
+  [expression-clause]
+  expression-clause)

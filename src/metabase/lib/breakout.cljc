@@ -1,8 +1,10 @@
 (ns metabase.lib.breakout
   (:require
    [clojure.string :as str]
+   [metabase.lib.equality :as lib.equality]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.util :as lib.util]
@@ -24,10 +26,10 @@
 
   ([query        :- ::lib.schema/query
     stage-number :- :int
-    expr         :- [:or ::lib.schema.expression/expression fn?]]
-   (let [expr (if (fn? expr)
-                (expr query stage-number)
-                expr)]
+    expr         :- some?]
+   (let [expr (lib.ref/ref (if (fn? expr)
+                             (expr query stage-number)
+                             expr))]
      (lib.util/update-query-stage query stage-number update :breakout (fn [breakouts]
                                                                         (conj (vec breakouts) expr))))))
 
@@ -47,3 +49,33 @@
            (mapv (fn [field-ref]
                    (-> (lib.metadata.calculation/metadata query stage-number field-ref)
                        (assoc :lib/source :source/breakouts))))))
+
+(mu/defn breakoutable-columns :- [:sequential lib.metadata/ColumnMetadata]
+  "Get column metadata fro all the columns that can be broken out by in
+  the stage number `stage-number` of the query `query`
+  If `stage-number` is omitted, the last stage is used.
+  The rules for determining which columns can be broken out by are as follows:
+
+  1. custom `:expressions` in this stage of the query
+
+  2. Fields 'exported' by the previous stage of the query, if there is one;
+     otherwise Fields from the current `:source-table`
+
+  3. Fields exported by explicit joins
+
+  4. Fields in Tables that are implicitly joinable."
+
+  ([query :- ::lib.schema/query]
+   (breakoutable-columns query -1))
+
+  ([query        :- ::lib.schema/query
+    stage-number :- :int]
+   (let [existing-breakouts (breakouts query stage-number)
+         existing-breakout? (fn [x]
+                              (some (fn [existing-breakout]
+                                      (lib.equality/= (lib.ref/ref x) existing-breakout))
+                                    existing-breakouts))
+         columns            (let [stage (lib.util/query-stage query stage-number)]
+                              (lib.metadata.calculation/visible-columns query stage-number stage))]
+     (some->> (not-empty columns)
+              (into [] (remove existing-breakout?))))))
