@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useLayoutEffect, useMemo, useState } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import cx from "classnames";
@@ -54,7 +54,7 @@ const MetadataSchemaList = ({
     [selectedDatabaseId, onSelectSchema],
   );
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (schemas.length === 1 && selectedSchemaName == null) {
       onSelectSchema(selectedDatabaseId, schemas[0].name);
     }

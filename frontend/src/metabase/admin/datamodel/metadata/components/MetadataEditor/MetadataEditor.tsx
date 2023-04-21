@@ -28,8 +28,9 @@ const MetadataEditor = ({ databases, params }: MetadataEditorProps) => {
   const databaseId = Urls.extractEntityId(params.databaseId);
   const schemaName = params.schemaName;
   const tableId = Urls.extractEntityId(params.tableId);
-  const hasDatabase = databases.some(database => database.id === databaseId);
   const hasDatabaseId = databaseId != null;
+  const hasTableId = tableId != null;
+  const hasDatabase = databases.some(database => database.id === databaseId);
 
   return (
     <div className="p4">
@@ -42,14 +43,14 @@ const MetadataEditor = ({ databases, params }: MetadataEditorProps) => {
         style={{ minHeight: "60vh" }}
         className="flex flex-row flex-full mt2 full-height"
       >
-        {databaseId != null && (
+        {hasDatabaseId && (
           <MetadataTablePicker
             selectedDatabaseId={databaseId}
             selectedSchemaName={schemaName}
             selectedTableId={tableId}
           />
         )}
-        {databaseId != null && tableId != null ? (
+        {hasDatabaseId && hasTableId ? (
           <MetadataTable
             selectedDatabaseId={databaseId}
             selectedTableId={tableId}

@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useLayoutEffect } from "react";
 import { connect } from "react-redux";
 import { Link } from "react-router";
 import { push } from "react-router-redux";
@@ -40,7 +40,7 @@ const MetadataHeader = ({
   selectedTableId,
   onSelectDatabase,
 }: MetadataHeaderProps) => {
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (databases.length > 0 && selectedDatabaseId == null) {
       onSelectDatabase(databases[0].id);
     }
