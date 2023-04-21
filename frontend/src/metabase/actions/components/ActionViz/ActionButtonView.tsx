@@ -1,10 +1,11 @@
 import React from "react";
 import { t } from "ttag";
 
+import Ellipsified from "metabase/core/components/Ellipsified";
+import Icon from "metabase/components/Icon";
+
 import type { VisualizationProps } from "metabase-types/types/Visualization";
 
-import Icon from "metabase/components/Icon";
-import Ellipsified from "metabase/core/components/Ellipsified";
 import { StyledButton, StyledButtonContent } from "./ActionButton.styled";
 
 interface ActionButtonViewProps extends Pick<VisualizationProps, "settings"> {

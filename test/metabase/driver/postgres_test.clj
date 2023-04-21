@@ -18,6 +18,7 @@
     :as sql-jdbc.describe-table]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
+   [metabase.models.action :as action]
    [metabase.models.database :refer [Database]]
    [metabase.models.field :refer [Field]]
    [metabase.models.secret :as secret]
@@ -33,7 +34,7 @@
    #_{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.log :as log]
-   [toucan.db :as db])
+   [toucan2.core :as t2])
   (:import
    (java.sql DatabaseMetaData)))
 
@@ -207,7 +208,7 @@
                    (mt/rows (qp/process-query
                               {:database (u/the-id database)
                                :type     :query
-                               :query    {:source-table (db/select-one-id Table :name "presents-and-gifts")}}))))))))))
+                               :query    {:source-table (t2/select-one-pk Table :name "presents-and-gifts")}}))))))))))
 
 (mt/defdataset duplicate-names
   [["birds"
@@ -308,7 +309,7 @@
             ;; now take a look at the Tables in the database related to the view. THERE SHOULD BE ONLY ONE!
             (is (= [{:name "angry_birds", :active true}]
                    (map (partial into {})
-                        (db/select [Table :name :active] :db_id (u/the-id database), :name "angry_birds"))))))))))
+                        (t2/select [Table :name :active] :db_id (u/the-id database), :name "angry_birds"))))))))))
 
 (deftest partitioned-table-test
   (mt/test-driver :postgres
@@ -469,7 +470,7 @@
    \newline
    ["CREATE TABLE describe_json_table ("
     "  coherent_json_val JSON NOT NULL,"
-    "  incoherent_json_val JSON NOT NULL"
+    "  incoherent_json_val JSONB NOT NULL"
     ");"
     "INSERT INTO"
     "  describe_json_table (coherent_json_val, incoherent_json_val)"
@@ -496,12 +497,12 @@
         (jdbc/with-db-connection [_conn (sql-jdbc.conn/connection-details->spec :postgres details)]
           (jdbc/execute! spec [describe-json-table-sql]))
         (mt/with-temp Database [database {:engine :postgres, :details details}]
-          (is (= :type/SerializedJSON
+          (is (= [:type/JSON :type/SerializedJSON]
                  (->> (sql-jdbc.sync/describe-table :postgres database {:name "describe_json_table"})
                       (:fields)
                       (:take 1)
                       (first)
-                      (:semantic-type))))
+                      ((juxt :base-type :semantic-type)))))
           (is (= '#{{:name              "incoherent_json_val → b",
                      :database-type     "text",
                      :base-type         :type/Text,
@@ -806,35 +807,38 @@
 
         (testing "check that describe-table properly describes the database & base types of the enum fields"
           (is (= {:name   "birds"
-                  :fields #{{:name              "name"
-                             :database-type     "varchar"
-                             :base-type         :type/Text
-                             :pk?               true
-                             :database-position 0
-                             :database-required true}
-                            {:name              "status"
-                             :database-type     "bird_status"
-                             :base-type         :type/PostgresEnum
-                             :database-position 1
-                             :database-required true}
-                            {:name              "type"
-                             :database-type     "bird type"
-                             :base-type         :type/PostgresEnum
-                             :database-position 2
-                             :database-required true}}}
+                  :fields #{{:name                      "name"
+                             :database-type             "varchar"
+                             :base-type                 :type/Text
+                             :pk?                       true
+                             :database-position         0
+                             :database-required         true
+                             :database-is-auto-increment false}
+                            {:name                      "status"
+                             :database-type             "bird_status"
+                             :base-type                 :type/PostgresEnum
+                             :database-position         1
+                             :database-required         true
+                             :database-is-auto-increment false}
+                            {:name                      "type"
+                             :database-type             "bird type"
+                             :base-type                 :type/PostgresEnum
+                             :database-position         2
+                             :database-required         true
+                             :database-is-auto-increment false}}}
                  (driver/describe-table :postgres db {:name "birds"}))))
 
         (testing "check that when syncing the DB the enum types get recorded appropriately"
-          (let [table-id (db/select-one-id Table :db_id (u/the-id db), :name "birds")]
+          (let [table-id (t2/select-one-pk Table :db_id (u/the-id db), :name "birds")]
             (is (= #{{:name "name", :database_type "varchar", :base_type :type/Text}
                      {:name "type", :database_type "bird type", :base_type :type/PostgresEnum}
                      {:name "status", :database_type "bird_status", :base_type :type/PostgresEnum}}
                    (set (map (partial into {})
-                             (db/select [Field :name :database_type :base_type] :table_id table-id)))))))
+                             (t2/select [Field :name :database_type :base_type] :table_id table-id)))))))
 
         (testing "End-to-end check: make sure everything works as expected when we run an actual query"
-          (let [table-id           (db/select-one-id Table :db_id (u/the-id db), :name "birds")
-                bird-type-field-id (db/select-one-id Field :table_id table-id, :name "type")]
+          (let [table-id           (t2/select-one-pk Table :db_id (u/the-id db), :name "birds")
+                bird-type-field-id (t2/select-one-pk Field :table_id table-id, :name "type")]
             (is (= {:rows        [["Rasta" "good bird" "toucan"]]
                     :native_form {:query  (str "SELECT \"public\".\"birds\".\"name\" AS \"name\","
                                                " \"public\".\"birds\".\"status\" AS \"status\","
@@ -851,6 +855,35 @@
                                     :limit        10}})
                        :data
                        (select-keys [:rows :native_form]))))))))))
+
+(deftest enums-actions-test
+  (mt/test-driver :postgres
+    (testing "actions with enums"
+      (do-with-enums-db
+       (fn [enums-db]
+         (mt/with-db enums-db
+           (mt/with-actions-enabled
+             (mt/with-actions [model {:dataset true
+                                      :dataset_query
+                                      (mt/mbql-query birds)}
+                               {action-id :action-id} {:type :implicit
+                                                       :kind "row/create"}]
+               (testing "Enum fields are a valid implicit parameter target"
+                 (let [columns        (->> model :result_metadata (map :name) set)
+                       action-targets (->> (action/select-action :id action-id)
+                                           :parameters
+                                           (map :id)
+                                           set)]
+                   (is (= columns action-targets))))
+               (testing "Can create new records with an enum value"
+                 (is (= {:created-row
+                         {:name "new bird", :status "good bird", :type "turkey"}}
+                        (mt/user-http-request :crowberto
+                                              :post 200
+                                              (format "action/%s/execute" action-id)
+                                              {:parameters {"name"   "new bird"
+                                                            "status" "good bird"
+                                                            "type"   "turkey"}}))))))))))))
 
 
 ;;; ------------------------------------------------ Timezone-related ------------------------------------------------
@@ -905,9 +938,8 @@
                                                      :percent-email  0.0
                                                      :percent-state  0.0
                                                      :average-length 12.0}}}}
-                 (db/select-field->field :name :fingerprint Field
-                   :table_id (db/select-one-id Table :db_id (u/the-id database))))))))))
-
+                 (t2/select-fn->fn :name :fingerprint Field
+                   :table_id (t2/select-one-pk Table :db_id (u/the-id database))))))))))
 
 ;;; ----------------------------------------------------- Other ------------------------------------------------------
 
@@ -976,7 +1008,7 @@
         (mt/with-temp Database [database {:engine :postgres, :details test-user-details}]
           (sync/sync-database! database)
           (is (= #{"table_with_perms"}
-                 (db/select-field :name Table :db_id (:id database)))))))))
+                 (t2/select-fn-set :name Table :db_id (:id database)))))))))
 
 (deftest json-operator-?-works
   (testing "Make sure the Postgres ? operators (for JSON types) work in native queries"

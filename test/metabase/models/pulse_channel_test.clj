@@ -6,12 +6,12 @@
    [metabase.models.pulse :refer [Pulse]]
    [metabase.models.pulse-channel :as pulse-channel :refer [PulseChannel]]
    [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
-   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.models.serialization :as serdes]
    [metabase.models.user :refer [User]]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]])
+   [toucan.hydrate :refer [hydrate]]
+   [toucan2.core :as t2])
   (:import
    (java.time LocalDateTime)))
 
@@ -138,7 +138,7 @@
 (defn- create-channel-then-select!
   [channel]
   (when-let [new-channel-id (pulse-channel/create-pulse-channel! channel)]
-    (-> (db/select-one PulseChannel :id new-channel-id)
+    (-> (t2/select-one PulseChannel :id new-channel-id)
         (hydrate :recipients)
         (update :recipients #(sort-by :email %))
         (dissoc :id :pulse_id :created_at :updated_at)
@@ -148,7 +148,7 @@
 (defn- update-channel-then-select!
   [{:keys [id] :as channel}]
   (pulse-channel/update-pulse-channel! channel)
-  (-> (db/select-one PulseChannel :id id)
+  (-> (t2/select-one PulseChannel :id id)
       (hydrate :recipients)
       (dissoc :id :pulse_id :created_at :updated_at)
       (update :entity_id boolean)
@@ -324,7 +324,7 @@
                   PulseChannel [{channel-id :id} {:pulse_id pulse-id}]]
     (letfn [(upd-recipients! [recipients]
               (pulse-channel/update-recipients! channel-id recipients)
-              (db/select-field :user_id PulseChannelRecipient, :pulse_channel_id channel-id))]
+              (t2/select-fn-set :user_id PulseChannelRecipient, :pulse_channel_id channel-id))]
       (doseq [[new-recipients expected] {[]                  nil
                                          [:rasta]            [:rasta]
                                          [:crowberto]        [:crowberto]
@@ -475,5 +475,5 @@
                                            :details      {:emails ["cam@test.com"]}
                                            :created_at   now}]]
         (is (= "2f5f0269"
-               (serdes.hash/raw-hash [(serdes.hash/identity-hash pulse) :email {:emails ["cam@test.com"]} now])
-               (serdes.hash/identity-hash chan)))))))
+               (serdes/raw-hash [(serdes/identity-hash pulse) :email {:emails ["cam@test.com"]} now])
+               (serdes/identity-hash chan)))))))

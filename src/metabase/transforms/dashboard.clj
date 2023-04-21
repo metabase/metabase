@@ -7,7 +7,6 @@
    [metabase.transforms.materialize :as tf.materialize]
    [metabase.transforms.specs :refer [transform-specs]]
    [metabase.util :as u]
-   [toucan.db :as db]
    [toucan2.core :as t2]
    [toucan2.realize :as t2.realize]))
 
@@ -64,7 +63,7 @@
   (let [transform-spec              (m/find-first (comp #{transform-name} :name) @transform-specs)
         {steps false provides true} (->> transform-name
                                          tf.materialize/get-collection
-                                         (db/select 'Card :collection_id)
+                                         (t2/select 'Card :collection_id)
                                          (group-by (comp some?
                                                          (-> transform-spec :provides set)
                                                          :name)))

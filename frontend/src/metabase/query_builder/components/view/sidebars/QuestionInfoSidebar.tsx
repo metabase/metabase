@@ -10,8 +10,6 @@ import * as Urls from "metabase/lib/urls";
 
 import QuestionActivityTimeline from "metabase/query_builder/components/QuestionActivityTimeline";
 
-import type { Card } from "metabase-types/types/Card";
-
 import Question from "metabase-lib/Question";
 
 import ModelCacheManagementSection from "./ModelCacheManagementSection";
@@ -24,7 +22,7 @@ import {
 
 interface QuestionInfoSidebarProps {
   question: Question;
-  onSave: (card: Card) => Promise<Question>;
+  onSave: (question: Question) => Promise<Question>;
 }
 
 export const QuestionInfoSidebar = ({
@@ -42,13 +40,13 @@ export const QuestionInfoSidebar = ({
 
   const handleSave = (description: string | null) => {
     if (question.description() !== description) {
-      onSave(question.setDescription(description).card());
+      onSave(question.setDescription(description));
     }
   };
 
   const handleUpdateCacheTTL = (cache_ttl: number | undefined) => {
     if (question.cacheTTL() !== cache_ttl) {
-      return onSave(question.setCacheTTL(cache_ttl).card());
+      return onSave(question.setCacheTTL(cache_ttl));
     }
   };
 
@@ -70,6 +68,7 @@ export const QuestionInfoSidebar = ({
           }
           isOptional
           isMultiline
+          isMarkdown
           isDisabled={!canWrite}
           onChange={handleSave}
         />

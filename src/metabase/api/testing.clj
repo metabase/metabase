@@ -22,7 +22,7 @@
 
 (defn- snapshot-path-for-name
   ^String [snapshot-name]
-  (let [path (u.files/get-path "frontend" "test" "snapshots"
+  (let [path (u.files/get-path "e2e" "snapshots"
                                (str (str/replace (name snapshot-name) #"\W" "_") ".sql"))]
     (str (.toAbsolutePath path))))
 

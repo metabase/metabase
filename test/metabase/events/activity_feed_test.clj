@@ -7,7 +7,7 @@
     :refer [Activity Card Dashboard DashboardCard Metric Pulse Segment]]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -17,7 +17,7 @@
 
   ([topic model-id]
    (mt/derecordize
-    (db/select-one [Activity :topic :user_id :model :model_id :database_id :table_id :details]
+    (t2/select-one [Activity :topic :user_id :model :model_id :database_id :table_id :details]
                    :topic    topic
                    :model_id model-id
                    {:order-by [[:id :desc]]}))))

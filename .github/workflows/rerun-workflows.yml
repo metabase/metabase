@@ -9,7 +9,7 @@ on:
 jobs:
   rerun-on-failure:
     name: 'Re-run ''${{ github.event.workflow_run.name }}'' workflow'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     if: ${{ github.event.workflow_run.conclusion == 'failure' }}
     steps:
       - name: Generate job summary

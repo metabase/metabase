@@ -10,7 +10,7 @@ import {
   PLUGIN_REDUX_MIDDLEWARES,
 } from "metabase/plugins";
 
-import GroupMappingsWidget from "metabase/admin/settings/components/widgets/GroupMappingsWidget";
+import GroupMappingsWidget from "metabase/admin/settings/containers/GroupMappingsWidget";
 import SecretKeyWidget from "metabase/admin/settings/components/widgets/SecretKeyWidget";
 import SessionTimeoutSetting from "metabase-enterprise/auth/components/SessionTimeoutSetting";
 

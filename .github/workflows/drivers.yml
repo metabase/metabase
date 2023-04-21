@@ -73,7 +73,7 @@ jobs:
   be-tests-druid-ee:
     needs: files-changed
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
-    runs-on: buildjet-2vcpu-ubuntu-2204
+    runs-on: ubuntu-22.04
     timeout-minutes: 60
     env:
       CI: 'true'
@@ -563,9 +563,6 @@ jobs:
       with:
         junit-name: 'be-tests-presto-jdbc-ee'
         test-args: ":exclude-tags '[:mb/once]'"
-    # FIXME: Cannot find it in Ubuntu 22.04 (No such file or directory)
-    # - name: Capture max memory usage
-    #   run: cat /sys/fs/cgroup/memory/memory.max_usage_in_bytes
 
   be-tests-redshift-ee:
     needs: files-changed
@@ -612,7 +609,7 @@ jobs:
   be-tests-sparksql-ee:
     needs: files-changed
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
-    runs-on: buildjet-2vcpu-ubuntu-2204
+    runs-on: ubuntu-22.04
     timeout-minutes: 60
     env:
       CI: 'true'

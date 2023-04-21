@@ -42,7 +42,7 @@ If you'd like to share your data with the good people of the internet, you can c
 | Display interactive [filter widgets](https://www.metabase.com/glossary/filter_widget)                    | ✅                                  | ✅                              | ✅                                             |
 | Restrict data with [locked filters](./signed-embedding-parameters.md#restricting-data-in-a-signed-embed) | ❌                                  | ✅                              | ❌                                             |
 | Restrict data with [sandboxes](../permissions/data-sandboxes.md)                                         | ✅                                  | ❌                              | ❌                                             |
-| Drill-down using the [action menu](https://www.metabase.com/learn/questions/drill-through)               | ✅                                  | ❌                              | ❌                                             |
+| Use the [drill-through menu](https://www.metabase.com/learn/questions/drill-through)               | ✅                                  | ❌                              | ❌                                             |
 | Self-serve via [query builder](https://www.metabase.com/glossary/query_builder)                          | ✅                                  | ❌                              | ❌                                             |
 | View usage of embeds with [auditing tools](../usage-and-performance-tools/audit.md)                      | ✅                                  | ❌                              | ❌                                             |
 

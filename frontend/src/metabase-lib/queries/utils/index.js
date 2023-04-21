@@ -10,7 +10,7 @@ export * from "./field-ref";
 // need to communicate or use that, use this constant
 export const HARD_ROW_LIMIT = 2000;
 
-export const NEW_QUERY_TEMPLATES = {
+const NEW_QUERY_TEMPLATES = {
   query: {
     database: null,
     type: "query",
@@ -43,10 +43,6 @@ export function createQuery(type = "query", databaseId, tableId) {
 
 export function isStructured(dataset_query) {
   return dataset_query && dataset_query.type === "query";
-}
-
-export function isNative(dataset_query) {
-  return dataset_query && dataset_query.type === "native";
 }
 
 export function cleanQuery(query) {

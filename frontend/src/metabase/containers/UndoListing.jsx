@@ -1,13 +1,11 @@
 import React from "react";
 import PropTypes from "prop-types";
-import { connect } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
+import { Motion, spring } from "react-motion";
 import { t } from "ttag";
-import _ from "underscore";
 
-import { color } from "metabase/lib/colors";
 import { capitalize, inflect } from "metabase/lib/formatting";
 import { dismissUndo, performUndo } from "metabase/redux/undo";
-import { getUndos } from "metabase/selectors/undo";
 
 import BodyComponent from "metabase/components/BodyComponent";
 
@@ -21,15 +19,6 @@ import {
   UndoButton,
   UndoList,
 } from "./UndoListing.styled";
-
-const mapStateToProps = (state, props) => ({
-  undos: getUndos(state, props),
-});
-
-const mapDispatchToProps = {
-  dismissUndo,
-  performUndo,
-};
 
 DefaultMessage.propTypes = {
   undo: PropTypes.object.isRequired,
@@ -62,49 +51,55 @@ UndoToast.propTypes = {
 };
 
 function UndoToast({ undo, onUndo, onDismiss }) {
-  const style = undo.toastColor
-    ? { backgroundColor: color(undo.toastColor) }
-    : undefined;
   return (
-    <ToastCard dark data-testid="toast-undo" style={style}>
-      <CardContent>
-        <CardContentSide>
-          <CardIcon name={undo.icon || "check"} color="white" />
-          {renderMessage(undo)}
-        </CardContentSide>
-        <CardContentSide>
-          {undo.actions?.length > 0 && (
-            <UndoButton onClick={onUndo}>{t`Undo`}</UndoButton>
-          )}
-          <DismissIcon name="close" onClick={onDismiss} />
-        </CardContentSide>
-      </CardContent>
-    </ToastCard>
+    <Motion
+      defaultStyle={{ opacity: 0, translateY: 100 }}
+      style={{ opacity: spring(1), translateY: spring(0) }}
+    >
+      {({ translateY }) => (
+        <ToastCard
+          dark
+          data-testid="toast-undo"
+          translateY={translateY}
+          color={undo.toastColor}
+        >
+          <CardContent>
+            <CardContentSide>
+              <CardIcon name={undo.icon || "check"} color="white" />
+              {renderMessage(undo)}
+            </CardContentSide>
+            <CardContentSide>
+              {undo.actions?.length > 0 && (
+                <UndoButton
+                  role="button"
+                  onClick={onUndo}
+                >{t`Undo`}</UndoButton>
+              )}
+              <DismissIcon name="close" onClick={onDismiss} />
+            </CardContentSide>
+          </CardContent>
+        </ToastCard>
+      )}
+    </Motion>
   );
 }
 
-UndoListing.propTypes = {
-  undos: PropTypes.array.isRequired,
-  performUndo: PropTypes.func.isRequired,
-  dismissUndo: PropTypes.func.isRequired,
-};
+function UndoListingInner() {
+  const dispatch = useDispatch();
+  const undos = useSelector(state => state.undo);
 
-function UndoListing({ undos, performUndo, dismissUndo }) {
   return (
     <UndoList>
       {undos.map(undo => (
         <UndoToast
           key={undo._domId}
           undo={undo}
-          onUndo={() => performUndo(undo.id)}
-          onDismiss={() => dismissUndo(undo.id)}
+          onUndo={() => dispatch(performUndo(undo.id))}
+          onDismiss={() => dispatch(dismissUndo(undo.id))}
         />
       ))}
     </UndoList>
   );
 }
 
-export default _.compose(
-  connect(mapStateToProps, mapDispatchToProps),
-  BodyComponent,
-)(UndoListing);
+export const UndoListing = BodyComponent(UndoListingInner);

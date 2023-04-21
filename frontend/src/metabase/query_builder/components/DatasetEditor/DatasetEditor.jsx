@@ -182,6 +182,7 @@ function DatasetEditor(props) {
     height,
     isDirty: isModelQueryDirty,
     setQueryBuilderMode,
+    runQuestionQuery,
     setDatasetEditorTab,
     setFieldMetadata,
     onCancelDatasetChanges,
@@ -306,13 +307,14 @@ function DatasetEditor(props) {
     if (canBeDataset && isBrandNewDataset) {
       onOpenModal(MODAL_TYPES.SAVE);
     } else if (canBeDataset) {
-      await onSave(dataset.card());
-      setQueryBuilderMode("view");
+      await onSave(dataset, { rerunQuery: false });
+      await setQueryBuilderMode("view");
+      runQuestionQuery();
     } else {
       onOpenModal(MODAL_TYPES.CAN_NOT_CREATE_MODEL);
       throw new Error(t`Variables in models aren't supported yet`);
     }
-  }, [dataset, onSave, setQueryBuilderMode, onOpenModal]);
+  }, [dataset, onSave, setQueryBuilderMode, runQuestionQuery, onOpenModal]);
 
   const handleColumnSelect = useCallback(
     column => {

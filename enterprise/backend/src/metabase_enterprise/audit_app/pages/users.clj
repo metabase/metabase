@@ -195,6 +195,8 @@
                                                :id
                                                :date_joined
                                                [[:case
+                                                 [:= true :u.google_auth]
+                                                 (h2x/literal "Google Sign-In")
                                                  [:= nil :u.sso_source]
                                                  (h2x/literal "Email")
                                                  :else

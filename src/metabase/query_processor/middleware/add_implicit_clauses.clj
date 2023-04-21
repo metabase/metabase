@@ -14,7 +14,7 @@
    [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Add Implicit Fields                                               |
@@ -22,7 +22,7 @@
 
 (defn- table->sorted-fields*
   [table-id]
-  (db/select [Field :id :base_type :effective_type :coercion_strategy :semantic_type]
+  (t2/select [Field :id :base_type :effective_type :coercion_strategy :semantic_type]
     :table_id        table-id
     :active          true
     :visibility_type [:not-in ["sensitive" "retired"]]

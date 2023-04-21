@@ -13,7 +13,7 @@ on:
 jobs:
   files-changed:
     name: Check which files changed
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 3
     outputs:
       backend_presto_kerberos: ${{ steps.changes.outputs.backend_presto_kerberos }}
@@ -29,7 +29,7 @@ jobs:
   run-presto-kerberos-test:
     needs: files-changed
     if: needs.files-changed.outputs.backend_presto_kerberos == 'true'
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 40
     steps:
       - name: Install babashka

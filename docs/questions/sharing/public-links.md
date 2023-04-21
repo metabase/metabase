@@ -34,9 +34,7 @@ For more information about the option to **Embed this item in an application**, 
 
 Once you've [enabled sharing on your question or dashboard](#enable-sharing-on-your-saved-question-or-dashboard), you can copy and share the public link URL with whomever you please. The public link URL will display static (view-only) results of your question or dashboard, so visitors won't be able to drill-down into the underlying data on their own.
 
-If you want to create a drill-down pathway on your question or dashboard, you can set up a [custom destination](../../dashboards/interactive.md) that goes to the public link of another question or dashboard.
-
-### Public link to export question results in CSV, XLSX, JSON
+## Public link to export question results in CSV, XLSX, JSON
 
 The export option is only available for questions, not dashboards.
 
@@ -48,6 +46,26 @@ To create a public link that people can use to download the results of a questio
 4. Open the public link in a new tab to test the download.
 
 ![Public export](../images/public-export.png)
+
+## Simulating drill-through with public links
+
+Metabase's automatic [drill-through](https://www.metabase.com/learn/questions/drill-through) won't work on public dashboards because public links don't give people access to your raw data.
+
+You can simulate drill-through on a public dashboard by setting up a [custom click behaviour](../../dashboards/interactive.md) that sends people from one public link to another public link.
+
+1. Create a second dashboard to act as the destination dashboard.
+2. [Enable sharing](#enable-sharing-on-your-saved-question-or-dashboard) on the destination dashboard.
+3. Copy the destination dashboard's public link.
+4. On your primary dashboard, create a [custom destination](../../dashboards/interactive.md#custom-destinations) with type "URL".
+5. Set the custom destination to the destination dashboard's public link.
+6. Optional: pass a filter value from the primary dashboard to the destination dashboard by adding a query parameter to the end of the destination URL:
+  ```
+  /public/dashboard/?child_filter_name={%raw%}{{parent_column_name}}{%endraw%}
+  ```
+
+For example, if you have a primary public dashboard that displays **Invoices** data, you can pass the **Plan** name (on click) to a destination public dashboard that displays **Accounts** data:
+
+![Public link with custom destination](../images/public-link-custom-destination.png)
 
 ## Public embeds
 

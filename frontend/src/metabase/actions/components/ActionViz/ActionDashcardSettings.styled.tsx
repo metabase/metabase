@@ -3,7 +3,7 @@ import styled from "@emotion/styled";
 import { space } from "metabase/styled-components/theme";
 import { color } from "metabase/lib/colors";
 
-import Link from "metabase/core/components/Link";
+import ExternalLink from "metabase/core/components/ExternalLink";
 
 export const ActionSettingsWrapper = styled.div`
   display: flex;
@@ -89,7 +89,7 @@ export const ExplainerText = styled.p`
   color: ${color("text-medium")};
 `;
 
-export const BrandLinkWithLeftMargin = styled(Link)`
+export const BrandLinkWithLeftMargin = styled(ExternalLink)`
   margin-left: ${space(1)};
   color: ${color("brand")};
 `;

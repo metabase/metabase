@@ -8,7 +8,7 @@
    [metabase.models.params.field-values :as params.field-values]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (defmacro ^:private chain-filter [field field->value & options]
   `(chain-filter/chain-filter
@@ -469,7 +469,7 @@
             (is (= {:values          ["African" "American" "Artisan"]
                     :has_more_values false}
                    (take-n-values 3 (chain-filter categories.name nil))))
-            (is (= 1 (db/count FieldValues :field_id field-id :type :full)))))
+            (is (= 1 (t2/count FieldValues :field_id field-id :type :full)))))
 
         (testing "should create a linked-filter FieldValues when have constraints"
           ;; make sure we have a clean start
@@ -481,10 +481,10 @@
             (is (= {:values          ["Japanese" "Steakhouse"]
                     :has_more_values false}
                    (chain-filter categories.name {venues.price 4})))
-            (is (= 1 (db/count FieldValues :field_id field-id :type :linked-filter)))))
+            (is (= 1 (t2/count FieldValues :field_id field-id :type :linked-filter)))))
 
         (testing "should do in-memory search with the cached FieldValues when search without constraints"
-          (mt/with-temp-vals-in-db FieldValues (db/select-one-id FieldValues :field_id field-id :type "full") {:values ["Good" "Bad"]}
+          (mt/with-temp-vals-in-db FieldValues (t2/select-one-pk FieldValues :field_id field-id :type "full") {:values ["Good" "Bad"]}
             (is (= {:values          ["Good"]
                     :has_more_values false}
                    (chain-filter-search categories.name nil "ood")))))
@@ -495,23 +495,23 @@
           (testing "should create a linked-filter FieldValues"
             ;; warm up the cache
             (chain-filter categories.name {venues.price 4})
-            (is (= 1 (db/count FieldValues :field_id field-id :type "linked-filter"))))
+            (is (= 1 (t2/count FieldValues :field_id field-id :type "linked-filter"))))
 
           (testing "should search for the values of linked-filter FieldValues"
-            (db/update-where! FieldValues {:field_id field-id
-                                           :type     "linked-filter"}
-                              :values (json/generate-string ["Good" "Bad"])
-                              ;; HACK: currently this is hardcoded to true for linked-filter
-                              ;; in [[params.field-values/fetch-advanced-field-values]]
-                              ;; we want this to false to test this case
-                              :has_more_values false)
+            (t2/update! FieldValues {:field_id field-id
+                                     :type     "linked-filter"}
+                        {:values (json/generate-string ["Good" "Bad"])
+                         ;; HACK: currently this is hardcoded to true for linked-filter
+                         ;; in [[params.field-values/fetch-advanced-field-values]]
+                         ;; we want this to false to test this case
+                         :has_more_values false})
             (is (= {:values          ["Good"]
                     :has_more_values false}
                    (chain-filter-search categories.name {venues.price 4} "o")))
             (testing "Shouldn't use cached FieldValues if has_more_values=true"
-              (db/update-where! FieldValues {:field_id field-id
-                                             :type     "linked-filter"}
-                                :has_more_values true)
+              (t2/update! FieldValues {:field_id field-id
+                                       :type     "linked-filter"}
+                          {:has_more_values true})
               (is (= {:values          ["Steakhouse"]
                       :has_more_values false}
                      (chain-filter-search categories.name {venues.price 4} "o"))))))))))
@@ -562,17 +562,17 @@
   [field-or-field-id thunk]
   (mt/with-model-cleanup [FieldValues]
     (let [field-id         (u/the-id field-or-field-id)
-          has_field_values (db/select-one-field :has_field_values Field :id field-id)
-          fvs              (db/select FieldValues :field_id field-id)]
+          has_field_values (t2/select-one-fn :has_field_values Field :id field-id)
+          fvs              (t2/select FieldValues :field_id field-id)]
       ;; switch to "list" to prevent [[field-values/create-or-update-full-field-values!]]
       ;; from changing this to `nil` if the field is `auto-list` and exceeds threshholds
-      (db/update! Field field-id :has_field_values "list")
-      (db/delete! FieldValues :field_id field-id)
+      (t2/update! Field field-id {:has_field_values "list"})
+      (t2/delete! FieldValues :field_id field-id)
       (try
         (thunk)
         (finally
-         (db/update! Field field-id :has_field_values has_field_values)
-         (db/insert-many! FieldValues fvs))))))
+         (t2/update! Field field-id {:has_field_values has_field_values})
+         (t2/insert! FieldValues fvs))))))
 
 (defmacro ^:private with-clean-field-values-for-field
   "Run `body` with all FieldValues for `field-id` deleted.

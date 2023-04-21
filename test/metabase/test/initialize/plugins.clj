@@ -7,7 +7,7 @@
    [metabase.test.data.env.impl :as tx.env.impl]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [yaml.core :as yaml]))
+   [metabase.util.yaml :as yaml]))
 
 (set! *warn-on-reflection* true)
 

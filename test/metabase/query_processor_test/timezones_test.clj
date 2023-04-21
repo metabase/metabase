@@ -12,7 +12,7 @@
    [metabase.test.data.sql :as sql.tx]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honeysql-extensions :as hx]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 ;; TIMEZONE FIXME
 (def broken-drivers
@@ -99,12 +99,12 @@
                    "same as specifying UTC for a report timezone")))))))
 
 (defn- table-identifier [table-key]
-  (let [table-name (db/select-one-field :name Table, :id (mt/id table-key))]
+  (let [table-name (t2/select-one-fn :name Table, :id (mt/id table-key))]
     (apply hx/identifier :table (sql.tx/qualified-name-components driver/*driver* (:name (mt/db)) table-name))))
 
 (defn- field-identifier [table-key field-key]
-  (let [table-name (db/select-one-field :name Table, :id (mt/id table-key))
-        field-name (db/select-one-field :name Field, :id (mt/id table-key field-key))]
+  (let [table-name (t2/select-one-fn :name Table, :id (mt/id table-key))
+        field-name (t2/select-one-fn :name Field, :id (mt/id table-key field-key))]
     (apply hx/identifier :field (sql.tx/qualified-name-components driver/*driver* (:name (mt/db)) table-name field-name))))
 
 (defn- honeysql->sql [honeysql]
@@ -114,7 +114,7 @@
   "Map with different types of native params queries, used in test below. Key is a description of the type of native
   params in the query."
   []
-  (binding [hx/*honey-sql-version* (sql.qp/honey-sql-version driver/*driver*)]
+  (sql.qp/with-driver-honey-sql-version driver/*driver*
     {"variable w/ single date"
      {:native     {:query         (honeysql->sql
                                    {:select   (mapv #(sql.qp/maybe-wrap-unaliased-expr (field-identifier :users %))
@@ -297,42 +297,56 @@
               (doseq [[expected-row row] (map vector expected-rows rows)]
                 (is (= expected-row row))))))))))
 
-(deftest filter-datetime-by-date-in-timezone-test
+(deftest filter-datetime-by-date-in-timezone-relative-to-current-date-test
   (mt/test-drivers (set-timezone-drivers)
     (testing "Relative to current date"
       (let [expected-datetime (u.date/truncate (t/zoned-date-time) :second)]
-        (mt/with-temp-test-data
-            ["relative_filter"
-             [{:field-name "created", :base-type :type/DateTimeWithTZ}]
-             [[expected-datetime]]]
-            (doseq [timezone ["UTC" "America/Los_Angeles"]]
-              (mt/with-temporary-setting-values [report-timezone timezone]
-                (is (= (-> expected-datetime
-                           (u.date/with-time-zone-same-instant timezone)
-                           t/offset-date-time)
-                       (-> (mt/run-mbql-query relative_filter {:fields [$created]
-                                                               :filter [:time-interval $created :current :day]})
-                           mt/first-row
-                           first
-                           (u.date/parse nil)
-                           t/offset-date-time))))))))
+        (mt/with-temp-test-data ["relative_filter"
+                                 [{:field-name "created", :base-type :type/DateTimeWithTZ}]
+                                 [[expected-datetime]]]
+          (doseq [timezone ["UTC" "America/Los_Angeles"]]
+            (mt/with-temporary-setting-values [report-timezone timezone]
+              (let [query (mt/mbql-query relative_filter {:fields [$created]
+                                                          :filter [:time-interval $created :current :day]})]
+                (mt/with-native-query-testing-context query
+                  (let [results (qp/process-query query)]
+                    (is (=? {:status :completed}
+                            results))
+                    (is (= (-> expected-datetime
+                               (u.date/with-time-zone-same-instant timezone)
+                               t/offset-date-time)
+                           (some-> results
+                                   mt/first-row
+                                   first
+                                   (u.date/parse nil)
+                                   t/offset-date-time)))))))))))))
+
+(deftest filter-datetime-by-date-in-timezone-relative-to-days-since-test
+  (mt/test-drivers (set-timezone-drivers)
     (testing "Relative to days since"
       (let [expected-datetime (u.date/truncate (u.date/add (t/zoned-date-time) :day -1) :second)]
-        (mt/with-temp-test-data
-          ["relative_filter"
-           [{:field-name "created", :base-type :type/DateTimeWithTZ}]
-           [[expected-datetime]]]
+        (mt/with-temp-test-data ["relative_filter"
+                                 [{:field-name "created", :base-type :type/DateTimeWithTZ}]
+                                 [[expected-datetime]]]
           (doseq [timezone ["UTC" "US/Pacific" "US/Eastern" "Asia/Hong_Kong"]]
             (mt/with-temporary-setting-values [report-timezone timezone]
-              (is (= (-> expected-datetime
-                         (u.date/with-time-zone-same-instant timezone)
-                         t/offset-date-time)
-                     (-> (mt/run-mbql-query relative_filter {:fields [$created]
-                                                             :filter [:time-interval $created -1 :day]})
-                         mt/first-row
-                         first
-                         (u.date/parse nil)
-                         t/offset-date-time))))))))
+              (let [query (mt/mbql-query relative_filter {:fields [$created]
+                                                          :filter [:time-interval $created -1 :day]})]
+                (mt/with-native-query-testing-context query
+                  (let [results (qp/process-query query)]
+                    (is (=? {:status :completed}
+                            results))
+                    (is (= (-> expected-datetime
+                               (u.date/with-time-zone-same-instant timezone)
+                               t/offset-date-time)
+                           (some-> results
+                                   mt/first-row
+                                   first
+                                   (u.date/parse nil)
+                                   t/offset-date-time)))))))))))))
+
+(deftest filter-datetime-by-date-in-timezone-fixed-date-test
+  (mt/test-drivers (set-timezone-drivers)
     (testing "Fixed date"
       (mt/dataset test-data-with-timezones
         (let [expected-datetime #t "2014-07-03T01:30:00Z"]
@@ -346,7 +360,7 @@
             (mt/with-temporary-setting-values [report-timezone timezone]
               (is (= [expected]
                      (mt/first-row
-                       (mt/run-mbql-query users
-                                          {:fields [$last_login]
-                                           :filter [:and [:= $id 12]
-                                                    [:= $last_login date-filter]]})))))))))))
+                      (mt/run-mbql-query users
+                        {:fields [$last_login]
+                         :filter [:and [:= $id 12]
+                                  [:= $last_login date-filter]]})))))))))))

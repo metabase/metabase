@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useCallback } from "react";
 import PropTypes from "prop-types";
 import moment from "moment-timezone";
 
@@ -10,6 +10,7 @@ import Ellipsified from "metabase/core/components/Ellipsified";
 import EntityItem from "metabase/components/EntityItem";
 import DateTime from "metabase/components/DateTime";
 import Tooltip from "metabase/core/components/Tooltip";
+import Markdown from "metabase/core/components/Markdown";
 import ActionMenu from "metabase/collections/components/ActionMenu";
 
 import { color } from "metabase/lib/colors";
@@ -27,6 +28,7 @@ import {
 } from "./BaseItemsTable.styled";
 
 BaseTableItem.propTypes = {
+  databases: PropTypes.arrayOf(PropTypes.object),
   bookmarks: PropTypes.arrayOf(PropTypes.object),
   createBookmark: PropTypes.func,
   deleteBookmark: PropTypes.func,
@@ -44,6 +46,7 @@ BaseTableItem.propTypes = {
 };
 
 export function BaseTableItem({
+  databases,
   bookmarks,
   createBookmark,
   deleteBookmark,
@@ -59,8 +62,6 @@ export function BaseTableItem({
   onDrop,
   onToggleSelected,
 }) {
-  const [isHoveringOverRow, setIsHoveringOverRow] = useState(false);
-
   const handleSelectionToggled = useCallback(() => {
     onToggleSelected(item);
   }, [item, onToggleSelected]);
@@ -93,28 +94,27 @@ export function BaseTableItem({
     // that only accepts native DOM elements as its children
     // So styled-components can't be used here
     return (
-      <tr
-        onMouseEnter={() => {
-          setIsHoveringOverRow(true);
-        }}
-        onMouseLeave={() => {
-          setIsHoveringOverRow(false);
-        }}
-        key={item.id}
-        data-testid={testId}
-        style={trStyles}
-      >
+      <tr key={item.id} data-testid={testId} style={trStyles}>
+        {canSelect && (
+          <ItemCell data-testid={`${testId}-check`}>
+            <EntityIconCheckBox
+              item={item}
+              variant="list"
+              icon={icon}
+              pinned={isPinned}
+              selected={isSelected}
+              onToggleSelected={handleSelectionToggled}
+              selectable
+              showCheckbox
+            />
+          </ItemCell>
+        )}
         <ItemCell data-testid={`${testId}-type`}>
           <EntityIconCheckBox
             item={item}
             variant="list"
             icon={icon}
             pinned={isPinned}
-            selectable={canSelect}
-            selected={isSelected}
-            disabled={!canSelect}
-            onToggleSelected={handleSelectionToggled}
-            showCheckbox={isHoveringOverRow}
           />
         </ItemCell>
         <ItemNameCell data-testid={`${testId}-name`}>
@@ -128,7 +128,11 @@ export function BaseTableItem({
               <DescriptionIcon
                 name="info"
                 size={16}
-                tooltip={item.description}
+                tooltip={
+                  <Markdown disallowHeading unstyleLinks>
+                    {item.description}
+                  </Markdown>
+                }
               />
             )}
           </ItemLink>
@@ -146,13 +150,14 @@ export function BaseTableItem({
         <ItemCell>
           <RowActionsContainer>
             <ActionMenu
-              createBookmark={createBookmark}
-              deleteBookmark={deleteBookmark}
-              bookmarks={bookmarks}
               item={item}
               collection={collection}
+              databases={databases}
+              bookmarks={bookmarks}
               onCopy={onCopy}
               onMove={onMove}
+              createBookmark={createBookmark}
+              deleteBookmark={deleteBookmark}
             />
             {item.model === "dataset" && <ModelDetailLink model={item} />}
           </RowActionsContainer>
@@ -160,6 +165,7 @@ export function BaseTableItem({
       </tr>
     );
   }, [
+    databases,
     bookmarks,
     createBookmark,
     deleteBookmark,
@@ -168,7 +174,6 @@ export function BaseTableItem({
     isPinned,
     isSelected,
     handleSelectionToggled,
-    isHoveringOverRow,
     linkProps,
     collection,
     onCopy,

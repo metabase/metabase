@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 
-import { color, lighten } from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 import Icon from "metabase/components/Icon";
 
@@ -34,8 +34,8 @@ export const ToggleContainer = styled.div`
 `;
 
 export const SettingsTriggerIcon = styled(Icon)`
-  color: ${color("brand")};
+  color: ${color("text-medium")};
   &:hover {
-    color: ${lighten("brand", 0.1)};
+    color: ${color("brand")};
   }
 `;

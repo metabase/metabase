@@ -45,7 +45,9 @@ Current partner drivers:
 - [Clickhouse](https://github.com/ClickHouse/metabase-clickhouse-driver)
 - [Exasol](https://github.com/exasol/metabase-driver)
 - [Firebolt](https://docs.firebolt.io/integrations/business-intelligence/connecting-to-metabase.html)
+- [Ocient](https://github.com/Xeograph/metabase-ocient-driver)
 - [Starburst (compatible with Trino)](https://github.com/starburstdata/metabase-driver)
+
 
 Partner drivers are available to Cloud customers out-of-the-box.
 

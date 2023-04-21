@@ -5,8 +5,8 @@
    [metabase.models.interface :as mi]
    [metabase.models.revision :as revision :refer [Revision]]
    [metabase.test :as mt]
-   [toucan.db :as db]
-   [toucan.models :as models]))
+   [toucan.models :as models]
+   [toucan2.core :as t2]))
 
 (def ^:private reverted-to
   (atom nil))
@@ -223,11 +223,11 @@
       (revision/push-revision! :entity Card, :id card-id, :user-id (mt/user->id :rasta), :object {:name "Tips Created by Day"})
       (revision/push-revision! :entity Card, :id card-id, :user-id (mt/user->id :rasta), :object {:name "Spots Created by Day"})
       (is (= "Spots Created By Day"
-             (:name (db/select-one Card :id card-id))))
+             (:name (t2/select-one Card :id card-id))))
       (let [[_ {old-revision-id :id}] (revision/revisions Card card-id)]
         (revision/revert! :entity Card, :id card-id, :user-id (mt/user->id :rasta), :revision-id old-revision-id)
         (is (= "Tips Created by Day"
-               (:name (db/select-one Card :id card-id))))))))
+               (:name (t2/select-one Card :id card-id))))))))
 
 (deftest reverting-should-add-revision-test
   (testing "Check that reverting to a previous revision adds an appropriate revision"

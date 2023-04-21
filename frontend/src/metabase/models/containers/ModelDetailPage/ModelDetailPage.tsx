@@ -202,20 +202,13 @@ function getModelId(state: State, props: OwnProps) {
   return Urls.extractEntityId(props.params.slug);
 }
 
-function getModelDatabaseId(
-  state: State,
-  props: OwnProps & EntityLoadersProps,
-) {
-  return props.modelCard.dataset_query.database;
-}
-
 function getPageTitle({ modelCard }: Props) {
   return modelCard?.name;
 }
 
 export default _.compose(
   Questions.load({ id: getModelId, entityAlias: "modelCard" }),
-  Databases.load({ id: getModelDatabaseId, loadingAndErrorWrapper: false }),
+  Databases.loadList(),
   Actions.loadList({
     query: (state: State, props: OwnProps) => ({
       "model-id": getModelId(state, props),

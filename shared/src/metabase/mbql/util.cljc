@@ -303,7 +303,7 @@
   "Rewrite various 'syntatic sugar' filter clauses like `:time-interval` and `:inside` as simpler, logically
   equivalent clauses. This can be used to simplify the number of filter clauses that need to be supported by anything
   that needs to enumerate all the possible filter types (such as driver query processor implementations, or the
-  implementation `negate-filter-clause` below.)"
+  implementation [[negate-filter-clause]] below.)"
   [filter-clause :- mbql.s/Filter]
   (-> filter-clause
       desugar-current-relative-datetime
@@ -458,27 +458,6 @@
   correspond to objects in our application DB."
   [[_ id]]
   (ga-id? id))
-
-(defn temporal-field?
-  "Is `field` used to record something date or time related, i.e. does `field` have a base type or semantic type that
-  derives from `:type/Temporal`?"
-  [field]
-  (or (isa? (:base_type field)    :type/Temporal)
-      (isa? (:semantic_type field) :type/Temporal)))
-
-(defn time-field?
-  "Is `field` used to record a time of day (e.g. hour/minute/second), but not the date itself? i.e. does `field` have a
-  base type or semantic type that derives from `:type/Time`?"
-  [field]
-  (or (isa? (:base_type field)    :type/Time)
-      (isa? (:semantic_type field) :type/Time)))
-
-(defn temporal-but-not-time-field?
-  "Does `field` have a base type or semantic type that derives from `:type/Temporal`, but not `:type/Time`? (i.e., is
-  Field a Date or DateTime?)"
-  [field]
-  (and (temporal-field? field)
-       (not (time-field? field))))
 
 ;;; --------------------------------- Unique names & transforming ags to have names ----------------------------------
 
@@ -732,6 +711,18 @@
   (update-field-options field-or-ref (partial into {} (remove (fn [[k _]]
                                                                 (when (keyword? k)
                                                                   (namespace k)))))))
+
+(defn referenced-field-ids
+  "Find all the `:field` references with integer IDs in `coll`, which can be a full MBQL query, a snippet of MBQL, or a
+  sequence of those things; return a set of Field IDs. Includes Fields referenced indirectly via `:source-field`.
+  Returns `nil` if no IDs are found."
+  [coll]
+  (not-empty
+   (into #{}
+         (comp cat (filter some?))
+         (mbql.match/match coll
+           [:field (id :guard integer?) opts]
+           [id (:source-field opts)]))))
 
 #?(:clj
    (p/import-vars

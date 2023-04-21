@@ -13,51 +13,32 @@
     (is (fn? the-fxn))))
 
 (deftest import-test
-  (with-redefs [cmd/resolve-enterprise-command (constantly
-                                                (fn [& args]
-                                                  (cons 'f args)))]
+  (with-redefs [cmd/call-enterprise list]
     (testing "load (v1)"
       (testing "with no options"
-        (is (= '(f "/path/" {:mode :skip, :on-error :continue})
+        (is (= '(metabase-enterprise.serialization.cmd/v1-load "/path/" {:mode :skip, :on-error :continue})
                (cmd/load "/path/"))))
       (testing "with options"
-        (is (= '(f "/path/" {:num-cans :2})
-               (cmd/load "/path/" "--num-cans" "2")))
-        (testing "People can still set --v2 true"
-          (is (= '(f "/path/" {:v2 :true})
-                 (cmd/load "/path/" "--v2" "true"))))))
+        (is (= '(metabase-enterprise.serialization.cmd/v1-load "/path/" {:mode :skip, :on-error :continue :num-cans :2})
+               (cmd/load "/path/" "--num-cans" "2")))))
     (testing "import (v2)"
       (testing "with no options"
-        (is (= '(f "/path/" {:mode :skip, :on-error :continue, :v2 :true})
-               (cmd/import "/path/"))))
-      (testing "with options"
-        (is (= '(f "/path/" {:num-cans :2, :v2 :true})
-               (cmd/import "/path/" "--num-cans" "2")))
-        (testing "Don't let people override --v2 true"
-          (is (= '(f "/path/" {:v2 :true})
-                 (cmd/import "/path/" "--v2" "false"))))))))
+        (is (= '(metabase-enterprise.serialization.cmd/v2-load "/path/" {:abort-on-error false})
+               (cmd/import "/path/")))))))
 
 (deftest export-test
-  (with-redefs [cmd/resolve-enterprise-command (constantly
-                                                (fn [& args]
-                                                  (cons 'f args)))]
+  (with-redefs [cmd/call-enterprise list]
     (testing "dump (v1)"
       (testing "with no options"
-        (is (= '(f "/path/" {:state :active})
+        (is (= '(metabase-enterprise.serialization.cmd/v1-dump "/path/" {:mode :skip, :on-error :continue})
                (cmd/dump "/path/"))))
       (testing "with options"
-        (is (= '(f "/path/" {:num-cans "2"})
-               (cmd/dump "/path/" "--num-cans" "2")))
-        (testing "People can still set --v2 true"
-          (is (= '(f "/path/" {:v2 "true"})
-                 (cmd/dump "/path/" "--v2" "true"))))))
+        (is (= '(metabase-enterprise.serialization.cmd/v1-dump "/path/" {:mode :skip, :on-error :continue, :num-cans "2"})
+               (cmd/dump "/path/" "--num-cans" "2")))))
     (testing "export (v2)"
       (testing "with no options"
-        (is (= '(f "/path/" {:state :active, :v2 true})
+        (is (= '(metabase-enterprise.serialization.cmd/v2-dump "/path/" {:collections nil})
                (cmd/export "/path/"))))
-      (testing "with options"
-        (is (= '(f "/path/" {:num-cans "2", :v2 true})
-               (cmd/export "/path/" "--num-cans" "2")))
-        (testing "Don't let people override --v2 true"
-          (is (= '(f "/path/" {:v2 true})
-                 (cmd/export "/path/" "--v2" "false"))))))))
+      (testing "with --collections list"
+        (is (= '(metabase-enterprise.serialization.cmd/v2-dump "/path/" {:collections [1 2 3] :include-field-values true})
+               (cmd/export "/path/" "--collections" "1,2,3" "--include-field-values")))))))

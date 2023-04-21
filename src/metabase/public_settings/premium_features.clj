@@ -16,6 +16,7 @@
    [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as schema]
+   [toucan2.connection :as t2.conn]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -39,17 +40,43 @@
   "Store URL, used as a fallback for token checks and for fetching the list of cloud gateway IPs."
   "https://store.metabase.com")
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                TOKEN VALIDATION                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (declare premium-embedding-token)
 
-(defn- active-user-count []
-  {:post [(integer? %)]}
-  (assert ((requiring-resolve 'metabase.db/db-is-set-up?)) "Metabase DB is not yet set up")
-  (t2/count :core_user :is_active true))
+;; let's prevent the DB from getting slammed with calls to get the active user count, we only really need one in flight
+;; at a time.
+(let [f        (fn []
+                 {:post [(integer? %)]}
+                 (log/info (u/colorize :yellow "GETTING ACTIVE USER COUNT!"))
+                 (assert ((requiring-resolve 'metabase.db/db-is-set-up?)) "Metabase DB is not yet set up")
+                 ;; force this to use a new Connection, it seems to be getting called in situations where the Connection
+                 ;; is from a different thread and is invalid by the time we get to use it
+                 (let [result (binding [t2.conn/*current-connectable* nil]
+                                (t2/count :core_user :is_active true))]
+                   (log/info (u/colorize :green "=>") result)
+                   result))
+      memoized (memoize/ttl
+                f
+                :ttl/threshold (u/minutes->ms 5))
+      lock     (Object.)]
+  (defn- cached-active-users-count
+    "Primarily used for the settings because we don't wish it to be 100%. (HUH?)"
+    []
+    (locking lock
+      (memoized))))
+
+(defsetting active-users-count
+  (deferred-tru "Cached number of active users. Refresh every 5 minutes.")
+  :visibility :admin
+  :type       :integer
+  :default    0
+  :getter     (fn []
+                (if-not ((requiring-resolve 'metabase.db/db-is-set-up?))
+                 0
+                 (cached-active-users-count))))
 
 (defn- token-status-url [token base-url]
   (when (seq token)
@@ -70,7 +97,7 @@
 (defn- fetch-token-and-parse-body
   [token base-url]
   (some-> (token-status-url token base-url)
-          (http/get {:query-params {:users     (active-user-count)
+          (http/get {:query-params {:users     (cached-active-users-count)
                                     :site-uuid (setting/get :site-uuid-for-premium-features-token-checks)}})
           :body
           (json/parse-string keyword)))
@@ -122,12 +149,12 @@
               (fn [token]
                 ;; this is a sanity check to make sure we can actually get the active user count BEFORE we try to call
                 ;; [[fetch-token-status*]], because `fetch-token-status*` catches Exceptions and therefore caches failed
-                ;; results. We were running into issues in the e2e tests where `active-user-count` was timing out
+                ;; results. We were running into issues in the e2e tests where `active-users-count` was timing out
                 ;; because of to weird timeouts after restoring the app DB from a snapshot, which would cause other
                 ;; tests to fail because a timed-out token check would get cached as a result.
                 (assert ((requiring-resolve 'metabase.db/db-is-set-up?)) "Metabase DB is not yet set up")
                 (u/with-timeout (u/seconds->ms 5)
-                  (active-user-count))
+                  (cached-active-users-count))
                 (fetch-token-status* token))
               :ttl/threshold (u/minutes->ms 5))]
     (fn [token]
