@@ -97,12 +97,12 @@
           ids->models   (zipmap (map :id models) models)
           candidates    (set (keys ids->models))
           best-model-id (metabot-util/find-result
-                         (fn [message]
-                           (some->> message
-                                    (re-seq #"\d+")
-                                    (map parse-long)
-                                    (some candidates)))
-                         (metabot-client/invoke-metabot prompt))]
+                          (fn [message]
+                            (some->> message
+                                     (re-seq #"\d+")
+                                     (map parse-long)
+                                     (some candidates)))
+                          (metabot-client/invoke-metabot prompt))]
       (if-some [model (ids->models best-model-id)]
         (do
           (log/infof "Metabot selected best model for database '%s' with prompt '%s' as '%s'."
@@ -175,9 +175,7 @@
         :metabot/available_fields
         [:or
          [:map [:field_id :metabot/available_fields]]
-         [:map [:int_val :int]]
-         [:map [:double_val :double]]
-         [:map [:string_val :string]]]]]]]))
+         [:map [:value [:or :int :double :string]]]]]]]]))
 
 (comment
   ;; This is useful for making sure the above schema is right
@@ -190,64 +188,69 @@
         malli-schema        (schema available-fields)]
     (mg/generate malli-schema)))
 
-(defn infer-mbql [{:keys [model user_prompt] :as context}]
-  (let [{model-id :id :keys [result_metadata database_id]} model
-        available-fields    {:available_fields (mapv #(select-keys % [:id :name]) result_metadata)}
+(defn add-field-data [{:keys [result_metadata] :as model}]
+  (let [available-fields    {:available_fields (mapv #(select-keys % [:id :name]) result_metadata)}
         field-id->field-ref (zipmap
                               (map :id result_metadata)
-                              (map :field_ref result_metadata))
-        malli-schema        (schema available-fields)
-        json-schema         (mjs/transform malli-schema)
-        prompt              {:messages
-                             [{:role    "system"
-                               :content "You are a pedantic assistant that provides schema-compliant json and nothing else."}
-                              {:role "assistant" :content "This is my data:"}
-                              {:role "assistant" :content (json/generate-string available-fields {:pretty true})}
-                              {:role "assistant" :content "This is the json schema that the response MUST conform to:"}
-                              {:role "assistant" :content (json/generate-string json-schema {:pretty true})}
-                              {:role "assistant" :content "Only give me the generated json that conforms to the schema."}
-                              {:role "user" :content user_prompt}]}
-        json-response       (metabot-util/find-result
-                              (fn [message]
-                                (tap> message)
-                                (metabot-util/extract-json message))
-                              (metabot-client/invoke-metabot prompt))]
-    (try
-      (let [{:keys [breakout aggregation filters]
-             :as   coerced-response} (m/coerce malli-schema json-response mt/json-transformer)]
-        (if (m/validate malli-schema coerced-response)
-          (let [inner-mbql (cond-> (assoc
-                                     (select-keys coerced-response [:breakout :aggregation])
-                                     :source-table (format "card__%s" model-id))
-                             breakout
-                             (update :breakout (partial mapv field-id->field-ref))
-                             aggregation
-                             (update :aggregation (partial mapv (fn [[op id]]
-                                                                  [op (field-id->field-ref id)])))
-                             filters
-                             (update :filters (fn [filters]
-                                                (mapv
-                                                  (fn [[op id m]]
-                                                    (let [{:keys [field_id
-                                                                  int_val
-                                                                  double_val
-                                                                  string_val]} m]
-                                                      [op
-                                                       (field-id->field-ref id)
-                                                       (if field_id
-                                                         (field-id->field-ref field_id)
-                                                         (or int_val
-                                                             double_val
-                                                             string_val))]))
-                                                  filters))))]
-            (tap> inner-mbql)
-            {:database database_id
-             :type     :query
-             :query    inner-mbql})
-          {:fail coerced-response}))
-      (catch Exception e
-        {:fail   json-response
-         :reason :invalid-response}))))
+                              (map :field_ref result_metadata))]
+    (-> model
+        (assoc :available_fields available-fields)
+        (assoc :field-id->field-ref field-id->field-ref)
+        (assoc :mbql_malli_schema (schema available-fields)))))
+
+(defn postprocess-result [{model-id :id :keys [available_fields field-id->field-ref mbql_malli_schema database_id]}
+                          json-response]
+  (try
+    (let [{:keys [breakout aggregation filters]
+           :as   coerced-response} (m/coerce mbql_malli_schema json-response mt/json-transformer)]
+      (if (m/validate mbql_malli_schema coerced-response)
+        (let [inner-mbql (cond-> (assoc
+                                   (select-keys coerced-response [:breakout :aggregation])
+                                   :source-table (format "card__%s" model-id))
+                           breakout
+                           (update :breakout (partial mapv field-id->field-ref))
+                           aggregation
+                           (update :aggregation (partial mapv (fn [[op id]]
+                                                                [op (field-id->field-ref id)])))
+                           filters
+                           (update :filters (fn [filters]
+                                              (mapv
+                                                (fn [[op id m]]
+                                                  (let [{:keys [field_id value]} m]
+                                                    [op
+                                                     (field-id->field-ref id)
+                                                     (if field_id
+                                                       (field-id->field-ref field_id)
+                                                       value)]))
+                                                filters))))]
+          (tap> inner-mbql)
+          {:database database_id
+           :type     :query
+           :query    inner-mbql})
+        {:fail coerced-response}))
+    (catch Exception e
+      {:fail   json-response
+       :reason :invalid-response})))
+
+(defn infer-mbql [{:keys [model user_prompt]}]
+  (let [{:keys [available_fields mbql_malli_schema] :as new-model} (add-field-data model)
+        json-schema   (mjs/transform mbql_malli_schema)
+        prompt        {:messages
+                       [{:role    "system"
+                         :content "You are a pedantic assistant that provides schema-compliant json and nothing else."}
+                        {:role "assistant" :content "This is my data:"}
+                        {:role "assistant" :content (json/generate-string available_fields {:pretty true})}
+                        {:role "assistant" :content "This is the json schema that the response MUST conform to:"}
+                        {:role "assistant" :content (json/generate-string json-schema {:pretty true})}
+                        {:role "assistant" :content "Only give me the generated json that conforms to the schema."}
+                        {:role "user" :content user_prompt}]}
+        json-response (metabot-util/find-result
+                        (fn [message]
+                          (tap> message)
+                          (metabot-util/extract-json message))
+                        (metabot-client/invoke-metabot prompt))]
+    (tap> json-response)
+    (postprocess-result new-model json-response)))
 
 (comment
   (let [{:keys [fail] :as mbql} (infer-mbql
@@ -259,11 +262,33 @@
      :data (qp/process-query mbql)})
 
   (let [{:keys [fail] :as mbql} (infer-mbql
+                                  {:user_prompt "What products have the highest rating?"
+                                   :model       (t2/select-one 'Card :id 1)})]
+    (if fail
+      [:fail fail])
+    mbql)
+
+  (let [{:keys [fail] :as mbql} (infer-mbql
+                                  {:user_prompt "What products have a rating greater than 2.0?"
+                                   :model       (t2/select-one 'Card :id 1)})]
+    (if fail
+      [:fail fail])
+    mbql)
+
+  (let [{:keys [fail] :as mbql} (infer-mbql
                                   {:user_prompt "How many sales were in Idaho?"
                                    :model       (t2/select-one 'Card :id 1)})]
     (if fail
       fail)
     {:mbql mbql
      :data (update-in (qp/process-query mbql) [:data :rows] (fn [rows] (take 10 rows)))})
-  )
 
+  (let [{:keys [available_fields field-id->field-ref mbql_malli_schema database_id]} (add-field-data (t2/select-one 'Card :id 1))
+        json-response {:aggregation [["count" 53]]
+                       :breakout [53]
+                       :filters [["=" 53 {:value "Idaho"}]]}]
+    (m/coerce mbql_malli_schema json-response mt/json-transformer)
+    ;(mg/generate mbql_malli_schema)
+    )
+
+  )
