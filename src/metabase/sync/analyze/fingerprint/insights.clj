@@ -4,6 +4,7 @@
    [java-time :as t]
    [kixi.stats.core :as stats]
    [kixi.stats.math :as math]
+   [kixi.stats.protocols :as p]
    [medley.core :as m]
    [metabase.mbql.util :as mbql.u]
    [metabase.models.field :refer [Field]]
@@ -112,10 +113,11 @@
                             (redux/post-complete
                              (stats/simple-linear-regression (comp (stats/somef x-link-fn) fx)
                                                              (comp (stats/somef y-link-fn) fy))
-                             (fn [[offset slope]]
-                               (when (every? u/real-number? [offset slope])
-                                 {:model   (model offset slope)
-                                  :formula (formula offset slope)}))))
+                             (fn [fit]
+                               (let [[offset slope] (some-> fit p/parameters)]
+                                 (when (every? u/real-number? [offset slope])
+                                   {:model   (model offset slope)
+                                    :formula (formula offset slope)})))))
                           (apply redux/juxt))
      :validation-set ((keep (fn [row]
                               (let [x (fx row)
@@ -203,8 +205,9 @@
                                ((map xfn) (last-n 2))
                                (stats/simple-linear-regression xfn yfn)
                                (best-fit xfn yfn))))
-                (fn [[[y-previous y-current] [x-previous x-current] [offset slope] best-fit]]
-                  (let [unit         (let [unit (some-> datetime :unit mbql.u/normalize-token)]
+                (fn [[[y-previous y-current] [x-previous x-current] fit best-fit-equation]]
+                  (let [[offset slope] (some-> fit p/parameters)
+                        unit         (let [unit (some-> datetime :unit mbql.u/normalize-token)]
                                        (if (or (nil? unit)
                                                (= unit :default))
                                          (infer-unit x-previous x-current)
@@ -218,7 +221,7 @@
                                        (change y-current y-previous))
                      :slope          slope
                      :offset         offset
-                     :best-fit       best-fit
+                     :best-fit       best-fit-equation
                      :col            (:name number-col)
                      :unit           unit))))))
       (trs "Error generating timeseries insight keyed by: {0}"

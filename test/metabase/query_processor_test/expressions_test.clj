@@ -10,7 +10,7 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (deftest basic-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
@@ -193,7 +193,7 @@
      (mt/$ids ~'bird-count
               (calculate-bird-scarcity* ~formula ~filter-clause))))
 
-(deftest nulls-and-zeroes-test
+(deftest ^:parallel nulls-and-zeroes-test
   (mt/test-drivers (disj (mt/normal-drivers-with-feature :expressions)
                          ;; bigquery doesn't let you have hypthens in field, table, etc names
                          ;; therefore a different macro is tested in bigquery driver tests
@@ -298,7 +298,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (deftest expressions+joins-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :expressions :left-join)
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions :left-join :date-arithmetics)
     (testing "Do calculated columns play well with joins"
       (is (= "Simcha Yan"
              (-> (mt/run-mbql-query checkins
@@ -358,13 +358,13 @@
                                        [:field (mt/id :lots-of-fields :a) nil]
                                        [:field (mt/id :lots-of-fields :b) nil]]}
                      :fields      (into [[:expression "c"]]
-                                        (for [{:keys [id]} (db/select [Field :id]
+                                        (for [{:keys [id]} (t2/select [Field :id]
                                                              :table_id (mt/id :lots-of-fields)
                                                              :id       [:not-in #{(mt/id :lots-of-fields :a)
                                                                                   (mt/id :lots-of-fields :b)}]
                                                              {:order-by [[:name :asc]]})]
                                           [:field id nil]))})]
-        (db/with-call-counting [call-count-fn]
+        (t2/with-call-count [call-count-fn]
           (mt/with-native-query-testing-context query
             (is (= 1
                    (-> (qp/process-query query) mt/rows ffirst))))
@@ -388,9 +388,7 @@
                   :order-by    [[:asc $id]]})))))))
 
 (deftest expression-using-aggregation-test
-  (mt/test-drivers (disj (mt/normal-drivers-with-feature :expressions)
-                         ;; The limit in source-query is ignored (#27249)
-                         :mongo)
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
     (testing "Can we use aggregations from previous steps in expressions (#12762)"
       (is (= [["20th Century Cafe" 2 2 0]
               [ "25°" 2 2 0]

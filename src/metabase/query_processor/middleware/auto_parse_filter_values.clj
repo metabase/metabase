@@ -12,6 +12,8 @@
    [metabase.util.schema :as su]
    [schema.core :as s]))
 
+(set! *warn-on-reflection* true)
+
 (s/defn ^:private parse-value-for-base-type [v :- s/Str, base-type :- su/FieldType]
   {:pre [(string? v)]}
   (try

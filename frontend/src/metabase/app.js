@@ -6,6 +6,11 @@ import "classlist-polyfill";
 
 import "number-to-locale-string";
 
+// This is conditionally aliased in the webpack config.
+// If EE isn't enabled, it loads an empty file.
+// Should be imported before any other metabase import
+import "ee-overrides"; // eslint-disable-line import/no-unresolved, import/no-duplicates
+
 // If enabled this monkeypatches `t` and `jt` to return blacked out
 // strings/elements to assist in finding untranslated strings.
 import "metabase/lib/i18n-debug";
@@ -21,7 +26,7 @@ import "metabase/plugins/builtin";
 
 // This is conditionally aliased in the webpack config.
 // If EE isn't enabled, it loads an empty file.
-import "ee-plugins"; // eslint-disable-line import/no-unresolved
+import "ee-plugins"; // eslint-disable-line import/no-unresolved, import/no-duplicates
 
 import React from "react";
 import ReactDOM from "react-dom";

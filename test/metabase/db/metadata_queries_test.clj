@@ -9,28 +9,28 @@
    [metabase.models.interface :as mi]
    [metabase.models.table :as table]
    [metabase.test :as mt]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 ;; Redshift tests are randomly failing -- see https://github.com/metabase/metabase/issues/2767
 (defn- metadata-queries-test-drivers []
   (mt/normal-drivers-except #{:redshift}))
 
-(deftest field-distinct-count-test
+(deftest ^:parallel field-distinct-count-test
   (mt/test-drivers (metadata-queries-test-drivers)
     (is (= 100
-           (metadata-queries/field-distinct-count (db/select-one Field :id (mt/id :checkins :venue_id)))))
+           (metadata-queries/field-distinct-count (t2/select-one Field :id (mt/id :checkins :venue_id)))))
     (is (= 15
-           (metadata-queries/field-distinct-count (db/select-one Field :id (mt/id :checkins :user_id)))))))
+           (metadata-queries/field-distinct-count (t2/select-one Field :id (mt/id :checkins :user_id)))))))
 
 (deftest field-count-test
   (mt/test-drivers (metadata-queries-test-drivers)
     (is (= 1000
-           (metadata-queries/field-count (db/select-one Field :id (mt/id :checkins :venue_id)))))))
+           (metadata-queries/field-count (t2/select-one Field :id (mt/id :checkins :venue_id)))))))
 
 (deftest field-distinct-values-test
   (mt/test-drivers (metadata-queries-test-drivers)
     (is (= [1 2 3 4 5 6 7 8 9 10 11 12 13 14 15]
-           (map int (metadata-queries/field-distinct-values (db/select-one Field :id (mt/id :checkins :user_id))))))))
+           (map int (metadata-queries/field-distinct-values (t2/select-one Field :id (mt/id :checkins :user_id))))))))
 
 (deftest table-rows-sample-test
   (let [expected [["20th Century Cafe"]
@@ -38,8 +38,8 @@
                   ["33 Taps"]
                   ["800 Degrees Neapolitan Pizzeria"]
                   ["BCD Tofu House"]]
-        table    (db/select-one Table :id (mt/id :venues))
-        fields   [(db/select-one Field :id (mt/id :venues :name))]
+        table    (t2/select-one Table :id (mt/id :venues))
+        fields   [(t2/select-one Field :id (mt/id :venues :name))]
         fetch!   #(->> (metadata-queries/table-rows-sample table fields (constantly conj) (when % {:truncation-size %}))
                        ;; since order is not guaranteed do some sorting here so we always get the same results
                        (sort-by first)
@@ -80,7 +80,7 @@
                    {:base_type :type/Text :semantic_type :type/State}
                    {:base_type :type/Text :semantic_type :type/URL}]]
       (is (#'metadata-queries/text-field? field)))
-    (doseq [field [{:base_type :type/Structured} ; json fields in pg
+    (doseq [field [{:base_type :type/JSON} ; json fields in pg
                    {:base_type :type/Text :semantic_type :type/SerializedJSON} ; "legacy" json fields in pg
                    {:base_type :type/Text :semantic_type :type/XML}]]
       (is (not (#'metadata-queries/text-field? field))))))

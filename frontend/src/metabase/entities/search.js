@@ -3,11 +3,20 @@ import { createEntity } from "metabase/lib/entities";
 import { GET } from "metabase/lib/api";
 import { entityTypeForObject } from "metabase/lib/schema";
 
-import { ObjectUnionSchema, ENTITIES_SCHEMA_MAP } from "metabase/schema";
+import { ObjectUnionSchema } from "metabase/schema";
 
 import { canonicalCollectionId } from "metabase/collections/utils";
 
-const ENTITIES_TYPES = Object.keys(ENTITIES_SCHEMA_MAP);
+import Actions from "./actions";
+import Bookmarks from "./bookmarks";
+import Collections from "./collections";
+import Dashboards from "./dashboards";
+import Metrics from "./metrics";
+import Pulses from "./pulses";
+import Questions from "./questions";
+import Segments from "./segments";
+import Snippets from "./snippets";
+import SnippetCollections from "./snippet-collections";
 
 const searchList = GET("/api/search");
 const collectionList = GET("/api/collection/:collection/items");
@@ -82,12 +91,17 @@ export default createEntity({
 
   // delegate to each entity's actionShouldInvalidateLists
   actionShouldInvalidateLists(action) {
-    const entities = require("metabase/entities");
-    for (const type of ENTITIES_TYPES) {
-      if (entities[type].actionShouldInvalidateLists(action)) {
-        return true;
-      }
-    }
-    return false;
+    return (
+      Actions.actionShouldInvalidateLists(action) ||
+      Bookmarks.actionShouldInvalidateLists(action) ||
+      Collections.actionShouldInvalidateLists(action) ||
+      Dashboards.actionShouldInvalidateLists(action) ||
+      Metrics.actionShouldInvalidateLists(action) ||
+      Pulses.actionShouldInvalidateLists(action) ||
+      Questions.actionShouldInvalidateLists(action) ||
+      Segments.actionShouldInvalidateLists(action) ||
+      Snippets.actionShouldInvalidateLists(action) ||
+      SnippetCollections.actionShouldInvalidateLists(action)
+    );
   },
 });

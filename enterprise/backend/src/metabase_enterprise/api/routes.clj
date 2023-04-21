@@ -6,6 +6,7 @@
   `enterprise/backend/README.md` for more details."
   (:require
    [compojure.core :as compojure]
+   [metabase-enterprise.advanced-config.api.logs :as logs]
    [metabase-enterprise.advanced-permissions.api.routes
     :as advanced-permissions]
    [metabase-enterprise.api.routes.common :as ee.api.common]
@@ -32,6 +33,9 @@
    (compojure/context
     "/advanced-permissions" []
     (ee.api.common/+require-premium-feature :advanced-permissions advanced-permissions/routes))
+   (compojure/context
+    "/logs" []
+    (ee.api.common/+require-premium-feature :advanced-config logs/routes))
    (compojure/context
     "/serialization" []
     (ee.api.common/+require-premium-feature :serialization serialization/routes))))

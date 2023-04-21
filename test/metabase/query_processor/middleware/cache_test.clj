@@ -5,7 +5,6 @@
    [clojure.core.async :as a]
    [clojure.data.csv :as csv]
    [clojure.test :refer :all]
-   [clojure.tools.logging :as log]
    [java-time :as t]
    [medley.core :as m]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -29,9 +28,12 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as tu]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [pretty.core :as pretty]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -121,7 +123,7 @@
 (defmacro with-mock-cache [[& bindings] & body]
   `(do-with-mock-cache (fn [{:keys [~@bindings]}] ~@body)))
 
-(def ^:private ^:dynamic ^Integer *query-execution-delay-ms* 10)
+(def ^:private ^:dynamic ^Long *query-execution-delay-ms* 10)
 
 (defn- test-query [query-kvs]
   (merge {:cache-ttl 60, :query :abc} query-kvs))
@@ -343,7 +345,7 @@
                                                                           (apply save-query-update-avg-time-original args))
                     cache/min-duration-ms                               (constantly 0)]
         (with-mock-cache [save-chan]
-          (db/delete! Query :query_hash q-hash)
+          (t2/delete! Query :query_hash q-hash)
           (is (not (:cached (qp/process-userland-query query (context.default/default-context)))))
           (a/alts!! [save-chan (a/timeout 200)]) ;; wait-for-result closes the channel
           (u/deref-with-timeout called-promise 500)

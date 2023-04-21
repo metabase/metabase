@@ -1,4 +1,4 @@
-(ns metabase.task-test
+(ns ^:mb/once metabase.task-test
   (:require
    [clojure.test :refer :all]
    [clojurewerkz.quartzite.jobs :as jobs]
@@ -13,6 +13,8 @@
    [schema.core :as s])
   (:import
    (org.quartz CronTrigger JobDetail)))
+
+(set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db))
 

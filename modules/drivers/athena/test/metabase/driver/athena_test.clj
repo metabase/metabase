@@ -1,14 +1,17 @@
 (ns metabase.driver.athena-test
-  (:require [clojure.test :refer :all]
-            [honeysql.core :as hsql]
-            [honeysql.format :as hformat]
-            [metabase.driver :as driver]
-            [metabase.driver.athena :as athena]
-            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-            [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.public-settings.premium-features :as premium-features]
-            [metabase.query-processor :as qp]
-            [metabase.test :as mt]))
+  (:require
+   [clojure.test :refer :all]
+   #_{:clj-kondo/ignore [:discouraged-namespace]}
+   [honeysql.format :as hformat]
+   [metabase.driver :as driver]
+   [metabase.driver.athena :as athena]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.public-settings.premium-features :as premium-features]
+   [metabase.query-processor :as qp]
+   [metabase.test :as mt]
+   #_{:clj-kondo/ignore [:discouraged-namespace]}
+   [metabase.util.honeysql-extensions :as hx]))
 
 (def ^:private nested-schema
   [{:col_name "key", :data_type "int"}
@@ -71,8 +74,8 @@
     (testing "We should return TIME and TIMESTAMP WITH TIME ZONE columns correctly"
       ;; these both come back as `java.sql.type/VARCHAR` for some wacko reason from the JDBC driver, so let's make sure
       ;; we have code in place to work around that.
-      (let [timestamp-tz (hsql/raw "timestamp '2022-11-16 04:21:00 US/Pacific'")
-            time         (hsql/raw "time '5:03:00'")
+      (let [timestamp-tz (hx/raw "timestamp '2022-11-16 04:21:00 US/Pacific'")
+            time         (hx/raw "time '5:03:00'")
             [sql & args] (hformat/format {:select [[timestamp-tz :timestamp-tz]
                                                    [time :time]]})
             query        (-> (mt/native-query {:query sql, :params args})
@@ -102,10 +105,10 @@
       ;; apparently you can't cast a TIMESTAMP WITH TIME ZONE to a regular TIMESTAMP. So make sure we're not trying to
       ;; do that cast. This only applies to Athena v3! I think we're currently testing against v2. When we upgrade this
       ;; should ensure things continue to work.
-      (let [literal      (hsql/raw "timestamp '2022-11-16 04:21:00 US/Pacific'")
-            [sql & args] (hformat/format {:select [[(sql.qp/add-interval-honeysql-form :athena literal 1 :day)
-                                                    :t]
-                                                   ]})
+      (let [literal      [:raw "timestamp '2022-11-16 04:21:00 US/Pacific'"]
+            [sql & args] (sql.qp/format-honeysql :athena
+                                                 {:select [[(sql.qp/add-interval-honeysql-form :athena literal 1 :day)
+                                                            :t]]})
             query        (mt/native-query {:query sql, :params args})]
         (mt/with-native-query-testing-context query
           (is (= ["2022-11-17T12:21:00Z"]
@@ -132,3 +135,17 @@
         (is (not (contains?
                    (sql-jdbc.conn/connection-details->spec :athena {:region "us-west-2"})
                    :AwsCredentialsProviderClass)))))))
+
+(deftest page-test
+  (testing ":page clause places OFFSET *before* LIMIT"
+    (is (= [(str "SELECT \"default\".\"categories\".\"id\" AS \"id\""
+                 " FROM \"default\".\"categories\""
+                 " ORDER BY \"default\".\"categories\".\"id\" ASC"
+                 " OFFSET ? LIMIT ?") 10 5]
+           (sql.qp/format-honeysql :athena
+             (sql.qp/apply-top-level-clause :athena :page
+                                            {:select   [[:default.categories.id "id"]]
+                                             :from     [:default.categories]
+                                             :order-by [[:default.categories.id :asc]]}
+                                            {:page {:page  3
+                                                    :items 5}}))))))

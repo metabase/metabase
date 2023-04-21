@@ -217,9 +217,9 @@
       ;; know the features are still working correctly because we're actually checking that we get the right result
       ;; from running the query above these tests are more of a sanity check to make sure the SQL generated is sane.)
       (testing "Make sure correct query is generated"
-        (is (= {:query  (str "SELECT count(*) AS \"count\" "
+        (is (= {:query  (str "SELECT COUNT(*) AS \"count\" "
                              "FROM \"PUBLIC\".\"VENUES\" "
-                             "WHERE (\"PUBLIC\".\"VENUES\".\"PRICE\" = 3 OR \"PUBLIC\".\"VENUES\".\"PRICE\" = 4)")
+                             "WHERE (\"PUBLIC\".\"VENUES\".\"PRICE\" = 3) OR (\"PUBLIC\".\"VENUES\".\"PRICE\" = 4)")
                 :params nil}
                (qp/compile
                 (mt/query venues
@@ -241,7 +241,7 @@
                  (qp/process-query query)))))
 
       (testing "Make sure correct query is generated"
-        (is (= {:query  (str "SELECT count(*) AS \"count\" "
+        (is (= {:query  (str "SELECT COUNT(*) AS \"count\" "
                              "FROM \"PUBLIC\".\"VENUES\" "
                              "WHERE \"PUBLIC\".\"VENUES\".\"PRICE\" BETWEEN 3 AND 4")
                 :params nil}
@@ -256,10 +256,10 @@
 ;; try it with date params as well. Even though there's no way to do this in the frontend AFAIK there's no reason we
 ;; can't handle it on the backend
 (deftest date-params-test
-  (is (= {:query  (str "SELECT count(*) AS \"count\" FROM \"PUBLIC\".\"CHECKINS\" "
+  (is (= {:query  (str "SELECT COUNT(*) AS \"count\" FROM \"PUBLIC\".\"CHECKINS\" "
                        "WHERE ("
-                       "(\"PUBLIC\".\"CHECKINS\".\"DATE\" >= ? AND \"PUBLIC\".\"CHECKINS\".\"DATE\" < ?)"
-                       " OR (\"PUBLIC\".\"CHECKINS\".\"DATE\" >= ? AND \"PUBLIC\".\"CHECKINS\".\"DATE\" < ?)"
+                       "(\"PUBLIC\".\"CHECKINS\".\"DATE\" >= ?) AND (\"PUBLIC\".\"CHECKINS\".\"DATE\" < ?))"
+                       " OR ((\"PUBLIC\".\"CHECKINS\".\"DATE\" >= ?) AND (\"PUBLIC\".\"CHECKINS\".\"DATE\" < ?)"
                        ")")
           :params [#t "2014-06-01T00:00Z[UTC]"
                    #t "2014-07-01T00:00Z[UTC]"

@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import _ from "underscore";
+import { useUnmount } from "react-use";
 
 import { t } from "ttag";
 
@@ -15,10 +16,9 @@ import Toaster from "metabase/components/Toaster";
 
 import { useLoadingTimer } from "metabase/hooks/use-loading-timer";
 import { useWebNotification } from "metabase/hooks/use-web-notification";
-import { useOnUnmount } from "metabase/hooks/use-on-unmount";
 
 import { fetchDatabaseMetadata } from "metabase/redux/metadata";
-import { getIsNavbarOpen, setErrorPage } from "metabase/redux/app";
+import { getIsNavbarOpen, closeNavbar, setErrorPage } from "metabase/redux/app";
 
 import { getDatabases, getMetadata } from "metabase/selectors/metadata";
 import {
@@ -46,6 +46,7 @@ import {
   getEditingParameter,
   getParameters,
   getParameterValues,
+  getDraftParameterValues,
   getLoadingStartTime,
   getClickBehaviorSidebarDashcard,
   getIsAddParameterPopoverOpen,
@@ -83,6 +84,7 @@ const mapStateToProps = (state, props) => {
     editingParameter: getEditingParameter(state, props),
     parameters: getParameters(state, props),
     parameterValues: getParameterValues(state, props),
+    draftParameterValues: getDraftParameterValues(state, props),
     metadata: getMetadata(state),
     loadingStartTime: getLoadingStartTime(state),
     clickBehaviorSidebarDashcard: getClickBehaviorSidebarDashcard(state),
@@ -100,6 +102,7 @@ const mapStateToProps = (state, props) => {
 
 const mapDispatchToProps = {
   ...dashboardActions,
+  closeNavbar,
   archiveDashboard: id => Dashboards.actions.setArchived({ id }, true),
   fetchDatabaseMetadata,
   setErrorPage,
@@ -108,12 +111,11 @@ const mapDispatchToProps = {
 
 // NOTE: should use DashboardControls and DashboardData HoCs here?
 const DashboardApp = props => {
-  const options = parseHashOptions(window.location.hash);
-
   const { isRunning, isLoadingComplete, dashboard } = props;
 
-  const [editingOnLoad] = useState(options.edit);
-  const [addCardOnLoad] = useState(options.add && parseInt(options.add));
+  const options = parseHashOptions(window.location.hash);
+  const editingOnLoad = options.edit;
+  const addCardOnLoad = options.add && parseInt(options.add);
 
   const [isShowingToaster, setIsShowingToaster] = useState(false);
 
@@ -130,7 +132,7 @@ const DashboardApp = props => {
 
   const [requestPermission, showNotification] = useWebNotification();
 
-  useOnUnmount(props.reset);
+  useUnmount(props.reset);
 
   useEffect(() => {
     if (isLoadingComplete) {

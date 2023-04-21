@@ -1,23 +1,26 @@
 (ns metabase.driver.sqlserver-test
-  (:require [clojure.string :as str]
-            [clojure.test :refer :all]
-            [colorize.core :as colorize]
-            [honeysql.core :as hsql]
-            [java-time :as t]
-            [medley.core :as m]
-            [metabase.config :as config]
-            [metabase.driver :as driver]
-            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-            [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-            [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.driver.sql.util.unprepare :as unprepare]
-            [metabase.driver.sqlserver :as sqlserver]
-            [metabase.models :refer [Database]]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor.interface :as qp.i]
-            [metabase.query-processor.middleware.constraints :as qp.constraints]
-            [metabase.query-processor.timezone :as qp.timezone]
-            [metabase.test :as mt]))
+  (:require
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [colorize.core :as colorize]
+   [honeysql.core :as hsql]
+   [java-time :as t]
+   [medley.core :as m]
+   [metabase.config :as config]
+   [metabase.driver :as driver]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.sql.util.unprepare :as unprepare]
+   [metabase.driver.sqlserver :as sqlserver]
+   [metabase.models :refer [Database]]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.interface :as qp.i]
+   [metabase.query-processor.middleware.constraints :as qp.constraints]
+   [metabase.query-processor.timezone :as qp.timezone]
+   [metabase.test :as mt]))
+
+(set! *warn-on-reflection* true)
 
 (deftest fix-order-bys-test
   (testing "Remove order-by from joins"
@@ -225,6 +228,7 @@
                             [(t/zoned-date-time  date time (t/zone-id "America/Los_Angeles"))
                              (t/offset-date-time (t/local-date-time date time) (t/zone-offset -8))]]]
         (let [expected (or expected t)]
+          #_{:clj-kondo/ignore [:discouraged-var]}
           (testing (format "Convert %s to SQL literal" (colorize/magenta (with-out-str (pr t))))
             (let [sql (format "SELECT %s AS t;" (unprepare/unprepare-value :sqlserver t))]
               (with-open [conn (sql-jdbc.execute/connection-with-timezone :sqlserver (mt/db) nil)

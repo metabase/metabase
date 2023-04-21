@@ -9,6 +9,8 @@
    (java.io BufferedWriter OutputStream OutputStreamWriter)
    (java.nio.charset StandardCharsets)))
 
+(set! *warn-on-reflection* true)
+
 (defmethod qp.si/stream-options :csv
   ([_]
    (qp.si/stream-options :csv "query_result"))

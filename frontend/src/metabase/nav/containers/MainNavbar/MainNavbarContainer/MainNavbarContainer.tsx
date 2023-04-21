@@ -7,7 +7,7 @@ import Modal from "metabase/components/Modal";
 
 import * as Urls from "metabase/lib/urls";
 
-import type { Bookmark, Collection, User } from "metabase-types/api";
+import type { Bookmark, Collection, Database, User } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 import Bookmarks, { getOrderedBookmarks } from "metabase/entities/bookmarks";
@@ -17,6 +17,7 @@ import Collections, {
   ROOT_COLLECTION,
   CollectionTreeItem,
 } from "metabase/entities/collections";
+import Databases from "metabase/entities/databases";
 import { logout } from "metabase/auth/actions";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import { getHasDataAccess, getHasOwnDatabase } from "metabase/selectors/data";
@@ -34,12 +35,12 @@ import MainNavbarView from "./MainNavbarView";
 
 type NavbarModal = "MODAL_NEW_COLLECTION" | null;
 
-function mapStateToProps(state: State) {
+function mapStateToProps(state: State, { databases = [] }: DatabaseProps) {
   return {
     currentUser: getUser(state),
     isAdmin: getUserIsAdmin(state),
-    hasDataAccess: getHasDataAccess(state),
-    hasOwnDatabase: getHasOwnDatabase(state),
+    hasDataAccess: getHasDataAccess(databases),
+    hasOwnDatabase: getHasOwnDatabase(databases),
     bookmarks: getOrderedBookmarks(state),
   };
 }
@@ -62,6 +63,10 @@ interface Props extends MainNavbarProps {
   logout: () => void;
   onReorderBookmarks: (bookmarks: Bookmark[]) => void;
   onChangeLocation: (location: LocationDescriptor) => void;
+}
+
+interface DatabaseProps {
+  databases?: Database[];
 }
 
 function MainNavbarContainer({
@@ -184,7 +189,14 @@ export default _.compose(
     loadingAndErrorWrapper: false,
   }),
   Collections.loadList({
-    query: () => ({ tree: true, "exclude-archived": true }),
+    query: () => ({
+      tree: true,
+      "exclude-other-user-collections": true,
+      "exclude-archived": true,
+    }),
+    loadingAndErrorWrapper: false,
+  }),
+  Databases.loadList({
     loadingAndErrorWrapper: false,
   }),
   connect(mapStateToProps, mapDispatchToProps),

@@ -1,5 +1,6 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
+import _ from "underscore";
 
 import type { StackedTooltipModel } from "../types";
 import StackedDataTooltip from "./StackedDataTooltip";
@@ -8,7 +9,7 @@ const defaultHeaderRows = [
   {
     color: "red",
     name: "2020",
-    value: 100,
+    value: 300,
     formatter: (value: unknown) => `(${value})`,
   },
 ];
@@ -23,7 +24,7 @@ const defaultBodyRows = [
   {
     color: "blue",
     name: "2018",
-    value: 300,
+    value: 100,
     formatter: (value: unknown) => `[${value}]`,
   },
 ];
@@ -65,7 +66,7 @@ describe("StackedDataTooltip", () => {
     const { rowNames, rowValues, header } = setup();
     expect(header).toHaveTextContent("header-title");
     expect(rowNames).toStrictEqual(["2020", "2019", "2018"]);
-    expect(rowValues).toStrictEqual(["(100)", "_200_", "[300]"]);
+    expect(rowValues).toStrictEqual(["(300)", "_200_", "[100]"]);
   });
 
   it("does not percentages when showPercentages is falsy", () => {
@@ -75,12 +76,111 @@ describe("StackedDataTooltip", () => {
 
   it("renders percentages when showPercentages=true", () => {
     const { rowPercents } = setup({ showPercentages: true });
-    expect(rowPercents).toStrictEqual(["16.67 %", "33.33 %", "50.00 %"]);
+    expect(rowPercents).toStrictEqual(["50.00 %", "33.33 %", "16.67 %"]);
   });
 
   it("renders the total row when showTotal=true", () => {
     const { rowNames, rowValues } = setup({ showTotal: true });
     expect(rowNames[rowNames.length - 1]).toBe("Total");
     expect(rowValues[rowValues.length - 1]).toBe("600");
+  });
+
+  it("groups excessive tooltip rows", () => {
+    const bodyRows = _.range(10).map(rowNumber => ({
+      color: "red",
+      name: `body row ${rowNumber}`,
+      value: rowNumber * 100,
+    }));
+
+    const { rowNames, rowValues } = setup({
+      showTotal: true,
+      headerRows: [],
+      bodyRows,
+    });
+
+    expect(rowNames).toStrictEqual([
+      "body row 9",
+      "body row 8",
+      "body row 7",
+      "body row 6",
+      "body row 5",
+      "body row 4",
+      "body row 3",
+      "Other",
+      "Total",
+    ]);
+
+    expect(rowValues).toStrictEqual([
+      "900",
+      "800",
+      "700",
+      "600",
+      "500",
+      "400",
+      "300",
+      "300",
+      "4500",
+    ]);
+  });
+
+  it("sorts rows by value from highest to lowest", () => {
+    const unsortedRows = [
+      {
+        color: "red",
+        name: "100",
+        value: 100,
+      },
+      {
+        color: "red",
+        name: "null",
+        value: null,
+      },
+      {
+        color: "red",
+        name: "50",
+        value: 50,
+      },
+      {
+        color: "red",
+        name: "200",
+        value: 200,
+      },
+    ];
+
+    const { rowNames, rowValues } = setup({
+      showTotal: true,
+      headerRows: unsortedRows,
+      bodyRows: unsortedRows,
+    });
+
+    expect(rowNames).toStrictEqual([
+      // header
+      "200",
+      "100",
+      "50",
+      "null",
+      // body
+      "200",
+      "100",
+      "50",
+      "null",
+      // total
+      "Total",
+    ]);
+
+    expect(rowValues).toStrictEqual([
+      // header
+      "200",
+      "100",
+      "50",
+      "null",
+      // body
+      "200",
+      "100",
+      "50",
+      "null",
+      // total
+      "700",
+    ]);
   });
 });

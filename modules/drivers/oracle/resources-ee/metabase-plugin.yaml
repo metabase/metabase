@@ -18,8 +18,12 @@ driver:
     - name: service-name
       display-name: Oracle service name
       placeholder: Optional TNS alias
-    - user
-    - password
+    - merge:
+        - user
+        - required: false
+    - merge:
+        - password
+        - required: false
     - cloud-ip-address-info
     - ssl
     - name: ssl-use-keystore
@@ -28,10 +32,10 @@ driver:
       visible-if:
         ssl: true
     - name: ssl-keystore
-      display-name: Keystore
+      display-name: Keystore (PKCS12 or JKS)
       type: secret
       secret-kind: keystore
-      placeholder: /path/to/keystore.jks
+      placeholder: /path/to/keystore
       visible-if:
         ssl-use-keystore: true
     - name: ssl-keystore-password
@@ -47,10 +51,10 @@ driver:
       visible-if:
         ssl: true
     - name: ssl-truststore
-      display-name: Truststore
+      display-name: Truststore (PKCS12 or JKS)
       type: secret
       secret-kind: keystore
-      placeholder: /path/to/truststore.jks
+      placeholder: /path/to/truststore
       visible-if:
         ssl-use-truststore: true
     - name: ssl-truststore-password
@@ -60,7 +64,9 @@ driver:
       required: false
       visible-if:
         ssl-use-truststore: true
-  connection-properties-include-tunnel-config: true
+    - ssh-tunnel
+    - advanced-options-start
+    - default-advanced-options
 init:
   - step: load-namespace
     namespace: metabase.driver.oracle

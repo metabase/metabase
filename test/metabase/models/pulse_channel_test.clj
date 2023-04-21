@@ -6,14 +6,16 @@
    [metabase.models.pulse :refer [Pulse]]
    [metabase.models.pulse-channel :as pulse-channel :refer [PulseChannel]]
    [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
-   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.models.serialization :as serdes]
    [metabase.models.user :refer [User]]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]])
+   [toucan.hydrate :refer [hydrate]]
+   [toucan2.core :as t2])
   (:import
    (java.time LocalDateTime)))
+
+(set! *warn-on-reflection* true)
 
 ;; Test out our predicate functions
 
@@ -136,23 +138,21 @@
 (defn- create-channel-then-select!
   [channel]
   (when-let [new-channel-id (pulse-channel/create-pulse-channel! channel)]
-    (-> (db/select-one PulseChannel :id new-channel-id)
+    (-> (t2/select-one PulseChannel :id new-channel-id)
         (hydrate :recipients)
         (update :recipients #(sort-by :email %))
         (dissoc :id :pulse_id :created_at :updated_at)
         (update :entity_id boolean)
-        (m/dissoc-in [:details :emails])
-        mt/derecordize)))
+        (m/dissoc-in [:details :emails]))))
 
 (defn- update-channel-then-select!
   [{:keys [id] :as channel}]
   (pulse-channel/update-pulse-channel! channel)
-  (-> (db/select-one PulseChannel :id id)
+  (-> (t2/select-one PulseChannel :id id)
       (hydrate :recipients)
       (dissoc :id :pulse_id :created_at :updated_at)
       (update :entity_id boolean)
-      (m/dissoc-in [:details :emails])
-      mt/derecordize))
+      (m/dissoc-in [:details :emails])))
 
 ;; create-pulse-channel!
 (deftest create-pulse-channel!-test
@@ -324,7 +324,7 @@
                   PulseChannel [{channel-id :id} {:pulse_id pulse-id}]]
     (letfn [(upd-recipients! [recipients]
               (pulse-channel/update-recipients! channel-id recipients)
-              (db/select-field :user_id PulseChannelRecipient, :pulse_channel_id channel-id))]
+              (t2/select-fn-set :user_id PulseChannelRecipient, :pulse_channel_id channel-id))]
       (doseq [[new-recipients expected] {[]                  nil
                                          [:rasta]            [:rasta]
                                          [:crowberto]        [:crowberto]
@@ -334,24 +334,32 @@
           (is (= (not-empty (set (map mt/user->id expected)))
                  (upd-recipients! (map mt/user->id new-recipients)))))))))
 
+(defn- filter-channel-results
+  "Filters channel results based on a set of expected values for a given field."
+  [results field expected]
+  (filter
+   (fn [pulse] ((set expected) (field pulse)))
+   results))
+
 (deftest retrieve-scheduled-channels-test
   (letfn [(retrieve-channels [hour day]
             (for [channel (pulse-channel/retrieve-scheduled-channels hour day :other :other)]
-              (dissoc (into {} channel) :id :pulse_id)))]
+              (dissoc (into {} channel) :id)))]
     (testing "test a simple scenario with a single Pulse and 2 channels on hourly/daily schedules"
       (mt/with-temp* [Pulse        [{pulse-id :id}]
                       PulseChannel [_ {:pulse_id pulse-id}] ;-> schedule_type = daily, schedule_hour = 15, channel_type = email
                       PulseChannel [_ {:pulse_id pulse-id, :channel_type :slack, :schedule_type :hourly}]
                       PulseChannel [_ {:pulse_id pulse-id, :channel_type :email, :schedule_type :hourly, :enabled false}]]
-        (doseq [[[hour day] expected] {[nil nil]  #{{:schedule_type :hourly, :channel_type :slack}}
-                                       [12 nil]   #{{:schedule_type :hourly, :channel_type :slack}}
-                                       [15 nil]   #{{:schedule_type :hourly, :channel_type :slack}
-                                                    {:schedule_type :daily, :channel_type :email}}
-                                       [15 "wed"] #{{:schedule_type :hourly, :channel_type :slack}
-                                                    {:schedule_type :daily, :channel_type :email}}}]
+        (doseq [[[hour day] expected] {[nil nil]  #{{:pulse_id pulse-id, :schedule_type :hourly, :channel_type :slack}}
+                                       [12 nil]   #{{:pulse_id pulse-id, :schedule_type :hourly, :channel_type :slack}}
+                                       [15 nil]   #{{:pulse_id pulse-id, :schedule_type :hourly, :channel_type :slack}
+                                                    {:pulse_id pulse-id, :schedule_type :daily, :channel_type :email}}
+                                       [15 "wed"] #{{:pulse_id pulse-id, :schedule_type :hourly, :channel_type :slack}
+                                                    {:pulse_id pulse-id, :schedule_type :daily, :channel_type :email}}}]
           (testing (cons 'retrieve-scheduled-channels [hour day])
             (is (= expected
-                   (set (retrieve-channels hour day))))))))
+                   (set (-> (retrieve-channels hour day)
+                            (filter-channel-results :pulse_id #{pulse-id})))))))))
 
     (testing "more complex scenario with 2 Pulses, including weekly scheduling"
       (mt/with-temp* [Pulse        [{pulse-1-id :id}]
@@ -360,22 +368,23 @@
                       PulseChannel [_ {:pulse_id pulse-1-id, :enabled true, :channel_type :slack, :schedule_type :hourly}]
                       PulseChannel [_ {:pulse_id pulse-2-id, :enabled true, :channel_type :slack, :schedule_type :daily :schedule_hour 10, :schedule_day "wed"}]
                       PulseChannel [_ {:pulse_id pulse-2-id, :enabled true, :channel_type :email, :schedule_type :weekly, :schedule_hour 8, :schedule_day "mon"}]]
-        (doseq [[[hour day] expected] {[nil nil] #{{:schedule_type :hourly, :channel_type :slack}}
-                                       [10 nil]  #{{:schedule_type :daily, :channel_type :slack}
-                                                   {:schedule_type :hourly, :channel_type :slack}}
-                                       [15 nil]  #{{:schedule_type :hourly, :channel_type :slack}
-                                                   {:schedule_type :daily, :channel_type :email}}
-                                       [8 "mon"] #{{:schedule_type :weekly, :channel_type :email}
-                                                   {:schedule_type :hourly, :channel_type :slack}}}]
+        (doseq [[[hour day] expected] {[nil nil] #{{:pulse_id pulse-1-id, :schedule_type :hourly, :channel_type :slack}}
+                                       [10 nil]  #{{:pulse_id pulse-2-id, :schedule_type :daily, :channel_type :slack}
+                                                   {:pulse_id pulse-1-id, :schedule_type :hourly, :channel_type :slack}}
+                                       [15 nil]  #{{:pulse_id pulse-1-id, :schedule_type :hourly, :channel_type :slack}
+                                                   {:pulse_id pulse-1-id, :schedule_type :daily, :channel_type :email}}
+                                       [8 "mon"] #{{:pulse_id pulse-2-id, :schedule_type :weekly, :channel_type :email}
+                                                   {:pulse_id pulse-1-id, :schedule_type :hourly, :channel_type :slack}}}]
           (testing (cons 'retrieve-scheduled-channels [hour day])
             (is (= expected
-                   (set (retrieve-channels hour day))))))))))
+                   (set (-> (retrieve-channels hour day)
+                            (filter-channel-results :pulse_id #{pulse-1-id pulse-2-id})))))))))))
 
 (deftest retrive-monthly-scheduled-pulses-test
   (testing "specific test for various monthly scheduling permutations"
     (letfn [(retrieve-channels [& args]
               (for [channel (apply pulse-channel/retrieve-scheduled-channels args)]
-                (dissoc (into {} channel) :id :pulse_id)))]
+                (dissoc (into {} channel) :id)))]
       (mt/with-temp* [Pulse        [{pulse-1-id :id}]
                       Pulse        [{pulse-2-id :id}]
                       PulseChannel [_ {:pulse_id pulse-1-id, :channel_type :email, :schedule_type :monthly, :schedule_hour 12, :schedule_frame :first}]
@@ -388,24 +397,25 @@
                   :expected #{}}
                  {:message  "this should capture BOTH first absolute day of month + first monday of month schedules"
                   :args     [12 "mon" :first :first]
-                  :expected #{{:schedule_type :monthly, :channel_type :email}
-                              {:schedule_type :monthly, :channel_type :slack}}}
+                  :expected #{{:pulse_id pulse-1-id, :schedule_type :monthly, :channel_type :email}
+                              {:pulse_id pulse-1-id, :schedule_type :monthly, :channel_type :slack}}}
                  {:message  "this should only capture the first monday of the month"
                   :args     [12 "mon" :other :first]
-                  :expected #{{:schedule_type :monthly, :channel_type :slack}}},
+                  :expected #{{:pulse_id pulse-1-id, :schedule_type :monthly, :channel_type :slack}}},
                  {:message  "this makes sure hour checking is being enforced"
                   :args     [8 "mon" :first :first]
                   :expected #{}}
                  {:message  "middle of the month"
                   :args     [16 "fri" :mid :other]
-                  :expected #{{:schedule_type :monthly, :channel_type :slack}}}
+                  :expected #{{:pulse_id pulse-2-id, :schedule_type :monthly, :channel_type :slack}}}
                  {:message  "last friday of the month (but not the last day of month)"
                   :args     [8 "fri" :other :last]
-                  :expected #{{:schedule_type :monthly, :channel_type :email}}}]]
+                  :expected #{{:pulse_id pulse-2-id, :schedule_type :monthly, :channel_type :email}}}]]
           (testing message
             (testing (cons 'retrieve-scheduled-channels args)
               (is (= expected
-                     (set (apply retrieve-channels args)))))))))))
+                     (set (-> (apply retrieve-channels args)
+                              (filter-channel-results :pulse_id #{pulse-1-id pulse-2-id}))))))))))))
 
 (deftest inactive-users-test
   (testing "Inactive users shouldn't get Pulses"
@@ -465,5 +475,5 @@
                                            :details      {:emails ["cam@test.com"]}
                                            :created_at   now}]]
         (is (= "2f5f0269"
-               (serdes.hash/raw-hash [(serdes.hash/identity-hash pulse) :email {:emails ["cam@test.com"]} now])
-               (serdes.hash/identity-hash chan)))))))
+               (serdes/raw-hash [(serdes/identity-hash pulse) :email {:emails ["cam@test.com"]} now])
+               (serdes/identity-hash chan)))))))

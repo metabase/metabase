@@ -1,4 +1,5 @@
 import React, { useMemo } from "react";
+import { color } from "metabase/lib/colors";
 import { TooltipRow, TooltipTotalRow } from "../TooltipRow";
 import type { StackedTooltipModel } from "../types";
 import {
@@ -9,7 +10,14 @@ import {
   DataPointTable,
   DataPointTableFooter,
 } from "./StackedDataTooltip.styled";
-import { getPercent, getTotalValue } from "./utils";
+import {
+  getPercent,
+  getSortedRows,
+  getTotalValue,
+  groupExcessiveTooltipRows,
+} from "./utils";
+
+const MAX_BODY_ROWS = 8;
 
 type StackedDataTooltipProps = StackedTooltipModel;
 
@@ -22,19 +30,33 @@ const StackedDataTooltip = ({
   showPercentages,
   totalFormatter = (value: unknown) => String(value),
 }: StackedDataTooltipProps) => {
-  const rowsTotal = useMemo(
-    () => getTotalValue(headerRows, bodyRows),
-    [headerRows, bodyRows],
+  const sortedHeaderRows = useMemo(
+    () => getSortedRows(headerRows),
+    [headerRows],
   );
-  const isShowingTotalSensible = headerRows.length + bodyRows.length > 1;
+  const sortedBodyRows = useMemo(() => getSortedRows(bodyRows), [bodyRows]);
+  const rowsTotal = useMemo(
+    () => getTotalValue(sortedHeaderRows, sortedBodyRows),
+    [sortedHeaderRows, sortedBodyRows],
+  );
+
+  const isShowingTotalSensible =
+    sortedHeaderRows.length + sortedBodyRows.length > 1;
   const hasColorIndicators = useMemo(
-    () => [...bodyRows, ...headerRows].some(row => row.color != null),
-    [headerRows, bodyRows],
+    () =>
+      [...sortedBodyRows, ...sortedHeaderRows].some(row => row.color != null),
+    [sortedHeaderRows, sortedBodyRows],
   );
 
   // For some charts such as PieChart we intentionally show only certain data rows that do not represent the full data.
   // In order to calculate percentages correctly we provide the grand total value
   const percentCalculationTotal = grandTotal ?? rowsTotal;
+
+  const trimmedBodyRows = groupExcessiveTooltipRows(
+    sortedBodyRows,
+    MAX_BODY_ROWS,
+    hasColorIndicators ? color("text-light") : undefined,
+  );
 
   return (
     <DataPointRoot>
@@ -44,8 +66,8 @@ const StackedDataTooltip = ({
         </DataPointHeader>
       )}
       <DataPointTable>
-        <DataPointTableHeader hasBottomSpacing={bodyRows.length > 0}>
-          {headerRows.map((row, index) => (
+        <DataPointTableHeader hasBottomSpacing={sortedBodyRows.length > 0}>
+          {sortedHeaderRows.map((row, index) => (
             <TooltipRow
               key={index}
               isHeader
@@ -57,9 +79,9 @@ const StackedDataTooltip = ({
           ))}
         </DataPointTableHeader>
 
-        {bodyRows.length > 0 && (
+        {trimmedBodyRows.length > 0 && (
           <DataPointTableBody>
-            {bodyRows.map((row, index) => (
+            {trimmedBodyRows.map((row, index) => (
               <TooltipRow
                 key={index}
                 percent={

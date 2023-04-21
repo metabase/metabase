@@ -1,7 +1,6 @@
 import styled from "@emotion/styled";
 
 import Link from "metabase/core/components/Link";
-import Icon from "metabase/components/Icon";
 
 import { color, darken } from "metabase/lib/colors";
 

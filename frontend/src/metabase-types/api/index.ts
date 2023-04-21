@@ -11,6 +11,7 @@ export * from "./dataset";
 export * from "./field";
 export * from "./foreign-key";
 export * from "./group";
+export * from "./metabot";
 export * from "./metric";
 export * from "./models";
 export * from "./notifications";
@@ -19,12 +20,15 @@ export * from "./query";
 export * from "./revision";
 export * from "./segment";
 export * from "./settings";
+export * from "./setup";
 export * from "./slack";
 export * from "./snippets";
+export * from "./store";
 export * from "./table";
 export * from "./timeline";
 export * from "./user";
 export * from "./parameters";
+export * from "./search";
 
 // ISO8601 timestamp
 export type ISO8601Time = string;

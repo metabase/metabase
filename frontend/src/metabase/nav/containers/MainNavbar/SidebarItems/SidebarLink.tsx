@@ -82,6 +82,8 @@ function SidebarLink({
       depth={0}
       isSelected={isSelected}
       hasDefaultIconStyle={hasDefaultIconStyle}
+      aria-label={children}
+      aria-selected={isSelected}
       onMouseDown={disableImageDragging}
       {...props}
     >

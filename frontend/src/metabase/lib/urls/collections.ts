@@ -1,9 +1,6 @@
 import slugg from "slugg";
 
-import {
-  Collection as BaseCollection,
-  RegularCollectionId,
-} from "metabase-types/api";
+import { Collection as BaseCollection } from "metabase-types/api";
 
 import { appendSlug, extractEntityId } from "./utils";
 

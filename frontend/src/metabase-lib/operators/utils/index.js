@@ -82,14 +82,12 @@ export function getFilterOperators(field, table, selected) {
     });
 }
 
-export function getSupportedAggregationOperators(table) {
+export function getSupportedAggregationOperators(database) {
   return AGGREGATION_OPERATORS.filter(operator => {
     if (!operator.requiredDriverFeature) {
       return true;
     }
-    return (
-      table.db && table.db.features.includes(operator.requiredDriverFeature)
-    );
+    return database?.features.includes(operator.requiredDriverFeature);
   });
 }
 
@@ -102,9 +100,9 @@ function populateFields(aggregationOperator, fields) {
   };
 }
 
-export function getAggregationOperators(table) {
-  return getSupportedAggregationOperators(table)
-    .map(operator => populateFields(operator, table.fields))
+export function getAggregationOperators(database, fields) {
+  return getSupportedAggregationOperators(database)
+    .map(operator => populateFields(operator, fields))
     .filter(
       aggregation =>
         !aggregation.requiresField ||

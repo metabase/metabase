@@ -51,12 +51,18 @@ const Questions = createEntity({
           ),
         );
         dispatch(
-          Collections.actions.fetchList({ tree: true }, { reload: true }),
+          Collections.actions.fetchList(
+            {
+              tree: true,
+              "exclude-archived": true,
+            },
+            { reload: true },
+          ),
         );
 
         const card = result?.payload?.question;
         if (card) {
-          dispatch.action(API_UPDATE_QUESTION, card);
+          dispatch({ type: API_UPDATE_QUESTION, payload: card });
         }
 
         return result;

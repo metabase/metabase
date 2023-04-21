@@ -1,53 +1,68 @@
 (ns metabase.driver.common.parameters.parse
   (:require
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [metabase.driver.common.parameters :as params]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [schema.core :as s])
   (:import
    (metabase.driver.common.parameters Optional Param)))
 
-(def ^:private StringOrToken  (s/cond-pre s/Str (s/enum :optional-begin :param-begin :optional-end :param-end)))
+(set! *warn-on-reflection* true)
+
+(def ^:private StringOrToken  (s/cond-pre s/Str {:token s/Keyword
+                                                 :text  s/Str}))
 
 (def ^:private ParsedToken (s/cond-pre s/Str Param Optional))
 
-(defn- split-on-token-string
-  "Split string `s` once when substring `token-str` is encountered; replace `token-str` with `token` keyword instead.
+(defn- combine-adjacent-strings
+  "Returns any adjacent strings in coll combined together"
+  [coll]
+  (apply concat
+         (for [subseq (partition-by string? coll)]
+           (if (string? (first subseq))
+             [(apply str subseq)]
+             subseq))))
 
-    (split-on-token \"ABxCxD\" \"x\" :x) ;; -> [\"AB\" :x \"CxD\"]"
-  [^String s token-str token]
-  (when-let [index (str/index-of s token-str)]
-    (let [before (.substring s 0 index)
-          after  (.substring s (+ index (count token-str)) (count s))]
-      [before token after])))
+(defn- find-token
+  "Returns a vector of [index match] for string or regex pattern found in s"
+  [s pattern]
+  (if (string? pattern)
+    (when-let [index (str/index-of s pattern)]
+      [index pattern])
+    (let [m (re-matcher pattern s)]
+      (when (.find m)
+        [(.start m) (subs s (.start m) (.end m))]))))
 
-(defn- split-on-token-pattern
-  "Like `split-on-token-string`, but splits on a regular expression instead, replacing the matched group with `token`.
-  The pattern match an entire query, and return 3 groups — everything before the match; the match itself; and
-  everything after the match."
-  [s re token]
-  (when-let [[_ before _ after] (re-matches re s)]
-    [before token after]))
-
-(defn- split-on-token
-  [s token-str token]
-  ((if (string? token-str)
-     split-on-token-string
-     split-on-token-pattern) s token-str token))
-
-(defn- tokenize-one [s token-str token]
+(defn- tokenize-one [s pattern token]
   (loop [acc [], s s]
     (if (empty? s)
       acc
-      (if-let [[before token after] (split-on-token s token-str token)]
-        (recur (into acc [before token]) after)
+      (if-let [[index text] (find-token s pattern)]
+        (recur (conj acc (subs s 0 index) {:text text :token token})
+               (subs s (+ index (count text))))
         (conj acc s)))))
 
+(def ^:private param-token-patterns
+  [["[[" :optional-begin]
+   ["]]" :optional-end]
+    ;; param-begin should only match the last two opening brackets in a sequence of > 2, e.g.
+    ;; [{$match: {{{x}}, field: 1}}] should parse to ["[$match: {" (param "x") ", field: 1}}]"]
+   [#"(?s)\{\{(?!\{)" :param-begin]
+   ["}}" :param-end]])
+
+(def ^:private sql-token-patterns
+  (concat
+   [["/*" :block-comment-begin]
+    ["*/" :block-comment-end]
+    ["--" :line-comment-begin]
+    ["\n" :newline]]
+   param-token-patterns))
+
 (s/defn ^:private tokenize :- [StringOrToken]
-  [s :- s/Str]
+  [s :- s/Str, handle-sql-comments :- s/Bool]
   (reduce
    (fn [strs [token-str token]]
      (filter
@@ -59,79 +74,96 @@
            (tokenize-one s token-str token)))
        strs)))
    [s]
-   [["[[" :optional-begin]
-    ["]]" :optional-end]
-    ;; param-begin should only match the last two opening brackets in a sequence of > 2, e.g.
-    ;; [{$match: {{{x}}, field: 1}}] should parse to ["[$match: {" (param "x") ", field: 1}}]"]
-    [#"(?s)(.*?)(\{\{(?!\{))(.*)" :param-begin]
-    ["}}" :param-end]]))
+   (if handle-sql-comments
+     sql-token-patterns
+     param-token-patterns)))
 
 (defn- param [& [k & more]]
   (when (or (seq more)
             (not (string? k)))
     (throw (ex-info (tru "Invalid '{{...}}' clause: expected a param name")
-             {:type qp.error-type/invalid-query})))
+                    {:type qp.error-type/invalid-query})))
   (let [k (str/trim k)]
     (when (empty? k)
       (throw (ex-info (tru "'{{...}}' clauses cannot be empty.")
-               {:type qp.error-type/invalid-query})))
+                      {:type qp.error-type/invalid-query})))
     (params/->Param k)))
 
 (defn- optional [& parsed]
   (when-not (some params/Param? parsed)
     (throw (ex-info (tru "'[[...]]' clauses must contain at least one '{{...}}' clause.")
-             {:type qp.error-type/invalid-query})))
-  (params/->Optional parsed))
+                    {:type qp.error-type/invalid-query})))
+  (params/->Optional (combine-adjacent-strings parsed)))
 
 (s/defn ^:private parse-tokens* :- [(s/one [ParsedToken] "parsed tokens") (s/one [StringOrToken] "remaining tokens")]
-  [tokens :- [StringOrToken], optional-level :- s/Int, param-level :- s/Int]
-  (loop [acc [], [token & more] tokens]
-    (condp = token
-      nil
+  [tokens :- [StringOrToken]
+   optional-level :- s/Int
+   param-level :- s/Int
+   comment-mode :- (s/enum nil :block-comment-begin :line-comment-begin)]
+  (loop [acc [], [string-or-token & more] tokens]
+    (cond
+      (nil? string-or-token)
       (if (or (pos? optional-level) (pos? param-level))
         (throw (ex-info (tru "Invalid query: found '[[' or '{{' with no matching ']]' or '}}'")
                         {:type qp.error-type/invalid-query}))
         [acc nil])
 
-      :optional-begin
-      (let [[parsed more] (parse-tokens* more (inc optional-level) param-level)]
-        (recur (conj acc (apply optional parsed)) more))
+      (string? string-or-token)
+      (recur (conj acc string-or-token) more)
 
-      :param-begin
-      (let [[parsed more] (parse-tokens* more optional-level (inc param-level))]
-        (recur (conj acc (apply param parsed)) more))
+      :else
+      (let [{:keys [text token]} string-or-token]
+        (case token
+          :optional-begin
+          (if comment-mode
+            (recur (conj acc text) more)
+            (let [[parsed more] (parse-tokens* more (inc optional-level) param-level comment-mode)]
+              (recur (conj acc (apply optional parsed)) more)))
 
-      :optional-end
-      (if (pos? optional-level)
-        [acc more]
-        (recur (conj acc "]]") more))
+          :param-begin
+          (if comment-mode
+            (recur (conj acc text) more)
+            (let [[parsed more] (parse-tokens* more optional-level (inc param-level) comment-mode)]
+              (recur (conj acc (apply param parsed)) more)))
 
-      :param-end
-      (if (pos? param-level)
-        [acc more]
-        (recur (conj acc "}}") more))
+          (:line-comment-begin :block-comment-begin)
+          (if (or comment-mode (pos? optional-level))
+            (recur (conj acc text) more)
+            (let [[parsed more] (parse-tokens* more optional-level param-level token)]
+              (recur (into acc (cons text parsed)) more)))
 
-      (recur (conj acc token) more))))
+          :block-comment-end
+          (if (= comment-mode :block-comment-begin)
+            [(conj acc text) more]
+            (recur (conj acc text) more))
 
-(s/defn ^:private parse-tokens :- [ParsedToken]
-  [tokens :- [StringOrToken]]
-  (let [parsed (first (parse-tokens* tokens 0 0))]
-    ;; now loop over everything in `parsed`, and if we see 2 strings next to each other put them back together
-    ;; e.g. [:token "x" "}}"] -> [:token "x}}"]
-    (loop [acc [], last (first parsed), [x & more] (rest parsed)]
-      (cond
-        (not x)                          (conj acc last)
-        (and (string? last) (string? x)) (recur acc (str last x) more)
-        :else                            (recur (conj acc last) x more)))))
+          :newline
+          (if (= comment-mode :line-comment-begin)
+            [(conj acc text) more]
+            (recur (conj acc text) more))
+
+          :optional-end
+          (if (pos? optional-level)
+            [acc more]
+            (recur (conj acc text) more))
+
+          :param-end
+          (if (pos? param-level)
+            [acc more]
+            (recur (conj acc text) more)))))))
 
 (s/defn parse :- [(s/cond-pre s/Str Param Optional)]
   "Attempts to parse parameters in string `s`. Parses any optional clauses or parameters found, and returns a sequence
-   of non-parameter string fragments (possibly) interposed with `Param` or `Optional` instances."
-  [s :- s/Str]
-  (let [tokenized (tokenize s)]
-    (if (= [s] tokenized)
-      [s]
-      (do
-        (log/tracef "Tokenized native query ->\n%s" (u/pprint-to-str tokenized))
-        (u/prog1 (parse-tokens tokenized)
-          (log/tracef "Parsed native query ->\n%s" (u/pprint-to-str <>)))))))
+   of non-parameter string fragments (possibly) interposed with `Param` or `Optional` instances.
+
+   If handle-sql-comments is true (default) then we make a best effort to ignore params in SQL comments."
+  ([s :- s/Str]
+   (parse s true))
+  ([s :- s/Str, handle-sql-comments :- s/Bool]
+   (let [tokenized (tokenize s handle-sql-comments)]
+     (if (= [s] tokenized)
+       [s]
+       (do
+         (log/tracef "Tokenized native query ->\n%s" (u/pprint-to-str tokenized))
+         (u/prog1 (combine-adjacent-strings (first (parse-tokens* tokenized 0 0 nil)))
+                  (log/tracef "Parsed native query ->\n%s" (u/pprint-to-str <>))))))))

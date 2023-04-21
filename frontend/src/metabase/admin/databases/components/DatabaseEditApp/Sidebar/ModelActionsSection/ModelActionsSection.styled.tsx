@@ -22,3 +22,9 @@ export const Description = styled.p`
   color: ${color("text-medium")};
   line-height: 22px;
 `;
+
+export const Error = styled(Description)`
+  color: ${color("error")};
+  border-left: 3px solid ${color("error")};
+  padding-left: 12px;
+`;

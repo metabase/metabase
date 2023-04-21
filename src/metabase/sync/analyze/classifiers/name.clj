@@ -2,14 +2,15 @@
   "Classifier that infers the semantic type of a Field based on its name and base type."
   (:require
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [metabase.config :as config]
    [metabase.models.database :refer [Database]]
    [metabase.sync.interface :as i]
    [metabase.sync.util :as sync-util]
+   [metabase.util :as u]
+   [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (def ^:private bool-or-int-type #{:type/Boolean :type/Integer})
 (def ^:private float-type       #{:type/Float})
@@ -108,7 +109,9 @@
    [#"description"                 text-type        :type/Description]
    [#"title"                       text-type        :type/Title]
    [#"comment"                     text-type        :type/Comment]
+   [#"birthda(?:te|y)"             date-type        :type/Birthdate]
    [#"birthda(?:te|y)"             timestamp-type   :type/Birthdate]
+   [#"(?:te|y)(?:_?)of(?:_?)birth" date-type        :type/Birthdate]
    [#"(?:te|y)(?:_?)of(?:_?)birth" timestamp-type   :type/Birthdate]])
 
 ;; Check that all the pattern tuples are valid
@@ -122,7 +125,7 @@
 (s/defn ^:private semantic-type-for-name-and-base-type :- (s/maybe su/FieldSemanticOrRelationType)
   "If `name` and `base-type` matches a known pattern, return the `semantic_type` we should assign to it."
   [field-name :- su/NonBlankString, base-type :- su/FieldType]
-  (let [field-name (str/lower-case field-name)]
+  (let [field-name (u/lower-case-en field-name)]
     (some (fn [[name-pattern valid-base-types semantic-type]]
             (when (and (some (partial isa? base-type) valid-base-types)
                        (re-find name-pattern field-name))
@@ -178,16 +181,16 @@
    [(prefix-or-postfix "vendor")       :entity/CompanyTable]])
 
 (s/defn infer-entity-type :- i/TableInstance
-  "Classifer that infers the semantic type of a TABLE based on its name."
+  "Classifer that infers the semantic type of a `table` based on its name."
   [table :- i/TableInstance]
-  (let [table-name (-> table :name str/lower-case)]
+  (let [table-name (-> table :name u/lower-case-en)]
     (assoc table :entity_type (or (some (fn [[pattern type]]
                                           (when (re-find pattern table-name)
                                             type))
                                         entity-types-patterns)
                                   (case (->> table
                                              :db_id
-                                             (db/select-one Database :id)
+                                             (t2/select-one Database :id)
                                              :engine)
                                     :googleanalytics :entity/GoogleAnalyticsTable
                                     :druid           :entity/EventTable

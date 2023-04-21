@@ -30,6 +30,7 @@
   (eval . (put 'setting/defsetting 'clojure-doc-string-elt 2))
   (eval . (put 's/defn 'clojure-doc-string-elt 2))
   (eval . (put 'p.types/defprotocol+ 'clojure-doc-string-elt 2))
+  (eval . (put 'methodical/defmethod 'clojure-doc-string-elt 3))
   (eval . (put 'methodical/defmulti 'clojure-doc-string-elt 2))
   (eval . (put 'mi/define-simple-hydration-method 'clojure-doc-string-elt 3))
   (eval . (put 'mi/define-batched-hydration-method 'clojure-doc-string-elt 3))
@@ -49,6 +50,7 @@
   (eval . (put-clojure-indent 'mbql.match/match-one 1))
   (eval . (put-clojure-indent 'mbql.match/replace 1))
   (eval . (put-clojure-indent 'mbql.match/replace-in 2))
+  (eval . (put-clojure-indent 'mbql.u/replace 1))
   (eval . (put-clojure-indent 'mi/define-methods '(:form)))
   (eval . (put-clojure-indent 'mt/dataset 1))
   (eval . (put-clojure-indent 'mt/format-rows-by 1))
@@ -60,6 +62,7 @@
   (eval . (put-clojure-indent 'u/prog1 1))
   (eval . (put-clojure-indent 'u/select-keys-when 1))
   (eval . (put-clojure-indent 'with-meta '(:form)))
+  (eval . (put-clojure-indent 'tc/quick-check 1))
   ;; these ones have to be done with `define-clojure-indent' for now because of upstream bug
   ;; https://github.com/clojure-emacs/clojure-mode/issues/600 once that's resolved we should use `put-clojure-indent'
   ;; instead. Please don't add new entries unless they don't work with `put-clojure-indent'
@@ -79,14 +82,14 @@
   (clojure-indent-style . always-align)
   (cljr-favor-prefix-notation . nil)
   (clojure-docstring-fill-column . 118)
-  (cider-preferred-build-tool . clojure-cli))
+  (cider-preferred-build-tool . clojure-cli)
+  (cider-default-cljs-repl . shadow-select)
+  (cider-shadow-default-options . "node-repl"))
 
  ("shared"
   (clojure-mode
-   (cider-default-cljs-repl . shadow-select)
-   (cider-shadow-default-options . "node-repl")
    (cider-preferred-build-tool . shadow-cljs)))
 
  ("bin"
   (clojure-mode
-   (cider-clojure-cli-aliases . "dev"))))
+   (cider-clojure-cli-aliases . "dev:drivers:build:build-dev"))))

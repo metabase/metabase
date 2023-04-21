@@ -1,14 +1,14 @@
 (ns metabase.events.sync-database
   (:require
    [clojure.core.async :as a]
-   [clojure.tools.logging :as log]
    [metabase.events :as events]
    [metabase.models.database :refer [Database]]
    [metabase.sync :as sync]
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
-   [toucan.db :as db]))
+   [metabase.util.log :as log]
+   [toucan2.core :as t2]))
 
 (def ^:private sync-database-topics
   "The `Set` of event topics which are subscribed to for use in database syncing."
@@ -30,7 +30,7 @@
   ;; try/catch here to prevent individual topic processing exceptions from bubbling up.  better to handle them here.
   (try
     (when event
-      (when-let [database (db/select-one Database :id (events/object->model-id topic object))]
+      (when-let [database (t2/select-one Database :id (events/object->model-id topic object))]
         ;; just kick off a sync on another thread
         (future
           (try

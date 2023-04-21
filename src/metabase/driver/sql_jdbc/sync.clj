@@ -21,8 +21,7 @@
   excluded-schemas
   fallback-metadata-query
   filtered-syncable-schemas
-  have-select-privilege?
-  syncable-schemas]
+  have-select-privilege?]
 
  [sql-jdbc.describe-table
   add-table-pks

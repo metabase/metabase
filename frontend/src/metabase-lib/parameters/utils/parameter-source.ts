@@ -1,16 +1,22 @@
 import {
-  Dataset,
-  FieldValue,
   Parameter,
   ValuesQueryType,
   ValuesSourceConfig,
   ValuesSourceType,
 } from "metabase-types/api";
-import { getFields } from "metabase-lib/parameters/utils/parameter-fields";
 import Field from "metabase-lib/metadata/Field";
+import { ParameterWithTemplateTagTarget } from "../types";
+import { getFields } from "./parameter-fields";
+import { getParameterSubType, getParameterType } from "./parameter-type";
 
-export const getQueryType = (parameter: Parameter): ValuesQueryType => {
-  return parameter.values_query_type ?? "list";
+export const getQueryType = (
+  parameter: ParameterWithTemplateTagTarget,
+): ValuesQueryType => {
+  if (parameter.hasVariableTemplateTagTarget) {
+    return parameter.values_query_type ?? "none";
+  } else {
+    return parameter.values_query_type ?? "list";
+  }
 };
 
 export const getSourceType = (parameter: Parameter): ValuesSourceType => {
@@ -19,6 +25,21 @@ export const getSourceType = (parameter: Parameter): ValuesSourceType => {
 
 export const getSourceConfig = (parameter: Parameter): ValuesSourceConfig => {
   return parameter.values_source_config ?? {};
+};
+
+export const canUseCustomSource = (parameter: Parameter) => {
+  const type = getParameterType(parameter);
+  const subType = getParameterSubType(parameter);
+
+  switch (type) {
+    case "string":
+    case "location":
+      return subType === "=";
+    case "category":
+      return true;
+    default:
+      return false;
+  }
 };
 
 export const isValidSourceConfig = (
@@ -50,15 +71,14 @@ export const getSourceConfigForType = (
 };
 
 export const canListParameterValues = (parameter: Parameter) => {
+  const queryType = getQueryType(parameter);
+  const sourceType = getSourceType(parameter);
   const fields = getFields(parameter);
+  const canListFields = canListFieldValues(fields);
 
-  if (getQueryType(parameter) !== "list") {
-    return false;
-  } else if (getSourceType(parameter) != null) {
-    return true;
-  } else {
-    return canListFieldValues(fields);
-  }
+  return sourceType
+    ? queryType === "list"
+    : queryType !== "none" && canListFields;
 };
 
 export const canListFieldValues = (fields: Field[]) => {
@@ -74,15 +94,14 @@ export const canSearchParameterValues = (
   parameter: Parameter,
   disablePKRemapping = false,
 ) => {
+  const queryType = getQueryType(parameter);
+  const sourceType = getSourceType(parameter);
   const fields = getFields(parameter);
+  const canSearchFields = canSearchFieldValues(fields, disablePKRemapping);
 
-  if (getQueryType(parameter) === "none") {
-    return false;
-  } else if (getSourceType(parameter) != null) {
-    return true;
-  } else {
-    return canSearchFieldValues(fields, disablePKRemapping);
-  }
+  return sourceType
+    ? queryType === "search"
+    : queryType !== "none" && canSearchFields;
 };
 
 export const canSearchFieldValues = (
@@ -100,20 +119,4 @@ export const canSearchFieldValues = (
   );
 
   return hasFields && canSearch && hasFieldValues;
-};
-
-const getUniqueNonNullValues = (values: unknown[]) => {
-  return Array.from(new Set(values))
-    .filter(value => value != null)
-    .map(value => String(value));
-};
-
-export const getFieldSourceValues = (fieldsValues: FieldValue[][]) => {
-  const allValues = fieldsValues.flatMap(values => values.map(([key]) => key));
-  return getUniqueNonNullValues(allValues);
-};
-
-export const getCardSourceValues = (dataset: Dataset) => {
-  const allValues = dataset.data.rows.map(([value]) => value);
-  return getUniqueNonNullValues(allValues);
 };

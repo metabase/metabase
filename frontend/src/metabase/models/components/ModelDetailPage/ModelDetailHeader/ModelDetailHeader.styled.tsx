@@ -3,6 +3,7 @@ import styled from "@emotion/styled";
 import EditableText from "metabase/core/components/EditableText";
 
 import { color } from "metabase/lib/colors";
+import { space } from "metabase/styled-components/theme";
 
 export const ModelTitle = styled(EditableText)`
   color: ${color("text-dark")};
@@ -12,7 +13,7 @@ export const ModelTitle = styled(EditableText)`
 
 export const ModelFootnote = styled.p`
   color: ${color("text-medium")};
-  margin: 4px 0 0 4px;
+  margin: ${space(0)} 0 0 ${space(0)};
 `;
 
 export const ModelHeader = styled.div`

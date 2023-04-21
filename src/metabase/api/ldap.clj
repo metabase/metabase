@@ -2,14 +2,16 @@
   "/api/ldap endpoints"
   (:require
    [clojure.set :as set]
-   [clojure.tools.logging :as log]
    [compojure.core :refer [PUT]]
    [metabase.api.common :as api]
    [metabase.integrations.ldap :as ldap]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.log :as log]
    [metabase.util.schema :as su]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 (defn- humanize-error-messages
   "Convert raw error message responses from our LDAP tests into our normal api error response structure."
@@ -98,7 +100,7 @@
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema PUT "/settings"
-  "Update LDAP related settings. You must be a superuser or have `setting` permission to do this."
+  "Update LDAP related settings. You must be a superuser to do this."
   [:as {settings :body}]
   {settings su/Map}
   (api/check-superuser)
@@ -110,7 +112,7 @@
         ldap-details  (set/rename-keys ldap-settings ldap/mb-settings->ldap-details)
         results       (ldap/test-ldap-connection ldap-details)]
     (if (= :SUCCESS (:status results))
-      (db/transaction
+      (t2/with-transaction [_conn]
        (setting/set-many! ldap-settings)
        (setting/set-value-of-type! :boolean :ldap-enabled (boolean (:ldap-enabled settings))))
       ;; test failed, return result message

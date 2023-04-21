@@ -1,5 +1,4 @@
 import { t } from "ttag";
-import { RadioOption } from "metabase/core/components/Radio/Radio";
 
 export const OPTIONS = [
   { name: t`True`, value: true },

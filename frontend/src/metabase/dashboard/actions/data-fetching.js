@@ -79,7 +79,7 @@ export const setShowLoadingCompleteFavicon = createAction(
 
 // real dashcard ids are integers >= 1
 function isNewDashcard(dashcard) {
-  return dashcard.id < 1 && dashcard.id >= 0;
+  return dashcard.id < 0;
 }
 
 function isNewAdditionalSeriesCard(card, dashcard) {
@@ -108,11 +108,7 @@ const loadingComplete = createThunkAction(
         dispatch(setShowLoadingCompleteFavicon(false));
       }, 3000);
     } else {
-      const dashboard = getDashboardComplete(getState());
-      const message = dashboard.is_app_age
-        ? t`Your page is ready`
-        : t`Your dashboard is ready`;
-      dispatch(setDocumentTitle(message));
+      dispatch(setDocumentTitle(t`Your dashboard is ready`));
       document.addEventListener(
         "visibilitychange",
         () => {
@@ -211,6 +207,7 @@ export const fetchDashboard = createThunkAction(
 
       return {
         ...normalize(result, dashboard), // includes `result` and `entities`
+        dashboard: result,
         dashboardId: dashId,
         parameterValues: parameterValuesById,
       };

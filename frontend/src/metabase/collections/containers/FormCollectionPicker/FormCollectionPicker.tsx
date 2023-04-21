@@ -122,6 +122,7 @@ function FormCollectionPicker({
 
   return (
     <TippyPopoverWithTrigger
+      sizeToFit
       placement="bottom-start"
       renderTrigger={renderTrigger}
       popoverContent={renderContent}

@@ -35,7 +35,7 @@
    s/Keyword                s/Any})
 
 (def ^:private bad-query-native-schema
-  {:query  (s/eq (str "SELECT date_trunc('month', \"PUBLIC\".\"VENUES\".\"ID\") AS \"ID\" "
+  {:query  (s/eq (str "SELECT DATE_TRUNC('month', \"PUBLIC\".\"VENUES\".\"ID\") AS \"ID\" "
                       "FROM \"PUBLIC\".\"VENUES\" "
                       "LIMIT 1048575"))
    :params (s/eq nil)})

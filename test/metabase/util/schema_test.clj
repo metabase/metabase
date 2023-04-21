@@ -1,4 +1,4 @@
-(ns metabase.util.schema-test
+(ns ^:mb/once metabase.util.schema-test
   "Tests for utility schemas and various API helper functions."
   (:require
    [clojure.string :as str]
@@ -11,6 +11,8 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
    [schema.core :as s]))
+
+(set! *warn-on-reflection* true)
 
 (deftest ^:parallel generate-api-error-message-test
   (testing "check that the API error message generation is working as intended"
@@ -134,7 +136,7 @@
   (boolean (u/ignore-exceptions
              (mc/validate schema x))))
 
-(deftest malli-and-plumatic-compatibility
+(deftest ^:parallel malli-and-plumatic-compatibility
   (doseq [{:keys [plumatic malli failed-cases success-cases]}
           [{:plumatic      su/NonBlankString
             :malli         ms/NonBlankString
@@ -145,7 +147,7 @@
             :failed-cases  ["1" -1 1.5]
             :success-cases [0 1]}
            {:plumatic      su/IntGreaterThanZero
-            :malli         ms/IntGreaterThanZero
+            :malli         ms/PositiveInt
             :failed-cases  ["1" 0 1.5]
             :success-cases [1 2]}
            {:plumatic      su/PositiveNum
@@ -228,6 +230,10 @@
             :malli         ms/NanoIdString
             :failed-cases  ["random"]
             :success-cases ["FReCLx5hSWTBU7kjCWfuu"]}
+           {:plumatic      su/UUIDString
+            :malli         ms/UUIDString
+            :failed-cases  ["aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"]
+            :success-cases ["84a51d43-2d29-4c2c-8484-e51eb5af2ca4"]}
            {:plumatic      su/Parameter
             :malli         ms/Parameter
             :failed-cases  [{:id   "param-id"

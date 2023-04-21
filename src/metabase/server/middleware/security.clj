@@ -14,6 +14,8 @@
   (:import
    (java.security MessageDigest)))
 
+(set! *warn-on-reflection* true)
+
 (defonce ^:private ^:const inline-js-hashes
   (letfn [(file-hash [resource-filename]
             (base64-encode

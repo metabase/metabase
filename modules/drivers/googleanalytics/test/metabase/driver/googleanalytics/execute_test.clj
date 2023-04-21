@@ -1,7 +1,11 @@
 (ns metabase.driver.googleanalytics.execute-test
-  (:require [clojure.test :refer :all]
-            [metabase.driver.googleanalytics.execute :as ga.execute])
-  (:import com.google.api.services.analytics.model.GaData$ColumnHeaders))
+  (:require
+   [clojure.test :refer :all]
+   [metabase.driver.googleanalytics.execute :as ga.execute])
+  (:import
+   (com.google.api.services.analytics.model GaData$ColumnHeaders)))
+
+(set! *warn-on-reflection* true)
 
 (defn- column-name->getter [column-name]
   (#'ga.execute/header->getter-fn (doto (GaData$ColumnHeaders.)

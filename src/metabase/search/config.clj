@@ -2,7 +2,7 @@
   (:require
    [cheshire.core :as json]
    [metabase.models
-    :refer [Card Collection Dashboard Database Metric Pulse Segment Table]]
+    :refer [Action Card Collection Dashboard Database Metric Segment Table]]
    [metabase.models.setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]))
 
@@ -37,26 +37,22 @@
   "Show this many words of context before/after matches in long search results"
   2)
 
-(def searchable-db-models
-  "Models that can be searched."
-  #{Dashboard Metric Segment Card Collection Table Pulse Database})
-
 (def model-to-db-model
   "Mapping from string model to the Toucan model backing it."
-  {"dashboard"  Dashboard
+  {"action"     Action
+   "card"       Card
+   "collection" Collection
+   "dashboard"  Dashboard
+   "database"   Database
+   "dataset"    Card
    "metric"     Metric
    "segment"    Segment
-   "card"       Card
-   "dataset"    Card
-   "collection" Collection
-   "table"      Table
-   "pulse"      Pulse
-   "database"   Database})
+   "table"      Table})
 
 (def all-models
   "All valid models to search for. The order of this list also influences the order of the results: items earlier in the
   list will be ranked higher."
-  ["dashboard" "metric" "segment" "card" "dataset" "collection" "table" "pulse" "database"])
+  ["dashboard" "metric" "segment" "card" "dataset" "collection" "table" "action" "database"])
 
 (def ^:const displayed-columns
   "All of the result components that by default are displayed by the frontend."
@@ -70,6 +66,11 @@
 (defmethod searchable-columns-for-model :default
   [_]
   [:name])
+
+(defmethod searchable-columns-for-model "action"
+  [_]
+  [:name
+   :description])
 
 (defmethod searchable-columns-for-model "card"
   [_]
@@ -128,6 +129,15 @@
   {:arglists '([model])}
   (fn [model] model))
 
+(defmethod columns-for-model "action"
+  [_]
+  (conj default-columns :model_id
+        [:model.collection_id        :collection_id]
+        [:model.id                   :model_id]
+        [:model.name                 :model_name]
+        [:query_action.database_id   :database_id]
+        [:query_action.dataset_query :dataset_query]))
+
 (defmethod columns-for-model "card"
   [_]
   (conj default-columns :collection_id :collection_position :dataset_query
@@ -139,8 +149,8 @@
                      [:= :moderated_item_type "card"]
                      [:= :moderated_item_id :card.id]
                      [:= :most_recent true]]
-          ;; order by and limit just in case a bug lets the invariant of only one most_recent is violated. we dont'
-          ;; want to error in this query
+          ;; order by and limit just in case a bug violates the invariant of only one most_recent. We don't want to
+          ;; error in this query
           :order-by [[:id :desc]]
           :limit    1}
          :moderated_status]
@@ -155,11 +165,6 @@
 (defmethod columns-for-model "database"
   [_]
   [:id :name :description :updated_at :initial_sync_status])
-
-(defmethod columns-for-model "pulse"
-  [_]
-  [:id :name :collection_id
-   [:collection.name :collection_name]])
 
 (defmethod columns-for-model "collection"
   [_]

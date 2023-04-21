@@ -2,7 +2,11 @@ import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 import { color, alpha, darken } from "metabase/lib/colors";
 
-import { CELL_HEIGHT, PIVOT_TABLE_FONT_SIZE } from "./constants";
+import {
+  CELL_HEIGHT,
+  PIVOT_TABLE_FONT_SIZE,
+  RESIZE_HANDLE_WIDTH,
+} from "./constants";
 
 export const RowToggleIconRoot = styled.div`
   display: flex;
@@ -55,6 +59,7 @@ const getBorderColor = ({ isNightMode }: PivotTableCellProps) => {
 
 export const PivotTableCell = styled.div<PivotTableCellProps>`
   flex: 1 0 auto;
+  position: relative;
   flex-basis: 0;
   line-height: ${CELL_HEIGHT}px;
   min-width: 0;
@@ -115,4 +120,23 @@ export const PivotTableRoot = styled.div<PivotTableRootProps>`
 export const PivotTableSettingLabel = styled.span`
   font-weight: 700;
   color: ${color("text-dark")};
+`;
+
+export const ResizeHandle = styled.div`
+  z-index: 99;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -${RESIZE_HANDLE_WIDTH - 1}px;
+  width: ${RESIZE_HANDLE_WIDTH}px;
+
+  cursor: ew-resize;
+
+  &:active {
+    background-color: ${color("brand")};
+  }
+
+  &:hover {
+    background-color: ${color("brand")};
+  }
 `;

@@ -7,7 +7,9 @@ redirect_from:
 
 # Dashboard subscriptions
 
-Dashboard subscriptions are a great way to keep you and your team up to date on the data that matters most. They allow you to send all of the questions on a dashboard via email or Slack. If your Metabase has email or Slack set up, all you need to do is create a dashboard, add subscribers to it, and tell Metabase how often you'd like the send out an update. You can set up as many subscriptions to a dashboard as you like, and if you make any changes to the dashboard, Metabase will update the subscriptions the next time they're delivered.
+Dashboard subscriptions allow you to send the results of questions on a dashboard to people via email or Slack - even to people who lack an account in your Metabase. 
+
+If your Metabase has email or Slack set up, all you need to do is create a dashboard, add subscribers to it, and tell Metabase how often you'd like the send out an update. You can set up as many subscriptions to a dashboard as you like, and if you make any changes to the dashboard, Metabase will update the subscriptions the next time they're delivered.
 
 ## Enabling dashboard subscriptions
 
@@ -77,7 +79,13 @@ Here's the sidebar where you can set the filter values:
 
 The section to call out here is the **Set filter values for when this gets sent**. Here we've set "VT" as the value for the dashboard's State filter to scope results to records from Vermont. We didn't set a value for the Created_At filter, so the subscription will send the results without a filter applied. If you've set a default value for the filter, the subscription will list the value here.
 
-## Related reading
+## How permissions work with dashboard subscriptions
 
+See [Notification permissions](../permissions/notifications.md).
+
+## Further reading
+
+- [Alerts](../questions/sharing/alerts.md)
 - [Setting up email](../configuring-metabase/email.md)
 - [Setting up Slack](../configuring-metabase/slack.md)
+- [Auditing Metabase](../usage-and-performance-tools/audit.md)

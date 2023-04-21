@@ -11,7 +11,7 @@
             [metabase.test :as mt]
             [metabase.util :as u]
             [schema.core :as s]
-            [toucan.db :as db]))
+            [toucan2.core :as t2]))
 
 (deftest query->collection-name-test
   (testing "query->collection-name"
@@ -32,6 +32,17 @@
                                                          {:native []}
                                                          :joins [{:source-query "wow"}]}}))))))
 
+(deftest order-postprocessing-test
+  (is (= [{"expression_2~share" {"$divide" ["$count-where-141638" "$count-141639"]}}
+          {"expression" {"$add" ["$expression~count" {"$multiply" ["$expression~count" "$expression~sum"]}]}
+           "expression_2" {"$multiply" [2 "$expression_2~share"]}}]
+         (#'mongo.qp/order-postprocessing
+          [[{} {"expression" {"$add" ["$expression~count" {"$multiply" ["$expression~count" "$expression~sum"]}]}}]
+           [{}]
+           [{}]
+           [{"expression_2~share" {"$divide" ["$count-where-141638" "$count-141639"]}}
+            {"expression_2" {"$multiply" [2 "$expression_2~share"]}}]]))))
+
 (deftest relative-datetime-test
   (mt/test-driver :mongo
     (testing "Make sure relative datetimes are compiled sensibly"
@@ -40,8 +51,8 @@
           (is (= {:projections ["count"]
                   :query       [{"$match"
                                  {"$and"
-                                  [{:$expr {"$gte" ["$datetime" {:$dateFromString {:dateString "2021-01-01T00:00Z"}}]}}
-                                   {:$expr {"$lt" ["$datetime" {:$dateFromString {:dateString "2021-02-01T00:00Z"}}]}}]}}
+                                  [{"$expr" {"$gte" ["$datetime" {:$dateFromString {:dateString "2021-01-01T00:00Z"}}]}}
+                                   {"$expr" {"$lt" ["$datetime" {:$dateFromString {:dateString "2021-02-01T00:00Z"}}]}}]}}
                                 {"$group" {"_id" nil, "count" {"$sum" 1}}}
                                 {"$sort" {"_id" 1}}
                                 {"$project" {"_id" false, "count" true}}]
@@ -49,8 +60,8 @@
                   :mbql?       true}
                  (qp/compile
                   (mt/mbql-query attempts
-                    {:aggregation [[:count]]
-                     :filter      [:time-interval $datetime :last :month]})))))))))
+                                 {:aggregation [[:count]]
+                                  :filter      [:time-interval $datetime :last :month]})))))))))
 
 (deftest absolute-datetime-test
   (mt/test-driver :mongo
@@ -63,10 +74,13 @@
                ["2014-01-01T03:00Z" (t/offset-date-time "2014-01-01T10:00+07:00")]
                ["2014-01-01T00:00Z" (t/zoned-date-time "2014-01-01T07:00:00+07:00[Asia/Ho_Chi_Minh]")]]]
         (testing (format "with %s" (type date))
-          (is (= {:$expr {"$lt" ["$date-field" {:$dateFromString {:dateString expected}}]}}
+          (is (= {"$expr" {"$lt" ["$date-field" {:$dateFromString {:dateString expected}}]}}
                  (mongo.qp/compile-filter [:<
                                            [:field "date-field"]
                                            [:absolute-datetime date]]))))))))
+
+(defn- date-arithmetic-supported? []
+  (driver/database-supports? :mongo :date-arithmetics (mt/db)))
 
 (deftest no-initial-projection-test
   (mt/test-driver :mongo
@@ -77,8 +91,8 @@
             (is (= {:projections ["count"]
                     :query       [{"$match"
                                    {"$and"
-                                    [{:$expr {"$gte" ["$datetime" {:$dateFromString {:dateString "2021-01-01T00:00Z"}}]}}
-                                     {:$expr {"$lt" ["$datetime" {:$dateFromString {:dateString "2021-02-01T00:00Z"}}]}}]}}
+                                    [{"$expr" {"$gte" ["$datetime" {:$dateFromString {:dateString "2021-01-01T00:00Z"}}]}}
+                                     {"$expr" {"$lt" ["$datetime" {:$dateFromString {:dateString "2021-02-01T00:00Z"}}]}}]}}
                                   {"$group" {"_id" nil, "count" {"$sum" 1}}}
                                   {"$sort" {"_id" 1}}
                                   {"$project" {"_id" false, "count" true}}]
@@ -90,36 +104,46 @@
                        :filter      [:time-interval $datetime :last :month]}))))
 
             (testing "should still work even with bucketing bucketing"
-              (let [query (mt/with-everything-store
+              (let [tz (qp.timezone/results-timezone-id :mongo mt/db)
+                    query (mt/with-everything-store
                             (qp/compile
                              (mt/mbql-query attempts
-                               {:aggregation [[:count]]
-                                :breakout    [[:field %datetime {:temporal-unit :month}]
-                                              [:field %datetime {:temporal-unit :day}]]
-                                :filter      [:= [:field %datetime {:temporal-unit :month}] [:relative-datetime -1 :month]]})))]
-                (is (= {:projections ["datetime~~~month" "datetime~~~day" "count"]
+                                            {:aggregation [[:count]]
+                                             :breakout    [[:field %datetime {:temporal-unit :month}]
+                                                           [:field %datetime {:temporal-unit :day}]]
+                                             :filter      [:= [:field %datetime {:temporal-unit :month}] [:relative-datetime -1 :month]]})))]
+                (is (= {:projections ["datetime" "datetime_2" "count"]
                         :query       [{"$match"
                                        {"$and"
-                                        [{:$expr {"$gte" ["$datetime" {:$dateFromString {:dateString "2021-01-01T00:00Z"}}]}}
-                                         {:$expr {"$lt" ["$datetime" {:$dateFromString {:dateString "2021-02-01T00:00Z"}}]}}]}}
-                                      {"$group" {"_id"   {"datetime~~~month" {:$let {:vars {:parts {:$dateToParts {:date "$datetime"
-                                                                                                                   :timezone (qp.timezone/results-timezone-id :mongo mt/db)}}}
+                                        [{"$expr" {"$gte" ["$datetime" {:$dateFromString {:dateString "2021-01-01T00:00Z"}}]}}
+                                         {"$expr" {"$lt" ["$datetime" {:$dateFromString {:dateString "2021-02-01T00:00Z"}}]}}]}}
+                                      {"$group" {"_id"   (if (date-arithmetic-supported?)
+                                                           {"datetime" {:$dateTrunc {:date "$datetime"
+                                                                                             :startOfWeek "sunday"
+                                                                                             :timezone tz
+                                                                                             :unit "month"}}
+                                                            "datetime_2" {:$dateTrunc {:date "$datetime"
+                                                                                           :startOfWeek "sunday"
+                                                                                           :timezone tz
+                                                                                           :unit "day"}}}
+                                                           {"datetime" {:$let {:vars {:parts {:$dateToParts {:date "$datetime"
+                                                                                                                     :timezone tz}}}
                                                                                      :in   {:$dateFromParts {:year  "$$parts.year"
                                                                                                              :month "$$parts.month"
-                                                                                                             :timezone (qp.timezone/results-timezone-id :mongo mt/db)}}}},
-                                                          "datetime~~~day"   {:$let {:vars {:parts {:$dateToParts {:date "$datetime"
-                                                                                                                   :timezone (qp.timezone/results-timezone-id :mongo mt/db)}}}
-                                                                                     :in   {:$dateFromParts {:year  "$$parts.year"
-                                                                                                             :month "$$parts.month"
-                                                                                                             :day   "$$parts.day"
-                                                                                                             :timezone (qp.timezone/results-timezone-id :mongo mt/db)}}}}}
+                                                                                                             :timezone tz}}}}
+                                                            "datetime_2"   {:$let {:vars {:parts {:$dateToParts {:date "$datetime"
+                                                                                                                     :timezone tz}}}
+                                                                                       :in   {:$dateFromParts {:year  "$$parts.year"
+                                                                                                               :month "$$parts.month"
+                                                                                                               :day   "$$parts.day"
+                                                                                                               :timezone tz}}}}})
                                                  "count" {"$sum" 1}}}
                                       {"$sort" {"_id" 1}}
                                       {"$project" {"_id"              false
-                                                   "datetime~~~month" "$_id.datetime~~~month"
-                                                   "datetime~~~day"   "$_id.datetime~~~day"
+                                                   "datetime" "$_id.datetime"
+                                                   "datetime_2"   "$_id.datetime_2"
                                                    "count"            true}}
-                                      {"$sort" {"datetime~~~month" 1}}]
+                                      {"$sort" {"datetime" 1}}]
                         :collection  "attempts"
                         :mbql?       true}
                        query))
@@ -204,8 +228,7 @@
                                            "count" {"$sum" 1}}}
                                 {"$sort" {"_id" 1}}
                                 ;; Or should this be {"source" {"username" "$_id.source.username"}} ?
-                                {"$project" {"_id" false, "source.username" "$_id.source.username", "count" true}}
-                                {"$sort" {"source.username" 1}}]
+                                {"$project" {"_id" false, "source.username" "$_id.source.username", "count" true}}]
                   :collection  "tips"
                   :mbql?       true}
                  (qp/compile
@@ -213,8 +236,8 @@
                     {:aggregation [[:count]]
                      :breakout    [$tips.source.username]}))))
           (testing "Parent fields are removed from projections when child fields are included (#19135)"
-            (let [table       (db/select-one Table :db_id (mt/id))
-                  fields      (db/select Field :table_id (u/the-id table))
+            (let [table       (t2/select-one Table :db_id (mt/id))
+                  fields      (t2/select Field :table_id (u/the-id table))
                   projections (-> (mongo.qp/mbql->native
                                     (mt/mbql-query tips {:fields (mapv (fn [f]
                                                                          [:field (u/the-id f) nil])
@@ -265,7 +288,7 @@
                ["bob" "cobb"]
                (qp/compile
                  (mt/mbql-query venues
-                                {:filters     [[:expression "bob"] [:expression "cobb"]]
+                                {:fields      [[:expression "bob"] [:expression "cobb"]]
                                  :expressions {:bob   [:abs $latitude]
                                                :cobb [:upper $name]}
                                  :limit       5}))))))
@@ -275,7 +298,7 @@
                ["bob"]
                (qp/compile
                  (mt/mbql-query venues
-                                {:filters     [[:expression "bob"]]
+                                {:fields      [[:expression "bob"]]
                                  :expressions {:bob   [:+ $price 300]}
                                  :limit       5}))))))
     (testing "Should be able to deal with a little indirection"
@@ -284,7 +307,7 @@
                ["bob"]
                (qp/compile
                  (mt/mbql-query venues
-                                {:filters     [[:expression "bob"]]
+                                {:fields      [[:expression "bob"]]
                                  :expressions {:bob   [:abs [:- $price 300]]}
                                  :limit       5}))))))
     (testing "Should be able to deal with a little indirection, with an expression in"
@@ -294,7 +317,7 @@
                ["bob" "cobb"]
                (qp/compile
                  (mt/mbql-query venues
-                                {:filters     [[:expression "bob"] [:expression "cobb"]]
+                                {:fields      [[:expression "bob"] [:expression "cobb"]]
                                  :expressions {:bob  [:abs $latitude]
                                                :cobb [:ceil [:expression "bob"]]}
                                  :limit       5}))))))
@@ -313,8 +336,7 @@
               :projections ["asdf" "count"],
               :query [{"$group" {"_id" {"asdf" "$price"}, "count" {"$sum" 1}}}
                       {"$sort" {"_id" 1}}
-                      {"$project" {"_id" false, "asdf" "$_id.asdf", "count" true}}
-                      {"$sort" {"asdf" 1}}]}
+                      {"$project" {"_id" false, "asdf" "$_id.asdf", "count" true}}]}
              (qp/compile
                (mt/mbql-query venues
                               {:expressions {:asdf ["field" $price nil]},
@@ -328,19 +350,26 @@
         (testing "[:time-interval $date -4 :month] should give us something like Oct 01 2020 - Feb 01 2021 if today is Feb 17 2021"
           (is (= [{"$match"
                    {"$and"
-                    [{:$expr {"$gte" ["$date" {:$dateFromString {:dateString "2020-10-01T00:00Z"}}]}}
-                     {:$expr {"$lt" ["$date" {:$dateFromString {:dateString "2021-02-01T00:00Z"}}]}}]}}
+                    [{"$expr" {"$gte" ["$date" {:$dateFromString {:dateString "2020-10-01T00:00Z"}}]}}
+                     {"$expr" {"$lt" ["$date" {:$dateFromString {:dateString "2021-02-01T00:00Z"}}]}}]}}
                   {"$group"
                    {"_id"
-                    {"date~~~day"
-                     {:$let
-                      {:vars {:parts {:$dateToParts {:date "$date"
-                                                     :timezone (qp.timezone/results-timezone-id :mongo mt/db)}}},
-                       :in   {:$dateFromParts {:year "$$parts.year", :month "$$parts.month", :day "$$parts.day"
-                                               :timezone (qp.timezone/results-timezone-id :mongo mt/db)}}}}}}}
+                    {"date"
+                     (let [tz (qp.timezone/results-timezone-id :mongo mt/db)]
+                       (if (date-arithmetic-supported?)
+                         {:$dateTrunc {:date "$date"
+                                       :startOfWeek "sunday"
+                                       :timezone tz
+                                       :unit "day"}}
+                         {:$let
+                          {:vars {:parts {:$dateToParts {:date "$date"
+                                                         :timezone tz}}}
+                           :in   {:$dateFromParts {:year "$$parts.year"
+                                                   :month "$$parts.month"
+                                                   :day "$$parts.day"
+                                                   :timezone tz}}}}))}}}
                   {"$sort" {"_id" 1}}
-                  {"$project" {"_id" false, "date~~~day" "$_id.date~~~day"}}
-                  {"$sort" {"date~~~day" 1}}
+                  {"$project" {"_id" false, "date" "$_id.date"}}
                   {"$limit" 1048575}]
                  (:query
                   (qp/compile
@@ -352,7 +381,7 @@
   (testing "Mixed integer and date arithmetic works with Mongo 5+"
     (with-redefs [mongo.qp/get-mongo-version (constantly {:version "5.2.13", :semantic-version [5 2 13]})]
       (mt/with-clock #t "2022-06-21T15:36:00+02:00[Europe/Berlin]"
-        (is (= {:$expr
+        (is (= {"$expr"
                 {"$lt"
                  [{"$dateAdd"
                    {:startDate {"$add" [{"$dateAdd" {:startDate "$date-field"
@@ -395,17 +424,17 @@
             (doseq [op               [:datetime-add :datetime-subtract]
                     unit             [:year :quarter :month :day]
                     {:keys [expected query]}
-                    [{:expected [(qp.datetime-test/datetime-math op #t "2004-03-19 00:00:00" 2 unit col-type)
-                                 (qp.datetime-test/datetime-math op #t "2008-06-20 00:00:00" 2 unit col-type)
-                                 (qp.datetime-test/datetime-math op #t "2012-11-21 00:00:00" 2 unit col-type)
-                                 (qp.datetime-test/datetime-math op #t "2012-11-21 00:00:00" 2 unit col-type)]
+                    [{:expected [(qp.datetime-test/datetime-math op #t "2004-03-19 00:00:00" 2 unit)
+                                 (qp.datetime-test/datetime-math op #t "2008-06-20 00:00:00" 2 unit)
+                                 (qp.datetime-test/datetime-math op #t "2012-11-21 00:00:00" 2 unit)
+                                 (qp.datetime-test/datetime-math op #t "2012-11-21 00:00:00" 2 unit)]
                        :query   {:expressions {"expr" [op [:field field-id nil] 2 unit]}
                                  :fields      [[:expression "expr"]]}}
                      {:expected (into [] (frequencies
-                                           [(qp.datetime-test/datetime-math op #t "2004-03-19 00:00:00" 2 unit col-type)
-                                            (qp.datetime-test/datetime-math op #t "2008-06-20 00:00:00" 2 unit col-type)
-                                            (qp.datetime-test/datetime-math op #t "2012-11-21 00:00:00" 2 unit col-type)
-                                            (qp.datetime-test/datetime-math op #t "2012-11-21 00:00:00" 2 unit col-type)]))
+                                           [(qp.datetime-test/datetime-math op #t "2004-03-19 00:00:00" 2 unit)
+                                            (qp.datetime-test/datetime-math op #t "2008-06-20 00:00:00" 2 unit)
+                                            (qp.datetime-test/datetime-math op #t "2012-11-21 00:00:00" 2 unit)
+                                            (qp.datetime-test/datetime-math op #t "2012-11-21 00:00:00" 2 unit)]))
                       :query    {:expressions {"expr" [op [:field field-id nil] 2 unit]}
                                  :aggregation [[:count]]
                                  :breakout    [[:expression "expr"]]}}]]
@@ -442,14 +471,14 @@
         {"name" {"$regex" "^hello"}}
         [:starts-with $name "hello"]
 
-        {"$and" [{:$expr {"$eq" ["$price" {"$add" ["$price" 1]}]}} {"name" "hello"}]}
+        {"$and" [{"$expr" {"$eq" ["$price" {"$add" ["$price" 1]}]}} {"name" "hello"}]}
         [:and [:= $price [:+ $price 1]] [:= $name "hello"]]
 
-        {:$expr {"$eq" ["$price" "$price"]}}
+        {"$expr" {"$eq" ["$price" "$price"]}}
         [:= $price $price]
 
-        {:$expr {"$eq" [{"$add" ["$price" 1]} 100]}}
+        {"$expr" {"$eq" [{"$add" ["$price" 1]} 100]}}
         [:= [:+ $price 1] 100]
 
-        {:$expr {"$eq" ["$price" {"$add" [{"$subtract" ["$price" 5]} 100]}]}}
+        {"$expr" {"$eq" ["$price" {"$add" [{"$subtract" ["$price" 5]} 100]}]}}
         [:= $price [:+ [:- $price 5] 100]]))))

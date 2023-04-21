@@ -4,21 +4,19 @@
    [clojure.string :as str]
    [compojure.core :refer [GET]]
    [medley.core :as m]
-   #_{:clj-kondo/ignore [:deprecated-var]}
-   [metabase.api.common
-    :refer [*current-user-id* defendpoint-schema define-routes]]
+   [metabase.api.common :as api :refer [*current-user-id* define-routes]]
+   [metabase.events.view-log :as view-log]
    [metabase.models.activity :refer [Activity]]
-   [metabase.models.bookmark :refer [CardBookmark DashboardBookmark]]
    [metabase.models.card :refer [Card]]
-   [metabase.models.collection :refer [Collection]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.interface :as mi]
    [metabase.models.query-execution :refer [QueryExecution]]
    [metabase.models.table :refer [Table]]
    [metabase.models.view-log :refer [ViewLog]]
-   [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.honey-sql-2 :as h2x]
    [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]]))
+   [toucan.hydrate :refer [hydrate]]
+   [toucan2.core :as t2]))
 
 (defn- dashcard-activity? [activity]
   (#{:dashboard-add-cards :dashboard-remove-cards}
@@ -47,7 +45,7 @@
   [referenced-objects]
   (merge
    (when-let [card-ids (get referenced-objects "card")]
-     (let [id->dataset?                       (db/select-id->field :dataset Card
+     (let [id->dataset?                       (t2/select-pk->fn :dataset Card
                                                                    :id [:in card-ids])
            {dataset-ids true card-ids' false} (group-by (comp boolean id->dataset?)
                                                         ;; only existing ids go back
@@ -58,10 +56,10 @@
    (into {} (for [[model ids] (dissoc referenced-objects "card")
                   :when       (seq ids)]
               [model (case model
-                       "dashboard" (db/select-ids 'Dashboard, :id [:in ids])
-                       "metric"    (db/select-ids 'Metric,    :id [:in ids], :archived false)
-                       "pulse"     (db/select-ids 'Pulse,     :id [:in ids])
-                       "segment"   (db/select-ids 'Segment,   :id [:in ids], :archived false)
+                       "dashboard" (t2/select-pks-set 'Dashboard, :id [:in ids])
+                       "metric"    (t2/select-pks-set 'Metric,    :id [:in ids], :archived false)
+                       "pulse"     (t2/select-pks-set 'Pulse,     :id [:in ids])
+                       "segment"   (t2/select-pks-set 'Segment,   :id [:in ids], :archived false)
                        nil)])))) ; don't care about other models
 
 (defn- add-model-exists-info
@@ -88,25 +86,25 @@
                                     (existing-card? (:card_id dashcard))))))))))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
-(defendpoint-schema GET "/"
+(api/defendpoint-schema GET "/"
   "Get recent activity."
   []
-  (filter mi/can-read? (-> (db/select Activity, {:order-by [[:timestamp :desc]], :limit 40})
+  (filter mi/can-read? (-> (t2/select Activity, {:order-by [[:timestamp :desc]], :limit 40})
                            (hydrate :user :table :database)
                            add-model-exists-info)))
 
 (defn- models-query
   [model ids]
-  (db/select
+  (t2/select
       (case model
         "card"      [Card
                      :id :name :collection_id :description :display
                      :dataset_query :dataset :archived
-                     (db/qualify Collection :authority_level)]
+                     :collection.authority_level]
         "dashboard" [Dashboard
                      :id :name :collection_id :description
                      :archived
-                     (db/qualify Collection :authority_level)]
+                     :collection.authority_level]
         "table"     [Table
                      :id :name :db_id
                      :display_name :initial_sync_status
@@ -115,7 +113,7 @@
             self-qualify #(db/qualify model-symb %)]
         (cond-> {:where [:in (self-qualify :id) ids]}
           (not= model "table")
-          (merge {:left-join [Collection [:= (db/qualify Collection :id) (self-qualify :collection_id)]]})))))
+          (merge {:left-join [:collection [:= :collection.id (self-qualify :collection_id)]]})))))
 
 (defn- select-items! [model ids]
   (when (seq ids)
@@ -138,7 +136,7 @@
         (group-by :model views)))
 
 (defn- views-and-runs
-  "Common query implementation for `recent_views` and `popular_items`. Tables and Dashboards have a query limit of `views-limit`.
+  "Query implementation for `popular_items`. Tables and Dashboards have a query limit of `views-limit`.
   Cards have a query limit of `card-runs-limit`.
 
   The expected output of the query is a single row per unique model viewed by the current user including a `:max_ts` which
@@ -149,33 +147,40 @@
   from the query_execution table. The query context is always a `:question`. The results are normalized and concatenated to the
   query results for dashboard and table views."
   [views-limit card-runs-limit all-users?]
-  (let [dashboard-and-table-views (db/select [ViewLog :%min.view_log.user_id :model :model_id
-                                              [:%count.* :cnt] [:%max.timestamp :max_ts]]
-                                    {:group-by  [:model :model_id]
-                                     :where     [:and
-                                                 (when-not all-users? [:= (db/qualify ViewLog :user_id) *current-user-id*])
-                                                 [:in :model #{"dashboard" "table"}]
-                                                 [:= :bm.id nil]]
-                                     :order-by  [[:max_ts :desc] [:model :desc]]
-                                     :limit     views-limit
-                                     :left-join [[DashboardBookmark :bm]
-                                                 [:and
-                                                  [:= :model "dashboard"]
-                                                  [:= :bm.user_id *current-user-id*]
-                                                  [:= :model_id :bm.dashboard_id]]]})
-        card-runs                 (->> (db/select [QueryExecution [:%min.executor_id :user_id] [(db/qualify QueryExecution :card_id) :model_id]
-                                                   [:%count.* :cnt] [:%max.started_at :max_ts]]
-                                         {:group-by [(db/qualify QueryExecution :card_id) :context]
-                                          :where    [:and
-                                                     (when-not all-users? [:= :executor_id *current-user-id*])
-                                                     [:= :context (hx/literal :question)]
-                                                     [:= :bm.id nil]]
-                                          :order-by [[:max_ts :desc]]
-                                          :limit    card-runs-limit
-                                          :left-join [[CardBookmark :bm]
-                                                      [:and
-                                                       [:= :bm.user_id *current-user-id*]
-                                                       [:= (db/qualify QueryExecution :card_id) :bm.card_id]]]})
+  (let [dashboard-and-table-views (t2/select [ViewLog
+                                              [[:min :view_log.user_id] :user_id]
+                                              :model
+                                              :model_id
+                                              [:%count.* :cnt]
+                                              [:%max.timestamp :max_ts]]
+                                             {:group-by  [:model :model_id]
+                                              :where     [:and
+                                                          (when-not all-users? [:= (db/qualify ViewLog :user_id) *current-user-id*])
+                                                          [:in :model #{"dashboard" "table"}]
+                                                          [:= :bm.id nil]]
+                                              :order-by  [[:max_ts :desc] [:model :desc]]
+                                              :limit     views-limit
+                                              :left-join [[:dashboard_bookmark :bm]
+                                                          [:and
+                                                           [:= :model "dashboard"]
+                                                           [:= :bm.user_id *current-user-id*]
+                                                           [:= :model_id :bm.dashboard_id]]]})
+        card-runs                 (->> (t2/select [QueryExecution
+                                                   [:%min.executor_id :user_id]
+                                                   [(db/qualify QueryExecution :card_id) :model_id]
+                                                   [:%count.* :cnt]
+                                                   [:%max.started_at :max_ts]]
+                                                  {:group-by [(db/qualify QueryExecution :card_id) :context]
+                                                   :where    [:and
+                                                              (when-not all-users? [:= :executor_id *current-user-id*])
+                                                              [:= :context (h2x/literal :question)]
+                                                              [:= :bm.id nil]]
+                                                   :order-by [[:max_ts :desc]]
+                                                   :limit    card-runs-limit
+                                                   :left-join [[:card_bookmark :bm]
+                                                               [:and
+                                                                [:= :bm.user_id *current-user-id*]
+                                                                [:= (db/qualify QueryExecution :card_id) :bm.card_id]]]})
                                        (map #(dissoc % :row_count))
                                        (map #(assoc % :model "card")))]
     (->> (concat card-runs dashboard-and-table-views)
@@ -185,20 +190,21 @@
 (def ^:private views-limit 8)
 (def ^:private card-runs-limit 8)
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(defendpoint-schema GET "/recent_views"
-  "Get the list of 5 things the current user has been viewing most recently."
+(api/defendpoint GET "/recent_views"
+  "Get a list of 5 things the current user has been viewing most recently."
   []
-  (let [views (views-and-runs views-limit card-runs-limit false)
+  (let [views            (view-log/user-recent-views)
         model->id->items (models-for-views views)]
     (->> (for [{:keys [model model_id] :as view-log} views
-               :let [model-object (-> (get-in model->id->items [model model_id])
-                                      (dissoc :dataset_query))]
-               :when (and model-object
-                          (mi/can-read? model-object)
-                          ;; hidden tables, archived cards/dashboards
-                          (not (or (:archived model-object)
-                                   (= (:visibility_type model-object) :hidden))))]
+               :let
+               [model-object (-> (get-in model->id->items [model model_id])
+                                 (dissoc :dataset_query))]
+               :when
+               (and model-object
+                    (mi/can-read? model-object)
+                    ;; hidden tables, archived cards/dashboards
+                    (not (or (:archived model-object)
+                             (= (:visibility_type model-object) :hidden))))]
            (cond-> (assoc view-log :model_object model-object)
              (:dataset model-object) (assoc :model "dataset")))
          (take 5))))
@@ -249,7 +255,7 @@
         (mapcat #(get groups %) model-precedence))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
-(defendpoint-schema GET "/popular_items"
+(api/defendpoint-schema GET "/popular_items"
   "Get the list of 5 popular things for the current user. Query takes 8 and limits to 5 so that if it
   finds anything archived, deleted, etc it can hopefully still get 5."
   []

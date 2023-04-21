@@ -54,7 +54,6 @@ function dependencies() {
     } catch (e) {
       console.error(filename, e.toString());
       process.exit(-1);
-      n;
     }
     const base = path.dirname(filename) + path.sep;
     const absoluteImportList = importList

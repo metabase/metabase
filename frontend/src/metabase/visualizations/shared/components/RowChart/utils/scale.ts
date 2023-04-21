@@ -14,7 +14,7 @@ import {
 } from "metabase/visualizations/shared/types/scale";
 import { ChartFont } from "metabase/visualizations/shared/types/style";
 import { DATA_LABEL_OFFSET } from "../../RowChartView";
-import { SeriesData, StackOffset, YValue } from "../types";
+import { SeriesData, StackOffset } from "../types";
 import { createXDomain, createYDomain } from "./domain";
 
 export const createXScale = (

@@ -1,4 +1,4 @@
-(ns metabase.sync.sync-metadata-test
+(ns ^:mb/once metabase.sync.sync-metadata-test
   (:require
    [clojure.test :refer :all]
    [metabase.sync.sync-metadata.fields :as sync-fields]

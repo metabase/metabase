@@ -8,7 +8,7 @@ export const TextLink = styled(Link)`
   color: ${color("text-dark")};
 
   &:hover {
-    color: ${() => color("brand")};
+    color: ${color("brand")};
   }
 `;
 

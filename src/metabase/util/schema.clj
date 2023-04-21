@@ -20,6 +20,8 @@
    [schema.macros :as s.macros]
    [schema.utils :as s.utils]))
 
+(set! *warn-on-reflection* true)
+
 ;; So the `:type/` hierarchy is loaded.
 (comment types/keep-me)
 
@@ -274,11 +276,6 @@
   (with-api-error-message (s/pred #(isa? (keyword %) :Semantic/*) (deferred-tru "Valid field semantic type (keyword or string)"))
     (deferred-tru "value must be a valid field semantic type (keyword or string).")))
 
-(def FieldRelationTypeKeywordOrString
-  "Like `FieldRelationType` but accepts either a keyword or string."
-  (with-api-error-message (s/pred #(isa? (keyword %) :Relation/*) (deferred-tru "Valid field relation type (keyword or string)"))
-    (deferred-tru "value must be a valid field relation type (keyword or string).")))
-
 (def FieldSemanticOrRelationTypeKeywordOrString
   "Like `FieldSemanticOrRelationType` but accepts either a keyword or string."
   (with-api-error-message (s/pred (fn [k]
@@ -332,12 +329,6 @@
   (with-api-error-message (s/constrained s/Str #(u/ignore-exceptions (< 0 (Integer/parseInt %))))
     (deferred-tru "value must be a valid integer greater than zero.")))
 
-(def IntStringGreaterThanOrEqualToZero
-  "Schema for a string that can be parsed as an integer, and is greater than or equal to zero.
-   Something that adheres to this schema is guaranteed to to work with `Integer/parseInt`."
-  (with-api-error-message (s/constrained s/Str #(u/ignore-exceptions (<= 0 (Integer/parseInt %))))
-    (deferred-tru "value must be a valid integer greater than or equal to zero.")))
-
 (defn- boolean-string? ^Boolean [s]
   (boolean (when (string? s)
              (let [s (u/lower-case-en s)]
@@ -345,7 +336,7 @@
 
 (def BooleanString
   "Schema for a string that is a valid representation of a boolean (either `true` or `false`).
-   Something that adheres to this schema is guaranteed to to work with `Boolean/parseBoolean`."
+   Something that adheres to this schema is guaranteed to work with `Boolean/parseBoolean`."
   (with-api-error-message (s/constrained s/Str boolean-string?)
     (deferred-tru "value must be a valid boolean string (''true'' or ''false'').")))
 
@@ -417,4 +408,9 @@
 (def NanoIdString
   "Schema for a 21-character NanoID string, like \"FReCLx5hSWTBU7kjCWfuu\"."
   (with-api-error-message #"^[A-Za-z0-9_\-]{21}$"
+    (deferred-tru "String must be a valid 21-character NanoID string.")))
+
+(def UUIDString
+  "Schema for a UUID string"
+  (with-api-error-message u/uuid-regex
     (deferred-tru "String must be a valid 21-character NanoID string.")))

@@ -3,14 +3,16 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [compojure.core :refer [POST]]
    [metabase.api.common :as api]
    [metabase.db.connection :as mdb.connection]
-   [metabase.util.files :as u.files])
+   [metabase.util.files :as u.files]
+   [metabase.util.log :as log])
   (:import
    (com.mchange.v2.c3p0 PoolBackedDataSource)
    (java.util.concurrent.locks ReentrantReadWriteLock)))
+
+(set! *warn-on-reflection* true)
 
 ;; EVERYTHING BELOW IS FOR H2 ONLY.
 
@@ -20,7 +22,7 @@
 
 (defn- snapshot-path-for-name
   ^String [snapshot-name]
-  (let [path (u.files/get-path "frontend" "test" "snapshots"
+  (let [path (u.files/get-path "e2e" "snapshots"
                                (str (str/replace (name snapshot-name) #"\W" "_") ".sql"))]
     (str (.toAbsolutePath path))))
 

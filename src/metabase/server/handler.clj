@@ -13,6 +13,7 @@
    [metabase.server.middleware.session :as mw.session]
    [metabase.server.middleware.ssl :as mw.ssl]
    [metabase.server.routes :as routes]
+   [metabase.util.log :as log]
    [ring.core.protocols :as ring.protocols]
    [ring.middleware.cookies :refer [wrap-cookies]]
    [ring.middleware.gzip :refer [wrap-gzip]]
@@ -22,11 +23,7 @@
 (extend-protocol ring.protocols/StreamableResponseBody
   ;; java.lang.Double, java.lang.Long, and java.lang.Boolean will be given a Content-Type of "application/json; charset=utf-8"
   ;; so they should be strings, and will be parsed into their respective values.
-  java.lang.Double
-  (write-body-to-stream [num response output-stream]
-    (ring.protocols/write-body-to-stream (str num) response output-stream))
-
-  java.lang.Long
+  java.lang.Number
   (write-body-to-stream [num response output-stream]
     (ring.protocols/write-body-to-stream (str num) response output-stream))
 
@@ -85,5 +82,5 @@
   (doseq [varr  (cons #'routes/routes middleware)
           :when (instance? clojure.lang.IRef varr)]
     (add-watch varr ::reload (fn [_ _ _ _]
-                               (printf "%s changed, rebuilding %s" varr #'app)
+                               (log/infof "%s changed, rebuilding %s" varr #'app)
                                (alter-var-root #'app (constantly (apply-middleware routes/routes)))))))

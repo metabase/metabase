@@ -1,4 +1,5 @@
 import React from "react";
+import { Route } from "react-router";
 
 import {
   renderWithProviders,
@@ -44,7 +45,7 @@ async function setup({ cachingEnabled = false } = {}) {
     "enable-query-caching": cachingEnabled,
   });
 
-  renderWithProviders(<DatabaseEditApp />, {
+  renderWithProviders(<Route path="/" component={DatabaseEditApp} />, {
     withRouter: true,
     storeInitialState: {
       settings,

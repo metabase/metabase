@@ -3,7 +3,6 @@
   -- Consider whether there's a place to put this to consolidate things."
   (:require
    [clojure.core.async :as a]
-   [clojure.tools.logging :as log]
    [metabase.api.common :as api]
    [metabase.query-processor :as qp]
    [metabase.query-processor.context :as qp.context]
@@ -11,6 +10,7 @@
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
    [schema.core :as s])
   (:import
    (clojure.core.async.impl.channels ManyToManyChannel)))

@@ -4,11 +4,18 @@ import { alpha, color } from "metabase/lib/colors";
 
 export interface ButtonRootProps {
   purple?: boolean;
+  onlyText?: boolean;
 }
 
 export const ButtonRoot = styled.button<ButtonRootProps>`
   transition: all 200ms linear;
   flex-shrink: 0;
+  @media (prefers-reduced-motion) {
+    &,
+    &:hover {
+      transition: none;
+    }
+  }
 
   ${({ purple }) =>
     purple &&
@@ -21,6 +28,18 @@ export const ButtonRoot = styled.button<ButtonRootProps>`
         color: ${color("white")};
         background-color: ${alpha("filter", 0.88)};
         border-color: ${alpha("filter", 0.88)};
+      }
+    `}
+
+  ${({ onlyText }) =>
+    onlyText &&
+    css`
+      border: none;
+      padding: 0;
+
+      color: ${color("brand")};
+      &:hover {
+        background-color: unset;
       }
     `}
 `;

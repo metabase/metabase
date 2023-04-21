@@ -1,6 +1,7 @@
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 import { color } from "metabase/lib/colors";
+import { focusOutlineStyle } from "metabase/core/style/input";
 
 export interface TextAreaRootProps {
   readOnly?: boolean;
@@ -22,8 +23,16 @@ export const TextAreaRoot = styled.textarea<TextAreaRootProps>`
 
   &:focus,
   &:hover {
-    border-color: ${() => color("brand")};
+    border-color: ${color("brand")};
     transition: border 300ms ease-in-out;
+  }
+  ${css`
+    ${focusOutlineStyle("brand")}
+  `};
+
+  &:disabled {
+    pointer-events: none;
+    opacity: 0.4;
   }
 
   ${props =>

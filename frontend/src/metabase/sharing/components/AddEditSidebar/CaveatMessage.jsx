@@ -1,13 +1,24 @@
 import React from "react";
 import { t } from "ttag";
 
-import Text from "metabase/components/type/Text";
+import MetabaseSettings from "metabase/lib/settings";
+import ExternalLink from "metabase/core/components/ExternalLink";
+import { CaveatText } from "./CaveatMessage.styled";
 
 function CaveatMessage() {
   return (
-    <Text className="mx4 my2 p2 bg-light text-dark rounded">
-      {t`Charts in subscriptions may look slightly different from charts in dashboards.`}
-    </Text>
+    <CaveatText>
+      {t`Recipients will see this data just as you see it, regardless of their permissions.`}
+      &nbsp;
+      <ExternalLink
+        className="link"
+        target="_blank"
+        href={MetabaseSettings.docsUrl("dashboards/subscriptions")}
+      >
+        {t`Learn more`}
+      </ExternalLink>
+      .
+    </CaveatText>
   );
 }
 

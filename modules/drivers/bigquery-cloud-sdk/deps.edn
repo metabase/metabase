@@ -3,7 +3,6 @@
 
  :deps
  ;; TODO: figure out how to be able to leave off this version string and use the version from the BOM
- {com.google.cloud/google-cloud-bigquery      {:mvn/version "1.135.4"}
-  ;; CVE on 2.8.7 from bigquery (NB: also in googleanalytics)
-  com.google.code.gson/gson                   {:mvn/version "2.10"}
+ {com.google.cloud/google-cloud-bigquery      {:mvn/version "2.23.2"}
+  com.google.code.gson/gson                   {:mvn/version "2.10.1"}
   com.google.oauth-client/google-oauth-client {:mvn/version "1.34.1"}}}

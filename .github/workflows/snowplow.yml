@@ -4,16 +4,29 @@ on:
   pull_request:
     branches:
       - '**'
-    paths:
-      - 'snowplow/**'
-      - '.github/workflows/**'
 
 jobs:
+  files-changed:
+    name: Check which files changed
+    runs-on: ubuntu-22.04
+    timeout-minutes: 3
+    outputs:
+      snowplow: ${{ steps.changes.outputs.snowplow }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: Test which files changed
+        uses: dorny/paths-filter@v2.11.1
+        id: changes
+        with:
+          token: ${{ github.token }}
+          filters: .github/file-paths.yaml
+
   lint:
-    runs-on: ubuntu-20.04
-    container: snowplow/igluctl:0.6.0
+    needs: files-changed
+    if: needs.files-changed.outputs.snowplow == 'true'
+    runs-on: ubuntu-22.04
     steps:
       - name: Checkout
         uses: actions/checkout@v3
       - name: Lint
-        run: igluctl lint snowplow
+        run: docker run -v $(pwd):/snowplow snowplow/igluctl:0.6.0 lint snowplow

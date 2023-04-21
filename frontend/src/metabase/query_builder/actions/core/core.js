@@ -21,6 +21,7 @@ import {
   cardQueryIsEquivalent,
 } from "metabase-lib/queries/utils/card";
 import Query from "metabase-lib/queries/Query";
+import Question from "metabase-lib/Question";
 
 import { isAdHocModelQuestion } from "metabase-lib/metadata/utils/models";
 import { trackNewQuestionSaved } from "../../analytics";
@@ -61,12 +62,12 @@ export const softReloadCard = createThunkAction(SOFT_RELOAD_CARD, () => {
 export const RELOAD_CARD = "metabase/qb/RELOAD_CARD";
 export const reloadCard = createThunkAction(RELOAD_CARD, () => {
   return async (dispatch, getState) => {
-    const outdatedCard = getCard(getState());
+    const outdatedQuestion = getQuestion(getState());
 
     dispatch(resetQB());
 
     const action = await dispatch(
-      Questions.actions.fetch({ id: outdatedCard.id }, { reload: true }),
+      Questions.actions.fetch({ id: outdatedQuestion.id() }, { reload: true }),
     );
     const card = Questions.HACK_getObjectFromAction(action);
 
@@ -80,7 +81,7 @@ export const reloadCard = createThunkAction(RELOAD_CARD, () => {
     );
 
     // if the name of the card changed this will update the url slug
-    dispatch(updateUrl(card, { dirty: false }));
+    dispatch(updateUrl(new Question(card), { dirty: false }));
 
     return card;
   };
@@ -108,7 +109,7 @@ export const setCardAndRun = (nextCard, shouldUpdateUrl = true) => {
       : null;
 
     // Update the card and originalCard before running the actual query
-    dispatch.action(SET_CARD_AND_RUN, { card, originalCard });
+    dispatch({ type: SET_CARD_AND_RUN, payload: { card, originalCard } });
     dispatch(runQuestionQuery({ shouldUpdateUrl }));
 
     // Load table & database metadata for the current question
@@ -195,11 +196,11 @@ export const apiCreateQuestion = question => {
       dispatch({ type: Databases.actionTypes.INVALIDATE_LISTS_ACTION });
     }
 
-    dispatch(updateUrl(createdQuestion.card(), { dirty: false }));
+    dispatch(updateUrl(createdQuestion, { dirty: false }));
     MetabaseAnalytics.trackStructEvent(
       "QueryBuilder",
       "Create Card",
-      createdQuestion.query().datasetQuery().type,
+      createdQuestion.type(),
     );
     trackNewQuestionSaved(
       question,
@@ -211,7 +212,10 @@ export const apiCreateQuestion = question => {
     // selected in the UI.
     const card = createdQuestion.lockDisplay().card();
 
-    dispatch.action(API_CREATE_QUESTION, card);
+    dispatch({ type: API_CREATE_QUESTION, payload: card });
+
+    const metadataOptions = { reload: createdQuestion.isDataset() };
+    await dispatch(loadMetadataForCard(card, metadataOptions));
   };
 };
 
@@ -221,7 +225,7 @@ export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
     const originalQuestion = getOriginalQuestion(getState());
     question = question || getQuestion(getState());
 
-    rerunQuery = rerunQuery || getIsResultDirty(getState());
+    rerunQuery = rerunQuery ?? getIsResultDirty(getState());
 
     // Needed for persisting visualization columns for pulses/alerts, see #6749
     const series = getTransformedSeries(getState());
@@ -255,14 +259,15 @@ export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
     MetabaseAnalytics.trackStructEvent(
       "QueryBuilder",
       "Update Card",
-      updatedQuestion.query().datasetQuery().type,
+      updatedQuestion.type(),
     );
 
-    dispatch.action(API_UPDATE_QUESTION, updatedQuestion.card());
+    dispatch({ type: API_UPDATE_QUESTION, payload: updatedQuestion.card() });
+
+    const metadataOptions = { reload: question.isDataset() };
+    await dispatch(loadMetadataForCard(question.card(), metadataOptions));
 
     if (rerunQuery) {
-      const metadataOptions = { reload: question.isDataset() };
-      await dispatch(loadMetadataForCard(question.card(), metadataOptions));
       dispatch(runQuestionQuery());
     }
   };

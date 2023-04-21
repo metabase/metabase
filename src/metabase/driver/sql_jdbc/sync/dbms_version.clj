@@ -2,6 +2,8 @@
   (:require
    [clojure.java.jdbc :as jdbc]))
 
+(set! *warn-on-reflection* true)
+
 (defn dbms-version
   "Default implementation of `driver/dbms-version` for SQL JDBC drivers. Uses JDBC DatabaseMetaData."
   [_driver jdbc-spec]

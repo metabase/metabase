@@ -113,7 +113,8 @@ export function drillFilter(query, value, column) {
   } else {
     const range = rangeForValue(value, column);
     if (range) {
-      filter = ["between", fieldRefForColumn(column), range[0], range[1]];
+      const fieldRef = fieldRefForColumn(column);
+      filter = ["and", [">=", fieldRef, range[0]], ["<", fieldRef, range[1]]];
     } else if (value != null) {
       filter = ["=", fieldRefForColumn(column), value];
     } else {
@@ -124,7 +125,7 @@ export function drillFilter(query, value, column) {
   return addOrUpdateFilter(query, filter);
 }
 
-export function addOrUpdateFilter(query, newFilter) {
+function addOrUpdateFilter(query, newFilter) {
   // replace existing filter, if it exists
   for (const filter of query.filters()) {
     const dimension = filter.dimension();
@@ -144,7 +145,7 @@ const getNextUnit = unit => {
   return UNITS[Math.max(0, UNITS.indexOf(unit) - 1)];
 };
 
-export function addOrUpdateBreakout(query, newBreakout) {
+function addOrUpdateBreakout(query, newBreakout) {
   // replace existing breakout, if it exists
   for (const breakout of query.breakouts()) {
     if (breakout.dimension().isSameBaseDimension(newBreakout)) {

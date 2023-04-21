@@ -1,21 +1,26 @@
 (ns metabase.driver.google
   "Shared logic for various Google drivers, including BigQuery and Google Analytics."
-  (:require [clojure.tools.logging :as log]
-            [metabase.config :as config]
-            [metabase.models.database :refer [Database]]
-            [metabase.query-processor.error-type :as qp.error-type]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]]
-            [ring.util.codec :as codec]
-            [toucan.db :as db])
-  (:import [com.google.api.client.googleapis.auth.oauth2 GoogleAuthorizationCodeFlow GoogleAuthorizationCodeFlow$Builder GoogleCredential GoogleCredential$Builder GoogleTokenResponse]
-           com.google.api.client.googleapis.javanet.GoogleNetHttpTransport
-           [com.google.api.client.googleapis.json GoogleJsonError GoogleJsonResponseException]
-           com.google.api.client.googleapis.services.AbstractGoogleClientRequest
-           com.google.api.client.http.HttpTransport
-           com.google.api.client.json.jackson2.JacksonFactory
-           com.google.api.client.json.JsonFactory
-           java.io.ByteArrayInputStream))
+  (:require
+   [metabase.config :as config]
+   [metabase.models.database :refer [Database]]
+   [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
+   [ring.util.codec :as codec]
+   [toucan2.core :as t2])
+  (:import
+   (com.google.api.client.googleapis.auth.oauth2 GoogleAuthorizationCodeFlow GoogleAuthorizationCodeFlow$Builder
+                                                 GoogleCredential GoogleCredential$Builder GoogleTokenResponse)
+   (com.google.api.client.googleapis.javanet GoogleNetHttpTransport)
+   (com.google.api.client.googleapis.json GoogleJsonError GoogleJsonResponseException)
+   (com.google.api.client.googleapis.services AbstractGoogleClientRequest)
+   (com.google.api.client.http HttpTransport)
+   (com.google.api.client.json JsonFactory)
+   (com.google.api.client.json.jackson2 JacksonFactory)
+   (java.io ByteArrayInputStream)))
+
+(set! *warn-on-reflection* true)
 
 (def ^HttpTransport http-transport
   "`HttpTransport` for use with Google drivers."
@@ -103,7 +108,7 @@
           details (-> (merge details {:project-id (.getServiceAccountProjectId creds)})
                       (dissoc :auth-code))]
       (when id
-        (db/update! Database id, :details details))
+        (t2/update! Database id {:details details}))
       (.createScoped creds scopes))
 
     (if-not (and (seq access-token)
@@ -112,7 +117,7 @@
       (let [details (-> (merge details (fetch-access-and-refresh-tokens scopes client-id client-secret auth-code))
                         (dissoc :auth-code))]
         (when id
-          (db/update! Database id, :details details))
+          (t2/update! Database id {:details details}))
         (recur scopes (assoc db :details details)))
       ;; Otherwise return credential as normal
       (doto (.build (doto (GoogleCredential$Builder.)
@@ -128,5 +133,5 @@
   (database->credential*
    scopes
    (if (integer? database-or-id)
-     (db/select-one [Database :id :details], :id database-or-id)
+     (t2/select-one [Database :id :details], :id database-or-id)
      database-or-id)))

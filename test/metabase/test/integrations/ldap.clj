@@ -9,6 +9,8 @@
    (com.unboundid.ldif LDIFReader)
    (java.io File FileNotFoundException)))
 
+(set! *warn-on-reflection* true)
+
 (def ^:dynamic ^InMemoryDirectoryServer *ldap-server*
   "An in-memory LDAP testing server."
   nil)

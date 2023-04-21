@@ -2,7 +2,6 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [metabase.config :as config]
    [metabase.driver :as driver]
    [metabase.driver.athena :as athena]
@@ -15,7 +14,8 @@
    [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
    [metabase.test.data.sql-jdbc.execute :as execute]
    [metabase.test.data.sql-jdbc.load-data :as load-data]
-   [metabase.test.data.sql.ddl :as ddl]))
+   [metabase.test.data.sql.ddl :as ddl]
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -86,7 +86,7 @@
 ;;;    enable [[*allow-database-creation*]] for this to work:
 ;;;
 ;;;    ```
-;;;    (db/delete! 'Database :engine "athena", :name "sample-dataset")
+;;;    (t2/delete! 'Database :engine "athena", :name "sample-dataset")
 ;;;    (binding [metabase.test.data.athena/*allow-database-creation* true]
 ;;;      (metabase.driver/with-driver :athena
 ;;;        (metabase.test/dataset sample-dataset

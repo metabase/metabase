@@ -7,7 +7,7 @@ import { t } from "ttag";
 import visualizations from "metabase/visualizations";
 import * as Urls from "metabase/lib/urls";
 
-import S from "metabase/components/List.css";
+import S from "metabase/components/List/List.css";
 
 import List from "metabase/components/List";
 import ListItem from "metabase/components/ListItem";
@@ -30,7 +30,7 @@ import {
 const emptyStateData = table => {
   return {
     message: t`Questions about this table will appear here as they're added`,
-    icon: "all",
+    icon: "folder",
     action: t`Ask a question`,
     link: getQuestionUrl({
       dbId: table.db_id,

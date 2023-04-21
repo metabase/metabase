@@ -25,7 +25,11 @@ export type DatabaseFeature =
   | "standard-deviation-aggregations"
   | "persist-models"
   | "persist-models-enabled"
-  | "set-timezone";
+  | "set-timezone"
+  | "left-join"
+  | "right-join"
+  | "inner-join"
+  | "full-join";
 
 export interface Database extends DatabaseData {
   id: DatabaseId;
@@ -63,4 +67,11 @@ export interface DatabaseData {
 export interface DatabaseSchedules {
   metadata_sync?: ScheduleSettings;
   cache_field_values?: ScheduleSettings;
+}
+
+export interface DatabaseUsageInfo {
+  question: number;
+  dataset: number;
+  metric: number;
+  segment: number;
 }

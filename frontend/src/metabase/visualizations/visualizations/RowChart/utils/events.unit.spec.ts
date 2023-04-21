@@ -1,4 +1,4 @@
-import { VisualizationSettings } from "metabase-types/api";
+import { SeriesSettings, VisualizationSettings } from "metabase-types/api";
 import { MultipleMetricsChartColumns } from "metabase/visualizations/lib/graph/columns";
 import { BarData } from "metabase/visualizations/shared/components/RowChart/types";
 import {
@@ -8,9 +8,9 @@ import {
 import { getHoverData } from "./events";
 
 const datasetColumns = [
-  { name: "y" } as RemappingHydratedDatasetColumn,
-  { name: "x" } as RemappingHydratedDatasetColumn,
-  { name: "x1" } as RemappingHydratedDatasetColumn,
+  { name: "y", display_name: "Y" } as RemappingHydratedDatasetColumn,
+  { name: "x", display_name: "X" } as RemappingHydratedDatasetColumn,
+  { name: "x1", display_name: "X1" } as RemappingHydratedDatasetColumn,
 ];
 
 const chartColumns: MultipleMetricsChartColumns = {
@@ -69,6 +69,36 @@ const barData: BarData<GroupedDatum> = {
 
 describe("events utils", () => {
   describe("getHoverData", () => {
+    it("returns key-value pairs based on series_settings for charts without a breakout", () => {
+      const keyValueData = getHoverData(
+        barData,
+        {
+          series_settings: {
+            [chartColumns.metrics[0].column.name]: {
+              title: "my custom label",
+            } as SeriesSettings,
+          },
+        },
+        {
+          dimension: chartColumns.dimension,
+          metrics: [chartColumns.metrics[0]],
+        },
+        datasetColumns,
+        [series1],
+        seriesColors,
+      ).data;
+
+      expect(keyValueData).toStrictEqual([
+        { col: chartColumns.dimension.column, key: "Y", value: "foo" },
+        {
+          col: chartColumns.metrics[0].column,
+          key: "my custom label",
+          value: 100,
+        },
+        { col: chartColumns.metrics[1].column, key: "X1", value: 200 },
+      ]);
+    });
+
     it.each(["stacked", "normalized"])(
       "returns stacked tooltip model for stacked charts",
       stackType => {

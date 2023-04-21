@@ -1,6 +1,10 @@
 import type { DatabaseId } from "./database";
 import type { Field } from "./field";
-import type { DatasetQuery } from "./query";
+import type {
+  DatasetQuery,
+  FieldReference,
+  AggregationReference,
+} from "./query";
 
 export interface Card extends UnsavedCard {
   id: CardId;
@@ -27,8 +31,10 @@ export interface Card extends UnsavedCard {
   };
 }
 
+export type CardDisplayType = string;
+
 export interface UnsavedCard {
-  display: string;
+  display: CardDisplayType;
   dataset_query: DatasetQuery;
   visualization_settings: VisualizationSettings;
 }
@@ -46,9 +52,36 @@ export type SeriesOrderSetting = {
   color?: string;
 };
 
+export type ColumnFormattingSetting = {
+  columns: string[]; // column names
+  color?: string;
+  type?: string;
+  operator?: string;
+  value?: string | number;
+  highlight_row?: boolean;
+};
+
+export type PivotTableCollapsedRowsSetting = {
+  rows: (FieldReference | AggregationReference)[];
+  value: string[]; // identifiers for collapsed rows
+};
+
+export type TableColumnOrderSetting = {
+  name: string;
+  enabled: boolean;
+
+  // We have some corrupted visualization settings where both names are mixed
+  // We should settle on `fieldRef`, make it required and remove `field_ref`
+  fieldRef?: FieldReference;
+  field_ref?: FieldReference;
+};
+
 export type VisualizationSettings = {
   "graph.show_values"?: boolean;
   "stackable.stack_type"?: "stacked" | "normalized" | null;
+
+  // Table
+  "table.columns"?: TableColumnOrderSetting[];
 
   // X-axis
   "graph.x_axis.title_text"?: string;
@@ -76,6 +109,9 @@ export type VisualizationSettings = {
 
   // Funnel settings
   "funnel.rows"?: SeriesOrderSetting[];
+
+  "table.column_formatting"?: ColumnFormattingSetting[];
+  "pivot_table.collapsed_rows"?: PivotTableCollapsedRowsSetting;
 
   [key: string]: any;
 };

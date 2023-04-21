@@ -29,7 +29,7 @@ Throughout the People section, names can be clicked to access the profile of a s
 - Dashboard views
 - Query views
 - Downloads
-- Subscriptions & Alerts
+- Subscriptions and Alerts
 
 ![Team Members](./images/audit-teammember.png)
 
@@ -89,9 +89,9 @@ A list of all of your dashboards is available as well, and you can see various d
 
 Use the __Downloads__ section to understand which people are downloading (or exporting) data, and the size (number of rows) of the downloads they're performing. This section contains some visualizations, as well as a list of all downloads.
 
-### Subscriptions & Alerts
+### Subscriptions and Alerts
 
-Here Admins can get an overview of all of the [Dashboard subscriptions][dashboard-subscriptions] and [Alerts][alerts] that are currently active for that Metabase.
+Here admins can get an overview of all of the [dashboard subscriptions][dashboard-subscriptions] and [alerts][alerts] that are currently active for that Metabase.
 
 - Dashboard name (or Question name for Alerts)
 - Recipients
@@ -102,7 +102,11 @@ Here Admins can get an overview of all of the [Dashboard subscriptions][dashboar
 - Created At
 - Filters
 
-Admins can add and remove people from a subscription or alert by clicking on the item's __Recipients__. Admins can also delete the subscription or alert entirely by clicking on the **X** on the relevant line.
+Admins can add and remove people from a subscription or alert by clicking on the item's __Recipients__ number. Admins can also delete the subscription or alert entirely by clicking on the **X** on the relevant line.
+
+Everyone can view all of their subscriptions and alerts by clicking on the **gear** icon in the upper right and navigating to **Account settings** > **Notifications**.
+
+For more, see [how permissions work with alerts and subscriptions](../permissions/notifications.md).
 
 [alerts]: ../questions/sharing/alerts.md
 [dashboard-subscriptions]: ../dashboards/subscriptions.md

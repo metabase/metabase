@@ -1,13 +1,9 @@
 import React from "react";
+import { Route } from "react-router";
 import userEvent from "@testing-library/user-event";
-import { render, screen, getIcon } from "__support__/ui";
+import { renderWithProviders, screen, getIcon } from "__support__/ui";
 
 import PinnedItemCard from "./PinnedItemCard";
-
-// eslint-disable-next-line react/display-name, react/prop-types
-jest.mock("metabase/core/components/Link", () => ({ to, ...props }) => (
-  <a {...props} href={to} />
-));
 
 const mockOnCopy = jest.fn();
 const mockOnMove = jest.fn();
@@ -50,13 +46,19 @@ const defaultItem = getCollectionItem();
 function setup({ item = defaultItem, collection = defaultCollection } = {}) {
   mockOnCopy.mockReset();
   mockOnMove.mockReset();
-  return render(
-    <PinnedItemCard
-      item={item}
-      collection={collection}
-      onCopy={mockOnCopy}
-      onMove={mockOnMove}
+  return renderWithProviders(
+    <Route
+      path="/"
+      component={() => (
+        <PinnedItemCard
+          item={item}
+          collection={collection}
+          onCopy={mockOnCopy}
+          onMove={mockOnMove}
+        />
+      )}
     />,
+    { withRouter: true },
   );
 }
 

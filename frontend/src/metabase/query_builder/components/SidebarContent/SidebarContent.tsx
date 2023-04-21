@@ -56,5 +56,7 @@ function SidebarContent({
 }
 
 export default Object.assign(SidebarContent, {
+  Root: SidebarContentRoot,
   Header: SidebarHeader,
+  Content: SidebarContentMain,
 });

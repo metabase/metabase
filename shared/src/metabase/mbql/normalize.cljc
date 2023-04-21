@@ -35,7 +35,7 @@
    [metabase.mbql.util :as mbql.u]
    [metabase.mbql.util.match :as mbql.match]
    [metabase.shared.util.i18n :as i18n]
-   [metabase.shared.util.log :as log]))
+   [metabase.util.log :as log]))
 
 (defn- mbql-clause?
   "True if `x` is an MBQL clause (a sequence with a token as its first arg). (This is different from the implementation
@@ -608,6 +608,15 @@
           (normalize-tokens options :ignore-path))
     [:case (vec (for [[pred expr] clauses]
                   [(canonicalize-mbql-clause pred) (canonicalize-mbql-clause expr)]))]))
+
+(defmethod canonicalize-mbql-clause :substring
+  [[_ arg start & more]]
+  (into [:substring
+         (canonicalize-mbql-clause arg)
+         ;; 0 indexes were allowed in the past but we are now enforcing this rule in MBQL.
+         ;; This allows stored queries with literal 0 in the index to work.
+         (if (= 0 start) 1 (canonicalize-mbql-clause start))]
+        (map canonicalize-mbql-clause more)))
 
 ;;; top-level key canonicalization
 

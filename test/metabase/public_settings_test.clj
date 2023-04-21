@@ -1,4 +1,4 @@
-(ns metabase.public-settings-test
+(ns ^:mb/once metabase.public-settings-test
   (:require
    [clj-http.fake :as http-fake]
    [clojure.core.memoize :as memoize]
@@ -9,6 +9,8 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.i18n :as i18n :refer [tru]]))
+
+(set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -99,7 +101,7 @@
   (mt/with-mock-i18n-bundles {"zz" {:messages {"Host" "HOST"}}}
     (mt/with-user-locale "zz"
       (is (= "HOST"
-             (str (get-in (setting/user-readable-values-map :public)
+             (str (get-in (setting/user-readable-values-map #{:public})
                           [:engines :postgres :details-fields 0 :display-name])))))))
 
 (deftest tru-translates
@@ -210,3 +212,23 @@
         {{:address (public-settings/cloud-gateway-ips-url)}
          (constantly {:status 200 :body "{\"ip_addresses\": [\"127.0.0.1\"]}"})}
         (is (= nil (public-settings/cloud-gateway-ips)))))))
+
+(deftest start-of-week-test
+  (mt/discard-setting-changes [start-of-week]
+    (testing "Error on invalid value"
+      (is (thrown-with-msg?
+           Throwable
+           #"Invalid day of week: :fraturday"
+           (public-settings/start-of-week! :fraturday))))
+    (mt/with-temp-env-var-value [start-of-week nil]
+      (testing "Should default to Sunday"
+        (is (= :sunday
+               (public-settings/start-of-week))))
+      (testing "Sanity check: make sure we're setting the env var value correctly for the assertion after this"
+        (mt/with-temp-env-var-value [:mb-start-of-week "monday"]
+          (is (= :monday
+                 (public-settings/start-of-week)))))
+      (testing "Fall back to default if value is invalid"
+        (mt/with-temp-env-var-value [:mb-start-of-week "fraturday"]
+          (is (= :sunday
+                 (public-settings/start-of-week))))))))

@@ -1,10 +1,7 @@
 (ns metabase.server.middleware.session
   "Ring middleware related to session (binding current user and permissions)."
   (:require
-   [clojure.java.jdbc :as jdbc]
-   [clojure.tools.logging :as log]
-   [honeysql.core :as hsql]
-   [honeysql.helpers :as hh]
+   [honey.sql.helpers :as sql.helpers]
    [java-time :as t]
    [metabase.api.common
     :as api
@@ -17,9 +14,6 @@
    [metabase.core.initialization-status :as init-status]
    [metabase.db :as mdb]
    [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.models.permissions-group-membership
-    :refer [PermissionsGroupMembership]]
-   [metabase.models.session :refer [Session]]
    [metabase.models.setting
     :as setting
     :refer [*user-local-values* defsetting]]
@@ -29,9 +23,11 @@
    [metabase.server.request.util :as request.u]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [deferred-trs deferred-tru trs tru]]
+   [metabase.util.log :as log]
    [ring.util.response :as response]
    [schema.core :as s]
-   [toucan.db :as db])
+   [toucan.db :as db]
+   [toucan2.core :as t2])
   (:import
    (java.util UUID)))
 
@@ -232,30 +228,31 @@
    (fn [db-type max-age-minutes session-type enable-advanced-permissions?]
      (first
       (db/honeysql->sql
-       (cond->
-         {:select    [[:session.user_id :metabase-user-id]
-                      [:user.is_superuser :is-superuser?]
-                      [:user.locale :user-locale]]
-          :from      [[Session :session]]
-          :left-join [[User :user] [:= :session.user_id :user.id]]
-          :where     [:and
-                      [:= :user.is_active true]
-                      [:= :session.id (hsql/raw "?")]
-                      (let [oldest-allowed (sql.qp/add-interval-honeysql-form db-type :%now (- max-age-minutes) :minute)]
-                        [:> :session.created_at oldest-allowed])
-                      [:= :session.anti_csrf_token (case session-type
-                                                     :normal         nil
-                                                     :full-app-embed "?")]]
-          :limit     1}
-
+       (cond-> {:select    [[:session.user_id :metabase-user-id]
+                            [:user.is_superuser :is-superuser?]
+                            [:user.locale :user-locale]]
+                :from      [[:core_session :session]]
+                :left-join [[:core_user :user] [:= :session.user_id :user.id]]
+                :where     [:and
+                            [:= :user.is_active true]
+                            [:= :session.id [:raw "?"]]
+                            (let [oldest-allowed [:inline (sql.qp/add-interval-honeysql-form db-type
+                                                                                             :%now
+                                                                                             (- max-age-minutes)
+                                                                                             :minute)]]
+                              [:> :session.created_at oldest-allowed])
+                            [:= :session.anti_csrf_token (case session-type
+                                                           :normal         nil
+                                                           :full-app-embed [:raw "?"])]]
+                :limit     [:inline 1]}
          enable-advanced-permissions?
          (->
-          (hh/merge-select
+          (sql.helpers/select
            [:pgm.is_group_manager :is-group-manager?])
-          (hh/merge-left-join
-           [PermissionsGroupMembership :pgm] [:and
-                                              [:= :pgm.user_id :user.id]
-                                              [:is :pgm.is_group_manager true]]))))))))
+          (sql.helpers/left-join
+           [:permissions_group_membership :pgm] [:and
+                                                 [:= :pgm.user_id :user.id]
+                                                 [:is :pgm.is_group_manager true]]))))))))
 
 (defn- current-user-info-for-session
   "Return User ID and superuser status for Session with `session-id` if it is valid and not expired."
@@ -268,7 +265,7 @@
           params (concat [session-id]
                          (when (seq anti-csrf-token)
                            [anti-csrf-token]))]
-      (some-> (first (jdbc/query (db/connection) (cons sql params)))
+      (some-> (t2/query-one (cons sql params))
               ;; is-group-manager? could return `nil, convert it to boolean so it's guaranteed to be only true/false
               (update :is-group-manager? boolean)))))
 
@@ -297,11 +294,11 @@
 
 (defn- find-user [user-id]
   (when user-id
-    (db/select-one current-user-fields, :id user-id)))
+    (t2/select-one current-user-fields, :id user-id)))
 
 (defn- user-local-settings [user-id]
   (when user-id
-    (or (:settings (db/select-one [User :settings] :id user-id))
+    (or (:settings (t2/select-one [User :settings] :id user-id))
         {})))
 
 (defn do-with-current-user
@@ -342,13 +339,13 @@
   "Part of the impl for `with-current-user` -- don't use this directly."
   [current-user-id]
   (when current-user-id
-    (db/select-one [User [:id :metabase-user-id] [:is_superuser :is-superuser?] [:locale :user-locale] :settings]
+    (t2/select-one [User [:id :metabase-user-id] [:is_superuser :is-superuser?] [:locale :user-locale] :settings]
       :id current-user-id)))
 
 (defmacro with-current-user
   "Execute code in body with User with `current-user-id` bound as the current user. (This is not used in the middleware
   itself but elsewhere where we want to simulate a User context, such as when rendering Pulses or in tests.) "
-  {:style/indent 1}
+  {:style/indent :defn}
   [current-user-id & body]
   `(do-with-current-user
     (with-current-user-fetch-user-for-id ~current-user-id)
@@ -376,7 +373,7 @@
         :amount-must-be-less-than-100-years))))
 
 (defsetting session-timeout
-  ;; Should be in the form {:amount 60 :unit "minutes"} where the unit is one of "seconds", "minutes" or "hours".
+  ;; Should be in the form "{\"amount\":60,\"unit\":\"minutes\"}" where the unit is one of "seconds", "minutes" or "hours".
   ;; The amount is nillable.
   (deferred-tru "Time before inactive users are logged out. By default, sessions last indefinitely.")
   :type    :json

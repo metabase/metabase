@@ -38,8 +38,13 @@
 (s/def ::createIndex
   (s/keys :req-un [::indexName]))
 
+(s/def :custom-change/class (every-pred string? (complement str/blank?)))
+
+(s/def ::customChange
+  (s/keys :req-un [:custom-change/class]))
+
 (s/def ::change
-  (s/keys :opt-un [::addColumn ::createTable ::createIndex]))
+  (s/keys :opt-un [::addColumn ::createTable ::createIndex ::customChange]))
 
 (s/def :change.strict.dbms-qualified-sql-change.sql/dbms
   string?)

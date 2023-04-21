@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { CSSTransitionGroup } from "react-transition-group";
+import { CSSTransition, TransitionGroup } from "react-transition-group";
 import { t } from "ttag";
 
 import Form, { FormField, FormFooter } from "metabase/containers/FormikForm";
@@ -9,8 +9,6 @@ import ModalContent from "metabase/components/ModalContent";
 import Radio from "metabase/core/components/Radio";
 import validate from "metabase/lib/validate";
 import { canonicalCollectionId } from "metabase/collections/utils";
-import * as Q_DEPRECATED from "metabase-lib/queries/utils";
-import { generateQueryDescription } from "metabase-lib/queries/utils/description";
 
 import "./SaveQuestionModal.css";
 
@@ -26,9 +24,8 @@ const getSingleStepTitle = (questionType, showSaveType) => {
 
 export default class SaveQuestionModal extends Component {
   static propTypes = {
-    card: PropTypes.object.isRequired,
-    originalCard: PropTypes.object,
-    tableMetadata: PropTypes.object, // can't be required, sometimes null
+    question: PropTypes.object.isRequired,
+    originalQuestion: PropTypes.object,
     onCreate: PropTypes.func.isRequired,
     onSave: PropTypes.func.isRequired,
     onClose: PropTypes.func.isRequired,
@@ -44,70 +41,57 @@ export default class SaveQuestionModal extends Component {
   };
 
   handleSubmit = async details => {
-    // TODO Atte Keinäenn 31/1/18 Refactor this
-    // I think that the primary change should be that
-    // SaveQuestionModal uses Question objects instead of directly modifying card objects –
-    // but that is something that doesn't need to be done first)
-    // question
-    //     .setDisplayName(details.name.trim())
-    //     .setDescription(details.description ? details.description.trim() : null)
-    //     .setCollectionId(details.collection_id)
-    let { card, originalCard, onCreate, onSave } = this.props;
+    const { question, originalQuestion, onCreate, onSave } = this.props;
 
-    const collection_id = canonicalCollectionId(
+    const collectionId = canonicalCollectionId(
       details.saveType === "overwrite"
-        ? originalCard.collection_id
+        ? originalQuestion.collectionId()
         : details.collection_id,
     );
+    const displayName =
+      details.saveType === "overwrite"
+        ? originalQuestion.displayName()
+        : details.name.trim();
+    const description =
+      details.saveType === "overwrite"
+        ? originalQuestion.description()
+        : details.description
+        ? details.description.trim()
+        : null;
 
-    card = {
-      ...card,
-      name:
-        details.saveType === "overwrite"
-          ? originalCard.name
-          : details.name.trim(),
-      // since description is optional, it can be null, so check for a description before trimming it
-      description:
-        details.saveType === "overwrite"
-          ? originalCard.description
-          : details.description
-          ? details.description.trim()
-          : null,
-      collection_id,
-    };
+    const newQuestion = question
+      .setDisplayName(displayName)
+      .setDescription(description)
+      .setCollectionId(collectionId);
 
     if (details.saveType === "create") {
-      await onCreate(card);
+      await onCreate(newQuestion);
     } else if (details.saveType === "overwrite") {
-      card.id = this.props.originalCard.id;
-      await onSave(card);
+      await onSave(newQuestion.setId(originalQuestion.id()));
     }
   };
 
   render() {
-    const { card, originalCard, initialCollectionId, tableMetadata } =
-      this.props;
+    const { question, originalQuestion, initialCollectionId } = this.props;
 
-    const isStructured = Q_DEPRECATED.isStructured(card.dataset_query);
-    const isReadonly = originalCard != null && !originalCard.can_write;
+    const isReadonly = originalQuestion != null && !originalQuestion.canWrite();
 
     const initialValues = {
-      name:
-        card.name || isStructured
-          ? generateQueryDescription(tableMetadata, card.dataset_query.query)
-          : "",
-      description: card.description || "",
+      name: question.generateQueryDescription(),
+      description: question.description() || "",
       collection_id:
-        card.collection_id === undefined || isReadonly
+        question.collectionId() === undefined || isReadonly
           ? initialCollectionId
-          : card.collection_id,
+          : question.collectionId(),
       saveType:
-        originalCard && !originalCard.dataset && originalCard.can_write
+        originalQuestion &&
+        !originalQuestion.isDataset() &&
+        originalQuestion.canWrite()
           ? "overwrite"
           : "create",
     };
 
-    const questionType = card.dataset ? "model" : "question";
+    const questionType = question.isDataset() ? "model" : "question";
 
     const multiStepTitle =
       questionType === "question"
@@ -115,10 +99,10 @@ export default class SaveQuestionModal extends Component {
         : t`First, save your model`;
 
     const showSaveType =
-      !card.id &&
-      !!originalCard &&
-      !originalCard.dataset &&
-      originalCard.can_write;
+      !question.isSaved() &&
+      !!originalQuestion &&
+      !originalQuestion.isDataset() &&
+      originalQuestion.canWrite();
 
     const singleStepTitle = getSingleStepTitle(questionType, showSaveType);
 
@@ -156,36 +140,39 @@ export default class SaveQuestionModal extends Component {
                 title={t`Replace or save as new?`}
                 type={SaveTypeInput}
                 hidden={!showSaveType}
-                originalCard={originalCard}
+                originalQuestion={originalQuestion}
               />
-              <CSSTransitionGroup
-                component="div"
-                transitionName="saveQuestionModalFields"
-                transitionEnterTimeout={500}
-                transitionLeaveTimeout={500}
-              >
+              <TransitionGroup>
                 {values.saveType === "create" && (
-                  <div className="saveQuestionModalFields">
-                    <FormField
-                      autoFocus
-                      name="name"
-                      title={t`Name`}
-                      placeholder={nameInputPlaceholder}
-                    />
-                    <FormField
-                      name="description"
-                      type="text"
-                      title={t`Description`}
-                      placeholder={t`It's optional but oh, so helpful`}
-                    />
-                    <FormField
-                      name="collection_id"
-                      title={t`Which collection should this go in?`}
-                      type="collection"
-                    />
-                  </div>
+                  <CSSTransition
+                    classNames="saveQuestionModalFields"
+                    timeout={{
+                      enter: 500,
+                      exit: 500,
+                    }}
+                  >
+                    <div className="saveQuestionModalFields">
+                      <FormField
+                        autoFocus
+                        name="name"
+                        title={t`Name`}
+                        placeholder={nameInputPlaceholder}
+                      />
+                      <FormField
+                        name="description"
+                        type="text"
+                        title={t`Description`}
+                        placeholder={t`It's optional but oh, so helpful`}
+                      />
+                      <FormField
+                        name="collection_id"
+                        title={t`Which collection should this go in?`}
+                        type="collection"
+                      />
+                    </div>
+                  </CSSTransition>
                 )}
-              </CSSTransitionGroup>
+              </TransitionGroup>
               <FormFooter submitTitle={t`Save`} onCancel={this.props.onClose} />
             </Form>
           )}
@@ -195,13 +182,14 @@ export default class SaveQuestionModal extends Component {
   }
 }
 
-const SaveTypeInput = ({ field, originalCard }) => (
+const SaveTypeInput = ({ field, originalQuestion }) => (
   <Radio
     {...field}
+    type={""}
     options={[
       {
         name: t`Replace original question, "${
-          originalCard && originalCard.name
+          originalQuestion && originalQuestion.displayName()
         }"`,
         value: "overwrite",
       },

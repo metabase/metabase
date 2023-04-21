@@ -53,7 +53,7 @@ function _AddEditEmailSidebar({
         <Heading>{t`Email this dashboard`}</Heading>
       </div>
       <CaveatMessage />
-      <div className="my2 px4">
+      <div className="my2 px4 full-height flex flex-column">
         <div>
           <div className="text-bold mb1">{t`To:`}</div>
           <RecipientPicker
@@ -143,6 +143,9 @@ function _AddEditEmailSidebar({
             handleArchive={handleArchive}
           />
         )}
+        <div className="p2 mt-auto text-small text-medium">
+          {t`Charts in subscriptions may look slightly different from charts in dashboards.`}
+        </div>
       </div>
     </Sidebar>
   );

@@ -67,4 +67,4 @@
                            [:metabase_table :t]     [:= :card.table_id :t.id]
                            [:collection :coll]      [:= :card.collection_id :coll.id]
                            :card_views              [:= :card.id :card_views.card_id]]
-               :order-by  [[:%lower.card.name :asc]]})})
+               :order-by  [[[:lower :card.name] :asc]]})})

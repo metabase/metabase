@@ -95,7 +95,6 @@
    [clojure.edn :as edn]
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [clojure.walk :as walk]
    [environ.core :as env]
    [metabase-enterprise.advanced-config.file.databases]
@@ -108,7 +107,8 @@
    [metabase.util :as u]
    [metabase.util.files :as u.files]
    [metabase.util.i18n :refer [trs tru]]
-   [yaml.core :as yaml]))
+   [metabase.util.log :as log]
+   [metabase.util.yaml :as yaml]))
 
 (comment
   ;; for parameter parsing
@@ -233,7 +233,7 @@
   "Contents of the config file if it exists, otherwise `nil`. If config exists, it will be returned as a map."
   []
   (when-let [m (or *config*
-                   (yaml/from-file (str (path)) true))]
+                   (yaml/from-file (str (path))))]
     (s/assert* ::config m)
     (expand-templates m)))
 

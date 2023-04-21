@@ -4,9 +4,9 @@ import { ResolverError } from "metabase-lib/expressions/pratt/types";
 import { OPERATOR as OP } from "./tokenizer";
 import { getMBQLName, MBQL_CLAUSES } from "./index";
 
-export const FIELD_MARKERS = ["dimension", "segment", "metric"];
+const FIELD_MARKERS = ["dimension", "segment", "metric"];
 export const LOGICAL_OPS = [OP.Not, OP.And, OP.Or];
-export const NUMBER_OPS = [OP.Plus, OP.Minus, OP.Star, OP.Slash];
+const NUMBER_OPS = [OP.Plus, OP.Minus, OP.Star, OP.Slash];
 export const COMPARISON_OPS = [
   OP.Equal,
   OP.NotEqual,
@@ -144,12 +144,18 @@ export function resolve(expression, type = "expression", fn = undefined) {
     if (!clause) {
       throw new ResolverError(t`Unknown function ${op}`, expression.node);
     }
-    const { displayName, args, multiple, hasOptions } = clause;
+    const { displayName, args, multiple, hasOptions, validator } = clause;
     if (!isCompatible(type, clause.type)) {
       throw new ResolverError(
         t`Expecting ${type} but found function ${displayName} returning ${clause.type}`,
         expression.node,
       );
+    }
+    if (validator) {
+      const validationError = validator(...operands);
+      if (validationError) {
+        throw new ResolverError(validationError, expression.node);
+      }
     }
     if (!multiple) {
       const expectedArgsLength = args.length;

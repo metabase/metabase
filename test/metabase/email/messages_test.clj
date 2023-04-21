@@ -9,6 +9,8 @@
   (:import
    (java.io IOException)))
 
+(set! *warn-on-reflection* true)
+
 (deftest new-user-email
   (is (= [{:from    "notifications@metabase.com",
            :to      ["test@test.com"],

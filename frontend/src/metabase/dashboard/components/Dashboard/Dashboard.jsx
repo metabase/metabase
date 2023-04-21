@@ -7,12 +7,15 @@ import { getMainElement } from "metabase/lib/dom";
 
 import DashboardHeader from "metabase/dashboard/containers/DashboardHeader";
 import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
+import FilterApplyButton from "metabase/parameters/components/FilterApplyButton";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
+import DashboardControls from "metabase/dashboard/hoc/DashboardControls";
 import { getValuePopulatedParameters } from "metabase-lib/parameters/utils/parameter-values";
 
-import DashboardControls from "../../hoc/DashboardControls";
 import { DashboardSidebars } from "../DashboardSidebars";
 import DashboardGrid from "../DashboardGrid";
+import { SIDEBAR_NAME } from "../../constants";
+
 import {
   CardsContainer,
   DashboardStyled,
@@ -55,6 +58,7 @@ class Dashboard extends Component {
     dashboardId: PropTypes.number,
     parameters: PropTypes.array,
     parameterValues: PropTypes.object,
+    draftParameterValues: PropTypes.object,
     editingParameter: PropTypes.object,
 
     editingOnLoad: PropTypes.bool,
@@ -87,7 +91,9 @@ class Dashboard extends Component {
       name: PropTypes.string,
       props: PropTypes.object,
     }).isRequired,
+    toggleSidebar: PropTypes.func.isRequired,
     closeSidebar: PropTypes.func.isRequired,
+    closeNavbar: PropTypes.func.isRequired,
     embedOptions: PropTypes.object,
   };
 
@@ -200,6 +206,12 @@ class Dashboard extends Component {
     this.props.setSharing(true);
   };
 
+  onAddQuestion = () => {
+    const { dashboard } = this.props;
+    this.setEditing(dashboard);
+    this.props.toggleSidebar(SIDEBAR_NAME.addQuestion);
+  };
+
   render() {
     const {
       addParameter,
@@ -211,6 +223,7 @@ class Dashboard extends Component {
       isSharing,
       parameters,
       parameterValues,
+      draftParameterValues,
       isNavbarOpen,
       editingParameter,
       setParameterValue,
@@ -228,7 +241,12 @@ class Dashboard extends Component {
 
     const parametersWidget = (
       <SyncedParametersList
-        parameters={getValuePopulatedParameters(parameters, parameterValues)}
+        parameters={getValuePopulatedParameters(
+          parameters,
+          _.isEmpty(draftParameterValues)
+            ? parameterValues
+            : draftParameterValues,
+        )}
         editingParameter={editingParameter}
         dashboard={dashboard}
         isFullscreen={isFullscreen}
@@ -299,6 +317,7 @@ class Dashboard extends Component {
                     topNav={embedOptions?.top_nav}
                   >
                     {parametersWidget}
+                    <FilterApplyButton />
                   </ParametersWidgetContainer>
                 )}
 
@@ -314,6 +333,8 @@ class Dashboard extends Component {
                   ) : (
                     <DashboardEmptyState
                       isNightMode={shouldRenderAsNightMode}
+                      addQuestion={this.onAddQuestion}
+                      closeNavbar={this.props.closeNavbar}
                     />
                   )}
                 </CardsContainer>

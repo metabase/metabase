@@ -1,12 +1,12 @@
 (ns metabase.test.data.sql-jdbc
   "Common test extension functionality for SQL-JDBC drivers."
   (:require
-   [clojure.tools.logging :as log]
    [metabase.driver :as driver]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
    [metabase.test.data.sql-jdbc.load-data :as load-data]
-   [metabase.test.initialize :as initialize]))
+   [metabase.test.initialize :as initialize]
+   [metabase.util.log :as log]))
 
 (driver/register! :sql-jdbc/test-extensions, :abstract? true)
 

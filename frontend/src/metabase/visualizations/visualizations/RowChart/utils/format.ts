@@ -38,8 +38,7 @@ export const getFormatters = (
         number_separators,
         jsx: false,
         number_style: "percent",
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
+        decimals: 2,
       }),
     );
   };

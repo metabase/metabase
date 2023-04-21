@@ -6,7 +6,6 @@ import {
   getParametersMappedToDashcard,
   hasMatchingParameters,
   getFilteringParameterValuesMap,
-  getParameterValuesSearchKey,
   getDashboardUiParameters,
 } from "metabase/parameters/utils/dashboards";
 import { PRODUCTS, metadata } from "__support__/sample_database_fixture";
@@ -514,66 +513,6 @@ describe("metabase/parameters/utils/dashboards", () => {
       expect(
         getFilteringParameterValuesMap(emptyFilteringParameters, parameters),
       ).toEqual({});
-    });
-  });
-
-  describe("getParameterValuesSearchKey", () => {
-    it("should return a string using the given props related to parameter value searching", () => {
-      expect(
-        getParameterValuesSearchKey({
-          dashboardId: "123",
-          parameterId: "456",
-          query: "foo",
-          filteringParameterValues: {
-            a: "aaa",
-            b: "bbb",
-          },
-        }),
-      ).toEqual(
-        'dashboardId: 123, parameterId: 456, query: foo, filteringParameterValues: [["a","aaa"],["b","bbb"]]',
-      );
-    });
-
-    it("should default `query` to null", () => {
-      expect(
-        getParameterValuesSearchKey({
-          dashboardId: "123",
-          parameterId: "456",
-          filteringParameterValues: {
-            a: "aaa",
-            b: "bbb",
-          },
-        }),
-      ).toEqual(
-        'dashboardId: 123, parameterId: 456, query: null, filteringParameterValues: [["a","aaa"],["b","bbb"]]',
-      );
-    });
-
-    it("should sort the entries in the `filteringParameterValues` object", () => {
-      expect(
-        getParameterValuesSearchKey({
-          dashboardId: "123",
-          parameterId: "456",
-          filteringParameterValues: {
-            b: "bbb",
-            a: "aaa",
-          },
-        }),
-      ).toEqual(
-        'dashboardId: 123, parameterId: 456, query: null, filteringParameterValues: [["a","aaa"],["b","bbb"]]',
-      );
-    });
-
-    it("should handle there being no filteringParameterValues", () => {
-      expect(
-        getParameterValuesSearchKey({
-          dashboardId: "123",
-          parameterId: "456",
-          query: "abc",
-        }),
-      ).toEqual(
-        "dashboardId: 123, parameterId: 456, query: abc, filteringParameterValues: []",
-      );
     });
   });
 

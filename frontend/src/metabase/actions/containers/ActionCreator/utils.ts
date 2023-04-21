@@ -1,41 +1,29 @@
-import type {
-  WritebackQueryAction,
-  VisualizationSettings,
-} from "metabase-types/api";
-import type {
-  Card as LegacyCard,
-  NativeDatasetQuery,
-} from "metabase-types/types/Card";
-import type Metadata from "metabase-lib/metadata/Metadata";
-import Question from "metabase-lib/Question";
+import _ from "underscore";
 
-// ActionCreator uses the NativeQueryEditor, which expects a Question object
-// This utilities help us to work with the WritebackQueryAction as with a Question
+import { getDefaultFieldSettings } from "metabase/actions/utils";
 
-export const newQuestion = (metadata: Metadata, databaseId?: number) => {
-  return new Question(
-    {
-      dataset_query: {
-        type: "native",
-        database: databaseId ?? null,
-        native: {
-          query: "",
-        },
-      },
-    },
-    metadata,
-  );
-};
+import type { ActionFormSettings, Parameter } from "metabase-types/api";
 
-export const convertActionToQuestionCard = (
-  action: WritebackQueryAction,
-): LegacyCard<NativeDatasetQuery> => {
+export const syncFieldsWithParameters = (
+  settings: ActionFormSettings,
+  parameters: Parameter[],
+): ActionFormSettings => {
+  const parameterIds = parameters.map(parameter => parameter.id);
+  const fieldIds = Object.keys(settings.fields || {});
+  const addedIds = _.difference(parameterIds, fieldIds);
+  const removedIds = _.difference(fieldIds, parameterIds);
+
+  if (!addedIds.length && !removedIds.length) {
+    return settings;
+  }
+
   return {
-    name: action.name,
-    description: action.description,
-    dataset_query: action.dataset_query as NativeDatasetQuery,
-    display: "action",
-    visualization_settings:
-      action.visualization_settings as VisualizationSettings,
+    ...settings,
+    fields: {
+      ..._.omit(settings.fields, removedIds),
+      ...Object.fromEntries(
+        addedIds.map(id => [id, getDefaultFieldSettings({ id })]),
+      ),
+    },
   };
 };

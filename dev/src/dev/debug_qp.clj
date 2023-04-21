@@ -1,19 +1,19 @@
 (ns dev.debug-qp
   "TODO -- I think this should be moved to something like [[metabase.test.util.debug-qp]]"
-  (:require [clojure.data :as data]
-            [clojure.pprint :as pprint]
-            [clojure.string :as str]
-            [clojure.walk :as walk]
-            [lambdaisland.deep-diff2 :as ddiff]
-            [medley.core :as m]
-            [metabase.mbql.schema :as mbql.s]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.models.field :refer [Field]]
-            [metabase.models.table :refer [Table]]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor.reducible :as qp.reducible]
-            [metabase.util :as u]
-            [toucan.db :as db]))
+  (:require
+   [clojure.pprint :as pprint]
+   [clojure.string :as str]
+   [clojure.walk :as walk]
+   [lambdaisland.deep-diff2 :as ddiff]
+   [medley.core :as m]
+   [metabase.mbql.schema :as mbql.s]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.models.field :refer [Field]]
+   [metabase.models.table :refer [Table]]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.reducible :as qp.reducible]
+   [metabase.util :as u]
+   [toucan2.core :as t2]))
 
 ;;;; [[->sorted-mbql-query-map]]
 
@@ -97,12 +97,12 @@
 ;;;; [[add-names]]
 
 (defn- field-and-table-name [field-id]
-  (let [{field-name :name, table-id :table_id} (db/select-one [Field :name :table_id] :id field-id)]
-    [(db/select-one-field :name Table :id table-id) field-name]))
+  (let [{field-name :name, table-id :table_id} (t2/select-one [Field :name :table_id] :id field-id)]
+    [(t2/select-one-fn :name Table :id table-id) field-name]))
 
 (defn- add-table-id-name [table-id]
   (list 'do
-        (symbol (format "#_%s" (pr-str (db/select-one-field :name Table :id table-id))))
+        (symbol (format "#_%s" (pr-str (t2/select-one-fn :name Table :id table-id))))
         table-id))
 
 (defn add-names
@@ -541,8 +541,8 @@
     (mbql.u/replace form
       ([:field (id :guard integer?) nil] :guard can-symbolize?)
       (let [[table-name field-name] (field-and-table-name id)
-            field-name              (some-> field-name str/lower-case)
-            table-name              (some-> table-name str/lower-case)]
+            field-name              (some-> field-name u/lower-case-en)
+            table-name              (some-> table-name u/lower-case-en)]
         (if (= table-name table)
           [::$ field-name]
           [::$ table-name field-name]))
@@ -576,14 +576,14 @@
 
       (m :guard (every-pred map? (comp integer? :source-table)))
       (-> (update m :source-table (fn [table-id]
-                                    [::$$ (some-> (db/select-one-field :name Table :id table-id) str/lower-case)]))
+                                    [::$$ (some-> (t2/select-one-fn :name Table :id table-id) u/lower-case-en)]))
           (expand table))
 
       (m :guard (every-pred map? (comp integer? :fk-field-id)))
       (-> (update m :fk-field-id (fn [fk-field-id]
                                    (let [[table-name field-name] (field-and-table-name fk-field-id)
-                                         field-name              (some-> field-name str/lower-case)
-                                         table-name              (some-> table-name str/lower-case)]
+                                         field-name              (some-> field-name u/lower-case-en)
+                                         table-name              (some-> table-name u/lower-case-en)]
                                      (if (= table-name table)
                                        [::% field-name]
                                        [::% table-name field-name]))))
@@ -618,7 +618,7 @@
     source-table
     (do
       (assert (integer? source-table))
-      (str/lower-case (db/select-one-field :name Table :id source-table)))
+      (u/lower-case-en (t2/select-one-fn :name Table :id source-table)))
 
     source-query
     (recur source-query)))

@@ -4,40 +4,28 @@ title: Troubleshooting error messages
 
 # Troubleshooting error messages
 
-## [API error messages][discourse-search-api-error]
+An error message can help you find the right troubleshooting guide. The exact wording depends on your database and Metabase version, so try to look for the closest match.
 
-- Appear in red text when you load a dashboard or run a question.
-- Contain a three-digit API error code, such as `400` or `404`.
-- If your error message contains part of your SQL query, go to SQL error messages below.
+## SQL editor
 
-## [SQL error messages][debugging-sql-syntax]
+See if your error details contain any of:
 
-- Appear in red text when you run a question that uses the [SQL editor][sql-editor].
-- Contain part of your SQL query, such as a column or table name.
-- May also contain a three-digit API error code, such as `400` or `404`.
+- [Table or column "not found" or "not recognized"](https://www.metabase.com/learn/debugging-sql/sql-syntax.html#column-or-table-name-is-not-found-or-not-recognized).
+- [Function does not exist](https://www.metabase.com/learn/debugging-sql/sql-syntax.html#sql-function-does-not-exist).
+- [Permission denied](./data-permissions.md#getting-a-permission-denied-error-message).
 
-### Common SQL error messages
+For example, this SQL error tells you that the function `DATEFROMPARTS` does not work on a BigQuery database:
 
-- [Column or table name is "not found" or "not recognized"][sql-error-not-found].
-- [Function does not exist][sql-error-function-does-not-exist].
-- [Permission denied to a table or schema][permission-denied].
+![Sample SQL error message](./images/sample-error-sql.png)
 
-## [Metabase error messages][discourse-search-metabase-error]
-
-- Appear in gray text when you load a dashboard or run a question.
-
-### Common Metabase error messages
+## Questions and dashboards
 
 - [Your question took too long](./timeout.md).
 - [Still waiting...](./my-dashboard-is-slow.md).
 
-[api-error-message]: #api-error-messages
-[debugging-sql-syntax]: https://www.metabase.com/learn/debugging-sql/sql-syntax.html
-[discourse-search-api-error]: https://discourse.metabase.com/search?q=api%20error%20message
-[discourse-search-metabase-error]: https://discourse.metabase.com/search?q=metabase%20error%20message
-[metabase-error-message]: #metabase-error-messages
-[sql-editor]: https://www.metabase.com/glossary/native_query_editor.html
-[sql-error-function-does-not-exist]: https://www.metabase.com/learn/debugging-sql/sql-syntax.html#sql-function-does-not-exist
-[sql-error-message]: #sql-error-messages
-[sql-error-not-found]: https://www.metabase.com/learn/debugging-sql/sql-syntax.html#column-or-table-name-is-not-found-or-not-recognized
-[permission-denied]: ./data-permissions.md#getting-a-permission-denied-error-message
+## Are you still stuck?
+
+If you can't find your error on this page:
+
+- Search or ask the [Metabase community](https://discourse.metabase.com/).
+- Search for [known bugs or limitations](./known-issues.md).

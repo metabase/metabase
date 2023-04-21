@@ -8,7 +8,7 @@ Also known as: standalone embedding.
 
 In general, embedding works by displaying a Metabase URL inside an iframe on your website. A **signed embed** (or standalone embed) is an iframe that's secured with a signed JSON Web Token (JWT). The signed JWT will prevent website visitors from poking around in your Metabase through the iframe.
 
-Signed embeds can't be combined with [data sandboxes](../permissions/data-sandboxes.md) because signed JWTs don't create user sessions (server-side sessions).
+Signed embeds can't be used with [data sandboxes](../permissions/data-sandboxes.md) or [auditing tools](../usage-and-performance-tools/audit.md) because signed JWTs don't create user sessions (server-side sessions).
 
 To restrict data in signed embeds for specific people or groups, set up [locked parameters](./signed-embedding-parameters.md#restricting-data-in-a-signed-embed) instead.
 

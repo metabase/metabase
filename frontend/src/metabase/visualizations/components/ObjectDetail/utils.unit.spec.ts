@@ -2,8 +2,10 @@ import {
   metadata,
   SAMPLE_DATABASE,
   ORDERS,
+  PRODUCTS,
 } from "__support__/sample_database_fixture";
 
+import type { DatetimeUnit } from "metabase-types/api";
 import { Card } from "metabase-types/types/Card";
 import Question from "metabase-lib/Question";
 
@@ -25,12 +27,31 @@ const card = {
 } as Card;
 
 describe("ObjectDetail utils", () => {
+  const productIdCol = {
+    name: "product_id",
+    display_name: "Product ID",
+    base_type: "int",
+    effective_type: "int",
+    semantic_type: "type/PK",
+    table_id: PRODUCTS.id,
+  };
   const idCol = {
     name: "id",
     display_name: "ID",
     base_type: "int",
     effective_type: "int",
     semantic_type: "type/PK",
+    table_id: ORDERS.id,
+  };
+  const remappedIdCol = {
+    name: "id",
+    display_name: "ID",
+    base_type: "int",
+    effective_type: "int",
+    semantic_type: "type/PK",
+    table_id: ORDERS.id,
+    hasRemappedValue: () => true,
+    remappedValue: () => "fooBar",
   };
   const qtyCol = {
     name: "qty",
@@ -38,6 +59,7 @@ describe("ObjectDetail utils", () => {
     base_type: "int",
     effective_type: "int",
     semantic_type: "type/int",
+    table_id: ORDERS.id,
   };
   const nameCol = {
     name: "id",
@@ -45,6 +67,16 @@ describe("ObjectDetail utils", () => {
     base_type: "string",
     effective_type: "string",
     semantic_type: "type/Name",
+    table_id: ORDERS.id,
+  };
+  const dateCol = {
+    name: "date",
+    display_name: "Date",
+    base_type: "type/DateTime",
+    effective_type: "type/DateTime",
+    semantic_type: "type/DateTime",
+    table_id: ORDERS.id,
+    unit: "default" as DatetimeUnit,
   };
 
   describe("getObjectName", () => {
@@ -103,19 +135,22 @@ describe("ObjectDetail utils", () => {
   });
 
   describe("getDisplayId", () => {
-    it("should get a display id when there is a single primary key column", () => {
+    it("should get a display id when there is a single primary key column in the table", () => {
       const id = getDisplayId({
-        cols: [idCol, qtyCol, nameCol],
-        zoomedRow: [22, 33, "Giant Sprocket"],
+        cols: [productIdCol, idCol, qtyCol, nameCol],
+        zoomedRow: [11, 22, 33, "Giant Sprocket"],
+        tableId: ORDERS.id,
+        settings: {},
       });
 
-      expect(id).toBe(22);
+      expect(id).toBe("22");
     });
 
     it("should return null if there is no primary key and an entity name", () => {
       const id = getDisplayId({
         cols: [qtyCol, nameCol],
         zoomedRow: [33, "Giant Sprocket"],
+        settings: {},
       });
 
       expect(id).toBe(null);
@@ -125,38 +160,61 @@ describe("ObjectDetail utils", () => {
       const id = getDisplayId({
         cols: [qtyCol, qtyCol],
         zoomedRow: [33, 44],
+        settings: {},
       });
 
-      expect(id).toBe(33);
+      expect(id).toBe("33");
+    });
+
+    it("should format the id value per column remapping settings", () => {
+      const id = getDisplayId({
+        cols: [remappedIdCol, qtyCol, nameCol],
+        zoomedRow: [11, 33, "Giant Sprocket"],
+        tableId: ORDERS.id,
+        settings: {
+          column: () => ({
+            remap: true,
+            column: remappedIdCol,
+          }),
+        },
+      });
+
+      expect(id).toBe("fooBar");
+    });
+
+    it("should format a date value per column remapping settings", () => {
+      const id = getDisplayId({
+        cols: [dateCol, qtyCol],
+        zoomedRow: ["2002-02-14 12:33:33", 33],
+        tableId: ORDERS.id,
+        settings: {
+          column: () => ({
+            column: dateCol,
+            date_abbreviate: false,
+            date_separator: "/",
+            date_style: "MMMM D, YYYY",
+            time_enabled: false,
+            time_style: "h:mm A",
+          }),
+        },
+      });
+
+      expect(id).toBe("February 14, 2002");
     });
   });
 
   describe("getIdValue", () => {
-    it("should return the zoomed Row id if present", () => {
-      const id = getIdValue({
-        data: {
-          cols: [idCol, qtyCol, nameCol],
-          rows: [
-            [22, 33, "Giant Sprocket"],
-            [44, 55, "Tiny Sprocket"],
-          ],
-        },
-        zoomedRowID: 1,
-      });
-
-      expect(id).toBe(1);
-    });
-
     // this code should no longer be reachable now that we always reach object detail by zooming
     it("should return the primary key of the first row if now zoomed row id exists", () => {
       const id = getIdValue({
         data: {
-          cols: [idCol, qtyCol, nameCol],
+          cols: [productIdCol, idCol, qtyCol, nameCol],
           rows: [
-            [22, 33, "Giant Sprocket"],
-            [44, 55, "Tiny Sprocket"],
+            [11, 22, 33, "Giant Sprocket"],
+            [33, 44, 55, "Tiny Sprocket"],
           ],
         },
+        tableId: ORDERS.id,
       });
 
       expect(id).toBe(22);

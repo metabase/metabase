@@ -1,6 +1,14 @@
 import type { ParameterTarget } from "metabase-types/types/Parameter";
 import type { Parameter, ParameterId } from "./parameters";
 import type { NativeDatasetQuery } from "./query";
+import type { ClickBehavior } from "./click-behavior";
+import type {
+  BaseDashboardOrderedCard,
+  DashboardParameterMapping,
+} from "./dashboard";
+import type { Card, CardId } from "./card";
+import type { DatabaseId } from "./database";
+import type { UserId, UserInfo } from "./user";
 
 export interface WritebackParameter extends Parameter {
   target: ParameterTarget;
@@ -12,14 +20,24 @@ export type WritebackActionId = number;
 
 export interface WritebackActionBase {
   id: WritebackActionId;
-  model_id: number;
+  model_id: CardId;
   name: string;
   description: string | null;
   parameters: WritebackParameter[];
   visualization_settings?: ActionFormSettings;
+  archived: boolean;
+  creator_id: UserId;
+  creator: UserInfo;
   updated_at: string;
   created_at: string;
+  public_uuid: string | null;
+  database_id?: DatabaseId;
 }
+
+export type PublicWritebackAction = Pick<
+  WritebackActionBase,
+  "id" | "name" | "parameters" | "visualization_settings"
+>;
 
 export interface QueryAction {
   type: "query";
@@ -78,7 +96,7 @@ export type OnSubmitActionForm = (
 // Action Forms
 
 export type ActionDisplayType = "form" | "button";
-export type FieldType = "string" | "number" | "date" | "category";
+export type FieldType = "string" | "number" | "date";
 
 export type DateInputType = "date" | "time" | "datetime";
 
@@ -90,8 +108,7 @@ export type InputSettingType =
   | "number"
   | "select"
   | "radio"
-  | "boolean"
-  | "category";
+  | "boolean";
 
 // these types get passed to the input components
 export type InputComponentType =
@@ -103,13 +120,14 @@ export type InputComponentType =
   | "radio"
   | "date"
   | "time"
-  | "datetime-local"
-  | "category";
+  | "datetime-local";
 
 export type Size = "small" | "medium" | "large";
 
 export type DateRange = [string, string];
 export type NumberRange = [number, number];
+
+export type FieldValueOptions = (string | number)[];
 
 export interface FieldSettings {
   id: string;
@@ -124,7 +142,7 @@ export interface FieldSettings {
   defaultValue?: string | number;
   hidden: boolean;
   range?: DateRange | NumberRange;
-  valueOptions?: (string | number)[];
+  valueOptions?: FieldValueOptions;
   width?: Size;
   height?: number;
   hasSearch?: boolean;
@@ -133,9 +151,9 @@ export interface FieldSettings {
 export type FieldSettingsMap = Record<ParameterId, FieldSettings>;
 export interface ActionFormSettings {
   name?: string;
-  type: ActionDisplayType;
+  type?: ActionDisplayType;
   description?: string;
-  fields: FieldSettingsMap;
+  fields?: FieldSettingsMap;
   submitButtonLabel?: string;
   submitButtonColor?: string;
   confirmMessage?: string;
@@ -147,3 +165,23 @@ export type ActionFormOption = {
   name: string | number;
   value: string | number;
 };
+
+export type ActionParametersMapping = Pick<
+  DashboardParameterMapping,
+  "parameter_id" | "target"
+>;
+
+export interface ActionDashboardCard
+  extends Omit<BaseDashboardOrderedCard, "parameter_mappings"> {
+  action?: WritebackAction;
+  card_id?: CardId | null; // model card id for the associated action
+  card?: Card;
+
+  parameter_mappings?: ActionParametersMapping[] | null;
+  visualization_settings: {
+    [key: string]: unknown;
+    "button.label"?: string;
+    click_behavior?: ClickBehavior;
+    actionDisplayType?: ActionDisplayType;
+  };
+}

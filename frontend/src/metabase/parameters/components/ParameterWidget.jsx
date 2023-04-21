@@ -28,6 +28,7 @@ export default class ParameterWidget extends Component {
 
   renderPopover(value, setValue, placeholder, isFullscreen) {
     const {
+      question,
       dashboard,
       parameter,
       editingParameter,
@@ -41,6 +42,7 @@ export default class ParameterWidget extends Component {
       <ParameterValueWidget
         parameter={parameter}
         parameters={parameters}
+        question={question}
         dashboard={dashboard}
         name={name}
         value={value}

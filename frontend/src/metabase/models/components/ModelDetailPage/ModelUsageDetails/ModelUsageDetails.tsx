@@ -18,12 +18,14 @@ import type Question from "metabase-lib/Question";
 import {
   EmptyStateContainer,
   EmptyStateTitle,
-} from "../ModelDetailPage.styled";
+  EmptyStateActionContainer,
+} from "../EmptyState.styled";
 
 import { CardListItem, CardTitle } from "./ModelUsageDetails.styled";
 
 interface OwnProps {
   model: Question;
+  hasNewQuestionLink: boolean;
 }
 
 interface EntityLoaderProps {
@@ -32,16 +34,20 @@ interface EntityLoaderProps {
 
 type Props = OwnProps & EntityLoaderProps;
 
-function ModelUsageDetails({ model, cards }: Props) {
+function ModelUsageDetails({ model, cards, hasNewQuestionLink }: Props) {
   if (cards.length === 0) {
     return (
       <EmptyStateContainer>
         <EmptyStateTitle>{t`This model is not used by any questions yet.`}</EmptyStateTitle>
-        <Button
-          as={Link}
-          to={model.composeDataset().getUrl()}
-          icon="add"
-        >{t`Create a new question`}</Button>
+        {hasNewQuestionLink && (
+          <EmptyStateActionContainer>
+            <Button
+              as={Link}
+              to={model.composeDataset().getUrl()}
+              icon="add"
+            >{t`Create a new question`}</Button>
+          </EmptyStateActionContainer>
+        )}
       </EmptyStateContainer>
     );
   }

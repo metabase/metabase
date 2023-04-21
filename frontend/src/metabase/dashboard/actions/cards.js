@@ -1,5 +1,5 @@
 import _ from "underscore";
-
+import { t } from "ttag";
 import { createAction } from "metabase/lib/redux";
 
 import Questions from "metabase/entities/questions";
@@ -18,8 +18,9 @@ import { loadMetadataForDashboard } from "./metadata";
 export const MARK_NEW_CARD_SEEN = "metabase/dashboard/MARK_NEW_CARD_SEEN";
 export const markNewCardSeen = createAction(MARK_NEW_CARD_SEEN);
 
+let tempId = -1;
 function generateTemporaryDashcardId() {
-  return Math.random();
+  return tempId--;
 }
 
 export const addCardToDashboard =
@@ -34,8 +35,10 @@ export const addCardToDashboard =
     const existingCards = dashboard.ordered_cards
       .map(id => dashcards[id])
       .filter(dc => !dc.isRemoved);
+
     const { visualization } = getVisualizationRaw([{ card }]);
-    const createdCardSize = visualization.minSize || DEFAULT_CARD_SIZE;
+    const createdCardSize = visualization.defaultSize || DEFAULT_CARD_SIZE;
+
     const dashcard = {
       id: generateTemporaryDashcardId(),
       dashboard_id: dashId,
@@ -63,13 +66,21 @@ export const addDashCardToDashboard = function ({ dashId, dashcardOverrides }) {
     const existingCards = dashboard.ordered_cards
       .map(id => dashcards[id])
       .filter(dc => !dc.isRemoved);
+
+    const { visualization } = getVisualizationRaw([dashcardOverrides]);
+    const createdCardSize = visualization.defaultSize || DEFAULT_CARD_SIZE;
+
     const dashcard = {
       id: generateTemporaryDashcardId(),
       card_id: null,
       card: null,
       dashboard_id: dashId,
       series: [],
-      ...getPositionForNewDashCard(existingCards),
+      ...getPositionForNewDashCard(
+        existingCards,
+        createdCardSize.width,
+        createdCardSize.height,
+      ),
       parameter_mappings: [],
       visualization_settings: {},
     };
@@ -94,3 +105,54 @@ export const addTextDashCardToDashboard = function ({ dashId }) {
     dashcardOverrides: dashcardOverrides,
   });
 };
+
+export const addLinkDashCardToDashboard = function ({ dashId }) {
+  const virtualLinkCard = {
+    ...createCard(),
+    display: "link",
+    archived: false,
+  };
+
+  const dashcardOverrides = {
+    card: virtualLinkCard,
+    visualization_settings: {
+      virtual_card: virtualLinkCard,
+    },
+  };
+  return addDashCardToDashboard({
+    dashId: dashId,
+    dashcardOverrides: dashcardOverrides,
+  });
+};
+
+export const addActionToDashboard =
+  async ({ dashId, action, displayType }) =>
+  dispatch => {
+    const virtualActionsCard = {
+      ...createCard(),
+      id: action.model_id,
+      display: "action",
+      archived: false,
+    };
+
+    const buttonLabel = action.name ?? action.id ?? t`Click Me`;
+
+    const dashcardOverrides = {
+      action: action.id ? action : null,
+      action_id: action.id,
+      card_id: action.model_id,
+      card: virtualActionsCard,
+      visualization_settings: {
+        actionDisplayType: displayType ?? "button",
+        virtual_card: virtualActionsCard,
+        "button.label": buttonLabel,
+      },
+    };
+
+    dispatch(
+      addDashCardToDashboard({
+        dashId: dashId,
+        dashcardOverrides: dashcardOverrides,
+      }),
+    );
+  };

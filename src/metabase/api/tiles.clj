@@ -19,6 +19,8 @@
    (java.io ByteArrayOutputStream)
    (javax.imageio ImageIO)))
 
+(set! *warn-on-reflection* true)
+
 ;;; --------------------------------------------------- CONSTANTS ----------------------------------------------------
 
 (def ^:private ^:const tile-size             256.0)

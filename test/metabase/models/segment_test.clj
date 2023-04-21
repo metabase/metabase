@@ -4,29 +4,34 @@
    [metabase.models.database :refer [Database]]
    [metabase.models.revision :as revision]
    [metabase.models.segment :as segment :refer [Segment]]
-   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.models.serialization :as serdes]
    [metabase.models.table :refer [Table]]
    [metabase.test :as mt]
-   [toucan.db :as db])
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp])
   (:import
    (java.time LocalDateTime)))
+
+(set! *warn-on-reflection* true)
 
 (deftest update-test
   (testing "Updating"
     (mt/with-temp Segment [{:keys [id]} {:creator_id (mt/user->id :rasta)}]
       (testing "you should not be able to change the creator_id of a Segment"
-        (is (thrown?
-             UnsupportedOperationException
-             (db/update! Segment id {:creator_id (mt/user->id :crowberto)}))))
+        (is (thrown-with-msg?
+             Exception
+             #"You cannot update the creator_id of a Segment"
+             (t2/update! Segment id {:creator_id (mt/user->id :crowberto)}))))
 
       (testing "you shouldn't be able to set it to `nil` either"
-        (is (thrown?
-             UnsupportedOperationException
-             (db/update! Segment id {:creator_id nil}))))
+        (is (thrown-with-msg?
+             Exception
+             #"You cannot update the creator_id of a Segment"
+             (t2/update! Segment id {:creator_id nil}))))
 
       (testing "calling `update!` with a value that is the same as the current value shouldn't throw an Exception"
-        (is (= true
-               (db/update! Segment id {:creator_id (mt/user->id :rasta)})))))))
+        (is (= 1
+               (t2/update! Segment id {:creator_id (mt/user->id :rasta)})))))))
 
 (deftest serialize-segment-test
   (mt/with-temp* [Database [{database-id :id}]
@@ -109,5 +114,48 @@
                       Table    [table   {:schema "PUBLIC" :name "widget" :db_id (:id db)}]
                       Segment  [segment {:name "big customers" :table_id (:id table) :created_at now}]]
         (is (= "be199b7c"
-               (serdes.hash/raw-hash ["big customers" (serdes.hash/identity-hash table) now])
-               (serdes.hash/identity-hash segment)))))))
+               (serdes/raw-hash ["big customers" (serdes/identity-hash table) now])
+               (serdes/identity-hash segment)))))))
+
+(deftest definition-description-missing-definition-test
+  (testing "Do not hydrate definition description if definition is nil"
+    (t2.with-temp/with-temp [Segment segment {:name     "Segment"
+                                              :table_id (mt/id :users)}]
+      (is (=? {:definition_description nil}
+              (t2/hydrate segment :definition_description))))))
+
+(deftest definition-description-test
+  (t2.with-temp/with-temp [Segment segment {:name       "Expensive BBQ Spots"
+                                            :definition (:query (mt/mbql-query venues
+                                                                  {:filter
+                                                                   [:and
+                                                                    [:= $price 4]
+                                                                    [:= $category_id->categories.name "BBQ"]]}))}]
+    (is (= "Filtered by Price equals 4 and Categories → Name equals \"BBQ\""
+           (:definition_description (t2/hydrate segment :definition_description))))
+    (testing "Segments that reference other Segments (inception)"
+      (t2.with-temp/with-temp [Segment segment-2 {:name "Segment 2"
+                                                  :definition (:query (mt/mbql-query categories
+                                                                        {:filter
+                                                                         [:and
+                                                                          [:segment (:id segment)]
+                                                                          [:not-null $id]]}))}]
+        (is (= "Filtered by Expensive BBQ Spots and ID is not empty"
+               (:definition_description (t2/hydrate segment-2 :definition_description))))))))
+
+(deftest definition-description-missing-source-table-test
+  (testing "Should work if `:definition` does not include `:source-table`"
+    (t2.with-temp/with-temp [Segment segment {:name       "Expensive BBQ Spots"
+                                              :definition (mt/$ids venues
+                                                            {:filter
+                                                             [:= $price 4]})}]
+      (is (= "Filtered by Price equals 4"
+             (:definition_description (t2/hydrate segment :definition_description)))))))
+
+(deftest definition-description-invalid-query-test
+  (testing "Should return `nil` if query is invalid"
+    (t2.with-temp/with-temp [Segment segment {:name       "Expensive BBQ Spots"
+                                              :definition (:query (mt/mbql-query venues
+                                                                    {:filter
+                                                                     [:= [:field Integer/MAX_VALUE nil] 4]}))}]
+      (is (nil? (:definition_description (t2/hydrate segment :definition_description)))))))

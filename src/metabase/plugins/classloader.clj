@@ -14,38 +14,40 @@
   (:refer-clojure :exclude [require])
   (:require
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
-   [dynapath.util :as dynapath])
+   [dynapath.util :as dynapath]
+   [metabase.util.log :as log])
   (:import
    (clojure.lang DynamicClassLoader RT)
    (java.net URL)))
 
+(set! *warn-on-reflection* true)
+
 (defonce ^:private ^{:doc "The context classloader we'll use for *all threads*, once we figure out what that is.
   Guaranteed to be an instance of `DynamicClassLoader`."} shared-context-classloader
   (delay
-   ;; If the Clojure runtime base loader is already an instance of DynamicClassLoader (e.g. it is something like
-   ;; `clojure.lang.Compiler/LOADER` we can go ahead and use that in the future. This is usually the case when doing
-   ;; REPL-based development or running via the Clojure CLI; when running from the UberJAR
-   ;; `clojure.lang.Compiler/LOADER` is not set and thus this will return the current thread's context classloader,
-   ;; which is usually just the System classloader.
-   ;;
-   ;; The base loader is what Clojure ultimately uses to loading namespaces with `require` so adding URLs to it is
-   ;; they way to go, if we can)
-   (or
-    (when-let [base-loader (RT/baseLoader)]
-      (when (instance? DynamicClassLoader base-loader)
-        (log/tracef "Using Clojure base loader as shared context classloader: %s" base-loader)
-        base-loader))
-    ;; Otherwise if we need to create our own go ahead and do it
+    ;; If the Clojure runtime base loader is already an instance of DynamicClassLoader (e.g. it is something like
+    ;; `clojure.lang.Compiler/LOADER` we can go ahead and use that in the future. This is usually the case when doing
+    ;; REPL-based development or running via the Clojure CLI; when running from the UberJAR
+    ;; `clojure.lang.Compiler/LOADER` is not set and thus this will return the current thread's context classloader,
+    ;; which is usually just the System classloader.
     ;;
-    ;; Make a new classloader using the current thread's context classloader as it's parent. In cases where we hit
-    ;; this condition (i.e., when running from the uberjar), the current thread's context classloader should be the
-    ;; system classloader. Since it will be the same for other threads too it doesn't matter if we ignore *their*
-    ;; context classloaders by giving them this one. No other places in the codebase should be modifying classloaders
-    ;; anyway.
-    (let [new-classloader (DynamicClassLoader. (.getContextClassLoader (Thread/currentThread)))]
-      (log/tracef "Using NEWLY CREATED classloader as shared context classloader: %s" new-classloader)
-      new-classloader))))
+    ;; The base loader is what Clojure ultimately uses to loading namespaces with `require` so adding URLs to it is
+    ;; they way to go, if we can)
+    (or
+     (when-let [base-loader (RT/baseLoader)]
+       (when (instance? DynamicClassLoader base-loader)
+         (log/tracef "Using Clojure base loader as shared context classloader: %s" base-loader)
+         base-loader))
+     ;; Otherwise if we need to create our own go ahead and do it
+     ;;
+     ;; Make a new classloader using the current thread's context classloader as it's parent. In cases where we hit
+     ;; this condition (i.e., when running from the uberjar), the current thread's context classloader should be the
+     ;; system classloader. Since it will be the same for other threads too it doesn't matter if we ignore *their*
+     ;; context classloaders by giving them this one. No other places in the codebase should be modifying classloaders
+     ;; anyway.
+     (let [new-classloader (DynamicClassLoader. (.getContextClassLoader (Thread/currentThread)))]
+       (log/tracef "Using NEWLY CREATED classloader as shared context classloader: %s" new-classloader)
+       new-classloader))))
 
 (defn- has-classloader-as-ancestor?
   "True if `classloader` and `ancestor` are the same object, or if `classloader` has `ancestor` as an ancestor in its

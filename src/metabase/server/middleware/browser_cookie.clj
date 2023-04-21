@@ -12,6 +12,8 @@
   (:import
    (java.util UUID)))
 
+(set! *warn-on-reflection* true)
+
 (def ^:private browser-id-cookie-name "metabase.DEVICE")
 
 ;; This cookie doesn't need to be secure, because it's only used for notification purposes and cannot be used for

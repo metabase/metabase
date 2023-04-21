@@ -1,17 +1,10 @@
-import nock from "nock";
+import { screen } from "__support__/ui";
 
-import { screen, waitFor } from "__support__/ui";
-import { SAMPLE_DATABASE } from "__support__/sample_database_fixture";
-
-import { setup } from "./common";
+import { setup, SAMPLE_DATABASE, SAMPLE_TABLE } from "./common";
 
 describe("DataPicker", () => {
   beforeAll(() => {
     window.HTMLElement.prototype.scrollIntoView = jest.fn();
-  });
-
-  afterEach(() => {
-    nock.cleanAll();
   });
 
   it("shows data type picker by default", async () => {
@@ -49,10 +42,12 @@ describe("DataPicker", () => {
       filters: { types: type => type !== "questions" },
     });
 
-    expect(await screen.findByText(/Orders/i)).toBeInTheDocument();
-    expect(screen.getByText(/Sample Database/i)).toBeInTheDocument();
-    SAMPLE_DATABASE.tables.forEach(table => {
-      expect(screen.getByText(table.displayName())).toBeInTheDocument();
+    expect(
+      await screen.findByText(SAMPLE_TABLE.display_name),
+    ).toBeInTheDocument();
+    expect(screen.getByText(SAMPLE_DATABASE.name)).toBeInTheDocument();
+    SAMPLE_DATABASE.tables?.forEach(table => {
+      expect(screen.getByText(table.display_name)).toBeInTheDocument();
     });
 
     expect(screen.queryByText(/Raw Data/i)).not.toBeInTheDocument();

@@ -6,7 +6,6 @@
   Api is quite simple: [[setup!]] and [[shutdown!]]. After that you can retrieve metrics from
   http://localhost:<prometheus-server-port>/metrics."
   (:require
-   [clojure.tools.logging :as log]
    [iapetos.collector :as collector]
    [iapetos.collector.ring :as collector.ring]
    [iapetos.core :as prometheus]
@@ -14,15 +13,18 @@
    [metabase.server :as server]
    [metabase.troubleshooting :as troubleshooting]
    [metabase.util.i18n :refer [deferred-trs trs]]
+   [metabase.util.log :as log]
    [potemkin :as p]
    [potemkin.types :as p.types]
-   [ring.adapter.jetty :as ring-jetty])
+   [ring.adapter.jetty9 :as ring-jetty])
   (:import
    (io.prometheus.client Collector GaugeMetricFamily)
    (io.prometheus.client.hotspot GarbageCollectorExports MemoryPoolsExports StandardExports ThreadExports)
    (io.prometheus.client.jetty JettyStatisticsCollector)
    (java.util ArrayList List)
    (org.eclipse.jetty.server Server)))
+
+(set! *warn-on-reflection* true)
 
 ;;; Infra:
 ;; defsetting enables and [[system]] holds the system (webserver and registry)
@@ -116,7 +118,11 @@
    :numIdleConnections {:label       "c3p0_num_idle_connections"
                         :description (deferred-trs "C3P0 Number of idle connections")}
    :numBusyConnections {:label       "c3p0_num_busy_connections"
-                        :description (deferred-trs "C3P0 Number of busy connections")}})
+                        :description (deferred-trs "C3P0 Number of busy connections")}
+
+   :numThreadsAwaitingCheckoutDefaultUser
+                       {:label       "c3p0_num_threads_awaiting_checkout_default_user"
+                        :description (deferred-trs "C3P0 Number of threads awaiting checkout")}})
 
 (defn- stats->prometheus
   "Create an ArrayList of GaugeMetricFamily objects containing measurements from the c3p0 stats. Stats are grouped by

@@ -4,6 +4,8 @@
   (:import
    (java.util.concurrent Callable Executors ExecutorService Future ThreadFactory)))
 
+(set! *warn-on-reflection* true)
+
 (defonce ^:private thread-factory
   (reify ThreadFactory
     (newThread [_ r]

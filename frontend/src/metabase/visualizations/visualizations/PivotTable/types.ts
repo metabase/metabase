@@ -9,10 +9,11 @@ export type PivotSetting = {
   values: AggregationReference[];
 };
 
-export interface LeftHeaderItem {
-  clicked: { value: string; column: Column };
+export type PivotTableClicked = { value: string; column: Column };
+export interface HeaderItem {
+  clicked: PivotTableClicked;
 
-  isCollapsed: boolean;
+  isCollapsed?: boolean;
   hasChildren: boolean;
   hasSubtotal?: boolean;
   isSubtotal?: boolean;
@@ -27,3 +28,15 @@ export interface LeftHeaderItem {
   rawValue: string;
   value: string;
 }
+
+export type BodyItem = HeaderItem & {
+  backgroundColor?: string;
+};
+
+export type CustomColumnWidth = Record<number, number>;
+
+export type HeaderWidthType = {
+  leftHeaderWidths: number[] | null;
+  totalLeftHeaderWidths: number | null;
+  valueHeaderWidths: CustomColumnWidth;
+};

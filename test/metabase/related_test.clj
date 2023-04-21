@@ -3,14 +3,17 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [medley.core :as m]
-   [metabase.models :refer [Card Collection Metric Segment]]
+   [metabase.api.common :as api]
+   [metabase.models
+    :refer [Card Collection Dashboard DashboardCard Metric Revision Segment]]
    [metabase.related :as related]
    [metabase.sync :as sync]
    [metabase.test :as mt]
    [metabase.test.data.one-off-dbs :as one-off-dbs]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
-(deftest collect-context-bearing-forms-test
+(deftest ^:parallel collect-context-bearing-forms-test
   (is (= #{[:field 1 nil] [:metric 1] [:field 2 nil] [:segment 1]}
          (#'related/collect-context-bearing-forms [[:> [:field 1 nil] 3]
                                                    ["and" [:= ["field" 2 nil] 2]
@@ -39,7 +42,7 @@
                                                      [1 1] 1.0}]
         (testing (format "Similarity between Card #%d and Card #%d" card-x card-y)
           (is (= expected-similarity
-                 (double (#'related/similarity (db/select-one Card :id (get cards card-x)) (db/select-one Card :id (get cards card-y)))))))))))
+                 (double (#'related/similarity (t2/select-one Card :id (get cards card-x)) (t2/select-one Card :id (get cards card-y)))))))))))
 
 (def ^:private ^:dynamic *world*)
 
@@ -196,3 +199,19 @@
                (->> (mt/user-http-request :crowberto :get 200 (format "card/%s/related" card-id-c))
                     result-mask
                     :similar-questions)))))))
+
+(deftest recommended-dashboards-test
+  (t2.with-temp/with-temp [Card          card-1        {}
+                           Card          card-2        {}
+                           Card          card-3        {}
+                           Dashboard     {dash-id :id} {}
+                           Revision      _             {:model    "Dashboard"
+                                                        :model_id dash-id
+                                                        :user_id  (mt/user->id :rasta)
+                                                        :object   {}}
+                           DashboardCard _             {:card_id (:id card-1), :dashboard_id dash-id}
+                           DashboardCard _             {:card_id (:id card-2), :dashboard_id dash-id}]
+    (binding [api/*current-user-id*              (mt/user->id :rasta)
+              api/*current-user-permissions-set* (atom #{"/"})]
+      (is (=? [{:id dash-id}]
+              (#'related/recommended-dashboards [card-1 card-2 card-3]))))))

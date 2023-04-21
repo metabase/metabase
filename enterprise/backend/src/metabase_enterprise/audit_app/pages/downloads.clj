@@ -2,12 +2,13 @@
   "Audit queries returning info about query downloads. Query downloads are any query executions whose results are returned
   as CSV/JSON/XLS."
   (:require
-   [honeysql.core :as hsql]
    [metabase-enterprise.audit-app.interface :as audit.i]
    [metabase-enterprise.audit-app.pages.common :as common]
    [metabase.db :as mdb]
    [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.util.honeysql-extensions :as hx]))
+   [metabase.util.honey-sql-2 :as h2x]))
+
+(set! *warn-on-reflection* true)
 
 ;; Pairs of count of rows downloaded and date downloaded for the 1000 largest (in terms of row count) queries over the
 ;; past 30 days. Intended to power scatter plot.
@@ -68,11 +69,11 @@
   "`CASE` expression to put `result_rows` in appropriate buckets. Looks something like:
 
     CASE ... result_rows <= 100 THEN 100 ..."
-  (apply hsql/call :case (concat
-                          (mapcat (fn [bucket-max]
-                                    [[:<= :result_rows bucket-max] bucket-max])
-                                  bucket-maxes)
-                          [:else -1])))
+  (into [:case] (concat
+                 (mapcat (fn [bucket-max]
+                           [[:<= :result_rows bucket-max] bucket-max])
+                         bucket-maxes)
+                 [:else -1])))
 
 (def ^:private bucket-ranges
   "Pairs like [[0 10], [11 100], ...]"
@@ -91,18 +92,18 @@
 (defn- bucket-range->literal
   "Given a bucket range pair like [101 1000] return a formatted string including commas like `101-1,000`."
   [[bucket-min bucket-max]]
-  (hx/literal (format "%s-%s" (format-number-add-commas bucket-min) (format-number-add-commas bucket-max))))
+  (h2x/literal (format "%s-%s" (format-number-add-commas bucket-min) (format-number-add-commas bucket-max))))
 
 (def ^:private bucket->range-str-case-expression
   "`CASE` expression to generate range strings for each bucket. Looks something like:
 
     CASE ... (rows_bucket_max = 1000) THEN '101-1,000' ..."
-  (apply hsql/call :case (concat
-                          (mapcat (fn [[_ bucket-max :as bucket-range]]
-                                    [[:= :rows_bucket_max bucket-max] (bucket-range->literal bucket-range)])
-                                  bucket-ranges)
-                          [[:= :rows_bucket_max -1]
-                           (hx/literal (format "> %s" (format-number-add-commas (last bucket-maxes))))])))
+  (into [:case] (concat
+                 (mapcat (fn [[_ bucket-max :as bucket-range]]
+                           [[:= :rows_bucket_max bucket-max] (bucket-range->literal bucket-range)])
+                         bucket-ranges)
+                 [[:= :rows_bucket_max -1]
+                  (h2x/literal (format "> %s" (format-number-add-commas (last bucket-maxes))))])))
 
 ;; Query download count broken out by bucketed number of rows of query. E.g. 10 downloads of queries with 0-10 rows,
 ;; 15 downloads of queries with 11-100, etc. Intended to power bar chart.

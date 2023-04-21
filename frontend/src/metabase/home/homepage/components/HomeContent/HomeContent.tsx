@@ -2,8 +2,8 @@ import React from "react";
 import { isSyncCompleted } from "metabase/lib/syncing";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { Database, PopularItem, RecentItem, User } from "metabase-types/api";
-import HomePopularSection from "../../containers/HomePopularSection";
-import HomeRecentSection from "../../containers/HomeRecentSection";
+import HomePopularSection from "../HomePopularSection";
+import HomeRecentSection from "../HomeRecentSection";
 import HomeXraySection from "../../containers/HomeXraySection";
 import { isWithinWeeks } from "../../utils";
 
@@ -12,6 +12,7 @@ export interface HomeContentProps {
   databases?: Database[];
   recentItems?: RecentItem[];
   popularItems?: PopularItem[];
+  isXrayEnabled: boolean;
 }
 
 const HomeContent = (props: HomeContentProps): JSX.Element | null => {
@@ -69,8 +70,11 @@ const isRecentSection = ({
   return user.has_question_and_dashboard && recentItems.length > 0;
 };
 
-const isXraySection = ({ databases = [] }: HomeContentProps): boolean => {
-  return databases.some(isSyncCompleted);
+const isXraySection = ({
+  databases = [],
+  isXrayEnabled,
+}: HomeContentProps): boolean => {
+  return databases.some(isSyncCompleted) && isXrayEnabled;
 };
 
 export default HomeContent;

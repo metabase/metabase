@@ -1,4 +1,4 @@
-(ns metabase.util.fonts-test
+(ns ^:mb/once metabase.util.fonts-test
   (:require
    [clojure.test :refer :all]
    [metabase.util.fonts :as u.fonts]))

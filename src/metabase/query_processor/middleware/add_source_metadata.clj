@@ -1,6 +1,5 @@
 (ns metabase.query-processor.middleware.add-source-metadata
   (:require
-   [clojure.tools.logging :as log]
    [clojure.walk :as walk]
    [metabase.api.common :as api]
    [metabase.mbql.schema :as mbql.s]
@@ -8,6 +7,7 @@
    [metabase.query-processor.interface :as qp.i]
    [metabase.query-processor.store :as qp.store]
    [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
    [schema.core :as s]))
 
 (defn- has-same-fields-as-nested-source?

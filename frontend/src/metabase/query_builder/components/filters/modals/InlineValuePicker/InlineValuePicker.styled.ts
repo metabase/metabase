@@ -1,8 +1,5 @@
 import styled from "@emotion/styled";
-import {
-  space,
-  breakpointMinHeightMedium,
-} from "metabase/styled-components/theme";
+import { space } from "metabase/styled-components/theme";
 import { color } from "metabase/lib/colors";
 
 import NumericInput from "metabase/core/components/NumericInput";

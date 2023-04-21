@@ -152,7 +152,7 @@ export default _.compose(
     loadingAndErrorWrapper: false,
   }),
   Collections.loadList({
-    query: () => ({ tree: true }),
+    query: () => ({ tree: true, "exclude-archived": true }),
     listName: "collectionTree",
   }),
   Collections.loadList({

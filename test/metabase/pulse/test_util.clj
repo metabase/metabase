@@ -12,6 +12,8 @@
    [metabase.util :as u]
    [toucan.util.test :as tt]))
 
+(set! *warn-on-reflection* true)
+
 (defn send-pulse-created-by-user!
   "Create a Pulse with `:creator_id` of `user-kw`, and simulate sending it, executing it and returning the results."
   [user-kw card]

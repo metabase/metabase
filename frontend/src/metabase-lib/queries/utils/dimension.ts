@@ -1,4 +1,4 @@
-import type { ConcreteField, FilterClause } from "metabase-types/types/Query";
+import type { ConcreteField } from "metabase-types/types/Query";
 import type { VariableTarget } from "metabase-types/types/Parameter";
 import type Metadata from "metabase-lib/metadata/Metadata";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
@@ -6,7 +6,7 @@ import type NativeQuery from "metabase-lib/queries/NativeQuery";
 
 import Dimension from "metabase-lib/Dimension";
 
-export function getDimension(
+function getDimension(
   fieldRef: ConcreteField | VariableTarget,
   metadata: Metadata,
   query?: StructuredQuery | NativeQuery | null | undefined,

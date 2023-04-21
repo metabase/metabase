@@ -20,32 +20,51 @@
      So the nicely-formatted SQL in error messages doesn't get wrapped into a big blob in the `*cider-error*` buffer."
   (:refer-clojure :exclude [compile])
   (:require
-   [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [honey.sql :as sql]
    [metabase.db.connection :as mdb.connection]
+   [metabase.driver.impl :as driver.impl]
    [metabase.plugins.classloader :as classloader]
-   [metabase.util.honeysql-extensions :as hx]
-   [toucan.db :as db])
+   [metabase.util.log :as log]
+   [toucan2.core :as t2]
+   [toucan2.jdbc :as t2.jdbc])
   (:import
    (com.github.vertical_blank.sqlformatter SqlFormatter)
    (com.github.vertical_blank.sqlformatter.languages Dialect)))
 
 (set! *warn-on-reflection* true)
 
-(defn format-sql
-  "Return a nicely-formatted version of a `sql` string."
+(defn- format-sql*
+  "Return a nicely-formatted version of a generic `sql` string.
+  Note that it will not play well with Metabase parameters."
   (^String [sql]
-   (format-sql sql (mdb.connection/db-type)))
+   (format-sql* sql (mdb.connection/db-type)))
 
   (^String [^String sql db-type]
    (when sql
-     (let [formatter (SqlFormatter/of (case db-type
-                                        :mysql    Dialect/MySql
-                                        :postgres Dialect/PostgreSql
-                                        :h2       Dialect/StandardSql))]
-       (.format formatter sql)))))
+     (if (isa? driver.impl/hierarchy db-type :sql)
+       (let [formatter (SqlFormatter/of (case db-type
+                                          :mysql Dialect/MySql
+                                          :postgres Dialect/PostgreSql
+                                          :redshift Dialect/Redshift
+                                          :sparksql Dialect/SparkSql
+                                          :sqlserver Dialect/TSql
+                                          :oracle Dialect/PlSql
+                                          Dialect/StandardSql))]
+         (.format formatter sql))
+       sql))))
+
+(defn- fix-sql-params
+  "format-sql* will expand parameterized values (e.g. {{#123}} -> { { # 123 } }).
+  This function fixes that by removing whitespace from matching double-curly brace substrings."
+  [sql]
+  (when sql
+    (let [rgx #"\{\s*\{\s*[^\}]+\s*\}\s*\}"]
+      (str/replace sql rgx (fn [match] (str/replace match #"\s*" ""))))))
+
+(def format-sql
+  "Return a nicely-formatted version of a `sql` string."
+  (comp fix-sql-params format-sql*))
 
 (defmulti compile
   "Compile a `query` (e.g. a Honey SQL map) to `[sql & args]`."
@@ -65,8 +84,7 @@
   ;; make sure metabase.db.setup is loaded so the `:metabase.db.setup/application-db` gets defined
   (classloader/require 'metabase.db.setup)
   (let [sql-args (try
-                   (binding [hx/*honey-sql-version* 2]
-                     (sql/format honey-sql {:quoted true, :dialect :metabase.db.setup/application-db}))
+                   (sql/format honey-sql {:quoted true, :dialect :metabase.db.setup/application-db, :quoted-snake false})
                    (catch Throwable e
                      ;; this is not i18n'ed because it (hopefully) shouldn't be user-facing -- we shouldn't be running
                      ;; in to unexpected Honey SQL compilation errors at run time -- if we are it means we're not being
@@ -80,20 +98,6 @@
                 (pr-str (rest sql-args)))
     sql-args))
 
-;; TODO -- not clear if we should be merging this in (as Toucan 1 does) or not
-(defn- default-jbc-options []
-  @@#'toucan.db/default-jdbc-options)
-
-(defn- increment-call-count! []
-  (some-> @#'db/*call-count* (swap! inc)))
-
-(defn- jdbc-connection-spec
-  "Returns the [[toucan.db/connection]], but ensures that the application DB is set up first."
-  []
-  ;; make sure [[metabase.db.setup]] gets loaded so default Honey SQL options and the like are loaded.
-  (classloader/require 'metabase.db.setup)
-  (db/connection))
-
 (defn query
   "Replacement for [[toucan.db/query]] -- uses Honey SQL 2 instead of Honey SQL 1, to ease the transition to the
   former (and to Toucan 2).
@@ -102,13 +106,15 @@
 
   See namespace documentation for [[metabase.db.query]] for pro debugging tips."
   [sql-args-or-honey-sql-map & {:as jdbc-options}]
-  (increment-call-count!)
+  ;; make sure [[metabase.db.setup]] gets loaded so default Honey SQL options and the like are loaded.
+  (classloader/require 'metabase.db.setup)
   (let [sql-args (compile sql-args-or-honey-sql-map)]
     ;; catch errors running the query and rethrow with the failing generated SQL and the failing Honey SQL form -- this
     ;; will help with debugging stuff. This should mostly be dev-facing because we should hopefully not be committing
     ;; any busted code into the repo
     (try
-      (jdbc/query (jdbc-connection-spec) sql-args (merge (default-jbc-options) jdbc-options))
+      (binding [t2.jdbc/*options* (merge t2.jdbc/*options* jdbc-options)]
+        (t2/query sql-args))
       (catch Throwable e
         (let [formatted-sql (format-sql (first sql-args))]
           (throw (ex-info (str "Error executing SQL query: " (ex-message e)
@@ -128,8 +134,12 @@
 
   See namespace documentation for [[metabase.db.query]] for pro debugging tips."
   [sql-args-or-honey-sql-map & {:as jdbc-options}]
-  (increment-call-count!)
+  ;; make sure [[metabase.db.setup]] gets loaded so default Honey SQL options and the like are loaded.
+  (classloader/require 'metabase.db.setup)
   (let [sql-args (compile sql-args-or-honey-sql-map)]
     ;; It doesn't really make sense to put a try-catch around this since it will return immediately and not execute
     ;; until we actually reduce it
-    (jdbc/reducible-query (jdbc-connection-spec) sql-args (merge (default-jbc-options) jdbc-options))))
+    (reify clojure.lang.IReduceInit
+      (reduce [_this rf init]
+        (binding [t2.jdbc/*options* (merge t2.jdbc/*options* jdbc-options)]
+          (reduce rf init (t2/reducible-query sql-args)))))))

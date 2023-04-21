@@ -7,7 +7,7 @@ import { t } from "ttag";
 import visualizations from "metabase/visualizations";
 import * as Urls from "metabase/lib/urls";
 
-import S from "metabase/components/List.css";
+import S from "metabase/components/List/List.css";
 
 import List from "metabase/components/List";
 import ListItem from "metabase/components/ListItem";
@@ -31,7 +31,7 @@ import {
 const emptyStateData = (table, segment) => {
   return {
     message: t`Questions about this segment will appear here as they're added`,
-    icon: "all",
+    icon: "folder",
     action: t`Ask a question`,
     link: getQuestionUrl({
       dbId: table && table.db_id,

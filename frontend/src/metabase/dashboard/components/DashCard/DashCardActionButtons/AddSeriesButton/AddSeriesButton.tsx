@@ -1,5 +1,4 @@
 import React from "react";
-import _ from "underscore";
 import { t } from "ttag";
 
 import Icon from "metabase/components/Icon";

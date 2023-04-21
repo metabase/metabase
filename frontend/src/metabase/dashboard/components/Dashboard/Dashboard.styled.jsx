@@ -2,7 +2,7 @@ import React from "react";
 import cx from "classnames";
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
-import { IFRAMED } from "metabase/lib/dom";
+import { isWithinIframe } from "metabase/lib/dom";
 import { color } from "metabase/lib/colors";
 import { breakpointMaxSmall, space } from "metabase/styled-components/theme";
 
@@ -94,7 +94,7 @@ export const ParametersWidgetContainer = styled(FullWidthContainer)`
   background-color: ${color("bg-light")};
   border-bottom: 1px solid ${color("bg-light")};
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   padding-top: ${space(2)};
   padding-bottom: ${space(1)};
   z-index: 3;
@@ -109,7 +109,7 @@ export const ParametersWidgetContainer = styled(FullWidthContainer)`
     isSticky &&
     css`
       position: fixed;
-      top: ${IFRAMED && !topNav ? "0" : APP_BAR_HEIGHT};
+      top: ${isWithinIframe() && !topNav ? "0" : APP_BAR_HEIGHT};
       left: 0;
       border-bottom: 1px solid ${color("border")};
     `}

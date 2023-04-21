@@ -2,8 +2,6 @@
   "Pivot table actions for the query processor"
   (:require
    [clojure.core.async :as a]
-   [clojure.tools.logging :as log]
-   [medley.core :as m]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.query-processor :as qp]
    [metabase.query-processor.context :as qp.context]
@@ -12,7 +10,10 @@
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs tru]]))
+   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.log :as log]))
+
+(set! *warn-on-reflection* true)
 
 (defn powerset
   "Generate a powerset while maintaining the original ordering as much as possible"
@@ -102,12 +103,19 @@
       (log/tracef "Added pivot-grouping expression to query\n%s" (u/pprint-to-str 'yellow query))
       query)))
 
-(defn- remove-existing-order-bys
-  "Remove existing `:order-by` clauses from the query. Since we're adding our own breakouts (i.e. `GROUP BY` and `ORDER
-  BY` clauses) to do the pivot table stuff, existing `:order-by` clauses probably won't work -- `ORDER BY` isn't
-  allowed for fields that don't appear in `GROUP BY`."
+(defn- remove-non-aggregation-order-bys
+  "Only keep existing aggregations in `:order-by` clauses from the query.
+   Since we're adding our own breakouts (i.e. `GROUP BY` and `ORDER BY` clauses)
+   to do the pivot table stuff, existing `:order-by` clauses probably won't work
+   -- `ORDER BY` isn't allowed for fields that don't appear in `GROUP BY`."
   [outer-query]
-  (m/dissoc-in outer-query [:query :order-by]))
+  (update
+    outer-query
+    :query
+    (fn [query]
+      (if-let [new-order-by (not-empty (filterv (comp #(= :aggregation %) first second) (:order-by query)))]
+        (assoc query :order-by new-order-by)
+        (dissoc query :order-by)))))
 
 (defn- generate-queries
   "Generate the additional queries to perform a generic pivot table"
@@ -119,7 +127,7 @@
                             new-breakouts (for [i breakout-indices]
                                             (nth all-breakouts i))]]
       (-> outer-query
-          remove-existing-order-bys
+          remove-non-aggregation-order-bys
           (add-grouping-field new-breakouts group-bitmask)))
     (catch Throwable e
       (throw (ex-info (tru "Error generating pivot queries")

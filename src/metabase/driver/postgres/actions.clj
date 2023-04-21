@@ -7,6 +7,8 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]))
 
+(set! *warn-on-reflection* true)
+
 (defn- maybe-parse-not-null-error [_database error-message]
   (when-let [[_ _value column]
              (re-find #"ERROR:\s+(\w+) value in column \"([^\"]+)\" violates not-null constraint" error-message)]
@@ -70,6 +72,7 @@
    :type/Float               "FLOAT"
    :type/Integer             "INTEGER"
    :type/IPAddress           "INET"
+   :type/JSON                "JSON"
    :type/Text                "TEXT"
    :type/Time                "TIME"
    :type/TimeWithTZ          "TIME WITH TIME ZONE"

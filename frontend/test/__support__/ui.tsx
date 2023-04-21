@@ -1,12 +1,17 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
+import type { ByRoleMatcher } from "@testing-library/react";
 import { merge } from "icepick";
-import { createMemoryHistory } from "history";
-import { Router, Route } from "react-router";
+import _ from "underscore";
+import { createMemoryHistory, History } from "history";
+import { Router } from "react-router";
+import { routerReducer, routerMiddleware } from "react-router-redux";
+import type { Reducer } from "@reduxjs/toolkit";
 import { Provider } from "react-redux";
 import { ThemeProvider } from "@emotion/react";
 import { DragDropContextProvider } from "react-dnd";
 import HTML5Backend from "react-dnd-html5-backend";
+import type { MatcherFunction } from "@testing-library/dom";
 
 import { state as sampleDatabaseReduxState } from "__support__/sample_database_fixture";
 
@@ -19,12 +24,19 @@ import publicReducers from "metabase/reducers-public";
 
 import { getStore } from "./entities-store";
 
+type ReducerValue = ReducerObject | Reducer;
+interface ReducerObject {
+  [slice: string]: ReducerValue;
+}
+
 export interface RenderWithProvidersOptions {
   mode?: "default" | "public";
+  initialRoute?: string;
   storeInitialState?: Partial<State>;
   withSampleDatabase?: boolean;
   withRouter?: boolean;
   withDND?: boolean;
+  customReducers?: ReducerObject;
 }
 
 /**
@@ -36,28 +48,50 @@ export function renderWithProviders(
   ui: React.ReactElement,
   {
     mode = "default",
+    initialRoute = "/",
     storeInitialState = {},
     withSampleDatabase,
     withRouter = false,
     withDND = false,
+    customReducers,
     ...options
   }: RenderWithProvidersOptions = {},
 ) {
-  const initialReduxState = createMockState(
+  let initialState = createMockState(
     withSampleDatabase
       ? merge(sampleDatabaseReduxState, storeInitialState)
       : storeInitialState,
   );
 
+  if (mode === "public") {
+    const publicReducerNames = Object.keys(publicReducers);
+    initialState = _.pick(initialState, ...publicReducerNames) as State;
+  }
+
+  const history = withRouter
+    ? createMemoryHistory({ entries: [initialRoute] })
+    : undefined;
+
+  let reducers = mode === "default" ? mainReducers : publicReducers;
+
+  if (withRouter) {
+    Object.assign(reducers, { routing: routerReducer });
+  }
+  if (customReducers) {
+    reducers = { ...reducers, ...customReducers };
+  }
+
   const store = getStore(
-    mode === "default" ? mainReducers : publicReducers,
-    initialReduxState,
+    reducers,
+    initialState,
+    history ? [routerMiddleware(history)] : [],
   );
 
   const wrapper = (props: any) => (
     <Wrapper
       {...props}
       store={store}
+      history={history}
       withRouter={withRouter}
       withDND={withDND}
     />
@@ -71,17 +105,20 @@ export function renderWithProviders(
   return {
     ...utils,
     store,
+    history,
   };
 }
 
 function Wrapper({
   children,
   store,
+  history,
   withRouter,
   withDND,
 }: {
   children: React.ReactElement;
   store: any;
+  history?: History;
   withRouter: boolean;
   withDND: boolean;
 }): JSX.Element {
@@ -89,7 +126,9 @@ function Wrapper({
     <Provider store={store}>
       <MaybeDNDProvider hasDND={withDND}>
         <ThemeProvider theme={{}}>
-          <MaybeRouter hasRouter={withRouter}>{children}</MaybeRouter>
+          <MaybeRouter hasRouter={withRouter} history={history}>
+            {children}
+          </MaybeRouter>
         </ThemeProvider>
       </MaybeDNDProvider>
     </Provider>
@@ -99,24 +138,16 @@ function Wrapper({
 function MaybeRouter({
   children,
   hasRouter,
+  history,
 }: {
   children: React.ReactElement;
   hasRouter: boolean;
+  history?: History;
 }): JSX.Element {
   if (!hasRouter) {
     return children;
   }
-  const history = createMemoryHistory({ entries: ["/"] });
-
-  function Page(props: any) {
-    return React.cloneElement(children, props);
-  }
-
-  return (
-    <Router history={history}>
-      <Route path="/" component={Page} />
-    </Router>
-  );
+  return <Router history={history}>{children}</Router>;
 }
 
 function MaybeDNDProvider({
@@ -136,12 +167,23 @@ function MaybeDNDProvider({
   );
 }
 
-export function getIcon(name: string) {
-  return screen.getByLabelText(`${name} icon`);
+export function getIcon(name: string, role: ByRoleMatcher = "img") {
+  return screen.getByRole(role, { name: `${name} icon` });
 }
 
-export function queryIcon(name: string) {
-  return screen.queryByLabelText(`${name} icon`);
+export function queryIcon(name: string, role: ByRoleMatcher = "img") {
+  return screen.queryByRole(role, { name: `${name} icon` });
+}
+
+/**
+ * Returns a matcher function to find text content that is broken up by multiple elements
+ *
+ * @param {string} textToFind
+ * @example
+ * screen.getByText(getBrokenUpTextMatcher("my text with a styled word"))
+ */
+export function getBrokenUpTextMatcher(textToFind: string): MatcherFunction {
+  return (content, element) => element?.textContent === textToFind;
 }
 
 export * from "@testing-library/react";

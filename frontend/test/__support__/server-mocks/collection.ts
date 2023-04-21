@@ -1,4 +1,4 @@
-import type { Scope } from "nock";
+import fetchMock from "fetch-mock";
 import _ from "underscore";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import { Card, Collection } from "metabase-types/api";
@@ -8,13 +8,28 @@ import {
   SAVED_QUESTIONS_VIRTUAL_DB_ID,
 } from "metabase-lib/metadata/utils/saved-questions";
 
-export function setupCollectionsEndpoints(
-  scope: Scope,
-  collections: Collection[],
-) {
-  scope.get("/api/collection").reply(200, collections);
-  scope.get("/api/collection/tree?tree=true").reply(200, collections);
-  scope.get("/api/collection/root").reply(200, ROOT_COLLECTION);
+export function setupCollectionsEndpoints(collections: Collection[]) {
+  fetchMock.get("path:/api/collection/root", ROOT_COLLECTION);
+  fetchMock.get(
+    {
+      url: "path:/api/collection/tree",
+      query: { tree: true, "exclude-archived": true },
+      overwriteRoutes: false,
+    },
+    collections.filter(collection => !collection.archived),
+  );
+  fetchMock.get(
+    {
+      url: "path:/api/collection/tree",
+      query: { tree: true },
+      overwriteRoutes: false,
+    },
+    collections,
+  );
+  fetchMock.get(
+    { url: "path:/api/collection", overwriteRoutes: false },
+    collections,
+  );
 }
 
 function getCollectionVirtualSchemaURLs(collection: Collection) {
@@ -22,14 +37,13 @@ function getCollectionVirtualSchemaURLs(collection: Collection) {
   const schemaName = getCollectionVirtualSchemaName(collection);
   const schema = encodeURIComponent(schemaName);
 
-  const questions = ["/api/database/", db, "/schema/", schema].join("");
-  const models = ["/api/database/", db, "/datasets/", schema].join("");
+  const questions = ["path:/api/database/", db, "/schema/", schema].join("");
+  const models = ["path:/api/database/", db, "/datasets/", schema].join("");
 
   return { questions, models };
 }
 
 export function setupCollectionVirtualSchemaEndpoints(
-  scope: Scope,
   collection: Collection,
   cards: Card[],
 ) {
@@ -41,6 +55,6 @@ export function setupCollectionVirtualSchemaEndpoints(
     convertSavedQuestionToVirtualTable,
   );
 
-  scope.get(urls.questions).reply(200, questionVirtualTables);
-  scope.get(urls.models).reply(200, modelVirtualTables);
+  fetchMock.get(urls.questions, questionVirtualTables);
+  fetchMock.get(urls.models, modelVirtualTables);
 }

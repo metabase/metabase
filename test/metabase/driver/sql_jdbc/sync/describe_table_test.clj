@@ -1,15 +1,19 @@
 (ns metabase.driver.sql-jdbc.sync.describe-table-test
   (:require
    [clojure.java.jdbc :as jdbc]
-   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.driver.mysql-test :as mysql-test]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.sync.describe-table
     :as sql-jdbc.describe-table]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.models.table :refer [Table]]
+   [metabase.sync :as sync]
    [metabase.test :as mt]
-   [toucan.db :as db]))
+   [metabase.test.data.one-off-dbs :as one-off-dbs]
+   [metabase.util :as u]
+   [toucan2.core :as t2]))
 
 (defn- sql-jdbc-drivers-with-default-describe-table-impl
   "All SQL JDBC drivers that use the default SQL JDBC implementation of `describe-table`. (As far as I know, this is
@@ -23,13 +27,48 @@
 (deftest describe-table-test
   (is (= {:name "VENUES",
           :fields
-          #{{:name "ID", :database-type "BIGINT", :base-type :type/BigInteger, :database-position 0, :pk? true :database-required false}
-            {:name "NAME", :database-type "CHARACTER VARYING", :base-type :type/Text, :database-position 1 :database-required false}
-            {:name "CATEGORY_ID", :database-type "INTEGER", :base-type :type/Integer, :database-position 2 :database-required false}
-            {:name "LATITUDE", :database-type "DOUBLE PRECISION", :base-type :type/Float, :database-position 3 :database-required false}
-            {:name "LONGITUDE", :database-type "DOUBLE PRECISION", :base-type :type/Float, :database-position 4 :database-required false}
-            {:name "PRICE", :database-type "INTEGER", :base-type :type/Integer, :database-position 5 :database-required false}}}
+          #{{:name "ID", :database-type "BIGINT", :base-type :type/BigInteger, :database-position 0, :pk? true :database-required false :database-is-auto-increment true}
+            {:name "NAME", :database-type "CHARACTER VARYING", :base-type :type/Text, :database-position 1 :database-required false :database-is-auto-increment false}
+            {:name "CATEGORY_ID", :database-type "INTEGER", :base-type :type/Integer, :database-position 2 :database-required false :database-is-auto-increment false}
+            {:name "LATITUDE", :database-type "DOUBLE PRECISION", :base-type :type/Float, :database-position 3 :database-required false :database-is-auto-increment false}
+            {:name "LONGITUDE", :database-type "DOUBLE PRECISION", :base-type :type/Float, :database-position 4 :database-required false :database-is-auto-increment false}
+            {:name "PRICE", :database-type "INTEGER", :base-type :type/Integer, :database-position 5 :database-required false :database-is-auto-increment false}}}
          (sql-jdbc.describe-table/describe-table :h2 (mt/id) {:name "VENUES"}))))
+
+(deftest describe-auto-increment-on-non-pk-field-test
+  (testing "a non-pk field with auto-increment should be have metabase_field.database_is_auto_increment=true"
+    (one-off-dbs/with-blank-db
+      (doseq [statement [;; H2 needs that 'guest' user for QP purposes. Set that up
+                         "CREATE USER IF NOT EXISTS GUEST PASSWORD 'guest';"
+                         ;; Keep DB open until we say otherwise :)
+                         "SET DB_CLOSE_DELAY -1;"
+                         ;; create table & load data
+                         "DROP TABLE IF EXISTS \"birds\";"
+                         "CREATE TABLE \"employee_counter\" (\"id\" INTEGER AUTO_INCREMENT PRIMARY KEY, \"count\" INTEGER AUTO_INCREMENT, \"rank\" INTEGER NOT NULL)"
+                         "GRANT ALL ON \"employee_counter\" TO GUEST;"]]
+        (jdbc/execute! one-off-dbs/*conn* [statement]))
+      (sync/sync-database! (mt/db))
+      (is (= {:fields #{{:base-type                 :type/Integer
+                         :database-is-auto-increment true
+                         :database-position         0
+                         :database-required         false
+                         :database-type             "INTEGER"
+                         :name                      "id"
+                         :pk?                       true}
+                        {:base-type                 :type/Integer
+                         :database-is-auto-increment true
+                         :database-position         1
+                         :database-required         false
+                         :database-type             "INTEGER"
+                         :name                      "count"}
+                        {:base-type                 :type/Integer
+                         :database-is-auto-increment false
+                         :database-position         2
+                         :database-required         true
+                         :database-type             "INTEGER"
+                         :name                      "rank"}}
+              :name "employee_counter"}
+             (sql-jdbc.describe-table/describe-table :h2 (mt/id) {:name "employee_counter"}))))))
 
 (deftest describe-table-fks-test
   (is (= #{{:fk-column-name   "CATEGORY_ID"
@@ -51,10 +90,10 @@
                  {:name "latitude"    :base-type :type/Float}
                  {:name "name"        :base-type :type/Text}
                  {:name "id"          :base-type :type/Integer}}
-               (->> (sql-jdbc.describe-table/describe-table driver/*driver* (mt/id) (db/select-one Table :id (mt/id :venues)))
+               (->> (sql-jdbc.describe-table/describe-table driver/*driver* (mt/id) (t2/select-one Table :id (mt/id :venues)))
                     :fields
                     (map (fn [{:keys [name base-type]}]
-                           {:name      (str/lower-case name)
+                           {:name      (u/lower-case-en name)
                             :base-type (if (or (isa? base-type :type/Integer)
                                                (isa? base-type :type/Decimal)) ; H2 DBs returns the ID as BigInt, Oracle as Decimal;
                                          :type/Integer
@@ -64,13 +103,13 @@
 (deftest calculated-semantic-type-test
   (mt/test-drivers (sql-jdbc-drivers-with-default-describe-table-impl)
     (with-redefs [sql-jdbc.sync.interface/column->semantic-type (fn [_ _ column-name]
-                                                                  (when (= (str/lower-case column-name) "longitude")
+                                                                  (when (= (u/lower-case-en column-name) "longitude")
                                                                     :type/Longitude))]
       (is (= [["longitude" :type/Longitude]]
-             (->> (sql-jdbc.describe-table/describe-table (or driver/*driver* :h2) (mt/id) (db/select-one Table :id (mt/id :venues)))
+             (->> (sql-jdbc.describe-table/describe-table (or driver/*driver* :h2) (mt/id) (t2/select-one Table :id (mt/id :venues)))
                   :fields
                   (filter :semantic-type)
-                  (map (juxt (comp str/lower-case :name) :semantic-type))))))))
+                  (map (juxt (comp u/lower-case-en :name) :semantic-type))))))))
 
 (deftest type-by-parsing-string
   (testing "type-by-parsing-string"
@@ -106,6 +145,21 @@
              (transduce
                #'sql-jdbc.describe-table/describe-json-xform
                #'sql-jdbc.describe-table/describe-json-rf [json-map]))))))
+
+(deftest json-details-only-test
+  (testing "fields with base-type=type/JSON should have visibility-type=details-only, unlike other fields."
+    (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
+      (when-not (mysql-test/is-mariadb? (u/id (mt/db)))
+        (mt/dataset json
+          (let [spec  (sql-jdbc.conn/connection-details->spec driver/*driver* (:details (mt/db)))
+                table (t2/select-one Table :id (mt/id :json))]
+            (with-open [conn (jdbc/get-connection spec)]
+              (let [fields     (sql-jdbc.describe-table/describe-table-fields driver/*driver* conn table nil)
+                    json-field (first (filter #(= (:name %) "json_bit") fields))
+                    text-field (first (filter #(= (:name %) "bloop") fields))]
+                (is (= :details-only
+                       (:visibility-type json-field)))
+                (is (nil? (:visibility-type text-field)))))))))))
 
 (deftest describe-nested-field-columns-test
   (testing "flattened-row"

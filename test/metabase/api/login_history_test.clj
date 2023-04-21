@@ -1,4 +1,4 @@
-(ns metabase.api.login-history-test
+(ns ^:mb/once metabase.api.login-history-test
   (:require
    [clojure.test :refer :all]
    [metabase.models :refer [LoginHistory Session User]]
@@ -6,10 +6,7 @@
    [metabase.util :as u]
    [schema.core :as s]))
 
-;; don't run these tests when running driver tests (i.e., `DRIVERS` is set) because they tend to flake
-(use-fixtures :each (fn [thunk]
-                      (mt/disable-flaky-test-when-running-driver-tests-in-ci
-                        (thunk))))
+(set! *warn-on-reflection* true)
 
 (def ^:private windows-user-agent
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML like Gecko) Chrome/89.0.4389.86 Safari/537.36")

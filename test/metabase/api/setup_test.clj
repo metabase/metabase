@@ -1,4 +1,4 @@
-(ns metabase.api.setup-test
+(ns ^:mb/once metabase.api.setup-test
   "Tests for /api/setup endpoints."
   (:require
    [clojure.core.async :as a]
@@ -7,10 +7,8 @@
    [medley.core :as m]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.api.setup :as api.setup]
-   [metabase.email :as email]
    [metabase.events :as events]
    [metabase.http-client :as client]
-   [metabase.integrations.slack :as slack]
    [metabase.models :refer [Activity Database Table User]]
    [metabase.models.setting :as setting]
    [metabase.models.setting.cache-test :as setting.cache-test]
@@ -21,7 +19,9 @@
    [metabase.util :as u]
    [metabase.util.schema :as su]
    [schema.core :as schema]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 ;; make sure the default test users are created before running these tests, otherwise we're going to run into issues
 ;; if it attempts to delete this user and it is the only admin test user
@@ -46,11 +46,11 @@
     (mt/discard-setting-changes [site-name site-locale anon-tracking-enabled admin-email]
       (thunk))
     (finally
-      (db/delete! User :email (get-in request-body [:user :email]))
+      (t2/delete! User :email (get-in request-body [:user :email]))
       (when-let [invited (get-in request-body [:invite :name])]
-        (db/delete! User :email invited))
+        (t2/delete! User :email invited))
       (when-let [db-name (get-in request-body [:database :name])]
-        (db/delete! Database :name db-name)))))
+        (t2/delete! Database :name db-name)))))
 
 (defn- default-setup-input []
   {:token (setup/create-token!)
@@ -82,19 +82,19 @@
       (let [email (mt/random-email)]
         (with-setup {:user {:email email}}
           (testing "new User should be created"
-            (is (db/exists? User :email email)))
+            (is (t2/exists? User :email email)))
           (testing "Creating a new admin user should set the `admin-email` Setting"
             (is (= email
                    (public-settings/admin-email))))
 
           (testing "Should record :user-joined Activity (#12933)"
-            (let [user-id (u/the-id (db/select-one-id User :email email))]
+            (let [user-id (u/the-id (t2/select-one-pk User :email email))]
               (is (schema= {:topic         (schema/eq :user-joined)
                             :model_id      (schema/eq user-id)
                             :user_id       (schema/eq user-id)
                             :model         (schema/eq "user")
                             schema/Keyword schema/Any}
-                           (wait-for-result #(db/select-one Activity :topic "user-joined", :user_id user-id)))))))))))
+                           (wait-for-result #(t2/select-one Activity :topic "user-joined", :user_id user-id)))))))))))
 
 (deftest invite-user-test
   (testing "POST /api/setup"
@@ -109,7 +109,7 @@
             (with-setup {:invite {:email email, :first_name first-name, :last_name last-name}
                          :user {:first_name invitor-first-name}
                          :site_name "Metabase"}
-              (let [invited-user (db/select-one User :email email)]
+              (let [invited-user (t2/select-one User :email email)]
                 (is (= (:first_name invited-user) first-name))
                 (is (= (:last_name invited-user) last-name))
                 (is (:is_superuser invited-user))
@@ -128,7 +128,7 @@
               first-name (mt/random-name)
               last-name (mt/random-name)]
           (with-setup {:invite {:email email, :first_name first-name, :last_name last-name}}
-            (is (not (db/exists? User :email email)))))))))
+            (is (not (t2/exists? User :email email)))))))))
 
 (deftest setup-settings-test
   (testing "POST /api/setup"
@@ -176,10 +176,10 @@
                                   k        v}}
             (testing "Database should be created"
               (is (= true
-                     (db/exists? Database :name db-name))))
+                     (t2/exists? Database :name db-name))))
             (testing (format "should be able to set %s to %s (default: %s) during creation" k (pr-str v) default)
               (is (= (if (some? v) v default)
-                     (db/select-one-field k Database :name db-name))))))))
+                     (t2/select-one-fn k Database :name db-name))))))))
 
     (testing "Setup should trigger sync right away for the newly created Database (#12826)"
       (let [db-name (mt/random-name)]
@@ -196,11 +196,11 @@
                            (mt/wait-for-result chan 100))))
 
             (testing "Database should be synced"
-              (let [db (db/select-one Database :name db-name)]
+              (let [db (t2/select-one Database :name db-name)]
                 (assert (some? db))
                 (is (= 4
                        (wait-for-result (fn []
-                                          (let [cnt (db/count Table :db_id (u/the-id db))]
+                                          (let [cnt (t2/count Table :db_id (u/the-id db))]
                                             (when (= cnt 4)
                                               cnt))))))))))))
 
@@ -294,11 +294,11 @@
       (setting.cache-test/clear-cache!)
       (let [db-name (mt/random-name)]
         (with-setup {:database {:engine "h2", :name db-name}}
-          (is (db/exists? Database :name db-name)))))))
+          (is (t2/exists? Database :name db-name)))))))
 
 (deftest has-user-setup-setting-test
   (testing "has-user-setup is true iff there are 1 or more users"
-    (let [user-count (db/count User)]
+    (let [user-count (t2/count User)]
       (if (zero? user-count)
         (is (not (setup/has-user-setup)))
         (is (setup/has-user-setup))))))
@@ -356,12 +356,12 @@
                           (client/client :post 500 "setup" body))))
            (testing "New user shouldn't exist"
              (is (= false
-                    (db/exists? User :email user-email))))
+                    (t2/exists? User :email user-email))))
            (testing "New DB shouldn't exist"
              ;; TODO -- we should also be deleting relevant sync tasks for the DB, but this doesn't matter too much
              ;; for right now.
              (is (= false
-                    (db/exists? Database :engine "h2", :name db-name))))
+                    (t2/exists? Database :engine "h2", :name db-name))))
            (testing "Settings should not be changed"
              (is (not= site-name
                        (public-settings/site-name)))
@@ -407,55 +407,135 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;; basic sanity check
+
+(def ^:private default-checklist-state
+  {:db-type    :h2
+   :hosted?    false
+   :configured {:email true
+                :slack false}
+   :counts     {:user  5
+                :card  5
+                :table 5}
+   :exists     {:non-sample-db true
+                :dashboard     true
+                :pulse         true
+                :hidden-table  false
+                :collection    true
+                :metric        true
+                :segment       true}})
+
 (deftest admin-checklist-test
   (testing "GET /api/setup/admin_checklist"
-    (with-redefs [db/exists?              (constantly true)
-                  db/count                (constantly 5)
-                  email/email-configured? (constantly true)
-                  slack/slack-configured? (constantly false)]
-      (is (= [{:name  "Get connected"
-               :tasks [{:title        "Add a database"
-                        :completed    true
-                        :triggered    true
-                        :is_next_step false}
-                       {:title        "Set up email"
-                        :completed    true
-                        :triggered    true
-                        :is_next_step false}
-                       {:title        "Set Slack credentials"
-                        :completed    false
-                        :triggered    true
-                        :is_next_step true}
-                       {:title        "Invite team members"
-                        :completed    true
-                        :triggered    true
-                        :is_next_step false}]}
-              {:name  "Curate your data"
-               :tasks [{:title        "Hide irrelevant tables"
-                        :completed    true
-                        :triggered    false
-                        :is_next_step false}
-                       {:title        "Organize questions"
-                        :completed    true
-                        :triggered    false
-                        :is_next_step false}
-                       {:title        "Create metrics"
-                        :completed    true
-                        :triggered    false
-                        :is_next_step false}
-                       {:title        "Create segments"
-                        :completed    true
-                        :triggered    false
-                        :is_next_step false}]}]
-             (for [{group-name :name, tasks :tasks} (mt/user-http-request :crowberto :get 200 "setup/admin_checklist")]
-               {:name  (str group-name)
-                :tasks (for [task tasks]
-                         (-> (select-keys task [:title :completed :triggered :is_next_step])
-                             (update :title str)))}))))
+    (with-redefs [api.setup/state-for-checklist (constantly default-checklist-state)]
+      (is (partial= [{:name  "Get connected"
+                      :tasks [{:title        "Add a database"
+                               :completed    true
+                               :triggered    true
+                               :is_next_step false}
+                              {:title        "Set up email"
+                               :completed    true
+                               :triggered    true
+                               :is_next_step false}
+                              {:title        "Set Slack credentials"
+                               :completed    false
+                               :triggered    true
+                               :is_next_step true}
+                              {:title        "Invite team members"
+                               :completed    true
+                               :triggered    true
+                               :is_next_step false}]}
+                     {:name  "Productionize"
+                      :tasks [{:title "Switch to a production-ready app database"}]}
+                     {:name  "Curate your data"
+                      :tasks [{:title        "Hide irrelevant tables"
+                               :completed    false
+                               :triggered    false
+                               :is_next_step false}
+                              {:title        "Organize questions"
+                               :completed    true
+                               :triggered    false
+                               :is_next_step false}
+                              {:title        "Create metrics"
+                               :completed    true
+                               :triggered    false
+                               :is_next_step false}
+                              {:title        "Create segments"
+                               :completed    true
+                               :triggered    false
+                               :is_next_step false}]}]
+                    (for [{group-name :name, tasks :tasks} (mt/user-http-request :crowberto :get 200 "setup/admin_checklist")]
+                      {:name  (str group-name)
+                       :tasks (for [task tasks]
+                                (-> (select-keys task [:title :completed :triggered :is_next_step])
+                                    (update :title str)))}))))
+    (testing "info about switching to postgres or mysql"
+      (testing "is included when h2 and not hosted"
+        (with-redefs [api.setup/state-for-checklist (constantly default-checklist-state)]
+          (let [checklist (mt/user-http-request :crowberto :get 200 "setup/admin_checklist")]
+            (is (= ["Get connected" "Productionize" "Curate your data"]
+                   (map :name checklist))))))
+      (testing "is omitted if hosted"
+        (with-redefs [api.setup/state-for-checklist (constantly
+                                                     (merge default-checklist-state
+                                                            {:hosted? true}))]
+          (let [checklist (mt/user-http-request :crowberto :get 200 "setup/admin_checklist")]
+            (is (= ["Get connected" "Curate your data"]
+                   (map :name checklist)))))))
 
     (testing "require superusers"
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :get 403 "setup/admin_checklist"))))))
+
+(deftest annotate-test
+  (testing "identifies next step"
+    (is (partial= [{:group "first"
+                    :tasks [{:title "t1", :is_next_step false}]}
+                   {:group "second"
+                    :tasks [{:title "t2", :is_next_step true}
+                            {:title "t3", :is_next_step false}]}]
+                  (#'api.setup/annotate
+                   [{:group "first"
+                     :tasks [{:title "t1" :triggered true :completed true}]}
+                    {:group "second"
+                     :tasks [{:title "t2" :triggered true :completed false}
+                             {:title "t3" :triggered true :completed false}]}]))))
+  (testing "If all steps are completed none are marked as next"
+    (is (every? false?
+                (->> (#'api.setup/annotate
+                      [{:group "first"
+                        :tasks [{:title "t1" :triggered true :completed true}]}
+                       {:group "second"
+                        :tasks [{:title "t2" :triggered true :completed true}
+                                {:title "t3" :triggered true :completed true}]}])
+                     (mapcat :tasks)
+                     (map :is_next_step)))))
+  (testing "First step is"
+    (letfn [(first-step [checklist]
+              (->> checklist
+                   (mapcat :tasks)
+                   (filter (every-pred :triggered (complement :completed)))
+                   first
+                   :title))]
+      (let [scenarios [{:update-fn identity
+                        :case      :default
+                        :expected  "Set Slack credentials"}
+                       {:update-fn #(update % :configured merge {:slack true})
+                        :case      :configure-slack
+                        :expected  "Switch to a production-ready app database"}
+                       {:update-fn #(assoc % :db-type :postgres)
+                        :case      :migrate-to-postgres
+                        :expected  nil}
+                       {:update-fn #(update % :counts merge {:table 25})
+                        :case      :add-more-tables
+                        :expected  "Hide irrelevant tables"}]]
+        (reduce (fn [checklist-state {:keys [update-fn expected] :as scenario}]
+                  (let [checklist-state' (update-fn checklist-state)]
+                    (testing (str "when " (:case scenario))
+                      (is (= expected
+                             (first-step (#'api.setup/admin-checklist checklist-state')))))
+                    checklist-state'))
+                default-checklist-state
+                scenarios)))))
 
 (deftest user-defaults-test
   (testing "with no user defaults configured"

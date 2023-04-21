@@ -13,6 +13,7 @@
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.query.permissions :as query-perms]
    [metabase.models.table :refer [Table]]
+   [metabase.query-processor-test.test-mlv2 :as qp-test.mlv2]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.util :as u]))
@@ -219,12 +220,13 @@
 
 ;;; --------------------------------------------- invalid/legacy queries ---------------------------------------------
 
-(deftest invalid-queries-test
+(deftest ^:parallel invalid-queries-test
   (testing "invalid/legacy queries should return perms for something that doesn't exist so no one gets to see it"
-    (is (= #{"/db/0/"}
-           (query-perms/perms-set
-            (mt/mbql-query venues
-              {:filter [:WOW 100 200]}))))))
+    (binding [qp-test.mlv2/*skip-conversion-tests* true]
+      (is (= #{"/db/0/"}
+             (query-perms/perms-set
+              (mt/mbql-query venues
+                {:filter [:WOW 100 200]})))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

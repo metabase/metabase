@@ -3,6 +3,8 @@
   (:import
    (com.mchange.v2.c3p0 PoolBackedDataSource)))
 
+(set! *warn-on-reflection* true)
+
 (def ^:private ^:dynamic *diagnostic-info*
   "Atom used to hold diagnostic info for the current query execution, to be made available via a helper macro/fn below."
   nil)

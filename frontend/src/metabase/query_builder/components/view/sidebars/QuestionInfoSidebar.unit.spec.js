@@ -1,6 +1,7 @@
 import React from "react";
-import nock from "nock";
+import fetchMock from "fetch-mock";
 
+import userEvent from "@testing-library/user-event";
 import {
   renderWithProviders,
   screen,
@@ -81,15 +82,11 @@ async function setup({ question, cachingEnabled = true } = {}) {
   });
 
   const id = question.id();
-  nock(location.origin)
-    .get(`/api/card/${id}`)
-    .reply(200, question.card())
-    .get(`/api/revision?entity=card&id=${id}`)
-    .reply(200, [])
-    .get("/api/user")
-    .reply(200, [user])
-    .get(`/api/user/${user.id}`)
-    .reply(200, user);
+  fetchMock
+    .get(`path:/api/card/${id}`, question.card())
+    .get({ url: `path:/api/revision`, query: { entity: "card", id } }, [])
+    .get("path:/api/user", [user])
+    .get(`path:/api/user/${user.id}`, user);
 
   const onSave = jest.fn();
 
@@ -108,10 +105,6 @@ async function setup({ question, cachingEnabled = true } = {}) {
 }
 
 describe("QuestionInfoSidebar", () => {
-  afterEach(() => {
-    nock.cleanAll();
-  });
-
   describe("common features", () => {
     [
       { type: "Saved Question", getObject: getQuestion },
@@ -195,6 +188,9 @@ describe("QuestionInfoSidebar", () => {
       await setup({
         question: getQuestion({ description: "Foo bar", can_write: false }),
       });
+      // show input
+      userEvent.click(screen.getByTestId("editable-text"));
+
       expect(screen.queryByPlaceholderText("Add description")).toHaveValue(
         "Foo bar",
       );

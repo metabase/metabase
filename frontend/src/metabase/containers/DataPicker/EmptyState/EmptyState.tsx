@@ -8,7 +8,7 @@ interface Props {
   icon?: string;
 }
 
-function EmptyState({ message = t`Nothing here`, icon = "all" }: Props) {
+function EmptyState({ message = t`Nothing here`, icon = "folder" }: Props) {
   return (
     <EmptyStateContainer>
       <DefaultEmptyState message={message} icon={icon} />

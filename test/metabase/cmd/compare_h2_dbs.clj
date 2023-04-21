@@ -3,10 +3,11 @@
   (:require
    [clojure.data :as data]
    [clojure.java.jdbc :as jdbc]
-   [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [metabase.db.jdbc-protocols]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.log :as log]))
+
+(set! *warn-on-reflection* true)
 
 (comment metabase.db.jdbc-protocols/keep-me)
 
@@ -15,7 +16,6 @@
    :subprotocol       "h2"
    :subname           (str "file:" db-file)
    "IFEXISTS"         "TRUE"
-   "ACCESS_MODE_DATA" "r"
    ;; close DB right away when done
    "DB_CLOSE_DELAY"   "0"})
 
@@ -59,7 +59,7 @@
 
 (defn- normalize-values [row]
   (into {} (for [[k v] row
-                 :when (not (ignored-keys (keyword (str/lower-case (name k)))))]
+                 :when (not (ignored-keys (keyword (u/lower-case-en (name k)))))]
              [k (normalize-value v)])))
 
 (defn- sort-rows [rows]

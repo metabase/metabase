@@ -2,9 +2,10 @@ import { createEntity } from "metabase/lib/entities";
 
 import { GET, POST } from "metabase/lib/api";
 
-const listRevisions = GET("/api/revision");
+import Dashboards from "./dashboards";
+import Questions from "./questions";
 
-const ASSOCIATED_ENTITY_TYPES = ["questions", "dashboards"];
+const listRevisions = GET("/api/revision");
 
 const Revision = createEntity({
   name: "revisions",
@@ -35,14 +36,11 @@ const Revision = createEntity({
   },
 
   actionShouldInvalidateLists(action) {
-    const entities = require("metabase/entities");
-    for (const type of ASSOCIATED_ENTITY_TYPES) {
-      if (entities[type].actionShouldInvalidateLists(action)) {
-        return true;
-      }
-    }
-
-    return action.type === this.actionTypes.INVALIDATE_LISTS_ACTION;
+    return (
+      action.type === this.actionTypes.INVALIDATE_LISTS_ACTION ||
+      Dashboards.actionShouldInvalidateLists(action) ||
+      Questions.actionShouldInvalidateLists(action)
+    );
   },
 });
 

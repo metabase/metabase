@@ -5,6 +5,7 @@ import { TooltipRowModel } from "../types";
 import {
   Cell,
   ColorIndicator,
+  ColorIndicatorCell,
   PercentCell,
   TooltipRowRoot,
   TotalRowRoot,
@@ -26,17 +27,17 @@ export const TooltipRow = ({
 }: TooltipRowProps) => (
   <TooltipRowRoot isHeader={isHeader}>
     {color && (
-      <Cell>
+      <ColorIndicatorCell>
         <ColorIndicator size={isHeader ? 12 : 8} color={color} />
-      </Cell>
+      </ColorIndicatorCell>
     )}
     <Cell data-testid="row-name">{name}</Cell>
     <ValueCell data-testid="row-value">{formatter(value)}</ValueCell>
-    {percent && (
+    {percent != null ? (
       <PercentCell data-testid="row-percent">
         {formatPercent(percent)}
       </PercentCell>
-    )}
+    ) : null}
   </TooltipRowRoot>
 );
 
@@ -52,7 +53,7 @@ export const TooltipTotalRow = ({
   hasIcon,
 }: TotalTooltipRow) => (
   <TotalRowRoot>
-    {hasIcon && <Cell>=</Cell>}
+    {hasIcon && <ColorIndicatorCell>=</ColorIndicatorCell>}
     <Cell data-testid="row-name">{t`Total`}</Cell>
     <ValueCell data-testid="row-value">{value}</ValueCell>
     {percent != null && (

@@ -11,7 +11,7 @@
     "<rootDir>/node_modules/(?!rehype-external-links/)"
   ],
   "testPathIgnorePatterns": [
-    "<rootDir>/frontend/test/.*/.*.tz.unit.spec.{js,jsx,ts,tsx}"
+    "<rootDir>/frontend/.*/.*.tz.unit.spec.{js,jsx,ts,tsx}"
   ],
   "testMatch": [
     "<rootDir>/**/*.unit.spec.js",
@@ -22,32 +22,38 @@
     "<rootDir>/frontend/src",
     "<rootDir>/enterprise/frontend/src"
   ],
+  "modulePathIgnorePatterns": ["<rootDir>/frontend/src/cljs_release/.*"],
   "setupFiles": [
     "<rootDir>/frontend/test/jest-setup.js",
     "<rootDir>/frontend/test/metabase-bootstrap.js",
     "<rootDir>/frontend/test/register-visualizations.js"
   ],
-  "setupFilesAfterEnv": ["@testing-library/jest-dom/extend-expect"],
+  "setupFilesAfterEnv": [
+    "@testing-library/jest-dom/extend-expect",
+    "<rootDir>/frontend/test/jest-setup-env.js"
+  ],
+  "globalSetup": "<rootDir>/frontend/test/global-setup.js",
   "globals": {
     "ace": {},
     "ga": {},
     "document": {}
   },
   "coverageDirectory": "./coverage",
-  "coverageReporters": ["text", "html", "lcov"],
+  "coverageReporters": ["html", "lcov"],
   "collectCoverageFrom": [
     "frontend/src/**/*.{js,jsx,ts,tsx}",
     "enterprise/frontend/src/**/*.{js,jsx,ts,tsx}",
-    "**/*.stories.{js,jsx,ts,tsx}"
+    "!<rootDir>/**/*.styled.{js,jsx,ts,tsx}",
+    "!<rootDir>/**/*.story.{js,jsx,ts,tsx}",
+    "!<rootDir>/**/*.info.{js,jsx,ts,tsx}",
+    "!<rootDir>/**/*.unit.spec.{js,jsx,ts,tsx}"
   ],
   "coveragePathIgnorePatterns": [
     "/node_modules/",
     "/frontend/src/metabase/visualizations/lib/errors.js",
     "/frontend/src/cljs/",
-    "/frontend/src/metabase/internal/",
-    "/frontend/test/",
-    ".styled.{jsx,tsx}",
-    ".info.js"
+    "/frontend/src/cljs_release/",
+    "/frontend/test/"
   ],
   "testEnvironment": "jest-environment-jsdom",
   "watchPlugins": [

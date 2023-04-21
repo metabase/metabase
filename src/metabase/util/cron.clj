@@ -11,18 +11,20 @@
    (net.redhogs.cronparser CronExpressionDescriptor)
    (org.quartz CronExpression)))
 
+(set! *warn-on-reflection* true)
+
 (def CronScheduleString
   "Schema for a valid cron schedule string."
   (su/with-api-error-message
-      (s/constrained
-       su/NonBlankString
-       (fn [^String s]
-         (try (CronExpression/validateExpression s)
-              true
-              (catch Throwable _
-                false)))
-       "Invalid cron schedule string.")
-      "value must be a valid Quartz cron schedule string."))
+    (s/constrained
+     su/NonBlankString
+     (fn [^String s]
+       (try (CronExpression/validateExpression s)
+            true
+            (catch Throwable _
+              false)))
+     "Invalid cron schedule string.")
+    "value must be a valid Quartz cron schedule string."))
 
 
 (def ^:private CronHour

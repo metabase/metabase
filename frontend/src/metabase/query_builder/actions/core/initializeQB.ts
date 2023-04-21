@@ -350,7 +350,7 @@ async function handleQBInit(
       );
     }
     dispatch(
-      updateUrl(finalCard, {
+      updateUrl(question, {
         replaceState: true,
         preserveParameters: hasCard,
         objectId,

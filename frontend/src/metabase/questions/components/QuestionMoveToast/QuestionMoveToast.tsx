@@ -21,7 +21,7 @@ function QuestionMoveToast({ isModel, collectionId }: QuestionMoveToastProps) {
   const collectionLink = <CollectionLink key="collection-link" id={id} />;
   return (
     <ToastRoot>
-      <StyledIcon name="all" />
+      <StyledIcon name="collection" />
       {isModel
         ? jt`Model moved to ${collectionLink}`
         : jt`Question moved to ${collectionLink}`}

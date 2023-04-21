@@ -279,7 +279,7 @@ describe("DatabaseEditApp/Sidebar", () => {
       const modal = getModal();
 
       // Fill in database name to confirm deletion
-      userEvent.type(within(modal).getByRole("textbox"), database.name);
+      userEvent.type(await within(modal).findByRole("textbox"), database.name);
       userEvent.click(within(modal).getByRole("button", { name: "Delete" }));
       await waitForElementToBeRemoved(() => getModal());
 
@@ -293,7 +293,9 @@ describe("DatabaseEditApp/Sidebar", () => {
       const modal = getModal();
 
       within(modal).getByText(`Delete the ${database.name} database?`);
-      userEvent.click(within(modal).getByRole("button", { name: "Cancel" }));
+      userEvent.click(
+        await within(modal).findByRole("button", { name: "Cancel" }),
+      );
       await waitForElementToBeRemoved(() => getModal());
 
       expect(getModal()).not.toBeInTheDocument();

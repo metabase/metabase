@@ -1,7 +1,7 @@
 import { push } from "react-router-redux";
 import _ from "underscore";
 import { parseSearchOptions, parseHashOptions } from "metabase/lib/browser";
-import { IFRAMED, IFRAMED_IN_SELF } from "metabase/lib/dom";
+import { isWithinIframe, IFRAMED_IN_SELF } from "metabase/lib/dom";
 import { setOptions } from "metabase/redux/embed";
 import { isFitViewportMode } from "metabase/hoc/FitViewPort";
 
@@ -10,7 +10,7 @@ import { isFitViewportMode } from "metabase/hoc/FitViewPort";
 export const IS_EMBED_PREVIEW = IFRAMED_IN_SELF;
 
 export function initializeEmbedding(store) {
-  if (IFRAMED) {
+  if (isWithinIframe()) {
     let currentHref;
     let currentFrame;
     // NOTE: history.listen and window's onhashchange + popstate events were not

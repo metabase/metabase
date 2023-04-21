@@ -1,6 +1,6 @@
 import React from "react";
+import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
-import nock from "nock";
 import {
   renderWithProviders,
   screen,
@@ -87,41 +87,36 @@ const DASHBOARD = {
 
 function mockCollectionEndpoint({ extraCollections = [] } = {}) {
   const collections = [...Object.values(COLLECTION), ...extraCollections];
-  nock(location.origin).get("/api/collection").reply(200, collections);
+  fetchMock.get("path:/api/collection", collections);
 }
 
 function mockCollectionItemsEndpoint() {
-  nock(location.origin)
-    .persist()
-    .get(/\/api\/collection\/(root|[1-9]\d*)\/items.*/)
-    .reply(200, url => {
-      const collectionIdParam = url.split("/")[3];
-      const collectionId =
-        collectionIdParam === "root" ? null : parseInt(collectionIdParam, 10);
-      const dashboards = Object.values(DASHBOARD).filter(
-        dashboard => dashboard.collection_id === collectionId,
-      );
-      return {
-        total: dashboards.length,
-        data: dashboards,
-      };
-    });
+  fetchMock.get(/api\/collection\/\d+\/items/, url => {
+    const collectionIdParam = url.split("/")[5];
+    const collectionId =
+      collectionIdParam === "root" ? null : parseInt(collectionIdParam, 10);
+    const dashboards = Object.values(DASHBOARD).filter(
+      dashboard => dashboard.collection_id === collectionId,
+    );
+    return {
+      total: dashboards.length,
+      data: dashboards,
+    };
+  });
 
-  nock(location.origin)
-    .get("/api/collection/root/items")
-    .reply(200, () => {
-      const dashboards = Object.values(DASHBOARD).filter(
-        dashboard => dashboard.collection_id === null,
-      );
-      const collections = Object.values(COLLECTION).filter(
-        collection => collection.location !== "/",
-      );
-      const data = [...dashboards, ...collections];
-      return {
-        total: data.length,
-        data,
-      };
-    });
+  fetchMock.get("path:/api/collection/root/items", () => {
+    const dashboards = Object.values(DASHBOARD).filter(
+      dashboard => dashboard.collection_id === null,
+    );
+    const collections = Object.values(COLLECTION).filter(
+      collection => collection.location !== "/",
+    );
+    const data = [...dashboards, ...collections];
+    return {
+      total: data.length,
+      data,
+    };
+  });
 }
 
 async function setup({
@@ -169,10 +164,6 @@ async function openCollection(itemName) {
 }
 
 describe("ItemPicker", () => {
-  afterEach(() => {
-    nock.cleanAll();
-  });
-
   it("displays items from the root collection by default", async () => {
     await setup();
 

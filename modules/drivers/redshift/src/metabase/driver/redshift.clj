@@ -1,29 +1,38 @@
 (ns metabase.driver.redshift
   "Amazon Redshift Driver."
-  (:require [cheshire.core :as json]
-            [clojure.java.jdbc :as jdbc]
-            [clojure.tools.logging :as log]
-            [honeysql.core :as hsql]
-            [java-time :as t]
-            [metabase.driver :as driver]
-            [metabase.driver.common :as driver.common]
-            [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
-            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-            [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-            [metabase.driver.sql-jdbc.execute.legacy-impl :as sql-jdbc.legacy]
-            [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
-            [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
-            [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.public-settings :as public-settings]
-            [metabase.query-processor.store :as qp.store]
-            [metabase.query-processor.util :as qp.util]
-            [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.i18n :refer [trs]])
-  (:import [java.sql Connection PreparedStatement ResultSet Types]
-           java.time.OffsetTime))
+  (:require
+   [cheshire.core :as json]
+   [clojure.java.jdbc :as jdbc]
+   [java-time :as t]
+   [metabase.driver :as driver]
+   [metabase.driver.common :as driver.common]
+   [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.driver.sql-jdbc.execute.legacy-impl :as sql-jdbc.legacy]
+   [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.driver.sql-jdbc.sync.describe-table
+    :as sql-jdbc.describe-table]
+   [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.public-settings :as public-settings]
+   [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.util :as qp.util]
+   [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log])
+  (:import
+   (com.amazon.redshift.util RedshiftInterval)
+   (java.sql Connection PreparedStatement ResultSet ResultSetMetaData Types)
+   (java.time OffsetTime)))
+
+(set! *warn-on-reflection* true)
 
 (driver/register! :redshift, :parent #{:postgres ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
+
+(doseq [[feature supported?] {:test/jvm-timezone-setting false
+                              :nested-field-columns      false}]
+  (defmethod driver/database-supports? [:redshift feature] [_driver _feat _db] supported?))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             metabase.driver impls                                              |
@@ -103,15 +112,15 @@
 
 (defmethod sql.qp/add-interval-honeysql-form :redshift
   [_ hsql-form amount unit]
-  (let [hsql-form (hx/->timestamp hsql-form)]
-    (-> (hsql/call :dateadd (hx/literal unit) amount hsql-form)
-        (hx/with-type-info (hx/type-info hsql-form)))))
+  (let [hsql-form (h2x/->timestamp hsql-form)]
+    (-> [:dateadd (h2x/literal unit) amount hsql-form]
+        (h2x/with-type-info (h2x/type-info hsql-form)))))
 
 (defmethod sql.qp/unix-timestamp->honeysql [:redshift :seconds]
   [_ _ expr]
-  (hx/+ (hsql/raw "TIMESTAMP '1970-01-01T00:00:00Z'")
-        (hx/* expr
-              (hsql/raw "INTERVAL '1 second'"))))
+  (h2x/+ [:raw "TIMESTAMP '1970-01-01T00:00:00Z'"]
+         (h2x/* expr
+                [:raw "INTERVAL '1 second'"])))
 
 (defmethod sql.qp/current-datetime-honeysql-form :redshift
   [_]
@@ -165,39 +174,34 @@
 
 (defmethod sql.qp/->honeysql [:redshift :regex-match-first]
   [driver [_ arg pattern]]
-  (hsql/call
-    :regexp_substr
-    (sql.qp/->honeysql driver arg)
-    ;; the parameter to REGEXP_SUBSTR can only be a string literal; neither prepared statement parameters nor encoding/
-    ;; decoding functions seem to work (fails with java.sql.SQLExcecption: "The pattern must be a valid UTF-8 literal
-    ;; character expression"), hence we will use a different function to safely escape it before splicing here
-    (hsql/raw (quote-literal-for-database (qp.store/database) pattern))))
+  [:regexp_substr
+   (sql.qp/->honeysql driver arg)
+   ;; the parameter to REGEXP_SUBSTR can only be a string literal; neither prepared statement parameters nor encoding/
+   ;; decoding functions seem to work (fails with java.sql.SQLExcecption: "The pattern must be a valid UTF-8 literal
+   ;; character expression"), hence we will use a different function to safely escape it before splicing here
+   [:raw (quote-literal-for-database (qp.store/database) pattern)]])
 
 (defmethod sql.qp/->honeysql [:redshift :replace]
   [driver [_ arg pattern replacement]]
-  (hsql/call
-    :replace
-    (sql.qp/->honeysql driver arg)
-    (sql.qp/->honeysql driver pattern)
-    (sql.qp/->honeysql driver replacement)))
+  [:replace
+   (sql.qp/->honeysql driver arg)
+   (sql.qp/->honeysql driver pattern)
+   (sql.qp/->honeysql driver replacement)])
 
 (defmethod sql.qp/->honeysql [:redshift :concat]
   [driver [_ & args]]
+  ;; concat() only takes 2 args, so generate multiple concats if we have more,
+  ;; e.g. [:concat :x :y :z] => [:concat [:concat :x :y] :z] => concat(concat(x, y), z)
   (->> args
        (map (partial sql.qp/->honeysql driver))
-       (reduce (partial hsql/call :concat))))
-
-(defmethod sql.qp/->honeysql [:redshift :concat]
-  [driver [_ & args]]
-  (->> args
-       (map (partial sql.qp/->honeysql driver))
-       (reduce (partial hsql/call :concat))))
+       (reduce (fn [x y]
+                 [:concat x y]))))
 
 (defn- extract [unit temporal]
-  (hsql/call :extract (format "'%s'" (name unit)) temporal))
+  [::h2x/extract (format "'%s'" (name unit)) temporal])
 
 (defn- datediff [unit x y]
-  (hsql/call :datediff (hsql/raw (name unit)) x y))
+  [:datediff [:raw (name unit)] x y])
 
 (defmethod sql.qp/->honeysql [:redshift :datetime-diff]
   [driver [_ x y unit]]
@@ -207,33 +211,41 @@
         ;; unlike postgres, we need to make sure the values are timestamps before we
         ;; can do the calculation. otherwise, we'll get an error like
         ;; ERROR: function pg_catalog.date_diff("unknown", ..., ...) does not exist
-        x (hx/->timestamp x)
-        y (hx/->timestamp y)]
+        x (h2x/->timestamp x)
+        y (h2x/->timestamp y)]
     (sql.qp/datetime-diff driver unit x y)))
 
 (defmethod sql.qp/datetime-diff [:redshift :year]
   [driver _unit x y]
-  (hx// (sql.qp/datetime-diff driver :month x y) 12))
+  (h2x// (sql.qp/datetime-diff driver :month x y) 12))
 
 (defmethod sql.qp/datetime-diff [:redshift :quarter]
   [driver _unit x y]
-  (hx// (sql.qp/datetime-diff driver :month x y) 3))
+  (h2x// (sql.qp/datetime-diff driver :month x y) 3))
 
 (defmethod sql.qp/datetime-diff [:redshift :month]
   [_driver _unit x y]
-  (hx/+ (datediff :month x y)
-        ;; redshift's datediff counts month boundaries not whole months, so we need to adjust
-        (hsql/call
-         :case
-         ;; if x<y but x>y in the month calendar then subtract one month
-         (hsql/call :and (hsql/call :< x y) (hsql/call :> (extract :day x) (extract :day y))) -1
-         ;; if x>y but x<y in the month calendar then add one month
-         (hsql/call :and (hsql/call :> x y) (hsql/call :< (extract :day x) (extract :day y))) 1
-         :else 0)))
+  (h2x/+ (datediff :month x y)
+         ;; redshift's datediff counts month boundaries not whole months, so we need to adjust
+         [:case
+          ;; if x<y but x>y in the month calendar then subtract one month
+          [:and
+           [:< x y]
+           [:> (extract :day x) (extract :day y)]]
+          [:inline -1]
+
+          ;; if x>y but x<y in the month calendar then add one month
+          [:and
+           [:> x y]
+           [:< (extract :day x) (extract :day y)]]
+          [:inline 1]
+
+          :else
+          [:inline 0]]))
 
 (defmethod sql.qp/datetime-diff [:redshift :week]
   [_driver _unit x y]
-  (hx// (datediff :day x y) 7))
+  (h2x// (datediff :day x y) 7))
 
 (defmethod sql.qp/datetime-diff [:redshift :day]
   [_driver _unit x y]
@@ -241,15 +253,15 @@
 
 (defmethod sql.qp/datetime-diff [:redshift :hour]
   [driver _unit x y]
-  (hx// (sql.qp/datetime-diff driver :second x y) 3600))
+  (h2x// (sql.qp/datetime-diff driver :second x y) 3600))
 
 (defmethod sql.qp/datetime-diff [:redshift :minute]
   [driver _unit x y]
-  (hx// (sql.qp/datetime-diff driver :second x y) 60))
+  (h2x// (sql.qp/datetime-diff driver :second x y) 60))
 
 (defmethod sql.qp/datetime-diff [:redshift :second]
   [_driver _unit x y]
-  (hx/- (extract :epoch y) (extract :epoch x)))
+  (h2x/- (extract :epoch y) (extract :epoch x)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         metabase.driver.sql-jdbc impls                                         |
@@ -270,6 +282,13 @@
  sql-jdbc.execute/read-column-thunk
  [::sql-jdbc.legacy/use-legacy-classes-for-read-and-set Types/TIMESTAMP]
  [:postgres Types/TIMESTAMP])
+
+(defmethod sql-jdbc.execute/read-column-thunk
+ [:redshift Types/OTHER]
+ [driver ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
+ (if (= "interval" (.getColumnTypeName rsmeta i))
+   #(.getValue ^RedshiftInterval (.getObject rs i RedshiftInterval))
+   ((get-method sql-jdbc.execute/read-column-thunk [:postgres (.getColumnType rsmeta i)]) driver rs rsmeta i)))
 
 (prefer-method
  sql-jdbc.execute/read-column-thunk

@@ -3,12 +3,12 @@
    and returns that metadata (which can be passed *back* to the backend when saving a Card) as well
    as a checksum in the API response."
   (:require
-   [clojure.tools.logging :as log]
    [metabase.driver :as driver]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.sync.analyze.query-results :as qr]
    [metabase.util.i18n :refer [tru]]
-   [toucan.db :as db]))
+   [metabase.util.log :as log]
+   [toucan2.core :as t2]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                   Middleware                                                   |
@@ -30,7 +30,7 @@
                (driver/supports? driver/*driver* :nested-queries)
                card-id
                (not source-card-id))
-      (db/update! 'Card card-id :result_metadata metadata))
+      (t2/update! 'Card card-id {:result_metadata metadata}))
     ;; if for some reason we weren't able to record results metadata for this query then just proceed as normal
     ;; rather than failing the entire query
     (catch Throwable e

@@ -3,12 +3,14 @@
    [cheshire.core :as json]
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [environ.core :as env]
-   [metabase.plugins.classloader :as classloader])
+   [metabase.plugins.classloader :as classloader]
+   [metabase.util.log :as log])
   (:import
    (clojure.lang Keyword)
    (java.util UUID)))
+
+(set! *warn-on-reflection* true)
 
 ;; this existed long before 0.39.0, but that's when it was made public
 (def ^{:doc "Indicates whether Enterprise Edition extensions are available" :added "0.39.0"} ee-available?
@@ -18,8 +20,18 @@
     (catch Throwable _
       false)))
 
+(def tests-available?
+  "Whether code from `./test` is available. This is mainly to facilitate certain things like test QP middleware that we
+  want to load only when test code is present."
+  (try
+    (classloader/require 'metabase.test.core)
+    true
+    (catch Throwable _
+      false)))
+
 (def ^Boolean is-windows?
   "Are we running on a Windows machine?"
+  #_{:clj-kondo/ignore [:discouraged-var]}
   (str/includes? (str/lower-case (System/getProperty "os.name")) "win"))
 
 (def ^:private app-defaults
@@ -96,7 +108,9 @@
      mb-version-info -> {:tag: \"v0.11.1\", :hash: \"afdf863\", :branch: \"about_metabase\", :date: \"2015-10-05\"}"
   (or (version-info-from-properties-file)
       ;; if version info is not defined for whatever reason
-      {}))
+      {:tag "vLOCAL_DEV"
+       :hash "06d1ba2ae111e66253209c01c244d6379acfc6dcb1911fa9ab6012cec9ce52e5"
+       :branch "local"}))
 
 (def ^String mb-version-string
   "A formatted version string representing the currently running application.
@@ -123,6 +137,7 @@
 
 (defn- mb-session-cookie-samesite*
   []
+  #_{:clj-kondo/ignore [:discouraged-var]}
   (let [same-site (str/lower-case (config-str :mb-session-cookie-samesite))]
     (when-not (#{"none", "lax", "strict"} same-site)
       (throw (ex-info "Invalid value for MB_COOKIE_SAMESITE" {:mb-session-cookie-samesite same-site})))

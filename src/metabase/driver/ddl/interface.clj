@@ -2,7 +2,15 @@
   (:require
    [clojure.string :as str]
    [metabase.driver :as driver]
-   [metabase.util.i18n :refer [tru]]))
+   [metabase.public-settings :as public-settings]
+   [metabase.util.i18n :refer [tru]])
+  (:import
+   (java.time Instant)
+   (java.time.format DateTimeFormatter)))
+
+(set! *warn-on-reflection* true)
+
+
 
 (defn schema-name
   "Returns a schema name for persisting models. Needs the database to use the db id and the site-uuid to ensure that
@@ -27,13 +35,6 @@
 
 (defmethod format-name :default [_ table-or-field-name] table-or-field-name)
 
-(defmulti field-base-type->sql-type
-  "A suitable db type for a base-type per database."
-  {:arglists '([driver base-type])}
-  (fn [driver base-type]
-    [(driver/dispatch-on-initialized-driver driver) (keyword base-type)])
-  :hierarchy #'driver/hierarchy)
-
 (defmulti check-can-persist
   "Verify that the source database is acceptable to persist. Returns a tuple of a boolean and `:persist.check/valid` in
   the event it was successful or a keyword indicating the reason for failure.
@@ -47,6 +48,31 @@
   {:arglists '([database])}
   (fn [database] (driver/dispatch-on-initialized-driver (:engine database)))
   :hierarchy #'driver/hierarchy)
+
+(defn create-kv-table-honey-sql-form
+  "The honeysql form that creates the persisted schema `cache_info` table."
+  [schema-name]
+  {:create-table [(keyword schema-name "cache_info") :if-not-exists]
+   :with-columns [[:key :text] [:value :text]]})
+
+(defn kv-table-values
+  "Version 1 of the values to go in the key/value table `cache_info` table."
+  []
+  [{:key   "settings-version"
+    :value "1"}
+   {:key   "created-at"
+    ;; "2023-03-29T14:01:27.871697Z"
+    :value (.format DateTimeFormatter/ISO_INSTANT (Instant/now))}
+   {:key   "instance-uuid"
+    :value (public-settings/site-uuid)}
+   {:key   "instance-name"
+    :value (public-settings/site-name)}])
+
+(defn populate-kv-table-honey-sql-form
+  "The honeysql form that populates the persisted schema `cache_info` table."
+  [schema-name]
+  {:insert-into [(keyword schema-name "cache_info")]
+   :values (kv-table-values)})
 
 (defn error->message
   "Human readable messages for different connection errors."

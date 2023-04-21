@@ -30,7 +30,7 @@ export const LoadingSpinner = styled(_LoadingSpinner)`
   flex-grow: 1;
   align-self: center;
   justify-content: center;
-  color: ${() => color("brand")};
+  color: ${color("brand")};
 `;
 
 LoadingSpinner.defaultProps = {

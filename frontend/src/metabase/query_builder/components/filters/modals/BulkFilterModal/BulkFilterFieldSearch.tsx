@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import { t } from "ttag";
 
-import { useOnMount } from "metabase/hooks/use-on-mount";
+import { useMount } from "react-use";
 
 import {
   SearchContainer,
@@ -19,7 +19,7 @@ export const FieldSearch = ({
   const [showSearch, setShowSearch] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
-  useOnMount(() => {
+  useMount(() => {
     const searchToggleListener = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === "k") {
         setShowSearch(true);

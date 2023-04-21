@@ -1,4 +1,4 @@
-(ns metabase.task.upgrade-checks-test
+(ns ^:mb/once metabase.task.upgrade-checks-test
   (:require
    [clj-http.fake :as http-fake]
    [clojure.test :refer :all]

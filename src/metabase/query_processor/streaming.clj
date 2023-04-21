@@ -16,6 +16,8 @@
    (java.io OutputStream)
    (metabase.async.streaming_response StreamingResponse)))
 
+(set! *warn-on-reflection* true)
+
 ;; these are loaded for side-effects so their impls of `qp.si/results-writer` will be available
 ;; TODO - consider whether we should lazy-load these!
 (comment qp.csv/keep-me

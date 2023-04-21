@@ -3,12 +3,12 @@ import { t } from "ttag";
 import Radio from "metabase/core/components/Radio/Radio";
 import Modal from "metabase/components/Modal";
 import {
+  Parameter,
   ValuesQueryType,
   ValuesSourceConfig,
   ValuesSourceType,
 } from "metabase-types/api";
 import { getQueryType } from "metabase-lib/parameters/utils/parameter-source";
-import { UiParameter } from "metabase-lib/parameters/types";
 import ValuesSourceModal from "../ValuesSourceModal";
 import {
   RadioLabelButton,
@@ -17,17 +17,18 @@ import {
 } from "./ValuesSourceSettings.styled";
 
 export interface ValuesSourceSettingsProps {
-  parameter: UiParameter;
+  parameter: Parameter;
   onChangeQueryType: (queryType: ValuesQueryType) => void;
-  onChangeSourceType: (sourceType: ValuesSourceType) => void;
-  onChangeSourceConfig: (sourceConfig: ValuesSourceConfig) => void;
+  onChangeSourceSettings: (
+    sourceType: ValuesSourceType,
+    sourceConfig: ValuesSourceConfig,
+  ) => void;
 }
 
 const ValuesSourceSettings = ({
   parameter,
   onChangeQueryType,
-  onChangeSourceType,
-  onChangeSourceConfig,
+  onChangeSourceSettings,
 }: ValuesSourceSettingsProps): JSX.Element => {
   const queryType = getQueryType(parameter);
   const [isModalOpened, setIsModalOpened] = useState(false);
@@ -35,14 +36,6 @@ const ValuesSourceSettings = ({
   const radioOptions = useMemo(() => {
     return getRadioOptions(queryType, () => setIsModalOpened(true));
   }, [queryType]);
-
-  const handleSubmit = useCallback(
-    (sourceType: ValuesSourceType, sourceConfig: ValuesSourceConfig) => {
-      onChangeSourceType(sourceType);
-      onChangeSourceConfig(sourceConfig);
-    },
-    [onChangeSourceType, onChangeSourceConfig],
-  );
 
   const handleModalClose = useCallback(() => {
     setIsModalOpened(false);
@@ -60,7 +53,7 @@ const ValuesSourceSettings = ({
         <Modal medium onClose={handleModalClose}>
           <ValuesSourceModal
             parameter={parameter}
-            onSubmit={handleSubmit}
+            onSubmit={onChangeSourceSettings}
             onClose={handleModalClose}
           />
         </Modal>
@@ -106,7 +99,13 @@ const getRadioOptions = (
       value: "list",
     },
     {
-      name: <RadioLabel title={t`Search box`} />,
+      name: (
+        <RadioLabel
+          title={t`Search box`}
+          isSelected={queryType === "search"}
+          onEditClick={onEditClick}
+        />
+      ),
       value: "search",
     },
     {

@@ -20,6 +20,8 @@ Delete the publicly-accessible link to this Dashboard.
 
 Delete a Dashboard.
 
+  This will remove also any questions/models/segments/metrics that use this database.
+
 ### PARAMS:
 
 *  **`id`**
@@ -272,13 +274,23 @@ Copy a Dashboard.
 
 ## `POST /api/dashboard/:id/cards`
 
-Add a `Card` to a Dashboard.
+Add a `Card` or `Action` to a Dashboard.
 
 ### PARAMS:
 
-*  **`id`** 
+*  **`size_y`** value must be an integer greater than zero.
+
+*  **`row`** value must be an integer greater than or equal to zero.
+
+*  **`size_x`** value must be an integer greater than zero.
+
+*  **`action_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
 
 *  **`cardId`** value may be nil, or if non-nil, value must be an integer greater than zero.
+
+*  **`col`** value must be an integer greater than or equal to zero.
+
+*  **`id`** 
 
 *  **`parameter_mappings`** value may be nil, or if non-nil, value must be an array. Each value must be a map with schema: (
   parameter_id : value must be a non-blank string.

@@ -4,17 +4,19 @@
    [clojure.java.classpath :as classpath]
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [environ.core :as env]
    [metabase.config :as config]
    [metabase.plugins.classloader :as classloader]
    [metabase.plugins.initialize :as plugins.init]
    [metabase.util.files :as u.files]
    [metabase.util.i18n :refer [trs]]
-   [yaml.core :as yaml])
+   [metabase.util.log :as log]
+   [metabase.util.yaml :as yaml])
   (:import
    (java.io File)
    (java.nio.file Files Path)))
+
+(set! *warn-on-reflection* true)
 
 (defn- plugins-dir-filename ^String []
   (or (env/env :mb-plugins-dir)
@@ -117,7 +119,7 @@
 
 (when (or config/is-dev? config/is-test?)
   (defn- load-local-plugin-manifest! [^Path path]
-    (some-> (slurp (str path)) yaml.core/parse-string plugins.init/init-plugin-with-info!))
+    (some-> (slurp (str path)) yaml/parse-string plugins.init/init-plugin-with-info!))
 
   (defn- driver-manifest-paths
     "Return a sequence of [[java.io.File]] paths for `metabase-plugin.yaml` plugin manifests for drivers on the classpath."
@@ -128,7 +130,8 @@
            :when      (and (.isDirectory file)
                            (not (.isHidden file))
                            (str/includes? (str file) "modules/drivers")
-                           (str/ends-with? (str file) "resources"))
+                           (or (str/ends-with? (str file) "resources")
+                               (str/ends-with? (str file) "resources-ee")))
            :let       [manifest-file (io/file file "metabase-plugin.yaml")]
            :when      (.exists manifest-file)]
        manifest-file)

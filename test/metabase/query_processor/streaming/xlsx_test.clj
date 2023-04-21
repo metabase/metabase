@@ -13,6 +13,8 @@
    (com.fasterxml.jackson.core JsonGenerator)
    (java.io BufferedInputStream BufferedOutputStream ByteArrayInputStream ByteArrayOutputStream)))
 
+(set! *warn-on-reflection* true)
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                     Format string generation unit tests                                        |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -290,8 +292,10 @@
 
 (defn- parse-format-strings
   [sheet]
-  (for [row (spreadsheet/into-seq sheet)]
-    (map #(-> % .getCellStyle .getDataFormatString) row)))
+  (for [^org.apache.poi.ss.usermodel.Row row (spreadsheet/into-seq sheet)]
+    (map (fn [^org.apache.poi.xssf.usermodel.XSSFCell cell]
+           (.. cell getCellStyle getDataFormatString))
+         row)))
 
 (deftest export-format-test
   (testing "Different format strings are used for ints and numbers that round to ints (with 2 decimal places)"
@@ -492,8 +496,8 @@
                                 [[(SampleNastyClass. "Hello XLSX World!") (AnotherNastyClass. "No Encoder")]]))))))
 
 (defn- parse-column-width
-  [sheet]
-  (for [row (spreadsheet/into-seq sheet)]
+  [^org.apache.poi.ss.usermodel.Sheet sheet]
+  (for [^org.apache.poi.ss.usermodel.Row row (spreadsheet/into-seq sheet)]
     (for [i (range (.getLastCellNum row))]
       (.getColumnWidth sheet i))))
 
@@ -529,9 +533,10 @@
   (testing "POI temporary files are cleaned up if output stream is closed before export completes (#19480)"
     (let [poifiles-directory      (io/file (str (System/getProperty "java.io.tmpdir") "/poifiles"))
           expected-poifiles-count (count (file-seq poifiles-directory))
-          bos                (ByteArrayOutputStream.)
-          os                 (BufferedOutputStream. bos)
-          results-writer     (qp.si/streaming-results-writer :xlsx os)]
+          ;; TODO -- shouldn't these be using `with-open`?!
+          bos                     (ByteArrayOutputStream.)
+          os                      (BufferedOutputStream. bos)
+          results-writer          (qp.si/streaming-results-writer :xlsx os)]
       (.close os)
       (qp.si/begin! results-writer {:data {:ordered-cols []}} {})
       (qp.si/finish! results-writer {:row_count 0})

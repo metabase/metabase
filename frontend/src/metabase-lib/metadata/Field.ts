@@ -47,7 +47,7 @@ import type Table from "./Table";
 import type Metadata from "./Metadata";
 import { getIconForField, getUniqueFieldId } from "./utils/fields";
 
-export const LONG_TEXT_MIN = 80;
+const LONG_TEXT_MIN = 80;
 
 /**
  * @typedef { import("./Metadata").FieldValues } FieldValues
@@ -394,8 +394,7 @@ class FieldInner extends Base {
    * @return {?Field}
    */
   remappedField() {
-    const displayFieldId =
-      this.dimensions && this.dimensions.human_readable_field_id;
+    const displayFieldId = this.dimensions?.[0]?.human_readable_field_id;
 
     if (displayFieldId != null) {
       return this.metadata.field(displayFieldId);

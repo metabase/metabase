@@ -6,6 +6,8 @@ import { generateSchemaId } from "metabase-lib/metadata/utils/schema";
 import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/metadata/utils/saved-questions";
 import { getUniqueFieldId } from "metabase-lib/metadata/utils/fields";
 
+export const ActionSchema = new schema.Entity("actions");
+export const UserSchema = new schema.Entity("users");
 export const QuestionSchema = new schema.Entity("questions");
 export const BookmarkSchema = new schema.Entity("bookmarks");
 export const DashboardSchema = new schema.Entity("dashboards");
@@ -107,6 +109,7 @@ TimelineSchema.define({
 });
 
 export const ENTITIES_SCHEMA_MAP = {
+  actions: ActionSchema,
   questions: QuestionSchema,
   bookmarks: BookmarkSchema,
   dashboards: DashboardSchema,

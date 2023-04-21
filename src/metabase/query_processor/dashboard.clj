@@ -2,7 +2,6 @@
   "Code for running a query in the context of a specific DashboardCard."
   (:require
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.driver.common.parameters.operators :as params.ops]
@@ -15,24 +14,25 @@
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (defn- check-card-and-dashcard-are-in-dashboard
   "Check that the Card with `card-id` is in Dashboard with `dashboard-id`, either in the DashboardCard with
   `dashcard-id` at the top level or as a series. If not such relationship exists this will throw a 404 Exception."
   [dashboard-id card-id dashcard-id]
   (api/check-404
-   (or (db/exists? DashboardCard
+   (or (t2/exists? DashboardCard
          :id           dashcard-id
          :dashboard_id dashboard-id
          :card_id      card-id)
        (and
-        (db/exists? DashboardCard
+        (t2/exists? DashboardCard
           :id           dashcard-id
           :dashboard_id dashboard-id)
-        (db/exists? DashboardCardSeries
+        (t2/exists? DashboardCardSeries
           :card_id          card-id
           :dashboardcard_id dashcard-id)))))
 
@@ -65,7 +65,8 @@
       (when (:type request-param)
         (qp.card/check-allowed-parameter-value-type
          param-id
-         (or (when (= (:type matching-param) :dimension)
+         (or (when (and (= (:type matching-param) :dimension)
+                        (not= (:widget-type matching-param) :none))
                (:widget-type matching-param))
              (:type matching-param))
          (:type request-param)))
@@ -124,7 +125,7 @@
         ;; ignore default values in request params as well. (#20516)
         request-params            (for [param request-params]
                                     (dissoc param :default))
-        dashboard                 (api/check-404 (db/select-one Dashboard :id dashboard-id))
+        dashboard                 (api/check-404 (t2/select-one Dashboard :id dashboard-id))
         dashboard-param-id->param (into {}
                                         ;; remove the `:default` values from Dashboard params. We don't ACTUALLY want to
                                         ;; use these values ourselves -- the expectation is that the frontend will pass

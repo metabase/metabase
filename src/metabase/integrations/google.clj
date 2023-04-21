@@ -3,9 +3,9 @@
    [cheshire.core :as json]
    [clj-http.client :as http]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [metabase.api.common :as api]
    [metabase.integrations.google.interface :as google.i]
+   [metabase.models.interface :as mi]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.models.setting.multi-setting
     :refer [define-multi-setting-impl]]
@@ -13,8 +13,9 @@
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
+   [metabase.util.log :as log]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 ;; Load EE implementation if available
 (u/ignore-exceptions (classloader/require 'metabase-enterprise.enhancements.integrations.google))
@@ -110,9 +111,9 @@
   ;; things hairy and only enforce those for non-Google Auth users
   (user/create-new-google-auth-user! new-user))
 
-(s/defn ^:private google-auth-fetch-or-create-user! :- metabase.models.user.UserInstance
+(s/defn ^:private google-auth-fetch-or-create-user! :- (mi/InstanceOf User)
   [first-name last-name email]
-  (or (db/select-one [User :id :email :last_login] :%lower.email (u/lower-case-en email))
+  (or (t2/select-one [User :id :email :last_login] :%lower.email (u/lower-case-en email))
       (google-auth-create-new-user! {:first_name first-name
                                      :last_name  last-name
                                      :email      email})))

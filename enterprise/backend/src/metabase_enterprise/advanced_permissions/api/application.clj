@@ -7,6 +7,8 @@
    [metabase-enterprise.advanced-permissions.models.permissions.application-permissions :as a-perms]
    [metabase.api.common :as api]))
 
+(set! *warn-on-reflection* true)
+
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/graph"
   "Fetch a graph of Application Permissions."

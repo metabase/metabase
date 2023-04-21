@@ -4,7 +4,6 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [medley.core :as m]
    [metabase-enterprise.serialization.names
     :as names
@@ -35,23 +34,20 @@
    [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [trs]]
-   [toucan.db :as db]
-   [yaml.core :as yaml]
-   [yaml.reader :as y.reader])
+   [metabase.util.log :as log]
+   [metabase.util.yaml :as yaml]
+   [toucan2.core :as t2])
   (:import
-   (java.time.temporal Temporal)
    (java.util UUID)))
 
-(extend-type Temporal y.reader/YAMLReader
-  (decode [data]
-    (u.date/parse data)))
+(set! *warn-on-reflection* true)
 
 (defn- slurp-dir
   [path]
   (doall
    (for [^java.io.File file (.listFiles ^java.io.File (io/file path))
          :when (-> file (.getName) (str/ends-with? ".yaml"))]
-     (yaml/from-file file true))))
+     (yaml/from-file file))))
 
 (defn- slurp-many
   [paths]
@@ -185,7 +181,7 @@
 (def ^:private ^{:arglists '([])} default-user-id
   (mdb.connection/memoize-for-application-db
    (fn []
-     (let [user (db/select-one-id User :is_superuser true)]
+     (let [user (t2/select-one-pk User :is_superuser true)]
        (assert user (trs "No admin users found! At least one admin user is needed to act as the owner for all the loaded entities."))
        user))))
 
@@ -195,11 +191,11 @@
   (.getName (io/file path)))
 
 (defn- unresolved-names->string
-  ([entity]
-   (unresolved-names->string entity nil))
-  ([entity insert-id]
+  ([model]
+   (unresolved-names->string model nil))
+  ([model insert-id]
    (str
-    (when-let [nm (:name entity)] (str "\"" nm "\""))
+    (when-let [nm (:name model)] (str "\"" nm "\""))
     (when insert-id (format " (inserted as ID %d) " insert-id))
     "missing:\n  "
     (str/join
@@ -207,7 +203,7 @@
      (map
       (fn [[k v]]
         (format "at %s -> %s" (str/join "/" v) k))
-      (::unresolved-names entity))))))
+      (::unresolved-names model))))))
 
 (defmulti load
   "Load an entity of type `model` stored at `path` in the context `context`.
@@ -221,7 +217,7 @@
 (defn- load-dimensions
   [path context]
   (maybe-upsert-many! context Dimension
-    (for [dimension (yaml/from-file (str path "/dimensions.yaml") true)]
+    (for [dimension (yaml/from-file (str path "/dimensions.yaml"))]
       (-> dimension
           (update :human_readable_field_id (comp :field fully-qualified-name->context))
           (update :field_id (comp :field fully-qualified-name->context))))))
@@ -453,7 +449,7 @@
         ;; until we can come in here and clean things up. -- Cam 2022-03-24
         _               (when (and (= (:mode context) :update)
                                    (seq dashboard-ids))
-                          (db/delete! DashboardCard :dashboard_id [:in (set dashboard-ids)]))
+                          (t2/delete! DashboardCard :dashboard_id [:in (set dashboard-ids)]))
         dashboard-cards (map :dashboard_cards dashboards)
         ;; a function that prepares a dash card for insertion, while also validating to ensure the underlying
         ;; card_id could be resolved from the fully qualified name
@@ -691,7 +687,7 @@
     "A function called on the ID of each `User` instance after it is inserted (via upsert)."
     [user-id]
     (when-let [{email :email, google-auth? :google_auth, is-active? :is_active}
-               (db/select-one [User :email :google_auth :is_active] :id user-id)]
+               (t2/select-one [User :email :google_auth :is_active] :id user-id)]
       (let [reset-token        (user/set-password-reset-token! user-id)
             site-url           (public-settings/site-url)
             password-reset-url (str site-url "/auth/reset_password/" reset-token)
@@ -718,7 +714,7 @@
 (defn- derive-location
   [context]
   (if-let [parent-id (:collection context)]
-    (str (db/select-one-field :location Collection :id parent-id) parent-id "/")
+    (str (t2/select-one-fn :location Collection :id parent-id) parent-id "/")
     "/"))
 
 (defn- make-reload-fn [all-results]
@@ -777,7 +773,7 @@
 (defn load-settings
   "Load a dump of settings."
   [path context]
-  (doseq [[k v] (yaml/from-file (str path "/settings.yaml") true)
+  (doseq [[k v] (yaml/from-file (str path "/settings.yaml"))
           :when (or (= context :update)
                     (nil? (setting/get-value-of-type :string k)))]
     (setting/set-value-of-type! :string k v)))
@@ -786,6 +782,6 @@
   "Is dump at path `path` compatible with the currently running version of Metabase?"
   [path]
   (-> (str path "/manifest.yaml")
-      (yaml/from-file true)
+      yaml/from-file
       :metabase-version
       (= config/mb-version-info)))

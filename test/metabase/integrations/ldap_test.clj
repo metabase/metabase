@@ -7,9 +7,11 @@
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.test :as mt]
    [metabase.test.integrations.ldap :as ldap.test]
-   [toucan.db :as db])
+   [toucan2.core :as t2])
   (:import
    (com.unboundid.ldap.sdk LDAPConnectionPool)))
+
+(set! *warn-on-reflection* true)
 
 ;; See test_resources/ldap.ldif for fixtures
 
@@ -132,8 +134,8 @@
                  :last_name        "Smith"
                  :common_name      "John Smith"
                  :email            "john.smith@metabase.com"}
-                (into {} (db/select-one [User :first_name :last_name :email] :email "john.smith@metabase.com"))))
-         (finally (db/delete! User :email "john.smith@metabase.com"))))
+                (into {} (t2/select-one [User :first_name :last_name :email] :email "john.smith@metabase.com"))))
+         (finally (t2/delete! User :email "john.smith@metabase.com"))))
 
       (try
        (testing "a user without a givenName attribute has `nil` for that attribute"
@@ -141,22 +143,22 @@
          (is (= {:first_name       nil
                  :last_name        "Miller"
                  :common_name      "Miller"}
-                (into {} (db/select-one [User :first_name :last_name] :email "jane.miller@metabase.com")))))
+                (into {} (t2/select-one [User :first_name :last_name] :email "jane.miller@metabase.com")))))
 
        (testing "when givenName or sn attributes change in LDAP, they are updated in Metabase on next login"
          (ldap/fetch-or-create-user! (assoc (ldap/find-user "jmiller") :first-name "Jane" :last-name "Doe"))
          (is (= {:first_name       "Jane"
                  :last_name        "Doe"
                  :common_name      "Jane Doe"}
-                (into {} (db/select-one [User :first_name :last_name] :email "jane.miller@metabase.com")))))
+                (into {} (t2/select-one [User :first_name :last_name] :email "jane.miller@metabase.com")))))
 
        (testing "if givenName or sn attributes are removed, values stored in Metabase are updated to `nil` to respect the IdP response."
          (ldap/fetch-or-create-user! (assoc (ldap/find-user "jmiller") :first-name nil :last-name nil))
          (is (= {:first_name       nil
                  :last_name        nil
                  :common_name      "jane.miller@metabase.com"}
-                (select-keys (db/select-one User :email "jane.miller@metabase.com") [:first_name :last_name :common_name]))))
-       (finally (db/delete! User :email "jane.miller@metabase.com"))))))
+                (select-keys (t2/select-one User :email "jane.miller@metabase.com") [:first_name :last_name :common_name]))))
+       (finally (t2/delete! User :email "jane.miller@metabase.com"))))))
 
 (deftest group-matching-test
   (testing "LDAP group matching should identify Metabase groups using DN equality rules"

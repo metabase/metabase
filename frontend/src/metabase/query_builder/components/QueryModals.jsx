@@ -75,17 +75,16 @@ class QueryModals extends React.Component {
     return modal === MODAL_TYPES.SAVE ? (
       <Modal form onClose={onCloseModal}>
         <SaveQuestionModal
-          card={this.props.card}
-          originalCard={this.props.originalCard}
-          tableMetadata={this.props.tableMetadata}
+          question={this.props.question}
+          originalQuestion={this.props.originalQuestion}
           initialCollectionId={this.props.initialCollectionId}
-          onSave={async card => {
+          onSave={async question => {
             // if saving modified question, don't show "add to dashboard" modal
-            await this.props.onSave(card);
+            await this.props.onSave(question);
             onCloseModal();
           }}
-          onCreate={async card => {
-            await this.props.onCreate(card);
+          onCreate={async question => {
+            await this.props.onCreate(question);
             if (question.isDataset()) {
               onCloseModal();
               setQueryBuilderMode("view");
@@ -108,16 +107,15 @@ class QueryModals extends React.Component {
     ) : modal === MODAL_TYPES.ADD_TO_DASHBOARD_SAVE ? (
       <Modal onClose={onCloseModal}>
         <SaveQuestionModal
-          card={this.props.card}
-          originalCard={this.props.originalCard}
-          tableMetadata={this.props.tableMetadata}
+          question={this.props.question}
+          originalQuestion={this.props.originalQuestion}
           initialCollectionId={this.props.initialCollectionId}
-          onSave={async card => {
-            await this.props.onSave(card);
+          onSave={async question => {
+            await this.props.onSave(question);
             onOpenModal(MODAL_TYPES.ADD_TO_DASHBOARD);
           }}
-          onCreate={async card => {
-            await this.props.onCreate(card);
+          onCreate={async question => {
+            await this.props.onCreate(question);
             onOpenModal(MODAL_TYPES.ADD_TO_DASHBOARD);
           }}
           onClose={onCloseModal}
@@ -142,15 +140,14 @@ class QueryModals extends React.Component {
     ) : modal === MODAL_TYPES.SAVE_QUESTION_BEFORE_ALERT ? (
       <Modal onClose={onCloseModal}>
         <SaveQuestionModal
-          card={this.props.card}
-          originalCard={this.props.originalCard}
-          tableMetadata={this.props.tableMetadata}
-          onSave={async card => {
-            await this.props.onSave(card, false);
+          question={this.props.question}
+          originalQuestion={this.props.originalQuestion}
+          onSave={async question => {
+            await this.props.onSave(question, false);
             this.showAlertsAfterQuestionSaved();
           }}
-          onCreate={async card => {
-            await this.props.onCreate(card, false);
+          onCreate={async question => {
+            await this.props.onCreate(question, false);
             this.showAlertsAfterQuestionSaved();
           }}
           onClose={onCloseModal}
@@ -161,15 +158,14 @@ class QueryModals extends React.Component {
     ) : modal === MODAL_TYPES.SAVE_QUESTION_BEFORE_EMBED ? (
       <Modal onClose={onCloseModal}>
         <SaveQuestionModal
-          card={this.props.card}
-          originalCard={this.props.originalCard}
-          tableMetadata={this.props.tableMetadata}
-          onSave={async card => {
-            await this.props.onSave(card, false);
+          question={this.props.question}
+          originalQuestion={this.props.originalQuestion}
+          onSave={async question => {
+            await this.props.onSave(question, false);
             onOpenModal(MODAL_TYPES.EMBED);
           }}
-          onCreate={async card => {
-            await this.props.onCreate(card, false);
+          onCreate={async question => {
+            await this.props.onCreate(question, false);
             onOpenModal(MODAL_TYPES.EMBED);
           }}
           onClose={onCloseModal}
@@ -230,11 +226,12 @@ class QueryModals extends React.Component {
               : initialCollectionId,
           }}
           copy={async formValues => {
-            const object = await this.props.onCreate({
-              ...question.card(),
-              ...formValues,
-              description: formValues.description || null,
-            });
+            const object = await this.props.onCreate(
+              question
+                .setDisplayName(formValues.name)
+                .setCollectionId(formValues.collection_id)
+                .setDescription(formValues.description || null),
+            );
             return { payload: { object } };
           }}
           onClose={onCloseModal}

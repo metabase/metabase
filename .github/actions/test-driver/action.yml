@@ -13,6 +13,8 @@ runs:
       uses: ./.github/actions/prepare-frontend
     - name: Prepare back-end environment
       uses: ./.github/actions/prepare-backend
+      with:
+        m2-cache-key: driver-${{ inputs.junit-name }}
     - name: Build static viz frontend
       run: yarn build-static-viz
       shell: bash
@@ -21,8 +23,11 @@ runs:
       shell: bash
     - name: Publish Test Report (JUnit)
       uses: dorny/test-reporter@v1
-      if: always()
+      if: failure()
       with:
         path: 'target/junit/**/*_test.xml'
         name: JUnit Test Report ${{ inputs.junit-name }}
         reporter: java-junit
+        list-suites: failed
+        list-tests: failed
+        fail-on-error: false

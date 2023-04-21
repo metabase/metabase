@@ -1,5 +1,11 @@
-import { TemplateTag } from "metabase-types/types/Query";
-import { ModelCacheRefreshStatus } from "metabase-types/api";
+import {
+  DatasetColumn,
+  Field,
+  FieldReference,
+  ModelCacheRefreshStatus,
+  TableColumnOrderSetting,
+  TemplateTag,
+} from "metabase-types/api";
 import {
   Card as CardObject,
   CardId,
@@ -9,9 +15,10 @@ import { getQuestionVirtualTableId } from "metabase-lib/metadata/utils/saved-que
 import Database from "metabase-lib/metadata/Database";
 import Question from "metabase-lib/Question";
 import NativeQuery from "metabase-lib/queries/NativeQuery";
+import { isSameField } from "metabase-lib/queries/utils/field-ref";
 import { isStructured } from "metabase-lib/queries/utils";
 
-export type FieldMetadata = {
+type FieldMetadata = {
   id?: number;
   name: string;
   display_name: string;
@@ -80,11 +87,11 @@ export function getDatasetMetadataCompletenessPercentage(
   return Math.round(percent * 100) / 100;
 }
 
-export function isSupportedTemplateTagForModel(tag: TemplateTag) {
+function isSupportedTemplateTagForModel(tag: TemplateTag) {
   return ["card", "snippet"].includes(tag.type);
 }
 
-export function checkDatabaseSupportsModels(database?: Database | null) {
+function checkDatabaseSupportsModels(database?: Database | null) {
   return database && database.hasFeature("nested-queries");
 }
 
@@ -108,7 +115,7 @@ export function checkCanBeModel(question: Question) {
     .every(isSupportedTemplateTagForModel);
 }
 
-export type Card = CardObject & {
+type Card = CardObject & {
   id?: CardId;
   dataset?: boolean;
 };
@@ -155,4 +162,54 @@ export function getModelCacheSchemaName(databaseId: number, siteUUID: string) {
   const uuidParts = siteUUID.split("-");
   const firstLetters = uuidParts.map(part => part.charAt(0)).join("");
   return `metabase_cache_${firstLetters}_${databaseId}`;
+}
+
+type QueryField = Field & { field_ref: FieldReference };
+
+function getFieldFromColumnVizSetting(
+  columnVizSetting: TableColumnOrderSetting,
+  columns: DatasetColumn[],
+  columnMetadata: QueryField[],
+) {
+  // We have some corrupted visualization settings where both names are mixed
+  // We should settle on `fieldRef`, make it required and remove `field_ref`
+  const fieldRef = columnVizSetting.fieldRef || columnVizSetting.field_ref;
+  return (
+    columns.find(column => isSameField(column.field_ref, fieldRef)) ||
+    columnMetadata.find(column => isSameField(column.field_ref, fieldRef))
+  );
+}
+
+// Columns in resultsMetadata contain all the necessary metadata
+// orderedColumns contain properly sorted columns, but they only contain field names and refs.
+// Normally, columns in resultsMetadata are ordered too,
+// but they only get updated after running a query (which is not triggered after reordering columns).
+// This ensures metadata rich columns are sorted correctly not to break the "Tab" key navigation behavior.
+export function getSortedModelFields(
+  model: Question,
+  columnMetadata?: QueryField[],
+) {
+  if (!Array.isArray(columnMetadata)) {
+    return [];
+  }
+
+  const orderedColumns = model.setting("table.columns");
+
+  if (!Array.isArray(orderedColumns)) {
+    return columnMetadata;
+  }
+
+  const table = model.table();
+  const tableFields = table?.fields ?? [];
+  const tableColumns = tableFields.map(field => field.column());
+
+  return orderedColumns
+    .map(columnVizSetting =>
+      getFieldFromColumnVizSetting(
+        columnVizSetting,
+        tableColumns,
+        columnMetadata,
+      ),
+    )
+    .filter(Boolean);
 }

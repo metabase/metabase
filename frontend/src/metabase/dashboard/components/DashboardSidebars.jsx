@@ -10,6 +10,7 @@ import * as MetabaseAnalytics from "metabase/lib/analytics";
 import ClickBehaviorSidebar from "./ClickBehaviorSidebar";
 import DashboardInfoSidebar from "./DashboardInfoSidebar";
 import { AddCardSidebar } from "./add-card-sidebar/AddCardSidebar";
+import { ActionSidebar } from "./ActionSidebar";
 
 DashboardSidebars.propTypes = {
   dashboard: PropTypes.object,
@@ -96,6 +97,22 @@ export function DashboardSidebars({
           onSelect={handleAddCard}
         />
       );
+    case SIDEBAR_NAME.action: {
+      const onUpdateVisualizationSettings = settings =>
+        onUpdateDashCardVisualizationSettings(
+          sidebar.props.dashcardId,
+          settings,
+        );
+
+      return (
+        <ActionSidebar
+          dashboard={dashboard}
+          dashcardId={sidebar.props.dashcardId}
+          onUpdateVisualizationSettings={onUpdateVisualizationSettings}
+          onClose={closeSidebar}
+        />
+      );
+    }
     case SIDEBAR_NAME.clickBehavior:
       return (
         <ClickBehaviorSidebar

@@ -645,25 +645,26 @@
 
 (deftest fuzzy-field-info-test
   (testing "[[add/alias-from-join]] should match Fields in the Join source query even if they have temporal units"
-    (mt/dataset sample-dataset
-      (mt/with-everything-store
-        (is (= {:field-name              "CREATED_AT"
-                :join-is-this-level?     "Q2"
-                :alias-from-join         "Products__CREATED_AT"
-                :alias-from-source-query nil}
-               (#'add/expensive-field-info
-                (mt/$ids nil
-                  {:source-table $$reviews
-                   :joins        [{:source-query {:source-table $$reviews
-                                                  :breakout     [[:field %products.created_at
-                                                                  {::add/desired-alias "Products__CREATED_AT"
-                                                                   ::add/position      0
-                                                                   ::add/source-alias  "CREATED_AT"
-                                                                   ::add/source-table  "Products"
-                                                                   :join-alias         "Products"
-                                                                   :temporal-unit      :month}]]}
-                                   :alias        "Q2"}]})
-                [:field (mt/id :products :created_at) {:join-alias "Q2"}])))))))
+    (mt/with-driver :h2
+      (mt/dataset sample-dataset
+        (mt/with-everything-store
+          (is (= {:field-name              "CREATED_AT"
+                  :join-is-this-level?     "Q2"
+                  :alias-from-join         "Products__CREATED_AT"
+                  :alias-from-source-query nil}
+                 (#'add/expensive-field-info
+                  (mt/$ids nil
+                    {:source-table $$reviews
+                     :joins        [{:source-query {:source-table $$reviews
+                                                    :breakout     [[:field %products.created_at
+                                                                    {::add/desired-alias "Products__CREATED_AT"
+                                                                     ::add/position      0
+                                                                     ::add/source-alias  "CREATED_AT"
+                                                                     ::add/source-table  "Products"
+                                                                     :join-alias         "Products"
+                                                                     :temporal-unit      :month}]]}
+                                     :alias        "Q2"}]})
+                  [:field (mt/id :products :created_at) {:join-alias "Q2"}]))))))))
 
 (deftest ^:parallel expression-from-source-query-alias-test
   (testing "Make sure we use the exported alias from the source query for expressions (#21131)"

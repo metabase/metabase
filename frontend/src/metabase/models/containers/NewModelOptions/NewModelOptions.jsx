@@ -3,13 +3,14 @@ import React, { Component } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import { t } from "ttag";
+import _ from "underscore";
 
 import { Grid } from "metabase/components/Grid";
 import NewModelOption from "metabase/models/components/NewModelOption";
 
 import MetabaseSettings from "metabase/lib/settings";
 import * as Urls from "metabase/lib/urls";
-import Database from "metabase/entities/databases";
+import Databases from "metabase/entities/databases";
 import { getHasDataAccess, getHasNativeWrite } from "metabase/selectors/data";
 
 import NoDatabasesEmptyState from "metabase/reference/databases/NoDatabasesEmptyState";
@@ -22,23 +23,17 @@ import {
 
 const EDUCATIONAL_LINK = MetabaseSettings.learnUrl("data-modeling/models");
 
-const mapStateToProps = state => ({
-  hasDataAccess: getHasDataAccess(state),
-  hasNativeWrite: getHasNativeWrite(state),
+const mapStateToProps = (state, { databases = [] }) => ({
+  hasDataAccess: getHasDataAccess(databases),
+  hasNativeWrite: getHasNativeWrite(databases),
 });
 
 const mapDispatchToProps = {
-  prefetchDatabases: () => Database.actions.fetchList(),
   push,
 };
 
 class NewModelOptions extends Component {
   componentDidMount() {
-    // We need to check if any databases exist otherwise show an empty state.
-    // Be aware that the embedded version does not have the Navbar, which also
-    // loads databases, so we should not remove it.
-    this.props.prefetchDatabases();
-
     const { location, push } = this.props;
     if (Object.keys(location.query).length > 0) {
       const { database, table, ...options } = location.query;
@@ -116,4 +111,9 @@ class NewModelOptions extends Component {
   }
 }
 
-export default connect(mapStateToProps, mapDispatchToProps)(NewModelOptions);
+export default _.compose(
+  Databases.loadList({
+    loadingAndErrorWrapper: false,
+  }),
+  connect(mapStateToProps, mapDispatchToProps),
+)(NewModelOptions);

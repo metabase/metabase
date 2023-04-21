@@ -4,8 +4,8 @@
   (:require
    [clojure.string :as str]
    [metabase.shared.formatting.internal.numbers-core :as core]
-   [metabase.shared.util :as shared.u]
-   [metabase.shared.util.currency :as currency]))
+   [metabase.shared.util.currency :as currency]
+   [metabase.util :as u]))
 
 (def ^:private default-number-separators ".,")
 
@@ -52,7 +52,7 @@
                                   2)]
     (js/Intl.NumberFormat.
       "en"
-      (clj->js (shared.u/remove-nils
+      (clj->js (u/remove-nils
                  {:style    (when-not (= (:number-style options) "scientific")
                               (:number-style options "decimal"))
                   :notation (when (= (:number-style options) "scientific")

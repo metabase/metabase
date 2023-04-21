@@ -7,11 +7,13 @@
    [metabase.models.dashboard-card :refer [DashboardCard]]
    [metabase.models.pulse :refer [Pulse]]
    [metabase.models.pulse-card :as pulse-card :refer [PulseCard]]
-   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
    [toucan.util.test :as tt])
   (:import
    (java.time LocalDateTime)))
+
+(set! *warn-on-reflection* true)
 
 (deftest test-next-position-for
   (testing "No existing cards"
@@ -37,5 +39,5 @@
                       Pulse       [pulse      {:name "my pulse" :collection_id (:id coll2) :created_at now}]
                       PulseCard   [pulse-card {:card_id (:id card) :pulse_id (:id pulse) :position 4}]]
         (is (= "9ad1b5a4"
-               (serdes.hash/raw-hash [(serdes.hash/identity-hash pulse) (serdes.hash/identity-hash card) 4])
-               (serdes.hash/identity-hash pulse-card)))))))
+               (serdes/raw-hash [(serdes/identity-hash pulse) (serdes/identity-hash card) 4])
+               (serdes/identity-hash pulse-card)))))))

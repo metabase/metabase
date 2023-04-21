@@ -1,3 +1,5 @@
+import { t } from "ttag";
+
 export const DISPLAY_QUOTES = {
   identifierQuoteDefault: "",
   literalQuoteDefault: "",
@@ -35,28 +37,6 @@ export const OPERATOR_PRECEDENCE = {
   or: 5,
 };
 
-export const EXPRESSION_TYPES = [
-  "expression",
-  "aggregation",
-  "boolean",
-  "string",
-  "number",
-];
-
-export const EXPRESSION_SUBTYPES = {
-  // can't currently add "boolean" as a subtype of expression due to conflict between segments and fields
-  expression: new Set(["string", "number"]),
-};
-
-export const isExpressionType = (typeA, typeB) =>
-  typeA === typeB ||
-  (EXPRESSION_SUBTYPES[typeB] && EXPRESSION_SUBTYPES[typeB].has(typeA)) ||
-  false;
-
-export function getFunctionArgType(clause, index) {
-  return clause.multiple ? clause.args[0] : clause.args[index];
-}
-
 export const MBQL_CLAUSES = {
   // aggregation functions
   count: { displayName: `Count`, type: "aggregation", args: [] },
@@ -83,6 +63,12 @@ export const MBQL_CLAUSES = {
     requiresFeature: "standard-deviation-aggregations",
   },
   avg: { displayName: `Average`, type: "aggregation", args: ["number"] },
+  median: {
+    displayName: `Median`,
+    type: "aggregation",
+    args: ["number"],
+    requiresFeature: "percentile-aggregations",
+  },
   min: { displayName: `Min`, type: "aggregation", args: ["expression"] },
   max: { displayName: `Max`, type: "aggregation", args: ["expression"] },
   share: { displayName: `Share`, type: "aggregation", args: ["boolean"] },
@@ -102,12 +88,6 @@ export const MBQL_CLAUSES = {
     args: ["number"],
     requiresFeature: "standard-deviation-aggregations",
   },
-  median: {
-    displayName: `Median`,
-    type: "aggregation",
-    args: ["number"],
-    requiresFeature: "percentile-aggregations",
-  },
   percentile: {
     displayName: `Percentile`,
     type: "aggregation",
@@ -121,6 +101,11 @@ export const MBQL_CLAUSES = {
     displayName: `substring`,
     type: "string",
     args: ["string", "number", "number"],
+    validator: function (_arg, start, _length) {
+      if (start <= 0) {
+        return t`Expected positive integer but found ${start}`;
+      }
+    },
   },
   "regex-match-first": {
     displayName: `regexextract`,
@@ -199,6 +184,12 @@ export const MBQL_CLAUSES = {
     args: ["string", "string"],
     hasOptions: true,
   },
+  "does-not-contain": {
+    displayName: `doesNotContain`,
+    type: "boolean",
+    args: ["string", "string"],
+    hasOptions: true,
+  },
   "starts-with": {
     displayName: `startsWith`,
     type: "boolean",
@@ -237,8 +228,18 @@ export const MBQL_CLAUSES = {
     type: "boolean",
     args: ["expression"],
   },
+  "not-null": {
+    displayName: `notnull`,
+    type: "boolean",
+    args: ["expression"],
+  },
   "is-empty": {
     displayName: `isempty`,
+    type: "boolean",
+    args: ["expression"],
+  },
+  "not-empty": {
+    displayName: `notempty`,
     type: "boolean",
     args: ["expression"],
   },
@@ -437,11 +438,11 @@ export const AGGREGATION_FUNCTIONS = new Set([
   "distinct",
   "stddev",
   "avg",
+  "median",
   "min",
   "max",
   "share",
   "var",
-  "median",
   "percentile",
 ]);
 
@@ -490,17 +491,24 @@ export const EXPRESSION_FUNCTIONS = new Set([
   "relative-datetime",
   "interval",
   "is-null",
+  "not-null",
   "is-empty",
+  "not-empty",
+  "does-not-contain",
   // other
   "coalesce",
 ]);
 
-export const EXPRESSION_OPERATORS = new Set(["+", "-", "*", "/"]);
+const EXPRESSION_OPERATORS = new Set(["+", "-", "*", "/"]);
+
+// operators in which order of operands doesn't matter
+export const EXPRESSION_OPERATOR_WITHOUT_ORDER_PRIORITY = new Set(["+", "*"]);
+
 export const FILTER_OPERATORS = new Set(["!=", "<=", ">=", "<", ">", "="]);
 
-export const BOOLEAN_UNARY_OPERATORS = new Set(["not"]);
-export const LOGICAL_AND_OPERATOR = new Set(["and"]);
-export const LOGICAL_OR_OPERATOR = new Set(["or"]);
+const BOOLEAN_UNARY_OPERATORS = new Set(["not"]);
+const LOGICAL_AND_OPERATOR = new Set(["and"]);
+const LOGICAL_OR_OPERATOR = new Set(["or"]);
 
 export const FUNCTIONS = new Set([
   ...EXPRESSION_FUNCTIONS,
@@ -547,4 +555,5 @@ export const STANDARD_AGGREGATIONS = new Set([
   "avg",
   "min",
   "max",
+  "median",
 ]);

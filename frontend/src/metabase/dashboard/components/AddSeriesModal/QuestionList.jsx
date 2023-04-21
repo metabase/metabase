@@ -205,7 +205,7 @@ export const QuestionList = React.memo(function QuestionList({
           </AutoSizer>
           {!hasQuestionsToShow && (
             <EmptyStateContainer>
-              <EmptyState message={t`Nothing here`} icon="all" />
+              <EmptyState message={t`Nothing here`} icon="folder" />
             </EmptyStateContainer>
           )}
         </QuestionListContainer>
