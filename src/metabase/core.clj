@@ -55,6 +55,9 @@
              (deferred-trs "See {0} for details." "https://www.metabase.com/license/commercial/"))
         (deferred-trs "Metabase Enterprise Edition extensions are NOT PRESENT."))))
 
+(when config/ee-available?
+   ((requiring-resolve 'metabase-enterprise.core/ensure-audit-db-exists!)))
+
 ;;; --------------------------------------------------- Lifecycle ----------------------------------------------------
 
 (defn- print-setup-url
