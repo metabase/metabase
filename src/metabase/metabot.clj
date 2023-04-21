@@ -83,6 +83,32 @@
         (log/infof "No model inferred for database '%s' with prompt '%s'." database-id user_prompt)))
     (log/warn "Metabot is not enabled")))
 
+(defn infer-model
+  "Find the model in the db that best matches the prompt. Return nil if no good model found."
+  [{{database-id :id :keys [models]} :database :keys [user_prompt] :as context}]
+  (log/infof "Metabot is inferring model for database '%s' with prompt '%s'." database-id user_prompt)
+  (if (metabot-settings/is-metabot-enabled)
+    (let [{:keys [prompt_template version] :as prompt} (metabot-util/create-prompt context)
+          ids->models   (zipmap (map :id models) models)
+          candidates    (set (keys ids->models))
+          best-model-id (metabot-util/find-result
+                         (fn [message]
+                           (some->> message
+                                    (re-seq #"\d+")
+                                    (map parse-long)
+                                    (some candidates)))
+                         (metabot-client/invoke-metabot prompt))]
+      (if-some [model (ids->models best-model-id)]
+        (do
+          (log/infof "Metabot selected best model for database '%s' with prompt '%s' as '%s'."
+                     database-id user_prompt best-model-id)
+          (update model
+                  :prompt_template_versions
+                  (fnil conj [])
+                  (format "%s:%s" prompt_template version)))
+        (log/infof "No model inferred for database '%s' with prompt '%s'." database-id user_prompt)))
+    (log/warn "Metabot is not enabled")))
+
 (defn infer-native-sql-query
   "Given a database and user prompt, determine a sql query to answer my question."
   [{{database-id :id} :database
