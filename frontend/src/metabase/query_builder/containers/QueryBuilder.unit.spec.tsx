@@ -128,6 +128,9 @@ describe("QueryBuilder", () => {
    * This causes a split moment where QueryBuilder.isResultDirty is true, which causes
    * the preventDefault function to get called, and sets the mockEvent.returnValue to
    * the BEFORE_UNLOAD_UNSAVED_MESSAGE.
+   *
+   * One way to fix this is to add storeInitialState to the renderWithProviders
+   * function and set lastRunCard and currentCard to the same value.
    * */
   it("should not have beforeunload event when user leaves unedited, existing model", async () => {
     const { mockEventListener } = await setup({ mockCard: TEST_CARD });

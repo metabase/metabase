@@ -306,16 +306,10 @@ function QueryBuilder(props) {
     return () => window.removeEventListener("resize", forceUpdateDebounced);
   }, []);
 
-  const isExistingModelDirty = useCallback(() => {
-    console.table({
-      isNew,
-      isModelQueryDirty,
-      isResultDirty,
-      isMetadataDirty,
-      total: !isNew && (isModelQueryDirty || isResultDirty || isMetadataDirty),
-    });
-    return !isNew && (isModelQueryDirty || isResultDirty || isMetadataDirty);
-  }, [isMetadataDirty, isModelQueryDirty, isNew, isResultDirty]);
+  const isExistingModelDirty = useCallback(
+    () => !isNew && (isModelQueryDirty || isResultDirty || isMetadataDirty),
+    [isMetadataDirty, isModelQueryDirty, isNew, isResultDirty],
+  );
 
   useBeforeUnload(isExistingModelDirty);
 
