@@ -1,14 +1,15 @@
 import React from "react";
-import { t, jt } from "ttag";
-
+import { t } from "ttag";
 import BreakoutPopover from "metabase/query_builder/components/BreakoutPopover";
-
 import type { Card } from "metabase-types/api";
 import { pivotByTimeDrill } from "metabase-lib/queries/drills/pivot-drill";
+import type { ClickActionPopoverProps, DrillOptions } from "../../../types";
+import type { PivotByDrillOption } from "./types";
 
-import type { ClickActionPopoverProps, Drill } from "../../types";
-
-const PivotByTimeDrill: Drill = ({ question, clicked }) => {
+const PivotByTimeDrill = ({
+  question,
+  clicked,
+}: DrillOptions): PivotByDrillOption[] => {
   const drill = pivotByTimeDrill({ question, clicked });
   if (!drill) {
     return [];
@@ -23,6 +24,7 @@ const PivotByTimeDrill: Drill = ({ question, clicked }) => {
     <BreakoutPopover
       query={query}
       breakoutOptions={breakoutOptions}
+      width={350}
       onChangeBreakout={breakout => {
         const nextCard = question.pivot([breakout], dimensions).card();
 
@@ -36,16 +38,8 @@ const PivotByTimeDrill: Drill = ({ question, clicked }) => {
 
   return [
     {
-      name: "pivot-by-time",
-      title: clicked ? (
-        t`Time`
-      ) : (
-        <span>
-          {jt`Break out by ${(<span className="text-dark">{t`time`}</span>)}`}
-        </span>
-      ),
-      section: "breakout",
-      buttonType: "token",
+      title: t`Time`,
+      icon: "calendar",
       popover: PivotDrillPopover,
     },
   ];

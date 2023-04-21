@@ -1,15 +1,16 @@
 import React from "react";
-import { t, jt } from "ttag";
-
+import { t } from "ttag";
 import BreakoutPopover from "metabase/query_builder/components/BreakoutPopover";
-
 import type { Card } from "metabase-types/api";
-import { pivotByLocationDrill } from "metabase-lib/queries/drills/pivot-drill";
+import { pivotByCategoryDrill } from "metabase-lib/queries/drills/pivot-drill";
+import type { ClickActionPopoverProps, DrillOptions } from "../../../types";
+import type { PivotByDrillOption } from "./types";
 
-import type { ClickActionPopoverProps, Drill } from "../../types";
-
-const PivotByLocationDrill: Drill = ({ question, clicked }) => {
-  const drill = pivotByLocationDrill({ question, clicked });
+const PivotByCategoryDrill = ({
+  question,
+  clicked,
+}: DrillOptions): PivotByDrillOption[] => {
+  const drill = pivotByCategoryDrill({ question, clicked });
   if (!drill) {
     return [];
   }
@@ -24,6 +25,7 @@ const PivotByLocationDrill: Drill = ({ question, clicked }) => {
       <BreakoutPopover
         query={query}
         breakoutOptions={breakoutOptions}
+        width={350}
         onChangeBreakout={breakout => {
           const nextCard = question.pivot([breakout], dimensions).card();
 
@@ -38,21 +40,11 @@ const PivotByLocationDrill: Drill = ({ question, clicked }) => {
 
   return [
     {
-      name: "pivot-by-location",
-      title: clicked ? (
-        t`Location`
-      ) : (
-        <span>
-          {jt`Break out by ${(
-            <span className="text-dark">{t`location`}</span>
-          )}`}
-        </span>
-      ),
-      section: "breakout",
-      buttonType: "token",
+      title: t`Category`,
+      icon: "string",
       popover: PivotDrillPopover,
     },
   ];
 };
 
-export default PivotByLocationDrill;
+export default PivotByCategoryDrill;
