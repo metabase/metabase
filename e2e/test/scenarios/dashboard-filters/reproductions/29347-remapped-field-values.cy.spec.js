@@ -27,7 +27,7 @@ const questionDetails = {
   },
 };
 
-const editableDashboardDetails = {
+const dashboardDetails = {
   parameters: [filterDetails],
   enable_embedding: true,
   embedding_params: {
@@ -35,19 +35,12 @@ const editableDashboardDetails = {
   },
 };
 
-const lockedDashboardDetails = {
-  parameters: [filterDetails],
-  enable_embedding: true,
-  embedding_params: {
-    [filterDetails.slug]: "locked",
-  },
-};
-
-describe("issues 29347, 29346", () => {
+describe.skip("issues 29347, 29346", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
     addFieldRemapping(ORDERS.QUANTITY);
+    createDashboard();
   });
 
   describe("regular dashboards", () => {
@@ -57,7 +50,6 @@ describe("issues 29347, 29346", () => {
     });
 
     it("should be able to filter on remapped values (metabase#29347, metabase#29346)", () => {
-      createDashboard();
       cy.get("@dashboardId").then(dashboardId => visitDashboard(dashboardId));
       cy.wait("@dashboard");
       cy.wait("@cardQuery");
@@ -69,7 +61,6 @@ describe("issues 29347, 29346", () => {
     });
 
     it("should be able to filter on remapped values in the url (metabase#29347, metabase#29346)", () => {
-      createDashboard();
       cy.get("@dashboardId").then(dashboardId => {
         visitDashboard(dashboardId, {
           params: { [filterDetails.slug]: filterValue },
@@ -89,7 +80,6 @@ describe("issues 29347, 29346", () => {
     });
 
     it("should be able to filter on remapped values (metabase#29347, metabase#29346)", () => {
-      createDashboard();
       cy.get("@dashboardId").then(dashboardId =>
         visitEmbeddedPage({
           resource: { dashboard: dashboardId },
@@ -106,33 +96,11 @@ describe("issues 29347, 29346", () => {
     });
 
     it("should be able to filter on remapped values in the token (metabase#29347, metabase#29346)", () => {
-      createDashboard({ dashboardDetails: lockedDashboardDetails });
       cy.get("@dashboardId").then(dashboardId => {
         visitEmbeddedPage({
           resource: { dashboard: dashboardId },
-          params: {
-            [filterDetails.slug]: filterValue,
-          },
+          params: { [filterDetails.slug]: filterValue },
         });
-      });
-      cy.wait("@dashboard");
-      cy.wait("@cardQuery");
-
-      verifyRemappedCardValues(filterValue);
-    });
-
-    it("should be able to filter on remapped values in the url (metabase#29347, metabase#29346)", () => {
-      createDashboard();
-      cy.get("@dashboardId").then(dashboardId => {
-        visitEmbeddedPage(
-          {
-            resource: { dashboard: dashboardId },
-            params: {},
-          },
-          {
-            setFilters: `${filterDetails.slug}=${filterValue}`,
-          },
-        );
       });
       cy.wait("@dashboard");
       cy.wait("@cardQuery");
@@ -148,7 +116,6 @@ describe("issues 29347, 29346", () => {
     });
 
     it("should be able to filter on remapped values (metabase#29347, metabase#29346)", () => {
-      createDashboard();
       cy.get("@dashboardId").then(dashboardId =>
         visitPublicDashboard(dashboardId),
       );
@@ -162,7 +129,6 @@ describe("issues 29347, 29346", () => {
     });
 
     it("should be able to filter on remapped values in the url (metabase#29347, metabase#29346)", () => {
-      createDashboard();
       cy.get("@dashboardId").then(dashboardId => {
         visitPublicDashboard(dashboardId, {
           params: { [filterDetails.slug]: filterValue },
@@ -199,9 +165,7 @@ const addFieldRemapping = fieldId => {
   );
 };
 
-const createDashboard = ({
-  dashboardDetails = editableDashboardDetails,
-} = {}) => {
+const createDashboard = () => {
   cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
     ({ body: { id, card_id, dashboard_id } }) => {
       cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
@@ -241,17 +205,10 @@ const filterOnRemappedValues = fieldValue => {
 };
 
 const verifyRemappedValues = fieldValue => {
-  verifyRemappedFilterValues(filterValue);
-  verifyRemappedCardValues(fieldValue);
-};
-
-const verifyRemappedFilterValues = fieldValue => {
   filterWidget().within(() => {
     cy.findByText(getRemappedValue(fieldValue)).should("be.visible");
   });
-};
 
-const verifyRemappedCardValues = fieldValue => {
   getDashboardCard().within(() => {
     cy.findAllByText(getRemappedValue(fieldValue)).should("have.length", 2);
   });

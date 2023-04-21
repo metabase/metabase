@@ -207,6 +207,7 @@ export const fetchDashboard = createThunkAction(
 
       return {
         ...normalize(result, dashboard), // includes `result` and `entities`
+        dashboard: result,
         dashboardId: dashId,
         parameterValues: parameterValuesById,
       };
