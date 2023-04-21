@@ -142,30 +142,30 @@ GRANT metabase_model_caching TO metabase;
 
 If you're setting up multi-tenant permissions for customers who need SQL access, you can [create one database connection per customer](https://www.metabase.com/learn/permissions/multi-customer-permissions#option-2-granting-customers-native-sql-access-to-their-schema). That means each customer will connect to the database using their own database user. 
 
-Let's say you have customers named Orange and Lemon:
+Let's say you have customers named Tangerine and Lemon:
 
-- Create new database users `metabase_orange` and `metabase_lemon`.
+- Create new database users `metabase_tangerine` and `metabase_lemon`.
 - Create a `customer_facing_analytics` role with the [minimum privileges](#minimum-privileges).
 - Create roles to bundle privileges specific to each customer's use case. For example:
-  - `orange_queries` to bundle `SELECT` and `EXECUTE` access to query and create stored procedures against the Orange schema.
+  - `tangerine_queries` to bundle `SELECT` and `EXECUTE` access to query and create stored procedures against the Orange schema.
   - `lemon_queries` for `SELECT` access to query all tables in the Lemon schema.
   - `lemon_actions` to bundle the write privileges needed to create [actions](#actions) on a Lemonade table in the Lemon schema.
 - Add each user to their respective roles.
 
 ```sql
 -- Create one database user per customer.
-CREATE USER metabase_orange WITH LOGIN;
-CREATE USER metabase_lemon WITH LOGIN;
+CREATE USER metabase_tangerine WITH PASSWORD "orange";
+CREATE USER metabase_lemon WITH PASSWORD "yellow";
 
 -- Create a role to bundle privileges for all customers.
 CREATE ROLE customer_facing_analytics;
-GRANT CONNECT ON DATABASE "your_database" TO customer_facing_analytics;
-GRANT customer_facing_analytics TO metabase_orange, metabase_lemon;
+GRANT CONNECT ON DATABASE "citrus" TO customer_facing_analytics;
+GRANT customer_facing_analytics TO metabase_tangerine, metabase_lemon;
 
--- Create a role to bundle analytics read access for customer Orange.
-CREATE ROLE orange_queries;
-GRANT SELECT, EXECUTE ON ALL TABLES IN SCHEMA "orange" TO orange_queries;
-GRANT orange_queries TO metabase_orange;
+-- Create a role to bundle analytics read access for customer Tangerine.
+CREATE ROLE tangerine_queries;
+GRANT SELECT, EXECUTE ON ALL TABLES IN SCHEMA "tangerine" TO tangerine_queries;
+GRANT tangerine_queries TO metabase_tangerine;
 
 -- Create a role to bundle analytics read access for customer Lemon.
 CREATE ROLE lemon_queries;
@@ -178,12 +178,13 @@ GRANT INSERT, UPDATE, DELETE ON TABLE "lemonade" IN SCHEMA "lemon" TO lemon_acti
 GRANT lemon_actions TO metabase_lemon;
 ```
 
-We recommend bundling privileges into roles based on use cases per customer. That way, you can re-use common privileges across customers while still being able to grant or revoke granular privileges per customer. For example:
+We recommend bundling privileges into roles based on use cases per customer. That way, you can reuse common privileges across customers while still being able to grant or revoke granular privileges per customer. For example:
 
-- If Customer Orange needs to query the Orange schema from another analytics tool, you can use the `orange_queries` role when setting up that tool.
-- If Customer Lemon decides that they don't want to use Metabase actions anymore (but they still want to ask questions), you can simply revoke or drop the `lemon_actions` role.
+- If customer Tangerine needs to query the Tangerine schema from another analytics tool, you can use the `tangerine_queries` role when setting up that tool.
+- If customer Lemon decides that they don't want to use Metabase actions anymore (but they still want to ask questions), you can simply revoke or drop the `lemon_actions` role.
 
 ## Further reading
 
 - [Permissions](../permissions/introduction.md)
 - [People and groups](../people-and-groups/start.md)
+- [Data sandboxing](../permissions/data-sandboxes.md)
