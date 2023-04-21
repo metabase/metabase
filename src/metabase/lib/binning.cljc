@@ -5,7 +5,6 @@
     [metabase.lib.metadata.calculation :as lib.metadata.calculation]
     [metabase.lib.schema :as lib.schema]
     [metabase.lib.schema.binning :as lib.schema.binning]
-    [metabase.lib.schema.common :as lib.schema.common]
     [metabase.shared.util.i18n :as i18n]
     [metabase.util.malli :as mu]))
 
@@ -75,46 +74,58 @@
     x]
    (available-binning-strategies-method query stage-number x)))
 
-(def ^:private default-auto-bin
+(defn- default-auto-bin []
   {:display_name (i18n/tru "Auto bin")
    :default      true
    :mbql         {:binning {:strategy :default}}})
 
-(def ^:private dont-bin
+(defn- dont-bin []
   {:display_name (i18n/tru "Don''t bin")
    :mbql         nil})
 
 (defn- with-binning-option-type [m]
   (assoc m :lib/type ::binning-option))
 
-(def numeric-binning-strategies
-  (mapv with-binning-option-type
-        [default-auto-bin
-         {:display_name (i18n/tru "10 bins")  :mbql {:binning {:strategy :num-bins :num-bins 10}}}
-         {:display_name (i18n/tru "50 bins")  :mbql {:binning {:strategy :num-bins :num-bins 50}}}
-         {:display_name (i18n/tru "100 bins") :mbql {:binning {:strategy :num-bins :num-bins 100}}}
-         dont-bin]))
+(def ^:private *numeric-binning-strategies
+  (delay (mapv with-binning-option-type
+               [(default-auto-bin)
+                {:display_name (i18n/tru "10 bins")  :mbql {:binning {:strategy :num-bins :num-bins 10}}}
+                {:display_name (i18n/tru "50 bins")  :mbql {:binning {:strategy :num-bins :num-bins 50}}}
+                {:display_name (i18n/tru "100 bins") :mbql {:binning {:strategy :num-bins :num-bins 100}}}
+                (dont-bin)])))
 
-(def coordinate-binning-strategies
-  (mapv with-binning-option-type
-        [default-auto-bin
-         {:display_name (i18n/tru "Bin every 0.1 degrees") :mbql {:binning {:strategy :bin-width :bin-width 0.1}}}
-         {:display_name (i18n/tru "Bin every 1 degree")    :mbql {:binning {:strategy :bin-width :bin-width 1.0}}}
-         {:display_name (i18n/tru "Bin every 10 degrees")  :mbql {:binning {:strategy :bin-width :bin-width 10.0}}}
-         {:display_name (i18n/tru "Bin every 20 degrees")  :mbql {:binning {:strategy :bin-width :bin-width 20.0}}}
-         dont-bin]))
+(defn numeric-binning-strategies
+  "List of binning options for numeric fields. These split the data evenly into a fixed number of bins."
+  []
+  @*numeric-binning-strategies)
+
+(def ^:private *coordinate-binning-strategies
+  (delay
+    (mapv with-binning-option-type
+          [(default-auto-bin)
+           {:display_name (i18n/tru "Bin every 0.1 degrees") :mbql {:binning {:strategy :bin-width :bin-width 0.1}}}
+           {:display_name (i18n/tru "Bin every 1 degree")    :mbql {:binning {:strategy :bin-width :bin-width 1.0}}}
+           {:display_name (i18n/tru "Bin every 10 degrees")  :mbql {:binning {:strategy :bin-width :bin-width 10.0}}}
+           {:display_name (i18n/tru "Bin every 20 degrees")  :mbql {:binning {:strategy :bin-width :bin-width 20.0}}}
+           (dont-bin)])))
+
+(defn coordinate-binning-strategies
+  "List of binning options for coordinate fields (ie. latitude and longitude). These split the data into N ranges each a
+  certain number of degrees wide."
+  []
+  @*coordinate-binning-strategies)
 
 (defmethod lib.metadata.calculation/display-info-method ::binning-option
-  [query stage-number binning-option]
+  [_query _stage-number binning-option]
   (select-keys binning-option [:display_name :default]))
 
 (defn binning-display-name
   "This is implemented outside of [[lib.metadata.calculation/display-name]] because it needs access to the field type.
   It's called directly by `:field` or `:metadata/field`'s [[lib.metadata.calculation/display-name]]."
-  [binning field-metadata]
-  (when binning
-    (case (:strategy binning)
-      :num-bins  (i18n/trun "{0} bin" "{0} bins" (:num-bins binning))
-      :bin-width (str (:bin-width binning) (when (isa? (:semantic_type field-metadata) :type/Coordinate)
-                                             "°"))
+  [{:keys [bin-width num-bins strategy] :as binning-options} field-metadata]
+  (when binning-options
+    (case strategy
+      :num-bins  (i18n/trun "{0} bin" "{0} bins" num-bins)
+      :bin-width (str bin-width (when (isa? (:semantic_type field-metadata) :type/Coordinate)
+                                  "°"))
       :default   (i18n/tru "Auto binned"))))
