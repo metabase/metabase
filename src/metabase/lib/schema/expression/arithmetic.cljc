@@ -2,20 +2,13 @@
   "Arithmetic expressions like `:+`."
   (:require
    [malli.core :as mc]
+   [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.schema.common :as common]
    [metabase.lib.schema.expression :as expression]
    [metabase.lib.schema.mbql-clause :as mbql-clause]
    [metabase.lib.schema.temporal-bucketing :as temporal-bucketing]
    [metabase.types :as types]
    [metabase.util.malli.registry :as mr]))
-
-(mbql-clause/define-tuple-mbql-clause :interval
-  :int
-  ::temporal-bucketing/unit.date-time.interval)
-
-(defmethod expression/type-of* :interval
-  [[_tag _opts expr _n _unit]]
-  (expression/type-of expr))
 
 (defn- valid-interval-for-type? [[_tag _opts _n unit :as _interval] expr-type]
   (let [unit-schema (cond
@@ -58,6 +51,11 @@
     [:schema [:ref ::common/options]]
     [:repeat {:min 2} [:schema [:ref ::expression/number]]]]])
 
+(defn- type-of-arithmetic-args [args]
+  ;; Okay to use reduce without an init value here since we know we have >= 2 args
+  #_{:clj-kondo/ignore [:reduce-without-init]}
+  (reduce types/most-specific-common-ancestor (map expression/type-of args)))
+
 (mbql-clause/define-mbql-clause :+
   (plus-minus-schema :+))
 
@@ -76,19 +74,41 @@
 (mbql-clause/define-catn-mbql-clause :/ :- :type/Float
   [:args ::args.numbers])
 
-(defn- type-of-arithmetic-args [args]
-  ;; Okay to use reduce without an init value here since we know we have >= 2 args
-  #_{:clj-kondo/ignore [:reduce-without-init]}
-  (reduce types/most-specific-common-ancestor (map expression/type-of args)))
+(doseq [tag [:+ :- :*]]
+  (lib.hierarchy/derive tag :lib.type-of/type-is-type-of-arithmetic-args))
 
-(defmethod expression/type-of* :+
+;;; `:+`, `:-`, and `:*` all have the same logic; also used for [[metabase.lib.metadata.calculation/type-of-method]]
+(defmethod expression/type-of* :lib.type-of/type-is-type-of-arithmetic-args
   [[_tag _opts & args]]
   (type-of-arithmetic-args args))
 
-(defmethod expression/type-of* :-
-  [[_tag _opts & args]]
-  (type-of-arithmetic-args args))
+(mbql-clause/define-tuple-mbql-clause :abs
+  [:schema [:ref ::expression/number]])
 
-(defmethod expression/type-of* :*
-  [[_tag _opts & args]]
-  (type-of-arithmetic-args args))
+(lib.hierarchy/derive :abs :lib.type-of/type-is-type-of-first-arg)
+
+(doseq [op [:log :exp :sqrt]]
+  (mbql-clause/define-tuple-mbql-clause op :- :type/Float
+    [:schema [:ref ::expression/number]]))
+
+(doseq [op [:ceil :floor :round]]
+  (mbql-clause/define-tuple-mbql-clause op :- :type/Integer
+    [:schema [:ref ::expression/number]]))
+
+(mbql-clause/define-tuple-mbql-clause :power
+  #_num [:schema [:ref ::expression/number]]
+  #_exp [:schema [:ref ::expression/number]])
+
+(defmethod expression/type-of* :power
+  [[_tag _opts expr exponent]]
+  ;; if both expr and exponent are integers, this will return an integer.
+  (if (and (isa? (expression/type-of expr) :type/Integer)
+           (isa? (expression/type-of exponent) :type/Integer))
+    :type/Integer
+    ;; otherwise this will return some sort of number with a decimal place. e.g.
+    ;;
+    ;;    (Math/pow 2 2.1) => 4.2870938501451725
+    ;;
+    ;; If we don't know the type of `expr` or `exponent` it's safe to assume `:type/Float` anyway, maybe not as
+    ;; specific as `:type/Integer` but better than `:type/*` or `::expression/type.unknown`.
+    :type/Float))

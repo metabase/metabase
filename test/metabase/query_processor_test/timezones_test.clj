@@ -12,7 +12,7 @@
    [metabase.test.data.sql :as sql.tx]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honeysql-extensions :as hx]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 ;; TIMEZONE FIXME
 (def broken-drivers
@@ -99,12 +99,12 @@
                    "same as specifying UTC for a report timezone")))))))
 
 (defn- table-identifier [table-key]
-  (let [table-name (db/select-one-field :name Table, :id (mt/id table-key))]
+  (let [table-name (t2/select-one-fn :name Table, :id (mt/id table-key))]
     (apply hx/identifier :table (sql.tx/qualified-name-components driver/*driver* (:name (mt/db)) table-name))))
 
 (defn- field-identifier [table-key field-key]
-  (let [table-name (db/select-one-field :name Table, :id (mt/id table-key))
-        field-name (db/select-one-field :name Field, :id (mt/id table-key field-key))]
+  (let [table-name (t2/select-one-fn :name Table, :id (mt/id table-key))
+        field-name (t2/select-one-fn :name Field, :id (mt/id table-key field-key))]
     (apply hx/identifier :field (sql.tx/qualified-name-components driver/*driver* (:name (mt/db)) table-name field-name))))
 
 (defn- honeysql->sql [honeysql]
@@ -114,7 +114,7 @@
   "Map with different types of native params queries, used in test below. Key is a description of the type of native
   params in the query."
   []
-  (binding [hx/*honey-sql-version* (sql.qp/honey-sql-version driver/*driver*)]
+  (sql.qp/with-driver-honey-sql-version driver/*driver*
     {"variable w/ single date"
      {:native     {:query         (honeysql->sql
                                    {:select   (mapv #(sql.qp/maybe-wrap-unaliased-expr (field-identifier :users %))

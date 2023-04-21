@@ -37,7 +37,7 @@ describe("scenarios > collection defaults", () => {
 
       cy.visit("/");
 
-      cy.viewport(800, 400);
+      cy.viewport(800, 500);
 
       cy.findByText("New").click();
       cy.findByText("Collection").click();
@@ -178,12 +178,28 @@ describe("scenarios > collection defaults", () => {
     });
   });
 
-  describe("render last edited by when names are null", () => {
-    beforeEach(() => {
-      restore();
-      cy.signInAsAdmin();
+  it("should support markdown in collection description", () => {
+    cy.request("PUT", "/api/collection/9", {
+      description: "[link](https://metabase.com)",
     });
 
+    visitRootCollection();
+
+    cy.get("table").within(() => {
+      cy.findByText("First collection")
+        .closest("tr")
+        .within(() => {
+          cy.icon("info").trigger("mouseenter");
+        });
+    });
+
+    popover().within(() => {
+      cy.findByRole("link").should("include.text", "link");
+      cy.findByRole("link").should("not.include.text", "[link]");
+    });
+  });
+
+  describe("render last edited by when names are null", () => {
     it("should render short value without tooltip", () => {
       cy.intercept(
         "GET",
@@ -239,7 +255,7 @@ describe("scenarios > collection defaults", () => {
       cy.signInAsAdmin();
     });
 
-    it.skip("should show list of collection items even if one question has invalid parameters (metabase#25543)", () => {
+    it("should show list of collection items even if one question has invalid parameters (metabase#25543)", () => {
       const questionDetails = {
         native: { query: "select 1 --[[]]", "template-tags": {} },
       };
@@ -519,6 +535,23 @@ describe("scenarios > collection defaults", () => {
           cy.findByText("Third collection").should("be.visible");
         });
       });
+    });
+  });
+
+  describe("x-rays", () => {
+    beforeEach(() => {
+      restore();
+      cy.signInAsNormalUser();
+      cy.intercept("GET", "/api/automagic-dashboards/model/*").as("dashboard");
+    });
+
+    it("should allow to x-ray models from collection views", () => {
+      cy.request("PUT", "/api/card/1", { dataset: true });
+      cy.visit("/collection/root");
+
+      openEllipsisMenuFor("Orders");
+      popover().findByText("X-ray this").click();
+      cy.wait("@dashboard");
     });
   });
 });

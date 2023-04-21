@@ -66,16 +66,16 @@ To embed a specific Metabase dashboard, use the dashboard's URL, such as:
 
 Use this option if you want to send people directly to your SSO login screen (i.e., skip over the Metabase login screen with an SSO button), and redirect to Metabase automatically upon authentication.
 
-You'll need to set the `src` attribute to your auth endpoint, with a parameter containing the encoded Metabase URL. For example, to send people to your SSO login page and automatically redirect them to `http://metabase.yourcompany.com/dashboard/1`:
+You'll need to set the `src` attribute to your auth endpoint, with a `return_to` parameter pointing to the encoded Metabase URL. For example, to send people to your SSO login page and automatically redirect them to `http://metabase.yourcompany.com/dashboard/1`:
 
 ```
-https://metabase.example.com/auth/sso?redirect=http%3A%2F%2Fmetabase.yourcompany.com%2Fdashboard%2F1
+https://metabase.example.com/auth/sso?return_to=http%3A%2F%2Fmetabase.yourcompany.com%2Fdashboard%2F1
 ```
 
 If you're using [JWT](../people-and-groups/authenticating-with-jwt.md), you can use the relative path for the redirect (i.e., your Metabase URL without the [site URL](../configuring-metabase/settings.md#site-url)). For example, to send people to a Metabase page at `/dashboard/1`:
 
 ```
-https://metabase.example.com/auth/sso?jwt=<token>&redirect=%2Fdashboard%2F1
+https://metabase.example.com/auth/sso?jwt=<token>&return_to=%2Fdashboard%2F1
 ```
 
 You must URL encode (or double encode, depending on your web setup) all of the parameters in your redirect link, including parameters for filters (e.g., `filter=value`) and [UI settings](#showing-or-hiding-metabase-ui-components) (e.g., `top_nav=true`). For example, if you added two filter parameters to the JWT example shown above, your `src` link would become:
@@ -84,17 +84,27 @@ You must URL encode (or double encode, depending on your web setup) all of the p
 https://metabase.example.com/auth/sso?jwt=<token>&redirect=%2Fdashboard%2F1%3Ffilter1%3Dvalue%26filter2%3Dvalue
 ```
 
+## Cross-browser compatibility
+
+To make sure that your embedded Metabase works in all browsers, put Metabase and the embedding app in the same top-level domain (TLD). The TLD is indicated by the last part of a web address, like `.com` or `.org`.
+
+Note that your full-app embed must be compatible with Safari to run on _any_ browser in iOS (such as Chrome on iOS).
+
 ## Embedding Metabase in a different domain
 
-If you want to embed Metabase in another domain (say, if Metabase is hosted at `metabase.yourcompany.com`, but you want to embed Metabase at `yourcompany.github.io`), set the following [environment variable](../configuring-metabase/environment-variables.md):
+> Skip this section if your Metabase and embedding app are already in the same top-level domain (TLD).
+
+If you want to embed Metabase in another domain (say, if Metabase is hosted at `metabase.yourcompany.com`, but you want to embed Metabase at `yourcompany.github.io`), you can set the following [environment variable](../configuring-metabase/environment-variables.md):
 
 `MB_SESSION_COOKIE_SAMESITE=None`
 
-If you set this environment variable to "None", you must use HTTPS in Metabase to prevent browsers from rejecting the request. For more information, see MDN's documentation on [SameSite cookies](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie/SameSite).
+If you set this environment variable to "None", you must use HTTPS in Metabase to prevent browsers from rejecting the request. For more information, see MDN's documentation on [SameSite cookies](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie/SameSite). 
+
+Note that `SameSite=None` is incompatible with most Safari and iOS browser versions (including any browser that runs on iOS, such as Chrome on iOS).
 
 ## Securing full-app embeds
 
-Metabase uses HTTP cookies to authenticate people and keep them signed into your embedded Metabase, even when someone closes their browser session.
+Metabase uses HTTP cookies to authenticate people and keep them signed into your embedded Metabase, even when someone closes their browser session. If you enjoy diagrammed auth flows, check out [Full-app embedding with SSO](https://www.metabase.com/learn/customer-facing-analytics/securing-embeds#full-app-embedding-with-sso).
 
 To limit the amount of time that a person stays logged in, set [`MAX_SESSION_AGE`](../configuring-metabase/environment-variables.md#max_session_age) to a number in minutes. The default value is 20,160 (two weeks).
 

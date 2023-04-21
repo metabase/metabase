@@ -3,19 +3,12 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.config :as config]
    [metabase.http-client :as client]
    [metabase.integrations.google]
    [metabase.models
-    :refer [Collection
-            Database
-            PermissionsGroup
-            PermissionsGroupMembership
-            Pulse
-            PulseChannel
-            PulseChannelRecipient
-            Session
-            Table
-            User]]
+    :refer [Collection Database PermissionsGroup PermissionsGroupMembership
+            Pulse PulseChannel PulseChannelRecipient Session Table User]]
    [metabase.models.collection :as collection]
    [metabase.models.collection-test :as collection-test]
    [metabase.models.permissions :as perms]
@@ -23,13 +16,14 @@
    [metabase.models.permissions-test :as perms-test]
    [metabase.models.serialization :as serdes]
    [metabase.models.user :as user]
+   [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.integrations.ldap :as ldap.test]
    [metabase.util :as u]
    [metabase.util.password :as u.password]
-   [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]]))
+   [toucan.hydrate :refer [hydrate]]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -135,7 +129,7 @@
           (sent-emails new-user-email new-user-first-name new-user-last-name)
           ;; Clean up after ourselves
           (finally
-            (db/delete! User :email new-user-email)))))))
+            (t2/delete! User :email new-user-email)))))))
 
 (def ^:private default-invitor
   {:email "crowberto@metabase.com", :is_active true, :first_name "Crowberto"})
@@ -184,11 +178,20 @@
                  (-> (invite-user-accept-and-check-inboxes! :google-auth? true)
                      (select-keys ["crowberto@metabase.com" "some_other_admin@metabase.com" "cam2@metabase.com"]))))))
 
-      (testing "...unless they are inactive"
+      (testing "...unless they are inactive..."
         (mt/with-temp User [user {:is_superuser true, :is_active false}]
           (is (= {"crowberto@metabase.com" ["<New User> created a Metabase account"]}
                  (-> (invite-user-accept-and-check-inboxes! :google-auth? true)
-                     (select-keys ["crowberto@metabase.com" (:email user)]))))))))
+                     (select-keys ["crowberto@metabase.com" (:email user)])))))
+
+        (testing "...or if setting is disabled"
+          (premium-features-test/with-premium-features #{:sso}
+            (mt/with-temporary-raw-setting-values [send-new-sso-user-admin-email? "false"]
+              (mt/with-temp User [_ {:is_superuser true, :email "some_other_admin@metabase.com"}]
+                (is (= (if config/ee-available? {} {"crowberto@metabase.com" ["<New User> created a Metabase account"],
+                                                    "some_other_admin@metabase.com" ["<New User> created a Metabase account"]})
+                       (-> (invite-user-accept-and-check-inboxes! :google-auth? true)
+                           (select-keys ["crowberto@metabase.com" "some_other_admin@metabase.com"])))))))))))
 
   (testing "if sso enabled and password login is disabled, email should send a link to sso login"
     (mt/with-temporary-setting-values [enable-password-login false]
@@ -204,18 +207,18 @@
                                         :first_name "Test"
                                         :last_name  "SomeLdapStuff"
                                         :password   "should be removed"})
-      (let [{:keys [password password_salt]} (db/select-one [User :password :password_salt] :email "ldaptest@metabase.com")]
+      (let [{:keys [password password_salt]} (t2/select-one [User :password :password_salt] :email "ldaptest@metabase.com")]
         (is (= false
                (u.password/verify-password "should be removed" password_salt password))))
       (finally
-        (db/delete! User :email "ldaptest@metabase.com")))))
+        (t2/delete! User :email "ldaptest@metabase.com")))))
 
 (deftest new-admin-user-test
   (testing (str "when you create a new user with `is_superuser` set to `true`, it should create a "
                 "PermissionsGroupMembership object")
     (mt/with-temp User [user {:is_superuser true}]
       (is (= true
-             (db/exists? PermissionsGroupMembership :user_id (u/the-id user), :group_id (u/the-id (perms-group/admin))))))))
+             (t2/exists? PermissionsGroupMembership :user_id (u/the-id user), :group_id (u/the-id (perms-group/admin))))))))
 
 (deftest ldap-sequential-login-attributes-test
   (testing "You should be able to create a new LDAP user if some `login_attributes` are vectors (#10291)"
@@ -225,9 +228,9 @@
                                         :last_name        "SomeLdapStuff"
                                         :login_attributes {:local_birds ["Steller's Jay" "Mountain Chickadee"]}})
       (is (= {"local_birds" ["Steller's Jay" "Mountain Chickadee"]}
-             (db/select-one-field :login_attributes User :email "ldaptest@metabase.com")))
+             (t2/select-one-fn :login_attributes User :email "ldaptest@metabase.com")))
       (finally
-        (db/delete! User :email "ldaptest@metabase.com")))))
+        (t2/delete! User :email "ldaptest@metabase.com")))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -236,12 +239,12 @@
 
 (defn group-names [groups-or-ids]
   (when (seq groups-or-ids)
-    (db/select-field :name PermissionsGroup :id [:in (map u/the-id groups-or-ids)])))
+    (t2/select-fn-set :name PermissionsGroup :id [:in (map u/the-id groups-or-ids)])))
 
 (defn- do-with-group [group-properties group-members f]
   (mt/with-temp PermissionsGroup [group group-properties]
     (doseq [member group-members]
-      (db/insert! PermissionsGroupMembership
+      (t2/insert! PermissionsGroupMembership
         {:group_id (u/the-id group)
          :user_id  (if (keyword? member)
                      (mt/user->id member)
@@ -269,7 +272,7 @@
                     _ {:name "Group 2"} #{:lucky}
                     _ {:name "Group 3"} #{}]
         (let [lucky-id (mt/user->id :lucky)]
-          (db/with-call-counting [call-count]
+          (t2/with-call-count [call-count]
             (user/group-ids lucky-id)
             (is (= 1
                    (call-count)))))))
@@ -297,7 +300,7 @@
                                            (assoc user :group_ids '(user/add-group-ids <users>))))]
         (testing "for a single User"
           (is (= '(user/add-group-ids <users>)
-                 (-> (hydrate (db/select-one User :id (mt/user->id :lucky)) :group_ids)
+                 (-> (hydrate (t2/select-one User :id (mt/user->id :lucky)) :group_ids)
                      :group_ids))))
 
         (testing "for multiple Users"
@@ -312,7 +315,7 @@
                     _ {:name "Group 2"} #{:lucky}
                     _ {:name "Group 3"} #{}]
         (let [users (mapv test.users/fetch-user [:lucky :rasta])]
-          (db/with-call-counting [call-count]
+          (t2/with-call-count [call-count]
             (dorun (user/add-group-ids users))
             (is (= 1
                    (call-count)))))))
@@ -362,7 +365,7 @@
 
         (testing "their is_superuser flag should be set to true"
           (is (= true
-                 (db/select-one-field :is_superuser User :id (u/the-id user)))))))
+                 (t2/select-one-fn :is_superuser User :id (u/the-id user)))))))
 
     (testing "should be able to remove someone from the Admin group"
       (mt/with-temp User [user {:is_superuser true}]
@@ -372,7 +375,7 @@
 
         (testing "their is_superuser flag should be set to false"
           (is (= false
-                 (db/select-one-field :is_superuser User :id (u/the-id user)))))))
+                 (t2/select-one-fn :is_superuser User :id (u/the-id user)))))))
 
     (testing "should run all changes in a transaction -- if one set of changes fails, others should not be persisted"
       (testing "Invalid ADD operation"
@@ -382,7 +385,7 @@
           (u/ignore-exceptions
             (user/set-permissions-groups! user #{(perms-group/all-users) Integer/MAX_VALUE}))
           (is (= true
-                 (db/select-one-field :is_superuser User :id (u/the-id user))))))
+                 (t2/select-one-fn :is_superuser User :id (u/the-id user))))))
 
       (testing "Invalid REMOVE operation"
         ;; Attempt to remove someone from All Users + add to a valid group at the same time -- neither should persist
@@ -398,7 +401,7 @@
   (testing "set-password!"
     (testing "should change the password"
       (mt/with-temp User [{user-id :id} {:password "ABC_DEF"}]
-        (letfn [(password [] (db/select-one-field :password User :id user-id))]
+        (letfn [(password [] (t2/select-one-fn :password User :id user-id))]
           (let [original-password (password)]
             (user/set-password! user-id "p@ssw0rd")
             (is (not= original-password
@@ -408,13 +411,13 @@
       (mt/with-temp User [{user-id :id} {:reset_token "ABC123"}]
         (user/set-password! user-id "p@ssw0rd")
         (is (= nil
-               (db/select-one-field :reset_token User :id user-id)))))
+               (t2/select-one-fn :reset_token User :id user-id)))))
 
     (testing "should clear out all existing Sessions"
       (mt/with-temp* [User [{user-id :id}]]
         (dotimes [_ 2]
-          (db/insert! Session {:id (str (java.util.UUID/randomUUID)), :user_id user-id}))
-        (letfn [(session-count [] (db/count Session :user_id user-id))]
+          (t2/insert! Session {:id (str (java.util.UUID/randomUUID)), :user_id user-id}))
+        (letfn [(session-count [] (t2/count Session :user_id user-id))]
           (is (= 2
                  (session-count)))
           (user/set-password! user-id "p@ssw0rd")
@@ -427,7 +430,7 @@
       (testing "valid locale"
         (mt/with-temp User [{user-id :id} {:locale "en_US"}]
           (is (= "en_US"
-                 (db/select-one-field :locale User :id user-id)))))
+                 (t2/select-one-fn :locale User :id user-id)))))
       (testing "invalid locale"
         (is (thrown-with-msg?
              Throwable
@@ -437,26 +440,26 @@
     (testing "updating a User"
       (mt/with-temp User [{user-id :id} {:locale "en_US"}]
         (testing "valid locale"
-          (db/update! User user-id :locale "en_GB")
+          (t2/update! User user-id {:locale "en_GB"})
           (is (= "en_GB"
-                 (db/select-one-field :locale User :id user-id))))
+                 (t2/select-one-fn :locale User :id user-id))))
         (testing "invalid locale"
           (is (thrown-with-msg?
                Throwable
                #"Assert failed: Invalid locale: \"en_XX\""
-               (db/update! User user-id :locale "en_XX"))))))))
+               (t2/update! User user-id {:locale "en_XX"}))))))))
 
 (deftest normalize-locale-test
   (testing "`:locale` should be normalized"
     (mt/with-temp User [{user-id :id} {:locale "EN-us"}]
       (testing "creating a new User"
         (is (= "en_US"
-               (db/select-one-field :locale User :id user-id))))
+               (t2/select-one-fn :locale User :id user-id))))
 
       (testing "updating a User"
-        (db/update! User user-id :locale "en-GB")
+        (t2/update! User user-id {:locale "en-GB"})
         (is (= "en_GB"
-               (db/select-one-field :locale User :id user-id)))))))
+               (t2/select-one-fn :locale User :id user-id)))))))
 
 (deftest delete-pulse-subscriptions-when-archived-test
   (testing "Delete a User's Pulse/Alert/Dashboard Subscription subscriptions when they get archived"
@@ -465,14 +468,14 @@
                     PulseChannel          [{pulse-channel-id :id} {:pulse_id pulse-id}]
                     PulseChannelRecipient [_ {:pulse_channel_id pulse-channel-id, :user_id user-id}]]
       (letfn [(subscription-exists? []
-                (db/exists? PulseChannelRecipient :pulse_channel_id pulse-channel-id, :user_id user-id))]
+                (t2/exists? PulseChannelRecipient :pulse_channel_id pulse-channel-id, :user_id user-id))]
         (testing "Sanity check: subscription should exist"
           (is (subscription-exists?)))
         (testing "user is updated but not archived: don't delete the subscription"
-          (is (db/update! User user-id :is_active true))
+          (is (pos? (t2/update! User user-id {:is_active true})))
           (is (subscription-exists?)))
         (testing "archive the user"
-          (is (db/update! User user-id :is_active false)))
+          (is (pos? (t2/update! User user-id {:is_active false}))))
         (testing "subscription should no longer exist"
           (is (not (subscription-exists?))))))))
 
@@ -484,18 +487,18 @@
              (serdes/identity-hash user))))))
 
 (deftest hash-password-on-update-test
-  (testing "Setting `:password` with [[db/update!]] should hash the password, just like [[db/insert!]]"
+  (testing "Setting `:password` with [[t2/update!]] should hash the password, just like [[t2/insert!]]"
     (let [plaintext-password "password-1234"]
       (mt/with-temp User [{user-id :id} {:password plaintext-password}]
-        (let [salt                     (fn [] (db/select-one-field :password_salt User :id user-id))
-              hashed-password          (fn [] (db/select-one-field :password User :id user-id))
+        (let [salt                     (fn [] (t2/select-one-fn :password_salt User :id user-id))
+              hashed-password          (fn [] (t2/select-one-fn :password User :id user-id))
               original-hashed-password (hashed-password)]
           (testing "sanity check: check that password can be verified"
             (is (u.password/verify-password plaintext-password
                                             (salt)
                                             original-hashed-password)))
-          (is (= true
-                 (db/update! User user-id :password plaintext-password)))
+          (is (= 1
+                 (t2/update! User user-id {:password plaintext-password})))
           (let [new-hashed-password (hashed-password)]
             (testing "password should have been hashed"
               (is (not= plaintext-password

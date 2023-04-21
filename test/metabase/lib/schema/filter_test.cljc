@@ -3,6 +3,7 @@
    [clojure.test :refer [are deftest is testing]]
    [clojure.walk :as walk]
    [malli.core :as mc]
+   [malli.error :as me]
    [metabase.lib.schema]
    [metabase.lib.schema.expression :as expression]))
 
@@ -69,10 +70,9 @@
            [:does-not-contain {:case-sensitive false} "abc" "a"]
            [:time-interval field :last :hour]
            [:time-interval field 4 :hour]
-           [:time-interval {:include-current true} field :next :default]
+           [:time-interval {:include-current true} field :next :day]
            [:segment 1]
-           [:segment "segment-id"]
-           [:case [[[:= 1 1] true] [[:not-null field] [:< 0 1]]]]]]
+           [:segment "segment-id"]]]
       (doseq [op (filter-ops filter-expr)]
         (testing (str op " is a registered MBQL clause (a type-of* method is registered for it)")
           (is (not (identical? (get-method expression/type-of* op)
@@ -82,7 +82,7 @@
               :let          [filter-clause (ensure-uuids filter-clause)]]
         (testing (pr-str filter-clause)
           (is (= (expression/type-of filter-clause) :type/Boolean))
-          (is (mc/validate ::expression/boolean filter-clause))))
+          (is (not (me/humanize (mc/explain ::expression/boolean filter-clause))))))
       ;; now test the entire thing
       (is (mc/validate ::expression/boolean (ensure-uuids filter-expr))))))
 

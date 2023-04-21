@@ -26,8 +26,6 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
-   [metabase.util.honeysql-extensions :as hx]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
    [ring.util.codec :as codec])
@@ -383,7 +381,7 @@
   (sql-jdbc/query driver database {:select [:*]
                                    :from   [[(qp.store/with-store
                                                (qp.store/fetch-and-store-database! (u/the-id database))
-                                               (binding [hx/*honey-sql-version* (sql.qp/honey-sql-version driver)]
+                                               (sql.qp/with-driver-honey-sql-version driver
                                                  (sql.qp/->honeysql driver table)))]]}))
 
 (defmethod driver/describe-database :snowflake [driver database]

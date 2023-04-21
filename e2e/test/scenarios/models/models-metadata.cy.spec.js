@@ -6,6 +6,7 @@ import {
   popover,
   openQuestionActions,
   questionInfoButton,
+  addOrUpdateDashboardCard,
 } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { startQuestionFromModel } from "./helpers/e2e-models-helpers";
@@ -150,6 +151,28 @@ describe("scenarios > models metadata", () => {
 
     visualize();
     cy.findByText("Pre-tax ($)");
+  });
+
+  it("should allow setting column relations (metabase#29318)", () => {
+    cy.createNativeQuestion(
+      {
+        name: "Native Model",
+        dataset: true,
+        native: {
+          query: "SELECT * FROM ORDERS",
+        },
+      },
+      { visitQuestion: true },
+    );
+    openQuestionActions();
+    cy.findByText("Edit metadata").click();
+    openColumnOptions("USER_ID");
+    setColumnType("No special type", "Foreign Key");
+    cy.findByText("Select a target").click();
+    cy.findByText("People → ID").click();
+    cy.button("Save changes").click();
+    // TODO: Not much to do with it at the moment beyond saving it.
+    // Check that the relation is automatically suggested in the notebook once it is implemented.
   });
 
   it("should keep metadata in sync with the query", () => {
@@ -309,12 +332,10 @@ describe("scenarios > models metadata", () => {
       cy.get("@modelId").then(modelId => {
         cy.createDashboard().then(response => {
           const dashboardId = response.body.id;
-          cy.request("POST", `/api/dashboard/${dashboardId}/cards`, {
-            cardId: modelId,
-            row: 0,
-            col: 0,
-            size_x: 18,
-            size_y: 9,
+          addOrUpdateDashboardCard({
+            dashboard_id: dashboardId,
+            card_id: modelId,
+            card: { size_x: 18, size_y: 9 },
           });
 
           visitDashboard(dashboardId);

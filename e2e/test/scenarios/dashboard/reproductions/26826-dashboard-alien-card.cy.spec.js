@@ -5,7 +5,7 @@ import {
   saveDashboard,
 } from "e2e/support/helpers";
 
-describe.skip("issue 26826", () => {
+describe("issue 26826", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();

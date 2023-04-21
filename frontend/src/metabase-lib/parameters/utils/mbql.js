@@ -167,7 +167,7 @@ export function numberParameterValueToMBQL(parameter, fieldRef) {
   );
 }
 
-export function isFieldFilterParameterConveratableToMBQL(parameter) {
+function isFieldFilterParameterConveratableToMBQL(parameter) {
   const { value, target } = parameter;
   const hasValue = hasParameterValue(value);
   const hasWellFormedTarget = Array.isArray(target?.[1]);

@@ -5,6 +5,7 @@ import {
   filterWidget,
   showDashboardCardActions,
   visitDashboard,
+  addOrUpdateDashboardCard,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -521,58 +522,41 @@ describe("scenarios > dashboard > dashboard drill", () => {
             },
           ],
         });
+
         cy.log("Add question to the dashboard");
-
-        cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-          cardId: QUESTION_ID,
-          row: 0,
-          col: 0,
-          size_x: 14,
-          size_y: 10,
-        }).then(({ body: { id: DASH_CARD_ID } }) => {
-          cy.log("Connect dashboard filter to the question");
-
-          cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-            cards: [
-              {
-                id: DASH_CARD_ID,
-                card_id: QUESTION_ID,
-                row: 0,
-                col: 0,
-                size_x: 14,
-                size_y: 10,
-                series: [],
-                // Set "Click behavior"
-                visualization_settings: {
-                  click_behavior: {
-                    type: "crossfilter",
-                    parameterMapping: {
-                      "4ff53514": {
-                        source: {
-                          type: "column",
-                          id: "CREATED_AT",
-                          name: "Created At",
-                        },
-                        target: {
-                          type: "parameter",
-                          id: "4ff53514",
-                        },
-                        id: "4ff53514",
-                      },
+        addOrUpdateDashboardCard({
+          card_id: QUESTION_ID,
+          dashboard_id: DASHBOARD_ID,
+          card: {
+            // Set "Click behavior"
+            visualization_settings: {
+              click_behavior: {
+                type: "crossfilter",
+                parameterMapping: {
+                  "4ff53514": {
+                    source: {
+                      type: "column",
+                      id: "CREATED_AT",
+                      name: "Created At",
                     },
+                    target: {
+                      type: "parameter",
+                      id: "4ff53514",
+                    },
+                    id: "4ff53514",
                   },
                 },
-                // Connect filter and card
-                parameter_mappings: [
-                  {
-                    parameter_id: "4ff53514",
-                    card_id: QUESTION_ID,
-                    target: ["dimension", ["field", REVIEWS.CREATED_AT, null]],
-                  },
-                ],
+              },
+            },
+            // Connect filter and card
+            parameter_mappings: [
+              {
+                parameter_id: "4ff53514",
+                card_id: QUESTION_ID,
+                target: ["dimension", ["field", REVIEWS.CREATED_AT, null]],
               },
             ],
-          });
+          },
         });
 
         visitDashboard(DASHBOARD_ID);
@@ -640,40 +624,24 @@ describe("scenarios > dashboard > dashboard drill", () => {
     }).then(({ body: { id: QUESTION_ID } }) => {
       cy.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
         // Add previously added question to the dashboard
-        cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-          cardId: QUESTION_ID,
-          row: 0,
-          col: 0,
-          size_x: 10,
-          size_y: 6,
-        }).then(({ body: { id: DASH_CARD_ID } }) => {
-          // Add click through behavior to that question
-          cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-            cards: [
-              {
-                id: DASH_CARD_ID,
-                card_id: QUESTION_ID,
-                row: 0,
-                col: 0,
-                size_x: 10,
-                size_y: 6,
-                series: [],
-                visualization_settings: {
-                  column_settings: {
-                    [`["ref",["field-id",${PRODUCTS.CATEGORY}]]`]: {
-                      click_behavior: {
-                        type: "link",
-                        linkType: "url",
-                        linkTemplate: "/",
-                        linkTextTemplate: LINK_NAME,
-                      },
-                    },
+        addOrUpdateDashboardCard({
+          card_id: QUESTION_ID,
+          dashboard_id: DASHBOARD_ID,
+          card: {
+            // Add click through behavior to that question
+            visualization_settings: {
+              column_settings: {
+                [`["ref",["field-id",${PRODUCTS.CATEGORY}]]`]: {
+                  click_behavior: {
+                    type: "link",
+                    linkType: "url",
+                    linkTemplate: "/",
+                    linkTextTemplate: LINK_NAME,
                   },
                 },
-                parameter_mappings: [],
               },
-            ],
-          });
+            },
+          },
         });
 
         visitDashboard(DASHBOARD_ID);
@@ -728,43 +696,30 @@ describe("scenarios > dashboard > dashboard drill", () => {
           ],
         });
         // Add question to the dashboard
-        cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-          cardId: QUESTION_ID,
-          row: 0,
-          col: 0,
-          size_x: 14,
-          size_y: 10,
-        }).then(({ body: { id: DASH_CARD_ID } }) => {
-          // Connect dashboard filter to the question
-          cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-            cards: [
+        addOrUpdateDashboardCard({
+          card_id: QUESTION_ID,
+          dashboard_id: DASHBOARD_ID,
+          card: {
+            size_x: 14,
+            size_y: 10,
+            // Connect dashboard filter to the question
+            parameter_mappings: [
               {
-                id: DASH_CARD_ID,
+                parameter_id: "354cb21f",
                 card_id: QUESTION_ID,
-                row: 0,
-                col: 0,
-                size_x: 14,
-                size_y: 10,
-                series: [],
-                visualization_settings: {},
-                parameter_mappings: [
-                  {
-                    parameter_id: "354cb21f",
-                    card_id: QUESTION_ID,
-                    target: [
-                      "dimension",
-                      [
-                        "joined-field",
-                        "Products",
-                        ["field-id", PRODUCTS.CREATED_AT],
-                      ],
-                    ],
-                  },
+                target: [
+                  "dimension",
+                  [
+                    "joined-field",
+                    "Products",
+                    ["field-id", PRODUCTS.CREATED_AT],
+                  ],
                 ],
               },
             ],
-          });
+          },
         });
+
         // Set the filter to `previous 30 years` directly through the url
         cy.visit(`/dashboard/${DASHBOARD_ID}?date_filter=past30years`);
       });
@@ -804,32 +759,16 @@ describe("scenarios > dashboard > dashboard drill", () => {
       }).then(({ body: { id: QUESTION2_ID } }) => {
         cy.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
           // Add the first question to the dashboard
-          cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-            cardId: QUESTION1_ID,
-            row: 0,
-            col: 0,
-            size_x: 12,
-            size_y: 8,
-          }).then(({ body: { id: DASH_CARD1_ID } }) => {
-            cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-              cards: [
+          addOrUpdateDashboardCard({
+            card_id: QUESTION1_ID,
+            dashboard_id: DASHBOARD_ID,
+            card: {
+              series: [
                 {
-                  id: DASH_CARD1_ID,
-                  card_id: QUESTION1_ID,
-                  row: 0,
-                  col: 0,
-                  size_x: 12,
-                  size_y: 8,
-                  series: [
-                    {
-                      id: QUESTION2_ID,
-                    },
-                  ],
-                  visualization_settings: {},
-                  parameter_mappings: [],
+                  id: QUESTION2_ID,
                 },
               ],
-            });
+            },
           });
 
           visitDashboard(DASHBOARD_ID);
@@ -1006,39 +945,23 @@ function createDashboard(
         ],
       });
 
-      cy.request("POST", `/api/dashboard/${dashboardId}/cards`, {
-        cardId: questionId,
-        row: 0,
-        col: 0,
-        size_x: 6,
-        size_y: 6,
-      }).then(({ body: { id: dashCardId } }) => {
-        cy.request("PUT", `/api/dashboard/${dashboardId}/cards`, {
-          cards: [
+      addOrUpdateDashboardCard({
+        card_id: questionId,
+        dashboard_id: dashboardId,
+        card: {
+          parameter_mappings: [
             {
-              id: dashCardId,
+              parameter_id: "e8f79be9",
               card_id: questionId,
-              row: 0,
-              col: 0,
-              size_x: 6,
-              size_y: 6,
-              parameter_mappings: [
-                {
-                  parameter_id: "e8f79be9",
-                  card_id: questionId,
-                  target: [
-                    "dimension",
-                    ["field", PEOPLE.NAME, { "source-field": ORDERS.USER_ID }],
-                  ],
-                },
+              target: [
+                "dimension",
+                ["field", PEOPLE.NAME, { "source-field": ORDERS.USER_ID }],
               ],
-              visualization_settings,
             },
           ],
-        });
-
-        callback(dashboardId);
-      });
+          visualization_settings,
+        },
+      }).then(() => callback(dashboardId));
     },
   );
 }

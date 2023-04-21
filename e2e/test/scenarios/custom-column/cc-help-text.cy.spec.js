@@ -15,12 +15,12 @@ describe("scenarios > question > custom column > help text", () => {
 
   it("should appear while inside a function", () => {
     enterCustomColumnDetails({ formula: "Lower(" });
-    cy.findByText("lower(text)");
+    cy.contains("lower(text)");
   });
 
   it("should appear after a field reference", () => {
     enterCustomColumnDetails({ formula: "Lower([Category]" });
-    cy.findByText("lower(text)");
+    cy.contains("lower(text)");
   });
 
   it("should not appear while outside a function", () => {
@@ -34,7 +34,7 @@ describe("scenarios > question > custom column > help text", () => {
     cy.findByText("round([Temperature])");
 
     // Click outside of formula field instead of blur
-    cy.findByText(/Field formula/i).click();
+    cy.findByText("Expression").click();
     cy.findByText("round([Temperature])").should("not.exist");
 
     // Should also work with escape key

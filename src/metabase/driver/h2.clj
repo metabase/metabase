@@ -169,11 +169,23 @@
     (boolean
      ;; Command types are organized with all DDL commands listed first, so all ddl commands are before ALTER_SEQUENCE.
      ;; see https://github.com/h2database/h2database/blob/master/h2/src/main/org/h2/command/CommandInterface.java#L297
+     ;; This doesn't list all the possible commands, but it lists the most common and useful ones.
      (and (every? #{CommandInterface/INSERT
                     CommandInterface/MERGE
                     CommandInterface/TRUNCATE_TABLE
                     CommandInterface/UPDATE
                     CommandInterface/DELETE
+                    CommandInterface/CREATE_TABLE
+                    CommandInterface/DROP_TABLE
+                    CommandInterface/CREATE_SCHEMA
+                    CommandInterface/DROP_SCHEMA
+                    CommandInterface/ALTER_TABLE_RENAME
+                    CommandInterface/ALTER_TABLE_ADD_COLUMN
+                    CommandInterface/ALTER_TABLE_DROP_COLUMN
+                    CommandInterface/ALTER_TABLE_ALTER_COLUMN_CHANGE_TYPE
+                    CommandInterface/ALTER_TABLE_ALTER_COLUMN_NOT_NULL
+                    CommandInterface/ALTER_TABLE_ALTER_COLUMN_DROP_NOT_NULL
+                    CommandInterface/ALTER_TABLE_ALTER_COLUMN_RENAME
                     ;; Read-only commands might not make sense for actions, but they are allowed
                     CommandInterface/SELECT ; includes SHOW, TABLE, VALUES
                     CommandInterface/EXPLAIN

@@ -531,8 +531,8 @@
 
   ```
   (let [card-id 1
-      {:keys [dataset_query] :as card} (db/select-one card/Card :id card-id)
-      user                             (db/select-one user/User)
+      {:keys [dataset_query] :as card} (t2/select-one card/Card :id card-id)
+      user                             (t2/select-one user/User)
       query-results                    (binding [qp.perms/*card-id* nil]
                                          (qp/process-query-and-save-execution!
                                            (-> dataset_query

@@ -47,7 +47,7 @@ import type Table from "./Table";
 import type Metadata from "./Metadata";
 import { getIconForField, getUniqueFieldId } from "./utils/fields";
 
-export const LONG_TEXT_MIN = 80;
+const LONG_TEXT_MIN = 80;
 
 /**
  * @typedef { import("./Metadata").FieldValues } FieldValues

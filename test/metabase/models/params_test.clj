@@ -6,9 +6,9 @@
    [metabase.models :refer [Card Field]]
    [metabase.models.params :as params]
    [metabase.test :as mt]
-   [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
-   [toucan.util.test :as tt]))
+   [toucan.util.test :as tt]
+   [toucan2.core :as t2]))
 
 (deftest wrap-field-id-if-needed-test
   (doseq [[x expected] {10                                      [:field 10 nil]
@@ -32,13 +32,13 @@
                             :base_type        :type/Text
                             :semantic_type    :type/Name
                             :has_field_values :list}}
-           (-> (db/select-one [Field :name :table_id :semantic_type], :id (mt/id :venues :id))
+           (-> (t2/select-one [Field :name :table_id :semantic_type], :id (mt/id :venues :id))
                (hydrate :name_field)
                mt/derecordize))))
 
   (testing "make sure it works for multiple fields efficiently. Should only require one DB call to hydrate many Fields"
-    (let [venues-fields (db/select Field :table_id (mt/id :venues))]
-      (db/with-call-counting [call-count]
+    (let [venues-fields (t2/select Field :table_id (mt/id :venues))]
+      (t2/with-call-count [call-count]
         (hydrate venues-fields :name_field)
         (is (= 1
                (call-count))))))
@@ -48,7 +48,7 @@
             :table_id      (mt/id :venues)
             :semantic_type :type/Category
             :name_field    nil}
-           (-> (db/select-one [Field :name :table_id :semantic_type], :id (mt/id :venues :price))
+           (-> (t2/select-one [Field :name :table_id :semantic_type], :id (mt/id :venues :price))
                (hydrate :name_field)
                mt/derecordize))))
 
@@ -57,7 +57,7 @@
             :table_id      (mt/id :checkins)
             :semantic_type :type/PK
             :name_field    nil}
-           (-> (db/select-one [Field :name :table_id :semantic_type], :id (mt/id :checkins :id))
+           (-> (t2/select-one [Field :name :table_id :semantic_type], :id (mt/id :checkins :id))
                (hydrate :name_field)
                mt/derecordize)))))
 

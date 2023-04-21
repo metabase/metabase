@@ -36,7 +36,7 @@ export function openNativeEditor({
 
   databaseName && cy.findByText(databaseName).click();
 
-  return cy.get(".ace_content").as(alias).should("be.visible");
+  return cy.findByTestId("native-query-editor").as(alias).should("be.visible");
 }
 
 /**
@@ -133,11 +133,30 @@ export function visitQuestion(id) {
 }
 
 /**
+ * Visit a model and wait for its query to load.
+ *
+ * @param {number} id
+ */
+export function visitModel(id, { hasDataAccess = true } = {}) {
+  const alias = "modelQuery" + id;
+
+  if (hasDataAccess) {
+    cy.intercept("POST", `/api/dataset`).as(alias);
+  } else {
+    cy.intercept("POST", `/api/card/**/${id}/query`).as(alias);
+  }
+
+  cy.visit(`/model/${id}`);
+
+  cy.wait("@" + alias);
+}
+
+/**
  * Visit a dashboard and wait for the related queries to load.
  *
  * @param {number} dashboard_id
  */
-export function visitDashboard(dashboard_id) {
+export function visitDashboard(dashboard_id, { params = {} } = {}) {
   // Some users will not have permissions for this request
   cy.request({
     method: "GET",
@@ -172,7 +191,10 @@ export function visitDashboard(dashboard_id) {
         },
       );
 
-      cy.visit(`/dashboard/${dashboard_id}`);
+      cy.visit({
+        url: `/dashboard/${dashboard_id}`,
+        qs: params,
+      });
 
       cy.wait(aliases);
     } else {
@@ -253,11 +275,14 @@ export function visitPublicQuestion(id) {
   );
 }
 
-export function visitPublicDashboard(id) {
+export function visitPublicDashboard(id, { params = {} } = {}) {
   cy.request("POST", `/api/dashboard/${id}/public_link`).then(
     ({ body: { uuid } }) => {
       cy.signOut();
-      cy.visit(`/public/dashboard/${uuid}`);
+      cy.visit({
+        url: `/public/dashboard/${uuid}`,
+        qs: params,
+      });
     },
   );
 }

@@ -109,7 +109,7 @@ export const setCardAndRun = (nextCard, shouldUpdateUrl = true) => {
       : null;
 
     // Update the card and originalCard before running the actual query
-    dispatch.action(SET_CARD_AND_RUN, { card, originalCard });
+    dispatch({ type: SET_CARD_AND_RUN, payload: { card, originalCard } });
     dispatch(runQuestionQuery({ shouldUpdateUrl }));
 
     // Load table & database metadata for the current question
@@ -212,7 +212,10 @@ export const apiCreateQuestion = question => {
     // selected in the UI.
     const card = createdQuestion.lockDisplay().card();
 
-    dispatch.action(API_CREATE_QUESTION, card);
+    dispatch({ type: API_CREATE_QUESTION, payload: card });
+
+    const metadataOptions = { reload: createdQuestion.isDataset() };
+    await dispatch(loadMetadataForCard(card, metadataOptions));
   };
 };
 
@@ -222,7 +225,7 @@ export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
     const originalQuestion = getOriginalQuestion(getState());
     question = question || getQuestion(getState());
 
-    rerunQuery = rerunQuery || getIsResultDirty(getState());
+    rerunQuery = rerunQuery ?? getIsResultDirty(getState());
 
     // Needed for persisting visualization columns for pulses/alerts, see #6749
     const series = getTransformedSeries(getState());
@@ -259,11 +262,12 @@ export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
       updatedQuestion.type(),
     );
 
-    dispatch.action(API_UPDATE_QUESTION, updatedQuestion.card());
+    dispatch({ type: API_UPDATE_QUESTION, payload: updatedQuestion.card() });
+
+    const metadataOptions = { reload: question.isDataset() };
+    await dispatch(loadMetadataForCard(question.card(), metadataOptions));
 
     if (rerunQuery) {
-      const metadataOptions = { reload: question.isDataset() };
-      await dispatch(loadMetadataForCard(question.card(), metadataOptions));
       dispatch(runQuestionQuery());
     }
   };

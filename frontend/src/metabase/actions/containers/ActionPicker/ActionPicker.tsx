@@ -8,7 +8,6 @@ import { useToggle } from "metabase/hooks/use-toggle";
 import Actions from "metabase/entities/actions";
 import Search from "metabase/entities/search";
 
-import { isImplicitAction } from "metabase/actions/utils";
 import ActionCreator from "metabase/actions/containers/ActionCreator";
 
 import type { Card, WritebackAction } from "metabase-types/api";
@@ -110,7 +109,7 @@ function ModelActionPicker({
                 onClick={() => onClick(action)}
               >
                 <span>{action.name}</span>
-                {!isImplicitAction(action) && (
+                {action.type !== "implicit" && (
                   <EditButton
                     icon="pencil"
                     onlyIcon

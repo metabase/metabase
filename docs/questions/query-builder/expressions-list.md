@@ -50,6 +50,7 @@ For an introduction to expressions, check out [Writing expressions in the notebo
   - [lower](#lower)
   - [minute](#minute)
   - [month](#month)
+  - [now](./expressions/now.md)
   - [power](#power)
   - [quarter](#quarter)
   - [regexextract](./expressions/regexextract.md)
@@ -429,6 +430,12 @@ Takes a datetime and returns the month number (1-12) as an integer.
 Syntax: `month([datetime column])`.
 
 Example: `month("2021-03-25T12:52:37")` would return the month as an integer, `3`.
+
+### [now](./expressions/now.md)
+
+Returns the current date and time using your Metabase [report timezone](../../configuring-metabase/localization.md#report-timezone).
+
+Syntax: `now`.
 
 ### power
 

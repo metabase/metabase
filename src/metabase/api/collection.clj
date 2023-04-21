@@ -35,8 +35,8 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]]))
+   [toucan.hydrate :refer [hydrate]]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -75,7 +75,7 @@
    namespace (s/maybe su/NonBlankString)}
   (let [archived? (Boolean/parseBoolean archived)
         exclude-other-user-collections? (Boolean/parseBoolean exclude-other-user-collections)]
-    (as-> (db/select Collection
+    (as-> (t2/select Collection
             {:where    [:and
                         [:= :archived archived?]
                         [:= :namespace namespace]
@@ -138,7 +138,7 @@
                                                           :from            [:report_card]
                                                           :where           [:= :archived false]}))
         colls (cond->>
-                (db/select Collection
+                (t2/select Collection
                   {:where [:and
                            (when exclude-archived?
                              [:= :archived false])
@@ -165,7 +165,7 @@
                                                                                :from            [:report_card]
                                                                                :where           [:= :archived false]}))
            colls                           (cond->>
-                                             (db/select Collection
+                                             (t2/select Collection
                                                {:where [:and
                                                         (when exclude-archived?
                                                           [:= :archived false])
@@ -322,25 +322,28 @@
             :dataset_query)))
 
 (defn- card-query [dataset? collection {:keys [archived? pinned-state]}]
-  (-> {:select    [:c.id :c.name :c.description :c.entity_id :c.collection_position :c.display :c.collection_preview
-                   :c.dataset_query
-                   [(h2x/literal (if dataset? "dataset" "card")) :model]
-                   [:u.id :last_edit_user]
-                   [:u.email :last_edit_email]
-                   [:u.first_name :last_edit_first_name]
-                   [:u.last_name :last_edit_last_name]
-                   [:r.timestamp :last_edit_timestamp]
-                   [{:select   [:status]
-                     :from     [:moderation_review]
-                     :where    [:and
-                                [:= :moderated_item_type "card"]
-                                [:= :moderated_item_id :c.id]
-                                [:= :most_recent true]]
-                     ;; limit 1 to ensure that there is only one result but this invariant should hold true, just
-                     ;; protecting against potential bugs
-                     :order-by [[:id :desc]]
-                     :limit    1}
-                    :moderated_status]]
+  (-> {:select    (cond->
+                    [:c.id :c.name :c.description :c.entity_id :c.collection_position :c.display :c.collection_preview
+                     :c.dataset_query
+                     [(h2x/literal (if dataset? "dataset" "card")) :model]
+                     [:u.id :last_edit_user]
+                     [:u.email :last_edit_email]
+                     [:u.first_name :last_edit_first_name]
+                     [:u.last_name :last_edit_last_name]
+                     [:r.timestamp :last_edit_timestamp]
+                     [{:select   [:status]
+                       :from     [:moderation_review]
+                       :where    [:and
+                                  [:= :moderated_item_type "card"]
+                                  [:= :moderated_item_id :c.id]
+                                  [:= :most_recent true]]
+                       ;; limit 1 to ensure that there is only one result but this invariant should hold true, just
+                       ;; protecting against potential bugs
+                       :order-by [[:id :desc]]
+                       :limit    1}
+                      :moderated_status]]
+                    dataset?
+                    (conj :c.database_id))
        :from      [[:report_card :c]]
        ;; todo: should there be a flag, or a realized view?
        :left-join [[{:select    [:r1.*]
@@ -557,7 +560,7 @@
   [:id :name :description :entity_id :display [:collection_preview :boolean] :dataset_query
    :model :collection_position :authority_level [:personal_owner_id :integer]
    :last_edit_email :last_edit_first_name :last_edit_last_name :moderated_status :icon
-   [:last_edit_user :integer] [:last_edit_timestamp :timestamp]])
+   [:last_edit_user :integer] [:last_edit_timestamp :timestamp] [:database_id :integer]])
 
 (defn- add-missing-columns
   "Ensures that all necessary columns are in the select-columns collection, adding `[nil :column]` as necessary."
@@ -820,7 +823,7 @@
   Root Collection perms."
   [collection-id collection-namespace]
   (api/write-check (if collection-id
-                     (db/select-one Collection :id collection-id)
+                     (t2/select-one Collection :id collection-id)
                      (cond-> collection/root-collection
                        collection-namespace (assoc :namespace collection-namespace)))))
 
@@ -832,15 +835,17 @@
   ;; Now create the new Collection :)
   (api/check-403 (or (nil? authority_level)
                      (and api/*is-superuser?* authority_level)))
-  (db/insert! Collection
-    (merge
-     {:name        name
-      :color       color
-      :description description
-      :authority_level authority_level
-      :namespace   namespace}
-     (when parent_id
-       {:location (collection/children-location (db/select-one [Collection :location :id] :id parent_id))}))))
+  (first
+    (t2/insert-returning-instances!
+      Collection
+      (merge
+        {:name        name
+         :color       color
+         :description description
+         :authority_level authority_level
+         :namespace   namespace}
+        (when parent_id
+          {:location (collection/children-location (t2/select-one [Collection :location :id] :id parent_id))})))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/"
@@ -867,7 +872,7 @@
     (let [orig-location (:location collection-before-update)
           new-parent-id (:parent_id collection-updates)
           new-parent    (if new-parent-id
-                          (db/select-one [Collection :location :id] :id new-parent-id)
+                          (t2/select-one [Collection :location :id] :id new-parent-id)
                           collection/root-collection)
           new-location  (collection/children-location new-parent)]
       ;; check and make sure we're actually supposed to be moving something
@@ -898,7 +903,7 @@
   [collection-before-update collection-updates]
   (when (api/column-will-change? :archived collection-before-update collection-updates)
     (when-let [alerts (seq (pulse/retrieve-alerts-for-cards
-                            {:card-ids (db/select-ids Card :collection_id (u/the-id collection-before-update))}))]
+                            {:card-ids (t2/select-pks-set Card :collection_id (u/the-id collection-before-update))}))]
       (api.card/delete-alert-and-notify-archived! alerts))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
@@ -926,13 +931,13 @@
     ;; that's not actually a property of Collection, and since we handle moving a Collection separately below.
     (let [updates (u/select-keys-when collection-updates :present [:name :color :description :archived :authority_level])]
       (when (seq updates)
-        (db/update! Collection id updates)))
+        (t2/update! Collection id updates)))
     ;; if we're trying to *move* the Collection (instead or as well) go ahead and do that
     (move-collection-if-needed! collection-before-update collection-updates)
     ;; if we *did* end up archiving this Collection, we most post a few notifications
     (maybe-send-archived-notificaitons! collection-before-update collection-updates))
   ;; finally, return the updated object
-  (-> (db/select-one Collection :id id)
+  (-> (t2/select-one Collection :id id)
       (hydrate :parent_id)))
 
 ;;; ------------------------------------------------ GRAPH ENDPOINTS -------------------------------------------------

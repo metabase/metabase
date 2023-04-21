@@ -7,6 +7,7 @@ import {
   navigationSidebar,
   openNativeEditor,
   openCollectionMenu,
+  openCollectionItemMenu,
   modal,
 } from "e2e/support/helpers";
 
@@ -103,7 +104,7 @@ describe("collection permissions", () => {
 
                 function move(item) {
                   cy.visit("/collection/root");
-                  openEllipsisMenuFor(item);
+                  openCollectionItemMenu(item);
                   popover().within(() => {
                     cy.findByText("Move").click();
                   });
@@ -141,7 +142,7 @@ describe("collection permissions", () => {
 
                 function duplicate(item) {
                   cy.visit("/collection/root");
-                  openEllipsisMenuFor(item);
+                  openCollectionItemMenu(item);
                   cy.findByText("Duplicate").click();
                   cy.get(".Modal")
                     .as("modal")
@@ -178,7 +179,7 @@ describe("collection permissions", () => {
                 describe("archive page", () => {
                   it("should show archived items (metabase#15080, metabase#16617)", () => {
                     cy.visit("collection/root");
-                    openEllipsisMenuFor("Orders");
+                    openCollectionItemMenu("Orders");
                     popover().within(() => {
                       cy.findByText("Archive").click();
                     });
@@ -282,7 +283,7 @@ describe("collection permissions", () => {
                     cy.icon("lock").should("not.exist");
                     /**
                      *  We can take 2 routes from here - it will really depend on the design decision:
-                     *    1. Edit icon shouldn't exist at all in which case some other call to action menu/button should exist
+                     *    1. Edit icon shouldn't exist at all in which case some other call to drill-through menu/button should exist
                      *       notifying the user that this collection is archived and prompting them to unarchive it
                      *    2. Edit icon stays but with "Unarchive this item" ONLY in the menu
                      */
@@ -323,7 +324,7 @@ describe("collection permissions", () => {
 
                 function archiveUnarchive(item, expectedEntityName) {
                   cy.visit("/collection/root");
-                  openEllipsisMenuFor(item);
+                  openCollectionItemMenu(item);
                   popover().within(() => {
                     cy.findByText("Archive").click();
                   });
@@ -354,7 +355,7 @@ describe("collection permissions", () => {
             it("should be offered to duplicate dashboard in collections they have `read` access to", () => {
               const { first_name, last_name } = USERS[user];
               cy.visit("/collection/root");
-              openEllipsisMenuFor("Orders in a dashboard");
+              openCollectionItemMenu("Orders in a dashboard");
               popover().findByText("Duplicate").click();
               cy.findByTestId("select-button").findByText(
                 `${first_name} ${last_name}'s Personal Collection`,
@@ -422,19 +423,12 @@ describe("collection permissions", () => {
   });
 });
 
-function openEllipsisMenuFor(item, index = 0) {
-  cy.findAllByText(item)
-    .eq(index)
-    .closest("tr")
-    .within(() => cy.icon("ellipsis").click());
-}
-
 function clickButton(name) {
   cy.findByRole("button", { name }).should("not.be.disabled").click();
 }
 
 function pinItem(item) {
-  openEllipsisMenuFor(item);
+  openCollectionItemMenu(item);
   popover().within(() => cy.icon("pin").click());
 }
 

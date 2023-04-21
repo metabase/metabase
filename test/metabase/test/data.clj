@@ -38,7 +38,8 @@
    [colorize.core :as colorize]
    [hawk.init]
    [metabase.db :as mdb]
-   [metabase.db.schema-migrations-test.impl :as schema-migrations-test.impl]
+   [metabase.db.schema-migrations-test.impl
+    :as schema-migrations-test.impl]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]

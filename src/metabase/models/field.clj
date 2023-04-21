@@ -18,6 +18,7 @@
    [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
    [toucan.models :as models]
+   [toucan2.core :as t2]
    [toucan2.tools.hydrate :as t2.hydrate]))
 
 (set! *warn-on-reflection* true)
@@ -151,7 +152,7 @@
    ^{::memoize/args-fn (fn [[table-id read-or-write]]
                          [(mdb.connection/unique-identifier) table-id read-or-write])}
    (fn [table-id read-or-write]
-     (let [{schema :schema, db-id :db_id} (db/select-one ['Table :schema :db_id] :id table-id)]
+     (let [{schema :schema, db-id :db_id} (t2/select-one ['Table :schema :db_id] :id table-id)]
        (perms-objects-set* db-id schema table-id read-or-write)))
    :ttl/threshold 5000))
 
@@ -206,7 +207,7 @@
 (defn values
   "Return the `FieldValues` associated with this `field`."
   [{:keys [id]}]
-  (db/select [FieldValues :field_id :values], :field_id id))
+  (t2/select [FieldValues :field_id :values], :field_id id))
 
 (defn- select-field-id->instance
   "Select instances of `model` related by `field_id` FK to a Field in `fields`, and return a map of Field ID -> model
@@ -220,7 +221,7 @@
   [fields model & conditions]
   (let [field-ids (set (map :id fields))]
     (m/index-by :field_id (when (seq field-ids)
-                            (apply db/select model :field_id [:in field-ids] conditions)))))
+                            (apply t2/select model :field_id [:in field-ids] conditions)))))
 
 (mi/define-batched-hydration-method with-values
   :values
@@ -319,7 +320,7 @@
                                                (:fk_target_field_id field))]
                                 (:fk_target_field_id field)))
         id->target-field (m/index-by :id (when (seq target-field-ids)
-                                           (readable-fields-only (db/select Field :id [:in target-field-ids]))))]
+                                           (readable-fields-only (t2/select Field :id [:in target-field-ids]))))]
     (for [field fields
           :let  [target-id (:fk_target_field_id field)]]
       (assoc field :target (id->target-field target-id)))))
@@ -328,9 +329,9 @@
 (defn qualified-name-components
   "Return the pieces that represent a path to `field`, of the form `[table-name parent-fields-name* field-name]`."
   [{field-name :name, table-id :table_id, parent-id :parent_id}]
-  (conj (vec (if-let [parent (db/select-one Field :id parent-id)]
+  (conj (vec (if-let [parent (t2/select-one Field :id parent-id)]
                (qualified-name-components parent)
-               (let [{table-name :name, schema :schema} (db/select-one ['Table :name :schema], :id table-id)]
+               (let [{table-name :name, schema :schema} (t2/select-one ['Table :name :schema], :id table-id)]
                  (conj (when schema
                          [schema])
                        table-name))))
@@ -351,7 +352,7 @@
   (mdb.connection/memoize-for-application-db
    (fn [field-id]
      {:pre [(integer? field-id)]}
-     (db/select-one-field :table_id Field, :id field-id))))
+     (t2/select-one-fn :table_id Field, :id field-id))))
 
 (defn field-id->database-id
   "Return the ID of the Database this Field belongs to."
@@ -364,7 +365,7 @@
   "Return the `Table` associated with this `Field`."
   {:arglists '([field])}
   [{:keys [table_id]}]
-  (db/select-one 'Table, :id table_id))
+  (t2/select-one 'Table, :id table_id))
 
 ;;; ------------------------------------------------- Serialization -------------------------------------------------
 
@@ -372,9 +373,9 @@
 ;; a trio of strings with schema maybe nil.
 (defmethod serdes/generate-path "Field" [_ {table_id :table_id field :name}]
   (let [table (when (number? table_id)
-                   (db/select-one 'Table :id table_id))
+                   (t2/select-one 'Table :id table_id))
         db    (when table
-                (db/select-one-field :name 'Database :id (:db_id table)))
+                (t2/select-one-fn :name 'Database :id (:db_id table)))
         [db schema table] (if (number? table_id)
                             [db (:schema table) (:name table)]
                             ;; If table_id is not a number, it's already been exported as a [db schema table] triple.
@@ -388,7 +389,8 @@
   name)
 
 (defmethod serdes/extract-query "Field" [_model-name _opts]
-  (let [dimensions (->> (db/select Dimension)
+  (let [d (t2/select Dimension)
+        dimensions (->> d
                         (group-by :field_id))]
     (eduction (map #(assoc % :dimensions (get dimensions (:id %))))
               (db/select-reducible Field))))
@@ -411,34 +413,34 @@
   (->> (for [dim dimensions]
          (-> (into (sorted-map) dim)
              (dissoc :field_id :updated_at) ; :field_id is implied by the nesting under that field.
-             (update :human_readable_field_id serdes/export-field-fk)))
+             (update :human_readable_field_id serdes/*export-field-fk*)))
        (sort-by :created_at)))
 
 (defmethod serdes/extract-one "Field"
   [_model-name _opts field]
   (let [field (if (contains? field :dimensions)
                 field
-                (assoc field :dimensions (db/select Dimension :field_id (:id field))))]
+                (assoc field :dimensions (t2/select Dimension :field_id (:id field))))]
     (-> (serdes/extract-one-basics "Field" field)
         (update :dimensions         extract-dimensions)
-        (update :table_id           serdes/export-table-fk)
-        (update :fk_target_field_id serdes/export-field-fk))))
+        (update :table_id           serdes/*export-table-fk*)
+        (update :fk_target_field_id serdes/*export-field-fk*))))
 
 (defmethod serdes/load-xform "Field"
   [field]
   (-> (serdes/load-xform-basics field)
-      (update :table_id           serdes/import-table-fk)
-      (update :fk_target_field_id serdes/import-field-fk)))
+      (update :table_id           serdes/*import-table-fk*)
+      (update :fk_target_field_id serdes/*import-field-fk*)))
 
 (defmethod serdes/load-find-local "Field"
   [path]
   (let [table (serdes/load-find-local (pop path))]
-    (db/select-one Field :name (-> path last :id) :table_id (:id table))))
+    (t2/select-one Field :name (-> path last :id) :table_id (:id table))))
 
 (defmethod serdes/load-one! "Field" [ingested maybe-local]
   (let [field ((get-method serdes/load-one! :default) (dissoc ingested :dimensions) maybe-local)]
     (doseq [dim (:dimensions ingested)]
-      (let [local (db/select-one Dimension :entity_id (:entity_id dim))
+      (let [local (t2/select-one Dimension :entity_id (:entity_id dim))
             dim   (assoc dim
                          :field_id    (:id field)
                          :serdes/meta [{:model "Dimension" :id (:entity_id dim)}])]

@@ -8,8 +8,8 @@
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
-   [toucan.models :as models]))
+   [toucan.models :as models]
+   [toucan2.core :as t2]))
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
@@ -27,7 +27,7 @@
   (u/prog1 updates
     ;; throw an Exception if someone tries to update creator_id
     (when (contains? updates :creator_id)
-      (when (not= creator_id (db/select-one-field :creator_id NativeQuerySnippet :id id))
+      (when (not= creator_id (t2/select-one-fn :creator_id NativeQuerySnippet :id id))
         (throw (UnsupportedOperationException. (tru "You cannot update the creator_id of a NativeQuerySnippet.")))))
     (collection/check-collection-namespace NativeQuerySnippet (:collection_id updates))))
 
@@ -78,14 +78,14 @@
 (defmethod serdes/extract-one "NativeQuerySnippet"
   [_model-name _opts snippet]
   (-> (serdes/extract-one-basics "NativeQuerySnippet" snippet)
-      (update :creator_id serdes/export-user)
-      (update :collection_id #(when % (serdes/export-fk % 'Collection)))))
+      (update :creator_id serdes/*export-user*)
+      (update :collection_id #(when % (serdes/*export-fk* % 'Collection)))))
 
 (defmethod serdes/load-xform "NativeQuerySnippet" [snippet]
   (-> snippet
       serdes/load-xform-basics
-      (update :creator_id serdes/import-user)
-      (update :collection_id #(when % (serdes/import-fk % 'Collection)))))
+      (update :creator_id serdes/*import-user*)
+      (update :collection_id #(when % (serdes/*import-fk* % 'Collection)))))
 
 (defmethod serdes/dependencies "NativeQuerySnippet"
   [{:keys [collection_id]}]

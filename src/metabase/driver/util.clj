@@ -15,7 +15,7 @@
    [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db])
+   [toucan2.core :as t2])
   (:import
    (java.io ByteArrayInputStream)
    (java.security KeyFactory KeyStore PrivateKey)
@@ -173,7 +173,7 @@
    ^{::memoize/args-fn (fn [[db-id]]
                          [(mdb.connection/unique-identifier) db-id])}
    (fn [db-id]
-     (db/select-one-field :engine 'Database, :id db-id))
+     (t2/select-one-fn :engine 'Database, :id db-id))
    :ttl/threshold 1000))
 
 (defn database->driver
@@ -465,7 +465,7 @@
 
 (def partner-drivers
   "The set of other drivers in the partnership program"
-  #{"clickhouse" "exasol" "firebolt" "starburst"})
+  #{"clickhouse" "exasol" "firebolt" "ocient" "starburst"})
 
 (defn driver-source
   "Return the source type of the driver: official, partner, or community"

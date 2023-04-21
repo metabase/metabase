@@ -3,6 +3,8 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.driver.mysql-test :as mysql-test]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.sync.describe-table
     :as sql-jdbc.describe-table]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
@@ -11,7 +13,7 @@
    [metabase.test :as mt]
    [metabase.test.data.one-off-dbs :as one-off-dbs]
    [metabase.util :as u]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (defn- sql-jdbc-drivers-with-default-describe-table-impl
   "All SQL JDBC drivers that use the default SQL JDBC implementation of `describe-table`. (As far as I know, this is
@@ -88,7 +90,7 @@
                  {:name "latitude"    :base-type :type/Float}
                  {:name "name"        :base-type :type/Text}
                  {:name "id"          :base-type :type/Integer}}
-               (->> (sql-jdbc.describe-table/describe-table driver/*driver* (mt/id) (db/select-one Table :id (mt/id :venues)))
+               (->> (sql-jdbc.describe-table/describe-table driver/*driver* (mt/id) (t2/select-one Table :id (mt/id :venues)))
                     :fields
                     (map (fn [{:keys [name base-type]}]
                            {:name      (u/lower-case-en name)
@@ -104,7 +106,7 @@
                                                                   (when (= (u/lower-case-en column-name) "longitude")
                                                                     :type/Longitude))]
       (is (= [["longitude" :type/Longitude]]
-             (->> (sql-jdbc.describe-table/describe-table (or driver/*driver* :h2) (mt/id) (db/select-one Table :id (mt/id :venues)))
+             (->> (sql-jdbc.describe-table/describe-table (or driver/*driver* :h2) (mt/id) (t2/select-one Table :id (mt/id :venues)))
                   :fields
                   (filter :semantic-type)
                   (map (juxt (comp u/lower-case-en :name) :semantic-type))))))))
@@ -143,6 +145,21 @@
              (transduce
                #'sql-jdbc.describe-table/describe-json-xform
                #'sql-jdbc.describe-table/describe-json-rf [json-map]))))))
+
+(deftest json-details-only-test
+  (testing "fields with base-type=type/JSON should have visibility-type=details-only, unlike other fields."
+    (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
+      (when-not (mysql-test/is-mariadb? (u/id (mt/db)))
+        (mt/dataset json
+          (let [spec  (sql-jdbc.conn/connection-details->spec driver/*driver* (:details (mt/db)))
+                table (t2/select-one Table :id (mt/id :json))]
+            (with-open [conn (jdbc/get-connection spec)]
+              (let [fields     (sql-jdbc.describe-table/describe-table-fields driver/*driver* conn table nil)
+                    json-field (first (filter #(= (:name %) "json_bit") fields))
+                    text-field (first (filter #(= (:name %) "bloop") fields))]
+                (is (= :details-only
+                       (:visibility-type json-field)))
+                (is (nil? (:visibility-type text-field)))))))))))
 
 (deftest describe-nested-field-columns-test
   (testing "flattened-row"
