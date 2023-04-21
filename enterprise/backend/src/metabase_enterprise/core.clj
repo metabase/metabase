@@ -6,7 +6,6 @@
             [metabase.util.log :as log]
             [toucan2.core :as t2]))
 
-#_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
 (defn- install-audit-db!
   "Creates the audit db, a clone of the app db used for auditing purposes."
   [app-db]
@@ -30,7 +29,8 @@
     (cond
       (nil? audit-db)
       (do (log/info "Audit DB does not exist, Installing...")
-          (install-audit-db! app-db))
+          (install-audit-db! app-db)
+          :metabase-enterprise.core/installed)
 
       (not= (select-keys audit-db [:details :engine])
             (select-keys app-db [:details :engine]))
@@ -42,4 +42,5 @@
           (log/info "Deleting Old Audit DB...")
           (t2/delete! Database :is_audit true)
           (log/info "Installing Audit DB...")
-          (install-audit-db! app-db)))))
+          (install-audit-db! app-db)
+          :metabase-enterprise.core/replaced))))
