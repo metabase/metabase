@@ -13,6 +13,8 @@
     "@emotion/react": "^11.7.1",
     "@emotion/styled": "^11.6.0",
     "@react-oauth/google": "^0.4.0",
+    "@sentry/react": "^7.29.0",
+    "@sentry/tracing": "^7.31.1",
     "@snowplow/browser-tracker": "^3.1.6",
     "@tippyjs/react": "^4.2.6",
     "@visx/axis": "1.8.0",

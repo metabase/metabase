@@ -1,0 +1,28 @@
+name: Faros Metabase build
+
+on:
+  push:
+    branches:
+      - faros
+    paths-ignore:
+    - 'docs/**'
+    - 'frontend/test/**'
+    - 'enterprise/frontend/test/**'
+    - ".**"
+    - "test*"
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Faros Metabase build
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.FAROS_BUILD_TRIGGER }}
+          script: |
+            const result = await github.rest.actions.createWorkflowDispatch({
+              owner: 'faros-ai',
+              repo: '${{ secrets.FAROS_METABASE_REPO }}',
+              workflow_id: '${{ secrets.FAROS_METABASE_BUILD_WORKFLOW }}',
+              ref: '${{ secrets.FAROS_METABASE_BUILD_BRANCH }}'
+            })
+ 

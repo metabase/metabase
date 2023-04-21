@@ -7,10 +7,10 @@ import {
 export const DEFAULT_EMBED_OPTIONS = {
   top_nav: true,
   side_nav: "default",
-  search: false,
-  new_button: false,
+  search: true,
+  new_button: true,
   breadcrumbs: true,
-  logo: true,
+  logo: false,
   header: true,
   additional_info: true,
   action_buttons: true,
