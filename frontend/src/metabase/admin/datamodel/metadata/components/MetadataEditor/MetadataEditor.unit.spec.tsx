@@ -50,7 +50,7 @@ const setup = async ({ databases = [TEST_DB] }: SetupOpts = {}) => {
 };
 
 describe("MetadataEditor", () => {
-  it("should be able to view table fields", async () => {
+  it("should be able switch between tables and view fields", async () => {
     await setup();
 
     userEvent.click(screen.getByText("Orders"));
