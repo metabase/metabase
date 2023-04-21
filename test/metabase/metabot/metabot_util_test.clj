@@ -107,10 +107,11 @@
                               :query    {:source-table (mt/id :orders)}}
                              :dataset true}]]
         (let [database (t2/select-one Database :id (mt/id))
-              {:keys [models sql_name]} (metabot-util/denormalize-database database)]
+              {:keys [models sql_name model_json_summary]} (metabot-util/denormalize-database database)]
           (is (=
                (count (t2/select Card :database_id (mt/id) :dataset true))
                (count models)))
+          (is (string? model_json_summary))
           (is (string? sql_name)))))))
 
 (deftest create-prompt-test
