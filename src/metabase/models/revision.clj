@@ -122,7 +122,8 @@
     (t2/delete! Revision :id [:in old-revisions])))
 
 (defn push-revision!
-  "Record a new Revision for `entity` with `id`. Returns `object`."
+  "Record a new Revision for `entity` with `id` if it's changed compared to the last revision.
+  Returns `object` or `nil` if the object does not changed."
   {:arglists '([& {:keys [object entity id user-id is-creation? message]}])}
   [& {object :object,
       :keys [entity id user-id is-creation? message],
@@ -134,19 +135,21 @@
          (integer? id)
          (t2/exists? entity :id id)
          (map? object)]}
-  (let [object (serialize-instance entity id (dissoc object :message))]
+  (let [object      (serialize-instance entity id (dissoc object :message))
+        last-object (t2/select-one-fn :object Revision :model (name entity) :model_id id {:order-by [[:id :desc]]})]
     ;; make sure we still have a map after calling out serialization function
     (assert (map? object))
-    (t2/insert! Revision
-      :model        (name entity)
-      :model_id     id
-      :user_id      user-id
-      :object       object
-      :is_creation  is-creation?
-      :is_reversion false
-      :message      message))
-  (delete-old-revisions! entity id)
-  object)
+    (when-not (= object last-object)
+      (t2/insert! Revision
+                  :model        (name entity)
+                  :model_id     id
+                  :user_id      user-id
+                  :object       object
+                  :is_creation  is-creation?
+                  :is_reversion false
+                  :message      message)
+      (delete-old-revisions! entity id)
+      object)))
 
 (defn revert!
   "Revert `entity` with `id` to a given Revision."
