@@ -213,32 +213,28 @@
   [{model-id :id :keys [field-id->field-ref mbql_malli_schema database_id]}
    json-response]
   (let [{:keys [breakout aggregation filters]
-         :as   coerced-response} (mc/coerce mbql_malli_schema json-response mtx/json-transformer)]
-    (if (mc/validate mbql_malli_schema coerced-response)
-      (let [inner-mbql (cond-> (assoc
-                                (select-keys coerced-response [:breakout :aggregation])
-                                :source-table (format "card__%s" model-id))
-                         breakout
-                         (update :breakout (partial mapv field-id->field-ref))
-                         aggregation
-                         (update :aggregation (partial mapv (fn [[op id]]
-                                                              [op (field-id->field-ref id)])))
-                         filters
-                         (update :filters (fn [filters]
-                                            (mapv
-                                             (fn [[op id m]]
-                                               (let [{:keys [field_id value]} m]
-                                                 [op
-                                                  (field-id->field-ref id)
-                                                  (if field_id
-                                                    (field-id->field-ref field_id)
-                                                    value)]))
-                                             filters))))]
-        (tap> inner-mbql)
-        {:database database_id
-         :type     :query
-         :query    inner-mbql})
-      {:fail coerced-response})))
+         :as   coerced-response} (mc/coerce mbql_malli_schema json-response mtx/json-transformer)
+        inner-mbql (cond-> (assoc
+                            (select-keys coerced-response [:breakout :aggregation])
+                            :source-table (format "card__%s" model-id))
+                     breakout
+                     (update :breakout (partial mapv field-id->field-ref))
+                     aggregation
+                     (update :aggregation (partial mapv (fn [[op id]]
+                                                          [op (field-id->field-ref id)])))
+                     filters
+                     (update :filters (fn [filters]
+                                        (mapv
+                                         (fn [[op id m]]
+                                           (let [{:keys [field_id value]} m]
+                                             [op
+                                              (field-id->field-ref id)
+                                              (or (field-id->field-ref field_id) value)]))
+                                         filters))))]
+    (tap> inner-mbql)
+    {:database database_id
+     :type     :query
+     :query    inner-mbql}))
 
 (defn- ->prompt
   "Returns {:messages [{:role ... :content ...} ...]} prompt map for use in API calls."
@@ -277,13 +273,14 @@
                          (metabot-util/extract-json message))
                        (metabot-client/invoke-metabot prompt))]
     (tap> json-response)
-    (try
-      (if (:error json-response)
-        {:fail json-response}
-        (postprocess-result new-model json-response))
-      (catch Exception _
-        {:fail   json-response
-         :reason :invalid-response}))))
+    ;; handle cases where the LLM detects its own errors first
+    (if (:error json-response)
+      {:fail json-response}
+      (try
+        (postprocess-result new-model json-response)
+        (catch Exception _
+          {:fail   json-response
+           :reason :invalid-response})))))
 
 (comment
   ;; This works pretty well
