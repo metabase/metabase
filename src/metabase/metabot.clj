@@ -3,10 +3,11 @@
   where X is the thing we want to extract from the bot response."
   (:require
    [cheshire.core :as json]
-   [malli.core :as m]
+   [clojure.string :as str]
+   [malli.core :as mc]
    [malli.generator :as mg]
    [malli.json-schema :as mjs]
-   [malli.transform :as mt]
+   [malli.transform :as mtx]
    [metabase.lib.native :as lib-native]
    [metabase.metabot.client :as metabot-client]
    [metabase.metabot.settings :as metabot-settings]
@@ -14,8 +15,7 @@
    [metabase.models :refer [Table]]
    [metabase.query-processor :as qp]
    [metabase.util.log :as log]
-   [toucan2.core :as t2]
-   [clojure.string :as str]))
+   [toucan2.core :as t2]))
 
 (defn infer-viz
   "Determine an 'interesting' visualization for this data."
@@ -140,7 +140,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn schema [available-fields]
-  (m/schema
+  (mc/schema
     [:map {:registry
            {:metabot/available_fields
             (into [:enum
@@ -213,8 +213,8 @@
   [{model-id :id :keys [field-id->field-ref mbql_malli_schema database_id]}
    json-response]
   (let [{:keys [breakout aggregation filters]
-         :as   coerced-response} (m/coerce mbql_malli_schema json-response mt/json-transformer)]
-    (if (m/validate mbql_malli_schema coerced-response)
+         :as   coerced-response} (mc/coerce mbql_malli_schema json-response mtx/json-transformer)]
+    (if (mc/validate mbql_malli_schema coerced-response)
       (let [inner-mbql (cond-> (assoc
                                 (select-keys coerced-response [:breakout :aggregation])
                                 :source-table (format "card__%s" model-id))
@@ -242,8 +242,8 @@
 
 (defn- ->prompt
   "Returns {:messages [{:role ... :content ...} ...]} prompt map for use in API calls."
-  [& role-content-pairs]
-  {:messages (for [[role content] (partition 2 role-content-pairs)]
+  [role-content-pairs]
+  {:messages (for [[role content] role-content-pairs]
                {:role (name role)
                 :content (if (sequential? content)
                            (str/join "\n" content)
@@ -259,18 +259,17 @@
   [user_prompt model]
   (let [{:keys [available_fields mbql_malli_schema] :as new-model} (add-field-data model)
         json-schema   (mjs/transform mbql_malli_schema)
-        prompt        (->prompt
-                       :system ["You are a Metabase query generation assistant. You respond to user queries by building a JSON object that conforms to the schema:"
-                                (json-block json-schema)
-                                "A JSON description of the fields available in the user's data model:"
-                                (json-block available_fields)
-                                "Take a natural-language query from the user and construct a query using the supplied schema and available fields."]
-                       :user   user_prompt)
+        messages      [[:system ["You are a Metabase query generation assistant. You respond to user queries by building a JSON object that conforms to the schema:"
+                                 (json-block json-schema)
+                                 "A JSON description of the fields available in the user's data model:"
+                                 (json-block available_fields)
+                                 "Take a natural-language query from the user and construct a query using the supplied schema and available fields."]]
+                       [:user user_prompt]]
         json-response (metabot-util/find-result
                        (fn [message]
                          (tap> message)
                          (metabot-util/extract-json message))
-                       (metabot-client/invoke-metabot prompt))]
+                       (metabot-client/invoke-metabot (->prompt messages)))]
     (tap> json-response)
     (try
       (postprocess-result new-model json-response)
