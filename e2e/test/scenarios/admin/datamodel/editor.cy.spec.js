@@ -44,7 +44,7 @@ describe.skip("scenarios > admin > datamodel > editor", () => {
     cy.get("@description")
       .should(
         "have.value",
-        "This is a confirmed order for a product from a user.",
+        "Confirmed Sample Company orders for a product, from a user.",
       )
       .clear()
       .should("have.value", "")
