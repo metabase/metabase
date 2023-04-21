@@ -255,9 +255,9 @@
         field-info    (mapv #(select-keys % [:id :name]) result_metadata)
         prompt        (->prompt
                        [:system ["You are a Metabase query generation assistant."
-                                 "You respond to user queries by building a JSON object that conforms to the schema:"
+                                 "You respond to user queries by building a JSON object that conforms to the schema describing the query language:"
                                  (json-block json-schema)
-                                 "In case you can't generate a query that conforms to the schema, return a JSON object like:"
+                                 "If you are unable to generate a query, return a JSON object like:"
                                  (json-block {:error "I was unable to generate a query because..."
                                               :query "<user's original query>"
                                               :suggestion ["<example natural-language query that might work based on the data model>"]})
