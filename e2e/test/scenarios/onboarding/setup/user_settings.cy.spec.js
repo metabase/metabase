@@ -155,7 +155,7 @@ describe("user > settings", () => {
 
   describe("when user is authenticated via google", () => {
     beforeEach(() => {
-      stubCurrentUser({ sso_source: "google" });
+      stubCurrentUser({ google_auth: true });
 
       cy.visit("/account/profile");
       cy.wait("@getUser");
