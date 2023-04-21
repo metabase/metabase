@@ -89,44 +89,46 @@
                                       :creator_id             (mt/user->id :crowberto)
                                       :display                "table"
                                       :visualization_settings {}}]]
-    (testing "User's recent views are updated when card/dashboard/table-read events occur."
-      (mt/with-test-user :crowberto
-        (view-log/user-recent-views! []) ;; ensure no views from any other tests/temp items exist
-        (doseq [event [{:topic :card-query :item dataset} ;; oldest view
-                       {:topic :card-query :item dataset}
-                       {:topic :card-query :item card1}
-                       {:topic :card-query :item card1}
-                       {:topic :card-query :item card1}
-                       {:topic :dashboard-read :item dash}
-                       {:topic :card-query :item card1}
-                       {:topic :dashboard-read :item dash}
-                       {:topic :table-read :item table1}
-                       {:topic :card-query :item archived}
-                       {:topic :table-read :item hidden-table}]]
-          (view-log/handle-view-event!
-           ;; view log entries look for the `:actor_id` in the item being viewed to set that view's :user_id
-           (assoc-in event [:item :actor_id] (mt/user->id :crowberto))))
-        (let [recent-views (mt/with-test-user :crowberto (view-log/user-recent-views))]
-          (is (=
-               [{:model "table" :model_id (u/the-id hidden-table)}
-                {:model "card" :model_id (u/the-id archived)}
-                {:model "table" :model_id (u/the-id table1)}
-                {:model "dashboard" :model_id (u/the-id dash)}
-                {:model "card" :model_id (u/the-id card1)}
-                {:model "card" :model_id (u/the-id dataset)}]
-               recent-views)))))))
+    (mt/with-model-cleanup [ViewLog]
+      (testing "User's recent views are updated when card/dashboard/table-read events occur."
+        (mt/with-test-user :crowberto
+          (view-log/user-recent-views! []) ;; ensure no views from any other tests/temp items exist
+          (doseq [event [{:topic :card-query :item dataset} ;; oldest view
+                         {:topic :card-query :item dataset}
+                         {:topic :card-query :item card1}
+                         {:topic :card-query :item card1}
+                         {:topic :card-query :item card1}
+                         {:topic :dashboard-read :item dash}
+                         {:topic :card-query :item card1}
+                         {:topic :dashboard-read :item dash}
+                         {:topic :table-read :item table1}
+                         {:topic :card-query :item archived}
+                         {:topic :table-read :item hidden-table}]]
+            (view-log/handle-view-event!
+             ;; view log entries look for the `:actor_id` in the item being viewed to set that view's :user_id
+             (assoc-in event [:item :actor_id] (mt/user->id :crowberto))))
+          (let [recent-views (mt/with-test-user :crowberto (view-log/user-recent-views))]
+            (is (=
+                 [{:model "table" :model_id (u/the-id hidden-table)}
+                  {:model "card" :model_id (u/the-id archived)}
+                  {:model "table" :model_id (u/the-id table1)}
+                  {:model "dashboard" :model_id (u/the-id dash)}
+                  {:model "card" :model_id (u/the-id card1)}
+                  {:model "card" :model_id (u/the-id dataset)}]
+                 recent-views))))))))
 
 (deftest most-recently-viewed-dashboard-test
   (mt/with-temp Dashboard [dash {:name "Look at this Distinguished Dashboard!"}]
-    (testing "When a user views a dashboard, most-recently-viewed-dashboard is updated with that id."
-      (mt/with-test-user :crowberto (setting/set-value-of-type! :json :most-recently-viewed-dashboard nil))
-      (view-log/handle-view-event! {:topic :dashboard-read
-                                    :metadata {:context "question"}
-                                    :item  (assoc dash :actor_id (mt/user->id :crowberto))})
-      (is (= (u/the-id dash) (mt/with-test-user :crowberto (view-log/most-recently-viewed-dashboard)))))
-    (testing "When the user's most recent dashboard view is older than 24 hours, return `nil`."
-      (mt/with-test-user :crowberto
-        (setting/set-value-of-type! :json :most-recently-viewed-dashboard
-                                    {:id        (u/the-id dash)
-                                     :timestamp (t/minus (t/zoned-date-time) (t/hours 25))}))
-      (is (= nil (mt/with-test-user :crowberto (view-log/most-recently-viewed-dashboard)))))))
+    (mt/with-model-cleanup [ViewLog]
+      (testing "When a user views a dashboard, most-recently-viewed-dashboard is updated with that id."
+        (mt/with-test-user :crowberto (setting/set-value-of-type! :json :most-recently-viewed-dashboard nil))
+        (view-log/handle-view-event! {:topic :dashboard-read
+                                      :metadata {:context "question"}
+                                      :item  (assoc dash :actor_id (mt/user->id :crowberto))})
+        (is (= (u/the-id dash) (mt/with-test-user :crowberto (view-log/most-recently-viewed-dashboard)))))
+      (testing "When the user's most recent dashboard view is older than 24 hours, return `nil`."
+        (mt/with-test-user :crowberto
+          (setting/set-value-of-type! :json :most-recently-viewed-dashboard
+                                      {:id        (u/the-id dash)
+                                       :timestamp (t/minus (t/zoned-date-time) (t/hours 25))}))
+        (is (= nil (mt/with-test-user :crowberto (view-log/most-recently-viewed-dashboard))))))))
