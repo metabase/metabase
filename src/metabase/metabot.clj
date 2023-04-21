@@ -175,7 +175,17 @@
         :metabot/available_fields
         [:or
          [:map [:field_id :metabot/available_fields]]
-         [:map [:value [:or :int :double :string]]]]]]]]))
+         [:map [:value [:or :int :double :string]]]]]]]
+     [:limit
+      {:optional true}
+      pos-int?]
+     [:order-by
+      {:title       "Sort order"
+       :description "A sequential set of fields that determine the sort order of the data"
+       :optional    true}
+      [:tuple
+       [:enum :asc :desc]
+       :metabot/available_fields]]]))
 
 (comment
   ;; This is useful for making sure the above schema is right
@@ -253,6 +263,7 @@
     (postprocess-result new-model json-response)))
 
 (comment
+  ;; This works pretty well
   (let [{:keys [fail] :as mbql} (infer-mbql
                                   {:user_prompt "Provide descriptive stats for sales per state"
                                    :model       (t2/select-one 'Card :id 1)})]
@@ -262,7 +273,7 @@
      :data (qp/process-query mbql)})
 
   (let [{:keys [fail] :as mbql} (infer-mbql
-                                  {:user_prompt "What products have the highest rating?"
+                                  {:user_prompt "What are the 10 highest rated products?"
                                    :model       (t2/select-one 'Card :id 1)})]
     (if fail
       [:fail fail])
@@ -285,10 +296,10 @@
 
   (let [{:keys [available_fields field-id->field-ref mbql_malli_schema database_id]} (add-field-data (t2/select-one 'Card :id 1))
         json-response {:aggregation [["count" 53]]
-                       :breakout [53]
-                       :filters [["=" 53 {:value "Idaho"}]]}]
-    (m/coerce mbql_malli_schema json-response mt/json-transformer)
-    ;(mg/generate mbql_malli_schema)
+                       :breakout    [53]
+                       :filters     [["=" 53 {:value "Idaho"}]]}]
+    ;(m/coerce mbql_malli_schema json-response mt/json-transformer)
+    (mg/generate mbql_malli_schema)
     )
 
   )
