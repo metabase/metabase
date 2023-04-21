@@ -44,6 +44,7 @@ import SegmentListApp from "metabase/admin/datamodel/containers/SegmentListApp";
 import SegmentApp from "metabase/admin/datamodel/containers/SegmentApp";
 import RevisionHistoryApp from "metabase/admin/datamodel/containers/RevisionHistoryApp";
 import AdminPeopleApp from "metabase/admin/people/containers/AdminPeopleApp";
+import FieldApp from "metabase/admin/datamodel/containers/FieldApp";
 
 import TroubleshootingApp from "metabase/admin/tasks/containers/TroubleshootingApp";
 import {
@@ -123,6 +124,10 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
             path="database/:databaseId/schema/:schemaName/table/:tableId/settings"
             component={MetadataTableSettings}
           />
+          <Route path="database/:databaseId/schema/:schemaName/table/:tableId/:fieldId">
+            <IndexRedirect to="general" />
+            <Route path=":section" component={FieldApp} />
+          </Route>
           <Route path="metrics" component={MetricListApp} />
           <Route path="metric/create" component={MetricApp} />
           <Route path="metric/:id" component={MetricApp} />

@@ -33,6 +33,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 
 // LIB
 import { has_field_values_options } from "metabase/lib/core";
+import * as Urls from "metabase/lib/urls";
 import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings/column";
 
 import Databases from "metabase/entities/databases";
@@ -184,7 +185,11 @@ class FieldApp extends React.Component {
             sidebar={
               <div>
                 <div className="flex align-center mb2">
-                  <BackButton databaseId={databaseId} tableId={tableId} />
+                  <BackButton
+                    databaseId={databaseId}
+                    schemaName={table.schema_name}
+                    tableId={tableId}
+                  />
                 </div>
                 <LeftNavPane>
                   <LeftNavPaneItem
@@ -394,10 +399,8 @@ const FieldSettingsPane = ({ field, onUpdateFieldSettings }) => (
 
 // TODO: Should this invoke goBack() instead?
 // not sure if it's possible to do that neatly with Link component
-export const BackButton = ({ databaseId, tableId }) => (
-  <BackButtonLink
-    to={`/admin/datamodel/database/${databaseId}/table/${tableId}`}
-  >
+export const BackButton = ({ databaseId, schemaName, tableId }) => (
+  <BackButtonLink to={Urls.dataModelTable(databaseId, schemaName, tableId)}>
     <Icon name="arrow_left" />
   </BackButtonLink>
 );
