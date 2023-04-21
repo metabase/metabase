@@ -3,7 +3,6 @@ import { t } from "ttag";
 import _ from "underscore";
 import { connect } from "react-redux";
 
-import { useBeforeUnload } from "react-use";
 import Modal from "metabase/components/Modal";
 
 import Actions, {
@@ -24,6 +23,7 @@ import type {
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
+import useBeforeUnload from "metabase/hooks/use-before-unload";
 import Question from "metabase-lib/Question";
 import type Metadata from "metabase-lib/metadata/Metadata";
 
@@ -103,7 +103,7 @@ function ActionCreator({
     [action, initialAction],
   );
 
-  useBeforeUnload(isDirty, t`You have unsaved changes.`);
+  useBeforeUnload(isDirty);
 
   const [isSaveModalShown, setShowSaveModal] = useState(false);
 
