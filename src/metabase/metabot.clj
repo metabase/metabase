@@ -260,8 +260,12 @@
   (let [{:keys [available_fields mbql_malli_schema] :as new-model} (add-field-data model)
         json-schema   (mjs/transform mbql_malli_schema)
         prompt        (->prompt
-                       [:system ["You are a Metabase query generation assistant. You respond to user queries by building a JSON object that conforms to the schema:"
+                       [:system ["You are a Metabase query generation assistant."
+                                 "You respond to user queries by building a JSON object that conforms to the schema:"
                                  (json-block json-schema)
+                                 "In case you can't generate a query that conforms to the schema, return a JSON object like:"
+                                 (json-block {:error "I was unable to generate a query because..."
+                                              :query "<user's original query>"})
                                  "A JSON description of the fields available in the user's data model:"
                                  (json-block available_fields)
                                  "Take a natural-language query from the user and construct a query using the supplied schema and available fields."]]
