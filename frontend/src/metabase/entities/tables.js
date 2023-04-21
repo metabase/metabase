@@ -45,7 +45,8 @@ export const FETCH_METADATA = "metabase/entities/FETCH_METADATA";
 export const FETCH_TABLE_METADATA = "metabase/entities/FETCH_TABLE_METADATA";
 export const FETCH_TABLE_FOREIGN_KEYS =
   "metabase/entities/FETCH_TABLE_FOREIGN_KEYS";
-const UPDATE_TABLE_FIELD_ORDER = "metabase/entities/UPDATE_TABLE_FIELD_ORDER";
+export const UPDATE_TABLE_FIELD_ORDER =
+  "metabase/entities/UPDATE_TABLE_FIELD_ORDER";
 
 const Tables = createEntity({
   name: "tables",
@@ -131,11 +132,12 @@ const Tables = createEntity({
       return { id: entityObject.id, fks: fks };
     }),
 
-    setFieldOrder: compose(withAction(UPDATE_TABLE_FIELD_ORDER))(
+    setFieldOrder:
       ({ id }, fieldOrder) =>
-        (dispatch, getState) =>
-          updateFieldOrder({ id, fieldOrder }, { bodyParamName: "fieldOrder" }),
-    ),
+      dispatch => {
+        dispatch({ type: UPDATE_TABLE_FIELD_ORDER, payload: fieldOrder });
+        updateFieldOrder({ id, fieldOrder }, { bodyParamName: "fieldOrder" });
+      },
   },
 
   // FORMS

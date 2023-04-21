@@ -1,6 +1,7 @@
-import React, { ReactNode, useCallback } from "react";
+import React, { ReactNode, useCallback, useMemo } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
+import _ from "underscore";
 import Tables from "metabase/entities/tables";
 import Icon from "metabase/components/Icon/Icon";
 import AccordionList from "metabase/core/components/AccordionList";
@@ -58,6 +59,11 @@ const MetadataTableColumnList = ({
 }: MetadataTableColumnListProps) => {
   const { fields = [] } = table;
 
+  const sortedFields = useMemo(
+    () => _.sortBy(fields, field => field.position),
+    [fields],
+  );
+
   const handleSortStart = useCallback(() => {
     document.body.classList.add("grabbing");
   }, []);
@@ -65,12 +71,14 @@ const MetadataTableColumnList = ({
   const handleSortEnd = useCallback(
     ({ oldIndex, newIndex }: DragProps) => {
       document.body.classList.remove("grabbing");
-      onUpdateFieldOrder(table, updateFieldOrder(fields, oldIndex, newIndex));
+
+      const fieldOrder = updateFieldOrder(sortedFields, oldIndex, newIndex);
+      onUpdateFieldOrder(table, fieldOrder);
       if (table.field_order !== "custom") {
         onUpdateTable(table, "field_order", "custom");
       }
     },
-    [table, fields, onUpdateTable, onUpdateFieldOrder],
+    [table, sortedFields, onUpdateTable, onUpdateFieldOrder],
   );
 
   return (
@@ -101,7 +109,7 @@ const MetadataTableColumnList = ({
         onSortStart={handleSortStart}
         onSortEnd={handleSortEnd}
       >
-        {fields.map((field, index) => (
+        {sortedFields.map((field, index) => (
           <SortableColumn
             key={field.getId()}
             index={index}

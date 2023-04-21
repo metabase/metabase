@@ -36,6 +36,7 @@ const MetadataTableColumn = ({
   selectedDatabaseId,
   selectedSchemaName,
   selectedTableId,
+  dragHandle,
   onUpdateField,
 }: MetadataTableColumnProps) => {
   const handleChangeName = useCallback(
@@ -117,6 +118,7 @@ const MetadataTableColumn = ({
           </div>
         </div>
       </div>
+      {dragHandle}
     </div>
   );
 };
