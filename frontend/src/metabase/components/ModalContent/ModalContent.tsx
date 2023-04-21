@@ -5,7 +5,7 @@ import cx from "classnames";
 import Icon from "metabase/components/Icon";
 
 interface ModalContentProps extends CommonModalProps {
-  id: string;
+  id?: string;
   title: string;
   onClose: () => void;
   className?: string;

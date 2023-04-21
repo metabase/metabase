@@ -7,7 +7,7 @@ import EntityForm from "metabase/entities/containers/EntityForm";
 import ModalContent from "metabase/components/ModalContent";
 
 interface EntityCopyModalProps {
-  entityType: any;
+  entityType: string;
   entityObject: any;
   copy: (data: any) => void;
   title?: string;
