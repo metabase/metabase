@@ -25,6 +25,7 @@ import {
   getSlowCards,
   getParameters,
   getParameterValues,
+  getDraftParameterValues,
 } from "metabase/dashboard/selectors";
 
 import * as dashboardActions from "metabase/dashboard/actions";
@@ -45,6 +46,7 @@ const mapStateToProps = (state, props) => {
     slowCards: getSlowCards(state, props),
     parameters: getParameters(state, props),
     parameterValues: getParameterValues(state, props),
+    draftParameterValues: getDraftParameterValues(state, props),
   };
 };
 
@@ -106,6 +108,7 @@ class PublicDashboard extends Component {
       dashboard,
       parameters,
       parameterValues,
+      draftParameterValues,
       isFullscreen,
       isNightMode,
     } = this.props;
@@ -120,6 +123,7 @@ class PublicDashboard extends Component {
         dashboard={dashboard}
         parameters={parameters}
         parameterValues={parameterValues}
+        draftParameterValues={draftParameterValues}
         setParameterValue={this.props.setParameterValue}
         actionButtons={
           buttons.length > 0 && <div className="flex">{buttons}</div>
