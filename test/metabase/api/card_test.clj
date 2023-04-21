@@ -2561,7 +2561,7 @@
           ;; create not_public schema in the db
           (let [details (mt/dbdef->connection-details driver/*driver* :db {:database-name (:name (mt/db))})]
             (jdbc/execute! (sql-jdbc.conn/connection-details->spec driver/*driver* details)
-                           ["CREATE SCHEMA not_public;"]))
+                           ["CREATE SCHEMA \"not_public\";"]))
           (mt/with-temporary-setting-values [uploads-enabled      true
                                              uploads-database-id  db-id
                                              uploads-schema-name  "not_public"
