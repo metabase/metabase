@@ -124,7 +124,7 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
             path="database/:databaseId/schema/:schemaName/table/:tableId/settings"
             component={MetadataTableSettings}
           />
-          <Route path="database/:databaseId/schema/:schemaName/table/:tableId/:fieldId">
+          <Route path="database/:databaseId/schema/:schemaName/table/:tableId/field/:fieldId">
             <IndexRedirect to="general" />
             <Route path=":section" component={FieldApp} />
           </Route>

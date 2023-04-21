@@ -210,10 +210,10 @@ class FieldApp extends React.Component {
                 <div className="mb4 pt2 ml-auto mr-auto">
                   <Breadcrumbs
                     crumbs={[
-                      [db.name, `/admin/datamodel/database/${db.id}`],
+                      [db.name, Urls.dataModelDatabase(db.id)],
                       [
                         table.display_name,
-                        `/admin/datamodel/database/${db.id}/table/${table.id}`,
+                        Urls.dataModelTable(db.id, table.schema_name, table.id),
                       ],
                       t`${field.display_name} – Field Settings`,
                     ]}

@@ -37,7 +37,8 @@ export function dataModelDatabase(databaseId: DatabaseId) {
 }
 
 export function dataModelSchema(databaseId: DatabaseId, schemaName: string) {
-  return `${dataModelDatabase(databaseId)}/schema/${schemaName}`;
+  const schemaUrl = encodeURIComponent(schemaName);
+  return `${dataModelDatabase(databaseId)}/schema/${schemaUrl}`;
 }
 
 export function dataModelTable(
