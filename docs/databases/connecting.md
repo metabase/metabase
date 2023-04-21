@@ -45,69 +45,9 @@ For provider-specific connection details, like connecting to a PostgreSQL data w
 
 - [AWS's Relational Database Service (RDS)](./connections/aws-rds.md)
 
-## Database roles, users, and privileges
+## Granting database privileges
 
-For Metabase to connect, query, or write to your database, you must give Metabase a database user account with the correct database privileges.
-
-The easiest way to set this up in a Postgres database:
-
-- Create a `metabase` database user.
-- Give `metabase` read and write access to the entire database.
-
-```sql
-CREATE USER metabase;
-GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA "your_schema" TO metabase;
-```
-
-You can always revoke specific privileges later. If you'd prefer to set things up with a little more structure, see the next couple of sections on:
-
-- [Database roles and users](#database-roles-and-users)
-- [Database privileges](#database-privileges)
-
-### Database roles and users
-
-To organize your database privileges, you can create database roles for each type of application that needs access to your database.
-
-For example, most BI tools need the same privileges to connect and read from your database, so you can:
-
-- Create a database role called `bi_tool`.
-- Create a database user called `metabase`.
-- Give `metabase` the `bi_tool` role.
-
-In PostgreSQL, you'd log in as an admin and run the SQL statements:
-
-```sql
-CREATE ROLE bi_tool;
-CREATE USER metabase;
-GRANT bi_tool TO metabase;
-```
-
-> If you're setting up multi-tenant permissions for people who need SQL access to specific schemas or tables, you may want to create [multiple database users](https://www.metabase.com/learn/permissions/multi-tenant-permissions#option-2-granting-customers-native-sql-access-to-their-schema) for Metabase, such as `metabase_customer_1` and `metabase_customer_2`.
-
-### Database privileges
-
-Once you've set up your [database roles and users](#database-roles-and-users), you can assign database privileges to those roles. When you grant privileges to a role, all users with that role will get those privileges.
-
-At minimum, the `bi_tool` role should be able to connect to and query your database:
-
-```sql
-GRANT CONNECT ON DATABASE "your_database" TO bi_tool;
-GRANT pg_read_all_data TO bi_tool;
-```
-
-If you don't want to give read access to the entire database at once, you can set up read permissions to specific schemas or tables. The example below grants access to a specific table (not the entire schema):
-
-```sql
-GRANT USAGE ON SCHEMA "your_schema" TO bi_tool;
-GRANT SELECT ON "your_table" IN SCHEMA "your_schema" TO bi_tool;
-```
-
-If you plan on using [model caching](../data-modeling/models.md#model-caching) or [actions](../actions/introduction.md) in Metabase, you'll need to give the `metabase` user extra privileges to write to the table used in your model:
-
-```sql
-GRANT USAGE ON SCHEMA "your_schema" TO metabase;
-GRANT INSERT, UPDATE, DELETE ON "your_model's_table" IN SCHEMA "your_schema" TO metabase;
-```
+For Metabase to connect, query, or write to your database, you must give Metabase a database user account with the correct database privileges. See [Database roles, users, and privileges](./privileges.md).
 
 ## Syncing and scanning databases
 
