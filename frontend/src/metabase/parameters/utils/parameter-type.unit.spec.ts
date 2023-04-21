@@ -1,4 +1,5 @@
 import { createMockParameter } from "metabase-types/api/mocks";
+import { createMockUiParameter } from "metabase-lib/parameters/mock";
 import { isSingleOrMultiSelectable } from "./parameter-type";
 
 describe("isSingleOrMultiSelectable", () => {
@@ -30,5 +31,31 @@ describe("isSingleOrMultiSelectable", () => {
       type: "category",
     });
     expect(isSingleOrMultiSelectable(parameter)).toBe(true);
+  });
+
+  describe("parameters that have a template tags target (metabase#29997)", () => {
+    it("is false", () => {
+      const parameter = createMockUiParameter({
+        hasVariableTemplateTagTarget: true,
+      });
+      expect(isSingleOrMultiSelectable(parameter)).toBe(false);
+    });
+
+    it("is false even for parameters with acceptable types and corresponding subTypes", () => {
+      const parameter = createMockUiParameter({
+        type: "string/=",
+        sectionId: "location",
+        hasVariableTemplateTagTarget: true,
+      });
+      expect(isSingleOrMultiSelectable(parameter)).toBe(false);
+    });
+
+    it("is false even for parameters with acceptable types and wildcarded subTypes", () => {
+      const parameter = createMockUiParameter({
+        type: "category",
+        hasVariableTemplateTagTarget: true,
+      });
+      expect(isSingleOrMultiSelectable(parameter)).toBe(false);
+    });
   });
 });
