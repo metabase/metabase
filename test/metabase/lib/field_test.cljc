@@ -250,38 +250,37 @@
                 (lib.metadata.calculation/display-name query -1 field)))))))
 
 (deftest ^:parallel with-binning-test
-  (let [query (lib/query-for-table-name meta/metadata-provider "ORDERS")]
-    (doseq [[binning1 binning2] (partition 2 1 [{:strategy :default}
-                                                {:strategy :num-bins  :num-bins  10}
-                                                {:strategy :bin-width :bin-width 1.0}
-                                                {:strategy :default}])
-            :let                  [field-metadata (lib.metadata/field meta/metadata-provider "PUBLIC" "ORDERS" "SUBTOTAL")]
-            [what x]              {"column metadata" field-metadata
-                                   "field ref"       (lib/ref field-metadata)}
-            :let                  [x' (lib/with-binning x binning1)]]
-      (testing (str what " strategy = " (:strategy binning2) "\n\n" (u/pprint-to-str x') "\n")
-        (testing "lib/binning should return the binning settings"
-          (is (= binning1
-                 (lib/binning x'))))
-        (testing "should generate a :field ref with correct :binning"
-          (is (=? [:field
-                   {:lib/uuid string?
-                    :binning  binning1}
-                   integer?]
-                  (lib/ref x'))))
-        (testing "remove the binning setting"
-          (let [x'' (lib/with-binning x' nil)]
-            (is (nil? (lib/binning x'')))
-            (is (= x
-                   x''))))
-        (testing "change the binning setting, THEN remove it"
-          (let [x''  (lib/with-binning x' binning2)
-                x''' (lib/with-binning x'' nil)]
-            (is (= binning2
-                   (lib/binning x'')))
-            (is (nil? (lib/binning x''')))
-            (is (= x
-                   x'''))))))))
+  (doseq [[binning1 binning2] (partition 2 1 [{:strategy :default}
+                                              {:strategy :num-bins  :num-bins  10}
+                                              {:strategy :bin-width :bin-width 1.0}
+                                              {:strategy :default}])
+          :let                  [field-metadata (lib.metadata/field meta/metadata-provider "PUBLIC" "ORDERS" "SUBTOTAL")]
+          [what x]              {"column metadata" field-metadata
+                                 "field ref"       (lib/ref field-metadata)}
+          :let                  [x' (lib/with-binning x binning1)]]
+    (testing (str what " strategy = " (:strategy binning2) "\n\n" (u/pprint-to-str x') "\n")
+      (testing "lib/binning should return the binning settings"
+        (is (= binning1
+               (lib/binning x'))))
+      (testing "should generate a :field ref with correct :binning"
+        (is (=? [:field
+                 {:lib/uuid string?
+                  :binning  binning1}
+                 integer?]
+                (lib/ref x'))))
+      (testing "remove the binning setting"
+        (let [x'' (lib/with-binning x' nil)]
+          (is (nil? (lib/binning x'')))
+          (is (= x
+                 x''))))
+      (testing "change the binning setting, THEN remove it"
+        (let [x''  (lib/with-binning x' binning2)
+              x''' (lib/with-binning x'' nil)]
+          (is (= binning2
+                 (lib/binning x'')))
+          (is (nil? (lib/binning x''')))
+          (is (= x
+                 x''')))))))
 
 (deftest ^:parallel available-binning-strategies-test
   (doseq [{:keys [expected-options field-metadata query]}

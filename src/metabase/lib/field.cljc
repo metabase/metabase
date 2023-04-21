@@ -325,13 +325,14 @@
       ;; TODO: Include the time and date binning strategies too; see metabase.api.table/assoc-field-dimension-options.
       (and binning? min-value max-value
            (isa? semantic_type :type/Coordinate))
-      lib.binning/coordinate-binning-strategies
+      (lib.binning/coordinate-binning-strategies)
 
       (and binning? min-value max-value
            (isa? effective_type :type/Number)
            (not (isa? semantic_type :Relation/*)))
-      lib.binning/numeric-binning-strategies)))
+      (lib.binning/numeric-binning-strategies))))
 
+;;; -------------------------------------- Join Alias --------------------------------------------
 (defmethod lib.join/current-join-alias-method :field
   [[_tag opts]]
   (get opts :join-alias))
