@@ -139,97 +139,94 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn schema [available-fields]
+(defn schema
+  "Returns Malli schema for subset of MBQL constrained to available field IDs"
+  [{:keys [result_metadata]}]
   (mc/schema
-    [:map {:registry
-           {:metabot/available_fields
-            (into [:enum
-                   {:title       "Field id"
-                    :description "The id for a field to be used in the query"}]
-                  (map :id (:available_fields available-fields)))
-            :metabot/available_aggregations
-            (into [:enum
-                   {:title       "Aggregation"
-                    :description "An aggregation that can be performed on data"}]
-                  [:avg :count :count-where :distinct :max :median
-                   :min :percentile :share :stddev :sum :sum-where :var])
-            :metabot/operators
-            (into [:enum
-                   {:title       "Boolean operators"
-                    :description "af"}]
-                  [:< :<= := :>= :>])}}
-     [:aggregation
-      {:optional true}
-      [:vector
-       [:tuple {:title       "Aggregation"
-                :description "A single aggregate operation over a field"}
-        :metabot/available_aggregations :metabot/available_fields]]]
-     [:breakout
-      {:optional true}
-      [:vector {:min 1} :metabot/available_fields]]
-     [:filters
-      {:optional true}
-      [:vector
-       [:tuple {:title       "Filter"
-                :description "A boolean operation that can be used to filter results"}
-        :metabot/operators
-        :metabot/available_fields
-        [:or
-         [:map [:field_id :metabot/available_fields]]
-         [:map [:value [:or :int :double :string]]]]]]]
-     [:limit
-      {:optional true}
-      pos-int?]
-     [:order-by
-      {:title       "Sort order"
-       :description "A sequential set of fields that determine the sort order of the data"
-       :optional    true}
-      [:tuple
-       [:enum :asc :desc]
-       :metabot/available_fields]]]))
+   [:map {:registry
+          {::available_fields
+           (into [:enum
+                  {:title       "Field id"
+                   :description "The id for a field to be used in the query"}]
+                 (mapv :id result_metadata))
+           ::available_aggregations
+           (into [:enum
+                  {:title       "Aggregation"
+                   :description "An aggregation that can be performed on data"}]
+                 [:avg :count :count-where :distinct :max :median
+                  :min :percentile :share :stddev :sum :sum-where :var])
+           ::operators
+           (into [:enum
+                  {:title       "Boolean operators"
+                   :description "af"}]
+                 [:< :<= := :>= :>])}}
+    [:aggregation
+     {:optional true}
+     [:vector
+      [:tuple {:title       "Aggregation"
+               :description "A single aggregate operation over a field"}
+       ::available_aggregations
+       ::available_fields]]]
+    [:breakout
+     {:optional true}
+     [:vector {:min 1} ::available_fields]]
+    [:filters
+     {:optional true}
+     [:vector
+      [:tuple {:title       "Filter"
+               :description "A boolean operation that can be used to filter results"}
+       ::operators
+       ::available_fields
+       [:or
+        [:map [:field_id ::available_fields]]
+        [:map [:value [:or :int :double :string]]]]]]]
+    [:limit
+     {:optional true}
+     pos-int?]
+    [:order-by
+     {:title       "Sort order"
+      :description "A sequential set of fields that determine the sort order of the data"
+      :optional    true}
+     [:tuple
+      [:enum :asc :desc]
+      ::available_fields]]]))
 
 (comment
   ;; This is useful for making sure the above schema is right
   (let [model               (t2/select-one 'Card :id 1)
-        {model-id :id :keys [result_metadata database_id]} model
-        available-fields    {:available_fields (mapv #(select-keys % [:id :name]) result_metadata)}
-        field-id->field-ref (zipmap
-                              (map :id result_metadata)
-                              (map :field_ref result_metadata))
+        {:keys [result_metadata]} model
+        available-fields    (mapv #(select-keys % [:id :name]) result_metadata)
         malli-schema        (schema available-fields)]
     (mg/generate malli-schema)))
 
-(defn add-field-data [{:keys [result_metadata] :as model}]
-  (let [available-fields    {:available_fields (mapv #(select-keys % [:id :name]) result_metadata)}
-        field-id->field-ref (zipmap
-                              (map :id result_metadata)
-                              (map :field_ref result_metadata))]
-    (-> model
-        (assoc :available_fields available-fields)
-        (assoc :field-id->field-ref field-id->field-ref)
-        (assoc :mbql_malli_schema (schema available-fields)))))
+(defn- model-field-ref-lookup
+  [{:keys [result_metadata]}]
+  (zipmap
+   (map :id result_metadata)
+   (map :field_ref result_metadata)))
 
 (defn- postprocess-result
-  [{model-id :id :keys [field-id->field-ref mbql_malli_schema database_id]}
+  [{model-id :id :keys [database_id] :as model}
    json-response]
   (let [{:keys [breakout aggregation filters]
-         :as   coerced-response} (mc/coerce mbql_malli_schema json-response mtx/json-transformer)
+         :as   coerced-response} (mc/coerce (schema model) json-response mtx/json-transformer)
+        id->ref    (model-field-ref-lookup model)
         inner-mbql (cond-> (assoc
                             (select-keys coerced-response [:breakout :aggregation])
                             :source-table (format "card__%s" model-id))
                      breakout
-                     (update :breakout (partial mapv field-id->field-ref))
+                     (update :breakout (partial mapv id->ref))
                      aggregation
                      (update :aggregation (partial mapv (fn [[op id]]
-                                                          [op (field-id->field-ref id)])))
+                                                          [op (id->ref id)])))
                      filters
                      (update :filters (fn [filters]
                                         (mapv
                                          (fn [[op id m]]
                                            (let [{:keys [field_id value]} m]
                                              [op
-                                              (field-id->field-ref id)
-                                              (or (field-id->field-ref field_id) value)]))
+                                              (id->ref id)
+                                              (or (id->ref field_id) value)]))
                                          filters))))]
     (tap> inner-mbql)
     {:database database_id
@@ -252,18 +249,20 @@
 
 (defn infer-mbql
   "Returns MBQL query from natural language user prompt"
-  [user_prompt model]
-  (let [{:keys [available_fields mbql_malli_schema] :as new-model} (add-field-data model)
-        json-schema   (mjs/transform mbql_malli_schema)
+  [user_prompt {:keys [result_metadata] :as model}]
+  (let [malli-schema  (schema model)
+        json-schema   (mjs/transform malli-schema)
+        field-info    (mapv #(select-keys % [:id :name]) result_metadata)
         prompt        (->prompt
                        [:system ["You are a Metabase query generation assistant."
                                  "You respond to user queries by building a JSON object that conforms to the schema:"
                                  (json-block json-schema)
                                  "In case you can't generate a query that conforms to the schema, return a JSON object like:"
                                  (json-block {:error "I was unable to generate a query because..."
-                                              :query "<user's original query>"})
+                                              :query "<user's original query>"
+                                              :suggestion ["<example natural-language query that might work based on the data model>"]})
                                  "A JSON description of the fields available in the user's data model:"
-                                 (json-block available_fields)
+                                 (json-block field-info)
                                  "Take a natural-language query from the user and construct a query using the supplied schema and available fields."
                                  "Respond only with JSON."]]
                        [:user user_prompt])
@@ -275,10 +274,12 @@
     (tap> json-response)
     ;; handle cases where the LLM detects its own errors first
     (if (:error json-response)
-      {:fail json-response}
+      {:fail   json-response
+       :reason :llm-generated-error}
       (try
-        (postprocess-result new-model json-response)
-        (catch Exception _
+        (postprocess-result model json-response)
+        (catch Exception e
+          (log/error e "Error validating MBQL generated from natural-language query")
           {:fail   json-response
            :reason :invalid-response})))))
 
@@ -314,12 +315,12 @@
       {:mbql mbql
        :data (update-in (qp/process-query mbql) [:data :rows] (fn [rows] (take 10 rows)))}))
 
-  (let [{:keys [available_fields field-id->field-ref mbql_malli_schema database_id]} (add-field-data (t2/select-one 'Card :id 1))
+  (let [malli-schema (schema (t2/select-one 'Card :id 1))
         json-response {:aggregation [["count" 53]]
                        :breakout    [53]
                        :filters     [["=" 53 {:value "Idaho"}]]}]
-    ;(m/coerce mbql_malli_schema json-response mt/json-transformer)
-    (mg/generate mbql_malli_schema)
+    ;(m/coerce malli-schema json-response mt/json-transformer)
+    (mg/generate malli-schema)
     )
 
   )
