@@ -45,10 +45,6 @@
      (mbql.u/match-one joins
        {:fields (join-fields :guard (partial not= :none))}
        "#29904"))
-   ;; #29895: `:value` is not supported
-   (mbql.u/match-one legacy-query
-     :value
-     "#29895")
    ;; #29909: these clauses are not implemented yet.
    (mbql.u/match-one legacy-query
      #{:get-year :get-quarter :get-month :get-day :get-day-of-week :get-hour :get-minute :get-second}
@@ -117,7 +113,7 @@
      {:aggregation aggregations}
      (mbql.u/match-one aggregations
        :metric
-       "#28689"))
+       "#29936"))
    ;; #29941 : metadata resolution for query with a `card__` source-table does not work correctly for `:field` <name>
    ;; #clauses
    (mbql.u/match-one legacy-query

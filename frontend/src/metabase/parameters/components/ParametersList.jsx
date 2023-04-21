@@ -48,7 +48,6 @@ function ParametersList({
 
   setParameterValue,
   setParameterIndex,
-  removeParameter,
   setEditingParameter,
 }) {
   const handleSortStart = () => {

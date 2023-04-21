@@ -1,5 +1,8 @@
 import { createAction } from "redux-actions";
-import { MetabotApi } from "metabase/services";
+import {
+  MetabotApi,
+  runQuestionQuery as apiRunQuestionQuery,
+} from "metabase/services";
 import { closeNavbar } from "metabase/redux/app";
 import { MetabotFeedbackType } from "metabase-types/api";
 import {
@@ -128,7 +131,7 @@ export const fetchQueryResults =
   (cancelQueryDeferred: Deferred) =>
   async (dispatch: Dispatch, getState: GetState) => {
     const question = getQuestion(getState());
-    const payload = await question?.apiGetResults({
+    const payload = await apiRunQuestionQuery(question, {
       cancelDeferred: cancelQueryDeferred,
     });
     dispatch({ type: FETCH_QUERY_RESULTS, payload });
