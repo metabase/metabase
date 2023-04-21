@@ -208,13 +208,13 @@
                (t2/select-one [User :id :sso_source :is_active]
                               :%lower.email
                               (u/lower-case-en email))]
-      (if sso-source
+      (if (some? sso-source)
         ;; If user uses any SSO method to log in, no need to generate a reset token
         (messages/send-password-reset-email! email sso-source nil is-active?)
         (let [reset-token        (user/set-password-reset-token! user-id)
               password-reset-url (str (public-settings/site-url) "/auth/reset_password/" reset-token)]
           (log/info password-reset-url)
-          (messages/send-password-reset-email! email false password-reset-url is-active?))))))
+          (messages/send-password-reset-email! email nil password-reset-url is-active?))))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/forgot_password"
