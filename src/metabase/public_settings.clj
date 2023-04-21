@@ -75,6 +75,17 @@
   :default    "Metabase"
   :visibility :settings-manager)
 
+(defsetting custom-homepage
+  (deferred-tru "Pick one of your dashboards to serve as a homepage. Users without dashboard access will be directed to the default homepage")
+  :default    false
+  :type       :boolean
+  :visibility :public)
+
+(defsetting custom-homepage-dashboard
+  (deferred-tru "ID of dashboard to use as a homepage")
+  :type       :integer
+  :visibility :public)
+
 ;; `::uuid-nonce` is a Setting that sets a site-wide random UUID value the first time it is fetched.
 (defmethod setting/get-value-of-type ::uuid-nonce
   [_ setting]
