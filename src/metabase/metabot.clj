@@ -242,7 +242,7 @@
 
 (defn- ->prompt
   "Returns {:messages [{:role ... :content ...} ...]} prompt map for use in API calls."
-  [role-content-pairs]
+  [& role-content-pairs]
   {:messages (for [[role content] role-content-pairs]
                {:role (name role)
                 :content (if (sequential? content)
@@ -259,17 +259,18 @@
   [user_prompt model]
   (let [{:keys [available_fields mbql_malli_schema] :as new-model} (add-field-data model)
         json-schema   (mjs/transform mbql_malli_schema)
-        messages      [[:system ["You are a Metabase query generation assistant. You respond to user queries by building a JSON object that conforms to the schema:"
+        prompt        (->prompt
+                       [:system ["You are a Metabase query generation assistant. You respond to user queries by building a JSON object that conforms to the schema:"
                                  (json-block json-schema)
                                  "A JSON description of the fields available in the user's data model:"
                                  (json-block available_fields)
                                  "Take a natural-language query from the user and construct a query using the supplied schema and available fields."]]
-                       [:user user_prompt]]
+                       [:user user_prompt])
         json-response (metabot-util/find-result
                        (fn [message]
                          (tap> message)
                          (metabot-util/extract-json message))
-                       (metabot-client/invoke-metabot (->prompt messages)))]
+                       (metabot-client/invoke-metabot prompt))]
     (tap> json-response)
     (try
       (postprocess-result new-model json-response)
