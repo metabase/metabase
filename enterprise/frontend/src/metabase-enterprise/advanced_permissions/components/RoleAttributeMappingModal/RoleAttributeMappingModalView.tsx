@@ -19,6 +19,7 @@ import Alert from "metabase/core/components/Alert";
 import FormFooter from "metabase/core/components/FormFooter";
 import Button from "metabase/core/components/Button";
 import * as Urls from "metabase/lib/urls";
+import ExternalLink from "metabase/core/components/ExternalLink/ExternalLink";
 import {
   RoleAttributeMappingAlert,
   RoleAttributeMappingDescription,
@@ -58,12 +59,12 @@ const RoleAttributeMappingModalView = ({
     <RoleAttributeMappingModalViewRoot>
       <h2>{t`Map a user attribute to database roles`}</h2>
       <RoleAttributeMappingDescription>
-        {t`When people run a query (including native queries), Metabase will impersonate the privileges of the role you associate with the user attribute.`}{" "}
-        <Link
+        {t`When the person runs a query (including native queries), Metabase will impersonate the privileges of the database role you associate with the user attribute.`}{" "}
+        <ExternalLink
           className="link"
           // FIXME: update the link once the docs page is ready
-          to={MetabaseSettings.docsUrl("/learn/permissions/data-permissions")}
-        >{t`Learn More`}</Link>
+          href={MetabaseSettings.docsUrl("learn/permissions/data-permissions")}
+        >{t`Learn More`}</ExternalLink>
       </RoleAttributeMappingDescription>
 
       {hasAttributes ? (
@@ -84,7 +85,7 @@ const RoleAttributeMappingModalView = ({
 
               {databaseUser != null ? (
                 <RoleAttributeMappingAlert icon="warning" variant="warning">
-                  {t`${database.details.name} is the user for the ${database.name} connection configuration. Make sure it has access to everything different user groups may need access to. It's what Metabase uses to sync table information.`}{" "}
+                  {t`${databaseUser} is the database user Metabase is using to connect to ${database.name}. Make sure that ${database.details.user} has access to everything in ${database.name} that all Metabase groups may need access to, as that database user account is what Metabase uses to sync table information.`}{" "}
                   <Link
                     className="link"
                     to={Urls.editDatabase(database.id)}
