@@ -25,11 +25,7 @@
   ([query        :- ::lib.schema/query
     stage-number :- :int
     expr         :- [:or ::lib.schema.expression/expression fn?]]
-   (let [expr (if (fn? expr)
-                (expr query stage-number)
-                expr)]
-     (lib.util/update-query-stage query stage-number update :breakout (fn [breakouts]
-                                                                        (conj (vec breakouts) expr))))))
+   (lib.util/add-summary-clause query stage-number :breakout expr)))
 
 (mu/defn current-breakouts :- [:maybe [:sequential ::lib.schema.expression/expression]]
   "Return the current breakouts"
