@@ -12,6 +12,7 @@ export const trackMetabotQueryRun = (
   prompt_template_versions: string[] | null,
   result: MetabotQueryRunResult,
   visualization_type: string | null,
+  is_rerun: boolean,
 ) => {
   trackSchemaEvent(SCEMA_NAME, TEMPLATE_VERSION, {
     event: "metabot_query_run",
@@ -19,6 +20,7 @@ export const trackMetabotQueryRun = (
     prompt_template_versions,
     result,
     visualization_type,
+    is_rerun,
   });
 };
 

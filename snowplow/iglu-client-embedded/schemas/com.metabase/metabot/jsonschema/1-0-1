@@ -44,7 +44,7 @@
       ],
       "maxLength": 1024
     },
-    "result": {
+    "result_type": {
       "description": "Prompt run result",
       "type": [
         "string",
@@ -76,6 +76,13 @@
         "null"
       ],
       "maxLength": 64
+    },
+    "is_rerun": {
+      "description": "Boolean representing whether Metabot query run was triggered by user rerunning the same prompt",
+      "type": [
+        "boolean",
+        "null"
+      ]
     }
   },
   "required": [

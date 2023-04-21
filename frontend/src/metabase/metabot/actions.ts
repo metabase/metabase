@@ -13,7 +13,6 @@ import { defer, Deferred } from "metabase/lib/promise";
 import Question from "metabase-lib/Question";
 import {
   getCancelQueryDeferred,
-  getCard,
   getEntityId,
   getEntityType,
   getFeedbackType,
@@ -30,16 +29,21 @@ import {
   trackMetabotQueryRun,
 } from "./analytics";
 
-const trackQueryRun = (state: State, result: MetabotQueryRunResult) => {
+const trackQueryRun = (
+  state: State,
+  result: MetabotQueryRunResult,
+  isRerun: boolean,
+) => {
   const entityType = getEntityType(state);
   const promptTemplateVersions = getPromptTemplateVersions(state);
-  const visualizationType = getCard(state)?.display ?? null;
+  const visualizationType = getQuestion(state)?.display() ?? null;
 
   trackMetabotQueryRun(
     entityType,
     promptTemplateVersions,
     result,
     visualizationType,
+    isRerun,
   );
 };
 
@@ -89,7 +93,8 @@ export const RUN_PROMPT_QUERY_FULFILLED =
 export const RUN_PROMPT_QUERY_REJECTED =
   "metabase/metabot/RUN_PROMPT_QUERY_REJECTED";
 export const runPromptQuery =
-  () => async (dispatch: Dispatch, getState: GetState) => {
+  (isRerun = false) =>
+  async (dispatch: Dispatch, getState: GetState) => {
     try {
       const cancelQueryDeferred = defer();
       dispatch({ type: RUN_PROMPT_QUERY, payload: cancelQueryDeferred });
@@ -98,10 +103,14 @@ export const runPromptQuery =
       dispatch({ type: RUN_PROMPT_QUERY_FULFILLED });
 
       const queryResultsError = getQueryResultsError(getState());
-      trackQueryRun(getState(), queryResultsError ? "bad-sql" : "success");
+      trackQueryRun(
+        getState(),
+        queryResultsError ? "bad-sql" : "success",
+        isRerun,
+      );
     } catch (error) {
       if (getIsQueryRunning(getState())) {
-        trackQueryRun(getState(), "failure");
+        trackQueryRun(getState(), "failure", isRerun);
         dispatch({ type: RUN_PROMPT_QUERY_REJECTED, payload: error });
       }
     }
