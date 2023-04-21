@@ -12,7 +12,7 @@ export const rescanTableFieldValues = createThunkAction(
       trackStructEvent("Data Model", "Manual Re-scan Field Values for Table");
       return call;
     } catch (error) {
-      console.log("error manually re-scanning field values", error);
+      console.error("error manually re-scanning field values", error);
     }
   },
 );
@@ -27,7 +27,7 @@ export const discardTableFieldValues = createThunkAction(
       trackStructEvent("Data Model", "Manual Discard Field Values for Table");
       return call;
     } catch (error) {
-      console.log("error discarding field values", error);
+      console.error("error discarding field values", error);
     }
   },
 );
