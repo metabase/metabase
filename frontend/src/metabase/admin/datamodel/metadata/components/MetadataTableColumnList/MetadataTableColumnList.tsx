@@ -74,11 +74,8 @@ const MetadataTableColumnList = ({
 
       const fieldOrder = updateFieldOrder(sortedFields, oldIndex, newIndex);
       onUpdateFieldOrder(table, fieldOrder);
-      if (table.field_order !== "custom") {
-        onUpdateTable(table, "field_order", "custom");
-      }
     },
-    [table, sortedFields, onUpdateTable, onUpdateFieldOrder],
+    [table, sortedFields, onUpdateFieldOrder],
   );
 
   return (

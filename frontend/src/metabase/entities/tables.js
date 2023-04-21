@@ -135,7 +135,10 @@ const Tables = createEntity({
     setFieldOrder:
       ({ id }, fieldOrder) =>
       dispatch => {
-        dispatch({ type: UPDATE_TABLE_FIELD_ORDER, payload: fieldOrder });
+        dispatch({
+          type: UPDATE_TABLE_FIELD_ORDER,
+          payload: { id, fieldOrder },
+        });
         updateFieldOrder({ id, fieldOrder }, { bodyParamName: "fieldOrder" });
       },
   },
@@ -239,6 +242,16 @@ const Tables = createEntity({
             ...table,
             metrics: table.metrics.filter(id => id !== metricId),
           },
+        };
+      }
+    }
+
+    if (type === UPDATE_TABLE_FIELD_ORDER) {
+      const table = state[payload.id];
+      if (table) {
+        return {
+          ...state,
+          [table.id]: { ...table, field_order: "custom" },
         };
       }
     }

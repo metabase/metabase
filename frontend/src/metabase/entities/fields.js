@@ -192,9 +192,9 @@ const Fields = createEntity({
         updateIn(state, [fieldId, "remappings"], (existing = []) =>
           Array.from(new Map(existing.concat(remappings))),
         ),
-      [UPDATE_TABLE_FIELD_ORDER]: (state, { payload: fieldIds }) => {
-        fieldIds.forEach((fieldId, position) => {
-          state = assocIn(state, [fieldId, "position"], position);
+      [UPDATE_TABLE_FIELD_ORDER]: (state, { payload: { fieldOrder } }) => {
+        fieldOrder.forEach((fieldId, index) => {
+          state = assocIn(state, [fieldId, "position"], index);
         });
 
         return state;
