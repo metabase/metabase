@@ -37,6 +37,7 @@ describe("Mode", () => {
         const mode = getMode(question);
         expect(mode && mode.name()).toEqual("timeseries");
       });
+
       it("returns `timeseries` mode with >=1 aggregations and date + category breakout", () => {
         const question = rawDataQuery
           .aggregate(["count"])
@@ -128,8 +129,9 @@ describe("Mode", () => {
       const mode = getMode(question);
 
       it("has pivot as mode actions 1 and 2", () => {
-        expect(mode.actionsForClick()[0].name).toBe("pivot-by-category");
-        expect(mode.actionsForClick()[1].name).toBe("pivot-by-location");
+        const actions = mode.actionsForClick();
+
+        expect(actions[0].name).toBe("breakout-by");
       });
     });
   });

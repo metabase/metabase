@@ -56,7 +56,7 @@ const PivotDrill: Drill = ({ question, clicked }) => {
 
   return [
     {
-      name: "pivot-by-category",
+      name: "breakout-by",
       title: t`Break out by…`,
       section: "breakout",
       icon: "arrow_split",
