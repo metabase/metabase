@@ -905,7 +905,7 @@
                                  ;; TODO -- make 'insert-rows-using-statements?` a multimethod so we don't need to
                                  ;; hardcode the whitelist here.
                                  (not (#{:vertica :bigquery-cloud-sdk} driver/*driver*)))
-                          (binding [hx/*honey-sql-version* (sql.qp/honey-sql-version driver/*driver*)]
+                          (sql.qp/with-driver-honey-sql-version driver/*driver*
                             (sql.qp/compiled
                              (sql.qp/add-interval-honeysql-form driver/*driver*
                                                                 (sql.qp/current-datetime-honeysql-form driver/*driver*)
@@ -1263,7 +1263,7 @@
                           #t "2022-03-31T00:00:00"
                           #t "2022-03-31T00:00:00-00:00"]]
           (testing (format "%d %s ^%s %s" n unit (.getCanonicalName (class t)) (pr-str t))
-            (binding [hx/*honey-sql-version* (sql.qp/honey-sql-version driver/*driver*)]
+            (sql.qp/with-driver-honey-sql-version driver/*driver*
               (let [march-31     (sql.qp/->honeysql driver/*driver* [:absolute-datetime t :day])
                     june-31      (sql.qp/add-interval-honeysql-form driver/*driver* march-31 n unit)
                     checkins     (mt/with-everything-store
