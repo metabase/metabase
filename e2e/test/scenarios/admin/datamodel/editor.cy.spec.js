@@ -1,6 +1,6 @@
 import { restore, popover, visitAlias } from "e2e/support/helpers";
 
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, SAMPLE_DB_SCHEMA } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS_ID, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -14,7 +14,9 @@ describe.skip("scenarios > admin > datamodel > editor", () => {
     cy.signInAsAdmin();
     cy.intercept("PUT", "/api/table/*").as("tableUpdate");
     cy.intercept("PUT", "/api/field/*").as("fieldUpdate");
-    cy.wrap(`${SAMPLE_DB_URL}/table/${ORDERS_ID}`).as(`ORDERS_URL`);
+    cy.wrap(
+      `${SAMPLE_DB_URL}/schema/${SAMPLE_DB_SCHEMA}/table/${ORDERS_ID}`,
+    ).as(`ORDERS_URL`);
   });
 
   it("should allow editing of the name and description", () => {
@@ -116,7 +118,7 @@ describe.skip("scenarios > admin > datamodel > editor", () => {
     cy.contains("Products").click();
     cy.url().should(
       "include",
-      `/admin/datamodel/database/${SAMPLE_DB_ID}/table/${PRODUCTS_ID}`,
+      `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA}/table/${PRODUCTS_ID}`,
     );
     cy.contains("Orders").click();
 

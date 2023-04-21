@@ -41,8 +41,8 @@ interface HasTableId {
   id: TableId;
 }
 
-interface HasEntityQuery {
-  entityQuery: unknown;
+interface HasRequestParams {
+  params: unknown;
 }
 
 interface OwnProps {
@@ -56,10 +56,7 @@ interface StateProps {
 }
 
 interface DispatchProps {
-  onFetchForeignTables: (
-    table: HasTableId,
-    opts: HasEntityQuery,
-  ) => Promise<void>;
+  onFetchMetadata: (table: HasTableId, opts: HasRequestParams) => Promise<void>;
   onFetchIdFields: (database: HasDatabaseId) => Promise<void>;
   onUpdateTable: (table: Table, name: string, value: unknown) => void;
 }
@@ -79,7 +76,7 @@ const mapStateToProps = (
 });
 
 const mapDispatchToProps: DispatchProps = {
-  onFetchForeignTables: Tables.actions.fetchMetadataAndForeignTables,
+  onFetchMetadata: Tables.actions.fetchMetadataAndForeignTables,
   onFetchIdFields: Databases.objectActions.fetchIdfields,
   onUpdateTable: Tables.actions.updateProperty,
 };
@@ -89,15 +86,12 @@ const MetadataTable = ({
   idFields = [],
   selectedDatabaseId,
   selectedTableId,
-  onFetchForeignTables,
+  onFetchMetadata,
   onFetchIdFields,
   onUpdateTable,
 }: MetadataTableProps) => {
   const { loading, error } = useAsync(() => {
-    return onFetchForeignTables(
-      { id: selectedTableId },
-      { entityQuery: TABLE_QUERY },
-    );
+    return onFetchMetadata({ id: selectedTableId }, { params: TABLE_QUERY });
   }, [selectedTableId]);
 
   useAsync(() => {
