@@ -319,12 +319,13 @@
 
 (defmethod ->legacy-MBQL :mbql/query [query]
   (let [base        (disqualify query)
+        parameters  (:parameters base)
         inner-query (chain-stages base)
         query-type  (if (-> query :stages last :lib/type (= :mbql.stage/native))
                       :native
                       :query)]
     (merge (-> base
-               (dissoc :stages)
+               (dissoc :stages :parameters)
                (update-vals ->legacy-MBQL))
-           {:type      query-type
-            query-type inner-query})))
+           (cond-> {:type query-type query-type inner-query}
+             (seq parameters) (assoc :parameters parameters)))))

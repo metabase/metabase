@@ -251,7 +251,14 @@
      {:query
       "SELECT \"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\", \"PUBLIC\".\"VENUES\".\"NAME\" AS \"NAME\", \"PUBLIC\".\"VENUES\".\"CATEGORY_ID\" AS \"CATEGORY_ID\", \"PUBLIC\".\"VENUES\".\"LATITUDE\" AS \"LATITUDE\", \"PUBLIC\".\"VENUES\".\"LONGITUDE\" AS \"LONGITUDE\", \"PUBLIC\".\"VENUES\".\"PRICE\" AS \"PRICE\" FROM \"PUBLIC\".\"VENUES\" LIMIT 1048575",
       :params nil}
-     :database 2360}))
+     :database 2360}
+
+    {:database 1,
+     :native {:query "select 111 as my_number, 'foo' as my_string"},
+     :parameters [{:target [:dimension [:field 16 {:source-field 5}]],
+                   :type :category,
+                   :value [:param-value]}],
+     :type :native}))
 
 (deftest ^:parallel round-trip-preserve-metadata-test
   (testing "Round-tripping should not affect embedded metadata"
