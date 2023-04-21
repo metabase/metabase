@@ -28,6 +28,8 @@ const MetadataEditor = ({ databases, params }: MetadataEditorProps) => {
   const databaseId = Urls.extractEntityId(params.databaseId);
   const schemaName = params.schemaName;
   const tableId = Urls.extractEntityId(params.tableId);
+  const hasDatabase = databases.some(database => database.id === databaseId);
+  const hasDatabaseId = databaseId != null;
 
   return (
     <div className="p4">
@@ -55,7 +57,7 @@ const MetadataEditor = ({ databases, params }: MetadataEditorProps) => {
         ) : (
           <div style={{ paddingTop: "10rem" }} className="full text-centered">
             <h2 className="text-medium">
-              {databases.length === 0
+              {hasDatabaseId && !hasDatabase
                 ? t`The page you asked for couldn't be found.`
                 : t`Select any table to see its schema and add or edit metadata.`}
             </h2>
