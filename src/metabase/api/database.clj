@@ -434,6 +434,8 @@
   (saved-cards-virtual-db-metadata :card :include-tables? true, :include-fields? true))
 
 (defn- db-metadata
+  ([id include-hidden? include-editable-data-model?]
+   (db-metadata id include-hidden? include-editable-data-model? nil))
   ([id include-hidden? include-editable-data-model? schema]
    (let [db (-> (if include-editable-data-model?
                   (api/check-404 (t2/select-one Database :id id))
@@ -465,9 +467,7 @@
                            (for [table tables]
                              (-> table
                                  (update :segments (partial filter mi/can-read?))
-                                 (update :metrics (partial filter mi/can-read?)))))))))
-  ([id include-hidden? include-editable-data-model?]
-   (db-metadata id include-hidden? include-editable-data-model? nil)))
+                                 (update :metrics (partial filter mi/can-read?))))))))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:id/metadata"
@@ -1125,8 +1125,7 @@
 
 (api/defendpoint GET "/:id/schema/:schema"
   "Returns a list of Tables for the given Database `id` and `schema`"
-  [id include_hidden include_editable_data_model
-   schema]
+  [id include_hidden include_editable_data_model schema]
   {id                          ms/PositiveInt
    include_hidden              [:maybe ms/BooleanString]
    include_editable_data_model [:maybe ms/BooleanString]}

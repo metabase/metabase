@@ -1151,7 +1151,8 @@
                       Table    [_ {:db_id database-id, :schema "public", :name "table"}]
                       Table    [_ {:db_id database-id, :schema "public", :name "hidden-table", :visibility_type "hidden"}]]
         (is (= #{"table" "hidden-table"}
-               (set (map :name (mt/user-http-request :rasta :get 200 (format "database/%s/schema/%s?include_hidden=true" database-id "public"))))))))
+               (set (map :name (mt/user-http-request :rasta :get 200 (format "database/%s/schema/%s" database-id "public")
+                                                     :include_hidden true)))))))
 
     (testing "should work for the saved questions 'virtual' database"
       (mt/with-temp* [Collection [coll   {:name "My Collection"}]
