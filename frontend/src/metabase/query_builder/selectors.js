@@ -456,21 +456,6 @@ export const getIsResultDirty = createSelector(
   ) => {
     const haveParametersChanged = !_.isEqual(lastParameters, nextParameters);
 
-    console.table({
-      haveParametersChanged,
-      isQuestionEditable: isQuestionEditable(question),
-      areQueriesEquivalent: areQueriesEquivalent({
-        originalQuestion,
-        lastRunQuestion,
-        currentQuestion: question,
-        tableMetadata,
-      }),
-      // originalQuestion,
-      // lastRunQuestion,
-      // currentQuestion: question,
-      // tableMetadata,
-    });
-
     return (
       haveParametersChanged ||
       (isQuestionEditable(question) &&
