@@ -101,3 +101,8 @@ i18n:
   - *default
   - *ci
   - *sources
+
+visualizations:
+  - "frontend/src/metabase/visualizations/**"
+  - "frontend/src/metabase/static-viz/**"
+  - "src/metabase/pulse/**"
