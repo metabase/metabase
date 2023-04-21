@@ -56,66 +56,66 @@
   ([table-name field-name]
    (+ random-id-offset
       (case table-name
-        :categories (case field-name
-                      :id   100
-                      :name 101)
-        :checkins   (case field-name
-                      :id       200
-                      :date     201
-                      :user-id  202
-                      :venue-id 203)
-        :users      (case field-name
-                      :id         300
-                      :name       301
-                      :last-login 302
-                      :password   303)
-        :venues     (case field-name
-                      :id          400
-                      :name        401
-                      :category-id 402
-                      :latitude    403
-                      :longitude   404
-                      :price       405)
-        :products   (case field-name
-                      :id         500
-                      :rating     501
-                      :category   502
-                      :price      503
-                      :title      504
-                      :created-at 505
-                      :vendor     506
-                      :ean        507)
-        :orders     (case field-name
-                      :id         600
-                      :subtotal   601
-                      :total      602
-                      :tax        603
-                      :discount   604
-                      :quantity   605
-                      :created-at 606
-                      :product-id 607
-                      :user-id    608)
-        :people     (case field-name
-                      :id         700
-                      :state      701
-                      :city       702
-                      :address    703
-                      :name       704
-                      :source     705
-                      :zip        706
-                      :latitude   707
-                      :password   708
-                      :birth-date 709
-                      :longitude  710
-                      :email      711
-                      :created-at 712)
-        :reviews    (case field-name
-                      :id         800
-                      :created-at 801
-                      :rating     802
-                      :reviewer   803
-                      :body       804
-                      :product-id 805)))))
+        :categories (case field-name       ;
+                      :id   100            ; :type/BigInteger
+                      :name 101)           ; :type/Text
+        :checkins   (case field-name       ;
+                      :id       200        ; :type/BigInteger
+                      :date     201        ; :type/Date
+                      :user-id  202        ; :type/Integer
+                      :venue-id 203)       ; :type/Integer
+        :users      (case field-name       ;
+                      :id         300      ; :type/BigInteger
+                      :name       301      ; :type/Text
+                      :last-login 302      ; :type/DateTime
+                      :password   303)     ; :type/Text
+        :venues     (case field-name       ;
+                      :id          400     ; :type/BigInteger
+                      :name        401     ; :type/Text
+                      :category-id 402     ; :type/Integer
+                      :latitude    403     ; :type/Float
+                      :longitude   404     ; :type/Float
+                      :price       405)    ; :type/Integer
+        :products   (case field-name       ;
+                      :id         500      ; :type/BigInteger
+                      :rating     501      ; :type/Float
+                      :category   502      ; :type/Text
+                      :price      503      ; :type/Float
+                      :title      504      ; :type/Text
+                      :created-at 505      ; :type/DateTimeWithLocalTZ
+                      :vendor     506      ; :type/Text
+                      :ean        507)     ; :type/Text
+        :orders     (case field-name       ;
+                      :id         600      ; :type/BigInteger
+                      :subtotal   601      ; :type/Float
+                      :total      602      ; :type/Float
+                      :tax        603      ; :type/Float
+                      :discount   604      ; :type/Float
+                      :quantity   605      ; :type/Integer
+                      :created-at 606      ; :type/DateTimeWithLocalTZ
+                      :product-id 607      ; :type/Integer
+                      :user-id    608)     ; :type/Integer
+        :people     (case field-name       ;
+                      :id         700      ; :type/BigInteger
+                      :state      701      ; :type/Text
+                      :city       702      ; :type/Text
+                      :address    703      ; :type/Text
+                      :name       704      ; :type/Text
+                      :source     705      ; :type/Text
+                      :zip        706      ; :type/Text
+                      :latitude   707      ; :type/Float
+                      :password   708      ; :type/Text
+                      :birth-date 709      ; :type/Date
+                      :longitude  710      ; :type/Float
+                      :email      711      ; :type/Text
+                      :created-at 712)     ; :type/DateTimeWithLocalTZ
+        :reviews    (case field-name       ;
+                      :id         800      ; :type/BigInteger
+                      :created-at 801      ; :type/DateTimeWithLocalTZ
+                      :rating     802      ; :type/Integer
+                      :reviewer   803      ; :type/Text
+                      :body       804      ; :type/Text
+                      :product-id 805))))) ; :type/Integer
 
 (defmulti table-metadata
   "Get Table metadata for a one of the `test-data` Tables in the test metadata, e.g. `:venues`. This is here so you can

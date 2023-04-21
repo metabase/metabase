@@ -94,7 +94,7 @@ export const ParametersWidgetContainer = styled(FullWidthContainer)`
   background-color: ${color("bg-light")};
   border-bottom: 1px solid ${color("bg-light")};
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   padding-top: ${space(2)};
   padding-bottom: ${space(1)};
   z-index: 3;

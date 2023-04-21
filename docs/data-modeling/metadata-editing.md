@@ -223,7 +223,7 @@ To update the values in your filter dropdown menus, refresh or reset the cached 
 
 1. Go to **Admin settings** > **Data Model**.
 2. Find your database and table.
-3. Click **gear** icon at the right of a column's settings box.
+3. Click the **gear** icon at the right of a column's settings box.
 4. Scroll to **Cached field values**.
 5. Select a cache action.
 

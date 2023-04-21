@@ -3,6 +3,7 @@
    [clojure.test :refer [are deftest is testing]]
    [clojure.walk :as walk]
    [malli.core :as mc]
+   [malli.error :as me]
    [metabase.lib.schema]
    [metabase.lib.schema.expression :as expression]))
 
@@ -81,8 +82,7 @@
               :let          [filter-clause (ensure-uuids filter-clause)]]
         (testing (pr-str filter-clause)
           (is (= (expression/type-of filter-clause) :type/Boolean))
-          (is (mc/validate ::expression/boolean filter-clause))
-          (is (not (mc/explain ::expression/boolean filter-clause)))))
+          (is (not (me/humanize (mc/explain ::expression/boolean filter-clause))))))
       ;; now test the entire thing
       (is (mc/validate ::expression/boolean (ensure-uuids filter-expr))))))
 

@@ -154,20 +154,6 @@
   [_pulse]
   [:name (serdes/hydrated-hash :collection) :created_at])
 
-(def ^:private ^:dynamic *automatically-archive-when-last-channel-is-deleted*
-  "Should we automatically archive a Pulse when its last `PulseChannel` is deleted? Normally we do, but this is disabled
-  in [[update-notification-channels!]] which creates/deletes/updates several channels sequentially."
-  true)
-
-(defn will-delete-channel
-  "This function is called by [[metabase.models.pulse-channel/pre-delete]] when the `PulseChannel` is about to be
-  deleted. Archives `Pulse` if the channel being deleted is its last channel."
-  [{pulse-id :pulse_id, pulse-channel-id :id}]
-  (when *automatically-archive-when-last-channel-is-deleted*
-    (let [other-channels-count (t2/count PulseChannel :pulse_id pulse-id, :id [:not= pulse-channel-id])]
-      (when (zero? other-channels-count)
-        (t2/update! Pulse pulse-id {:archived true})))))
-
 ;;; ---------------------------------------------------- Schemas -----------------------------------------------------
 
 (def AlertConditions
@@ -472,7 +458,7 @@
       "Cannot have channels without a :channel_type attribute")
     ;; don't automatically archive this Pulse if we end up deleting its last PulseChannel -- we're probably replacing
     ;; it with a new one immediately thereafter.
-    (binding [*automatically-archive-when-last-channel-is-deleted* false]
+    (binding [pulse-channel/*archive-parent-pulse-when-last-channel-is-deleted* false]
       ;; for each of our possible channel types call our handler function
       (doseq [[channel-type] pulse-channel/channel-types]
         (handle-channel channel-type)))))

@@ -182,17 +182,6 @@
    ;; is_group_manager only included if `advanced-permissions` is enabled
    (schema/optional-key :is_group_manager) schema/Bool})
 
-(schema/defn user-group-memberships :- (schema/maybe [UserGroupMembership])
-  "Return a list of group memberships a User belongs to.
-  Group membership is a map  with 2 keys [:id :is_group_manager], in which `is_group_manager` will only returned if
-  advanced-permissions is available."
-  [user-or-id]
-  (when user-or-id
-    (let [selector (cond-> [PermissionsGroupMembership [:group_id :id]]
-                     (premium-features/enable-advanced-permissions?)
-                     (conj :is_group_manager))]
-      (t2/select selector :user_id (u/the-id user-or-id)))))
-
 ;;; -------------------------------------------------- Permissions ---------------------------------------------------
 
 (defn permissions-set

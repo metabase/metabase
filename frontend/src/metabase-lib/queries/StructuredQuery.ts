@@ -63,7 +63,6 @@ import AggregationWrapper from "./structured/Aggregation";
 import BreakoutWrapper from "./structured/Breakout";
 import FilterWrapper from "./structured/Filter";
 import JoinWrapper from "./structured/Join";
-import OrderByWrapper from "./structured/OrderBy";
 
 import { getStructuredQueryTable } from "./utils/structured-query-table";
 
@@ -386,7 +385,6 @@ class StructuredQueryInner extends AtomicQuery {
       .cleanFilters()
       .cleanAggregations()
       .cleanBreakouts()
-      .cleanSorts()
       .cleanFields()
       .cleanEmpty();
   }
@@ -427,10 +425,6 @@ class StructuredQueryInner extends AtomicQuery {
 
   cleanBreakouts(): StructuredQuery {
     return this._cleanClauseList("breakouts");
-  }
-
-  cleanSorts(): StructuredQuery {
-    return this._cleanClauseList("sorts");
   }
 
   cleanFields(): StructuredQuery {
@@ -557,7 +551,8 @@ class StructuredQueryInner extends AtomicQuery {
   }
 
   hasSorts() {
-    return this.sorts().length > 0;
+    const query = this.getMLv2Query();
+    return ML.orderBys(query).length > 0;
   }
 
   hasLimit() {
@@ -598,13 +593,6 @@ class StructuredQueryInner extends AtomicQuery {
    */
   filter(filter: Filter | FilterWrapper) {
     return this.addFilter(filter);
-  }
-
-  /**
-   * @returns alias for addSort
-   */
-  sort(sort: OrderBy) {
-    return this.addSort(sort);
   }
 
   /**
@@ -1035,85 +1023,55 @@ class StructuredQueryInner extends AtomicQuery {
   }
 
   // SORTS
-  // TODO: standardize SORT vs ORDER_BY terminology
-  sorts(): OrderByWrapper[] {
-    return Q.getOrderBys(this.query()).map(
-      (sort, index) => new OrderByWrapper(sort, index, this),
-    );
+  /**
+   * @deprecated use the orderBys function from metabase-lib v2
+   */
+  sorts(): OrderBy[] {
+    return Q.getOrderBys(this.query());
   }
 
-  sortOptions(includedSort): DimensionOptions {
-    // in bare rows all fields are sortable, otherwise we only sort by our breakout columns
-    if (this.isBareRows()) {
-      const usedFields = new Set(
-        this.sorts()
-          .filter(sort => !_.isEqual(sort, includedSort))
-          .map(sort => sort.field().id),
-      );
-      return this.fieldOptions(field => !usedFields.has(field.id));
-    } else if (this.hasValidBreakout()) {
-      const sortOptions = {
-        count: 0,
-        dimensions: [],
-        fks: [],
-      };
-
-      for (const breakout of this.breakouts()) {
-        sortOptions.dimensions.push(breakout.dimension());
-        sortOptions.count++;
-      }
-
-      if (this.hasBreakouts()) {
-        for (const aggregation of this.aggregations()) {
-          sortOptions.dimensions.push(aggregation.aggregationDimension());
-          sortOptions.count++;
-        }
-      }
-
-      return new DimensionOptions(sortOptions);
-    }
-  }
-
-  canAddSort() {
-    const sorts = this.sorts();
-    return (
-      this.sortOptions().count > 0 &&
-      (sorts.length === 0 || sorts[sorts.length - 1][0] != null)
-    );
-  }
-
-  addSort(orderBy: OrderBy | OrderByWrapper) {
+  /**
+   * @deprecated use the orderBy function from metabase-lib v2
+   */
+  addSort(orderBy: OrderBy) {
     return this._updateQuery(Q.addOrderBy, arguments);
   }
 
-  updateSort(index: number, orderBy: OrderBy | OrderByWrapper) {
-    return this._updateQuery(Q.updateOrderBy, arguments);
-  }
-
-  removeSort(index: number) {
-    return this._updateQuery(Q.removeOrderBy, arguments);
-  }
-
+  /**
+   * @deprecated use the clearOrderBys function from metabase-lib v2
+   */
   clearSort() {
     return this._updateQuery(Q.clearOrderBy, arguments);
   }
 
+  /**
+   * @deprecated use the replaceClause function from metabase-lib v2
+   */
   replaceSort(orderBy: OrderBy) {
     return this.clearSort().addSort(orderBy);
   }
 
   // LIMIT
+  /**
+   * @deprecated use metabase-lib v2's currentLimit function
+   */
   limit(): Limit {
     const query = this.getMLv2Query();
     return ML.currentLimit(query);
   }
 
+  /**
+   * @deprecated use metabase-lib v2's limit function
+   */
   updateLimit(limit: Limit) {
     const query = this.getMLv2Query();
     const nextQuery = ML.limit(query, limit);
     return this.updateWithMLv2(nextQuery);
   }
 
+  /**
+   * @deprecated use metabase-lib v2's limit function
+   */
   clearLimit() {
     return this.updateLimit(null);
   }
