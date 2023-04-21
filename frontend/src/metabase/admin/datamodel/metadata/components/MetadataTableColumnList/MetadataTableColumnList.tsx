@@ -66,8 +66,11 @@ const MetadataTableColumnList = ({
     ({ oldIndex, newIndex }: DragProps) => {
       document.body.classList.remove("grabbing");
       onUpdateFieldOrder(table, updateFieldOrder(fields, oldIndex, newIndex));
+      if (table.field_order !== "custom") {
+        onUpdateTable(table, "field_order", "custom");
+      }
     },
-    [table, fields, onUpdateFieldOrder],
+    [table, fields, onUpdateTable, onUpdateFieldOrder],
   );
 
   return (
@@ -184,11 +187,8 @@ const updateFieldOrder = (
   newIndex: number,
 ) => {
   const fieldOrder = new Array<FieldId>(fields.length);
-  const hasCustomPosition = fields.some(field => field.position !== 0);
 
-  fields.forEach((field, fieldIndex) => {
-    const prevIndex = hasCustomPosition ? field.position : fieldIndex;
-
+  fields.forEach((field, prevIndex) => {
     const nextIndex =
       newIndex <= prevIndex && prevIndex < oldIndex
         ? prevIndex + 1 // shift down
