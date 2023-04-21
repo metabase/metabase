@@ -3,6 +3,10 @@ import { Field, FieldValues } from "metabase-types/api";
 
 export function setupFieldEndpoints(field: Field) {
   fetchMock.get(`path:/api/field/${field.id}`, field);
+
+  fetchMock.put(`path:/api/field/${field.id}`, url =>
+    fetchMock.lastCall(url)?.request?.json(),
+  );
 }
 
 export function setupFieldValuesEndpoints(fieldValues: FieldValues) {
