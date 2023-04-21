@@ -213,7 +213,7 @@
   "Default implementation of `create-db!` for SQL drivers."
   {:arglists '([driver dbdef & {:keys [skip-drop-db?]}])}
   [driver {:keys [table-definitions], :as dbdef} & options]
-  (binding [hx/*honey-sql-version* (sql.qp/honey-sql-version driver)]
+  (sql.qp/with-driver-honey-sql-version driver
     ;; first execute statements to drop the DB if needed (this will do nothing if `skip-drop-db?` is true)
     (doseq [statement (apply ddl/drop-db-ddl-statements driver dbdef options)]
       (execute/execute-sql! driver :server dbdef statement))
