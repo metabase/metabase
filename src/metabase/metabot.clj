@@ -181,11 +181,13 @@
         [:map [:field_id ::available_fields]]
         [:map [:value [:or :int :double :string]]]]]]]
     [:limit
-     {:optional true}
+     {:title       "Limit"
+      :description "The number of items to return in a query."
+      :optional true}
      pos-int?]
     [:order-by
      {:title       "Sort order"
-      :description "A sequential set of fields that determine the sort order of the data"
+      :description "A sequential set of asc|desc plus field id tuples determining the return data sort order."
       :optional    true}
      [:tuple
       [:enum :asc :desc]
