@@ -6,7 +6,6 @@
     :refer [Card Dashboard DashboardCard Database Metric Revision Segment Table]]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (defn- card-properties
@@ -45,9 +44,10 @@
    :visualization_settings {}})
 
 (defn- dashboard->revision-object [dashboard]
-  {:description  nil
-   :cache_ttl    nil
-   :name         (:name dashboard)})
+  {:description        nil
+   :cache_ttl          nil
+   :auto_apply_filters true
+   :name               (:name dashboard)})
 
 (deftest card-create-test
   (testing ":card-create"
@@ -138,7 +138,7 @@
     (mt/with-temp* [Dashboard     [{dashboard-id :id, :as dashboard}]
                     Card          [{card-id :id}                     (card-properties)]
                     DashboardCard [dashcard                          {:card_id card-id, :dashboard_id dashboard-id}]]
-      (db/simple-delete! DashboardCard, :id (:id dashcard))
+      (t2/delete! (t2/table-name DashboardCard), :id (:id dashcard))
       (revision/process-revision-event! {:topic :dashboard-remove-cards
                                          :item  {:id        dashboard-id
                                                  :actor_id  (mt/user->id :rasta)

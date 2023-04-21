@@ -20,7 +20,9 @@ describe("postgres > question > custom columns", { tags: "@external" }, () => {
     cy.findByText("Pick the metric you want to see").click();
     cy.findByText("Custom Expression").click();
     enterCustomColumnDetails({ formula: "Percentile([Subtotal], 0.1)" });
-    cy.findByPlaceholderText("Name (required)").as("description").click();
+    cy.findByPlaceholderText("Something nice and descriptive")
+      .as("description")
+      .click();
 
     cy.findByText("Function Percentile expects 1 argument").should("not.exist");
     cy.get("@description").type("A");

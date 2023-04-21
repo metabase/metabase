@@ -1,6 +1,8 @@
 (ns metabase.lib.temporal-bucket
   (:require
    [metabase.lib.dispatch :as lib.dispatch]
+   [metabase.lib.hierarchy :as lib.hierarchy]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.temporal-bucketing
     :as lib.schema.temporal-bucketing]
@@ -36,20 +38,21 @@
       (i18n/tru "next {0} {1}" (pr-str n) (unit->i18n n unit))
       (i18n/tru "last {0} {1}" (pr-str (abs n)) (unit->i18n (abs n) unit)))))
 
-(defmulti temporal-bucket*
+(defmulti with-temporal-bucket-method
   "Implementation for [[temporal-bucket]]. Implement this to tell [[temporal-bucket]] how to add a bucket to a
   particular MBQL clause."
   {:arglists '([x unit])}
   (fn [x _unit]
-    (lib.dispatch/dispatch-value x)))
+    (lib.dispatch/dispatch-value x))
+  :hierarchy lib.hierarchy/hierarchy)
 
-(defmethod temporal-bucket* :dispatch-type/fn
+(defmethod with-temporal-bucket-method :dispatch-type/fn
   [f unit]
   (fn [query stage-number]
     (let [x (f query stage-number)]
-      (temporal-bucket* x unit))))
+      (with-temporal-bucket-method x unit))))
 
-(mu/defn temporal-bucket
+(mu/defn with-temporal-bucket
   "Add a temporal bucketing unit, e.g. `:day` or `:day-of-year`, to an MBQL clause or something that can be converted to
   an MBQL clause. E.g. for a Field or Field metadata or `:field` clause, this might do something like this:
 
@@ -57,6 +60,45 @@
 
     =>
 
-    [:field 1 {:temporal-unit :day}]"
-  [x unit :- ::lib.schema.temporal-bucketing/unit]
-  (temporal-bucket* x unit))
+    [:field 1 {:temporal-unit :day}]
+
+  Pass a `nil` `unit` to remove the temporal bucket."
+  [x unit :- [:maybe ::lib.schema.temporal-bucketing/unit]]
+  (with-temporal-bucket-method x unit))
+
+(defmulti temporal-bucket-method
+  "Implementation of [[temporal-bucket]]. Return the current temporal bucketing unit associated with `x`."
+  {:arglists '([x])}
+  lib.dispatch/dispatch-value
+  :hierarchy lib.hierarchy/hierarchy)
+
+(defmethod temporal-bucket-method :default
+  [_x]
+  nil)
+
+(mu/defn temporal-bucket :- [:maybe ::lib.schema.temporal-bucketing/unit]
+  "Get the current temporal bucketing unit associated with something, if any."
+  [x]
+  (temporal-bucket-method x))
+
+(defmulti available-temporal-buckets-method
+  "Implementation for [[available-temporal-buckets]]. Return a set of units from
+  `:metabase.lib.schema.temporal-bucketing/unit` that are allowed to be used with `x`."
+  {:arglists '([query stage-number x])}
+  (fn [_query _stage-number x]
+    (lib.dispatch/dispatch-value x))
+  :hierarchy lib.hierarchy/hierarchy)
+
+(defmethod available-temporal-buckets-method :default
+  [_query _stage-number _x]
+  #{})
+
+(mu/defn available-temporal-buckets :- [:set [:ref ::lib.schema.temporal-bucketing/unit]]
+  "Get a set of available temporal bucketing units for `x`. Returns nil if no units are available."
+  ([query x]
+   (available-temporal-buckets query -1 x))
+
+  ([query        :- ::lib.schema/query
+    stage-number :- :int
+    x]
+   (available-temporal-buckets-method query stage-number x)))

@@ -1,10 +1,10 @@
 (ns metabase.lib.query-test
   (:require
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [deftest is]]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
-   [metabase.lib.test-metadata :as meta]
-   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
+   [metabase.lib.test-metadata :as meta]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -15,7 +15,7 @@
                   (lib/aggregate (lib/sum (lib/field (meta/id :venues :price)))))
         ;; wrong arity: there's a bug in our Kondo config, see https://metaboat.slack.com/archives/C04DN5VRQM6/p1679022185079739?thread_ts=1679022025.317059&cid=C04DN5VRQM6
         query (-> #_{:clj-kondo/ignore [:invalid-arity]}
-                  (lib/filter query (lib/= query -1 (lib/field (meta/id :venues :name)) "Toucannery"))
+                  (lib/filter query (lib/= (lib/field (meta/id :venues :name)) "Toucannery"))
                   (lib/breakout (lib/field (meta/id :venues :category-id)))
                   (lib/order-by (lib/field (meta/id :venues :id)))
                   (lib/limit 100))]
@@ -32,7 +32,6 @@
 (deftest ^:parallel native-query-test
   (is (=? {:lib/type :mbql/query
            :database (meta/id)
-           :type     :pipeline
            :stages   [{:lib/type    :mbql.stage/native
                        :lib/options {:lib/uuid string?}
                        :native      "SELECT * FROM VENUES;"}]}
@@ -47,9 +46,7 @@
 (deftest ^:parallel card-source-query-test
   (is (=? {:lib/type :mbql/query
            :database (meta/id)
-           :type     :pipeline
            :stages   [{:lib/type    :mbql.stage/native
-                       :lib/options {:lib/uuid string?}
                        :native      "SELECT * FROM VENUES;"}]}
           (lib/saved-question-query meta/metadata-provider
                                     {:dataset_query   {:database (meta/id)
@@ -60,7 +57,6 @@
 (deftest ^:parallel notebook-query-test
   (is (=? {:lib/type :mbql/query
            :database (meta/id)
-           :type     :pipeline
            :stages   [{:lib/type     :mbql.stage/mbql
                        :lib/options  {:lib/uuid string?}
                        :source-table (meta/id :venues)}

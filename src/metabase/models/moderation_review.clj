@@ -8,7 +8,6 @@
    [metabase.moderation :as moderation]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan.models :as models]
    [toucan2.core :as t2]))
 
@@ -20,15 +19,16 @@
   "Schema of valid statuses"
   (apply s/enum statuses))
 
-;; TODO: Appears to be unused, remove?
-(def ReviewChanges
-  "Schema for a ModerationReview that's being updated (so most keys are optional)"
-  {(s/optional-key :id)                  su/IntGreaterThanZero
-   (s/optional-key :moderated_item_id)   su/IntGreaterThanZero
-   (s/optional-key :moderated_item_type) moderation/moderated-item-types
-   (s/optional-key :status)              Statuses
-   (s/optional-key :text)                (s/maybe s/Str)
-   s/Any                                 s/Any})
+;;; currently unused, but I'm leaving this in commented out because it serves as documentation
+(comment
+  (def ReviewChanges
+    "Schema for a ModerationReview that's being updated (so most keys are optional)"
+    {(s/optional-key :id)                  su/IntGreaterThanZero
+     (s/optional-key :moderated_item_id)   su/IntGreaterThanZero
+     (s/optional-key :moderated_item_type) moderation/moderated-item-types
+     (s/optional-key :status)              Statuses
+     (s/optional-key :text)                (s/maybe s/Str)
+     s/Any                                 s/Any}))
 
 (models/defmodel ModerationReview :moderation_review)
 
@@ -71,9 +71,9 @@
     :moderator_id            su/IntGreaterThanZero
     (s/optional-key :status) Statuses
     (s/optional-key :text)   (s/maybe s/Str)}]
-  (db/transaction
+  (t2/with-transaction [_conn]
    (delete-extra-reviews! (:moderated_item_id params) (:moderated_item_type params))
-   (db/update-where! ModerationReview {:moderated_item_id (:moderated_item_id params)
-                                       :moderated_item_type (:moderated_item_type params)}
-                     :most_recent false)
+   (t2/update! ModerationReview {:moderated_item_id   (:moderated_item_id params)
+                                 :moderated_item_type (:moderated_item_type params)}
+               {:most_recent false})
    (first (t2/insert-returning-instances! ModerationReview (assoc params :most_recent true)))))

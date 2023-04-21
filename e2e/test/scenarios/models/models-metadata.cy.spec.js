@@ -6,6 +6,7 @@ import {
   popover,
   openQuestionActions,
   questionInfoButton,
+  addOrUpdateDashboardCard,
 } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { startQuestionFromModel } from "./helpers/e2e-models-helpers";
@@ -331,12 +332,10 @@ describe("scenarios > models metadata", () => {
       cy.get("@modelId").then(modelId => {
         cy.createDashboard().then(response => {
           const dashboardId = response.body.id;
-          cy.request("POST", `/api/dashboard/${dashboardId}/cards`, {
-            cardId: modelId,
-            row: 0,
-            col: 0,
-            size_x: 18,
-            size_y: 9,
+          addOrUpdateDashboardCard({
+            dashboard_id: dashboardId,
+            card_id: modelId,
+            card: { size_x: 18, size_y: 9 },
           });
 
           visitDashboard(dashboardId);

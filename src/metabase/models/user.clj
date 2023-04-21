@@ -22,7 +22,6 @@
    [metabase.util.password :as u.password]
    [metabase.util.schema :as su]
    [schema.core :as schema]
-   [toucan.db :as db]
    [toucan.models :as models]
    [toucan2.core :as t2])
   (:import
@@ -105,7 +104,7 @@
         ;; stack overflow of calls between the two. TODO - could we fix this issue by using a `post-delete` method?
         (and (not superuser?)
              in-admin-group?)
-        (db/simple-delete! PermissionsGroupMembership
+        (t2/delete! (t2/table-name PermissionsGroupMembership)
           :group_id (u/the-id (perms-group/admin))
           :user_id  id))))
   ;; make sure email and locale are valid if set
@@ -182,17 +181,6 @@
   {:id                                su/IntGreaterThanZero
    ;; is_group_manager only included if `advanced-permissions` is enabled
    (schema/optional-key :is_group_manager) schema/Bool})
-
-(schema/defn user-group-memberships :- (schema/maybe [UserGroupMembership])
-  "Return a list of group memberships a User belongs to.
-  Group membership is a map  with 2 keys [:id :is_group_manager], in which `is_group_manager` will only returned if
-  advanced-permissions is available."
-  [user-or-id]
-  (when user-or-id
-    (let [selector (cond-> [PermissionsGroupMembership [:group_id :id]]
-                     (premium-features/enable-advanced-permissions?)
-                     (conj :is_group_manager))]
-      (t2/select selector :user_id (u/the-id user-or-id)))))
 
 ;;; -------------------------------------------------- Permissions ---------------------------------------------------
 
@@ -356,7 +344,7 @@
   by [[pre-insert]] or [[pre-update]])"
   [user-id password]
   ;; when changing/resetting the password, kill any existing sessions
-  (db/simple-delete! Session :user_id user-id)
+  (t2/delete! (t2/table-name Session) :user_id user-id)
   ;; NOTE: any password change expires the password reset token
   (t2/update! User user-id
               {:password        password
@@ -387,12 +375,13 @@
         new-group-ids      (set (map u/the-id new-groups-or-ids))
         [to-remove to-add] (data/diff old-group-ids new-group-ids)]
     (when (seq (concat to-remove to-add))
-      (db/transaction
+      (t2/with-transaction [_conn]
        (when (seq to-remove)
          (t2/delete! PermissionsGroupMembership :user_id user-id, :group_id [:in to-remove]))
        ;; a little inefficient, but we need to do a separate `insert!` for each group we're adding membership to,
        ;; because `insert-many!` does not currently trigger methods such as `pre-insert`. We rely on those methods to
        ;; do things like automatically set the `is_superuser` flag for a User
+       ;; TODO use multipel insert here
        (doseq [group-id to-add]
          (t2/insert! PermissionsGroupMembership {:user_id user-id, :group_id group-id}))))
     true))

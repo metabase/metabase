@@ -95,8 +95,8 @@
   `(do-with-gtaps-for-user (fn [] ~gtaps-and-attributes-map) ~test-user-name-or-user-id (fn [~'&group] ~@body)))
 
 (defmacro with-gtaps
-  "Execute `body` with `gtaps` and optionally user `attributes` in effect. All underlying objects and permissions are
-  created automatically.
+  "Execute `body` with `gtaps` and optionally user `attributes` in effect, for the :rasta test user. All underlying
+  objects and permissions are created automatically.
 
   `gtaps-and-attributes-map` is a map containing `:gtaps` and optionally `:attributes`; see the `WithGTAPsArgs` schema
   in this namespace.

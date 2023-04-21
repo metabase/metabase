@@ -12,7 +12,6 @@ import {
   Breakout,
   Filter,
   Join,
-  LimitClause,
   OrderBy,
   DependentMetadataItem,
   ExpressionClause,
@@ -49,17 +48,21 @@ import Dimension, {
   AggregationDimension,
 } from "metabase-lib/Dimension";
 import DimensionOptions from "metabase-lib/DimensionOptions";
+
+import * as ML from "../v2";
+import type { Limit, Query } from "../types";
+
 import Segment from "../metadata/Segment";
 import Database from "../metadata/Database";
 import Question from "../Question";
 import Table from "../metadata/Table";
 import Field from "../metadata/Field";
+
 import AtomicQuery from "./AtomicQuery";
 import AggregationWrapper from "./structured/Aggregation";
 import BreakoutWrapper from "./structured/Breakout";
 import FilterWrapper from "./structured/Filter";
 import JoinWrapper from "./structured/Join";
-import OrderByWrapper from "./structured/OrderBy";
 
 import { getStructuredQueryTable } from "./utils/structured-query-table";
 
@@ -123,6 +126,15 @@ class StructuredQueryInner extends AtomicQuery {
   ) {
     super(question, datasetQuery);
     this._structuredDatasetQuery = datasetQuery as StructuredDatasetQuery;
+  }
+
+  private getMLv2Query(): Query {
+    return this.question()._getMLv2Query();
+  }
+
+  private updateWithMLv2(nextQuery: Query) {
+    const nextMLv1Query = ML.toLegacyQuery(nextQuery);
+    return this.setDatasetQuery(nextMLv1Query);
   }
 
   /* Query superclass methods */
@@ -373,8 +385,6 @@ class StructuredQueryInner extends AtomicQuery {
       .cleanFilters()
       .cleanAggregations()
       .cleanBreakouts()
-      .cleanSorts()
-      .cleanLimit()
       .cleanFields()
       .cleanEmpty();
   }
@@ -415,14 +425,6 @@ class StructuredQueryInner extends AtomicQuery {
 
   cleanBreakouts(): StructuredQuery {
     return this._cleanClauseList("breakouts");
-  }
-
-  cleanSorts(): StructuredQuery {
-    return this._cleanClauseList("sorts");
-  }
-
-  cleanLimit(): StructuredQuery {
-    return this; // TODO
   }
 
   cleanFields(): StructuredQuery {
@@ -549,12 +551,13 @@ class StructuredQueryInner extends AtomicQuery {
   }
 
   hasSorts() {
-    return this.sorts().length > 0;
+    const query = this.getMLv2Query();
+    return ML.orderBys(query).length > 0;
   }
 
   hasLimit() {
-    const limit = this.limit();
-    return limit != null && limit > 0;
+    const query = this.getMLv2Query();
+    return ML.hasLimit(query);
   }
 
   hasFields() {
@@ -590,13 +593,6 @@ class StructuredQueryInner extends AtomicQuery {
    */
   filter(filter: Filter | FilterWrapper) {
     return this.addFilter(filter);
-  }
-
-  /**
-   * @returns alias for addSort
-   */
-  sort(sort: OrderBy) {
-    return this.addSort(sort);
   }
 
   /**
@@ -648,19 +644,18 @@ class StructuredQueryInner extends AtomicQuery {
    * @returns an array of aggregation options for the currently selected table
    */
   aggregationOperators(): AggregationOperator[] {
-    const expressionFields = this.expressionDimensions().map(
-      expressionDimension => expressionDimension.field(),
-    );
-
     const table = this.table();
-    return (
-      (table &&
-        getAggregationOperators(table, [
-          ...expressionFields,
-          ...table.fields,
-        ])) ||
-      []
-    );
+
+    if (table) {
+      const fieldOptions = this.fieldOptions()
+        .all()
+        .map(dimension => dimension.field())
+        .filter(field => field != null);
+
+      return getAggregationOperators(table.db, fieldOptions);
+    }
+
+    return [];
   }
 
   aggregationOperatorsLookup(): Record<string, AggregationOperator> {
@@ -1028,84 +1023,57 @@ class StructuredQueryInner extends AtomicQuery {
   }
 
   // SORTS
-  // TODO: standardize SORT vs ORDER_BY terminology
-  sorts(): OrderByWrapper[] {
-    return Q.getOrderBys(this.query()).map(
-      (sort, index) => new OrderByWrapper(sort, index, this),
-    );
+  /**
+   * @deprecated use the orderBys function from metabase-lib v2
+   */
+  sorts(): OrderBy[] {
+    return Q.getOrderBys(this.query());
   }
 
-  sortOptions(includedSort): DimensionOptions {
-    // in bare rows all fields are sortable, otherwise we only sort by our breakout columns
-    if (this.isBareRows()) {
-      const usedFields = new Set(
-        this.sorts()
-          .filter(sort => !_.isEqual(sort, includedSort))
-          .map(sort => sort.field().id),
-      );
-      return this.fieldOptions(field => !usedFields.has(field.id));
-    } else if (this.hasValidBreakout()) {
-      const sortOptions = {
-        count: 0,
-        dimensions: [],
-        fks: [],
-      };
-
-      for (const breakout of this.breakouts()) {
-        sortOptions.dimensions.push(breakout.dimension());
-        sortOptions.count++;
-      }
-
-      if (this.hasBreakouts()) {
-        for (const aggregation of this.aggregations()) {
-          sortOptions.dimensions.push(aggregation.aggregationDimension());
-          sortOptions.count++;
-        }
-      }
-
-      return new DimensionOptions(sortOptions);
-    }
-  }
-
-  canAddSort() {
-    const sorts = this.sorts();
-    return (
-      this.sortOptions().count > 0 &&
-      (sorts.length === 0 || sorts[sorts.length - 1][0] != null)
-    );
-  }
-
-  addSort(orderBy: OrderBy | OrderByWrapper) {
+  /**
+   * @deprecated use the orderBy function from metabase-lib v2
+   */
+  addSort(orderBy: OrderBy) {
     return this._updateQuery(Q.addOrderBy, arguments);
   }
 
-  updateSort(index: number, orderBy: OrderBy | OrderByWrapper) {
-    return this._updateQuery(Q.updateOrderBy, arguments);
-  }
-
-  removeSort(index: number) {
-    return this._updateQuery(Q.removeOrderBy, arguments);
-  }
-
+  /**
+   * @deprecated use the clearOrderBys function from metabase-lib v2
+   */
   clearSort() {
     return this._updateQuery(Q.clearOrderBy, arguments);
   }
 
+  /**
+   * @deprecated use the replaceClause function from metabase-lib v2
+   */
   replaceSort(orderBy: OrderBy) {
     return this.clearSort().addSort(orderBy);
   }
 
   // LIMIT
-  limit(): number | null | undefined {
-    return Q.getLimit(this.query());
+  /**
+   * @deprecated use metabase-lib v2's currentLimit function
+   */
+  limit(): Limit {
+    const query = this.getMLv2Query();
+    return ML.currentLimit(query);
   }
 
-  updateLimit(limit: LimitClause) {
-    return this._updateQuery(Q.updateLimit, arguments);
+  /**
+   * @deprecated use metabase-lib v2's limit function
+   */
+  updateLimit(limit: Limit) {
+    const query = this.getMLv2Query();
+    const nextQuery = ML.limit(query, limit);
+    return this.updateWithMLv2(nextQuery);
   }
 
+  /**
+   * @deprecated use metabase-lib v2's limit function
+   */
   clearLimit() {
-    return this._updateQuery(Q.clearLimit, arguments);
+    return this.updateLimit(null);
   }
 
   // EXPRESSIONS
@@ -1394,7 +1362,7 @@ class StructuredQueryInner extends AtomicQuery {
 
   // TODO: this replicates logic in the backend, we should have integration tests to ensure they match
   // NOTE: these will not have the correct columnName() if there are duplicates
-  columnDimensions() {
+  columnDimensions(): Dimension[] {
     if (this.hasAggregations() || this.hasBreakouts()) {
       const aggregations = this.aggregationDimensions();
       const breakouts = this.breakoutDimensions();

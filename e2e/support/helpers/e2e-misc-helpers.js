@@ -36,7 +36,7 @@ export function openNativeEditor({
 
   databaseName && cy.findByText(databaseName).click();
 
-  return cy.get(".ace_content").as(alias).should("be.visible");
+  return cy.findByTestId("native-query-editor").as(alias).should("be.visible");
 }
 
 /**
@@ -128,6 +128,25 @@ export function visitQuestion(id) {
   cy.intercept("POST", `/api/card/**/${id}/query`).as(alias);
 
   cy.visit(`/question/${id}`);
+
+  cy.wait("@" + alias);
+}
+
+/**
+ * Visit a model and wait for its query to load.
+ *
+ * @param {number} id
+ */
+export function visitModel(id, { hasDataAccess = true } = {}) {
+  const alias = "modelQuery" + id;
+
+  if (hasDataAccess) {
+    cy.intercept("POST", `/api/dataset`).as(alias);
+  } else {
+    cy.intercept("POST", `/api/card/**/${id}/query`).as(alias);
+  }
+
+  cy.visit(`/model/${id}`);
 
   cy.wait("@" + alias);
 }
@@ -266,15 +285,4 @@ export function visitPublicDashboard(id, { params = {} } = {}) {
       });
     },
   );
-}
-
-/**
- * Returns a matcher function to find text content that is broken up by multiple elements
- *
- * @param {string} textToFind
- * @example
- * cy.findByText(getBrokenUpTextMatcher("my text with a styled word"))
- */
-export function getBrokenUpTextMatcher(textToFind) {
-  return (content, element) => element?.textContent === textToFind;
 }

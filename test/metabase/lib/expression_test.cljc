@@ -1,27 +1,26 @@
 (ns metabase.lib.expression-test
   (:require
-   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [deftest is testing]]
    [malli.core :as mc]
    [metabase.lib.core :as lib]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.schema :as lib.schema]
-   [metabase.lib.schema.expression :as schema.expression]
+   [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.test-metadata :as meta]
-   [metabase.lib.test-util :as lib.tu]))
+   [metabase.lib.test-util :as lib.tu]
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
 
 (comment lib/keep-me)
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (deftest ^:parallel expression-test
-  (is (=? {:lib/type :mbql/query,
-           :database (meta/id) ,
-           :type :pipeline,
-           :stages [{:lib/type :mbql.stage/mbql,
-                     :source-table (meta/id :venues) ,
-                     :lib/options {:lib/uuid string?},
+  (is (=? {:lib/type :mbql/query
+           :database (meta/id)
+           :stages [{:lib/type :mbql.stage/mbql
+                     :source-table (meta/id :venues)
+                     :lib/options {:lib/uuid string?}
                      :expressions {"myadd" [:+ {:lib/uuid string?}
                                             1
                                             [:field {:base-type :type/Integer, :lib/uuid string?} (meta/id :venues :category-id)]]}}]}
@@ -50,10 +49,10 @@
                           (lib/ceil float-field) :type/Integer
                           (lib/floor float-field) :type/Integer
                           (lib/round float-field) :type/Integer
-                          (lib/power int-field float-field) :type/Number
+                          (lib/power int-field float-field) :type/Float
                           (lib/interval 1 :month) :type/Integer ;; Need an interval type
                           #_#_(lib/relative-datetime "2020-01-01" :default) :type/DateTime
-                          (lib/time "08:00:00" :hour) :type/TimeWithTZ
+                          (lib/time "08:00:00" :hour) :type/Time
                           #_#_(lib/absolute-datetime "2020-01-01" :default) :type/DateTimeWithTZ
                           (lib/now) :type/DateTimeWithTZ
                           (lib/convert-timezone dt-field "US/Pacific" "US/Eastern") :type/DateTime
@@ -79,15 +78,17 @@
                           (lib/lower string-field) :type/Text])]
       (testing (str "expression: " (pr-str expr))
         (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
-                        (lib/expression "myexpr" expr))]
-          (is (mc/validate ::lib.schema/query query))
-          (is (= typ (schema.expression/type-of (lib.expression/resolve-expression query 0 "myexpr")))))))))
+                        (lib/expression "myexpr" expr))
+              resolved (lib.expression/resolve-expression query 0 "myexpr")]
+          (testing (pr-str resolved)
+            (is (mc/validate ::lib.schema/query query))
+            (is (= typ (lib.schema.expression/type-of resolved)))))))))
 
 (deftest ^:parallel col-info-expression-ref-test
   (is (=? {:base_type    :type/Integer
            :name         "double-price"
            :display_name "double-price"
-           :field_ref    [:expression {:lib/uuid string?} "double-price"]}
+           :lib/source   :source/expressions}
           (lib.metadata.calculation/metadata
            (lib.tu/venues-query-with-last-stage
             {:expressions {"double-price" [:*
@@ -107,9 +108,8 @@
     (is (=? [{:name         "prev_month"
               :display_name "prev_month"
               :base_type    :type/DateTime
-              :source       :fields
-              :field_ref    [:expression {:lib/uuid string?} "prev_month"]}]
-            (lib.metadata.calculation/metadata query -1 query)))))
+              :lib/source   :source/expressions}]
+            (lib.metadata.calculation/metadata query)))))
 
 (deftest ^:parallel date-interval-names-test
   (let [clause [:datetime-add
@@ -117,7 +117,7 @@
                 (lib.tu/field-clause :checkins :date {:base-type :type/Date})
                 -1
                 :day]]
-    (is (= "date_minus_1_day"
+    (is (= "DATE_minus_1_day"
            (lib.metadata.calculation/column-name lib.tu/venues-query -1 clause)))
     (is (= "Date - 1 day"
            (lib.metadata.calculation/display-name lib.tu/venues-query -1 clause)))))
@@ -139,7 +139,7 @@
 
 (deftest ^:parallel coalesce-names-test
   (let [clause [:coalesce {} (lib.tu/field-clause :venues :name) "<Venue>"]]
-    (is (= "name"
+    (is (= "NAME"
            (lib.metadata.calculation/column-name lib.tu/venues-query -1 clause)))
     (is (= "Name"
            (lib.metadata.calculation/display-name lib.tu/venues-query -1 clause)))))
@@ -162,7 +162,6 @@
     (testing "Uses the first clause"
       (testing "Gets the type information from the field"
         (is (=? {:name         "expr"
-                 :field_ref    [:expression {} "expr"]
                  :display_name "expr"
                  :base_type    :type/Text}
                 (infer-first [:coalesce
@@ -175,8 +174,7 @@
       (testing "Gets the type information from the literal"
         (is (=? {:base_type    :type/Text
                  :name         "expr"
-                 :display_name "expr"
-                 :field_ref    [:expression {} "expr"]}
+                 :display_name "expr"}
                 (infer-first [:coalesce {:lib/uuid (str (random-uuid))} "bar" (lib.tu/field-clause :venues :name)])))))))
 
 (deftest ^:parallel infer-case-test
@@ -184,7 +182,6 @@
     (testing "Uses first available type information"
       (testing "From a field"
         (is (=? {:name         "expr"
-                 :field_ref    [:expression {} "expr"]
                  :display_name "expr"
                  :base_type    :type/Text}
                 (infer-first [:coalesce
@@ -200,7 +197,7 @@
   (is (=? {:base_type    :type/DateTime
            :name         "last-login-plus-2"
            :display_name "last-login-plus-2"
-           :field_ref    [:expression {} "last-login-plus-2"]}
+           :lib/source   :source/expressions}
           (lib.metadata.calculation/metadata
            (lib.tu/venues-query-with-last-stage
             {:expressions {"last-login-plus-2" [:datetime-add
@@ -221,3 +218,34 @@
            {:expressions {"one-hundred" 100}})
           -1
           [:expression {:lib/uuid (str (random-uuid))} "double-price"])))))
+
+(deftest ^:parallel arithmetic-expression-type-of-test
+  (testing "Make sure we can calculate correct type information for arithmetic expression"
+    (let [field [:field {:lib/uuid (str (random-uuid))} (meta/id :venues :id)]]
+      (testing "+, -, and * should return common ancestor type of all args")
+      (doseq [tag   [:+ :- :*]
+              arg-2 [1 1.0]
+              :let  [clause [tag {:lib/uuid (str (random-uuid))} field arg-2]]]
+        (testing (str \newline (pr-str clause))
+          (is (= :type/*
+                 (lib.schema.expression/type-of clause)))
+          (is (= (condp = arg-2
+                   1   :type/Integer
+                   1.0 :type/Number)
+                 (lib.metadata.calculation/type-of lib.tu/venues-query clause)))))
+      (testing "/ should always return type/Float"
+        (doseq [arg-2 [1 1.0]
+                :let  [clause [:/ {:lib/uuid (str (random-uuid))} field arg-2]]]
+          (testing (str \newline (pr-str clause))
+            (is (= :type/Float
+                   (lib.schema.expression/type-of clause)))
+            (is (= :type/Float
+                   (lib.metadata.calculation/type-of lib.tu/venues-query clause)))))))))
+
+(deftest ^:parallel expressions-names-test
+  (testing "expressions should include the original expression name"
+    (is (=? [{:name         "expr"
+              :display_name "expr"}]
+            (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
+                (lib/expression "expr" (lib/absolute-datetime "2020" :month))
+                lib/expressions)))))

@@ -97,7 +97,7 @@ describe("scenarios > question > notebook", () => {
 
     cy.findByText("ID between 96 97").click();
     cy.findByText("Between").click();
-    popover().within(() => {
+    cy.findByTestId("operator-select-list").within(() => {
       cy.contains("Is not");
       cy.contains("Greater than");
       cy.contains("Less than");
@@ -139,7 +139,9 @@ describe("scenarios > question > notebook", () => {
     openProductsTable({ mode: "notebook" });
     filter({ mode: "notebook" });
     cy.findByText("Custom Expression").click();
+
     enterCustomColumnDetails({ formula: "[Price] > 1" });
+    cy.get("@formula").blur();
 
     cy.button("Done").click();
 
@@ -275,6 +277,7 @@ describe("scenarios > question > notebook", () => {
       cy.findByText("Custom Expression").click();
 
       enterCustomColumnDetails({ formula: "[Subtotal] - Tax > 140" });
+      cy.get("@formula").blur();
 
       cy.contains(/^redundant input/i).should("not.exist");
 
@@ -299,7 +302,7 @@ describe("scenarios > question > notebook", () => {
 
         enterCustomColumnDetails({ formula: expression });
 
-        cy.findByPlaceholderText("Name (required)")
+        cy.findByPlaceholderText("Something nice and descriptive")
           .click()
           .type(filter, { delay: 100 });
 
@@ -549,16 +552,34 @@ describe("scenarios > question > notebook", () => {
     });
   });
 
-  it("should properly render previews (metabase#28726)", () => {
+  it("should properly render previews (metabase#28726), (metabase#29959)", () => {
     openOrdersTable({ mode: "notebook" });
     cy.findByTestId("step-data-0-0").within(() => {
       cy.icon("play").click();
+      assertTableRowCount(10);
       cy.findByTextEnsureVisible("Subtotal");
       cy.findByTextEnsureVisible("Tax");
       cy.findByTextEnsureVisible("Total");
+      cy.icon("close").click();
+    });
+
+    cy.button("Row limit").click();
+    cy.findByTestId("step-limit-0-0").within(() => {
+      cy.findByPlaceholderText("Enter a limit").type("5");
+
+      cy.icon("play").click();
+      assertTableRowCount(5);
+
+      cy.findByDisplayValue("5").type("{selectall}50");
+      cy.button("Refresh").click();
+      assertTableRowCount(10);
     });
   });
 });
+
+function assertTableRowCount(expectedCount) {
+  cy.get(".Table-ID:not(.Table-FK)").should("have.length", expectedCount);
+}
 
 function addSimpleCustomColumn(name) {
   enterCustomColumnDetails({ formula: "C" });

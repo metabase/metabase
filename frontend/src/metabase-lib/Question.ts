@@ -5,7 +5,6 @@ import { assoc, assocIn, chain, dissoc, getIn } from "icepick";
 /* eslint-disable import/order */
 // NOTE: the order of these matters due to circular dependency issues
 import slugg from "slugg";
-import * as MLv2 from "cljs/metabase.lib.js";
 import StructuredQuery, {
   STRUCTURED_QUERY_TEMPLATE,
 } from "metabase-lib/queries/StructuredQuery";
@@ -14,7 +13,7 @@ import NativeQuery, {
 } from "metabase-lib/queries/NativeQuery";
 import AtomicQuery from "metabase-lib/queries/AtomicQuery";
 import InternalQuery from "metabase-lib/queries/InternalQuery";
-import Query from "metabase-lib/queries/Query";
+import BaseQuery from "metabase-lib/queries/Query";
 import Metadata from "metabase-lib/metadata/Metadata";
 import Database from "metabase-lib/metadata/Database";
 import Table from "metabase-lib/metadata/Table";
@@ -22,6 +21,11 @@ import Field from "metabase-lib/metadata/Field";
 import { AggregationDimension, FieldDimension } from "metabase-lib/Dimension";
 import { isFK } from "metabase-lib/types/utils/isa";
 import { memoizeClass, sortObject } from "metabase-lib/utils";
+import {
+  CollectionId,
+  Parameter as ParameterObject,
+  ParameterId,
+} from "metabase-types/api";
 
 import * as AGGREGATION from "metabase-lib/queries/utils/aggregation";
 import * as FILTER from "metabase-lib/queries/utils/filter";
@@ -30,16 +34,10 @@ import * as QUERY from "metabase-lib/queries/utils/query";
 // TODO: remove these dependencies
 import * as Urls from "metabase/lib/urls";
 import { getCardUiParameters } from "metabase-lib/parameters/utils/cards";
-import {
-  CardApi,
-  DashboardApi,
-  maybeUsePivotEndpoint,
-  MetabaseApi,
-} from "metabase/services";
 import { ParameterValues } from "metabase-types/types/Parameter";
 import { Card as CardObject, DatasetQuery } from "metabase-types/types/Card";
 import { VisualizationSettings } from "metabase-types/api/card";
-import { Column, Dataset, Value } from "metabase-types/types/Dataset";
+import { Column, Value } from "metabase-types/types/Dataset";
 import { TableId } from "metabase-types/types/Table";
 import { DatabaseId } from "metabase-types/types/Database";
 import {
@@ -48,16 +46,8 @@ import {
 } from "metabase-types/types/Visualization";
 import { DependentMetadataItem } from "metabase-types/types/Query";
 import { utf8_to_b64url } from "metabase/lib/encoding";
-import {
-  CollectionId,
-  Parameter as ParameterObject,
-  ParameterId,
-} from "metabase-types/api";
 
-import {
-  getParameterValuesBySlug,
-  normalizeParameters,
-} from "metabase-lib/parameters/utils/parameter-values";
+import { getParameterValuesBySlug } from "metabase-lib/parameters/utils/parameter-values";
 import {
   getTemplateTagParametersFromCard,
   remapParameterValuesToTemplateTags,
@@ -84,6 +74,9 @@ import {
   ALERT_TYPE_TIMESERIES_GOAL,
 } from "metabase-lib/Alert";
 import { getBaseDimensionReference } from "metabase-lib/references";
+
+import type { Query } from "./types";
+import * as ML from "./v2";
 
 export type QuestionCreatorOpts = {
   databaseId?: DatabaseId;
@@ -207,6 +200,7 @@ class QuestionInner {
       }
     }
 
+    // `dataset_query` is null for questions on a dashboard the user don't have access to
     console.warn("Unknown query type: " + datasetQuery?.type);
   }
 
@@ -230,7 +224,7 @@ class QuestionInner {
    * Returns a new Question object with an updated query.
    * The query is saved to the `dataset_query` field of the Card object.
    */
-  setQuery(newQuery: Query): Question {
+  setQuery(newQuery: BaseQuery): Question {
     if (this._card.dataset_query !== newQuery.datasetQuery()) {
       return this.setCard(
         assoc(this.card(), "dataset_query", newQuery.datasetQuery()),
@@ -1145,67 +1139,6 @@ class QuestionInner {
     return true;
   }
 
-  /**
-   * Runs the query and returns an array containing results for each single query.
-   *
-   * If we have a saved and clean single-query question, we use `CardApi.query` instead of a ad-hoc dataset query.
-   * This way we benefit from caching and query optimizations done by Metabase backend.
-   */
-  async apiGetResults({
-    cancelDeferred,
-    isDirty = false,
-    ignoreCache = false,
-    collectionPreview = false,
-  } = {}): Promise<[Dataset]> {
-    // TODO Atte Keinänen 7/5/17: Should we clean this query with Query.cleanQuery(query) before executing it?
-    const canUseCardApiEndpoint = !isDirty && this.isSaved();
-    const parameters = normalizeParameters(this.parameters());
-
-    if (canUseCardApiEndpoint) {
-      const dashboardId = this._card.dashboardId;
-      const dashcardId = this._card.dashcardId;
-
-      const queryParams = {
-        cardId: this.id(),
-        dashboardId,
-        dashcardId,
-        ignore_cache: ignoreCache,
-        collection_preview: collectionPreview,
-        parameters,
-      };
-      return [
-        await maybeUsePivotEndpoint(
-          dashboardId ? DashboardApi.cardQuery : CardApi.query,
-          this.card(),
-          this.metadata(),
-        )(queryParams, {
-          cancelled: cancelDeferred.promise,
-        }),
-      ];
-    } else {
-      const getDatasetQueryResult = datasetQuery => {
-        const datasetQueryWithParameters = { ...datasetQuery, parameters };
-        return maybeUsePivotEndpoint(
-          MetabaseApi.dataset,
-          this.card(),
-          this.metadata(),
-        )(
-          datasetQueryWithParameters,
-          cancelDeferred
-            ? {
-                cancelled: cancelDeferred.promise,
-              }
-            : {},
-        );
-      };
-
-      const datasetQueries = this.atomicQueries().map(query =>
-        query.datasetQuery(),
-      );
-      return Promise.all(datasetQueries.map(getDatasetQueryResult));
-    }
-  }
-
   setParameter(id: ParameterId, parameter: ParameterObject) {
     const newParameters = this.parameters().map(oldParameter =>
       oldParameter.id === id ? parameter : oldParameter,
@@ -1335,11 +1268,11 @@ class QuestionInner {
     return hasQueryBeenAltered ? question.markDirty() : question;
   }
 
-  _getMLv2Query(metadata = this._metadata) {
+  _getMLv2Query(metadata = this._metadata): Query {
     // cache the metadata provider we create for our metadata.
     if (metadata === this._metadata) {
       if (!this.__mlv2MetadataProvider) {
-        this.__mlv2MetadataProvider = MLv2.metadataProvider(
+        this.__mlv2MetadataProvider = ML.metadataProvider(
           this.databaseId(),
           metadata,
         );
@@ -1354,7 +1287,7 @@ class QuestionInner {
 
     if (!this.__mlv2Query) {
       this.__mlv2QueryMetadata = metadata;
-      this.__mlv2Query = MLv2.query(
+      this.__mlv2Query = ML.fromLegacyQuery(
         this.databaseId(),
         metadata,
         this.datasetQuery(),
@@ -1366,7 +1299,7 @@ class QuestionInner {
 
   generateQueryDescription() {
     const query = this._getMLv2Query();
-    return MLv2.suggestedName(query);
+    return ML.suggestedName(query);
   }
 
   getUrlWithParameters(parameters, parameterValues, { objectId, clean } = {}) {
@@ -1375,7 +1308,7 @@ class QuestionInner {
     if (this.isStructured()) {
       const questionWithParameters = this.setParameters(parameters);
 
-      if (!this.query().readOnly()) {
+      if (this.query().isEditable()) {
         return questionWithParameters
           .setParameterValues(parameterValues)
           ._convertParametersToMbql()

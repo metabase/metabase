@@ -9,8 +9,10 @@ import {
   modal,
   openNewCollectionItemFlowFor,
   visitDashboard,
-  appbar,
+  appBar,
   rightSidebar,
+  getDashboardCardMenu,
+  addOrUpdateDashboardCard,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -92,6 +94,7 @@ describe("scenarios > dashboard", () => {
     cy.get("main header").within(() => {
       cy.icon("info").click();
     });
+    cy.findByText("How many orders were placed in each year?").click();
     cy.findByDisplayValue("How many orders were placed in each year?");
   });
 
@@ -265,50 +268,34 @@ describe("scenarios > dashboard", () => {
           ],
         });
 
-        // add previously created question to the dashboard
-        cy.request("POST", `/api/dashboard/${dashboardId}/cards`, {
-          cardId: questionId,
-          row: 0,
-          col: 0,
-          size_x: 10,
-          size_y: 8,
-        }).then(({ body: { id: dashCardId } }) => {
-          // connect filter to that question
-          cy.request("PUT", `/api/dashboard/${dashboardId}/cards`, {
-            cards: [
+        addOrUpdateDashboardCard({
+          card_id: questionId,
+          dashboard_id: dashboardId,
+          card: {
+            parameter_mappings: [
               {
-                id: dashCardId,
+                parameter_id: "92eb69ea",
                 card_id: questionId,
-                row: 0,
-                col: 0,
-                size_x: 10,
-                size_y: 8,
-                parameter_mappings: [
-                  {
-                    parameter_id: "92eb69ea",
-                    card_id: questionId,
-                    target: ["dimension", ["field", PEOPLE.ID, null]],
-                  },
-                ],
-                visualization_settings: {
-                  // set click behavior to update filter (ID)
-                  click_behavior: {
-                    type: "crossfilter",
-                    parameterMapping: {
-                      "92eb69ea": {
-                        id: "92eb69ea",
-                        source: { id: "ID", name: "ID", type: "column" },
-                        target: {
-                          id: "92eb69ea",
-                          type: "parameter",
-                        },
-                      },
+                target: ["dimension", ["field", PEOPLE.ID, null]],
+              },
+            ],
+            visualization_settings: {
+              // set click behavior to update filter (ID)
+              click_behavior: {
+                type: "crossfilter",
+                parameterMapping: {
+                  "92eb69ea": {
+                    id: "92eb69ea",
+                    source: { id: "ID", name: "ID", type: "column" },
+                    target: {
+                      id: "92eb69ea",
+                      type: "parameter",
                     },
                   },
                 },
               },
-            ],
-          });
+            },
+          },
         });
 
         visitDashboard(dashboardId);
@@ -553,7 +540,7 @@ describe("scenarios > dashboard", () => {
 
   it("should show collection breadcrumbs for a dashboard", () => {
     visitDashboard(1);
-    appbar().within(() => cy.findByText("Our analytics").click());
+    appBar().within(() => cy.findByText("Our analytics").click());
 
     cy.findByText("Orders").should("be.visible");
   });
@@ -569,6 +556,14 @@ describe("scenarios > dashboard", () => {
     cy.findByText("Undo").click();
     saveDashboard();
     cy.findByText("Orders").should("be.visible");
+  });
+
+  it("should allow navigating to the notebook editor for a question on the dashboard", () => {
+    visitDashboard(1);
+    showDashboardCardActions();
+    getDashboardCardMenu().click();
+    popover().findByText("Edit question").click();
+    cy.findByRole("button", { name: "Visualize" }).should("be.visible");
   });
 });
 

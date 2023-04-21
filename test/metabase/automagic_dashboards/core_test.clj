@@ -23,7 +23,6 @@
    [metabase.util.i18n :refer [tru]]
    [ring.util.codec :as codec]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -286,8 +285,8 @@
         (let [source-query {:database (mt/id)
                             :query    (mt/$ids
                                        {:source-table $$products
-                                        :fields       [&u.products.category
-                                                       &u.products.price]})
+                                        :fields       [$products.category
+                                                       $products.price]})
                             :type     :query}]
           (mt/with-temp* [Collection [{collection-id :id}]
                           Card [card {:table_id        (mt/id :products)
@@ -304,7 +303,9 @@
                   candidate-bindings (#'magic/candidate-bindings base-context dimensions)
                   bindset            #(->> % candidate-bindings (map ffirst) set)]
               (is (= #{"GenericCategoryMedium"} (bindset (mt/id :products :category))))
-              (is (= #{"GenericNumber"} (bindset (mt/id :products :price))))))))))
+              (is (= #{"GenericNumber"} (bindset (mt/id :products :price)))))))))))
+
+(deftest ensure-field-dimension-bindings-test-2
   (testing "A model that spans 3 tables should use all fields, provide correct candidate bindings,
             and choose the best-match candidate."
     (mt/dataset sample-dataset
@@ -312,24 +313,24 @@
         (let [source-query {:database (mt/id)
                             :type     :query
                             :query    (mt/$ids
-                                       {:source-table $$orders
-                                        :joins        [{:fields       [&u.people.state
-                                                                       &u.people.longitude
-                                                                       &u.people.latitude]
-                                                        :source-table $$people
-                                                        :condition    [:= $orders.user_id &u.people.id]}
-                                                       {:fields       [&u.products.price]
-                                                        :source-table $$products
-                                                        :condition    [:= $orders.product_id &u.products.id]}]
-                                        :fields       [$orders.created_at]})}]
+                                        {:source-table $$orders
+                                         :joins        [{:fields       [$people.state
+                                                                        $people.longitude
+                                                                        $people.latitude]
+                                                         :source-table $$people
+                                                         :condition    [:= $orders.user_id $people.id]}
+                                                        {:fields       [$products.price]
+                                                         :source-table $$products
+                                                         :condition    [:= $orders.product_id $products.id]}]
+                                         :fields       [$orders.created_at]})}]
           (mt/with-temp* [Collection [{collection-id :id}]
                           Card [card {:table_id        (mt/id :products)
                                       :collection_id   collection-id
                                       :dataset_query   source-query
                                       :result_metadata (mt/with-test-user
-                                                         :rasta
-                                                         (result-metadata-for-query
-                                                          source-query))
+                                                           :rasta
+                                                           (result-metadata-for-query
+                                                            source-query))
                                       :dataset         true}]]
             (let [root               (#'magic/->root card)
                   {:keys [dimensions] :as _rule} (rules/get-rule ["table" "GenericTable"])
@@ -470,8 +471,8 @@
         (let [source-query {:database (mt/id)
                             :query    (mt/$ids
                                        {:source-table $$products
-                                        :fields       [&p.products.category
-                                                       &p.products.price]}),
+                                        :fields       [$products.category
+                                                       $products.price]})
                             :type     :query}]
           (mt/with-temp* [Collection [{collection-id :id}]
                           Card [card {:table_id        (mt/id :products)
@@ -499,7 +500,9 @@
                             [_ field-id m] fields
                             :when (:binning m)]
                         field-id))))
-              (->> dashboard :ordered_cards (filter :card) count)))))))
+              (->> dashboard :ordered_cards (filter :card) count))))))))
+
+(deftest basic-root-model-test-2
   (testing "Simple model with a temporal dimension detected"
     ;; Same as above, but the code should detect the time dimension of the model and present
     ;; cards with a time axis.
@@ -508,19 +511,19 @@
         (let [temporal-field-id (mt/id :products :created_at)
               source-query      {:database (mt/id)
                                  :query    (mt/$ids
-                                            {:source-table $$products
-                                             :fields       [&p.products.category
-                                                            &p.products.price
-                                                            [:field temporal-field-id nil]]}),
+                                             {:source-table $$products
+                                              :fields       [$products.category
+                                                             $products.price
+                                                             [:field temporal-field-id nil]]}),
                                  :type     :query}]
           (mt/with-temp* [Collection [{collection-id :id}]
                           Card [card {:table_id        (mt/id :products)
                                       :collection_id   collection-id
                                       :dataset_query   source-query
                                       :result_metadata (mt/with-test-user
-                                                         :rasta
-                                                         (result-metadata-for-query
-                                                          source-query))
+                                                           :rasta
+                                                           (result-metadata-for-query
+                                                            source-query))
                                       :dataset         true}]]
             (let [dashboard (mt/with-test-user :rasta (magic/automagic-analysis card nil))
                   temporal-field-ids (for [card (:ordered_cards dashboard)
@@ -533,24 +536,26 @@
               ;; We want to produce at least one temporal axis card
               (is (pos? (count temporal-field-ids)))
               ;; We only have one temporal field, so ensure that's what's used for the temporal cards
-              (is (every? #{temporal-field-id} temporal-field-ids))))))))
+              (is (every? #{temporal-field-id} temporal-field-ids)))))))))
+
+(deftest basic-root-model-test-3
   (testing "A simple model with longitude and latitude dimensions should generate a card with a map."
     (mt/dataset sample-dataset
       (mt/with-non-admin-groups-no-root-collection-perms
         (let [source-query {:database (mt/id)
                             :query    (mt/$ids
-                                       {:source-table $$people
-                                        :fields       [&u.people.longitude
-                                                       &u.people.latitude]}),
+                                        {:source-table $$people
+                                         :fields       [$people.longitude
+                                                        $people.latitude]}),
                             :type     :query}]
           (mt/with-temp* [Collection [{collection-id :id}]
                           Card [card {:table_id        (mt/id :people)
                                       :collection_id   collection-id
                                       :dataset_query   source-query
                                       :result_metadata (mt/with-test-user
-                                                         :rasta
-                                                         (result-metadata-for-query
-                                                          source-query))
+                                                           :rasta
+                                                           (result-metadata-for-query
+                                                            source-query))
                                       :dataset         true}]]
             (let [{:keys [ordered_cards] :as dashboard} (mt/with-test-user :rasta (magic/automagic-analysis card nil))]
               (ensure-single-table-sourced (mt/id :people) dashboard)
@@ -770,7 +775,7 @@
       @api/*current-user-permissions-set*
       (automagic-dashboards.test/with-dashboard-cleanup
         (let [database (t2/select-one Database :id db-id)]
-          (db/with-call-counting [call-count]
+          (t2/with-call-count [call-count]
             (magic/candidate-tables database)
             (is (= 4
                    (call-count)))))))))

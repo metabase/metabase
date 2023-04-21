@@ -8,6 +8,7 @@
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.api.ldap :as api.ldap]
+   [metabase.api.session :as api.session]
    [metabase.email.messages :as messages]
    [metabase.integrations.google :as google]
    [metabase.models.collection :as collection :refer [Collection]]
@@ -17,6 +18,8 @@
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
+   [metabase.server.middleware.session :as mw.session]
+   [metabase.server.request.util :as request.u]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.password :as u.password]
@@ -256,7 +259,7 @@
   (api/check-superuser)
   (api/checkp (not (t2/exists? User :%lower.email (u/lower-case-en email)))
     "email" (tru "Email address already in use."))
-  (db/transaction
+  (t2/with-transaction [_conn]
     (let [new-user-id (u/the-id (user/create-and-invite-user!
                                  (u/select-keys-when body
                                    :non-nil [:first_name :last_name :email :password :login_attributes])
@@ -331,7 +334,7 @@
     ;; can't change email if it's already taken BY ANOTHER ACCOUNT
     (api/checkp (not (t2/exists? User, :%lower.email (if email (u/lower-case-en email) email), :id [:not= id]))
       "email" (tru "Email address already associated to another user."))
-    (db/transaction
+    (t2/with-transaction [_conn]
       ;; only superuser or self can update user info
       ;; implicitly prevent group manager from updating users' info
       (when (or (= id api/*current-user-id*)
@@ -385,20 +388,23 @@
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema PUT "/:id/password"
   "Update a user's password."
-  [id :as {{:keys [password old_password]} :body}]
+  [id :as {{:keys [password old_password]} :body, :as request}]
   {password su/ValidPassword}
   (check-self-or-superuser id)
-  (api/let-404 [user (t2/select-one [User :password_salt :password], :id id, :is_active true)]
+  (api/let-404 [user (t2/select-one [User :id :last_login :password_salt :password], :id id, :is_active true)]
     ;; admins are allowed to reset anyone's password (in the admin people list) so no need to check the value of
     ;; `old_password` for them regular users have to know their password, however
     (when-not api/*is-superuser?*
       (api/checkp (u.password/bcrypt-verify (str (:password_salt user) old_password) (:password user))
-        "old_password"
-        (tru "Invalid password"))))
-  (user/set-password! id password)
-  ;; return the updated User
-  (fetch-user :id id))
-
+                  "old_password"
+                  (tru "Invalid password")))
+    (user/set-password! id password)
+    ;; after a successful password update go ahead and offer the client a new session that they can use
+    (when (= id api/*current-user-id*)
+      (let [{session-uuid :id, :as session} (api.session/create-session! :password user (request.u/device-info request))
+            response                        {:success    true
+                                             :session_id (str session-uuid)}]
+        (mw.session/set-session-cookies request response session (t/zoned-date-time (t/zone-id "GMT")))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                             Deleting (Deactivating) a User -- DELETE /api/user/:id                             |

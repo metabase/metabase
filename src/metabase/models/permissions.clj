@@ -194,7 +194,6 @@
    [metabase.util.regex :as u.regex]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan.models :as models]
    [toucan2.core :as t2]))
 
@@ -395,11 +394,6 @@
       (throw (ex-info "Unclassified data path!!" {:data-path data-path :result result})))
     (first result)))
 
-(def segmented-perm-regex
-  "Regex that matches a segmented permission. Used internally for some EE stuff
-  e.g. [[metabase-enterprise.sandbox.api.util/segmented-user?]]."
-  (re-pattern (str #"^/db/\d+/schema/" path-char "*" #"/table/\d+/query/segmented/$")))
-
 (defn- escape-path-component
   "Escape slashes in something that might be passed as a string part of a permissions path (e.g. DB schema name or
   Collection name).
@@ -533,12 +527,6 @@
 
   ([database-or-id schema-name table-or-id]
    (str (data-perms-path (u/the-id database-or-id) schema-name (u/the-id table-or-id)) "query/segmented/")))
-
-(s/defn execute-query-perms-path :- PathSchema
-  "Return the execute query action permissions path for a database.
-   This grants you permissions to run arbitary query actions."
-  [database-or-id :- MapOrID]
-  (str "/execute" (data-perms-path database-or-id)))
 
 (s/defn database-block-perms-path :- PathSchema
   "Return the permissions path for the Block 'anti-permissions'. Block anti-permissions means a User cannot run a query
@@ -1024,8 +1012,8 @@
   (delete-related-permissions! group-or-id (apply (partial feature-perms-path :download :limited) path-components)))
 
 (defn grant-permissions!
-  "Grant permissions for `group-or-id`. Two-arity grants any arbitrary Permissions `path`. With > 2 args, grants the
-  data permissions from calling [[data-perms-path]]."
+  "Grant permissions for `group-or-id` and return the inserted permissions. Two-arity grants any arbitrary Permissions `path`.
+  With > 2 args, grants the data permissions from calling [[data-perms-path]]."
   ([group-or-id db-id schema & more]
    (grant-permissions! group-or-id (apply data-perms-path db-id schema more)))
 
@@ -1037,10 +1025,10 @@
    (t2/delete! Permissions :group_id (u/the-id group-or-id) :object [:like "/query/%"])
    (t2/delete! Permissions :group_id (u/the-id group-or-id) :object [:like "/data/%"])
    (try
-     (db/insert-many! Permissions
-       (map (fn [path-object]
-              {:group_id (u/the-id group-or-id) :object path-object})
-            (distinct (conj (->v2-path path) path))))
+     (t2/insert-returning-instances! Permissions
+                                     (map (fn [path-object]
+                                            {:group_id (u/the-id group-or-id) :object path-object})
+                                          (distinct (conj (->v2-path path) path))))
      ;; on some occasions through weirdness we might accidentally try to insert a key that's already been inserted
      (catch Throwable e
        (log/error e (u/format-color 'red (tru "Failed to grant permissions")))
@@ -1411,7 +1399,7 @@
      (when (or (seq old) (seq new))
        (log-permissions-changes old new)
        (check-revision-numbers old-graph new-graph)
-       (db/transaction
+       (t2/with-transaction [_conn]
         (doseq [[group-id changes] new]
           (update-group-permissions! group-id changes))
         (save-perms-revision! PermissionsRevision (:revision old-graph) old new)
@@ -1436,7 +1424,7 @@
      (when (or (seq old) (seq new))
        (log-permissions-changes old new)
        (check-revision-numbers old-graph new-graph)
-       (db/transaction
+       (t2/with-transaction [_conn]
          (doseq [[group-id changes] new]
            (update-execution-permissions! group-id changes))
          (save-perms-revision! PermissionsRevision (:revision old-graph) old new)))))

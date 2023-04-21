@@ -1,15 +1,16 @@
 (ns metabase.models.revision
   (:require
    [clojure.data :as data]
+   [metabase.db.util :as mdb.u]
    [metabase.models.interface :as mi]
    [metabase.models.revision.diff :refer [diff-string]]
    [metabase.models.user :refer [User]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
    [toucan.models :as models]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.model :as t2.model]))
 
 (def ^:const max-revisions
   "Maximum number of revisions to keep for each individual object. After this limit is surpassed, the oldest revisions
@@ -68,7 +69,7 @@
   [{:keys [model], :as revision}]
   ;; in some cases (such as tests) we have 'fake' models that cannot be resolved normally; don't fail entirely in
   ;; those cases
-  (let [model (u/ignore-exceptions (db/resolve-model (symbol model)))]
+  (let [model (u/ignore-exceptions (t2.model/resolve-model (symbol model)))]
     (cond-> revision
       model (update :object (partial models/do-post-select model)))))
 
@@ -97,7 +98,7 @@
 (defn revisions
   "Get the revisions for `model` with `id` in reverse chronological order."
   [model id]
-  {:pre [(models/model? model) (integer? id)]}
+  {:pre [(mdb.u/toucan-model? model) (integer? id)]}
   (t2/select Revision, :model (name model), :model_id id, {:order-by [[:id :desc]]}))
 
 (defn revisions+details
@@ -113,7 +114,7 @@
 (defn- delete-old-revisions!
   "Delete old revisions of `model` with `id` when there are more than `max-revisions` in the DB."
   [model id]
-  {:pre [(models/model? model) (integer? id)]}
+  {:pre [(mdb.u/toucan-model? model) (integer? id)]}
   (when-let [old-revisions (seq (drop max-revisions (map :id (t2/select [Revision :id]
                                                                :model    (name model)
                                                                :model_id id
@@ -127,7 +128,7 @@
       :keys [entity id user-id is-creation? message],
       :or {id (:id object), is-creation? false}}]
   ;; TODO - rewrite this to use a schema
-  {:pre [(models/model? entity)
+  {:pre [(mdb.u/toucan-model? entity)
          (integer? user-id)
          (t2/exists? User :id user-id)
          (integer? id)
@@ -150,14 +151,14 @@
 (defn revert!
   "Revert `entity` with `id` to a given Revision."
   [& {:keys [entity id user-id revision-id]}]
-  {:pre [(models/model? entity)
+  {:pre [(mdb.u/toucan-model? entity)
          (integer? id)
          (t2/exists? entity :id id)
          (integer? user-id)
          (t2/exists? User :id user-id)
          (integer? revision-id)]}
   (let [serialized-instance (t2/select-one-fn :object Revision, :model (name entity), :model_id id, :id revision-id)]
-    (db/transaction
+    (t2/with-transaction [_conn]
       ;; Do the reversion of the object
       (revert-to-revision! entity id user-id serialized-instance)
       ;; Push a new revision to record this change

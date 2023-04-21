@@ -165,7 +165,9 @@ describe("scenarios > question > summarize sidebar", () => {
     popover().contains("Custom Expression").click();
     popover().within(() => {
       enterCustomColumnDetails({ formula: "2 * Max([Total])" });
-      cy.findByPlaceholderText("Name (required)").type("twice max total");
+      cy.findByPlaceholderText("Something nice and descriptive").type(
+        "twice max total",
+      );
       cy.findByText("Done").click();
     });
 
@@ -174,19 +176,24 @@ describe("scenarios > question > summarize sidebar", () => {
     cy.findByText("318.7");
   });
 
-  it.skip("should keep manually entered parenthesis intact (metabase#13306)", () => {
-    const FORMULA =
-      "Sum([Total]) / (Sum([Product → Price]) * Average([Quantity]))";
-
+  it("should keep manually entered parenthesis intact if they affect the result (metabase#13306)", () => {
     openOrdersTable({ mode: "notebook" });
     summarize({ mode: "notebook" });
+
     popover().contains("Custom Expression").click();
     popover().within(() => {
-      cy.get(".ace_text-input").type(FORMULA).blur();
+      enterCustomColumnDetails({
+        formula:
+          "sum([Total]) / (sum([Product → Price]) * average([Quantity]))",
+      });
+      cy.get("@formula").blur();
+    });
 
-      cy.log("Fails after blur in v0.36.6");
-      // Implicit assertion
-      cy.contains(FORMULA);
+    popover().within(() => {
+      cy.get(".ace_text-layer").should(
+        "have.text",
+        "Sum([Total]) / (Sum([Product → Price]) * Average([Quantity]))",
+      );
     });
   });
 
@@ -201,7 +208,7 @@ describe("scenarios > question > summarize sidebar", () => {
       "**The point of failure for ANY non-numeric value reported in v0.36.4**",
     );
     // the default type for "Reviewer" is "No semantic type"
-    popover().within(() => {
+    cy.findByTestId("expression-suggestions-list").within(() => {
       cy.contains("Reviewer");
     });
   });

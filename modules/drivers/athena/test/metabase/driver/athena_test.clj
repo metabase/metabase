@@ -1,6 +1,7 @@
 (ns metabase.driver.athena-test
   (:require
    [clojure.test :refer :all]
+   #_{:clj-kondo/ignore [:discouraged-namespace]}
    [honeysql.format :as hformat]
    [metabase.driver :as driver]
    [metabase.driver.athena :as athena]
@@ -9,6 +10,7 @@
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
+   #_{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.util.honeysql-extensions :as hx]))
 
 (def ^:private nested-schema

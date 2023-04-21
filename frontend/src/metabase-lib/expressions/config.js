@@ -184,6 +184,12 @@ export const MBQL_CLAUSES = {
     args: ["string", "string"],
     hasOptions: true,
   },
+  "does-not-contain": {
+    displayName: `doesNotContain`,
+    type: "boolean",
+    args: ["string", "string"],
+    hasOptions: true,
+  },
   "starts-with": {
     displayName: `startsWith`,
     type: "boolean",
@@ -222,8 +228,18 @@ export const MBQL_CLAUSES = {
     type: "boolean",
     args: ["expression"],
   },
+  "not-null": {
+    displayName: `notnull`,
+    type: "boolean",
+    args: ["expression"],
+  },
   "is-empty": {
     displayName: `isempty`,
+    type: "boolean",
+    args: ["expression"],
+  },
+  "not-empty": {
+    displayName: `notempty`,
     type: "boolean",
     args: ["expression"],
   },
@@ -475,12 +491,19 @@ export const EXPRESSION_FUNCTIONS = new Set([
   "relative-datetime",
   "interval",
   "is-null",
+  "not-null",
   "is-empty",
+  "not-empty",
+  "does-not-contain",
   // other
   "coalesce",
 ]);
 
 const EXPRESSION_OPERATORS = new Set(["+", "-", "*", "/"]);
+
+// operators in which order of operands doesn't matter
+export const EXPRESSION_OPERATOR_WITHOUT_ORDER_PRIORITY = new Set(["+", "*"]);
+
 export const FILTER_OPERATORS = new Set(["!=", "<=", ">=", "<", ">", "="]);
 
 const BOOLEAN_UNARY_OPERATORS = new Set(["not"]);

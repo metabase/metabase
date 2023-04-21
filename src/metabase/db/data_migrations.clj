@@ -17,7 +17,6 @@
    [metabase.models.setting :as setting :refer [Setting]]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [toucan.db :as db]
    [toucan.models :as models]
    [toucan2.core :as t2]))
 
@@ -40,7 +39,7 @@
     (when-not (contains? ran-migrations migration-name)
       (log/info (format "Running data migration '%s'..." migration-name))
       (try
-       (db/transaction
+       (t2/with-transaction [_conn]
         (@migration-var))
        (catch Exception e
          (if catch?

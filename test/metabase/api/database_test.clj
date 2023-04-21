@@ -15,6 +15,7 @@
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.setting :as setting :refer [defsetting]]
+   [metabase.public-settings.premium-features :as premium-features]
    [metabase.sync.analyze :as analyze]
    [metabase.sync.field-values :as field-values]
    [metabase.sync.sync-metadata :as sync-metadata]
@@ -28,7 +29,8 @@
    [ring.util.codec :as codec]
    [schema.core :as s]
    [toucan.hydrate :as hydrate]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (use-fixtures :once (fixtures/initialize :db :plugins :test-drivers))
 
@@ -241,6 +243,7 @@
     (testing "can we set `is_full_sync` to `false` when we create the Database?"
       (is (= {:is_full_sync false}
              (select-keys (create-db-via-api! {:is_full_sync false}) [:is_full_sync]))))
+
     (testing "if `:let-user-control-scheduling` is false it will ignore any schedules provided"
       (let [monthly-schedule {:schedule_type "monthly" :schedule_day "fri" :schedule_frame "last"}
             {:keys [details metadata_sync_schedule cache_field_values_schedule]}
@@ -249,6 +252,7 @@
         (is (not (:let-user-control-scheduling details)))
         (is (= "daily" (-> cache_field_values_schedule u.cron/cron-string->schedule-map :schedule_type)))
         (is (= "hourly" (-> metadata_sync_schedule u.cron/cron-string->schedule-map :schedule_type)))))
+
     (testing "if `:let-user-control-scheduling` is true it will accept the schedules"
       (let [monthly-schedule {:schedule_type "monthly" :schedule_day "fri" :schedule_frame "last"}
             {:keys [details metadata_sync_schedule cache_field_values_schedule]}
@@ -258,6 +262,7 @@
         (is (:let-user-control-scheduling details))
         (is (= "monthly" (-> cache_field_values_schedule u.cron/cron-string->schedule-map :schedule_type)))
         (is (= "monthly" (-> metadata_sync_schedule u.cron/cron-string->schedule-map :schedule_type)))))
+
     (testing "well known connection errors are reported properly"
       (let [dbname (mt/random-name)
             exception (Exception. (format "FATAL: database \"%s\" does not exist" dbname))]
@@ -269,6 +274,7 @@
                                         :engine       "postgres"
                                         :details      {:host "localhost", :port 5432
                                                        :dbname "fakedb", :user "rastacan"}}))))))
+
     (testing "unknown connection errors are reported properly"
       (let [exception (Exception. "Unknown driver message" (java.net.ConnectException. "Failed!"))]
         (is (= {:errors  {:host "check your host settings"
@@ -279,7 +285,20 @@
                  (mt/user-http-request :crowberto :post 400 "database"
                                        {:name    (mt/random-name)
                                         :engine  (u/qualified-name ::test-driver)
-                                        :details {:db "my_db"}}))))))))
+                                        :details {:db "my_db"}}))))))
+
+    (testing "should throw a 402 error if trying to set `cache_ttl` on OSS"
+      (with-redefs [premium-features/enable-advanced-config? (constantly false)]
+        (mt/user-http-request :crowberto :post 402 "database"
+                              {:name      (mt/random-name)
+                               :engine    (u/qualified-name ::test-driver)
+                               :details   {:db "my_db"}
+                               :cache_ttl 13})))
+
+    (testing "should allow setting `cache_ttl` on EE"
+      (with-redefs [premium-features/enable-advanced-config? (constantly true)]
+        (is (partial= {:cache_ttl 13}
+                      (create-db-via-api! {:cache_ttl 13})))))))
 
 (deftest delete-database-test
   (testing "DELETE /api/database/:id"
@@ -299,7 +318,6 @@
         (let [updates {:name         "Cam's Awesome Toucan Database"
                        :engine       "h2"
                        :is_full_sync false
-                       :cache_ttl    1337
                        :details      {:host "localhost", :port 5432, :dbname "fakedb", :user "rastacan"}}
               update! (fn [expected-status-code]
                         (mt/user-http-request :crowberto :put expected-status-code (format "database/%d" db-id) updates))]
@@ -309,11 +327,10 @@
             (with-redefs [driver/can-connect? (constantly true)]
               (is (= nil
                      (:valid (update! 200))))
-              (let [curr-db (t2/select-one [Database :name :engine :cache_ttl :details :is_full_sync], :id db-id)]
+              (let [curr-db (t2/select-one [Database :name :engine :details :is_full_sync], :id db-id)]
                 (is (=
                      {:details      {:host "localhost", :port 5432, :dbname "fakedb", :user "rastacan"}
                       :engine       :h2
-                      :cache_ttl    1337
                       :name         "Cam's Awesome Toucan Database"
                       :is_full_sync false
                       :features     (driver.u/features :h2 curr-db)}
@@ -329,18 +346,28 @@
             (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id) updates))
           (is (= false
                  (t2/select-one-fn :auto_run_queries Database, :id db-id))))))
-    (testing "should be able to unset cache_ttl"
-      (mt/with-temp Database [{db-id :id}]
-        (let [updates1 {:cache_ttl    1337}
-              updates2 {:cache_ttl    nil}
-              updates1! (fn [] (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id) updates1))
-              updates2! (fn [] (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id) updates2))]
-          (updates1!)
-          (let [curr-db (t2/select-one [Database :cache_ttl], :id db-id)]
-            (is (= 1337 (:cache_ttl curr-db))))
-          (updates2!)
-          (let [curr-db (t2/select-one [Database :cache_ttl], :id db-id)]
-            (is (= nil (:cache_ttl curr-db)))))))))
+
+    (testing "should not be able to modify `cache_ttl` in OSS"
+      (with-redefs [premium-features/enable-advanced-config? (constantly false)]
+        (mt/with-temp Database [{db-id :id} {:engine ::test-driver}]
+          (let [updates {:cache_ttl 13}]
+            (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id) updates))
+          (is (= nil
+                 (t2/select-one-fn :cache_ttl Database, :id db-id))))))
+
+    (testing "should be able to set and unset `cache_ttl` in EE"
+      (with-redefs [premium-features/enable-advanced-config? (constantly true)]
+        (mt/with-temp Database [{db-id :id} {:engine ::test-driver}]
+          (let [updates1 {:cache_ttl 1337}
+                updates2 {:cache_ttl nil}
+                updates1! (fn [] (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id) updates1))
+                updates2! (fn [] (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id) updates2))]
+            (updates1!)
+            (let [curr-db (t2/select-one [Database :cache_ttl], :id db-id)]
+              (is (= 1337 (:cache_ttl curr-db))))
+            (updates2!)
+            (let [curr-db (t2/select-one [Database :cache_ttl], :id db-id)]
+              (is (= nil (:cache_ttl curr-db))))))))))
 
 (deftest fetch-database-metadata-test
   (testing "GET /api/database/:id/metadata"
@@ -1480,3 +1507,52 @@
           (testing "App DB"
             (is (= {:database-enable-actions false}
                    (settings)))))))))
+
+(deftest persist-database-test-2
+  (mt/test-drivers (mt/normal-drivers-with-feature :persist-models)
+    (mt/dataset test-data
+      (let [db-id (:id (mt/db))]
+        (t2.with-temp/with-temp
+          [Card card {:database_id db-id
+                      :dataset     true}]
+          (mt/with-temporary-setting-values [persisted-models-enabled false]
+            (testing "requires persist setting to be enabled"
+              (is (= "Persisting models is not enabled."
+                     (mt/user-http-request :crowberto :post 400 (str "database/" db-id "/persist"))))))
+
+          (mt/with-temporary-setting-values [persisted-models-enabled true]
+            (testing "only users with permissions can persist a database"
+              (is (= "You don't have permissions to do that."
+                     (mt/user-http-request :rasta :post 403 (str "database/" db-id "/persist")))))
+
+            (testing "should be able to persit an database"
+              (mt/user-http-request :crowberto :post 204 (str "database/" db-id "/persist"))
+              (is (= "creating" (t2/select-one-fn :state 'PersistedInfo
+                                                  :database_id db-id
+                                                  :card_id     (:id card))))
+              (is (true? (t2/select-one-fn (comp :persist-models-enabled :options)
+                                           Database
+                                           :id db-id))))
+            (testing "it's okay to trigger persist even though the database is already persisted"
+              (mt/user-http-request :crowberto :post 204 (str "database/" db-id "/persist")))))))))
+
+(deftest unpersist-database-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :persist-models)
+    (mt/dataset test-data
+      (let [db-id (:id (mt/db))]
+        (t2.with-temp/with-temp
+          [Card     _ {:database_id db-id
+                       :dataset     true}]
+          (testing "only users with permissions can persist a database"
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :rasta :post 403 (str "database/" db-id "/unpersist")))))
+
+          (mt/with-temporary-setting-values [persisted-models-enabled true]
+            (testing "should be able to persit an database"
+              ;; trigger persist first
+              (mt/user-http-request :crowberto :post 204 (str "database/" db-id "/unpersist"))
+              (is (nil? (t2/select-one-fn (comp :persist-models-enabled :options)
+                                          Database
+                                          :id db-id))))
+            (testing "it's okay to unpersist even though the database is not persisted"
+              (mt/user-http-request :crowberto :post 204 (str "database/" db-id "/unpersist")))))))))

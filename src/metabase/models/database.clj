@@ -16,7 +16,6 @@
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
-   [toucan.db :as db]
    [toucan.models :as models]
    [toucan2.core :as t2]))
 
@@ -102,8 +101,8 @@
 
 (defn- pre-delete [{id :id, driver :engine, :as database}]
   (unschedule-tasks! database)
-  (db/execute! {:delete-from :permissions
-                :where       [:like :object (str "%" (perms/data-perms-path id) "%")]})
+  (t2/query-one {:delete-from :permissions
+                 :where       [:like :object (str "%" (perms/data-perms-path id) "%")]})
   (delete-orphaned-secrets! database)
   (try
     (driver/notify-database-updated driver database)
@@ -206,11 +205,12 @@
                            :existing-engine existing-engine
                            :new-engine      new-engine})))))))
 
-(defn- pre-insert [{:keys [details], :as database}]
-  (-> (cond-> database
-        (not details) (assoc :details {}))
-      handle-secrets-changes
-      (assoc :initial_sync_status "incomplete")))
+(defn- pre-insert [{:keys [details initial_sync_status], :as database}]
+   (-> database
+       (cond->
+        (not details)             (assoc :details {})
+        (not initial_sync_status) (assoc :initial_sync_status "incomplete"))
+       handle-secrets-changes))
 
 (defmethod mi/perms-objects-set Database
   [{db-id :id} read-or-write]
@@ -302,13 +302,11 @@
 ;;; ------------------------------------------------ Serialization ----------------------------------------------------
 
 (defmethod serdes/extract-one "Database"
-  [_model-name {secrets :database/secrets :or {secrets :exclude}} entity]
-  ;; TODO Support alternative encryption of secret database details.
-  ;; There's one optional foreign key: creator_id. Resolve it as an email.
-  (cond-> (serdes/extract-one-basics "Database" entity)
-    true                 (update :creator_id serdes/export-user)
-    true                 (dissoc :features) ; This is a synthetic column that isn't in the real schema.
-    (= :exclude secrets) (dissoc :details)))
+  [_model-name {:keys [include-database-secrets]} entity]
+  (-> (serdes/extract-one-basics "Database" entity)
+      (update :creator_id serdes/*export-user*)
+      (dissoc :features) ; This is a synthetic column that isn't in the real schema.
+      (cond-> (not include-database-secrets) (dissoc :details))))
 
 (defmethod serdes/entity-id "Database"
   [_ {:keys [name]}]
@@ -326,7 +324,8 @@
   [database]
   (-> database
       serdes/load-xform-basics
-      (update :creator_id serdes/import-user)))
+      (update :creator_id serdes/*import-user*)
+      (assoc :initial_sync_status "complete")))
 
 (defmethod serdes/load-insert! "Database" [_ ingested]
   (let [m (get-method serdes/load-insert! :default)]
