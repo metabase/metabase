@@ -1,8 +1,6 @@
 import React, { useEffect } from "react";
 import { connect } from "react-redux";
-import { useMount } from "react-use";
 import { MetabotEntityId, MetabotEntityType } from "metabase-types/store";
-import { trackMetabotPageView } from "metabase/metabot/analytics";
 import Question from "metabase-lib/Question";
 import Database from "metabase-lib/metadata/Database";
 import { init, InitPayload, reset } from "../../actions";
@@ -45,10 +43,6 @@ const Metabot = ({
     onInit({ entityId, entityType, initialPrompt });
     return () => onReset();
   }, [entityId, entityType, initialPrompt, onInit, onReset]);
-
-  useMount(() => {
-    trackMetabotPageView(entityType);
-  });
 
   return (
     <MetabotRoot>

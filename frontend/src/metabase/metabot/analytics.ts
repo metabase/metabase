@@ -7,13 +7,6 @@ export type MetabotQueryRunResult = "success" | "failure" | "bad-sql";
 const SCEMA_NAME = "metabot";
 const TEMPLATE_VERSION = "1-0-1";
 
-export const trackMetabotPageView = (entity_type: MetabotEntityType) => {
-  trackSchemaEvent(SCEMA_NAME, TEMPLATE_VERSION, {
-    event: "metabot_page_view",
-    entity_type,
-  });
-};
-
 export const trackMetabotQueryRun = (
   entity_type: MetabotEntityType | null,
   prompt_template_versions: string[] | null,

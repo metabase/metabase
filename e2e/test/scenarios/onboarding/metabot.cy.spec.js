@@ -122,6 +122,7 @@ describeWithSnowplow("scenarios > metabot", () => {
 
     // 1 - new_instance_created
     // 2 - pageview
+    // 3 - metabot_query_run
     // 4 - metabot_feedback_received
     expectGoodSnowplowEvents(3);
   });

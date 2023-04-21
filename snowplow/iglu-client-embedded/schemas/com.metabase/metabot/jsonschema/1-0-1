@@ -13,7 +13,6 @@
       "description": "Event name",
       "type": "string",
       "enum": [
-        "metabot_page_view",
         "metabot_query_run",
         "metabot_feedback_received"
       ],
