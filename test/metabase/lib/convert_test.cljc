@@ -219,6 +219,12 @@
                 :limit        1
                 :source-table 4}}
 
+    {:database 310,
+     :query {:middleware {:disable-remaps? true},
+             :source-card-id 1301,
+             :source-query {:native "SELECT id, name, category_id, latitude, longitude, price FROM venues ORDER BY id ASC LIMIT 2"}},
+     :type :query}
+
     {:type :native,
      :native
      {:query

@@ -203,14 +203,17 @@
   ;; In pMBQL, the :lib/stage-metadata is attached to the same stage it applies to.
   ;; So when chaining pMBQL stages back into legacy form, if stage n has :lib/stage-metadata, stage n+1 needs
   ;; :source-metadata attached.
-  (first (reduce (fn [[inner stage-metadata] stage]
-                   [(cond-> (->legacy-MBQL stage)
-                      inner          (assoc :source-query inner)
-                      stage-metadata (assoc :source-metadata (mapv ->legacy-MBQL (:columns stage-metadata))))
-                    ;; Get the :lib/stage-metadata off the original pMBQL stage, not the converted one.
-                    (:lib/stage-metadata stage)])
-                 nil
-                 stages)))
+  (let [inner-query (first (reduce (fn [[inner stage-metadata] stage]
+                                     [(cond-> (->legacy-MBQL stage)
+                                        inner          (assoc :source-query inner)
+                                        stage-metadata (assoc :source-metadata (mapv ->legacy-MBQL (:columns stage-metadata))))
+                                      ;; Get the :lib/stage-metadata off the original pMBQL stage, not the converted one.
+                                      (:lib/stage-metadata stage)])
+                                   nil
+                                   stages))]
+    (cond-> inner-query
+      ;; If this is a native query, inner query will be used like: `{:type :native :native #_inner-query {:query ...}}`
+      (:native inner-query) (set/rename-keys {:native :query}))))
 
 (defmethod ->legacy-MBQL :dispatch-type/map [m]
   (-> m
@@ -264,7 +267,6 @@
 (defmethod ->legacy-MBQL :mbql.stage/native [stage]
   (-> stage
       disqualify
-      (set/rename-keys {:native :query})
       (update-vals ->legacy-MBQL)))
 
 (defmethod ->legacy-MBQL :mbql/query [query]
