@@ -7,10 +7,11 @@ import { getMainElement } from "metabase/lib/dom";
 
 import DashboardHeader from "metabase/dashboard/containers/DashboardHeader";
 import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
+import FilterApplyButton from "metabase/parameters/components/FilterApplyButton";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
+import DashboardControls from "metabase/dashboard/hoc/DashboardControls";
 import { getValuePopulatedParameters } from "metabase-lib/parameters/utils/parameter-values";
 
-import DashboardControls from "../../hoc/DashboardControls";
 import { DashboardSidebars } from "../DashboardSidebars";
 import DashboardGrid from "../DashboardGrid";
 import { SIDEBAR_NAME } from "../../constants";
@@ -57,6 +58,7 @@ class Dashboard extends Component {
     dashboardId: PropTypes.number,
     parameters: PropTypes.array,
     parameterValues: PropTypes.object,
+    draftParameterValues: PropTypes.object,
     editingParameter: PropTypes.object,
 
     editingOnLoad: PropTypes.bool,
@@ -221,6 +223,7 @@ class Dashboard extends Component {
       isSharing,
       parameters,
       parameterValues,
+      draftParameterValues,
       isNavbarOpen,
       editingParameter,
       setParameterValue,
@@ -238,7 +241,12 @@ class Dashboard extends Component {
 
     const parametersWidget = (
       <SyncedParametersList
-        parameters={getValuePopulatedParameters(parameters, parameterValues)}
+        parameters={getValuePopulatedParameters(
+          parameters,
+          _.isEmpty(draftParameterValues)
+            ? parameterValues
+            : draftParameterValues,
+        )}
         editingParameter={editingParameter}
         dashboard={dashboard}
         isFullscreen={isFullscreen}
@@ -309,6 +317,7 @@ class Dashboard extends Component {
                     topNav={embedOptions?.top_nav}
                   >
                     {parametersWidget}
+                    <FilterApplyButton />
                   </ParametersWidgetContainer>
                 )}
 
