@@ -24,7 +24,7 @@
     (snippet.perms/has-any-native-permissions?)
     (has-parent-collection-perms? snippet :read)))
   ([model id]
-   (can-read? (t2/select-one [model :collection_id] :id id) :read)))
+   (can-read? (t2/select-one [model :collection_id] :id id))))
 
 (defenterprise can-write?
   "Can the current User edit this `snippet`?"
@@ -35,7 +35,7 @@
     (snippet.perms/has-any-native-permissions?)
     (has-parent-collection-perms? snippet :write)))
   ([model id]
-   (can-write? (t2/select-one [model :collection_id] :id id) :write)))
+   (can-write? (t2/select-one [model :collection_id] :id id))))
 
 (defenterprise can-create?
   "Can the current User save a new Snippet with the values in `m`?"
