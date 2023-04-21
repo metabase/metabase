@@ -59,33 +59,33 @@
 
 (deftest ^:parallel field-type-test
   (testing "temporal"
-    (are [typ] (= lib.types.constants/TEMPORAL (lib.types.isa/field-type {:effective_type typ}))
+    (are [typ] (= ::lib.types.constants/temporal (lib.types.isa/field-type {:effective_type typ}))
       :type/Date :type/DateTime :type/Time))
   (testing "numeric"
-    (are [typ] (= lib.types.constants/NUMBER (lib.types.isa/field-type {:effective_type typ}))
+    (are [typ] (= ::lib.types.constants/number (lib.types.isa/field-type {:effective_type typ}))
       :type/BigInteger :type/Integer :type/Float :type/Decimal))
   (testing "string"
-    (is (= lib.types.constants/STRING (lib.types.isa/field-type {:effective_type :type/Text}))))
+    (is (= ::lib.types.constants/string (lib.types.isa/field-type {:effective_type :type/Text}))))
   (testing "types of string"
     (are [typ] (= ::lib.types.constants/string (lib.types.isa/field-type {:effective_type :type/Text
                                                                           :semantic_type typ}))
       :type/Name :type/Description :type/UUID :type/URL))
   (testing "primary key"
-    (is (= lib.types.constants/PRIMARY_KEY (lib.types.isa/field-type {:effective_type :type/Integer
+    (is (= ::lib.types.constants/primary_key (lib.types.isa/field-type {:effective_type :type/Integer
                                                                         :semantic_type :type/PK}))))
   (testing "foreign key"
-    (is (= lib.types.constants/FOREIGN_KEY (lib.types.isa/field-type {:effective_type :type/Integer
+    (is (= ::lib.types.constants/foreign_key (lib.types.isa/field-type {:effective_type :type/Integer
                                                                         :semantic_type :type/FK}))))
   (testing "boolean"
-    (is (= lib.types.constants/BOOLEAN (lib.types.isa/field-type {:effective_type :type/Boolean}))))
+    (is (= ::lib.types.constants/boolean (lib.types.isa/field-type {:effective_type :type/Boolean}))))
   (testing "location"
-    (are [typ] (= lib.types.constants/LOCATION (lib.types.isa/field-type {:semantic_type typ}))
+    (are [typ] (= ::lib.types.constants/location (lib.types.isa/field-type {:semantic_type typ}))
       :type/City :type/Country))
   (testing "coordinate"
-    (are [typ] (= lib.types.constants/COORDINATE (lib.types.isa/field-type {:semantic_type typ}))
+    (are [typ] (= ::lib.types.constants/coordinate (lib.types.isa/field-type {:semantic_type typ}))
       :type/Latitude :type/Longitude))
   (testing "string like"
-    (are [typ] (= lib.types.constants/STRING_LIKE (lib.types.isa/field-type {:effective_type typ}))
+    (are [typ] (= ::lib.types.constants/string_like (lib.types.isa/field-type {:effective_type typ}))
       :type/TextLike :type/IPAddress))
   (testing "strings, regardless of the effective type is"
     (are [typ] (= ::lib.types.constants/string (lib.types.isa/field-type {:effective_type :type/Float

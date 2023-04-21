@@ -3,55 +3,56 @@
   #?(:cljs (:require [goog.object :as gobj])))
 
 #?(:cljs
-   (def ^:export TYPE
-     "A map of Type name (as string, without `:type/` namespace) -> type keyword
+   (do
+     (def ^:export name->type
+       "A map of Type name (as string, without `:type/` namespace) -> type keyword
 
          {\"Temporal\" :type/Temporal, ...}"
-     (reduce (fn [m typ] (doto m (gobj/set (name typ) typ)))
-             #js {}
-             (distinct (mapcat descendants [:type/* :Semantic/* :Relation/*])))))
+       (reduce (fn [m typ] (doto m (gobj/set (name typ) typ)))
+               #js {}
+               (distinct (mapcat descendants [:type/* :Semantic/* :Relation/*]))))
 
-;; primary field types used for picking operators, etc
-(def ^:export NUMBER "JS-friendly access for the number type" ::number)
-(def ^:export STRING "JS-friendly access for the string type" ::string)
-(def ^:export STRING_LIKE "JS-friendly access for the string-like type" ::string-like)
-(def ^:export BOOLEAN "JS-friendly access for the boolean type" ::boolean)
-(def ^:export TEMPORAL "JS-friendly access for the temporal type" ::temporal)
-(def ^:export LOCATION "JS-friendly access for the location type" ::location)
-(def ^:export COORDINATE "JS-friendly access for the coordinate type" ::coordinate)
-(def ^:export FOREIGN_KEY "JS-friendly access for the foreign-key type" ::foreign-key)
-(def ^:export PRIMARY_KEY "JS-friendly access for the primary-key type" ::primary-key)
+     ;; primary field types used for picking operators, etc
+     (def ^:export key-number "JS-friendly access for the number type" ::number)
+     (def ^:export key-string "JS-friendly access for the string type" ::string)
+     (def ^:export key-string-like "JS-friendly access for the string-like type" ::string-like)
+     (def ^:export key-boolean "JS-friendly access for the boolean type" ::boolean)
+     (def ^:export key-temporal "JS-friendly access for the temporal type" ::temporal)
+     (def ^:export key-location "JS-friendly access for the location type" ::location)
+     (def ^:export key-coordinate "JS-friendly access for the coordinate type" ::coordinate)
+     (def ^:export key-foreign-KEY "JS-friendly access for the foreign-key type" ::foreign-key)
+     (def ^:export key-primary-KEY "JS-friendly access for the primary-key type" ::primary-key)
 
-;; other types used for various purposes
-(def ^:export SUMMABLE "JS-friendly access for the summable type" ::summable)
-(def ^:export SCOPE "JS-friendly access for the scope type" ::scope)
-(def ^:export CATEGORY "JS-friendly access for the category type" ::category)
+     ;; other types used for various purposes
+     (def ^:export key-summable "JS-friendly access for the summable type" ::summable)
+     (def ^:export key-scope "JS-friendly access for the scope type" ::scope)
+     (def ^:export key-category "JS-friendly access for the category type" ::category)
 
-(def ^:export UNKNOWN "JS-friendly access for the unknown type" ::unknown)
+     (def ^:export key-unknown "JS-friendly access for the unknown type" ::unknown)))
 
 ;; NOTE: be sure not to create cycles using the "other" types
 (def type-hierarchies
   "A front-end specific type hierarchy used by [[metabase.lib.types.isa/field-type?]].
   It is not meant to be used directly."
-  {TEMPORAL    {:effective_type [:type/Temporal]
-                :semantic_type  [:type/Temporal]}
-   NUMBER      {:effective_type [:type/Number]
-                :semantic_type  [:type/Number]}
-   STRING      {:effective_type [:type/Text]
-                :semantic_type  [:type/Text :type/Category]}
-   STRING_LIKE {:effective_type [:type/TextLike]}
-   BOOLEAN     {:effective_type [:type/Boolean]}
-   COORDINATE  {:semantic_type [:type/Coordinate]}
-   LOCATION    {:semantic_type [:type/Address]}
-   ::entity    {:semantic_type [:type/FK :type/PK :type/Name]}
-   FOREIGN_KEY {:semantic_type [:type/FK]}
-   PRIMARY_KEY {:semantic_type [:type/PK]}
-   SUMMABLE    {:include [NUMBER]
-                :exclude [::entity LOCATION TEMPORAL]}
-   SCOPE       {:include [NUMBER TEMPORAL CATEGORY ::entity STRING]
-                :exclude [LOCATION]}
-   CATEGORY    {:effective_type [:type/Boolean]
-                :semantic_type  [:type/Category]
-                :include        [LOCATION]}
+  {::temporal    {:effective_type [:type/Temporal]
+                  :semantic_type  [:type/Temporal]}
+   ::number      {:effective_type [:type/Number]
+                  :semantic_type  [:type/Number]}
+   ::string      {:effective_type [:type/Text]
+                  :semantic_type  [:type/Text :type/Category]}
+   ::string_like {:effective_type [:type/TextLike]}
+   ::boolean     {:effective_type [:type/Boolean]}
+   ::coordinate  {:semantic_type [:type/Coordinate]}
+   ::location    {:semantic_type [:type/Address]}
+   ::entity      {:semantic_type [:type/FK :type/PK :type/Name]}
+   ::foreign_key {:semantic_type [:type/FK]}
+   ::primary_key {:semantic_type [:type/PK]}
+   ::summable    {:include [::number]
+                  :exclude [::entity ::location ::temporal]}
+   ::scope       {:include [::number ::temporal ::category ::entity ::string]
+                  :exclude [::location]}
+   ::category    {:effective_type [:type/Boolean]
+                  :semantic_type  [:type/Category]
+                  :include        [::location]}
    ;; NOTE: this is defunct right now.  see definition of metabase.lib.types.isa/dimension?.
-   ::dimension {:include [TEMPORAL CATEGORY ::entity]}})
+   ::dimension   {:include [::temporal ::category ::entity]}})

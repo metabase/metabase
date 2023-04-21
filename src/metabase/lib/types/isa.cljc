@@ -43,55 +43,55 @@
   The possible categories are the keys in [[metabase.lib.types.constants/type-hierarchies]]."
   [column]
   (m/find-first #(field-type? % column)
-                [lib.types.constants/TEMPORAL
-                 lib.types.constants/LOCATION
-                 lib.types.constants/COORDINATE
-                 lib.types.constants/FOREIGN_KEY
-                 lib.types.constants/PRIMARY_KEY
-                 lib.types.constants/BOOLEAN
-                 lib.types.constants/STRING
-                 lib.types.constants/STRING_LIKE
-                 lib.types.constants/NUMBER]))
+                [::lib.types.constants/temporal
+                 ::lib.types.constants/location
+                 ::lib.types.constants/coordinate
+                 ::lib.types.constants/foreign_key
+                 ::lib.types.constants/primary_key
+                 ::lib.types.constants/boolean
+                 ::lib.types.constants/string
+                 ::lib.types.constants/string_like
+                 ::lib.types.constants/number]))
 
 (defn ^:export date?
   "Is `column` of a temporal type?"
   [column]
-  (field-type? lib.types.constants/TEMPORAL column))
+  (field-type? ::lib.types.constants/temporal column))
 
 (defn ^:export numeric?
   "Is `column` of a numeric type?"
   [column]
-  (field-type? lib.types.constants/NUMBER column))
+  (field-type? ::lib.types.constants/number column))
 
 (defn ^:export boolean?
   "Is `column` of a boolean type?"
   [column]
-  (field-type? lib.types.constants/BOOLEAN column))
+  (field-type? ::lib.types.constants/boolean column))
 
 (defn ^:export string?
   "Is `column` of a string type?"
   [column]
-  (field-type? lib.types.constants/STRING column))
+  (field-type? ::lib.types.constants/string column))
 
 (defn ^:export summable?
   "Is `column` of a summable type?"
   [column]
-  (field-type? lib.types.constants/SUMMABLE column))
+  (field-type? ::lib.types.constants/summable column))
 
 (defn ^:export scope?
   "Is `column` of a scope type?"
   [column]
-  (field-type? lib.types.constants/SCOPE column))
+  (field-type? ::lib.types.constants/scope column))
 
 (defn ^:export category?
   "Is `column` of a categorical type?"
   [column]
-  (field-type? lib.types.constants/CATEGORY column))
+  (field-type? ::lib.types.constants/category column))
 
 (defn ^:export location?
   "Is `column` of a location type?"
   [column]
-  (field-type? lib.types.constants/LOCATION column))
+  (field-type? ::lib.types.constants/location column))
 
 (defn ^:export description?
   "Is `column` a description?"
