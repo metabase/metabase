@@ -442,14 +442,6 @@
      (integer? id-or-name))
    "Must be a :field with an integer Field ID."))
 
-(def ^{:clause-name :field, :added "0.39.0"} field:name
-  "Schema for a `:field` clause, with the added constraint that it must use an string Field name."
-  (s/constrained
-   field
-   (fn [[_ id-or-name]]
-     (string? id-or-name))
-   "Must be a :field with a string Field name."))
-
 (def ^:private Field*
   (one-of expression field))
 
@@ -1135,7 +1127,7 @@
     ;; whether or not a value for this parameter is required in order to run the query
     (s/optional-key :required) s/Bool}))
 
-(declare ParameterType)
+(declare ParameterType WidgetType)
 
 ;; Example:
 ;;
@@ -1153,7 +1145,7 @@
     :dimension   field
     ;; which type of widget the frontend should show for this Field Filter; this also affects which parameter types
     ;; are allowed to be specified for it.
-    :widget-type (s/recursive #'ParameterType)}))
+    :widget-type (s/recursive #'WidgetType)}))
 
 (def raw-value-template-tag-types
   "Set of valid values of `:type` for raw value template tags."
@@ -1523,14 +1515,13 @@
    :string/ends-with        {:type :string, :operator :unary, :allowed-for #{:string/ends-with}}
    :string/starts-with      {:type :string, :operator :unary, :allowed-for #{:string/starts-with}}})
 
-(defn valid-parameter-type?
-  "Whether `param-type` is a valid non-abstract parameter type."
-  [param-type]
-  (get parameter-types param-type))
-
 (def ParameterType
   "Schema for valid values of `:type` for a [[Parameter]]."
   (apply s/enum (keys parameter-types)))
+
+(def WidgetType
+  "Schema for valid values of `:widget-type` for a [[TemplateTag:FieldFilter]]."
+  (apply s/enum (cons :none (keys parameter-types))))
 
 ;; the next few clauses are used for parameter `:target`... this maps the parameter to an actual template tag in a
 ;; native query or Field for MBQL queries.

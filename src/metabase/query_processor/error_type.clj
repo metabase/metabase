@@ -8,11 +8,6 @@
 (def ^:private hierarchy
   (make-hierarchy))
 
-(defn known-error-types
-  "Set of all known QP error types."
-  []
-  (descendants hierarchy :error))
-
 (defn known-error-type?
   "Is `error-type` a known QP error type (i.e., one defined with `deferror` above)?"
   [error-type]
@@ -78,11 +73,6 @@
 (deferror server
   "Generic ancestor type for all *unexpected* server-side errors. Equivalent of a HTTP 5xx status code."
   :parent :error)
-
-(defn server-error?
-  "Is `error-type` a server error type, the equivalent of an HTTP 5xx status code?"
-  [error-type]
-  (isa? hierarchy error-type :server))
 
 (deferror timed-out
   "Error type if query fails to return the first row of results after some timeout."

@@ -141,6 +141,21 @@
   [a-query current-order-by]
   (lib.core/change-direction a-query current-order-by))
 
+(defn ^:export breakouts
+  "Get the breakout clauses (as an array of opaque objects) in `a-query` at a given `stage-number`.
+  Returns an empty array if there are no order bys in the query."
+  ([a-query]
+   (breakouts a-query -1))
+  ([a-query stage-number]
+   (to-array (lib.core/breakouts a-query stage-number))))
+
+(defn ^:export breakout
+  "Add an `order-by` clause to `a-query`. Returns updated query."
+  ([a-query x]
+   (breakout a-query -1 x))
+  ([a-query stage-number x]
+   (lib.core/breakout a-query stage-number (lib.core/ref x))))
+
 (defn ^:export remove-clause
   "Removes the `target-clause` in the filter of the `query`."
   ([a-query clause]
