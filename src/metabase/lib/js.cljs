@@ -141,6 +141,15 @@
   [a-query current-order-by]
   (lib.core/change-direction a-query current-order-by))
 
+(defn ^:export breakoutable-columns
+  "Return an array of Column metadatas about the columns that can be broken out by in a given stage of `a-query.`
+  To break out by a given column, the corresponding element of the result has to be added to the query using
+  [[breakout]]."
+  ([a-query]
+   (breakoutable-columns a-query -1))
+  ([a-query stage-number]
+   (to-array (lib.core/breakoutable-columns a-query stage-number))))
+
 (defn ^:export breakouts
   "Get the breakout clauses (as an array of opaque objects) in `a-query` at a given `stage-number`.
   Returns an empty array if there are no order bys in the query."
