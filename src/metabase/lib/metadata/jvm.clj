@@ -1,4 +1,4 @@
- (ns metabase.lib.metadata.jvm
+(ns metabase.lib.metadata.jvm
   "Implementation(s) of [[metabase.lib.metadata.protocols/MetadataProvider]] only for the JVM."
   (:require
    [metabase.lib.metadata.cached-provider :as lib.metadata.cached-provider]
