@@ -92,10 +92,10 @@
                   Dashboard [dash-1 {:name        "rand-name2"
                                      :description "rand-name2"
                                      :creator_id  (mt/user->id :crowberto)}]
-                  Dashboard Table
-                  [dash-2 {:name        "rand-name2"
-                           :description "rand-name2"
-                           :creator_id  (mt/user->id :crowberto)}]     [table-1 {:name "rand-name"}]]
+                  Dashboard [dash-2 {:name        "rand-name2"
+                                     :description "rand-name2"
+                                     :creator_id  (mt/user->id :crowberto)}]
+                  Table     [table-1 {:name "rand-name"}]]
     (testing "recent_views endpoint shows the current user's recently viewed items."
       (mt/with-model-cleanup [ViewLog]
         (mt/with-test-user :crowberto
