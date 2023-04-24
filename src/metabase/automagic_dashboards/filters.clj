@@ -10,10 +10,6 @@
    [schema.core :as s]
    [toucan2.core :as t2]))
 
-(def ^{:arglists '([form])} field-reference?
-  "Is given form an MBQL field reference?"
-  (complement (s/checker mbql.s/field)))
-
 (s/defn field-reference->id :- (s/maybe (s/cond-pre su/NonBlankString su/IntGreaterThanZero))
   "Extract field ID from a given field reference form."
   [clause]

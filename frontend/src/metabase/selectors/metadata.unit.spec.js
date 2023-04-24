@@ -44,7 +44,6 @@ describe("getMetadata", () => {
 
   describe("connected database", () => {
     it("should have the proper number of tables", () => {
-      // console.log("metadata.databases", metadata.databases);
       const tableCount = Object.values(metadata.databases).reduce(
         (sum, db) => sum + db.tables.length,
         0,

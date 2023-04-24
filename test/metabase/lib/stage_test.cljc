@@ -207,3 +207,20 @@
                   :lib/source               :source/implicitly-joinable
                   :lib/desired-column-alias "USERS__via__USER_ID__LAST_LOGIN"}]
                 (lib.metadata.calculation/visible-columns query)))))))
+
+(deftest ^:parallel do-not-propagate-temporal-units-to-next-stage-text
+  (let [query (-> (lib/query-for-table-name meta/metadata-provider "CHECKINS")
+                  (lib/with-fields [(lib/with-temporal-bucket (lib/field (meta/id :checkins :date)) :year)])
+                  lib/append-stage)
+        cols (lib.metadata.calculation/visible-columns query)]
+    (is (= [nil]
+           (map lib/temporal-bucket cols)))
+    (is (=? [[:field
+              (fn expected-opts? [opts]
+                (and
+                 ;; should retain the effective type of `:type/Integer` since `:year` is an extraction operation.
+                 (= (:base-type opts) :type/Date)
+                 (= (:effective-type opts) :type/Integer)
+                 (not (:temporal-unit opts))))
+              "DATE"]]
+            (map lib/ref cols)))))

@@ -232,5 +232,5 @@
          [:field (id :guard integer?) _]
          id)))
 
-(defmethod param-fields :metabase.models.card/Card [card]
+(defmethod param-fields :model/Card [card]
   (-> card card->template-tag-field-ids param-field-ids->fields))
