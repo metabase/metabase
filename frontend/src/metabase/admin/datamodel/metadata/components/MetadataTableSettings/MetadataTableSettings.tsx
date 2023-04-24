@@ -86,7 +86,7 @@ const MetadataTableSettings = ({
           <div className="my4 py1 ml2">
             <Breadcrumbs
               crumbs={[
-                [database.name, Urls.dataModelDatabase(database.id)],
+                [database.displayName(), Urls.dataModelDatabase(database.id)],
                 ...(schema && schemas.length > 1
                   ? [schema.name, Urls.dataModelSchema(database.id, schemaId)]
                   : []),
