@@ -10,7 +10,7 @@ import { createMockCollection } from "metabase-types/api/mocks";
 import CollectionHeader from "metabase/collections/containers/CollectionHeader";
 import FileUploadStatus from "./FileUploadStatus";
 
-describe("DatabaseStatus", () => {
+describe("FileUploadStatus", () => {
   const firstCollectionId = 1;
   const firstCollection = createMockCollection({ id: firstCollectionId });
 
@@ -85,6 +85,7 @@ describe("DatabaseStatus", () => {
                 isPersonalCollectionChild={false}
                 onCreateBookmark={jest.fn()}
                 onDeleteBookmark={jest.fn()}
+                canUpload
               />
               <FileUploadStatus />
             </>
@@ -136,6 +137,7 @@ describe("DatabaseStatus", () => {
                   isPersonalCollectionChild={false}
                   onCreateBookmark={jest.fn()}
                   onDeleteBookmark={jest.fn()}
+                  canUpload
                 />
                 <FileUploadStatus />
               </>
