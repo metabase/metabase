@@ -1,9 +1,9 @@
 (ns metabase.metabot.client
   (:require
-    [cheshire.core :as json]
-    [metabase.metabot.settings :as metabot-settings]
-    [metabase.util.log :as log]
-    [wkok.openai-clojure.api :as openai.api]))
+   [cheshire.core :as json]
+   [metabase.metabot.settings :as metabot-settings]
+   [metabase.util.log :as log]
+   [wkok.openai-clojure.api :as openai.api]))
 
 (set! *warn-on-reflection* true)
 
@@ -17,48 +17,48 @@
         (log/warnf "Exception when calling invoke-metabot: %s" (.getMessage e))
         (throw
           ;; If we have ex-data, we'll assume were intercepting an openai.api/create-chat-completion response
-          (if-some [status (:status (ex-data e))]
-            (let [{:keys [body]} (ex-data e)
-                  {:keys [error]} (json/parse-string body keyword)
-                  {error-type :type :keys [message code]} error]
-              (case (int status)
-                400 (do
-                      (log/warnf "%s: %s" code message)
-                      (ex-info
-                        message
-                        {:message     message
-                         :status-code 400}))
-                401 (ex-info
-                      "Bot credentials are incorrect or not set.\nCheck with your administrator that the correct API keys are set."
-                      {:message     "Bot credentials are incorrect or not set.\nCheck with your administrator that the correct API keys are set."
+         (if-some [status (:status (ex-data e))]
+           (let [{:keys [body]} (ex-data e)
+                 {:keys [error]} (json/parse-string body keyword)
+                 {error-type :type :keys [message code]} error]
+             (case (int status)
+               400 (do
+                     (log/warnf "%s: %s" code message)
+                     (ex-info
+                      message
+                      {:message     message
+                       :status-code 400}))
+               401 (ex-info
+                    "Bot credentials are incorrect or not set.\nCheck with your administrator that the correct API keys are set."
+                    {:message     "Bot credentials are incorrect or not set.\nCheck with your administrator that the correct API keys are set."
                        ;; Don't actually produce a 401 because you'll get redirect do the home page.
-                       :status-code 400})
-                429 (if (= error-type "insufficient_quota")
-                      (ex-info
-                        "You exceeded your current OpenAI billing quota, please check your OpenAI plan and billing details."
-                        {:message     "You exceeded your current OpenAI billing quota, please check your OpenAI plan and billing details."
-                         :status-code status})
-                      (ex-info
-                        "The bot server is under heavy load and cannot process your request at this time.\nPlease try again."
-                        {:message     "The bot server is under heavy load and cannot process your request at this time.\nPlease try again."
-                         :status-code status}))
+                     :status-code 400})
+               429 (if (= error-type "insufficient_quota")
+                     (ex-info
+                      "You exceeded your current OpenAI billing quota, please check your OpenAI plan and billing details."
+                      {:message     "You exceeded your current OpenAI billing quota, please check your OpenAI plan and billing details."
+                       :status-code status})
+                     (ex-info
+                      "The bot server is under heavy load and cannot process your request at this time.\nPlease try again."
+                      {:message     "The bot server is under heavy load and cannot process your request at this time.\nPlease try again."
+                       :status-code status}))
                 ;; Just re-throw it until we get a better handle on
-                (ex-info
-                  "Error calling remote bot server.\nPlease try again."
-                  {:message     "The bot server is under heavy load and cannot process your request at this time.\nPlease try again."
-                   :status-code 500})))
+               (ex-info
+                "Error calling remote bot server.\nPlease try again."
+                {:message     "The bot server is under heavy load and cannot process your request at this time.\nPlease try again."
+                 :status-code 500})))
             ;; If there's no ex-data, we'll assume it's some other issue and generate a 400
-            (ex-info
-              (ex-message e)
-              {:exception-data (ex-data e)
-               :status-code    400})))))))
+           (ex-info
+            (ex-message e)
+            {:exception-data (ex-data e)
+             :status-code    400})))))))
 
 (defn- default-chat-completion-endpoint
   "OpenAI is the default completion endpoint"
   [params options]
   (openai.api/create-chat-completion
-    (select-keys params [:model :n :messages])
-    options))
+   (select-keys params [:model :n :messages])
+   options))
 
 (def ^:dynamic ^{:arglists '([params options])}
   *create-chat-completion-endpoint*
@@ -72,9 +72,9 @@
   {:pre [messages]}
   ((wrap-openai-exceptions *create-chat-completion-endpoint*)
    (merge
-     {:model (metabot-settings/openai-model)
-      :n     (metabot-settings/num-metabot-choices)}
-     prompt)
+    {:model (metabot-settings/openai-model)
+     :n     (metabot-settings/num-metabot-choices)}
+    prompt)
    {:api-key      (metabot-settings/openai-api-key)
     :organization (metabot-settings/openai-organization)}))
 
@@ -83,8 +83,8 @@
   [params options]
   (log/debugf "Creating embedding...")
   (openai.api/create-embedding
-    (select-keys params [:model :input])
-    options))
+   (select-keys params [:model :input])
+   options))
 
 (def ^:dynamic ^{:arglists '([params options])}
   *create-embedding-endpoint*
