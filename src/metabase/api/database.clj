@@ -433,41 +433,34 @@
   []
   (saved-cards-virtual-db-metadata :card :include-tables? true, :include-fields? true))
 
-(defn- db-metadata
-  ([id include-hidden? include-editable-data-model?]
-   (db-metadata id include-hidden? include-editable-data-model? nil))
-  ([id include-hidden? include-editable-data-model? schema]
-   (let [db (-> (if include-editable-data-model?
-                  (api/check-404 (t2/select-one Database :id id))
-                  (api/read-check Database id))
-                (hydrate [:tables [:fields [:target :has_field_values] :has_field_values] :segments :metrics]))
-         db (if include-editable-data-model?
-              ;; We need to check data model perms after hydrating tables, since this will also filter out tables for
-              ;; which the *current-user* does not have data model perms
-              (check-db-data-model-perms db)
-              db)]
-     (-> db
-         (update :tables (if include-hidden?
-                           identity
-                           (fn [tables]
-                             (->> tables
-                                  (remove :visibility_type)
-                                  (map #(update % :fields filter-sensitive-fields))))))
-         (update :tables (if-not schema
-                           identity
-                           (fn [tables]
-                             (api/check-404 (seq (filter (comp #(= schema %) :schema) tables))))))
-         (update :tables (fn [tables]
-                           (if-not include-editable-data-model?
-                             ;; If we're filtering by data model perms, table perm checks were already done by
-                             ;; check-db-data-model-perms
-                             (api/check-403 (seq (filter mi/can-read? tables)))
-                             tables)))
-         (update :tables (fn [tables]
-                           (for [table tables]
-                             (-> table
-                                 (update :segments (partial filter mi/can-read?))
-                                 (update :metrics (partial filter mi/can-read?))))))))))
+(defn- db-metadata [id include-hidden? include-editable-data-model?]
+  (let [db (-> (if include-editable-data-model?
+                 (api/check-404 (t2/select-one Database :id id))
+                 (api/read-check Database id))
+               (hydrate [:tables [:fields [:target :has_field_values] :has_field_values] :segments :metrics]))
+        db (if include-editable-data-model?
+             ;; We need to check data model perms after hydrating tables, since this will also filter out tables for
+             ;; which the *current-user* does not have data model perms
+             (check-db-data-model-perms db)
+             db)]
+    (-> db
+        (update :tables (if include-hidden?
+                          identity
+                          (fn [tables]
+                            (->> tables
+                                 (remove :visibility_type)
+                                 (map #(update % :fields filter-sensitive-fields))))))
+        (update :tables (fn [tables]
+                          (if-not include-editable-data-model?
+                            ;; If we're filtering by data model perms, table perm checks were already done by
+                            ;; check-db-data-model-perms
+                            (filter mi/can-read? tables)
+                            tables)))
+        (update :tables (fn [tables]
+                          (for [table tables]
+                            (-> table
+                                (update :segments (partial filter mi/can-read?))
+                                (update :metrics  (partial filter mi/can-read?)))))))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:id/metadata"
@@ -1105,23 +1098,27 @@
 ;;; ------------------------------------- GET /api/database/:id/schema/:schema ---------------------------------------
 
 (defn- schema-tables-list
-  ([db-id schema include_hidden]
-   (api/read-check Database db-id)
-   (api/check-403 (can-read-schema? db-id schema))
-   (filter mi/can-read? (if include_hidden
-                          (t2/select Table
-                            :db_id db-id
-                            :schema schema
-                            :active true
-                            {:order-by [[:display_name :asc]]})
-                          (t2/select Table
-                            :db_id db-id
-                            :schema schema
-                            :active true
-                            :visibility_type nil
-                            {:order-by [[:display_name :asc]]}))))
   ([db-id schema]
-   (schema-tables-list db-id schema nil)))
+   (schema-tables-list db-id schema nil nil))
+  ([db-id schema include_hidden include_editable_data_model]
+   (when-not include_editable_data_model
+     (api/read-check Database db-id))
+   (api/check-403 (can-read-schema? db-id schema))
+   (cond->>
+     (if include_hidden
+       (t2/select Table
+         :db_id db-id
+         :schema schema
+         :active true
+         {:order-by [[:display_name :asc]]})
+       (t2/select Table
+         :db_id db-id
+         :schema schema
+         :active true
+         :visibility_type nil
+         {:order-by [[:display_name :asc]]}))
+     (not include_editable_data_model)
+     (filter mi/can-read?))))
 
 (api/defendpoint GET "/:id/schema/:schema"
   "Returns a list of Tables for the given Database `id` and `schema`"
@@ -1129,11 +1126,11 @@
   {id                          ms/PositiveInt
    include_hidden              [:maybe ms/BooleanString]
    include_editable_data_model [:maybe ms/BooleanString]}
-  (:tables
-    (db-metadata id
-                 (Boolean/parseBoolean include_hidden)
-                 (Boolean/parseBoolean include_editable_data_model)
-                 schema)))
+  (api/check-404 (seq (schema-tables-list
+                        id
+                        schema
+                        (Boolean/parseBoolean include_hidden)
+                        (Boolean/parseBoolean include_editable_data_model)))))
 
 (api/defendpoint GET "/:id/schema/"
   "Return a list of Tables for a Database whose `schema` is `nil` or an empty string."
