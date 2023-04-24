@@ -3,7 +3,12 @@ import { IndexRedirect, Route } from "react-router";
 import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
 import { Database } from "metabase-types/api";
-import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
+import {
+  createOrdersTable,
+  createPeopleTable,
+  createReviewsTable,
+  createSampleDatabase,
+} from "metabase-types/api/mocks/presets";
 import {
   setupDatabasesEndpoints,
   setupSearchEndpoints,
@@ -18,55 +23,23 @@ import {
 import MetadataTableSettings from "../MetadataTableSettings";
 import MetadataEditor from "./MetadataEditor";
 
-const TEST_TABLE_1 = createMockTable({
+const ORDERS_TABLE = createOrdersTable();
+
+const PRODUCTS_TABLE = createPeopleTable();
+
+const SAMPLE_DB = createSampleDatabase({
   id: 1,
-  name: "ORDERS",
-  display_name: "Orders",
-  description: "Orders table",
-  schema: "PUBLIC",
+  tables: [ORDERS_TABLE, PRODUCTS_TABLE],
 });
 
-const TEST_TABLE_2 = createMockTable({
-  id: 2,
-  name: "PEOPLE",
-  display_name: "People",
-  schema: "PUBLIC",
-});
+const PEOPLE_TABLE = createPeopleTable();
 
-const TEST_TABLE_3 = createMockTable({
-  id: 3,
-  db_id: 2,
-  name: "REVIEWS",
-  display_name: "Reviews",
-  schema: "PUBLIC",
-});
+const REVIEWS_TABLE = createReviewsTable({ schema: "private" });
 
-const TEST_TABLE_4 = createMockTable({
-  id: 4,
-  db_id: 2,
-  name: "INVOICES",
-  display_name: "Invoices",
-  schema: "PUBLIC",
-});
-
-const TEST_TABLE_5 = createMockTable({
-  id: 5,
-  db_id: 2,
-  name: "Accounts",
-  display_name: "ACCOUNTS",
-  schema: "PRIVATE",
-});
-
-const TEST_DB = createMockDatabase({
-  id: 1,
-  name: "One schema",
-  tables: [TEST_TABLE_1, TEST_TABLE_2],
-});
-
-const TEST_MULTI_SCHEMA_DB = createMockDatabase({
+const SAMPLE_DB_MULTI_SCHEMA = createSampleDatabase({
   id: 2,
   name: "Multi schema",
-  tables: [TEST_TABLE_3, TEST_TABLE_4, TEST_TABLE_5],
+  tables: [PEOPLE_TABLE, REVIEWS_TABLE],
 });
 
 interface SetupOpts {
@@ -75,7 +48,7 @@ interface SetupOpts {
 }
 
 const setup = async ({
-  databases = [TEST_DB],
+  databases = [SAMPLE_DB],
   initialRoute = "admin/datamodel",
 }: SetupOpts = {}) => {
   setupDatabasesEndpoints(databases);
@@ -110,54 +83,54 @@ describe("MetadataEditor", () => {
     it("should select the first database and the only schema by default", async () => {
       await setup();
 
-      expect(screen.getByText(TEST_DB.name)).toBeInTheDocument();
-      expect(screen.getByText(TEST_TABLE_1.display_name)).toBeInTheDocument();
-      expect(screen.queryByText(TEST_TABLE_1.schema)).not.toBeInTheDocument();
+      expect(screen.getByText(SAMPLE_DB.name)).toBeInTheDocument();
+      expect(screen.getByText(ORDERS_TABLE.display_name)).toBeInTheDocument();
+      expect(screen.queryByText(ORDERS_TABLE.schema)).not.toBeInTheDocument();
     });
 
     it("should allow to search for a table", async () => {
       await setup();
 
-      const searchValue = TEST_TABLE_1.name.substring(0, 3);
+      const searchValue = ORDERS_TABLE.name.substring(0, 3);
       userEvent.type(screen.getByPlaceholderText("Find a table"), searchValue);
 
-      expect(screen.getByText(TEST_TABLE_1.display_name)).toBeInTheDocument();
+      expect(screen.getByText(ORDERS_TABLE.display_name)).toBeInTheDocument();
       expect(
-        screen.queryByText(TEST_TABLE_2.display_name),
+        screen.queryByText(PRODUCTS_TABLE.display_name),
       ).not.toBeInTheDocument();
     });
 
     it("should allow to navigate to and from table settings", async () => {
       await setup();
 
-      userEvent.click(screen.getByText(TEST_TABLE_1.display_name));
+      userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
       userEvent.click(getIcon("gear"));
       expect(await screen.findByText("Settings")).toBeInTheDocument();
 
-      userEvent.click(screen.getByText(TEST_DB.name));
+      userEvent.click(screen.getByText(SAMPLE_DB.name));
       expect(await screen.findByText("2 Queryable Tables")).toBeInTheDocument();
 
-      userEvent.click(screen.getByText(TEST_TABLE_1.display_name));
+      userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
       userEvent.click(getIcon("gear"));
       expect(await screen.findByText("Settings")).toBeInTheDocument();
 
-      userEvent.click(screen.getByText(TEST_TABLE_1.display_name));
+      userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
       expect(
-        await screen.findByDisplayValue(TEST_TABLE_1.display_name),
+        await screen.findByDisplayValue(ORDERS_TABLE.display_name),
       ).toBeInTheDocument();
     });
 
     it("should allow to rescan field values", async () => {
       await setup();
 
-      userEvent.click(screen.getByText(TEST_TABLE_1.display_name));
+      userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
       userEvent.click(getIcon("gear"));
       userEvent.click(
         await screen.findByRole("button", { name: "Re-scan this table" }),
       );
 
       await waitFor(() => {
-        const path = `path:/api/table/${TEST_TABLE_1.id}/rescan_values`;
+        const path = `path:/api/table/${ORDERS_TABLE.id}/rescan_values`;
         expect(fetchMock.called(path, { method: "POST" })).toBeTruthy();
       });
     });
@@ -165,7 +138,7 @@ describe("MetadataEditor", () => {
     it("should allow to discard field values", async () => {
       await setup();
 
-      userEvent.click(screen.getByText(TEST_TABLE_1.display_name));
+      userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
       userEvent.click(getIcon("gear"));
       userEvent.click(
         await screen.findByRole("button", {
@@ -174,7 +147,7 @@ describe("MetadataEditor", () => {
       );
 
       await waitFor(() => {
-        const path = `path:/api/table/${TEST_TABLE_1.id}/discard_values`;
+        const path = `path:/api/table/${ORDERS_TABLE.id}/discard_values`;
         expect(fetchMock.called(path, { method: "POST" })).toBeTruthy();
       });
     });
@@ -182,68 +155,68 @@ describe("MetadataEditor", () => {
 
   describe("multi schema database", () => {
     it("should not select the first schema if there are multiple schemas", async () => {
-      await setup({ databases: [TEST_MULTI_SCHEMA_DB] });
+      await setup({ databases: [SAMPLE_DB_MULTI_SCHEMA] });
 
-      expect(screen.getByText(TEST_MULTI_SCHEMA_DB.name)).toBeInTheDocument();
-      expect(screen.getByText(TEST_TABLE_4.schema)).toBeInTheDocument();
-      expect(screen.getByText(TEST_TABLE_5.schema)).toBeInTheDocument();
+      expect(screen.getByText(SAMPLE_DB_MULTI_SCHEMA.name)).toBeInTheDocument();
+      expect(screen.getByText(PEOPLE_TABLE.schema)).toBeInTheDocument();
+      expect(screen.getByText(REVIEWS_TABLE.schema)).toBeInTheDocument();
       expect(
-        screen.queryByText(TEST_TABLE_4.display_name),
+        screen.queryByText(PEOPLE_TABLE.display_name),
       ).not.toBeInTheDocument();
     });
 
     it("should allow to search for a schema", async () => {
-      await setup({ databases: [TEST_MULTI_SCHEMA_DB] });
+      await setup({ databases: [SAMPLE_DB_MULTI_SCHEMA] });
 
-      const searchValue = TEST_TABLE_4.schema.substring(0, 3);
+      const searchValue = PEOPLE_TABLE.schema.substring(0, 3);
       userEvent.type(screen.getByPlaceholderText("Find a schema"), searchValue);
 
-      expect(screen.getByText(TEST_TABLE_4.schema)).toBeInTheDocument();
-      expect(screen.queryByText(TEST_TABLE_5.schema)).not.toBeInTheDocument();
+      expect(screen.getByText(PEOPLE_TABLE.schema)).toBeInTheDocument();
+      expect(screen.queryByText(REVIEWS_TABLE.schema)).not.toBeInTheDocument();
     });
 
     it("should allow to search for a table", async () => {
-      await setup({ databases: [TEST_MULTI_SCHEMA_DB] });
+      await setup({ databases: [SAMPLE_DB_MULTI_SCHEMA] });
 
-      userEvent.click(screen.getByText(TEST_TABLE_4.schema));
+      userEvent.click(screen.getByText(PEOPLE_TABLE.schema));
       expect(
-        await screen.findByText(TEST_TABLE_4.display_name),
+        await screen.findByText(PEOPLE_TABLE.display_name),
       ).toBeInTheDocument();
       expect(
-        screen.queryByText(TEST_TABLE_5.display_name),
+        screen.queryByText(REVIEWS_TABLE.display_name),
       ).not.toBeInTheDocument();
 
       userEvent.click(screen.getByText("Schemas"));
-      expect(screen.getByText(TEST_TABLE_4.schema)).toBeInTheDocument();
-      expect(screen.getByText(TEST_TABLE_5.schema)).toBeInTheDocument();
+      expect(screen.getByText(PEOPLE_TABLE.schema)).toBeInTheDocument();
+      expect(screen.getByText(REVIEWS_TABLE.schema)).toBeInTheDocument();
     });
 
     it("should allow to navigate to and from table settings", async () => {
-      await setup({ databases: [TEST_MULTI_SCHEMA_DB] });
+      await setup({ databases: [SAMPLE_DB_MULTI_SCHEMA] });
 
-      userEvent.click(screen.getByText(TEST_TABLE_3.schema));
-      userEvent.click(await screen.findByText(TEST_TABLE_3.display_name));
+      userEvent.click(screen.getByText(PEOPLE_TABLE.schema));
+      userEvent.click(await screen.findByText(PEOPLE_TABLE.display_name));
       userEvent.click(getIcon("gear"));
       expect(await screen.findByText("Settings")).toBeInTheDocument();
 
-      userEvent.click(screen.getByText(TEST_MULTI_SCHEMA_DB.name));
+      userEvent.click(screen.getByText(SAMPLE_DB_MULTI_SCHEMA.name));
       expect(await screen.findByText("2 schemas")).toBeInTheDocument();
 
-      userEvent.click(screen.getByText(TEST_TABLE_3.schema));
-      userEvent.click(screen.getByText(TEST_TABLE_3.display_name));
+      userEvent.click(screen.getByText(PEOPLE_TABLE.schema));
+      userEvent.click(screen.getByText(PEOPLE_TABLE.display_name));
       userEvent.click(getIcon("gear"));
       expect(await screen.findByText("Settings")).toBeInTheDocument();
 
-      userEvent.click(screen.getByText(TEST_TABLE_3.schema));
-      expect(await screen.findByText("2 Queryable Tables")).toBeInTheDocument();
+      userEvent.click(screen.getByText(PEOPLE_TABLE.schema));
+      expect(await screen.findByText("1 Queryable Table")).toBeInTheDocument();
 
-      userEvent.click(await screen.findByText(TEST_TABLE_3.display_name));
+      userEvent.click(await screen.findByText(PEOPLE_TABLE.display_name));
       userEvent.click(getIcon("gear"));
       expect(await screen.findByText("Settings")).toBeInTheDocument();
 
-      userEvent.click(screen.getByText(TEST_TABLE_3.display_name));
+      userEvent.click(screen.getByText(PEOPLE_TABLE.display_name));
       expect(
-        await screen.findByDisplayValue(TEST_TABLE_3.display_name),
+        await screen.findByDisplayValue(PEOPLE_TABLE.display_name),
       ).toBeInTheDocument();
     });
   });
