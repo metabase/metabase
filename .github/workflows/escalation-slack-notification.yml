@@ -6,7 +6,7 @@ on:
       - labeled
 jobs:
   on-escalation-label:
-    if: github.event.label.name == 'Escalation'
+    if: github.event.label.name == '.Escalation'
     runs-on: ubuntu-22.04
     timeout-minutes: 10
     steps:
