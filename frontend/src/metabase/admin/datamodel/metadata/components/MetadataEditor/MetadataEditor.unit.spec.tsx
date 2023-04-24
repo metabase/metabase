@@ -22,6 +22,7 @@ const TEST_TABLE_1 = createMockTable({
   id: 1,
   name: "ORDERS",
   display_name: "Orders",
+  description: "Orders table",
   schema: "PUBLIC",
 });
 
@@ -124,6 +125,35 @@ describe("MetadataEditor", () => {
       expect(
         screen.queryByText(TEST_TABLE_2.display_name),
       ).not.toBeInTheDocument();
+    });
+
+    it("should allow to edit the title of the table", async () => {
+      await setup();
+
+      userEvent.click(screen.getByText(TEST_TABLE_1.display_name));
+
+      const input = await screen.findByDisplayValue(TEST_TABLE_1.display_name);
+      userEvent.clear(input);
+      userEvent.type(input, "New title");
+      userEvent.tab();
+
+      expect(await screen.findByText("New title")).toBeInTheDocument();
+    });
+
+    it("should allow to edit the description of the table", async () => {
+      await setup();
+
+      userEvent.click(screen.getByText(TEST_TABLE_1.display_name));
+
+      const input = await screen.findByDisplayValue(
+        TEST_TABLE_1.description ?? "",
+      );
+      userEvent.clear(input);
+      userEvent.type(input, "New description");
+      userEvent.tab();
+      userEvent.click(screen.getByText("Original schema"));
+
+      expect(await screen.findByText("New description")).toBeInTheDocument();
     });
 
     it("should allow to navigate to and from table settings", async () => {
