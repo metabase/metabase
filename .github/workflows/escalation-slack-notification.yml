@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 10
     steps:
-      - name: On Escalation
+      - name: Send escalated issue ${{ github.event.issue.number }} to Slack
         id: slack
         uses: slackapi/slack-github-action@v1.23.0
         with:
