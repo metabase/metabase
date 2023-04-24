@@ -17,31 +17,39 @@ import MetadataEditor from "./MetadataEditor";
 
 const TEST_TABLE_1 = createMockTable({
   id: 1,
-  name: "Orders",
+  name: "ORDERS",
+  display_name: "Orders",
   schema: "PUBLIC",
 });
 
 const TEST_TABLE_2 = createMockTable({
   id: 2,
-  name: "People",
+  name: "PEOPLE",
+  display_name: "People",
   schema: "PUBLIC",
 });
 
 const TEST_TABLE_3 = createMockTable({
   id: 3,
-  name: "People",
+  db_id: 2,
+  name: "PEOPLE",
+  display_name: "People",
   schema: "PUBLIC",
 });
 
 const TEST_TABLE_4 = createMockTable({
   id: 4,
-  name: "People",
+  db_id: 2,
+  name: "PEOPLE",
+  display_name: "People",
   schema: "PUBLIC",
 });
 
 const TEST_TABLE_5 = createMockTable({
   id: 5,
-  name: "People",
+  db_id: 2,
+  name: "PEOPLE",
+  display_name: "People",
   schema: "PRIVATE",
 });
 
@@ -86,7 +94,7 @@ const setup = async ({ databases = [TEST_DB] }: SetupOpts = {}) => {
     { withRouter: true, initialRoute: "admin/datamodel" },
   );
 
-  await waitForElementToBeRemoved(() => screen.queryAllByText(/Loading/));
+  await waitForElementToBeRemoved(() => screen.queryByText(/Loading/));
 };
 
 describe("MetadataEditor", () => {
@@ -104,6 +112,9 @@ describe("MetadataEditor", () => {
     expect(screen.getByText(TEST_MULTI_SCHEMA_DB.name)).toBeInTheDocument();
     expect(screen.getByText(TEST_TABLE_4.schema)).toBeInTheDocument();
     expect(screen.getByText(TEST_TABLE_5.schema)).toBeInTheDocument();
+    expect(
+      screen.queryByText(TEST_TABLE_4.display_name),
+    ).not.toBeInTheDocument();
   });
 
   it("should allow to search for a table", async () => {
@@ -112,19 +123,19 @@ describe("MetadataEditor", () => {
     const searchValue = TEST_TABLE_1.name.substring(0, 3);
     userEvent.type(screen.getByPlaceholderText("Find a table"), searchValue);
 
-    expect(screen.getByText(TEST_TABLE_1.name)).toBeInTheDocument();
-    expect(screen.queryByText(TEST_TABLE_2.name)).not.toBeInTheDocument();
+    expect(screen.getByText(TEST_TABLE_1.display_name)).toBeInTheDocument();
+    expect(
+      screen.queryByText(TEST_TABLE_2.display_name),
+    ).not.toBeInTheDocument();
   });
 
-  it("should allow to change the title of a table", async () => {
-    await setup();
-    userEvent.click(screen.getByText(TEST_TABLE_1.display_name));
+  it("should allow to search for a schema", async () => {
+    await setup({ databases: [TEST_MULTI_SCHEMA_DB] });
 
-    const input = await screen.findByDisplayValue(TEST_TABLE_1.display_name);
-    userEvent.clear(input);
-    userEvent.type(input, "New");
-    userEvent.tab();
+    const searchValue = TEST_TABLE_4.schema.substring(0, 3);
+    userEvent.type(screen.getByPlaceholderText("Find a schema"), searchValue);
 
-    expect(await screen.findByText("New")).toBeInTheDocument();
+    expect(screen.getByText(TEST_TABLE_4.schema)).toBeInTheDocument();
+    expect(screen.queryByText(TEST_TABLE_5.schema)).not.toBeInTheDocument();
   });
 });
