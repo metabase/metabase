@@ -42,7 +42,7 @@ const getApplicationPermission = (
 export const getIsDirty = createSelector(
   (state: ApplicationPermissionsState) =>
     state.plugins.applicationPermissionsPlugin?.applicationPermissions,
-  state =>
+  (state: ApplicationPermissionsState) =>
     state.plugins.applicationPermissionsPlugin?.originalApplicationPermissions,
   (permissions, originalPermissions) =>
     !_.isEqual(permissions, originalPermissions),
