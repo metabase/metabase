@@ -425,9 +425,8 @@
       str/trim))
 
 (mu/defn add-summary-clause :- ::lib.schema/query
-  "Add a breakout or aggregation to a query stage.
-   This will drop :fields, :order-by, and :join :fields from the current stage.
-   This will truncate to the given stage-number."
+  "If the given stage has no summary, it will drop :fields, :order-by, and :join :fields from it,
+   as well as any subsequent stages."
   [query :- ::lib.schema/query
    stage-number :- :int
    location :- [:enum :breakout :aggregation]
@@ -439,8 +438,8 @@
         new-query (update-query-stage
                     query stage-number
                     update location
-                    (fn [aggregations]
-                      (conj (vec aggregations) (lib.common/->op-arg query stage-number a-summary-clause))))]
+                    (fn [summary-clauses]
+                      (conj (vec summary-clauses) (lib.common/->op-arg query stage-number a-summary-clause))))]
     (if new-summary?
       (-> new-query
           (update-query-stage
@@ -449,5 +448,6 @@
               (-> stage
                   (dissoc :order-by :fields)
                   (m/update-existing :joins (fn [joins] (mapv #(dissoc % :fields) joins))))))
-          (update :stages subvec 0 (inc (non-negative-stage-index stages stage-number))))
+          ;; subvec holds onto references, so create a new vector
+          (update :stages (comp #(into [] %) subvec) 0 (inc (non-negative-stage-index stages stage-number))))
       new-query)))
