@@ -190,7 +190,7 @@ const TableBreadcrumbs = ({ schemaId, onBack }: TableBreadcrumbsProps) => {
         {t`Schemas`}
       </span>
       <span className="mx1">-</span>
-      <span>{schemaId}</span>
+      <span>{getSchemaName(schemaId)}</span>
     </h4>
   );
 };

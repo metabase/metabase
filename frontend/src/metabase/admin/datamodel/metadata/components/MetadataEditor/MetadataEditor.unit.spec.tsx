@@ -32,24 +32,24 @@ const TEST_TABLE_2 = createMockTable({
 const TEST_TABLE_3 = createMockTable({
   id: 3,
   db_id: 2,
-  name: "PEOPLE",
-  display_name: "People",
+  name: "REVIEWS",
+  display_name: "Reviews",
   schema: "PUBLIC",
 });
 
 const TEST_TABLE_4 = createMockTable({
   id: 4,
   db_id: 2,
-  name: "PEOPLE",
-  display_name: "People",
+  name: "INVOICES",
+  display_name: "Invoices",
   schema: "PUBLIC",
 });
 
 const TEST_TABLE_5 = createMockTable({
   id: 5,
   db_id: 2,
-  name: "PEOPLE",
-  display_name: "People",
+  name: "Accounts",
+  display_name: "ACCOUNTS",
   schema: "PRIVATE",
 });
 
@@ -117,6 +117,16 @@ describe("MetadataEditor", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("should allow to search for a schema", async () => {
+    await setup({ databases: [TEST_MULTI_SCHEMA_DB] });
+
+    const searchValue = TEST_TABLE_4.schema.substring(0, 3);
+    userEvent.type(screen.getByPlaceholderText("Find a schema"), searchValue);
+
+    expect(screen.getByText(TEST_TABLE_4.schema)).toBeInTheDocument();
+    expect(screen.queryByText(TEST_TABLE_5.schema)).not.toBeInTheDocument();
+  });
+
   it("should allow to search for a table", async () => {
     await setup();
 
@@ -129,13 +139,19 @@ describe("MetadataEditor", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("should allow to search for a schema", async () => {
+  it("should allow to search for a table in a multi-schema database", async () => {
     await setup({ databases: [TEST_MULTI_SCHEMA_DB] });
 
-    const searchValue = TEST_TABLE_4.schema.substring(0, 3);
-    userEvent.type(screen.getByPlaceholderText("Find a schema"), searchValue);
+    userEvent.click(screen.getByText(TEST_TABLE_4.schema));
+    expect(
+      await screen.findByText(TEST_TABLE_4.display_name),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(TEST_TABLE_5.display_name),
+    ).not.toBeInTheDocument();
 
+    userEvent.click(screen.getByText("Schemas"));
     expect(screen.getByText(TEST_TABLE_4.schema)).toBeInTheDocument();
-    expect(screen.queryByText(TEST_TABLE_5.schema)).not.toBeInTheDocument();
+    expect(screen.getByText(TEST_TABLE_5.schema)).toBeInTheDocument();
   });
 });
