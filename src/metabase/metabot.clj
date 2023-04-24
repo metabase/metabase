@@ -208,8 +208,7 @@
    (map :field_ref result_metadata)))
 
 (defn- postprocess-result
-  [{model-id :id :keys [database_id] :as model}
-   json-response]
+  [{model-id :id :keys [database_id] :as model} json-response]
   (let [{:keys [breakout aggregation filters]
          :as   coerced-response} (mc/coerce (schema model) json-response mtx/json-transformer)
         id->ref    (model-field-ref-lookup model)
@@ -249,6 +248,20 @@
   [x]
   (str "\n```\n" (json/generate-string x) "\n```\n"))
 
+(comment
+  (#'metabot-util/model->enum-ddl (t2/select-one 'Card :id 1))
+
+
+  (->> (t2/select 'Card :dataset true)
+       (mapcat (fn [{:keys [result_metadata]}]
+                 (map :possible_values result_metadata))))
+
+  (let [{:keys [result_metadata]} (t2/select-one 'Card :id 1)]
+    (map (juxt :name :semantic_type :effective_type :base_type) result_metadata))
+  )
+
+(mapv #(select-keys % [:id :name]) (:result_metadata (t2/select-one 'Card :id 1)))
+
 (defn infer-mbql
   "Returns MBQL query from natural language user prompt"
   [user_prompt {:keys [result_metadata] :as model}]
@@ -256,8 +269,8 @@
         json-schema   (mjs/transform malli-schema)
         field-info    (mapv #(select-keys % [:id :name]) result_metadata)
         prompt        (->prompt
-                       [:system ["You are a Metabase query generation assistant."
-                                 "You respond to user queries by building a JSON object that conforms to the schema describing the query language:"
+                       [:system ["You are a pedantic Metabase query generation assistant."
+                                 "You respond to user queries by building a JSON object that conforms to this json schema:"
                                  (json-block json-schema)
                                  "If you are unable to generate a query, return a JSON object like:"
                                  (json-block {:error "I was unable to generate a query because..."
@@ -266,7 +279,7 @@
                                  "A JSON description of the fields available in the user's data model:"
                                  (json-block field-info)
                                  "Take a natural-language query from the user and construct a query using the supplied schema and available fields."
-                                 "Respond only with JSON."]]
+                                 "Respond only with schema compliant JSON."]]
                        [:user user_prompt])
         json-response (metabot-util/find-result
                        (fn [message]
@@ -286,6 +299,14 @@
            :reason :invalid-response})))))
 
 (comment
+  (->> (t2/select-one 'Card :id 1) :result_metadata (map :name))
+
+  (let [model (t2/select-one 'Card :id 1)
+        json-response {:aggregation [["sum" 41]], :filters [["=" 50 {:value "Boston"}]]}
+        malli-schema (schema model)]
+    (mc/coerce malli-schema json-response mtx/json-transformer)
+    malli-schema)
+
   ;; This works pretty well
   (let [{:keys [fail] :as mbql} (infer-mbql
                                  "Provide descriptive stats for sales per state"
@@ -303,11 +324,28 @@
       mbql))
 
   (let [{:keys [fail] :as mbql} (infer-mbql
-                                 "What products have a rating greater than 2.0?"
-                                 (t2/select-one 'Card :id 1))]
+                                  "What products have a rating greater than 2.0?"
+                                  (t2/select-one 'Card :id 1))]
     (if fail
       [:fail fail]
       mbql))
+
+  ;; So close =>  [:fail {:filters [["=" {:field_id 47} {:value "@gmail.com"}]], :breakout [{:field_id 47}]}]
+  (let [{:keys [fail] :as mbql} (infer-mbql
+                                  "Show me email addresses from gmail."
+                                  (t2/select-one 'Card :id 1))]
+    (if fail
+      [:fail fail]
+      mbql))
+
+  (let [{:keys [fail] :as mbql} (infer-mbql
+                                  "Show me the total sales for products sold in Boston."
+                                  (t2/select-one 'Card :id 1))]
+    (if fail
+      [:fail fail]
+      mbql))
+  ;; Bad results
+  {:aggregation [["sum" 41]], :filters [["=" 50 "Boston"]]}
 
   (let [{:keys [fail] :as mbql} (infer-mbql
                                  "How many sales were in Idaho?"
