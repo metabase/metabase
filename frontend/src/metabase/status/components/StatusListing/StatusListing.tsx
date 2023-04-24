@@ -1,24 +1,37 @@
 import React from "react";
-import Database from "metabase-lib/metadata/Database";
+import { connect } from "react-redux";
+
+import { getUserIsAdmin, getUser } from "metabase/selectors/user";
+import type { State } from "metabase-types/store";
+
 import DatabaseStatus from "../../containers/DatabaseStatus";
 import FileUploadStatus from "../FileUploadStatus";
 import { StatusListingRoot } from "./StatusListing.styled";
 
+const mapStateToProps = (state: State) => ({
+  isAdmin: getUserIsAdmin(state),
+  isLoggedIn: !!getUser(state),
+});
+
 export interface StatusListingProps {
   isAdmin: boolean;
-  database?: Database;
+  isLoggedIn: boolean;
 }
 
-const StatusListing = ({
+export const StatusListingView = ({
   isAdmin,
-  database: uploadDatabase,
-}: StatusListingProps): JSX.Element => {
+  isLoggedIn,
+}: StatusListingProps) => {
+  if (!isLoggedIn) {
+    return null;
+  }
+
   return (
     <StatusListingRoot>
       {isAdmin && <DatabaseStatus />}
-      {uploadDatabase?.canWrite() && <FileUploadStatus />}
+      <FileUploadStatus />
     </StatusListingRoot>
   );
 };
 
-export default StatusListing;
+export default connect(mapStateToProps)(StatusListingView);

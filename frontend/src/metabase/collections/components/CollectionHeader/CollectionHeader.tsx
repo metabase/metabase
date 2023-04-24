@@ -22,6 +22,7 @@ export interface CollectionHeaderProps {
   onCreateBookmark: (collection: Collection) => void;
   onDeleteBookmark: (collection: Collection) => void;
   onUpload: (file: File, collectionId: CollectionId) => void;
+  canUpload: boolean;
 }
 
 const CollectionHeader = ({
@@ -34,9 +35,8 @@ const CollectionHeader = ({
   onCreateBookmark,
   onDeleteBookmark,
   onUpload,
+  canUpload,
 }: CollectionHeaderProps): JSX.Element => {
-  const canUpload = true; // TODO: check settings for upload permissions
-
   return (
     <HeaderRoot>
       <CollectionCaption

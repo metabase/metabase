@@ -1,9 +1,10 @@
 import { FileUpload } from "metabase-types/store/upload";
 
-export const uploadInProgress = (upload: FileUpload) =>
+export const isUploadInProgress = (upload: FileUpload) =>
   upload.status === "in-progress";
 
-export const uploadCompleted = (upload: FileUpload) =>
+export const isUploadCompleted = (upload: FileUpload) =>
   upload.status === "complete";
 
-export const uploadAborted = (upload: FileUpload) => upload.status === "error";
+export const isUploadAborted = (upload: FileUpload) =>
+  upload.status === "error";
