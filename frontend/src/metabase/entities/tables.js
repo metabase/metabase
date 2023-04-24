@@ -56,9 +56,9 @@ const Tables = createEntity({
 
   api: {
     list: async (params, ...args) => {
-      if (params.dbId && params.schemaName) {
+      if (params.dbId != null && params.schemaName != null) {
         return listTablesForSchema(params, ...args);
-      } else if (params.dbId) {
+      } else if (params.dbId != null) {
         return listTablesForDatabase(params, ...args);
       } else {
         return listTables(params, ...args);
