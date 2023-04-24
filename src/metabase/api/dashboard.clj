@@ -401,28 +401,25 @@
    collection_id           (s/maybe su/IntGreaterThanZero)
    collection_position     (s/maybe su/IntGreaterThanZero)
    cache_ttl               (s/maybe su/IntGreaterThanZero)}
-  (let [dash-before-update (api/write-check Dashboard id)
-        updates            (u/select-keys-when dash-updates
-                                               :present #{:description :position :collection_id :collection_position :cache_ttl}
-                                               :non-nil #{:name :parameters :caveats :points_of_interest :show_in_getting_started :enable_embedding
-                                                          :embedding_params :archived :auto_apply_filters})]
-    (if (some? (second (clojure.data/diff dash-before-updates updates)))
-      (do
-        ;; Do various permissions checks as needed
-        (collection/check-allowed-to-change-collection dash-before-update dash-updates)
-        (check-allowed-to-change-embedding dash-before-update dash-updates)
-        (t2/with-transaction [_conn]
-          ;; If the dashboard has an updated position, or if the dashboard is moving to a new collection, we might need to
-          ;; adjust the collection position of other dashboards in the collection
-          (api/maybe-reconcile-collection-position! dash-before-update dash-updates)
-          ;; description, position, collection_id, and collection_position are allowed to be `nil`. Everything else must be
-          ;; non-nil
-          (when (seq updates)
-            (t2/update! Dashboard id updates)))
-        (let [dashboard (t2/select-one Dashboard :id id)]
-          (events/publish-event! :dashboard-update (assoc dashboard :actor_id api/*current-user-id*))
-          (assoc dashboard :last-edit-info (last-edit/edit-information-for-user @api/*current-user*))))
-      dash-before-update)))
+  (let [dash-before-update (api/write-check Dashboard id)]
+    ;; Do various permissions checks as needed
+    (collection/check-allowed-to-change-collection dash-before-update dash-updates)
+    (check-allowed-to-change-embedding dash-before-update dash-updates)
+    (t2/with-transaction [_conn]
+      ;; If the dashboard has an updated position, or if the dashboard is moving to a new collection, we might need to
+      ;; adjust the collection position of other dashboards in the collection
+      (api/maybe-reconcile-collection-position! dash-before-update dash-updates)
+      ;; description, position, collection_id, and collection_position are allowed to be `nil`. Everything else must be
+      ;; non-nil
+      (when-let [updates (not-empty (u/select-keys-when dash-updates
+                                                        :present #{:description :position :collection_id :collection_position :cache_ttl}
+                                                        :non-nil #{:name :parameters :caveats :points_of_interest :show_in_getting_started :enable_embedding
+                                                                   :embedding_params :archived :auto_apply_filters}))]
+        (t2/update! Dashboard id updates))))
+  ;; now publish an event and return the updated Dashboard
+  (let [dashboard (t2/select-one Dashboard :id id)]
+    (events/publish-event! :dashboard-update (assoc dashboard :actor_id api/*current-user-id*))
+    (assoc dashboard :last-edit-info (last-edit/edit-information-for-user @api/*current-user*))))
 
 ;; TODO - We can probably remove this in the near future since it should no longer be needed now that we're going to
 ;; be setting `:archived` to `true` via the `PUT` endpoint instead
