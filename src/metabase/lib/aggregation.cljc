@@ -208,12 +208,7 @@
   ([query an-aggregate-clause]
    (aggregate query -1 an-aggregate-clause))
   ([query stage-number an-aggregate-clause]
-   (let [stage-number (or stage-number -1)]
-     (lib.util/update-query-stage
-       query stage-number
-       update :aggregation
-       (fn [aggregations]
-         (conj (vec aggregations) (lib.common/->op-arg query stage-number an-aggregate-clause)))))))
+   (lib.util/add-summary-clause query stage-number :aggregation an-aggregate-clause)))
 
 (mu/defn aggregations :- [:maybe [:sequential lib.metadata/ColumnMetadata]]
   "Get metadata about the aggregations in a given stage of a query."
