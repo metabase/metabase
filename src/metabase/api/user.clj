@@ -359,8 +359,8 @@
                ;; if the user orignally logged in via Google Auth/LDAP and it's no longer enabled, convert them into a regular user
                ;; (see metabase#3323)
                :sso_source   (case (:sso_source existing-user)
-                               "google" (if (google/google-auth-enabled) "google" nil)
-                               "ldap"   (if (api.ldap/ldap-enabled) "ldap" nil)
+                               "google" (when (google/google-auth-enabled) "google")
+                               "ldap"   (when (api.ldap/ldap-enabled) "ldap")
                                (:sso_source existing-user))})
   ;; now return the existing user whether they were originally active or not
   (fetch-user :id (u/the-id existing-user)))
