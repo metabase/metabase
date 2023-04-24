@@ -329,6 +329,21 @@ class DashboardHeader extends Component {
       });
     }
 
+    if (!isEditing) {
+      buttons.push(
+        <Tooltip key="change-grid-size" tooltip={t`Change grid size`}>
+          <DashboardHeaderButton
+            key="edit"
+            data-metabase-event="Dashboard;Edit"
+            className="text-brand-hover cursor-pointer"
+            onClick={this.props.onGridSizeChange}
+          >
+            {this.props.gridSize}
+          </DashboardHeaderButton>
+        </Tooltip>,
+      );
+    }
+
     if (!isFullscreen && !isEditing && canEdit) {
       buttons.push(
         <Tooltip key="edit-dashboard" tooltip={t`Edit dashboard`}>

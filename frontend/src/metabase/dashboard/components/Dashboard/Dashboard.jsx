@@ -28,6 +28,8 @@ import {
 import DashboardEmptyState from "./DashboardEmptyState/DashboardEmptyState";
 import { updateParametersWidgetStickiness } from "./stickyParameters";
 
+const gridSizes = [18, 24];
+
 const SCROLL_THROTTLE_INTERVAL = 1000 / 24;
 
 // NOTE: move DashboardControls HoC to container
@@ -37,6 +39,7 @@ class Dashboard extends Component {
     error: null,
     isParametersWidgetSticky: false,
     parametersListLength: 0,
+    gridSize: 18,
   };
 
   static propTypes = {
@@ -187,8 +190,15 @@ class Dashboard extends Component {
   }
 
   setEditing = isEditing => {
-    this.props.onRefreshPeriodChange(null);
-    this.props.setEditingDashboard(isEditing);
+    this.setState(
+      {
+        gridSize: 18,
+      },
+      () => {
+        this.props.onRefreshPeriodChange(null);
+        this.props.setEditingDashboard(isEditing);
+      },
+    );
   };
 
   setDashboardAttribute = (attribute, value) => {
@@ -212,6 +222,16 @@ class Dashboard extends Component {
     this.props.toggleSidebar(SIDEBAR_NAME.addQuestion);
   };
 
+  handleGridSizeChange = () => {
+    const { gridSize } = this.state;
+    const nextGridSizeIndex =
+      (gridSizes.indexOf(gridSize) + 1) % gridSizes.length;
+
+    this.setState({
+      gridSize: gridSizes[nextGridSizeIndex],
+    });
+  };
+
   render() {
     const {
       addParameter,
@@ -233,7 +253,7 @@ class Dashboard extends Component {
       embedOptions,
     } = this.props;
 
-    const { error, isParametersWidgetSticky } = this.state;
+    const { error, isParametersWidgetSticky, gridSize } = this.state;
 
     const shouldRenderAsNightMode = isNightMode && isFullscreen;
     const dashboardHasCards = dashboard => dashboard.ordered_cards.length > 0;
@@ -285,6 +305,8 @@ class Dashboard extends Component {
               >
                 <DashboardHeader
                   {...this.props}
+                  gridSize={gridSize}
+                  onGridSizeChange={this.handleGridSizeChange}
                   onEditingChange={this.setEditing}
                   setDashboardAttribute={this.setDashboardAttribute}
                   addParameter={addParameter}
@@ -327,6 +349,7 @@ class Dashboard extends Component {
                   {dashboardHasCards(dashboard) ? (
                     <DashboardGrid
                       {...this.props}
+                      gridSize={gridSize}
                       isNightMode={shouldRenderAsNightMode}
                       onEditingChange={this.setEditing}
                     />

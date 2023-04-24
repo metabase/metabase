@@ -17,10 +17,8 @@ import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { color } from "metabase/lib/colors";
 
 import {
-  GRID_WIDTH,
   GRID_ASPECT_RATIO,
   GRID_BREAKPOINTS,
-  GRID_COLUMNS,
   DEFAULT_CARD_SIZE,
   MIN_ROW_HEIGHT,
 } from "metabase/lib/dashboard_grid";
@@ -74,6 +72,7 @@ class DashboardGrid extends Component {
     width: 0,
     isEditing: false,
     isEditingParameter: false,
+    gridSize: 18,
   };
 
   componentDidMount() {
@@ -97,10 +96,10 @@ class DashboardGrid extends Component {
   }
 
   onLayoutChange = ({ layout, breakpoint }) => {
-    // We allow moving and resizing cards only on the desktop
-    // Ensures onLayoutChange triggered by window resize,
-    // won't break the main layout
     if (breakpoint !== "desktop") {
+      // We allow moving and resizing cards only on the desktop
+      // Ensures onLayoutChange triggered by window resize,
+      // won't break the main layout
       return;
     }
 
@@ -118,7 +117,7 @@ class DashboardGrid extends Component {
         _.pick(this.getLayoutForDashCard(dashboardCard), keys),
       );
 
-      if (changed) {
+      if (changed && this.props.isEditing) {
         changes.push({
           id: dashboardCard.id,
           attributes: {
@@ -158,21 +157,32 @@ class DashboardGrid extends Component {
     );
   }
 
-  getLayoutForDashCard(dashcard) {
+  getLayoutForDashCard = dashcard => {
+    const { gridSize } = this.props;
+
     const { visualization } = getVisualizationRaw([{ card: dashcard.card }]);
     const initialSize = DEFAULT_CARD_SIZE;
     const minSize = visualization.minSize || DEFAULT_CARD_SIZE;
+
+    let x = dashcard.col || 0;
+    let w = dashcard.size_x || initialSize.width;
+
+    if (gridSize === 24) {
+      w = w + Math.floor((x + w + 2) / 3) - Math.floor((x + 1) / 3);
+      x = Math.round((x * 24) / 18);
+    }
+
     return {
       i: String(dashcard.id),
-      x: dashcard.col || 0,
+      x,
       y: dashcard.row || 0,
-      w: dashcard.size_x || initialSize.width,
+      w,
       h: dashcard.size_y || initialSize.height,
       dashcard: dashcard,
       minW: minSize.width,
       minH: minSize.height,
     };
-  }
+  };
 
   getLayouts({ dashboard }) {
     const desktop = dashboard.ordered_cards.map(this.getLayoutForDashCard);
@@ -189,21 +199,21 @@ class DashboardGrid extends Component {
     return { desktop, mobile };
   }
 
-  getRowHeight() {
-    const { width } = this.props;
+  getRowHeight = () => {
+    const { width, gridSize } = this.props;
 
     const contentViewportElement = this.context;
     const hasScroll =
       contentViewportElement?.clientHeight <
       contentViewportElement?.scrollHeight;
 
-    const aspectHeight = width / GRID_WIDTH / GRID_ASPECT_RATIO;
+    const aspectHeight = width / gridSize / GRID_ASPECT_RATIO;
     const actualHeight = Math.max(aspectHeight, MIN_ROW_HEIGHT);
 
     // prevent infinite re-rendering when the scroll bar appears/disappears
     // https://github.com/metabase/metabase/issues/17229
     return hasScroll ? Math.ceil(actualHeight) : Math.floor(actualHeight);
-  }
+  };
 
   renderAddSeriesModal() {
     // can't use PopoverWithTrigger due to strange interaction with ReactGridLayout
@@ -348,10 +358,16 @@ class DashboardGrid extends Component {
     </DashboardCard>
   );
 
-  renderGrid() {
-    const { dashboard, width } = this.props;
+  renderGrid = () => {
+    const { dashboard, width, gridSize } = this.props;
     const { layouts } = this.state;
     const rowHeight = this.getRowHeight();
+
+    const columns = {
+      desktop: gridSize,
+      mobile: 1,
+    };
+
     return (
       <GridLayout
         className={cx("DashboardGrid", {
@@ -360,7 +376,7 @@ class DashboardGrid extends Component {
         })}
         layouts={layouts}
         breakpoints={GRID_BREAKPOINTS}
-        cols={GRID_COLUMNS}
+        cols={columns}
         width={width}
         margin={{ desktop: [6, 6], mobile: [6, 10] }}
         containerPadding={[0, 0]}
@@ -374,7 +390,7 @@ class DashboardGrid extends Component {
         itemRenderer={this.renderGridItem}
       />
     );
-  }
+  };
 
   render() {
     const { width } = this.props;
