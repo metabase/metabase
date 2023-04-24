@@ -6,6 +6,7 @@
    [metabase.models.card :refer [Card]]
    [metabase.models.model-index :as model-index :refer [ModelIndex]]
    [metabase.sync.schedules :as sync.schedules]
+   [metabase.task.index-values :as task.index-values]
    [metabase.util.cron :as u.cron]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
@@ -39,6 +40,7 @@
                                                           :schedule   (default-schedule)
                                                           :state      "initial"
                                                           :creator_id api/*current-user-id*}])]
+      (task.index-values/add-indexing-job model-index)
       (model-index/add-values! model-index)
       (t2/select-one ModelIndex :id (:id model-index)))))
 
