@@ -44,7 +44,7 @@
                 by-key      (fn [k xs]
                               (some (fn [x] (when (= (:key x) k) x)) xs))]
             (testing "There's a task to sync the values"
-              (let [index-trigger (->> (doto (task/scheduler-info) tap>)
+              (let [index-trigger (->> (task/scheduler-info)
                                        :jobs
                                        (by-key "metabase.task.IndexValues.job")
                                        :triggers
