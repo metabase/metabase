@@ -147,7 +147,7 @@ function verifyQuestion() {
   openQuestionActions();
   cy.findByTextEnsureVisible("Verify this question").click();
 
-  cy.wait("@loadCard").should(({ response: { body } }) => {
+  cy.wait("@loadCard").then(({ response: { body } }) => {
     const { moderation_reviews } = body;
 
     /**
