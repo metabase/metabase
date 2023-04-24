@@ -12,8 +12,9 @@ export function setupTableEndpoints(table: Table) {
     const request = await fetchMock.lastCall(url)?.request?.json();
     return { id: table.id, ...request };
   });
-
   fetchMock.put(`path:/api/table/${table.id}/fields/order`, []);
+  fetchMock.post(`path:/api/table/${table.id}/rescan_values`, {});
+  fetchMock.post(`path:/api/table/${table.id}/discard_values`, {});
 }
 
 export function setupTablesEndpoints(tables: Table[]) {

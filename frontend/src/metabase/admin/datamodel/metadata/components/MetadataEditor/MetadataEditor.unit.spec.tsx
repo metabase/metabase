@@ -98,60 +98,64 @@ const setup = async ({ databases = [TEST_DB] }: SetupOpts = {}) => {
 };
 
 describe("MetadataEditor", () => {
-  it("should select the first database and the only schema by default", async () => {
-    await setup();
+  describe("single schema database", () => {
+    it("should select the first database and the only schema by default", async () => {
+      await setup();
 
-    expect(screen.getByText(TEST_DB.name)).toBeInTheDocument();
-    expect(screen.getByText(TEST_TABLE_1.display_name)).toBeInTheDocument();
-    expect(screen.queryByText(TEST_TABLE_1.schema)).not.toBeInTheDocument();
+      expect(screen.getByText(TEST_DB.name)).toBeInTheDocument();
+      expect(screen.getByText(TEST_TABLE_1.display_name)).toBeInTheDocument();
+      expect(screen.queryByText(TEST_TABLE_1.schema)).not.toBeInTheDocument();
+    });
+
+    it("should allow to search for a table", async () => {
+      await setup();
+
+      const searchValue = TEST_TABLE_1.name.substring(0, 3);
+      userEvent.type(screen.getByPlaceholderText("Find a table"), searchValue);
+
+      expect(screen.getByText(TEST_TABLE_1.display_name)).toBeInTheDocument();
+      expect(
+        screen.queryByText(TEST_TABLE_2.display_name),
+      ).not.toBeInTheDocument();
+    });
   });
 
-  it("should not select the first schema if there are multiple schemas", async () => {
-    await setup({ databases: [TEST_MULTI_SCHEMA_DB] });
+  describe("multi schema database", () => {
+    it("should not select the first schema if there are multiple schemas", async () => {
+      await setup({ databases: [TEST_MULTI_SCHEMA_DB] });
 
-    expect(screen.getByText(TEST_MULTI_SCHEMA_DB.name)).toBeInTheDocument();
-    expect(screen.getByText(TEST_TABLE_4.schema)).toBeInTheDocument();
-    expect(screen.getByText(TEST_TABLE_5.schema)).toBeInTheDocument();
-    expect(
-      screen.queryByText(TEST_TABLE_4.display_name),
-    ).not.toBeInTheDocument();
-  });
+      expect(screen.getByText(TEST_MULTI_SCHEMA_DB.name)).toBeInTheDocument();
+      expect(screen.getByText(TEST_TABLE_4.schema)).toBeInTheDocument();
+      expect(screen.getByText(TEST_TABLE_5.schema)).toBeInTheDocument();
+      expect(
+        screen.queryByText(TEST_TABLE_4.display_name),
+      ).not.toBeInTheDocument();
+    });
 
-  it("should allow to search for a schema", async () => {
-    await setup({ databases: [TEST_MULTI_SCHEMA_DB] });
+    it("should allow to search for a schema", async () => {
+      await setup({ databases: [TEST_MULTI_SCHEMA_DB] });
 
-    const searchValue = TEST_TABLE_4.schema.substring(0, 3);
-    userEvent.type(screen.getByPlaceholderText("Find a schema"), searchValue);
+      const searchValue = TEST_TABLE_4.schema.substring(0, 3);
+      userEvent.type(screen.getByPlaceholderText("Find a schema"), searchValue);
 
-    expect(screen.getByText(TEST_TABLE_4.schema)).toBeInTheDocument();
-    expect(screen.queryByText(TEST_TABLE_5.schema)).not.toBeInTheDocument();
-  });
+      expect(screen.getByText(TEST_TABLE_4.schema)).toBeInTheDocument();
+      expect(screen.queryByText(TEST_TABLE_5.schema)).not.toBeInTheDocument();
+    });
 
-  it("should allow to search for a table", async () => {
-    await setup();
+    it("should allow to search for a table", async () => {
+      await setup({ databases: [TEST_MULTI_SCHEMA_DB] });
 
-    const searchValue = TEST_TABLE_1.name.substring(0, 3);
-    userEvent.type(screen.getByPlaceholderText("Find a table"), searchValue);
+      userEvent.click(screen.getByText(TEST_TABLE_4.schema));
+      expect(
+        await screen.findByText(TEST_TABLE_4.display_name),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText(TEST_TABLE_5.display_name),
+      ).not.toBeInTheDocument();
 
-    expect(screen.getByText(TEST_TABLE_1.display_name)).toBeInTheDocument();
-    expect(
-      screen.queryByText(TEST_TABLE_2.display_name),
-    ).not.toBeInTheDocument();
-  });
-
-  it("should allow to search for a table in a multi-schema database", async () => {
-    await setup({ databases: [TEST_MULTI_SCHEMA_DB] });
-
-    userEvent.click(screen.getByText(TEST_TABLE_4.schema));
-    expect(
-      await screen.findByText(TEST_TABLE_4.display_name),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByText(TEST_TABLE_5.display_name),
-    ).not.toBeInTheDocument();
-
-    userEvent.click(screen.getByText("Schemas"));
-    expect(screen.getByText(TEST_TABLE_4.schema)).toBeInTheDocument();
-    expect(screen.getByText(TEST_TABLE_5.schema)).toBeInTheDocument();
+      userEvent.click(screen.getByText("Schemas"));
+      expect(screen.getByText(TEST_TABLE_4.schema)).toBeInTheDocument();
+      expect(screen.getByText(TEST_TABLE_5.schema)).toBeInTheDocument();
+    });
   });
 });
