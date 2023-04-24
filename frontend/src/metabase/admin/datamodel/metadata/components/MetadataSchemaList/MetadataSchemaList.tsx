@@ -55,10 +55,10 @@ const MetadataSchemaList = ({
   );
 
   useLayoutEffect(() => {
-    if (schemas.length === 1 && selectedSchemaId == null) {
-      onSelectSchema(selectedDatabaseId, schemas[0].id);
+    if (allSchemas.length === 1 && selectedSchemaId == null) {
+      onSelectSchema(selectedDatabaseId, allSchemas[0].id);
     }
-  }, [selectedDatabaseId, selectedSchemaId, schemas, onSelectSchema]);
+  }, [selectedDatabaseId, selectedSchemaId, allSchemas, onSelectSchema]);
 
   return (
     <div className="MetadataEditor-table-list AdminList flex-no-shrink">
