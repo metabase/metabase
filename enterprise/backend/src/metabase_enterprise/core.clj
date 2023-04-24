@@ -4,6 +4,7 @@
             [metabase.db.connection :as mdb.connection]
             [metabase.models.database :refer [Database]]
             [metabase.util.log :as log]
+            [metabase.util.malli :as mu]
             [toucan2.core :as t2]))
 
 (defn- install-audit-db!
@@ -20,9 +21,10 @@
                         ;; created by the system:
                         :creator_id   nil}))
 
-#_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
-(defn ensure-audit-db-exists!
-  "Called on app startup to ensure the existance of the audit db in enterprise apps."
+(mu/defn ensure-audit-db-exists! :- [:enum ::installed ::replaced ::no-op]
+  "Called on app startup to ensure the existance of the audit db in enterprise apps.
+
+  Returns a keyword indicating what action was taken."
   []
   (let [audit-db (t2/select-one Database :is_audit true)
         app-db   (t2/select-one Database :id (:id mdb.connection/*application-db*))]
@@ -43,4 +45,7 @@
           (t2/delete! Database :is_audit true)
           (log/info "Installing Audit DB...")
           (install-audit-db! app-db)
-          :metabase-enterprise.core/replaced))))
+          :metabase-enterprise.core/replaced)
+
+      :else
+      :metabase-enterprise.core/no-op)))
