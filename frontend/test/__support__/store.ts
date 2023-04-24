@@ -17,8 +17,10 @@ import {
   Database,
   Field,
   NativeQuerySnippet,
+  Metric,
   Table,
   User,
+  Segment,
   WritebackAction,
 } from "metabase-types/api";
 import { EntitiesState } from "metabase-types/store";
@@ -43,6 +45,8 @@ export interface EntitiesStateOpts {
   databases?: Database[];
   tables?: Table[];
   fields?: Field[];
+  metrics?: Metric[];
+  segments?: Segment[];
   snippets?: NativeQuerySnippet[];
   users?: User[];
   questions?: Card[];
