@@ -6,6 +6,7 @@ import _ from "underscore";
 
 import { fieldSetting } from "metabase/visualizations/lib/settings/utils";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
+import { compactifyValue } from "metabase/visualizations/lib/scalarUtils";
 
 import ScalarValue, {
   ScalarWrapper,
@@ -13,7 +14,6 @@ import ScalarValue, {
 } from "metabase/visualizations/components/ScalarValue";
 import { TYPE } from "metabase-lib/types/constants";
 import { ScalarContainer, LabelIcon } from "./Scalar.styled";
-import { compactifyValue } from "./scalarUtils";
 
 // convert legacy `scalar.*` visualization settings to format options
 function legacyScalarSettingsToFormatOptions(settings) {

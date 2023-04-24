@@ -10,6 +10,7 @@ import Icon from "metabase/components/Icon";
 
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import { NoBreakoutError } from "metabase/visualizations/lib/errors";
+import { compactifyValue } from "metabase/visualizations/lib/scalarUtils";
 
 import ScalarValue, {
   ScalarWrapper,
@@ -18,7 +19,6 @@ import ScalarValue, {
 import { isDate } from "metabase-lib/types/utils/isa";
 import { formatBucketing } from "metabase-lib/queries/utils/query-time";
 import { ScalarContainer } from "./Scalar.styled";
-import { compactifyValue } from "./scalarUtils";
 
 import {
   PreviousValueContainer,
