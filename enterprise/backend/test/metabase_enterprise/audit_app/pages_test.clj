@@ -211,8 +211,8 @@
     (mt/with-test-user :crowberto
       (premium-features-test/with-premium-features #{:audit-app}
         (mt/with-temp* [User [a {:email "a@metabase.com" :sso_source nil}]
-                        User [b {:email "b@metabase.com" :sso_source "google"}]
-                        User [c {:email "c@metabase.com" :sso_source "SAML"}]]
+                        User [b {:email "b@metabase.com" :sso_source :google}]
+                        User [c {:email "c@metabase.com" :sso_source :saml}]]
           (is (= ["Email" "Google Sign-In" "SAML"]
                  (->> (get-in (mt/user-http-request :crowberto :post 202 "dataset"
                                                     {:type :internal

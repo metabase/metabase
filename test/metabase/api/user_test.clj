@@ -653,7 +653,7 @@
       (mt/with-temp User [{user-id :id} {:first_name   "SSO"
                                          :last_name    "User"
                                          :email        "sso-user@metabase.com"
-                                         :sso_source   "jwt"
+                                         :sso_source   :jwt
                                          :is_superuser true}]
         (letfn [(change-user-via-api! [expected-status m]
                   (mt/user-http-request :crowberto :put expected-status (str "user/" user-id) m))]
@@ -712,7 +712,7 @@
     (testing "Google auth users shouldn't be able to change their own password as we get that from Google"
       (mt/with-temp User [user {:email       "anemail@metabase.com"
                                 :password    "def123"
-                                :sso_source  "google"}]
+                                :sso_source  :google}]
         (let [creds {:username "anemail@metabase.com"
                      :password "def123"}]
           (is (= "You don't have permissions to do that."
@@ -723,7 +723,7 @@
                   "as we get that from the LDAP server")
       (mt/with-temp User [user {:email     "anemail@metabase.com"
                                 :password  "def123"
-                                :sso_source "ldap"}]
+                                :sso_source :ldap}]
         (let [creds {:username "anemail@metabase.com"
                      :password "def123"}]
           (is (= "You don't have permissions to do that."
@@ -914,7 +914,7 @@
                   "Google Auth (#3323)")
       (mt/with-temporary-setting-values [google-auth-client-id "pretend-client-id.apps.googleusercontent.com"
                                          google-auth-enabled    true]
-        (mt/with-temp User [user {:sso_source "google"}]
+        (mt/with-temp User [user {:sso_source :google}]
           (t2/update! User (u/the-id user)
                       {:is_active false})
           (mt/with-temporary-setting-values [google-auth-enabled false]
