@@ -101,30 +101,33 @@
   (hx/->timestamp expr))
 
 (defn- create-table-sql
-  [table-name col->type]
+  [driver table-name col->type]
   (first (sql/format {:create-table (keyword table-name)
                       :with-columns (map (fn [kv] (map keyword kv)) col->type)}
-                     :quoted true)))
+                     :quoted true
+                     :dialect (sql.qp/quote-style driver))))
 
 (defmethod driver/create-table :sql-jdbc
-  [_driver db-id table-name col->type]
-  (let [sql (create-table-sql table-name col->type)]
+  [driver db-id table-name col->type]
+  (let [sql (create-table-sql driver table-name col->type)]
     (qp.writeback/execute-write-sql! db-id sql)))
 
 (defmethod driver/drop-table :sql-jdbc
-  [_driver db-id table-name]
+  [driver db-id table-name]
   (let [sql (first (sql/format {:drop-table [:if-exists (keyword table-name)]}
-                               :quoted true))]
+                               :quoted true
+                               :dialect (sql.qp/quote-style driver)))]
     (qp.writeback/execute-write-sql! db-id sql)))
 
 (defmethod driver/insert-into :sql-jdbc
-  [_driver db-id table-name column-names values]
+  [driver db-id table-name column-names values]
   (let [table-name (keyword table-name)
         columns    (map keyword column-names)
         sqls       (map #(sql/format {:insert-into table-name
                                       :columns     columns
                                       :values      %}
-                                     :quoted true)
+                                     :quoted true
+                                     :dialect (sql.qp/quote-style driver))
                         (partition-all 100 values))]
     ;; We need to partition the insert into multiple statements for both performance and correctness.
     ;;
