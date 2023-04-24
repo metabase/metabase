@@ -169,22 +169,31 @@
         (mt/user-http-request :rasta :get 200 (format "database/%d/idfields?include_editable_data_model=true" (mt/id)))))))
 
 (deftest get-schema-with-advanced-perms-test
-  (testing "Permissions: We can verify include_editable_data_model flag works for the /:id/schema/:schema endpoint"
+  (testing "Permissions: We can verify include_editable_data_model flag works for the `/:id/schema/:schema` and `/:id/schemas` endpoints"
     (mt/with-temp* [Database [{db-id :id}]
                     Table    [_t1 {:db_id db-id, :schema "schema1", :name "t1"}]
                     Table    [_t2 {:db_id db-id, :schema "schema2"}]
                     Table    [_t3 {:db_id db-id, :schema "schema1", :name "t3"}]]
       (with-all-users-data-perms {db-id {:data       {:schemas :all :native :write}
-                                           :data-model {:schemas :all}}}
+                                         :data-model {:schemas :all}}}
         (testing "Testing /:id/schema/:schema variants"
           (perms/revoke-data-perms! (perms-group/all-users) db-id)
           (testing "/:id/schema/:schema when permissions are revoked but include_editable_data_model=true returns values"
             (is (= ["t1" "t3"]
                    (map :name (mt/user-http-request :rasta :get 200 (format "database/%d/schema/%s" db-id "schema1")
                                                     :include_editable_data_model true)))))
-          (testing "/:id/schema/:schema when permissions are revoked ins a 403"
+          (testing "/:id/schema/:schema when permissions are revoked is a 403"
             (is (= "You don't have permissions to do that."
-                   (mt/user-http-request :rasta :get 403 (format "database/%d/schema/%s" db-id "schema1"))))))))))
+                   (mt/user-http-request :rasta :get 403 (format "database/%d/schema/%s" db-id "schema1"))))))
+        (testing "Testing /:id/schemas variants"
+          (perms/revoke-data-perms! (perms-group/all-users) db-id)
+          (testing "/:id/schemas when permissions are revoked but include_editable_data_model=true returns values"
+            (is (= ["schema1" "schema2"]
+                   (mt/user-http-request :rasta :get 200 (format "database/%d/schemas" db-id)
+                                         :include_editable_data_model true))))
+          (testing "/:id/schemas when permissions are revoked is a 403"
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :rasta :get 403 (format "database/%d/schemas" db-id))))))))))
 
 (deftest update-field-test
   (mt/with-temp Field [{field-id :id, table-id :table_id} {:name "Field Test"}]

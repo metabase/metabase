@@ -1061,19 +1061,20 @@
   [id include_editable_data_model]
   {id                          ms/PositiveInt
    include_editable_data_model [:maybe ms/BooleanString]}
-  (api/read-check Database id)
+  (when-not include_editable_data_model
+    (api/read-check Database id))
   (let [include_editable_data_model (Boolean/parseBoolean include_editable_data_model)
-        filter-schemas (fn [schemas]
-                         (if include_editable_data_model
-                           (if-let [f (u/ignore-exceptions
-                                       (classloader/require 'metabase-enterprise.advanced-permissions.common)
-                                       (resolve 'metabase-enterprise.advanced-permissions.common/filter-schema-by-data-model-perms))]
-                             (map :schema (f (map (fn [s] {:db_id id :schema s}) schemas)))
-                             schemas)
-                           (filter (partial can-read-schema? id) schemas)))]
+        filter-schemas              (fn [schemas]
+                                      (if include_editable_data_model
+                                        (if-let [f (u/ignore-exceptions
+                                                     (classloader/require 'metabase-enterprise.advanced-permissions.common)
+                                                     (resolve 'metabase-enterprise.advanced-permissions.common/filter-schema-by-data-model-perms))]
+                                          (map :schema (f (map (fn [s] {:db_id id :schema s}) schemas)))
+                                          schemas)
+                                        (filter (partial can-read-schema? id) schemas)))]
     (->> (t2/select-fn-set :schema Table
                            :db_id id :active true
-                         ;; a non-nil value means Table is hidden -- see [[metabase.models.table/visibility-types]]
+                           ;; a non-nil value means Table is hidden -- see [[metabase.models.table/visibility-types]]
                            :visibility_type nil
                            {:order-by [[:%lower.schema :asc]]})
          filter-schemas
