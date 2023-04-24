@@ -6,9 +6,9 @@
             [toucan2.core :as t2]))
 
 (defmacro with-delete-audit-db [& body]
-  `(let [original-audit-db# (t2/select-one Database :is_audit true)
-         _# (t2/delete! Database :is_audit true)]
+  `(let [original-audit-db# (t2/select-one Database :is_audit true)]
      (try
+       (t2/delete! Database :is_audit true)
        ~@body
        (finally
          (t2/delete! Database :is_audit true)
