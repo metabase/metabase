@@ -1104,26 +1104,27 @@
    (when-not include_editable_data_model
      (api/read-check Database db-id))
    (api/check-403 (can-read-schema? db-id schema))
-   (let [tables (cond->>
-                 (if include_hidden
-                   (t2/select Table
-                              :db_id db-id
-                              :schema schema
-                              :active true
-                              {:order-by [[:display_name :asc]]})
-                   (t2/select Table
-                              :db_id db-id
-                              :schema schema
-                              :active true
-                              :visibility_type nil
-                              {:order-by [[:display_name :asc]]})))]
-     (if-let [f (and
-                 (not include_editable_data_model)
-                 (u/ignore-exceptions
-                  (classloader/require 'metabase-enterprise.advanced-permissions.common)
-                  (resolve 'metabase-enterprise.advanced-permissions.common/filter-tables-by-data-model-perms)))]
-       (f tables)
-       tables))))
+   (let [tables (if include_hidden
+                  (t2/select Table
+                             :db_id db-id
+                             :schema schema
+                             :active true
+                             {:order-by [[:display_name :asc]]})
+                  (t2/select Table
+                             :db_id db-id
+                             :schema schema
+                             :active true
+                             :visibility_type nil
+                             {:order-by [[:display_name :asc]]}))]
+     (if (not include_editable_data_model)
+       (filter mi/can-read? tables)
+       (if-let [f (and
+                   (not include_editable_data_model)
+                   (u/ignore-exceptions
+                    (classloader/require 'metabase-enterprise.advanced-permissions.common)
+                    (resolve 'metabase-enterprise.advanced-permissions.common/filter-tables-by-data-model-perms)))]
+         (f tables)
+         tables)))))
 
 (api/defendpoint GET "/:id/schema/:schema"
   "Returns a list of Tables for the given Database `id` and `schema`"
