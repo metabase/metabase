@@ -3,7 +3,6 @@ import React, { Component } from "react";
 import { t } from "ttag";
 
 import _ from "underscore";
-import { formatValue } from "metabase/lib/formatting";
 
 import { fieldSetting } from "metabase/visualizations/lib/settings/utils";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
@@ -14,6 +13,7 @@ import ScalarValue, {
 } from "metabase/visualizations/components/ScalarValue";
 import { TYPE } from "metabase-lib/types/constants";
 import { ScalarContainer, LabelIcon } from "./Scalar.styled";
+import { compactifyValue } from "./scalarUtils";
 
 // convert legacy `scalar.*` visualization settings to format options
 function legacyScalarSettingsToFormatOptions(settings) {
@@ -24,11 +24,6 @@ function legacyScalarSettingsToFormatOptions(settings) {
     .object()
     .value();
 }
-
-// used below to determine whether we show compact formatting
-const COMPACT_MAX_WIDTH = 250;
-const COMPACT_WIDTH_PER_DIGIT = 25;
-const COMPACT_MIN_LENGTH = 6;
 
 // Scalar visualization shows a single number
 // Multiseries Scalar is transformed to a Funnel
@@ -191,21 +186,11 @@ export default class Scalar extends Component {
       jsx: true,
     };
 
-    const fullScalarValue = formatValue(value, formatOptions);
-    const compactScalarValue = formatValue(value, {
-      ...formatOptions,
-      compact: true,
+    const { displayValue, fullScalarValue } = compactifyValue({
+      formatOptions,
+      value,
+      width,
     });
-
-    // use the compact version of formatting if the component is narrower than
-    // the cutoff and the formatted value is longer than the cutoff
-    // also if the width is less than a certain multiplier of the number of digits
-    const displayCompact =
-      fullScalarValue !== null &&
-      fullScalarValue.length > COMPACT_MIN_LENGTH &&
-      (width < COMPACT_MAX_WIDTH ||
-        width < COMPACT_WIDTH_PER_DIGIT * fullScalarValue.length);
-    const displayValue = displayCompact ? compactScalarValue : fullScalarValue;
 
     const clicked = {
       value,
