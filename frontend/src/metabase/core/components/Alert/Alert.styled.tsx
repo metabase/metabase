@@ -13,14 +13,17 @@ const colorsByVariant = {
   border: {
     info: color("bg-medium"),
     error: color("error"),
+    warning: color("warning"),
   },
   background: {
     info: color("bg-light"),
     error: lighten("error", 0.4),
+    warning: lighten("warning", 0.5),
   },
   icon: {
     info: color("text-dark"),
     error: color("error"),
+    warning: color("warning"),
   },
 };
 

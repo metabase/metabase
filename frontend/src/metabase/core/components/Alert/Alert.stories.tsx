@@ -18,6 +18,13 @@ Default.args = {
   icon: "info",
 };
 
+export const Warning = Template.bind({});
+Warning.args = {
+  children: "Warning alert",
+  variant: "warning",
+  icon: "warning",
+};
+
 export const Error = Template.bind({});
 Error.args = {
   children: "Error alert",
