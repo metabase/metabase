@@ -37,13 +37,6 @@
    :value_ref {:in  json/generate-string
                :out (comp normalize-field-ref #(json/parse-string % true))}})
 
-(t2/define-after-insert ModelIndex
-  [model-index]
-  ;; cyclic requires. it needs to know how to populate the index.
-  (let [refresh-job (requiring-resolve 'metabase.task.index-values/add-indexing-job)]
-    (refresh-job model-index))
-  model-index)
-
 (t2/define-before-delete ModelIndex
   [model-index]
   (let [remove-refresh-job (requiring-resolve 'metabase.task.index-values/remove-indexing-job)]
