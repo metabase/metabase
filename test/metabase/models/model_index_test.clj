@@ -1,5 +1,6 @@
 (ns metabase.models.model-index-test
   (:require [clojure.core.async :as a]
+            [clojure.set :as set]
             [clojure.test :refer :all]
             [clojurewerkz.quartzite.conversion :as qc]
             [clojurewerkz.quartzite.scheduler :as qs]
@@ -31,16 +32,17 @@
 (deftest quick-run-through
   (with-scheduler-setup
     (mt/dataset sample-dataset
-      (let [query  (mt/mbql-query products)
-            pk_ref (mt/$ids $products.id)]
+      (let [query     (mt/mbql-query products)
+            pk_ref    (mt/$ids $products.id)
+            value_ref (mt/$ids $products.title)]
         (mt/with-temp* [Card [model {:dataset         true
-                                     :name            "Simple MBQL model"
+                                     :name            "model index test"
                                      :dataset_query   query
                                      :result_metadata (result-metadata-for-query query)}]]
           (let [model-index (mt/user-http-request :rasta :post 200 "/model-index"
                                                   {:model_id  (:id model)
                                                    :pk_ref    pk_ref
-                                                   :value_ref (mt/$ids $products.title)})
+                                                   :value_ref value_ref})
                 by-key      (fn [k xs]
                               (some (fn [x] (when (= (:key x) k) x)) xs))]
             (testing "There's a task to sync the values"
@@ -62,27 +64,68 @@
               (is (= 200 (count (t2/select ModelIndexValue :model_index_id (:id model-index)))))
               (is (= (into #{} cat (mt/rows (qp/process-query
                                              (mt/mbql-query products {:fields [$title]}))))
-                     (t2/select-fn-set :name ModelIndexValue :model_index_id (:id model-index)))))
-            (task.index-values/remove-indexing-job model-index)
-            (testing "Search"
-              (let [search-results (->> (mt/user-http-request :rasta :get 200 "search"
-                                                              :q "Synergistic"
-                                                              :models "indexed-entity"
-                                                              :archived false)
-                                        :data
-                                        (filter (comp #{(:id model)} :model_id)))
-                    f              (fn [sr] (-> (select-keys sr [:pk_ref :name :id :model_name])
-                                                (update :pk_ref model-index/normalize-field-ref)))]
-                (is (partial= {"Synergistic Wool Coat"   {:pk_ref     pk_ref
-                                                          :name       "Synergistic Wool Coat"
-                                                          :model_name "Simple MBQL model"}
-                               "Synergistic Steel Chair" {:pk_ref     pk_ref
-                                                          :name       "Synergistic Steel Chair"
-                                                          :model_name "Simple MBQL model"}}
-                              (into {} (map (juxt :name f)) search-results)))
-                (is (every? int? (map :id search-results)))))))))))
+                     (t2/select-fn-set :name ModelIndexValue :model_index_id (:id model-index)))))))))))
 
-(deftest generation-tests
+(defn- test-index
+  [{:keys [query pk-ref value-ref quantity subset scenario]}]
+  (testing scenario
+    (mt/with-temp* [Card [model {:dataset         true
+                                 :name            "model index test"
+                                 :dataset_query   query
+                                 :result_metadata (result-metadata-for-query query)}]]
+      (let [model-index (mt/user-http-request :rasta :post 200 "/model-index"
+                                              {:model_id  (:id model)
+                                               :pk_ref    pk-ref
+                                               :value_ref value-ref})]
+        ;; post most likely creates this, but duplicate to be sure
+        (model-index/add-values! model-index)
+        (is (= "indexed"
+               (t2/select-one-fn :state ModelIndex :id (:id model-index))))
+        (is (= quantity
+               (t2/count ModelIndexValue :model_index_id (:id model-index))))
+        (is (set/subset? subset (t2/select-fn-set :name ModelIndexValue
+                                                  :model_index_id (:id model-index))))))))
+
+(deftest model-index-test
+  (mt/dataset sample-dataset
+    (testing "Simple queries"
+      (test-index {:query     (mt/mbql-query products)
+                   :pk-ref    (mt/$ids $products.id)
+                   :value-ref (mt/$ids $products.title)
+                   :quantity  200
+                   :subset    #{"Awesome Concrete Shoes" "Mediocre Wooden Bench"}
+                   :scenario  :simple-table}))
+    (testing "With joins"
+      (test-index {:query     (mt/$ids
+                               {:type     :query,
+                                :query    {:source-table $$people,
+                                           :joins        [{:fields       :all,
+                                                           :source-table $$orders,
+                                                           :condition    [:=
+                                                                          [:field $people.id nil]
+                                                                          [:field $orders.user_id {:join-alias "Orders"}]],
+                                                           :alias        "Orders"}
+                                                          {:fields       :all,
+                                                           :source-table $$products,
+                                                           :condition    [:=
+                                                                          [:field $orders.product_id {:join-alias "Orders"}]
+                                                                          [:field $products.id {:join-alias "Products"}]],
+                                                           :alias        "Products"}]},
+                                :database (mt/id)})
+                   :pk-ref    (mt/$ids &Products.products.id)
+                   :value-ref (mt/$ids &Products.products.title)
+                   :quantity  200
+                   :subset    #{"Awesome Concrete Shoes" "Mediocre Wooden Bench"}
+                   :scenario  :with-joins}))
+    (testing "Native"
+      (test-index {:query     (mt/native-query {:query "SELECT * FROM PRODUCTS"})
+                   :pk-ref    [:field "ID" {:base-type :type/BigInteger}]
+                   :value-ref [:field "TITLE" {:base-type :type/Text}]
+                   :quantity  200
+                   :subset    #{"Awesome Concrete Shoes" "Mediocre Wooden Bench"}
+                   :scenario  :native}))))
+
+(deftest generation-test
   (mt/dataset sample-dataset
     (let [query  (mt/mbql-query products)
           pk_ref (mt/$ids $products.id)]
