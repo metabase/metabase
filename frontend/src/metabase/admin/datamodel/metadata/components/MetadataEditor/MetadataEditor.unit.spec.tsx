@@ -1,5 +1,6 @@
 import React from "react";
 import { IndexRedirect, Route } from "react-router";
+import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
 import { Database } from "metabase-types/api";
 import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
@@ -11,6 +12,7 @@ import {
   getIcon,
   renderWithProviders,
   screen,
+  waitFor,
   waitForElementToBeRemoved,
 } from "__support__/ui";
 import MetadataTableSettings from "../MetadataTableSettings";
@@ -138,6 +140,38 @@ describe("MetadataEditor", () => {
       expect(
         await screen.findByDisplayValue(TEST_TABLE_1.display_name),
       ).toBeInTheDocument();
+    });
+
+    it("should allow to rescan field values", async () => {
+      await setup();
+
+      userEvent.click(screen.getByText(TEST_TABLE_1.display_name));
+      userEvent.click(getIcon("gear"));
+      userEvent.click(
+        await screen.findByRole("button", { name: "Re-scan this table" }),
+      );
+
+      await waitFor(() => {
+        const path = `path:/api/table/${TEST_TABLE_1.id}/rescan_values`;
+        expect(fetchMock.called(path, { method: "POST" })).toBeTruthy();
+      });
+    });
+
+    it("should allow to discard field values", async () => {
+      await setup();
+
+      userEvent.click(screen.getByText(TEST_TABLE_1.display_name));
+      userEvent.click(getIcon("gear"));
+      userEvent.click(
+        await screen.findByRole("button", {
+          name: "Discard cached field values",
+        }),
+      );
+
+      await waitFor(() => {
+        const path = `path:/api/table/${TEST_TABLE_1.id}/discard_values`;
+        expect(fetchMock.called(path, { method: "POST" })).toBeTruthy();
+      });
     });
   });
 
