@@ -42,8 +42,8 @@ const MetadataSchemaList = ({
     const searchValue = searchText.toLowerCase();
 
     return _.chain(allSchemas)
-      .filter(schema => schema.name.toLowerCase().includes(searchValue))
-      .sortBy(schema => schema.name)
+      .filter(schema => (schema.name ?? "").toLowerCase().includes(searchValue))
+      .sortBy(schema => schema.name ?? "")
       .value();
   }, [allSchemas, searchText]);
 
