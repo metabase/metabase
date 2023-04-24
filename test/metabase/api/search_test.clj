@@ -58,6 +58,7 @@
    :model_id                   false
    :model_name                 nil
    :moderated_status           nil
+   :pk_ref                     nil
    :table_description          nil
    :table_id                   false
    :table_name                 nil
@@ -234,6 +235,7 @@
              [:like [:lower :table_description] "%foo%"] [:inline 0]
              [:like [:lower :model_name]        "%foo%"] [:inline 0]
              [:like [:lower :dataset_query]     "%foo%"] [:inline 0]
+             [:like [:lower :pk_ref]            "%foo%"] [:inline 0]
              :else [:inline 1]]]
            (api.search/order-clause "Foo")))))
 
@@ -549,6 +551,7 @@
     :archived            nil
     :model               "table"
     :database_id         true
+    :pk_ref              nil
     :initial_sync_status "incomplete"}))
 
 (defmacro ^:private do-test-users {:style/indent 1} [[user-binding users] & body]
