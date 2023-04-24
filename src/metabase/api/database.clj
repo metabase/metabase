@@ -1056,21 +1056,31 @@
    (perms/set-has-full-permissions? @api/*current-user-permissions-set*
                                     (perms/data-model-write-perms-path database-id schema-name))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/:id/schemas"
+(api/defendpoint GET "/:id/schemas"
   "Returns a list of all the schemas found for the database `id`"
-  [id]
+  [id include_editable_data_model]
+  {id                          ms/PositiveInt
+   include_editable_data_model [:maybe ms/BooleanString]}
   (api/read-check Database id)
-  (->> (t2/select-fn-set :schema Table
-                         :db_id id :active true
+  (let [include_editable_data_model (Boolean/parseBoolean include_editable_data_model)
+        filter-schemas (fn [schemas]
+                         (if include_editable_data_model
+                           (if-let [f (u/ignore-exceptions
+                                       (classloader/require 'metabase-enterprise.advanced-permissions.common)
+                                       (resolve 'metabase-enterprise.advanced-permissions.common/filter-schema-by-data-model-perms))]
+                             (map :schema (f (map (fn [s] {:db_id id :schema s}) schemas)))
+                             schemas)
+                           (filter (partial can-read-schema? id) schemas)))]
+    (->> (t2/select-fn-set :schema Table
+                           :db_id id :active true
                          ;; a non-nil value means Table is hidden -- see [[metabase.models.table/visibility-types]]
-                         :visibility_type nil
-                         {:order-by [[:%lower.schema :asc]]})
-       (filter (partial can-read-schema? id))
-       ;; for `nil` schemas return the empty string
-       (map #(if (nil? %) "" %))
-       distinct
-       sort))
+                           :visibility_type nil
+                           {:order-by [[:%lower.schema :asc]]})
+         filter-schemas
+         ;; for `nil` schemas return the empty string
+         (map #(if (nil? %) "" %))
+         distinct
+         sort)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET ["/:virtual-db/schemas"
@@ -1097,29 +1107,55 @@
 
 ;;; ------------------------------------- GET /api/database/:id/schema/:schema ---------------------------------------
 
-(defn- schema-tables-list [db-id schema]
-  (api/read-check Database db-id)
-  (api/check-403 (can-read-schema? db-id schema))
-  (filter mi/can-read? (t2/select Table
-                         :db_id           db-id
-                         :schema          schema
-                         :active          true
-                         ;; a non-nil value means Table is hidden -- see [[metabase.models.table/visibility-types]]
-                         :visibility_type nil
-                         {:order-by [[:display_name :asc]]})))
+(defn- schema-tables-list
+  ([db-id schema]
+   (schema-tables-list db-id schema nil nil))
+  ([db-id schema include_hidden include_editable_data_model]
+   (when-not include_editable_data_model
+     (api/read-check Database db-id))
+   (api/check-403 (can-read-schema? db-id schema))
+   (let [tables (if include_hidden
+                  (t2/select Table
+                             :db_id db-id
+                             :schema schema
+                             :active true
+                             {:order-by [[:display_name :asc]]})
+                  (t2/select Table
+                             :db_id db-id
+                             :schema schema
+                             :active true
+                             :visibility_type nil
+                             {:order-by [[:display_name :asc]]}))]
+     (if include_editable_data_model
+       (if-let [f (u/ignore-exceptions
+                   (classloader/require 'metabase-enterprise.advanced-permissions.common)
+                   (resolve 'metabase-enterprise.advanced-permissions.common/filter-tables-by-data-model-perms))]
+         (f tables)
+         tables)
+       (filter mi/can-read? tables)))))
 
 (api/defendpoint GET "/:id/schema/:schema"
   "Returns a list of Tables for the given Database `id` and `schema`"
-  [id schema]
-  {id ms/PositiveInt}
-  (api/check-404 (seq (schema-tables-list id schema))))
+  [id include_hidden include_editable_data_model schema]
+  {id                          ms/PositiveInt
+   include_hidden              [:maybe ms/BooleanString]
+   include_editable_data_model [:maybe ms/BooleanString]}
+  (api/check-404 (seq (schema-tables-list
+                       id
+                       schema
+                       (Boolean/parseBoolean include_hidden)
+                       (Boolean/parseBoolean include_editable_data_model)))))
 
 (api/defendpoint GET "/:id/schema/"
   "Return a list of Tables for a Database whose `schema` is `nil` or an empty string."
-  [id]
-  {id ms/PositiveInt}
-  (api/check-404 (seq (concat (schema-tables-list id nil)
-                              (schema-tables-list id "")))))
+  [id include_hidden include_editable_data_model]
+  {id                          ms/PositiveInt
+   include_hidden              [:maybe ms/BooleanString]
+   include_editable_data_model [:maybe ms/BooleanString]}
+  (let [include_hidden              (Boolean/parseBoolean include_hidden)
+        include_editable_data_model (Boolean/parseBoolean include_editable_data_model)]
+    (api/check-404 (seq (concat (schema-tables-list id nil include_hidden include_editable_data_model)
+                                (schema-tables-list id "" include_hidden include_editable_data_model))))))
 
 (api/defendpoint GET ["/:virtual-db/schema/:schema"
                       :virtual-db (re-pattern (str mbql.s/saved-questions-virtual-database-id))]
