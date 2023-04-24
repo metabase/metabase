@@ -1,9 +1,9 @@
 import type {
+  ConcreteTableId,
+  DatabaseWithTables,
   Group,
   GroupsPermissions,
-  ConcreteTableId,
 } from "metabase-types/api";
-import type Database from "metabase-lib/metadata/Database";
 import {
   getFieldsPermission,
   getNativePermission,
@@ -20,7 +20,7 @@ function diffDatabasePermissions(
   newPerms: GroupsPermissions,
   oldPerms: GroupsPermissions,
   groupId: number,
-  database: Database,
+  database: DatabaseWithTables,
 ) {
   const databaseDiff: {
     grantedTables: any;
@@ -81,7 +81,7 @@ function diffGroupPermissions(
   newPerms: GroupsPermissions,
   oldPerms: GroupsPermissions,
   groupId: number,
-  databases: Database[],
+  databases: DatabaseWithTables[],
 ) {
   const groupDiff: { databases: any } = { databases: {} };
   for (const database of databases) {
@@ -104,7 +104,7 @@ export function diffDataPermissions(
   newPerms: GroupsPermissions,
   oldPerms: GroupsPermissions,
   groups: Group[],
-  databases: Database[],
+  databases: DatabaseWithTables[],
 ) {
   const permissionsDiff: { groups: any } = { groups: {} };
   if (newPerms && oldPerms && databases) {

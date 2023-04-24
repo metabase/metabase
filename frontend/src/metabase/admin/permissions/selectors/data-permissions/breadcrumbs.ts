@@ -15,11 +15,17 @@ import {
 } from "../../utils/urls";
 import { DataRouteParams, GroupRouteParams } from "../../types";
 
+export type EditorBreadcrumb = {
+  id: number | string;
+  text: string;
+  url?: string;
+};
+
 export const getDatabasesEditorBreadcrumbs = (
   params: GroupRouteParams,
   metadata: Metadata,
   group: Group,
-) => {
+): EditorBreadcrumb[] | null => {
   const { groupId, databaseId, schemaName } = params;
 
   if (groupId == null) {
@@ -59,7 +65,7 @@ export const getDatabasesEditorBreadcrumbs = (
 export const getGroupsDataEditorBreadcrumbs = (
   params: DataRouteParams,
   metadata: Metadata,
-) => {
+): EditorBreadcrumb[] | null => {
   const { databaseId, schemaName, tableId } = params;
 
   if (databaseId == null) {
@@ -91,7 +97,9 @@ export const getGroupsDataEditorBreadcrumbs = (
   const hasMultipleSchemas = database.schemasCount() > 1;
 
   if (tableId == null) {
-    return [databaseItem, hasMultipleSchemas && schemaItem].filter(isNotNull);
+    return [databaseItem, hasMultipleSchemas && schemaItem].filter(
+      isNotNull,
+    ) as EditorBreadcrumb[];
   }
 
   const table = metadata.table(tableId) as Table;
@@ -103,5 +111,5 @@ export const getGroupsDataEditorBreadcrumbs = (
 
   return [databaseItem, hasMultipleSchemas && schemaItem, tableItem].filter(
     Boolean,
-  );
+  ) as EditorBreadcrumb[];
 };
