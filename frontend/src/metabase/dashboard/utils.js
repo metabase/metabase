@@ -103,6 +103,10 @@ export function getAllDashboardCards(dashboard) {
   return results;
 }
 
+export function hasDatabaseActionsEnabled(database) {
+  return database.settings?.["database-enable-actions"] ?? false;
+}
+
 export function getDashboardType(id) {
   if (id == null || typeof id === "object") {
     // HACK: support inline dashboards
