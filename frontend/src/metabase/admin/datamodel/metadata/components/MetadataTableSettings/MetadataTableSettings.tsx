@@ -88,7 +88,7 @@ const MetadataTableSettings = ({
               crumbs={[
                 [database.displayName(), Urls.dataModelDatabase(database.id)],
                 ...(schema && schemas.length > 1
-                  ? [schema.name, Urls.dataModelSchema(database.id, schemaId)]
+                  ? [[schema.name, Urls.dataModelSchema(database.id, schemaId)]]
                   : []),
                 [
                   table.displayName(),

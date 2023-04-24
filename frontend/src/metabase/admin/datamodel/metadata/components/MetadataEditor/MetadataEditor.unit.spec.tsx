@@ -8,6 +8,7 @@ import {
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 import {
+  getIcon,
   renderWithProviders,
   screen,
   waitForElementToBeRemoved,
@@ -118,6 +119,26 @@ describe("MetadataEditor", () => {
         screen.queryByText(TEST_TABLE_2.display_name),
       ).not.toBeInTheDocument();
     });
+
+    it("should allow to navigate to and from table settings", async () => {
+      await setup();
+
+      userEvent.click(screen.getByText(TEST_TABLE_1.display_name));
+      userEvent.click(getIcon("gear"));
+      expect(await screen.findByText("Settings")).toBeInTheDocument();
+
+      userEvent.click(screen.getByText(TEST_DB.name));
+      expect(await screen.findByText("2 Queryable Tables")).toBeInTheDocument();
+
+      userEvent.click(screen.getByText(TEST_TABLE_1.display_name));
+      userEvent.click(getIcon("gear"));
+      expect(await screen.findByText("Settings")).toBeInTheDocument();
+
+      userEvent.click(screen.getByText(TEST_TABLE_1.display_name));
+      expect(
+        await screen.findByDisplayValue(TEST_TABLE_1.display_name),
+      ).toBeInTheDocument();
+    });
   });
 
   describe("multi schema database", () => {
@@ -156,6 +177,35 @@ describe("MetadataEditor", () => {
       userEvent.click(screen.getByText("Schemas"));
       expect(screen.getByText(TEST_TABLE_4.schema)).toBeInTheDocument();
       expect(screen.getByText(TEST_TABLE_5.schema)).toBeInTheDocument();
+    });
+
+    it("should allow to navigate to and from table settings", async () => {
+      await setup({ databases: [TEST_MULTI_SCHEMA_DB] });
+
+      userEvent.click(screen.getByText(TEST_TABLE_3.schema));
+      userEvent.click(await screen.findByText(TEST_TABLE_3.display_name));
+      userEvent.click(getIcon("gear"));
+      expect(await screen.findByText("Settings")).toBeInTheDocument();
+
+      userEvent.click(screen.getByText(TEST_MULTI_SCHEMA_DB.name));
+      expect(await screen.findByText("2 schemas")).toBeInTheDocument();
+
+      userEvent.click(screen.getByText(TEST_TABLE_3.schema));
+      userEvent.click(screen.getByText(TEST_TABLE_3.display_name));
+      userEvent.click(getIcon("gear"));
+      expect(await screen.findByText("Settings")).toBeInTheDocument();
+
+      userEvent.click(screen.getByText(TEST_TABLE_3.schema));
+      expect(await screen.findByText("2 Queryable Tables")).toBeInTheDocument();
+
+      userEvent.click(await screen.findByText(TEST_TABLE_3.display_name));
+      userEvent.click(getIcon("gear"));
+      expect(await screen.findByText("Settings")).toBeInTheDocument();
+
+      userEvent.click(screen.getByText(TEST_TABLE_3.display_name));
+      expect(
+        await screen.findByDisplayValue(TEST_TABLE_3.display_name),
+      ).toBeInTheDocument();
     });
   });
 });
