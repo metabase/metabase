@@ -195,7 +195,7 @@
                                                :id
                                                :date_joined
                                                [[:case
-                                                 [:= "google" :u.sso_source]
+                                                 [:= :google :u.sso_source]
                                                  (h2x/literal "Google Sign-In")
                                                  [:= nil :u.sso_source]
                                                  (h2x/literal "Email")

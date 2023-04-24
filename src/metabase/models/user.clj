@@ -319,7 +319,7 @@
   "Convenience for creating a new user via Google Auth. This account is considered active immediately; thus all active
   admins will receive an email right away."
   [new-user :- NewUser]
-  (u/prog1 (insert-new-user! (assoc new-user :sso_source :google))
+  (u/prog1 (insert-new-user! (assoc new-user :sso_source "google"))
     ;; send an email to everyone including the site admin if that's set
     (when (integrations.common/send-new-sso-user-admin-email?)
       (classloader/require 'metabase.email.messages)
@@ -333,7 +333,7 @@
    (-> new-user
        ;; We should not store LDAP passwords
        (dissoc :password)
-       (assoc :sso_source :ldap))))
+       (assoc :sso_source "ldap"))))
 
 ;;; TODO -- it seems like maybe this should just be part of the [[pre-update]] logic whenever `:password` changes; then
 ;;; we can remove this function altogether.
