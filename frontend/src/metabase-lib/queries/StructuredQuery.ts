@@ -7,14 +7,14 @@ import _ from "underscore";
 import { chain, updateIn } from "icepick";
 import { t } from "ttag";
 import {
-  StructuredQuery as StructuredQueryObject,
   Aggregation,
   Breakout,
+  DependentMetadataItem,
+  ExpressionClause,
   Filter,
   Join,
   OrderBy,
-  DependentMetadataItem,
-  ExpressionClause,
+  StructuredQuery as StructuredQueryObject,
 } from "metabase-types/types/Query";
 import {
   DatasetQuery,
@@ -25,12 +25,12 @@ import { DatabaseEngine, DatabaseId } from "metabase-types/types/Database";
 import { TableId } from "metabase-types/types/Table";
 import { Column } from "metabase-types/types/Dataset";
 import {
-  format as formatExpression,
   DISPLAY_QUOTES,
+  format as formatExpression,
 } from "metabase-lib/expressions/format";
 import {
-  isVirtualCardId,
   getQuestionIdFromVirtualTableId,
+  isVirtualCardId,
 } from "metabase-lib/metadata/utils/saved-questions";
 import {
   getAggregationOperators,
@@ -43,9 +43,9 @@ import { getUniqueExpressionName } from "metabase-lib/queries/utils/expression";
 import * as Q from "metabase-lib/queries/utils/query";
 import { createLookupByProperty, memoizeClass } from "metabase-lib/utils";
 import Dimension, {
-  FieldDimension,
-  ExpressionDimension,
   AggregationDimension,
+  ExpressionDimension,
+  FieldDimension,
 } from "metabase-lib/Dimension";
 import DimensionOptions from "metabase-lib/DimensionOptions";
 
@@ -794,7 +794,10 @@ class StructuredQueryInner extends AtomicQuery {
    * @param fieldFilter An option @type {Field} predicate to filter out options
    * @returns @type {DimensionOptions} that can be used as breakouts, excluding used breakouts, unless @param {breakout} is provided.
    */
-  breakoutOptions(includedBreakout?: any, fieldFilter = () => true) {
+  breakoutOptions(
+    includedBreakout?: any,
+    fieldFilter: (field: Field) => boolean = () => true,
+  ) {
     // the collection of field dimensions
     const breakoutDimensions =
       includedBreakout === true

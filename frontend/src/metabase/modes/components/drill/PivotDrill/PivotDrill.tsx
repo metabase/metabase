@@ -1,6 +1,10 @@
 import React, { useState } from "react";
 import { t } from "ttag";
-import { ClickActionPopoverProps, Drill } from "metabase/modes/types";
+import type {
+  ClickActionPopoverProps,
+  DrillOptions,
+  PopoverClickAction,
+} from "metabase/modes/types";
 
 import type { PivotByDrillOption } from "./types";
 import PivotByTimeDrill from "./PivotByTimeDrill";
@@ -9,7 +13,10 @@ import PivotByCategoryDrill from "./PivotByCategoryDrill";
 import PivotDrillPopover from "./PivotDrillPopover";
 import { ActionIcon, ClickActionButton } from "./PivotDrillPopover.styled";
 
-const PivotDrill: Drill = ({ question, clicked }) => {
+const PivotDrill = ({
+  question,
+  clicked,
+}: DrillOptions): PopoverClickAction[] => {
   const categoryDrillOptions = PivotByCategoryDrill({ question, clicked });
   const locationDrillOptions = PivotByLocationDrill({ question, clicked });
   const timeDrillOptions = PivotByTimeDrill({ question, clicked });
@@ -44,6 +51,7 @@ const PivotDrill: Drill = ({ question, clicked }) => {
             <ClickActionButton
               key={icon}
               icon={<ActionIcon name={icon} />}
+              role="button"
               onClick={() => handleSelectDrill(option)}
             >
               {title}
