@@ -8,6 +8,7 @@
 
    If you need to use code from elsewhere, consider copying it into this namespace to minimize risk of the code changing behaviour."
   (:require
+   [cheshire.core :as json]
    [clojure.set :as set]
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.scheduler :as qs]
@@ -146,3 +147,26 @@
     (qs/delete-trigger scheduler (triggers/key "metabase.task.abandonment-emails.trigger"))
     (qs/delete-job scheduler (jobs/key "metabase.task.abandonment-emails.job"))
     (qs/shutdown scheduler)))
+
+(define-migration FillJSONUnfoldingDefault
+  (let [db-ids-to-not-update (->> (t2/query {:select [:id :details]
+                                             :from   [:metabase_database]})
+                                  ;; if json-unfolding is nil it's treated as if it were true
+                                  ;; so we need to remove databases that have it set to false
+                                  (filter (fn [{:keys [details]}]
+                                            (when details
+                                              (false? (:json-unfolding (json/parse-string details true))))))
+                                  (map :id))
+        field-ids-to-update  (->> (t2/query {:select [:f.id]
+                                             :from   [[:metabase_field :f]]
+                                             :join   [[:metabase_table :t] [:= :t.id :f.table_id]]
+                                             :where  (if (seq db-ids-to-not-update)
+                                                       [:and
+                                                        [:not-in :t.db_id db-ids-to-not-update]
+                                                        [:= :f.base_type "type/JSON"]]
+                                                       [:= :f.base_type "type/JSON"])})
+                                  (map :id))]
+    (when (seq field-ids-to-update)
+      (t2/query-one {:update :metabase_field
+                     :set    {:json_unfolding true}
+                     :where  [:in :metabase_field.id field-ids-to-update]}))))

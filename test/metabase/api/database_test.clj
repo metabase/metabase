@@ -1096,7 +1096,7 @@
                       Table    [_ {:db_id database-id, :schema "schema-with-perms"}]
                       Table    [_ {:db_id database-id, :schema "schema-without-perms"}]]
         (perms/revoke-data-perms! (perms-group/all-users) database-id)
-        (perms/grant-permissions!  (perms-group/all-users) database-id "schema-with-perms")
+        (perms/grant-permissions! (perms-group/all-users) database-id "schema-with-perms")
         (is (= ["schema-with-perms"]
                (mt/user-http-request :rasta :get 200 (format "database/%s/schemas" database-id))))))
 
@@ -1128,7 +1128,7 @@
                       Table    [table-with-perms {:db_id database-id, :schema "public", :name "table-with-perms"}]
                       Table    [_                {:db_id database-id, :schema "public", :name "table-without-perms"}]]
         (perms/revoke-data-perms! (perms-group/all-users) database-id)
-        (perms/grant-permissions!  (perms-group/all-users) database-id "public" table-with-perms)
+        (perms/grant-permissions! (perms-group/all-users) database-id "public" table-with-perms)
         (is (= ["table-with-perms"]
                (map :name (mt/user-http-request :rasta :get 200 (format "database/%s/schema/%s" database-id "public")))))))
 
@@ -1145,6 +1145,14 @@
                       Table    [_ {:db_id database-id, :schema "public", :name "hidden-table", :visibility_type "hidden"}]]
         (is (= ["table"]
                (map :name (mt/user-http-request :rasta :get 200 (format "database/%s/schema/%s" database-id "public")))))))
+
+    (testing "should show hidden Tables when explicitly asked for"
+      (mt/with-temp* [Database [{database-id :id}]
+                      Table    [_ {:db_id database-id, :schema "public", :name "table"}]
+                      Table    [_ {:db_id database-id, :schema "public", :name "hidden-table", :visibility_type "hidden"}]]
+        (is (= #{"table" "hidden-table"}
+               (set (map :name (mt/user-http-request :rasta :get 200 (format "database/%s/schema/%s" database-id "public")
+                                                     :include_hidden true)))))))
 
     (testing "should work for the saved questions 'virtual' database"
       (mt/with-temp* [Collection [coll   {:name "My Collection"}]

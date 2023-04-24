@@ -1,9 +1,16 @@
 (ns metabase.lib.util
   (:refer-clojure :exclude [format])
   (:require
+   #?@(:clj
+       ([potemkin :as p]))
+   #?@(:cljs
+       (["crc-32" :as CRC32]
+        [goog.string :as gstring]
+        [goog.string.format :as gstring.format]))
    [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
+   [metabase.lib.common :as lib.common]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -11,13 +18,7 @@
    [metabase.mbql.util :as mbql.u]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util :as u]
-   [metabase.util.malli :as mu]
-   #?@(:clj
-       ([potemkin :as p]))
-   #?@(:cljs
-       (["crc-32" :as CRC32]
-        [goog.string :as gstring]
-        [goog.string.format :as gstring.format]))))
+   [metabase.util.malli :as mu]))
 
 #?(:clj
    (set! *warn-on-reflection* true))
@@ -422,3 +423,31 @@
   (-> display-name
       (str/replace strip-id-regex "")
       str/trim))
+
+(mu/defn add-summary-clause :- ::lib.schema/query
+  "If the given stage has no summary, it will drop :fields, :order-by, and :join :fields from it,
+   as well as any subsequent stages."
+  [query :- ::lib.schema/query
+   stage-number :- :int
+   location :- [:enum :breakout :aggregation]
+   a-summary-clause]
+  (let [{:keys [stages] :as query} (pipeline query)
+        stage-number (or stage-number -1)
+        stage (query-stage query stage-number)
+        new-summary? (not (or (seq (:aggregation stage)) (seq (:breakout stage))))
+        new-query (update-query-stage
+                    query stage-number
+                    update location
+                    (fn [summary-clauses]
+                      (conj (vec summary-clauses) (lib.common/->op-arg query stage-number a-summary-clause))))]
+    (if new-summary?
+      (-> new-query
+          (update-query-stage
+            stage-number
+            (fn [stage]
+              (-> stage
+                  (dissoc :order-by :fields)
+                  (m/update-existing :joins (fn [joins] (mapv #(dissoc % :fields) joins))))))
+          ;; subvec holds onto references, so create a new vector
+          (update :stages (comp #(into [] %) subvec) 0 (inc (non-negative-stage-index stages stage-number))))
+      new-query)))
