@@ -23,11 +23,7 @@
 (extend-protocol ring.protocols/StreamableResponseBody
   ;; java.lang.Double, java.lang.Long, and java.lang.Boolean will be given a Content-Type of "application/json; charset=utf-8"
   ;; so they should be strings, and will be parsed into their respective values.
-  java.lang.Double
-  (write-body-to-stream [num response output-stream]
-    (ring.protocols/write-body-to-stream (str num) response output-stream))
-
-  java.lang.Long
+  java.lang.Number
   (write-body-to-stream [num response output-stream]
     (ring.protocols/write-body-to-stream (str num) response output-stream))
 
