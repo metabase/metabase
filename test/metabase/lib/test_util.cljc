@@ -1,18 +1,24 @@
 (ns metabase.lib.test-util
   "Misc test utils for Metabase lib."
   (:require
-   [clojure.test :refer [is]]
+   [clojure.core.protocols]
+   [clojure.datafy :as datafy]
+   [clojure.test :refer [deftest is testing]]
    [malli.core :as mc]
    [medley.core :as m]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as metadata.protocols]
    [metabase.lib.schema :as lib.schema]
-   [metabase.lib.test-metadata :as meta]))
+   [metabase.lib.test-metadata :as meta]
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
+
+#?(:cljs
+   (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (def venues-query
   {:lib/type     :mbql/query
    :lib/metadata meta/metadata-provider
-   :type         :pipeline
    :database     (meta/id)
    :stages       [{:lib/type     :mbql.stage/mbql
                    :source-table (meta/id :venues)}]})
@@ -41,7 +47,7 @@
   Normally you can probably get away with using [[metabase.lib.test-metadata/metadata-provider]] instead of using
   this; but this is available for situations when you need to test something not covered by the default test metadata,
   e.g. nested Fields."
-  [{:keys [database tables fields cards metrics segments]}]
+  [{:keys [database tables fields cards metrics segments] :as m}]
   (reify
     metadata.protocols/MetadataProvider
     (database [_this]            (some-> database
@@ -63,21 +69,46 @@
                                        (dissoc :fields))))
     (fields   [_this table-id]   (for [field fields
                                        :when (= (:table_id field) table-id)]
-                                   (assoc field :lib/type :metadata/field)))))
+                                   (assoc field :lib/type :metadata/field)))
+
+    clojure.core.protocols/Datafiable
+    (datafy [_this]
+      (list `mock-metadata-provider m))))
 
 (defn composed-metadata-provider
   "A metadata provider composed of several different `metadata-providers`. Methods try each constituent provider in
   turn from left to right until one returns a truthy result."
   [& metadata-providers]
-  (reify metadata.protocols/MetadataProvider
+  (reify
+    metadata.protocols/MetadataProvider
     (database [_this]            (some metadata.protocols/database                metadata-providers))
     (table    [_this table-id]   (some #(metadata.protocols/table   % table-id)   metadata-providers))
     (field    [_this field-id]   (some #(metadata.protocols/field   % field-id)   metadata-providers))
     (card     [_this card-id]    (some #(metadata.protocols/card    % card-id)    metadata-providers))
     (metric   [_this metric-id]  (some #(metadata.protocols/metric  % metric-id)  metadata-providers))
     (segment  [_this segment-id] (some #(metadata.protocols/segment % segment-id) metadata-providers))
-    (tables   [_this]            (some metadata.protocols/tables                  metadata-providers))
-    (fields   [_this table-id]   (some #(metadata.protocols/fields  % table-id)   metadata-providers))))
+    (tables   [_this]            (m/distinct-by :id (mapcat metadata.protocols/tables               metadata-providers)))
+    (fields   [_this table-id]   (m/distinct-by :id (mapcat #(metadata.protocols/fields % table-id) metadata-providers)))
+
+    clojure.core.protocols/Datafiable
+    (datafy [_this]
+      (cons `composed-metadata-provider (map datafy/datafy metadata-providers)))))
+
+(deftest ^:parallel composed-metadata-provider-test
+  (testing "Return things preferentially from earlier metadata providers"
+    (let [time-field        (assoc (meta/field-metadata :people :birth-date)
+                                   :base_type      :type/Time
+                                   :effective_type :type/Time)
+          metadata-provider (composed-metadata-provider
+                             (mock-metadata-provider
+                              {:fields [time-field]})
+                             meta/metadata-provider)]
+      (is (=? {:name           "BIRTH_DATE"
+               :base_type      :type/Time
+               :effective_type :type/Time}
+              (lib.metadata/field
+               metadata-provider
+               (meta/id :people :birth-date)))))))
 
 (def metadata-provider-with-card
   "[[meta/metadata-provider]], but with a Card with ID 1."
@@ -98,6 +129,52 @@
   []
   {:lib/type     :mbql/query
    :lib/metadata metadata-provider-with-card
+   :database     (meta/id)
+   :stages       [{:lib/type     :mbql.stage/mbql
+                   :source-table "card__1"}]})
+
+(def metadata-provider-with-card-with-result-metadata
+  "[[meta/metadata-provider]], but with a Card with results metadata as ID 1."
+  (composed-metadata-provider
+   meta/metadata-provider
+   (mock-metadata-provider
+    {:cards [{:name            "My Card"
+              :id              1
+              :dataset_query   {:database (meta/id)
+                                :type     :query
+                                :query    {:source-table (meta/id :checkins)
+                                           :aggregation  [[:count]]
+                                           :breakout     [[:field (meta/id :checkins :user-id) nil]]}}
+              ;; this is copied directly from a QP response
+              :result_metadata [{:description       nil
+                                 :semantic_type     :type/FK
+                                 :table_id          (meta/id :checkins)
+                                 :coercion_strategy nil
+                                 :name              "USER_ID"
+                                 :settings          nil
+                                 :source            :breakout
+                                 :field_ref         [:field (meta/id :checkins :user-id) nil]
+                                 :effective_type    :type/Integer
+                                 :nfc_path          nil
+                                 :parent_id         nil
+                                 :id                (meta/id :checkins :user-id)
+                                 :visibility_type   :normal
+                                 :display_name      "User ID"
+                                 :fingerprint       {:global {:distinct-count 15, :nil% 0.0}}
+                                 :base_type         :type/Integer}
+                                {:base_type      :type/Integer
+                                 :semantic_type  :type/Quantity
+                                 :name           "count"
+                                 :display_name   "Count"
+                                 :source         :aggregation
+                                 :field_ref      [:aggregation 0]
+                                 :effective_type :type/BigInteger}]}]})))
+
+(defn query-with-card-source-table-with-result-metadata
+  "A query with a `card__<id>` source Table and a metadata provider that has a Card with `:result_metadata`."
+  []
+  {:lib/type     :mbql/query
+   :lib/metadata metadata-provider-with-card-with-result-metadata
    :type         :pipeline
    :database     (meta/id)
    :stages       [{:lib/type     :mbql.stage/mbql
@@ -126,7 +203,6 @@
   []
   {:lib/type     :mbql/query
    :lib/metadata meta/metadata-provider
-   :type         :pipeline
    :database     (meta/id)
    :stages       [{:lib/type           :mbql.stage/native
                    :lib/stage-metadata {:lib/type :metadata/results

@@ -81,7 +81,7 @@
                      (let [col-name                         (u/qualified-name col-name)
                            {base-type :base_type :as field} (get column->field col-name)]
                        (if-let [sql-type (type->sql-type base-type)]
-                         (binding [hx/*honey-sql-version* (sql.qp/honey-sql-version driver)]
+                         (sql.qp/with-driver-honey-sql-version driver
                            (hx/cast sql-type value))
                          (try
                            (sql.qp/->honeysql driver [:value value field])

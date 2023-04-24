@@ -10,7 +10,7 @@
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
-(deftest ^:parallel group-columns-test
+(deftest ^:parallel basic-test
   (let [query   (lib/query-for-table-name meta/metadata-provider "VENUES")
         columns (lib/orderable-columns query)
         groups  (lib/group-columns columns)]
@@ -35,15 +35,16 @@
                 :display_name           "Venues"}
                {:is_from_join           false
                 :is_implicitly_joinable true
-                :name                   "CATEGORIES"
-                :display_name           "Categories"}]
+                :name                   "CATEGORY_ID"
+                :display_name           "Category ID"
+                :fk_reference_name      "Category"}]
               (for [group groups]
                 (lib/display-info query group)))))
     (testing `lib/columns-group-columns
       (is (= columns
              (mapcat lib/columns-group-columns groups))))))
 
-(deftest ^:parallel group-columns-aggregation-and-breakout-test
+(deftest ^:parallel aggregation-and-breakout-test
   (let [query   (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
                     (lib/aggregate (lib/sum (lib/field "VENUES" "ID")))
                     (lib/breakout (lib/field "VENUES" "NAME")))
@@ -64,7 +65,28 @@
       (is (= columns
              (mapcat lib/columns-group-columns groups))))))
 
-(deftest ^:parallel group-columns-source-card-test
+(deftest ^:parallel multi-stage-test
+  (let [query   (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
+                    (lib/aggregate (lib/sum (lib/field "VENUES" "ID")))
+                    (lib/breakout (lib/field "VENUES" "NAME"))
+                    (lib/append-stage))
+        columns (lib/orderable-columns query)
+        groups  (lib/group-columns columns)]
+    (is (=? [{::lib.column-group/group-type :group-type/main
+              ::lib.column-group/columns    [{:display_name "Name", :lib/source :source/previous-stage}
+                                             {:display_name "Sum of ID", :lib/source :source/previous-stage}]}]
+            groups))
+    (testing `lib/display-info
+      (is (=? [{:display_name ""
+                :is_from_join false
+                :is_implicitly_joinable false}]
+              (for [group groups]
+                (lib/display-info query group)))))
+    (testing `lib/columns-group-columns
+      (is (= columns
+             (mapcat lib/columns-group-columns groups))))))
+
+(deftest ^:parallel source-card-test
   (let [query   (lib.tu/query-with-card-source-table)
         columns (lib/orderable-columns query)
         groups  (lib/group-columns columns)]
@@ -72,7 +94,7 @@
               ::lib.column-group/columns    [{:display_name "User ID", :lib/source :source/card}
                                              {:display_name "Count", :lib/source :source/card}]}
              {::lib.column-group/group-type :group-type/join.implicit
-              :table-id                     (meta/id :users)
+              :fk-field-id                  (meta/id :checkins :user-id)
               ::lib.column-group/columns    [{:display_name "ID", :lib/source :source/implicitly-joinable}
                                              {:display_name "Name", :lib/source :source/implicitly-joinable}
                                              {:display_name "Last Login", :lib/source :source/implicitly-joinable}]}]
@@ -82,8 +104,9 @@
                 :display_name           "My Card"
                 :is_from_join           false
                 :is_implicitly_joinable false}
-               {:name                   "USERS"
-                :display_name           "Users"
+               {:name                   "USER_ID"
+                :display_name           "User ID"
+                :fk_reference_name      "User"
                 :is_from_join           false
                 :is_implicitly_joinable true}]
               (for [group groups]
@@ -92,7 +115,7 @@
       (is (= columns
              (mapcat lib/columns-group-columns groups))))))
 
-(deftest ^:parallel group-columns-joins-test
+(deftest ^:parallel joins-test
   (let [query   (lib.tu/query-with-join)
         columns (lib/orderable-columns query)
         groups  (lib/group-columns columns)]
@@ -105,8 +128,8 @@
                                              {:name "PRICE", :display_name "Price"}]}
              {::lib.column-group/group-type :group-type/join.explicit
               :join-alias                   "Cat"
-              ::lib.column-group/columns    [{:display_name "Categories → ID", :lib/source :source/joins}
-                                             {:display_name "Categories → Name", :lib/source :source/joins}]}]
+              ::lib.column-group/columns    [{:display_name "ID", :lib/source :source/joins}
+                                             {:display_name "Name", :lib/source :source/joins}]}]
             groups))
     (testing `lib/display-info
       (is (=? [{:is_from_join           false
@@ -123,7 +146,7 @@
       (is (= columns
              (mapcat lib/columns-group-columns groups))))))
 
-(deftest ^:parallel group-columns-expressions-test
+(deftest ^:parallel expressions-test
   (let [query   (lib.tu/query-with-expression)
         columns (lib/orderable-columns query)
         groups  (lib/group-columns columns)]
@@ -147,15 +170,16 @@
                 :display_name           "Venues"}
                {:is_from_join           false
                 :is_implicitly_joinable true
-                :name                   "CATEGORIES"
-                :display_name           "Categories"}]
+                :name                   "CATEGORY_ID"
+                :display_name           "Category ID"
+                :fk_reference_name      "Category"}]
               (for [group groups]
                 (lib/display-info query group)))))
     (testing `lib/columns-group-columns
       (is (= columns
              (mapcat lib/columns-group-columns groups))))))
 
-(deftest ^:parallel group-columns-source-card-with-expressions-test
+(deftest ^:parallel source-card-with-expressions-test
   (let [query   (-> (lib.tu/query-with-card-source-table)
                     (lib/expression "expr" (lib/absolute-datetime "2020" :month)))
         columns (lib/orderable-columns query)
@@ -165,7 +189,7 @@
                                              {:display_name "Count", :lib/source :source/card}
                                              {:display_name "expr", :lib/source :source/expressions}]}
              {::lib.column-group/group-type :group-type/join.implicit
-              :table-id                     (meta/id :users)
+              :fk-field-id                  (meta/id :checkins :user-id)
               ::lib.column-group/columns    [{:display_name "ID", :lib/source :source/implicitly-joinable}
                                              {:display_name "Name", :lib/source :source/implicitly-joinable}
                                              {:display_name "Last Login", :lib/source :source/implicitly-joinable}] }]
@@ -175,8 +199,9 @@
                 :display_name           "My Card"
                 :is_from_join           false
                 :is_implicitly_joinable false}
-               {:name                   "USERS"
-                :display_name           "Users"
+               {:name                   "USER_ID"
+                :display_name           "User ID"
+                :fk_reference_name      "User"
                 :is_from_join           false
                 :is_implicitly_joinable true}]
               (for [group groups]
@@ -208,7 +233,7 @@
                                              {:display_name "sum of User ID", :lib/source :source/previous-stage}]}]
             groups))
     (testing `lib/display-info
-      (is (=? [{:display_name           "Native query"
+      (is (=? [{:display_name           ""
                 :is_from_join           false
                 :is_implicitly_joinable false}]
               (for [group groups]

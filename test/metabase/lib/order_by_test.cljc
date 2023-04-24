@@ -17,7 +17,6 @@
 
 (deftest ^:parallel order-by-test
   (is (=? {:database (meta/id)
-           :type     :pipeline
            :stages   [{:lib/type     :mbql.stage/mbql
                        :source-table (meta/id :venues)
                        :order-by     [[:asc
@@ -28,7 +27,6 @@
 
 (deftest ^:parallel threading-test
   (is (=? {:database (meta/id)
-           :type     :pipeline
            :stages   [{:lib/type     :mbql.stage/mbql
                        :source-table (meta/id :venues)
                        :order-by     [[:asc
@@ -40,7 +38,6 @@
 
 (deftest ^:parallel threading-with-direction-test
   (is (=? {:database (meta/id)
-           :type     :pipeline
            :stages   [{:lib/type     :mbql.stage/mbql
                        :source-table (meta/id :venues)
                        :order-by     [[:desc
@@ -53,7 +50,6 @@
 (deftest ^:parallel specific-stage-test
   (is (=? {:lib/type :mbql/query
            :database (meta/id)
-           :type     :pipeline
            :stages   [{:lib/type     :mbql.stage/mbql
                        :lib/options  {:lib/uuid string?}
                        :source-table (meta/id :venues)}
@@ -293,78 +289,79 @@
                  {:id (meta/id :venues :price) :name "PRICE"}
                  {:lib/type     :metadata/field
                   :name         "ID"
-                  :display_name "Categories → ID" ; should we be using the explicit alias we gave this join?
+                  :display_name "ID"
                   :source_alias "Cat"
                   :id           (meta/id :categories :id)
                   :table_id     (meta/id :categories)
                   :base_type    :type/BigInteger}
                  {:lib/type     :metadata/field
                   :name         "NAME"
-                  :display_name "Categories → Name"
+                  :display_name "Name"
                   :source_alias "Cat"
                   :id           (meta/id :categories :name)
                   :table_id     (meta/id :categories)
                   :base_type    :type/Text}]
                 (lib/orderable-columns query)))))))
 
-(deftest ^:parallel orderable-columns-source-metadata-test
-  (testing "orderable-columns should use metadata for source query."
-    (let [query (lib.tu/query-with-card-source-table)]
-      (testing (lib.util/format "Query =\n%s" (u/pprint-to-str query))
-        (is (=? [{:name                     "USER_ID"
-                  :display_name             "User ID"
-                  :base_type                :type/Integer
-                  :lib/source               :source/card
-                  :lib/desired-column-alias "USER_ID"}
-                 {:name                     "count"
-                  :display_name             "Count"
-                  :base_type                :type/Integer
-                  :lib/source               :source/card
-                  :lib/desired-column-alias "count"}
-                 {:name                     "ID"
-                  :display_name             "ID"
-                  :base_type                :type/BigInteger
-                  :lib/source               :source/implicitly-joinable
-                  :lib/desired-column-alias "USERS__via__USER_ID__ID"}
-                 {:name                     "NAME"
-                  :display_name             "Name"
-                  :base_type                :type/Text
-                  :lib/source               :source/implicitly-joinable
-                  :lib/desired-column-alias "USERS__via__USER_ID__NAME"}
-                 {:name                     "LAST_LOGIN"
-                  :display_name             "Last Login"
-                  :base_type                :type/DateTime
-                  :lib/source               :source/implicitly-joinable
-                  :lib/desired-column-alias "USERS__via__USER_ID__LAST_LOGIN"}]
-                (lib/orderable-columns query)))
-        (testing `lib/display-info
-          (is (=? [{:name                   "USER_ID"
-                    :display_name           "User ID"
-                    :table                  {:name "My Card", :display_name "My Card"}
-                    :is_from_previous_stage false
-                    :is_implicitly_joinable false}
-                   {:name                   "count"
-                    :display_name           "Count"
-                    :table                  {:name "My Card", :display_name "My Card"}
-                    :is_from_previous_stage false
-                    :is_implicitly_joinable false}
-                   {:name                   "ID"
-                    :display_name           "ID"
-                    :table                  {:name "USERS", :display_name "Users"}
-                    :is_from_previous_stage false
-                    :is_implicitly_joinable true}
-                   {:name                   "NAME"
-                    :display_name           "Name"
-                    :table                  {:name "USERS", :display_name "Users"}
-                    :is_from_previous_stage false
-                    :is_implicitly_joinable true}
-                   {:name                   "LAST_LOGIN"
-                    :display_name           "Last Login"
-                    :table                  {:name "USERS", :display_name "Users"}
-                    :is_from_previous_stage false
-                    :is_implicitly_joinable true}]
-                  (for [col (lib/orderable-columns query)]
-                    (lib/display-info query col)))))))))
+(deftest ^:parallel orderable-columns-source-card-test
+  (doseq [varr [#'lib.tu/query-with-card-source-table
+                #'lib.tu/query-with-card-source-table-with-result-metadata]
+          :let [query (varr)]]
+    (testing (str (pr-str varr) \newline (lib.util/format "Query =\n%s" (u/pprint-to-str query)))
+      (is (=? [{:name                     "USER_ID"
+                :display_name             "User ID"
+                :base_type                :type/Integer
+                :lib/source               :source/card
+                :lib/desired-column-alias "USER_ID"}
+               {:name                     "count"
+                :display_name             "Count"
+                :base_type                :type/Integer
+                :lib/source               :source/card
+                :lib/desired-column-alias "count"}
+               {:name                     "ID"
+                :display_name             "ID"
+                :base_type                :type/BigInteger
+                :lib/source               :source/implicitly-joinable
+                :lib/desired-column-alias "USERS__via__USER_ID__ID"}
+               {:name                     "NAME"
+                :display_name             "Name"
+                :base_type                :type/Text
+                :lib/source               :source/implicitly-joinable
+                :lib/desired-column-alias "USERS__via__USER_ID__NAME"}
+               {:name                     "LAST_LOGIN"
+                :display_name             "Last Login"
+                :base_type                :type/DateTime
+                :lib/source               :source/implicitly-joinable
+                :lib/desired-column-alias "USERS__via__USER_ID__LAST_LOGIN"}]
+              (lib/orderable-columns query)))
+      (testing `lib/display-info
+        (is (=? [{:name                   "USER_ID"
+                  :display_name           "User ID"
+                  :table                  {:name "My Card", :display_name "My Card"}
+                  :is_from_previous_stage false
+                  :is_implicitly_joinable false}
+                 {:name                   "count"
+                  :display_name           "Count"
+                  :table                  {:name "My Card", :display_name "My Card"}
+                  :is_from_previous_stage false
+                  :is_implicitly_joinable false}
+                 {:name                   "ID"
+                  :display_name           "ID"
+                  :table                  {:name "USERS", :display_name "Users"}
+                  :is_from_previous_stage false
+                  :is_implicitly_joinable true}
+                 {:name                   "NAME"
+                  :display_name           "Name"
+                  :table                  {:name "USERS", :display_name "Users"}
+                  :is_from_previous_stage false
+                  :is_implicitly_joinable true}
+                 {:name                   "LAST_LOGIN"
+                  :display_name           "Last Login"
+                  :table                  {:name "USERS", :display_name "Users"}
+                  :is_from_previous_stage false
+                  :is_implicitly_joinable true}]
+                (for [col (lib/orderable-columns query)]
+                  (lib/display-info query col))))))))
 
 (deftest ^:parallel orderable-columns-e2e-test
   (testing "Use the metadata returned by `orderable-columns` to add a new order-by to a query."
@@ -478,7 +475,7 @@
               :lib/type                 :metadata/field
               :base_type                :type/BigInteger
               :effective_type           :type/BigInteger
-              :display_name             "Categories → ID"
+              :display_name             "ID"
               :table_id                 (meta/id :categories)
               :lib/source-column-alias  "Cat__ID"
               :lib/desired-column-alias "Cat__ID"}]
@@ -562,25 +559,26 @@
                                          [:field {} (meta/id :venues :category-id)]
                                          [:field {:join-alias "Cat"} (meta/id :categories :id)]]]}]}]}
               query))
-      (is (=? [{:display_name "ID",                :lib/source :source/table-defaults}
-               {:display_name "Name",              :lib/source :source/table-defaults}
-               {:display_name "Category ID",       :lib/source :source/table-defaults}
-               {:display_name "Latitude",          :lib/source :source/table-defaults}
-               {:display_name "Longitude",         :lib/source :source/table-defaults}
-               {:display_name "Price",             :lib/source :source/table-defaults}
+      (is (=? [{:display_name "ID",          :lib/source :source/table-defaults}
+               {:display_name "Name",        :lib/source :source/table-defaults}
+               {:display_name "Category ID", :lib/source :source/table-defaults}
+               {:display_name "Latitude",    :lib/source :source/table-defaults}
+               {:display_name "Longitude",   :lib/source :source/table-defaults}
+               {:display_name "Price",       :lib/source :source/table-defaults}
                ;; implicitly joinable versions shouldn't be returned either, since we have an explicit join.
-               {:display_name "Categories → ID",   :lib/source :source/joins}
-               {:display_name "Categories → Name", :lib/source :source/joins}]
+               {:display_name "ID",   :lib/source :source/joins}
+               {:display_name "Name", :lib/source :source/joins}]
               (lib/orderable-columns query)))
-      (let [query' (lib/order-by query (m/find-first #(= (:display_name %) "Categories → Name")
+      (let [query' (lib/order-by query (m/find-first #(and (= (:source_alias %) "Cat")
+                                                           (= (:display_name %) "Name"))
                                                      (lib/orderable-columns query)))]
-        (is (=? [{:display_name "ID",                :lib/source :source/table-defaults}
-                 {:display_name "Name",              :lib/source :source/table-defaults}
-                 {:display_name "Category ID",       :lib/source :source/table-defaults}
-                 {:display_name "Latitude",          :lib/source :source/table-defaults}
-                 {:display_name "Longitude",         :lib/source :source/table-defaults}
-                 {:display_name "Price",             :lib/source :source/table-defaults}
-                 {:display_name "Categories → ID",   :lib/source :source/joins}]
+        (is (=? [{:display_name "ID",          :lib/source :source/table-defaults}
+                 {:display_name "Name",        :lib/source :source/table-defaults}
+                 {:display_name "Category ID", :lib/source :source/table-defaults}
+                 {:display_name "Latitude",    :lib/source :source/table-defaults}
+                 {:display_name "Longitude",   :lib/source :source/table-defaults}
+                 {:display_name "Price",       :lib/source :source/table-defaults}
+                 {:display_name "ID",          :lib/source :source/joins}]
                 (lib/orderable-columns query')))))))
 
 (deftest ^:parallel orderable-columns-exclude-already-sorted-implicitly-joinable-columns-test
@@ -629,6 +627,42 @@
                  {:display_name "ID",            :lib/source :source/implicitly-joinable}
                  {:display_name "Name",          :lib/source :source/implicitly-joinable}]
                 (lib/orderable-columns query')))))))
+
+(deftest ^:parallel order-by-aggregation-test
+  (testing "Should be able to order by an aggregation (#30089)"
+    (let [query             (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
+                                (lib/aggregate (lib/avg (lib/+ (lib/field "VENUES" "PRICE") 1))))
+          orderable-columns (lib/orderable-columns query)]
+      (is (=? [{:lib/type                                   :metadata/field
+                :base_type                                  :type/Float
+                :display_name                               "Average of Price + 1"
+                :lib/source                                 :source/aggregations
+                :metabase.lib.aggregation/aggregation-index 0}]
+              orderable-columns))
+      (let [ag-ref (first orderable-columns)
+            query' (lib/order-by query ag-ref)]
+        (is (=? {:stages
+                 [{:aggregation [[:avg {} [:+ {} [:field {} (meta/id :venues :price)] 1]]]
+                   :order-by    [[:asc {} [:aggregation {:effective-type :type/Float} 0]]]}]}
+                query'))
+        (is (=? [[:asc {} [:aggregation {:effective-type :type/Float} 0]]]
+               (lib/order-bys query')))
+        (is (=? [{:display_name "Average of Price + 1"
+                  :direction    :asc}]
+                (map (partial lib/display-info query') (lib/order-bys query'))))
+        (is (= "Venues, Average of Price + 1, Sorted by Average of Price + 1 ascending"
+               (lib/describe-query query')))
+        (testing "With another stage added"
+          (let [query'' (lib/append-stage query')]
+            (is (=? {:stages
+                     [{:aggregation [[:avg {} [:+ {} [:field {} (meta/id :venues :price)] 1]]]
+                       :order-by    [[:asc {} [:aggregation {} 0]]]}
+                      {}]}
+                    query''))
+            (is (=? []
+                    (map (partial lib/display-info query'') (lib/order-bys query''))))
+            (is (= "Venues, Average of Price + 1, Sorted by Average of Price + 1 ascending"
+                   (lib/describe-query query'')))))))))
 
 (deftest ^:parallel order-by-expression-test
   (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
