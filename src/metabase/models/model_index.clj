@@ -7,6 +7,8 @@
    [metabase.models.card :refer [Card]]
    [metabase.models.interface :as mi]
    [metabase.query-processor :as qp]
+   [metabase.sync.schedules :as sync.schedules]
+   [metabase.util.cron :as u.cron]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [toucan.models :as models]
@@ -120,8 +122,29 @@
       (t2/update! ModelIndex (:id model-index) {:status "error"
                                                 :error  error-message
                                                 :state_change_at :%now})
-      (do (add-values* model-index index-values)
+      (do (add-values* model-index (filter (fn [[_id value]] (some? value)) index-values))
           (t2/update! ModelIndex (:id model-index)
                       {:generation generation'
                        :state_change_at :%now
                        :state (if (> (count index-values) 5000) "overflow" "indexed")})))))
+
+
+;;;; creation
+
+(defn default-schedule
+  "Default sync schedule for indexed values. Defaults to randomly once a day."
+  []
+  (u.cron/schedule-map->cron-string (sync.schedules/randomly-once-a-day)))
+
+(defn create
+  "Create a model index"
+  [{:keys [model-id pk-ref value-ref creator-id]}]
+  (first (t2/insert-returning-instances! ModelIndex
+                                         [{:model_id   model-id
+                                           ;; todo: sanitize these?
+                                           :pk_ref     pk-ref
+                                           :value_ref  value-ref
+                                           :generation 0
+                                           :schedule   (default-schedule)
+                                           :state      "initial"
+                                           :creator_id creator-id}])))
