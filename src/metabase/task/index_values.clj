@@ -19,6 +19,7 @@
 
 (set! *warn-on-reflection* true)
 
+#_{:clj-kondo/ignore [:unused-private-var]}
 (def ^:private refreshable-states
   "States of a model index that are refreshable."
   #{"indexed" "initial" "error" "overflow"})
