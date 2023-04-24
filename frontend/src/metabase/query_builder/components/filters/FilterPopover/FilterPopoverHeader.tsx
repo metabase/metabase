@@ -54,8 +54,9 @@ export default function FilterPopoverHeader({
             pr2: !showOperatorSelectorOnOwnRow,
           })}
           title={
-            (field.table ? field.table.displayName() + " – " : "") +
-            field.displayName()
+            (field.table?.displayName()
+              ? field.table.displayName() + " – "
+              : "") + field.displayName()
           }
           onBack={onBack}
         />
