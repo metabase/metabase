@@ -36,6 +36,35 @@
     (is (=? [[:field {} (meta/id :checkins :date)]]
             (lib/breakouts query)))))
 
+(deftest ^:parallel breakout-should-drop-invalid-parts
+  (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
+                  (lib/with-fields [(lib/field "VENUES" "PRICE")])
+                  (lib/order-by (lib/field "VENUES" "PRICE"))
+                  (lib/join (-> (lib/join-clause (meta/table-metadata :categories)
+                                                 [(lib/=
+                                                    (lib/field "VENUES" "CATEGORY_ID")
+                                                    (lib/with-join-alias (lib/field "CATEGORIES" "ID") "Cat"))])
+                                (lib/with-join-fields [(lib/field "CATEGORIES" "ID")])))
+                  (lib/append-stage)
+                  (lib/with-fields [(lib/field "VENUES" "PRICE")])
+                  (lib/breakout 0 (lib/field "VENUES" "CATEGORY_ID")))
+        first-stage (lib.util/query-stage query 0)
+        first-join (first (lib/joins query 0))]
+    (is (= 1 (count (:stages query))))
+    (is (not (contains? first-stage :fields)))
+    (is (not (contains? first-stage :order-by)))
+    (is (= 1 (count (lib/joins query 0))))
+    (is (not (contains? first-join :fields))))
+  (testing "Already summarized query should be left alone"
+    (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
+                    (lib/breakout (lib/field "VENUES" "CATEGORY_ID"))
+                    (lib/order-by (lib/field "VENUES" "CATEGORY_ID"))
+                    (lib/append-stage)
+                    (lib/breakout 0 (lib/field "VENUES" "PRICE")))
+          first-stage (lib.util/query-stage query 0)]
+      (is (= 2 (count (:stages query))))
+      (is (contains? first-stage :order-by)))))
+
 (deftest ^:parallel breakoutable-columns-test
   (let [query (lib/query-for-table-name meta/metadata-provider "VENUES")]
     (testing (lib.util/format "Query =\n%s" (u/pprint-to-str query))
