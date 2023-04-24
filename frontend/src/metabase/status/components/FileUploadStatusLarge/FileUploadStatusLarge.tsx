@@ -5,9 +5,9 @@ import { Collection } from "metabase-types/api";
 import { FileUpload } from "metabase-types/store/upload";
 
 import {
-  uploadInProgress,
-  uploadCompleted,
-  uploadAborted,
+  isUploadInProgress,
+  isUploadCompleted,
+  isUploadAborted,
 } from "metabase/lib/uploads";
 
 import StatusLarge from "../StatusLarge";
@@ -30,9 +30,9 @@ const FileUploadLarge = ({
       title: upload.name,
       icon: "model",
       description: getDescription(upload),
-      isInProgress: uploadInProgress(upload),
-      isCompleted: uploadCompleted(upload),
-      isAborted: uploadAborted(upload),
+      isInProgress: isUploadInProgress(upload),
+      isCompleted: isUploadCompleted(upload),
+      isAborted: isUploadAborted(upload),
     })),
   };
 
@@ -40,8 +40,8 @@ const FileUploadLarge = ({
 };
 
 const getTitle = (uploads: FileUpload[], collection: Collection) => {
-  const isDone = uploads.every(uploadCompleted);
-  const isError = uploads.some(uploadAborted);
+  const isDone = uploads.every(isUploadCompleted);
+  const isError = uploads.some(isUploadAborted);
 
   if (isDone) {
     return t`Data added to ${collection.name}`;

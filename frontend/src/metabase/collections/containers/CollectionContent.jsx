@@ -12,6 +12,7 @@ import Search from "metabase/entities/search";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getIsBookmarked } from "metabase/collections/selectors";
+import { getSetting } from "metabase/selectors/settings";
 import { getIsNavbarOpen, openNavbar } from "metabase/redux/app";
 
 import BulkActions from "metabase/collections/components/BulkActions";
@@ -53,11 +54,20 @@ const ALL_MODELS = [
 const itemKeyFn = item => `${item.id}:${item.model}`;
 
 function mapStateToProps(state, props) {
+  const uploadDbId = getSetting(state, "uploads-database-id");
+  const canAccessUploadsDb =
+    getSetting(state, "uploads-enabled") &&
+    uploadDbId &&
+    !!Databases.selectors.getObject(state, {
+      entityId: uploadDbId,
+    });
+
   return {
     isAdmin: getUserIsAdmin(state),
     isBookmarked: getIsBookmarked(state, props),
     metadata: getMetadata(state),
     isNavbarOpen: getIsNavbarOpen(state),
+    uploadsEnabled: canAccessUploadsDb,
   };
 }
 
@@ -81,6 +91,7 @@ function CollectionContent({
   isNavbarOpen,
   openNavbar,
   uploadFile,
+  uploadsEnabled,
 }) {
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [selectedItems, setSelectedItems] = useState(null);
@@ -190,7 +201,8 @@ function CollectionContent({
     deleteBookmark(collectionId, "collection");
   };
 
-  const canUpload = true; // TODO: check permissions
+  const canUpload = uploadsEnabled && collection.can_write;
+
   const rootProps = canUpload ? getRootProps() : {};
 
   const unpinnedQuery = {
@@ -221,7 +233,7 @@ function CollectionContent({
 
         return (
           <CollectionRoot {...rootProps}>
-            <UploadOverlay isDragActive={isDragActive} />
+            {canUpload && <UploadOverlay isDragActive={isDragActive} />}
             <CollectionMain>
               <Header
                 collection={collection}
@@ -233,6 +245,7 @@ function CollectionContent({
                 )}
                 onCreateBookmark={handleCreateBookmark}
                 onDeleteBookmark={handleDeleteBookmark}
+                canUpload={canUpload}
               />
               <PinnedItemOverview
                 databases={databases}
