@@ -196,6 +196,26 @@
       add-create-table-ddl
       (dissoc :creator_id :dataset_query :table_id :collection_position)))
 
+(defn- models->json-summary
+  "Convert a map of {:models ...} to a json string summary of these models.
+  This is used as a summary of the database in prompt engineering."
+  [{:keys [models]}]
+  (let [json-str (json/generate-string
+                  {:tables
+                   (for [{model-name :name model-id :id :keys [result_metadata] :as _model} models]
+                     {:table-id     model-id
+                      :table-name   model-name
+                      :column-names (mapv :display_name result_metadata)})}
+                  {:pretty true})
+        nchars   (count json-str)]
+    (log/debugf "Database json string descriptor contains %s chars (~%s tokens)."
+                nchars
+                (quot nchars 4))
+    json-str))
+
+(defn- add-model-json-summary [database]
+  (assoc database :model_json_summary (models->json-summary database)))
+
 (defn- field->pseudo-enums
   "For a field, create a potential enumerated type string.
   Returns nil if there are no field values or the cardinality is too high."
@@ -292,7 +312,8 @@
   (let [models (t2/select Card :database_id db_id :dataset true)]
     (-> database
         (assoc :sql_name (normalize-name database-name))
-        (assoc :models (mapv denormalize-model models)))))
+        (assoc :models (mapv denormalize-model models))
+        add-model-json-summary)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Pseudo-ddls -> Embeddings ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

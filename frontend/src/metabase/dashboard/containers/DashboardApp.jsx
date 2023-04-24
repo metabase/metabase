@@ -54,6 +54,7 @@ import {
   getLoadingStartTime,
   getParameters,
   getParameterValues,
+  getDraftParameterValues,
   getSidebar,
   getSlowCards,
 } from "../selectors";
@@ -83,6 +84,7 @@ const mapStateToProps = (state, props) => {
     editingParameter: getEditingParameter(state, props),
     parameters: getParameters(state, props),
     parameterValues: getParameterValues(state, props),
+    draftParameterValues: getDraftParameterValues(state, props),
     metadata: getMetadata(state),
     loadingStartTime: getLoadingStartTime(state),
     clickBehaviorSidebarDashcard: getClickBehaviorSidebarDashcard(state),
