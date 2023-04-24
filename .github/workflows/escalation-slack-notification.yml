@@ -21,7 +21,7 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "🔥 ${{ github.event.issue.title }} 🔥\n${{ github.event.issue.html_url }}"
+                    "text": "🔥🔥🔥 ${{ github.event.issue.title }}\n${{ github.event.issue.html_url }}"
                   }
                 }
               ]
