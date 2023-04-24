@@ -83,3 +83,8 @@ export type GroupTableAccessPolicy = {
   };
   permission_id: number | null;
 };
+
+export type RoleAttributeMapping = {
+  attribute: UserAttribute;
+  default_role: string;
+};
