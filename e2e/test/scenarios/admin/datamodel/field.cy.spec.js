@@ -3,9 +3,11 @@ import {
   withDatabase,
   visitAlias,
   popover,
+  resetTestTable,
   startNewQuestion,
+  resyncDatabase,
 } from "e2e/support/helpers";
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -131,5 +133,54 @@ describe.skip("scenarios > admin > datamodel > field", () => {
       cy.findByText("Number With Nulls").click();
       cy.findByText("nothin");
     });
+  });
+});
+    
+function getUnfoldJsonContent() {
+  return cy
+    .findByText("Unfold JSON")
+    .closest("section")
+    .findByTestId("select-button-content");
+}
+
+describe("Unfold JSON", () => {
+  beforeEach(() => {
+    resetTestTable({ type: "postgres", table: "many_data_types" });
+    restore(`postgres-writable`);
+    cy.signInAsAdmin();
+    resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: "many_data_types" });
+  });
+  
+  it("lets you enable/disable 'Unfold JSON' for JSON columns", () => {
+    cy.intercept("POST", `/api/database/${WRITABLE_DB_ID}/sync_schema`).as(
+      "sync_schema",
+    );
+    // Go to field settings
+    cy.visit(`/admin/datamodel/database/${WRITABLE_DB_ID}`);
+    cy.findByText(/Many Data Types/i).click();
+
+    // Check json is unfolded initially
+    cy.findByText(/json.a/i).should("be.visible");
+    cy.findByTestId("column-json").within(() => { cy.icon("gear").click(); });
+    
+    getUnfoldJsonContent().findByText(/Yes/i).click();
+    popover().within(() => {
+      cy.findByText(/No/i).click();
+    });
+
+    // Check setting has persisted
+    cy.reload();
+    getUnfoldJsonContent().findByText(/No/i);
+
+    // Sync database
+    cy.visit(`/admin/databases/${WRITABLE_DB_ID}`);
+    cy.findByText(/Sync database schema now/i).click();
+    cy.wait("@sync_schema");
+    cy.findByText("Sync triggered!");
+
+    // Check json field is not unfolded
+    cy.visit(`/admin/datamodel/database/${WRITABLE_DB_ID}`);
+    cy.findByText(/Many Data Types/i).click();
+    cy.findByText(/json.a/i).should("not.exist");
   });
 });
