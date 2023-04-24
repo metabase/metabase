@@ -77,7 +77,7 @@
         options (if last-elem-option?
                   last-elem
                   {})]
-    (lib.options/ensure-uuid (into [clause-type] (map ->pMBQL) (cons options args)))))
+    (lib.options/ensure-uuid (into [clause-type options] (map ->pMBQL) args))))
 
 (defmethod ->pMBQL :default
   [x]
