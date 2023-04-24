@@ -125,7 +125,7 @@
 
 (defn- record-view!
   "Simple base function for recording a view of a given `model` and `model-id` by a certain `user`."
-  [model model-id user-id metadata]
+  [model model-id user-id]
   ;; TODO - we probably want a little code that prunes old entries so that this doesn't get too big
   (t2/insert! ViewLog
               :user_id  user-id
