@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.api.search :as api.search]
+   [metabase.mbql.normalize :as mbql.normalize]
    [metabase.models
     :refer [Action
             Card
@@ -21,6 +22,7 @@
             QueryAction
             Segment
             Table]]
+   [metabase.models.model-index :as model-index]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.search.config :as search-config]
@@ -476,6 +478,43 @@
                (map #(select-keys % [:name :model :description])
                     (search-request-data-with sorted-results :crowberto :q "aviaries"))))))))
 
+(deftest indexed-entity-test
+  (testing "Should search indexed entities"
+    (mt/dataset airports
+      (let [query (mt/mbql-query municipality)]
+        (mt/with-temp* [Card [model {:dataset       true
+                                     :dataset_query query}]]
+          (let [model-index (model-index/create
+                             (mt/$ids {:model-id   (:id model)
+                                       :pk-ref     $municipality.id
+                                       :value-ref  $municipality.name
+                                       :creator-id (mt/user->id :rasta)}))
+                relevant    (comp (filter (comp #{(:id model)} :model_id))
+                                  (filter (comp #{"indexed-entity"} :model)))
+                search!     (fn [search-term]
+                              (:data (make-search-request :crowberto [:q search-term])))]
+            (model-index/add-values! model-index)
+
+            (is (= #{"Dallas-Fort Worth" "Fort Lauderdale" "Fort Myers"
+                     "Fort Worth" "Fort Smith" "Fort Wayne"}
+                   (into #{} (comp relevant (map :name)) (search! "fort"))))
+
+            (let [normalize (fn [x] (-> x
+                                        (update :dataset_query mbql.normalize/normalize)
+                                        (update :pk_ref mbql.normalize/normalize)))]
+              (is (=? {"Rome"   {:dataset_query query
+                                 :pk_ref        (mt/$ids $municipality.id)
+                                 :name          "Rome"
+                                 :model_id      (:id model)
+                                 :model_name    (:name model)}
+                       "Tromsø" {:dataset_query query
+                                 :pk_ref        (mt/$ids $municipality.id)
+                                 :name          "Tromsø"
+                                 :model_id      (:id model)
+                                 :model_name    (:name model)}}
+                      (into {} (comp relevant (map (juxt :name normalize)))
+                            (search! "rom")))))))))))
+
 (deftest archived-results-test
   (testing "Should return unarchived results by default"
     (with-search-items-in-root-collection "test"
@@ -517,8 +556,8 @@
     (with-search-items-in-root-collection "test2"
       (mt/with-temp* [Card        [action-model action-model-params]
                       Action      [{action-id :id} (archived {:name     "action test action"
-                                                :type     :query
-                                                :model_id (u/the-id action-model)})]
+                                                              :type     :query
+                                                              :model_id (u/the-id action-model)})]
                       QueryAction [_ (query-action action-id)]
                       Card        [_ (archived {:name "card test card"})]
                       Card        [_ (archived {:name "dataset test dataset" :dataset true})]
