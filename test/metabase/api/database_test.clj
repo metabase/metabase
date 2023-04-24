@@ -1132,21 +1132,21 @@
         (is (= ["table-with-perms"]
                (map :name (mt/user-http-request :rasta :get 200 (format "database/%s/schema/%s" database-id "public")))))))
 
-    #_(testing "should exclude inactive Tables"
+    (testing "should exclude inactive Tables"
       (mt/with-temp* [Database [{database-id :id}]
                       Table    [_ {:db_id database-id, :schema "public", :name "table"}]
                       Table    [_ {:db_id database-id, :schema "public", :name "inactive-table", :active false}]]
         (is (= ["table"]
                (map :name (mt/user-http-request :rasta :get 200 (format "database/%s/schema/%s" database-id "public")))))))
 
-    #_(testing "should exclude hidden Tables"
+    (testing "should exclude hidden Tables"
       (mt/with-temp* [Database [{database-id :id}]
                       Table    [_ {:db_id database-id, :schema "public", :name "table"}]
                       Table    [_ {:db_id database-id, :schema "public", :name "hidden-table", :visibility_type "hidden"}]]
         (is (= ["table"]
                (map :name (mt/user-http-request :rasta :get 200 (format "database/%s/schema/%s" database-id "public")))))))
 
-    #_(testing "should show hidden Tables when explicitly asked for"
+    (testing "should show hidden Tables when explicitly asked for"
       (mt/with-temp* [Database [{database-id :id}]
                       Table    [_ {:db_id database-id, :schema "public", :name "table"}]
                       Table    [_ {:db_id database-id, :schema "public", :name "hidden-table", :visibility_type "hidden"}]]
@@ -1241,7 +1241,7 @@
                  (mt/user-http-request :lucky :get 404
                                        (format "database/%d/schema/Coin Collection" mbql.s/saved-questions-virtual-database-id)))))))
 
-    #_(mt/with-temp* [Database [{db-id :id}]
+    (mt/with-temp* [Database [{db-id :id}]
                     Table    [_ {:db_id db-id, :schema nil, :name "t1"}]
                     Table    [_ {:db_id db-id, :schema "", :name "t2"}]]
       (testing "to fetch Tables with `nil` or empty schemas, use the blank string"
