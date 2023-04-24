@@ -45,7 +45,8 @@ export type FieldVisibilityType =
   | "details-only"
   | "hidden"
   | "normal"
-  | "retired";
+  | "retired"
+  | "sensitive";
 
 type HumanReadableFieldValue = string;
 export type FieldValue = [RowValue] | [RowValue, HumanReadableFieldValue];
