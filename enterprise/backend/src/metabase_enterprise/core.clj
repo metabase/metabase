@@ -10,16 +10,18 @@
 (defn- install-audit-db!
   "Creates the audit db, a clone of the app db used for auditing purposes."
   [app-db]
-  (t2/insert! Database {:is_audit     true
-                        :name         "Audit Database"
-                        :description  "Internal Audit DB used to power metabase analytics."
-                        :engine       (:engine app-db)
-                        :details      (:details app-db)
-                        :is_full_sync (:is-full-sync? app-db false)
-                        :is_on_demand (:is_on_demand app-db)
-                        :cache_ttl    (:cache_ttl app-db)
-                        ;; created by the system:
-                        :creator_id   nil}))
+  (t2/insert! Database
+              (cond-> {:is_audit     true
+                       :name         "Audit Database"
+                       :description  "Internal Audit DB used to power metabase analytics."
+                       :engine       (:engine app-db)
+                       :details      (:details app-db)
+                       :is_full_sync (:is-full-sync? app-db false)
+                       :is_on_demand (:is_on_demand app-db)
+                       :cache_ttl    (:cache_ttl app-db)
+                       ;; created by the system:
+                       :creator_id   nil}
+                (:created_at app-db) (assoc :created_at (:created_at app-db)))))
 
 (mu/defn ensure-audit-db-exists! :- [:enum ::installed ::replaced ::no-op]
   "Called on app startup to ensure the existance of the audit db in enterprise apps.
