@@ -1134,10 +1134,14 @@
 
 (api/defendpoint GET "/:id/schema/"
   "Return a list of Tables for a Database whose `schema` is `nil` or an empty string."
-  [id]
-  {id ms/PositiveInt}
-  (api/check-404 (seq (concat (schema-tables-list id nil)
-                              (schema-tables-list id "")))))
+  [id include_hidden include_editable_data_model]
+  {id                          ms/PositiveInt
+   include_hidden              [:maybe ms/BooleanString]
+   include_editable_data_model [:maybe ms/BooleanString]}
+  (let [include_hidden?              (Boolean/parseBoolean include_hidden)
+        include_editable_data_model? (Boolean/parseBoolean include_editable_data_model)]
+    (api/check-404 (seq (concat (schema-tables-list id nil include_hidden? include_editable_data_model?)
+                                (schema-tables-list id "" include_hidden? include_editable_data_model?))))))
 
 (api/defendpoint GET ["/:virtual-db/schema/:schema"
                       :virtual-db (re-pattern (str mbql.s/saved-questions-virtual-database-id))]
