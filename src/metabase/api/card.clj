@@ -43,8 +43,10 @@
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.util :as qp.util]
    [metabase.related :as related]
+   [metabase.server.middleware.offset-paging :as mw.offset-paging]
    [metabase.sync.analyze.query-results :as qr]
    [metabase.task.persist-refresh :as task.persist-refresh]
+   [metabase.lib.types.isa :as lib.types.isa]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [trs tru]]
@@ -146,7 +148,7 @@
        (filter (fn [card] (some #{model-id} (-> card :dataset_query query/collect-card-ids))))))
 
 (defn- cards-for-filter-option [filter-option model-id-or-nil]
-  (-> (apply cards-for-filter-option* (or filter-option :all) (when model-id-or-nil [model-id-or-nil]))
+  (-> (apply cards-for-filter-option* filter-option (when model-id-or-nil [model-id-or-nil]))
       (hydrate :creator :collection)))
 
 ;;; -------------------------------------------- Fetching a Card or Cards --------------------------------------------
@@ -164,7 +166,7 @@
   [f model_id]
   {f        (s/maybe CardFilterOption)
    model_id (s/maybe su/IntGreaterThanZero)}
-  (let [f (keyword f)]
+  (let [f (or (keyword f) :all)]
     (when (contains? #{:database :table :using_model} f)
       (api/checkp (integer? model_id) "model_id" (format "model_id is a required parameter when filter mode is '%s'"
                                                          (name f)))
@@ -172,7 +174,7 @@
         :database    (api/read-check Database model_id)
         :table       (api/read-check Database (t2/select-one-fn :db_id Table, :id model_id))
         :using_model (api/read-check Card model_id)))
-    (let [cards (filter mi/can-read? (cards-for-filter-option f model_id))
+    (let [cards          (filter mi/can-read? (cards-for-filter-option f model_id))
           last-edit-info (:card (last-edit/fetch-last-edited-info {:card-ids (map :id cards)}))]
       (into []
             (map (fn [{:keys [id] :as card}]
@@ -180,6 +182,104 @@
                      (assoc card :last-edit-info edit-info)
                      card)))
             cards))))
+
+(defn- columns-from-names
+  [card names]
+  (when-let [names (set names)]
+   (filter #(names (:name %)) (:result_metadata card))))
+
+(defmulti series-are-compatible?
+  (fn [initial-serie _second-card]
+   (:display initial-serie)))
+
+(defn- area-bar-line-serie-are-compatible?
+  [first-card second-card]
+  (let [initial-dimensions (columns-from-names
+                             first-card
+                             (get-in first-card [:visualization_settings :graph.dimensions]))
+        new-dimensions     (columns-from-names
+                            second-card
+                            (get-in first-card [:visualization_settings :graph.dimensions]))
+        new-metrics        (columns-from-names
+                             second-card
+                             (get-in first-card [:visualization_settings :graph.metrics]))]
+    (cond
+      (or (zero? (count new-dimensions))
+        (zero? (count new-metrics)))
+      false
+
+      (not (every? lib.types.isa/numeric? new-metrics))
+      false
+
+      (not= (lib.types.isa/date? (first initial-dimensions))
+          (lib.types.isa/date? (first new-dimensions)))
+      false
+
+      (and (not= (lib.types.isa/numeric? (first initial-dimensions))
+                 (lib.types.isa/numeric? (first new-dimensions)))
+           (not (and
+                  (lib.types.isa/date? (first initial-dimensions))
+                  (lib.types.isa/date? (first new-dimensions)))))
+      false
+
+      :else true)))
+
+(defmethod series-are-compatible? :area
+  [initial-serie second-card]
+  (area-bar-line-serie-are-compatible? initial-serie second-card))
+
+(defmethod series-are-compatible? :line
+  [initial-serie second-card]
+  (area-bar-line-serie-are-compatible? initial-serie second-card))
+
+(defmethod series-are-compatible? :bar
+  [initial-serie second-card]
+  (area-bar-line-serie-are-compatible? initial-serie second-card))
+
+(defmethod series-are-compatible? :scala
+  [initial-card second-card]
+  (= (count (:result_metadata initial-card))
+     (count (:result_metadata second-card))))
+
+(defn- fetch-compatible-series*
+  [initial-card last-cursor page-size]
+  (let [cards (->> (t2/select Card
+                           :archived false
+                           :display [:in ["area" "bar" "line" "scalar"]]
+                           :id [:not= (:id initial-card)]
+                           (merge {:order-by [[:%lower.name :asc]]}
+                                  (when last-cursor
+                                    {:where [[:> :%lower.name last-cursor]]})
+                                  (when page-size
+                                    {:limit (+ 10 page-size)})))
+               (filter mi/can-read?)
+               (filter #(or (= (:query_type %) :native)
+                            (series-are-compatible? initial-card %))))]
+    (if page-size
+      (take page-size cards)
+      cards)))
+
+
+(defn- fetch-compatible-series
+  [initial-card last-cursor current-cards page-size]
+ (let [cards     (fetch-compatible-series* initial-card last-cursor page-size)
+       new-cards (concat current-cards cards)]
+   (if (and (seq cards)
+            (some? page-size)
+            (< (count new-cards) page-size))
+     (fetch-compatible-series initial-card (:name (last cards)) new-cards (- page-size (count cards)))
+     new-cards)))
+
+(api/defendpoint GET "/series"
+  "Get a list of series."
+  [initial_card_id last_cursor]
+  {initial_card_id int?
+   last_cursor     [:maybe ms/NonBlankString]}
+  (fetch-compatible-series
+    (api/check-404 (t2/select-one :model/Card :id initial_card_id))
+    last_cursor
+    []
+    mw.offset-paging/*limit*))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:id"
