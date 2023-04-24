@@ -28,13 +28,17 @@ const ORDERS_TABLE = createOrdersTable();
 const PRODUCTS_TABLE = createPeopleTable();
 
 const SAMPLE_DB = createSampleDatabase({
-  id: 1,
   tables: [ORDERS_TABLE, PRODUCTS_TABLE],
 });
 
-const PEOPLE_TABLE = createPeopleTable();
+const PEOPLE_TABLE = createPeopleTable({
+  db_id: 2,
+});
 
-const REVIEWS_TABLE = createReviewsTable({ schema: "private" });
+const REVIEWS_TABLE = createReviewsTable({
+  db_id: 2,
+  schema: "private",
+});
 
 const SAMPLE_DB_MULTI_SCHEMA = createSampleDatabase({
   id: 2,
