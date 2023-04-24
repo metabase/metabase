@@ -70,9 +70,13 @@ const TEST_MULTI_SCHEMA_DB = createMockDatabase({
 
 interface SetupOpts {
   databases?: Database[];
+  initialRoute?: string;
 }
 
-const setup = async ({ databases = [TEST_DB] }: SetupOpts = {}) => {
+const setup = async ({
+  databases = [TEST_DB],
+  initialRoute = "admin/datamodel",
+}: SetupOpts = {}) => {
   setupDatabasesEndpoints(databases);
   setupSearchEndpoints([]);
 
@@ -94,7 +98,7 @@ const setup = async ({ databases = [TEST_DB] }: SetupOpts = {}) => {
         component={MetadataTableSettings}
       />
     </Route>,
-    { withRouter: true, initialRoute: "admin/datamodel" },
+    { withRouter: true, initialRoute },
   );
 
   await waitForElementToBeRemoved(() => screen.queryByText(/Loading/));
@@ -239,6 +243,16 @@ describe("MetadataEditor", () => {
       userEvent.click(screen.getByText(TEST_TABLE_3.display_name));
       expect(
         await screen.findByDisplayValue(TEST_TABLE_3.display_name),
+      ).toBeInTheDocument();
+    });
+  });
+
+  describe("no databases", () => {
+    it("should display an empty state", async () => {
+      await setup({ databases: [] });
+
+      expect(
+        screen.getByText("The page you asked for couldn't be found."),
       ).toBeInTheDocument();
     });
   });
