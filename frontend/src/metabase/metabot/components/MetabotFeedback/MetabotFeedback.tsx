@@ -26,7 +26,7 @@ const mapStateToProps = (state: State): StateProps => ({
 
 const mapDispatchToProps: DispatchProps = {
   onSubmitFeedback: submitFeedbackForm,
-  onRetry: () => runPromptQuery(),
+  onRetry: () => runPromptQuery(true),
 };
 
 const MetabotFeedback = ({
