@@ -14421,7 +14421,7 @@ databaseChangeLog:
                   constraints:
                     nullable: false
 
-- changeSet:
+  - changeSet:
       id: v47.00-015
       author: escherize
       comment: added 0.47.0 - Add is_audit to metabase_database
