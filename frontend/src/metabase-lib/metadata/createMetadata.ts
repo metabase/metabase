@@ -192,7 +192,7 @@ function copyObjects<RawObject, MetadataObject>(
   for (const object of Object.values(objects)) {
     const objectId = object?.[identifierProp as keyof RawObject];
     if (objectId != null) {
-      copies[objectId as string] = instantiate(object, metadata);
+      copies[objectId as unknown as string] = instantiate(object, metadata);
     } else {
       console.warn(`Missing ${identifierProp}:`, object);
     }
