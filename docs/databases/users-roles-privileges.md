@@ -4,28 +4,28 @@ title: Database users, roles, and privileges
 
 # Database users, roles, and privileges
 
-Metabase needs some [minimum privileges](#minimum-privileges) to successfully connect to your database, as well as some additional privileges for features like [actions](#actions) and [model caching](#model-caching).
+Metabase needs some [minimum database privileges](#minimum-database-privileges) to successfully connect to your database, as well as some additional database privileges for features like [actions](#actions) and [model caching](#model-caching).
 
-The structure of your database privileges should fit into your overall [permissions strategy](https://www.metabase.com/learn/permissions/strategy).
+The structure of your database privileges should fit into your [permissions strategy](https://www.metabase.com/learn/permissions/strategy).
 
-## Organize privileges with roles
+## Organize database privileges with roles
 
 Database roles can be used to bundle database privileges for different use cases. One user can belong to multiple roles and get the total set of privileges across those roles.
 
-We recommend creating a `metabase` user with the following roles):
+We recommend creating a `metabase` user with the following roles:
 
 - [`analytics` for read access](#granting-read-access-to-analytics-tables) to any schemas or tables used for analysis.
 - Optional [`metabase_actions` for write access](#actions) to tables used for Metabase actions.
 - Optional [`metabase_model_caching` for write access](#model-caching) to the schema used for Metabase model caching.
 
-Bundling your privileges into roles based on use cases makes it easier to manage privileges in the future (especially in [multi-tenant situations](#multi-tenant-privileges)). For example, you could:
+Bundling your privileges into roles based on use cases makes it easier to manage privileges in the future (especially in [multi-tenant situations](#multi-tenant-permissions)). For example, you could:
 
 - Use the same `analytics` role for other BI tools in your [data stack](https://www.metabase.com/learn/databases/data-landscape#data-analysis-layer) that need read-only access to the analytics tables in your database.
 - Revoke the write access for `metabase_model_caching` without affecting the write access for `metabase_actions`.
 
 ## Granting read access to analytics tables
 
-Most analytics tools will need the same [minimum privileges](#minimum-privileges) to connect and read from analytics tables in your database.
+Most analytics tools will need the same [minimum database privileges](#minimum-database-privileges) to connect and read from analytics tables in your database.
 
 To organize those minimum privileges, you'll:
 
@@ -62,7 +62,7 @@ GRANT SELECT ON DATABASE "your_database" TO analytics;
 
 Remember that when you grant privileges to a role, all users with that role will get those privileges.
 
-## Minimum privileges
+## Minimum database privileges
 
 In order to view and query your tables in Metabase, you'll have to give Metabase's database user:
 
@@ -74,11 +74,11 @@ Depending on how you use Metabase, you may also want to grant:
 - `TEMPORARY` privileges to create temp tables.
 - `EXECUTE` privileges to use stored procedures or user-defined functions.
 
-See [Granting read access to analytics tables](#granting-read-access-to-analytics-tables) or [multi-tenant privileges](#multi-tenant-privileges) for SQL examples.
+See [Granting read access to analytics tables](#granting-read-access-to-analytics-tables) or [multi-tenant permissions](#multi-tenant-permissions) for examples.
 
-## Grant all privileges
+## Grant all database privileges
 
-We recommend [using roles to organize your privileges](#organize-privileges-with-roles), but if you're looking for a shortcut:
+We recommend [using roles to organize your privileges](#organize-database-privileges-with-roles), but if you're looking for a shortcut:
 
 - Create a `metabase` database user.
 - Give `metabase` all privileges to the database.
@@ -91,12 +91,15 @@ CREATE USER metabase WITH PASSWORD "your_password";
 GRANT ALL PRIVILEGES ON "database" TO metabase;
 ```
 
-## Action privileges
+This option is great if you're connecting to a local database for development or testing.
 
-[Actions](../actions/introduction.md) let Metabase write back to specific tables in your database. In addition to the minimum privileges, you'll need to grant write access to any tables used with actions.
+## Actions
 
-Assuming you've already [created a `metabase` user](#organize-privileges-with-roles):
+[Actions](../actions/introduction.md) let Metabase write back to specific tables in your database. 
 
+In addition to the [minimum database privileges](#minimum-database-privileges), you'll need to grant write access to any tables used with actions:
+
+- If you haven't already, [create a `metabase` user](#organize-database-privileges-with-roles) in your database.
 - Create a new role called `metabase_actions`.
 - Give the role `INSERT`, `UPDATE`, and `DELETE` privileges to any tables used with Metabase actions.
 - Give the `metabase_actions` role to the `metabase` user.
@@ -112,12 +115,11 @@ GRANT INSERT, UPDATE, DELETE ON "your_table" IN SCHEMA "your_schema" TO metabase
 GRANT metabase_actions TO metabase;
 ```
 
-## Model caching privileges
+## Model caching
 
-[Model caching](../data-modeling/models.md#model-caching) lets Metabase save query results to a specific schema in your database. Metabase's database user will need the `CREATE` privilege to set up a new schema for model caching, as well as write access (`INSERT`, `UPDATE`, `DELETE`) to that schema.
+[Model caching](../data-modeling/models.md#model-caching) lets Metabase save query results to a specific schema in your database. Metabase's database user will need the `CREATE` privilege to set up the dedicated schema for model caching, as well as write access (`INSERT`, `UPDATE`, `DELETE`) to that schema.
 
-Assuming you've already [created a `metabase` user](#organize-privileges-with-roles):
-
+- If you haven't already, [create a `metabase` user](#organize-database-privileges-with-roles) in your database.
 - Create a new role called `metabase_model_caching`.
 - Give the role `CREATE` access to the database.
 - Give the role `INSERT`, `UPDATE`, and `DELETE` privileges to the schema used for model caching.
@@ -138,14 +140,14 @@ GRANT INSERT, UPDATE, DELETE ON "your_model's_table" IN SCHEMA "your_schema" TO 
 GRANT metabase_model_caching TO metabase;
 ```
 
-## Multi-tenant privileges
+## Multi-tenant permissions
 
-If you're setting up multi-tenant permissions for customers who need SQL access, you can [create one database connection per customer](https://www.metabase.com/learn/permissions/multi-customer-permissions#option-2-granting-customers-native-sql-access-to-their-schema). That means each customer will connect to the database using their own database user. 
+If you're setting up multi-tenant permissions for customers who need SQL access, you can [create one database connection per customer](https://www.metabase.com/learn/permissions/multi-tenant-permissions#option-2-granting-customers-native-sql-access-to-their-schema). That means each customer will connect to the database using their own database user. 
 
 Let's say you have customers named Tangerine and Lemon:
 
 - Create new database users `metabase_tangerine` and `metabase_lemon`.
-- Create a `customer_facing_analytics` role with the [minimum privileges](#minimum-privileges).
+- Create a `customer_facing_analytics` role with the [minimum database privileges](#minimum-database-privileges).
 - Create roles to bundle privileges specific to each customer's use case. For example:
   - `tangerine_queries` to bundle `SELECT` and `EXECUTE` access to query and create stored procedures against the Orange schema.
   - `lemon_queries` for `SELECT` access to query all tables in the Lemon schema.
