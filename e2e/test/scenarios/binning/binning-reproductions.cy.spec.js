@@ -99,14 +99,14 @@ describe("binning related reproductions", () => {
     cy.findByText("CREATED_AT").click();
 
     cy.findByText("Sort").click();
-    cy.findByText("CREATED_AT").click();
+    cy.findByText("Created At (month)").click();
 
     // Change the binning of the breakout field
     cy.findByText("CREATED_AT: Month").click();
     cy.findByText("by month").click();
     cy.findByText("Quarter").click();
 
-    cy.findByText("CREATED_AT");
+    cy.findByText("Created At (quarter)");
   });
 
   it("should render binning options when joining on the saved native question (metabase#18646)", () => {

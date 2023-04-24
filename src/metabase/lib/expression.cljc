@@ -53,19 +53,19 @@
    :lib/source   :source/expressions})
 
 (defmethod lib.metadata.calculation/display-name-method :dispatch-type/integer
-  [_query _stage-number n]
+  [_query _stage-number n _style]
   (str n))
 
 (defmethod lib.metadata.calculation/display-name-method :dispatch-type/number
-  [_query _stage-number n]
+  [_query _stage-number n _style]
   (str n))
 
 (defmethod lib.metadata.calculation/display-name-method :dispatch-type/string
-  [_query _stage-number s]
+  [_query _stage-number s _style]
   (str \" s \"))
 
 (defmethod lib.metadata.calculation/display-name-method :expression
-  [_query _stage-number [_expression _opts expression-name]]
+  [_query _stage-number [_expression _opts expression-name] _style]
   expression-name)
 
 (defmethod lib.metadata.calculation/column-name-method :expression
@@ -101,7 +101,7 @@
   (lib.hierarchy/derive tag ::infix-operator))
 
 (defmethod lib.metadata.calculation/display-name-method ::infix-operator
-  [query stage-number [tag _opts & args]]
+  [query stage-number [tag _opts & args] _style]
   (infix-display-name query stage-number (get infix-operator-display-name tag) args))
 
 (defn- infix-column-name
@@ -166,8 +166,8 @@
       (lib.util/format "minus_%d_%s" (clojure.core/abs amount) unit-str))))
 
 (defmethod lib.metadata.calculation/display-name-method :datetime-add
-  [query stage-number [_datetime-add _opts x amount unit]]
-  (str (lib.metadata.calculation/display-name query stage-number x)
+  [query stage-number [_datetime-add _opts x amount unit] style]
+  (str (lib.metadata.calculation/display-name query stage-number x style)
        \space
        (interval-display-name amount unit)))
 
@@ -179,8 +179,8 @@
 
 ;;; for now we'll just pretend `:coalesce` isn't a present and just use the display name for the expr it wraps.
 (defmethod lib.metadata.calculation/display-name-method :coalesce
-  [query stage-number [_coalesce _opts expr _null-expr]]
-  (lib.metadata.calculation/display-name query stage-number expr))
+  [query stage-number [_coalesce _opts expr _null-expr] style]
+  (lib.metadata.calculation/display-name query stage-number expr style))
 
 (defmethod lib.metadata.calculation/column-name-method :coalesce
   [query stage-number [_coalesce _opts expr _null-expr]]

@@ -79,7 +79,7 @@ export const setShowLoadingCompleteFavicon = createAction(
 
 // real dashcard ids are integers >= 1
 function isNewDashcard(dashcard) {
-  return dashcard.id < 1 && dashcard.id >= 0;
+  return dashcard.id < 0;
 }
 
 function isNewAdditionalSeriesCard(card, dashcard) {
@@ -207,6 +207,7 @@ export const fetchDashboard = createThunkAction(
 
       return {
         ...normalize(result, dashboard), // includes `result` and `entities`
+        dashboard: result,
         dashboardId: dashId,
         parameterValues: parameterValuesById,
       };

@@ -16,6 +16,7 @@ import { createMockDataset } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 import { createMockQueryBuilderState } from "metabase-types/store/mocks";
 
+import * as Lib from "metabase-lib";
 import { HARD_ROW_LIMIT } from "metabase-lib/queries/utils";
 import type Question from "metabase-lib/Question";
 import type NativeQuery from "metabase-lib/queries/NativeQuery";
@@ -38,8 +39,10 @@ type SetupOpts = {
 
 function patchQuestion(question: Question) {
   if (question.isStructured()) {
-    const query = question.query() as StructuredQuery;
-    return query.sort(["asc", ["field", 1, null]]).question();
+    const query = question._getMLv2Query();
+    const [sampleColumn] = Lib.orderableColumns(query);
+    const nextQuery = Lib.orderBy(query, sampleColumn);
+    return question.setDatasetQuery(Lib.toLegacyQuery(nextQuery));
   } else {
     const query = question.query() as NativeQuery;
     return query.setQueryText("SELECT * FROM __ORDERS__").question();

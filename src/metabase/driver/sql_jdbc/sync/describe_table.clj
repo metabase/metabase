@@ -64,7 +64,7 @@
   [driver schema table]
   {:pre [(string? table)]}
   ;; Using our SQL compiler here to get portable LIMIT (e.g. `SELECT TOP n ...` for SQL Server/Oracle)
-  (binding [hx/*honey-sql-version* (sql.qp/honey-sql-version driver)]
+  (sql.qp/with-driver-honey-sql-version driver
     (let [honeysql {:select [:*]
                     :from   [(sql.qp/maybe-wrap-unaliased-expr (sql.qp/->honeysql driver (hx/identifier :table schema table)))]
                     :where  [:not= (sql.qp/inline-num 1) (sql.qp/inline-num 1)]}
@@ -404,27 +404,28 @@
           json-fields           (filter #(isa? (:base-type %) :type/JSON) table-fields)]
       (if (nil? (seq json-fields))
         #{}
-        (let [existing-fields-by-name (m/index-by :name (t2/select Field :table_id (u/the-id table)))
-              unfold-json-fields      (remove (fn [field]
-                                                (when-let [existing-field (existing-fields-by-name (:name field))]
-                                                  (false? (:json_unfolding existing-field))))
-                                              json-fields)]
-          (if (empty? unfold-json-fields)
-            #{}
-            (binding [hx/*honey-sql-version* (sql.qp/honey-sql-version driver)]
-              (let [json-field-names (mapv #(apply hx/identifier :field (into table-identifier-info [(:name %)])) unfold-json-fields)
-                    table-identifier (apply hx/identifier :table table-identifier-info)
-                    sql-args         (sql.qp/format-honeysql driver {:select (mapv sql.qp/maybe-wrap-unaliased-expr json-field-names)
-                                                                     :from   [(sql.qp/maybe-wrap-unaliased-expr table-identifier)]
-                                                                     :limit  metadata-queries/nested-field-sample-limit})
-                    query            (jdbc/reducible-query spec sql-args {:identifiers identity})
-                    field-types      (transduce describe-json-xform describe-json-rf query)
-                    fields           (field-types->fields field-types)]
-                (if (> (count fields) max-nested-field-columns)
-                  (do
-                    (log/warn
-                     (format
-                      "More nested field columns detected than maximum. Limiting the number of nested field columns to %d."
-                      max-nested-field-columns))
-                    (set (take max-nested-field-columns fields)))
-                  fields)))))))))
+        (sql.qp/with-driver-honey-sql-version driver
+          (let [existing-fields-by-name (m/index-by :name (t2/select Field :table_id (u/the-id table)))
+                unfold-json-fields      (remove (fn [field]
+                                                  (when-let [existing-field (existing-fields-by-name (:name field))]
+                                                    (false? (:json_unfolding existing-field))))
+                                                json-fields)]
+            (if (empty? unfold-json-fields)
+              #{}
+              (binding [hx/*honey-sql-version* (sql.qp/honey-sql-version driver)]
+                (let [json-field-names (mapv #(apply hx/identifier :field (into table-identifier-info [(:name %)])) unfold-json-fields)
+                      table-identifier (apply hx/identifier :table table-identifier-info)
+                      sql-args         (sql.qp/format-honeysql driver {:select (mapv sql.qp/maybe-wrap-unaliased-expr json-field-names)
+                                                                       :from   [(sql.qp/maybe-wrap-unaliased-expr table-identifier)]
+                                                                       :limit  metadata-queries/nested-field-sample-limit})
+                      query            (jdbc/reducible-query spec sql-args {:identifiers identity})
+                      field-types      (transduce describe-json-xform describe-json-rf query)
+                      fields           (field-types->fields field-types)]
+                  (if (> (count fields) max-nested-field-columns)
+                    (do
+                      (log/warn
+                       (format
+                        "More nested field columns detected than maximum. Limiting the number of nested field columns to %d."
+                        max-nested-field-columns))
+                      (set (take max-nested-field-columns fields)))
+                    fields))))))))))

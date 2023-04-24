@@ -12,9 +12,9 @@
 
 (defn- normalize* [query]
   (try
-    (let [query-type (keyword ((some-fn :type #(get % "type")) query))
+    (let [query-type (keyword (some #(get query %) [:lib/type "lib/type" :type "type"]))
           normalized (case query-type
-                       :pipeline
+                       :mbql/query      ; pMBQL pipeline query
                        (lib.convert/->legacy-MBQL (lib/normalize query))
 
                        (:query :native)

@@ -80,14 +80,13 @@
 ;;; the near future.
 
 (defn- native-query->pipeline
-  "Convert a `:type` `:native` QP MBQL query to a `:type` `:pipeline` pMBQL query. See docstring
-  for [[mbql-query->pipeline]] for an explanation of what this means."
+  "Convert a `:type` `:native` QP MBQL query to a pMBQL query. See docstring for [[mbql-query->pipeline]] for an
+  explanation of what this means."
   [query]
   (merge {:lib/type :mbql/query
-          :type     :pipeline
           ;; we're using `merge` here instead of threading stuff so the `:lib/` keys are the first part of the map for
           ;; readability in the REPL.
-          :stages   [(merge (lib.options/ensure-uuid {:lib/type :mbql.stage/native})
+          :stages   [(merge {:lib/type :mbql.stage/native}
                             (set/rename-keys (:native query) {:query :native}))]}
          (dissoc query :type :native)))
 
@@ -128,15 +127,16 @@
                                                  (for [column columns]
                                                    (assoc column :lib/type :metadata/field))))
                               (assoc :lib/type :metadata/results)))
+        previous-stage  (dec (count previous-stages))
         previous-stages (cond-> previous-stages
-                          source-metadata (assoc-in [(dec (count previous-stages)) :lib/stage-metadata] source-metadata))
+                          (and source-metadata
+                               (not (neg? previous-stage))) (assoc-in [previous-stage :lib/stage-metadata] source-metadata))
         stage-type      (if (:native inner-query)
                           :mbql.stage/native
                           :mbql.stage/mbql)
         ;; we're using `merge` here instead of threading stuff so the `:lib/` keys are the first part of the map for
         ;; readability in the REPL.
-        this-stage      (merge (lib.options/ensure-uuid
-                                {:lib/type stage-type})
+        this-stage      (merge {:lib/type stage-type}
                                (dissoc inner-query :source-query :source-metadata))
         this-stage      (cond-> this-stage
                           (seq (:joins this-stage)) (update :joins joins->pipeline)
@@ -145,28 +145,37 @@
 
 (defn- mbql-query->pipeline
   "Convert a `:type` `:query` QP MBQL (i.e., MBQL as currently understood by the Query Processor, or the JS MLv1) to a
-  `:type` `:pipeline` 'pMBQL' query. The key difference is that instead of having a `:query` with a `:source-query`
-  with a `:source-query` and so forth, you have a vector of `:stages` where each stage serves as the source query for
-  the next stage. Initially this was an implementation detail of a few functions, but it's easier to visualize and
-  manipulate, so now all of MLv2 deals with pMBQL. See this Slack thread
+  pMBQL query. The key difference is that instead of having a `:query` with a `:source-query` with a `:source-query`
+  and so forth, you have a vector of `:stages` where each stage serves as the source query for the next stage.
+  Initially this was an implementation detail of a few functions, but it's easier to visualize and manipulate, so now
+  all of MLv2 deals with pMBQL. See this Slack thread
   https://metaboat.slack.com/archives/C04DN5VRQM6/p1677118410961169?thread_ts=1677112778.742589&cid=C04DN5VRQM6 for
   more information."
   [query]
   (merge {:lib/type :mbql/query
-          :type     :pipeline
           :stages   (inner-query->stages (:query query))}
          (dissoc query :type :query)))
 
+(def ^:private AnyQuery
+  [:or
+   [:map
+    {:error/fn "legacy query"}
+    [:type [:enum :native :query]]]
+   [:map
+    {:error/fn "pMBQL query"}
+    [:lib/type [:= :mbql/query]]]])
+
 (mu/defn pipeline
-  "Ensure that a `query` is in the general shape of a pMBQL `:pipeline` query. This doesn't walk the query and fix
-  everything! The goal here is just to make sure we have `:stages` in the correct place and the like.
-  See [[metabase.lib.convert]] for functions that actually ensure all parts of the query match the pMBQL schema (they
-  use this function as part of that process.)"
-  [query :- [:map [:type [:keyword]]]]
-  (condp = (:type query)
-    :pipeline query
-    :native   (native-query->pipeline query)
-    :query    (mbql-query->pipeline query)))
+  "Ensure that a `query` is in the general shape of a pMBQL query. This doesn't walk the query and fix everything! The
+  goal here is just to make sure we have `:stages` in the correct place and the like. See [[metabase.lib.convert]] for
+  functions that actually ensure all parts of the query match the pMBQL schema (they use this function as part of that
+  process.)"
+  [query :- AnyQuery]
+  (if (= (:lib/type query) :mbql/query)
+    query
+    (case (:type query)
+      :native (native-query->pipeline query)
+      :query  (mbql-query->pipeline query))))
 
 (mu/defn ^:private non-negative-stage-index :- [:int {:min 0}]
   "If `stage-number` index is a negative number e.g. `-1` convert it to a positive index so we can use `nth` on
@@ -202,7 +211,7 @@
 (mu/defn query-stage :- ::lib.schema/stage
   "Fetch a specific `stage` of a query. This handles negative indices as well, e.g. `-1` will return the last stage of
   the query."
-  [query        :- [:map [:type [:keyword]]]
+  [query        :- AnyQuery
    stage-number :- :int]
   (let [{:keys [stages]} (pipeline query)]
     (get (vec stages) (non-negative-stage-index stages stage-number))))
@@ -219,7 +228,7 @@
     (apply f stage args)
 
   `stage-number` can be a negative index, e.g. `-1` will update the last stage of the query."
-  [query        :- [:map [:type [:keyword]]]
+  [query        :- AnyQuery
    stage-number :- :int
    f & args]
   (let [{:keys [stages], :as query} (pipeline query)
@@ -228,12 +237,12 @@
     (assoc query :stages stages')))
 
 (mu/defn ensure-mbql-final-stage :- ::lib.schema/query
-  "Convert query to a `:pipeline` query, and make sure the final stage is an `:mbql` one."
+  "Convert query to a pMBQL (pipeline) query, and make sure the final stage is an `:mbql` one."
   [query]
   (let [query (pipeline query)]
     (cond-> query
       (= (:lib/type (query-stage query -1)) :mbql.stage/native)
-      (update :stages conj (lib.options/ensure-uuid {:lib/type :mbql.stage/mbql})))))
+      (update :stages conj {:lib/type :mbql.stage/mbql}))))
 
 (defn join-strings-with-conjunction
   "This is basically [[clojure.string/join]] but uses commas to join everything but the last two args, which are joined
@@ -400,3 +409,16 @@
          ;; truncate alias to 60 characters (actually 51 characters plus a hash).
          :unique-alias-fn (fn [original suffix]
                             (truncate-alias (str original \_ suffix))))))
+
+(def ^:private strip-id-regex
+  #?(:cljs (js/RegExp. " id$" "i")
+     ;; `(?i)` is JVM-specific magic to turn on the `i` case-insensitive flag.
+     :clj  #"(?i) id$"))
+
+(mu/defn strip-id :- :string
+  "Given a display name string like \"Product ID\", this will drop the trailing \"ID\" and trim whitespace.
+  Used to turn a FK field's name into a pseudo table name when implicitly joining."
+  [display-name :- :string]
+  (-> display-name
+      (str/replace strip-id-regex "")
+      str/trim))

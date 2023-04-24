@@ -65,7 +65,8 @@
       (when (:type request-param)
         (qp.card/check-allowed-parameter-value-type
          param-id
-         (or (when (= (:type matching-param) :dimension)
+         (or (when (and (= (:type matching-param) :dimension)
+                        (not= (:widget-type matching-param) :none))
                (:widget-type matching-param))
              (:type matching-param))
          (:type request-param)))

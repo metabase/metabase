@@ -5,17 +5,17 @@ import { assoc, assocIn, chain, getIn, updateIn } from "icepick";
 import _ from "underscore";
 import slugg from "slugg";
 import * as ML from "cljs/metabase.lib.js";
-import { ParameterValuesConfig } from "metabase-types/api";
+import {
+  ParameterValuesConfig,
+  TemplateTag,
+  TemplateTags,
+} from "metabase-types/api";
 import {
   Card,
   DatasetQuery,
   NativeDatasetQuery,
 } from "metabase-types/types/Card";
-import {
-  DependentMetadataItem,
-  TemplateTag,
-  TemplateTags,
-} from "metabase-types/types/Query";
+import { DependentMetadataItem } from "metabase-types/types/Query";
 import { DatabaseEngine, DatabaseId } from "metabase-types/types/Database";
 import Question from "metabase-lib/Question";
 import Table from "metabase-lib/metadata/Table";

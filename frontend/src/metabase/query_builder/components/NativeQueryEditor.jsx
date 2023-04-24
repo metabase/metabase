@@ -361,7 +361,7 @@ class NativeQueryEditor extends Component {
           }));
           callback(null, resultsForAce);
         } catch (error) {
-          console.log("error getting autocompletion data", error);
+          console.error("error getting autocompletion data", error);
           callback(null, []);
         }
       },
@@ -577,7 +577,10 @@ class NativeQueryEditor extends Component {
     );
 
     return (
-      <NativeQueryEditorRoot className="NativeQueryEditor bg-light full">
+      <NativeQueryEditorRoot
+        className="NativeQueryEditor bg-light full"
+        data-testid="native-query-editor-container"
+      >
         {hasTopBar && (
           <div className="flex align-center" data-testid="native-query-top-bar">
             {canChangeDatabase && (
