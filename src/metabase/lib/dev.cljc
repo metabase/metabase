@@ -61,6 +61,8 @@
     (lib.metadata/table query id)))
 
 (mu/defn expression-ref :- fn?
+  "Returns a function that can be resolved into an expression reference for the expression with name `expr-name`.
+  Throws an exception if there is no expression with that name can be found."
   [expr-name :- :string]
   (fn [query stage-number]
     (if (contains? (:expressions (lib.util/query-stage query stage-number)) expr-name)
