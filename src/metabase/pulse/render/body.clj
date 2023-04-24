@@ -651,6 +651,17 @@
 
 (def ^:private axis-group-threshold 0.33)
 
+(defn- positions->group-positions
+  [positions]
+  (reduce-kv
+   (fn [acc k v]
+     (reduce (fn [result item]
+               (assoc result item k))
+             acc
+             v))
+   {}
+   positions))
+
 (defn- group-axes-at-once
   [joined-rows viz-settings]
   (let [;; a double-x-axis 'joined-row' looks like:
@@ -659,6 +670,7 @@
 
         ;; a single-x-axis 'joined-row' looks like:
         ;; [[grouping-key] [series-val-1 series-val-2 ...]]
+        autosplit?         (:graph.y_axis.auto_split viz-settings true)
         joined-rows-map    (if (= (count (ffirst joined-rows)) 2)
                              ;; double-x-axis
                              (-> (group-by (fn [[[_ x2] _]] x2) joined-rows)
@@ -680,6 +692,9 @@
       ;; if the chart is stacked, splitting the axes doesn't make sense, so we always put every series :left
       stacked? (into {} (map (fn [k] [k :left]) (keys joined-rows-map)))
 
+      ;; if autosplit is false, we respect manually specified positions and otherwise put axes :left
+      (not autosplit?) (positions->group-positions (update-keys positions (fn [v] (if (= v :unassigned) :left v))))
+
       ;; chart is not stacked, and there are some :unassigned series, so we try to group them
       unassigned?
       (let [lefts         (or (:left positions) [(first (:unassigned positions))])
@@ -699,8 +714,7 @@
                                       {:left [k]}
                                       {:right [k]}))
                                   (-> positions (dissoc :unassigned) (assoc :left lefts))))]
-        (into {} (apply concat (for [[pos ks] all-positions]
-                                 (map (fn [k] [k pos]) ks)))))
+        (positions->group-positions all-positions))
 
       ;; all series already have positions assigned
       ;; This comes from the user explicitly setting left or right on the series in the UI.
