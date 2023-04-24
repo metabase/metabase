@@ -163,8 +163,7 @@
   :pre-update     pre-update
   :post-select    post-select
   :types          (constantly {:login_attributes :json-no-keywordization
-                               :settings         :encrypted-json
-                               :sso_source       :keyword})})
+                               :settings         :encrypted-json})})
 
 (defmethod serdes/hash-fields User
   [_user]
