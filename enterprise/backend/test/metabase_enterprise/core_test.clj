@@ -1,5 +1,5 @@
 (ns metabase-enterprise.core-test
-  (:require [clojure.test :refer [deftest is testing]]
+  (:require [clojure.test :refer [deftest is]]
             [metabase-enterprise.core]
             [metabase.config :as config]
             [metabase.models.database :refer [Database]]
@@ -29,7 +29,6 @@
   (with-delete-audit-db
     (let [_ (metabase-enterprise.core/ensure-audit-db-exists!)
           audit-db (t2/select-one Database :is_audit true)
-          _ (def adb audit-db)
           _ (t2/update! Database :id (:id audit-db)
                         {:details {:db
                                    (str "file:/someplace/new/sample-database.db;"

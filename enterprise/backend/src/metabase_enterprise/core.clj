@@ -1,6 +1,6 @@
 (ns metabase-enterprise.core
   "This is here so we can try to require it and see whether or not EE code is on the classpath."
-  (:require [clojure.pprint :as pp]
+  (:require [clojure.pprint :as pprint]
             [metabase.db.connection :as mdb.connection]
             [metabase.models.database :refer [Database]]
             [metabase.util.log :as log]
@@ -39,8 +39,8 @@
       (do (log/info "Audit DB does not match app-db, did something change???")
           (log/info (with-out-str
                       #_{:clj-kondo/ignore [:discouraged-var]}
-                      (pp/pprint [["App DB  " app-db]
-                                  ["Old Audit DB" audit-db]])))
+                      (pprint/pprint [["App DB  " app-db]
+                                      ["Old Audit DB" audit-db]])))
           (log/info "Deleting Old Audit DB...")
           (t2/delete! Database :is_audit true)
           (log/info "Installing Audit DB...")
