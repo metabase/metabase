@@ -58,6 +58,17 @@ describe("MetadataEditor", () => {
     expect(screen.queryByText("PUBLIC")).not.toBeInTheDocument();
   });
 
+  it("should allow to search for a table", async () => {
+    await setup();
+
+    userEvent.type(screen.getByPlaceholderText("Find a table"), "Ord");
+    expect(screen.getByText("Orders")).toBeInTheDocument();
+    expect(screen.queryByText("People")).not.toBeInTheDocument();
+
+    userEvent.click(screen.getByText("Orders"));
+    expect(await screen.findByDisplayValue("Orders")).toBeInTheDocument();
+  });
+
   it("should allow to change the title of a table", async () => {
     await setup();
 
