@@ -1,4 +1,10 @@
-import { DatabaseId, FieldId, TableId, UserId } from "metabase-types/api";
+import {
+  DatabaseId,
+  FieldId,
+  SchemaId,
+  TableId,
+  UserId,
+} from "metabase-types/api";
 
 export function newUser() {
   return `/admin/people/new`;
@@ -36,32 +42,31 @@ export function dataModelDatabase(databaseId: DatabaseId) {
   return `/admin/datamodel/database/${databaseId}`;
 }
 
-export function dataModelSchema(databaseId: DatabaseId, schemaName: string) {
-  const schemaUrl = encodeURIComponent(schemaName);
-  return `${dataModelDatabase(databaseId)}/schema/${schemaUrl}`;
+export function dataModelSchema(databaseId: DatabaseId, schemaId: SchemaId) {
+  return `${dataModelDatabase(databaseId)}/schema/${schemaId}`;
 }
 
 export function dataModelTable(
   databaseId: DatabaseId,
-  schemaName: string,
+  schemaId: SchemaId,
   tableId: TableId,
 ) {
-  return `${dataModelSchema(databaseId, schemaName)}/table/${tableId}`;
+  return `${dataModelSchema(databaseId, schemaId)}/table/${tableId}`;
 }
 
 export function dataModelField(
   databaseId: DatabaseId,
-  schemaName: string,
+  schemaId: SchemaId,
   tableId: TableId,
   fieldId: FieldId,
 ) {
-  return `${dataModelTable(databaseId, schemaName, tableId)}/field/${fieldId}`;
+  return `${dataModelTable(databaseId, schemaId, tableId)}/field/${fieldId}`;
 }
 
 export function dataModelTableSettings(
   databaseId: DatabaseId,
-  schemaName: string,
+  schemaId: SchemaId,
   tableId: TableId,
 ) {
-  return `${dataModelTable(databaseId, schemaName, tableId)}/settings`;
+  return `${dataModelTable(databaseId, schemaId, tableId)}/settings`;
 }

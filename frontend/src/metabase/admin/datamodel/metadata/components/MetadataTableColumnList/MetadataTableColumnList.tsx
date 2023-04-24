@@ -12,7 +12,7 @@ import {
   SortableHandle,
 } from "metabase/components/sortable";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
-import { FieldId, TableFieldOrder } from "metabase-types/api";
+import { FieldId, SchemaId, TableFieldOrder } from "metabase-types/api";
 import Table from "metabase-lib/metadata/Table";
 import Field from "metabase-lib/metadata/Field";
 import MetadataTableColumn from "../MetadataTableColumn";
@@ -32,6 +32,7 @@ const ORDER_SECTIONS = [
 interface OwnProps {
   table: Table;
   idFields: Field[];
+  selectedSchemaId: SchemaId;
 }
 
 interface DispatchProps {
@@ -54,6 +55,7 @@ const mapDispatchToProps: DispatchProps = {
 const MetadataTableColumnList = ({
   table,
   idFields,
+  selectedSchemaId,
   onUpdateTable,
   onUpdateFieldOrder,
 }: MetadataTableColumnListProps) => {
@@ -113,7 +115,7 @@ const MetadataTableColumnList = ({
             field={field}
             idFields={idFields}
             selectedDatabaseId={table.db_id}
-            selectedSchemaName={table.schema_name}
+            selectedSchemaId={selectedSchemaId}
             selectedTableId={table.id}
             dragHandle={<SortableColumnHandle />}
           />

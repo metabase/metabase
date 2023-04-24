@@ -1,13 +1,13 @@
 import React from "react";
 import Schemas from "metabase/entities/schemas";
-import { DatabaseId, Schema, TableId } from "metabase-types/api";
+import { DatabaseId, Schema, SchemaId, TableId } from "metabase-types/api";
 import { State } from "metabase-types/store";
 import MetadataSchemaList from "../MetadataSchemaList";
 import MetadataTableList from "../MetadataTableList";
 
 interface OwnProps {
   selectedDatabaseId: DatabaseId;
-  selectedSchemaName?: string;
+  selectedSchemaId?: SchemaId;
   selectedTableId?: TableId;
 }
 
@@ -20,14 +20,14 @@ type MetadataTablePickerProps = OwnProps & SchemaLoaderProps;
 const MetadataTablePicker = ({
   schemas,
   selectedDatabaseId,
-  selectedSchemaName,
+  selectedSchemaId,
   selectedTableId,
 }: MetadataTablePickerProps) => {
-  if (selectedSchemaName) {
+  if (selectedSchemaId) {
     return (
       <MetadataTableList
         selectedDatabaseId={selectedDatabaseId}
-        selectedSchemaName={selectedSchemaName}
+        selectedSchemaId={selectedSchemaId}
         selectedTableId={selectedTableId}
         canGoBack={schemas.length > 1}
       />
@@ -36,7 +36,7 @@ const MetadataTablePicker = ({
     return (
       <MetadataSchemaList
         selectedDatabaseId={selectedDatabaseId}
-        selectedSchemaName={selectedSchemaName}
+        selectedSchemaId={selectedSchemaId}
       />
     );
   }

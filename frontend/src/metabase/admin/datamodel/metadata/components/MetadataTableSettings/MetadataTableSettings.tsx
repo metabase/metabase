@@ -20,7 +20,7 @@ import MetadataBackButton from "../MetadataBackButton";
 
 interface RouteParams {
   databaseId: string;
-  schemaName: string;
+  schemaId: string;
   tableId: string;
 }
 
@@ -60,10 +60,12 @@ const MetadataTableSettings = ({
   database,
   schemas,
   table,
-  params: { schemaName },
+  params: { schemaId },
   onRescanTableFieldValues,
   onDiscardTableFieldValues,
 }: MetadataTableSettingsProps) => {
+  const schema = schemas.find(schema => schema.id === schemaId);
+
   const handleRescanTableFieldValues = useCallback(async () => {
     await onRescanTableFieldValues(table.id);
   }, [table, onRescanTableFieldValues]);
@@ -78,19 +80,19 @@ const MetadataTableSettings = ({
         <div className="flex align-center my2">
           <MetadataBackButton
             selectedDatabaseId={database.id}
-            selectedSchemaName={schemaName}
+            selectedSchemaId={schemaId}
             selectedTableId={table.id}
           />
           <div className="my4 py1 ml2">
             <Breadcrumbs
               crumbs={[
                 [database.name, Urls.dataModelDatabase(database.id)],
-                ...(schemas.length > 1
-                  ? [schemaName, Urls.dataModelSchema(database.id, schemaName)]
+                ...(schema && schemas.length > 1
+                  ? [schema.name, Urls.dataModelSchema(database.id, schemaId)]
                   : []),
                 [
                   table.displayName(),
-                  Urls.dataModelTable(database.id, schemaName, table.id),
+                  Urls.dataModelTable(database.id, schemaId, table.id),
                 ],
                 t`Settings`,
               ]}

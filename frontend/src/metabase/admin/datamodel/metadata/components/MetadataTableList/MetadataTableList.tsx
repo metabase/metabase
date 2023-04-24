@@ -17,13 +17,19 @@ import Tables from "metabase/entities/tables";
 import Icon from "metabase/components/Icon/Icon";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import Tooltip from "metabase/core/components/Tooltip";
-import { DatabaseId, TableId, TableVisibilityType } from "metabase-types/api";
+import {
+  DatabaseId,
+  SchemaId,
+  TableId,
+  TableVisibilityType,
+} from "metabase-types/api";
 import { Dispatch, State } from "metabase-types/store";
 import Table from "metabase-lib/metadata/Table";
+import { getSchemaName } from "metabase-lib/metadata/utils/schema";
 
 interface OwnProps {
   selectedDatabaseId: DatabaseId;
-  selectedSchemaName: string;
+  selectedSchemaId: SchemaId;
   selectedTableId?: TableId;
   canGoBack: boolean;
 }
@@ -36,7 +42,7 @@ interface DispatchProps {
   onSelectDatabase: (databaseId: DatabaseId) => void;
   onSelectTable: (
     databaseId: DatabaseId,
-    schemaName: string,
+    schemaId: SchemaId,
     tableId: TableId,
   ) => void;
   onUpdateTableVisibility: (
@@ -50,8 +56,8 @@ type MetadataTableListProps = OwnProps & TableLoaderProps & DispatchProps;
 const mapDispatchToProps = (dispatch: Dispatch): DispatchProps => ({
   onSelectDatabase: databaseId =>
     dispatch(push(Urls.dataModelDatabase(databaseId))),
-  onSelectTable: (databaseId, schemaName, tableId) =>
-    dispatch(push(Urls.dataModelTable(databaseId, schemaName, tableId))),
+  onSelectTable: (databaseId, schemaId, tableId) =>
+    dispatch(push(Urls.dataModelTable(databaseId, schemaId, tableId))),
   onUpdateTableVisibility: async (tables, visibility) =>
     dispatch(
       Tables.actions.bulkUpdate({
@@ -64,7 +70,7 @@ const mapDispatchToProps = (dispatch: Dispatch): DispatchProps => ({
 const MetadataTableList = ({
   tables: allTables,
   selectedDatabaseId,
-  selectedSchemaName,
+  selectedSchemaId,
   selectedTableId,
   canGoBack,
   onSelectDatabase,
@@ -85,9 +91,9 @@ const MetadataTableList = ({
 
   const handleSelectTable = useCallback(
     (tableId: TableId) => {
-      onSelectTable(selectedDatabaseId, selectedSchemaName, tableId);
+      onSelectTable(selectedDatabaseId, selectedSchemaId, tableId);
     },
-    [selectedDatabaseId, selectedSchemaName, onSelectTable],
+    [selectedDatabaseId, selectedSchemaId, onSelectTable],
   );
 
   const handleSelectDatabase = useCallback(() => {
@@ -99,7 +105,7 @@ const MetadataTableList = ({
       <TableSearch searchText={searchText} onChangeSearchText={setSearchText} />
       {canGoBack && (
         <TableBreadcrumbs
-          schemaName={selectedSchemaName}
+          schemaId={selectedSchemaId}
           onBack={handleSelectDatabase}
         />
       )}
@@ -172,11 +178,11 @@ const TableSearch = ({ searchText, onChangeSearchText }: TableSearchProps) => {
 };
 
 interface TableBreadcrumbsProps {
-  schemaName: string;
+  schemaId: string;
   onBack: () => void;
 }
 
-const TableBreadcrumbs = ({ schemaName, onBack }: TableBreadcrumbsProps) => {
+const TableBreadcrumbs = ({ schemaId, onBack }: TableBreadcrumbsProps) => {
   return (
     <h4 className="p2 border-bottom break-anywhere">
       <span className="text-brand cursor-pointer" onClick={onBack}>
@@ -184,7 +190,7 @@ const TableBreadcrumbs = ({ schemaName, onBack }: TableBreadcrumbsProps) => {
         {t`Schemas`}
       </span>
       <span className="mx1">-</span>
-      <span>{schemaName}</span>
+      <span>{schemaId}</span>
     </h4>
   );
 };
@@ -328,12 +334,9 @@ const getToggleTooltip = (isHidden: boolean, hasMultipleTables?: boolean) => {
 
 export default _.compose(
   Tables.loadList({
-    query: (
-      _: State,
-      { selectedDatabaseId, selectedSchemaName }: OwnProps,
-    ) => ({
+    query: (_: State, { selectedDatabaseId, selectedSchemaId }: OwnProps) => ({
       dbId: selectedDatabaseId,
-      schemaName: selectedSchemaName,
+      schemaName: getSchemaName(selectedSchemaId),
       include_hidden: true,
       ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
     }),

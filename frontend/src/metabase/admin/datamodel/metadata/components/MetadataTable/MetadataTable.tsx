@@ -7,7 +7,12 @@ import Databases from "metabase/entities/databases";
 import Tables from "metabase/entities/tables";
 import Radio from "metabase/core/components/Radio/Radio";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import { DatabaseId, TableId, TableVisibilityType } from "metabase-types/api";
+import {
+  DatabaseId,
+  SchemaId,
+  TableId,
+  TableVisibilityType,
+} from "metabase-types/api";
 import { State } from "metabase-types/store";
 import Field from "metabase-lib/metadata/Field";
 import Table from "metabase-lib/metadata/Table";
@@ -47,6 +52,7 @@ interface HasRequestParams {
 
 interface OwnProps {
   selectedDatabaseId: DatabaseId;
+  selectedSchemaId: SchemaId;
   selectedTableId: TableId;
 }
 
@@ -85,6 +91,7 @@ const MetadataTable = ({
   table,
   idFields = [],
   selectedDatabaseId,
+  selectedSchemaId,
   selectedTableId,
   onFetchMetadata,
   onFetchIdFields,
@@ -106,6 +113,7 @@ const MetadataTable = ({
     <MetadataTableView
       table={table}
       idFields={idFields}
+      selectedSchemaId={selectedSchemaId}
       onUpdateTable={onUpdateTable}
     />
   );
@@ -114,12 +122,14 @@ const MetadataTable = ({
 interface MetadataTableViewProps {
   table: Table;
   idFields: Field[];
+  selectedSchemaId: SchemaId;
   onUpdateTable: (table: Table, name: string, value: unknown) => void;
 }
 
 const MetadataTableView = ({
   table,
   idFields,
+  selectedSchemaId,
   onUpdateTable,
 }: MetadataTableViewProps) => {
   const [tab, setTab] = useState<MetadataTabType>("columns");
@@ -160,7 +170,11 @@ const MetadataTableView = ({
       <TableTabSection tab={tab} onChangeTab={setTab} />
       {tab === "original_schema" && <MetadataTableSchema table={table} />}
       {tab === "columns" && (
-        <MetadataTableColumnList table={table} idFields={idFields} />
+        <MetadataTableColumnList
+          table={table}
+          idFields={idFields}
+          selectedSchemaId={selectedSchemaId}
+        />
       )}
     </div>
   );

@@ -8,13 +8,13 @@ import * as Urls from "metabase/lib/urls";
 import Databases from "metabase/entities/databases";
 import Icon from "metabase/components/Icon/Icon";
 import { DatabaseDataSelector } from "metabase/query_builder/components/DataSelector";
-import { DatabaseId, TableId } from "metabase-types/api";
+import { DatabaseId, SchemaId, TableId } from "metabase-types/api";
 import { Dispatch } from "metabase-types/store";
 import Database from "metabase-lib/metadata/Database";
 
 interface OwnProps {
   selectedDatabaseId?: DatabaseId;
-  selectedSchemaName?: string;
+  selectedSchemaId?: SchemaId;
   selectedTableId?: TableId;
 }
 
@@ -36,7 +36,7 @@ type MetadataHeaderProps = OwnProps & DatabaseLoaderProps & DispatchProps;
 const MetadataHeader = ({
   databases,
   selectedDatabaseId,
-  selectedSchemaName,
+  selectedSchemaId,
   selectedTableId,
   onSelectDatabase,
 }: MetadataHeaderProps) => {
@@ -60,13 +60,13 @@ const MetadataHeader = ({
           style={{ padding: 0, paddingLeft: 8 }}
         />
       </div>
-      {selectedDatabaseId && selectedSchemaName && selectedTableId && (
+      {selectedDatabaseId && selectedSchemaId && selectedTableId && (
         <div className="MetadataEditor-headerSection flex flex-align-right align-center flex-no-shrink">
           <span className="ml4 mr3">
             <Link
               to={Urls.dataModelTableSettings(
                 selectedDatabaseId,
-                selectedSchemaName,
+                selectedSchemaId,
                 selectedTableId,
               )}
             >

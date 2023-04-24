@@ -10,7 +10,7 @@ import MetadataTablePicker from "../MetadataTablePicker";
 
 interface RouteParams {
   databaseId?: string;
-  schemaName?: string;
+  schemaId?: string;
   tableId?: string;
 }
 
@@ -26,9 +26,10 @@ type MetadataEditorProps = RouterProps & DatabaseLoaderProps;
 
 const MetadataEditor = ({ databases, params }: MetadataEditorProps) => {
   const databaseId = Urls.extractEntityId(params.databaseId);
-  const schemaName = params.schemaName;
+  const schemaId = params.schemaId;
   const tableId = Urls.extractEntityId(params.tableId);
   const hasDatabaseId = databaseId != null;
+  const hasSchemaId = schemaId != null;
   const hasTableId = tableId != null;
   const hasDatabase = databases.some(database => database.id === databaseId);
 
@@ -36,7 +37,7 @@ const MetadataEditor = ({ databases, params }: MetadataEditorProps) => {
     <div className="p4">
       <MetadataHeader
         selectedDatabaseId={databaseId}
-        selectedSchemaName={schemaName}
+        selectedSchemaId={schemaId}
         selectedTableId={tableId}
       />
       <div
@@ -46,13 +47,14 @@ const MetadataEditor = ({ databases, params }: MetadataEditorProps) => {
         {hasDatabaseId && (
           <MetadataTablePicker
             selectedDatabaseId={databaseId}
-            selectedSchemaName={schemaName}
+            selectedSchemaId={schemaId}
             selectedTableId={tableId}
           />
         )}
-        {hasDatabaseId && hasTableId ? (
+        {hasDatabaseId && hasSchemaId && hasTableId ? (
           <MetadataTable
             selectedDatabaseId={databaseId}
+            selectedSchemaId={schemaId}
             selectedTableId={tableId}
           />
         ) : (

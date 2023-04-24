@@ -31,15 +31,15 @@ const setup = async ({ databases = [TEST_DB] }: SetupOpts = {}) => {
       <Route path="database" component={MetadataEditor} />
       <Route path="database/:databaseId" component={MetadataEditor} />
       <Route
-        path="database/:databaseId/schema/:schemaName"
+        path="database/:databaseId/schema/:schemaId"
         component={MetadataEditor}
       />
       <Route
-        path="database/:databaseId/schema/:schemaName/table/:tableId"
+        path="database/:databaseId/schema/:schemaId/table/:tableId"
         component={MetadataEditor}
       />
       <Route
-        path="database/:databaseId/schema/:schemaName/table/:tableId/settings"
+        path="database/:databaseId/schema/:schemaId/table/:tableId/settings"
         component={MetadataTableSettings}
       />
     </Route>,

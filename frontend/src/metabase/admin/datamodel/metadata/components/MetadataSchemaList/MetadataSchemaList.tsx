@@ -7,12 +7,12 @@ import _ from "underscore";
 import * as Urls from "metabase/lib/urls";
 import Schemas from "metabase/entities/schemas";
 import Icon from "metabase/components/Icon/Icon";
-import { DatabaseId, Schema } from "metabase-types/api";
+import { DatabaseId, Schema, SchemaId } from "metabase-types/api";
 import { Dispatch, State } from "metabase-types/store";
 
 interface OwnProps {
   selectedDatabaseId: DatabaseId;
-  selectedSchemaName?: string;
+  selectedSchemaId?: SchemaId;
 }
 
 interface SchemaLoaderProps {
@@ -20,20 +20,20 @@ interface SchemaLoaderProps {
 }
 
 interface DispatchProps {
-  onSelectSchema: (databaseId: DatabaseId, schemaName: string) => void;
+  onSelectSchema: (databaseId: DatabaseId, schemaId: SchemaId) => void;
 }
 
 type MetadataSchemaListProps = OwnProps & SchemaLoaderProps & DispatchProps;
 
 const mapDispatchToProps = (dispatch: Dispatch): DispatchProps => ({
-  onSelectSchema: (databaseId, schemaName) =>
-    dispatch(push(Urls.dataModelSchema(databaseId, schemaName))),
+  onSelectSchema: (databaseId, schemaId) =>
+    dispatch(push(Urls.dataModelSchema(databaseId, schemaId))),
 });
 
 const MetadataSchemaList = ({
   schemas: allSchemas,
   selectedDatabaseId,
-  selectedSchemaName,
+  selectedSchemaId,
   onSelectSchema,
 }: MetadataSchemaListProps) => {
   const [searchText, setSearchText] = useState("");
@@ -48,17 +48,17 @@ const MetadataSchemaList = ({
   }, [allSchemas, searchText]);
 
   const handleSelectSchema = useCallback(
-    (schemaName: string) => {
-      onSelectSchema(selectedDatabaseId, schemaName);
+    (schemaId: SchemaId) => {
+      onSelectSchema(selectedDatabaseId, schemaId);
     },
     [selectedDatabaseId, onSelectSchema],
   );
 
   useLayoutEffect(() => {
-    if (schemas.length === 1 && selectedSchemaName == null) {
-      onSelectSchema(selectedDatabaseId, schemas[0].name);
+    if (schemas.length === 1 && selectedSchemaId == null) {
+      onSelectSchema(selectedDatabaseId, schemas[0].id);
     }
-  }, [selectedDatabaseId, selectedSchemaName, schemas, onSelectSchema]);
+  }, [selectedDatabaseId, selectedSchemaId, schemas, onSelectSchema]);
 
   return (
     <div className="MetadataEditor-table-list AdminList flex-no-shrink">
@@ -84,7 +84,7 @@ const MetadataSchemaList = ({
           <SchemaRow
             key={schema.id}
             schema={schema}
-            isSelected={schema.name === selectedSchemaName}
+            isSelected={schema.id === selectedSchemaId}
             onSelectSchema={handleSelectSchema}
           />
         ))}
@@ -96,12 +96,12 @@ const MetadataSchemaList = ({
 interface SchemaRowProps {
   schema: Schema;
   isSelected: boolean;
-  onSelectSchema: (schemaName: string) => void;
+  onSelectSchema: (schemaId: SchemaId) => void;
 }
 
 const SchemaRow = ({ schema, isSelected, onSelectSchema }: SchemaRowProps) => {
   const handleSelect = useCallback(() => {
-    onSelectSchema(schema.name);
+    onSelectSchema(schema.id);
   }, [schema, onSelectSchema]);
 
   return (

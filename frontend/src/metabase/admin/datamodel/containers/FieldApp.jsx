@@ -54,9 +54,11 @@ import { BackButtonLink, FieldNameInput } from "./FieldApp.styled";
 
 const mapStateToProps = (state, props) => {
   const databaseId = parseInt(props.params.databaseId);
+  const schemaId = props.params.schemaId;
   const fieldId = parseInt(props.params.fieldId);
   return {
     databaseId,
+    schemaId,
     fieldId,
     field: Fields.selectors.getObjectUnfiltered(state, { entityId: fieldId }),
     fieldsError: Fields.selectors.getError(state, {
@@ -164,6 +166,7 @@ class FieldApp extends React.Component {
       field,
       fieldsError,
       databaseId,
+      schemaId,
       tableId,
       idfields,
       rescanFieldValues,
@@ -187,7 +190,7 @@ class FieldApp extends React.Component {
                 <div className="flex align-center mb2">
                   <BackButton
                     databaseId={databaseId}
-                    schemaName={table.schema_name}
+                    schemaId={schemaId}
                     tableId={tableId}
                   />
                 </div>
@@ -399,8 +402,8 @@ const FieldSettingsPane = ({ field, onUpdateFieldSettings }) => (
 
 // TODO: Should this invoke goBack() instead?
 // not sure if it's possible to do that neatly with Link component
-export const BackButton = ({ databaseId, schemaName, tableId }) => (
-  <BackButtonLink to={Urls.dataModelTable(databaseId, schemaName, tableId)}>
+export const BackButton = ({ databaseId, schemaId, tableId }) => (
+  <BackButtonLink to={Urls.dataModelTable(databaseId, schemaId, tableId)}>
     <Icon name="arrow_left" />
   </BackButtonLink>
 );

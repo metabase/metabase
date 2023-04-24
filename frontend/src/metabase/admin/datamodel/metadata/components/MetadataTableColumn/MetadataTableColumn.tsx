@@ -5,7 +5,7 @@ import { Link } from "react-router";
 import * as Urls from "metabase/lib/urls";
 import Fields from "metabase/entities/fields";
 import Button from "metabase/core/components/Button/Button";
-import { DatabaseId, TableId } from "metabase-types/api";
+import { DatabaseId, SchemaId, TableId } from "metabase-types/api";
 import Field from "metabase-lib/metadata/Field";
 import FieldVisibilityPicker from "../FieldVisibilityPicker";
 import SemanticTypeAndTargetPicker from "../SemanticTypeAndTargetPicker";
@@ -15,7 +15,7 @@ interface OwnProps {
   field: Field;
   idFields: Field[];
   selectedDatabaseId: DatabaseId;
-  selectedSchemaName: string;
+  selectedSchemaId: SchemaId;
   selectedTableId: TableId;
   dragHandle?: ReactNode;
 }
@@ -34,7 +34,7 @@ const MetadataTableColumn = ({
   field,
   idFields,
   selectedDatabaseId,
-  selectedSchemaName,
+  selectedSchemaId,
   selectedTableId,
   dragHandle,
   onUpdateField,
@@ -95,7 +95,7 @@ const MetadataTableColumn = ({
                 <Link
                   to={Urls.dataModelField(
                     selectedDatabaseId,
-                    selectedSchemaName,
+                    selectedSchemaId,
                     selectedTableId,
                     Number(field.id),
                   )}

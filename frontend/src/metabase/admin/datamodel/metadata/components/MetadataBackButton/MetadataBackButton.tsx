@@ -1,25 +1,25 @@
 import React from "react";
 import * as Urls from "metabase/lib/urls";
 import Icon from "metabase/components/Icon/Icon";
-import { DatabaseId, TableId } from "metabase-types/api";
+import { DatabaseId, SchemaId, TableId } from "metabase-types/api";
 import { BackButtonLink } from "./MetadataBackButton.styled";
 
 interface MetadataBackButtonProps {
   selectedDatabaseId: DatabaseId;
-  selectedSchemaName: string;
+  selectedSchemaId: SchemaId;
   selectedTableId: TableId;
 }
 
 const MetadataBackButton = ({
   selectedDatabaseId,
-  selectedSchemaName,
+  selectedSchemaId,
   selectedTableId,
 }: MetadataBackButtonProps) => {
   return (
     <BackButtonLink
       to={Urls.dataModelTable(
         selectedDatabaseId,
-        selectedSchemaName,
+        selectedSchemaId,
         selectedTableId,
       )}
     >
