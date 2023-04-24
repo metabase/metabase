@@ -70,8 +70,14 @@
   :hierarchy lib.hierarchy/hierarchy)
 
 (defn- default-MBQL-clause->pMBQL [mbql-clause]
-  (let [[clause-type options & args] (lib.options/ensure-uuid mbql-clause)]
-    (into [clause-type options] (map ->pMBQL) args)))
+  (let [last-elem (peek mbql-clause)
+        last-elem-option? (map? last-elem)
+        [clause-type & args] (cond-> mbql-clause
+                               last-elem-option? pop)
+        options (if last-elem-option?
+                  last-elem
+                  {})]
+    (lib.options/ensure-uuid (into [clause-type] (map ->pMBQL) (cons options args)))))
 
 (defmethod ->pMBQL :default
   [x]

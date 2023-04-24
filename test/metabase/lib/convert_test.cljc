@@ -240,6 +240,22 @@
                 :limit        1
                 :source-table 4}}))
 
+(deftest ^:parallel round-trip-options-test
+  (testing "starting with pMBQL"
+    (is (=? [:does-not-contain {:lib/uuid string?
+                                :case-sensitive false}
+             [:field {:lib/uuid string?} 23]
+             "invite"]
+            (-> [:does-not-contain {:lib/uuid "b6a2ab24-bfb2-4b90-bd71-f96b1e025a5e"
+                                    :case-sensitive false}
+                 [:field {:lib/uuid "5d01e669-783f-40e0-9ae0-2b8098448390"} 23]
+                 "invite"]
+                lib.convert/->legacy-MBQL lib.convert/->pMBQL))))
+  (testing "starting with MBQL"
+    (let [mbql-filter [:does-not-contain [:field 23 nil] "invite" {:case-sensitive false}]]
+      (is (= mbql-filter
+           (-> mbql-filter lib.convert/->pMBQL lib.convert/->legacy-MBQL))))))
+
 (deftest ^:parallel round-trip-preserve-metadata-test
   (testing "Round-tripping should not affect embedded metadata"
     (let [query {:database 2445
