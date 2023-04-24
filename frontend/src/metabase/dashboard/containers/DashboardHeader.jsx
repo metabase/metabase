@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import React, { Component, Fragment } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import PropTypes from "prop-types";
@@ -97,7 +97,7 @@ class DashboardHeader extends Component {
     onChangeLocation: PropTypes.func.isRequired,
 
     toggleSidebar: PropTypes.func.isRequired,
-    sidebar: PropTypes.string.isRequired,
+    sidebar: PropTypes.object.isRequired,
     setSidebar: PropTypes.func.isRequired,
     closeSidebar: PropTypes.func.isRequired,
     addActionToDashboard: PropTypes.func.isRequired,
@@ -228,11 +228,12 @@ class DashboardHeader extends Component {
           : t`Add questions`;
 
       buttons.push(
-        <Tooltip tooltip={addQuestionButtonHint}>
+        <Tooltip key="add-question-element" tooltip={addQuestionButtonHint}>
           <DashboardHeaderButton
             icon="add"
             isActive={activeSidebarName === SIDEBAR_NAME.addQuestion}
             onClick={() => toggleSidebar(SIDEBAR_NAME.addQuestion)}
+            aria-label={t`Add questions`}
             data-metabase-event="Dashboard;Add Card Sidebar"
           />
         </Tooltip>,
@@ -244,6 +245,7 @@ class DashboardHeader extends Component {
           <a
             data-metabase-event="Dashboard;Add Text Box"
             key="add-text"
+            aria-label={t`Add a text box`}
             className="text-brand-hover cursor-pointer"
             onClick={() => this.onAddTextBox()}
           >
@@ -299,7 +301,7 @@ class DashboardHeader extends Component {
 
       if (canEdit) {
         buttons.push(
-          <>
+          <Fragment key="add-action-element">
             <DashboardHeaderActionDivider />
             <Tooltip key="add-action-button" tooltip={t`Add action button`}>
               <DashboardHeaderButton
@@ -310,7 +312,7 @@ class DashboardHeader extends Component {
                 <Icon name="click" size={18} />
               </DashboardHeaderButton>
             </Tooltip>
-          </>,
+          </Fragment>,
         );
       }
 
@@ -327,6 +329,7 @@ class DashboardHeader extends Component {
         <Tooltip key="edit-dashboard" tooltip={t`Edit dashboard`}>
           <DashboardHeaderButton
             key="edit"
+            aria-label={t`Edit dashboard`}
             data-metabase-event="Dashboard;Edit"
             icon="pencil"
             className="text-brand-hover cursor-pointer"
