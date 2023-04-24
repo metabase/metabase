@@ -3,11 +3,13 @@
   in QB code."
   (:require
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.query :as lib.query]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.util :as lib.util]
    [metabase.util.malli :as mu]))
 
 (mu/defn field :- fn?
@@ -57,3 +59,13 @@
   [id :- ::lib.schema.id/table]
   (fn [query _stage-number]
     (lib.metadata/table query id)))
+
+(mu/defn expression-ref :- fn?
+  [expr-name :- :string]
+  (fn [query stage-number]
+    (if (contains? (:expressions (lib.util/query-stage query stage-number)) expr-name)
+      (lib.options/ensure-uuid [:expression {} expr-name])
+      (throw (ex-info (str "Undefined expression " expr-name)
+                      {:expression-name expr-name
+                       :query query
+                       :stage-number stage-number})))))

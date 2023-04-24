@@ -51,7 +51,7 @@
                        (assoc :lib/source :source/breakouts))))))
 
 (mu/defn breakoutable-columns :- [:sequential lib.metadata/ColumnMetadata]
-  "Get column metadata fro all the columns that can be broken out by in
+  "Get column metadata for all the columns that can be broken out by in
   the stage number `stage-number` of the query `query`
   If `stage-number` is omitted, the last stage is used.
   The rules for determining which columns can be broken out by are as follows:

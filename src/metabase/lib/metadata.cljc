@@ -272,7 +272,7 @@
   "Metadata about a specific column returned by a specific stage of the query, e.g. perhaps the first stage of the
   query has an expression `num_cans`, then
 
-    (lib.metadata/stage-column-metadata query stage \"num_cans\")
+    (lib.metadata/stage-column query stage \"num_cans\")
 
   should return something like
 

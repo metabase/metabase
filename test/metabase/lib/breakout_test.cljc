@@ -3,7 +3,7 @@
    [clojure.test :refer [deftest is testing]]
    [medley.core :as m]
    [metabase.lib.core :as lib]
-   [metabase.lib.options :as lib.options]
+   [metabase.lib.dev :as lib.dev]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.util :as lib.util]
@@ -326,7 +326,7 @@
   (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
                   (lib/expression "expr" (lib/absolute-datetime "2020" :month))
                   (lib/with-fields [(lib/field "VENUES" "ID")
-                                    (lib.options/ensure-uuid [:expression {} "expr"])])
+                                    (lib.dev/expression-ref "expr")])
                   (lib/append-stage))]
     (is (=? [{:id (meta/id :venues :id), :name "ID", :display_name "ID", :lib/source :source/previous-stage}
              {:name "expr", :display_name "expr", :lib/source :source/previous-stage}]
