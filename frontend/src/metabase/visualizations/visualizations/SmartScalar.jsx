@@ -122,6 +122,25 @@ export default class Smart extends React.Component {
       return null;
     }
 
+    const lastValue = insight["last-value"];
+    const formatOptions = settings.column(column);
+
+    const fullScalarValue = formatValue(lastValue, formatOptions);
+    const compactScalarValue = formatValue(lastValue, {
+      ...formatOptions,
+      compact: true,
+    });
+
+    // use the compact version of formatting if the component is narrower than
+    // the cutoff and the formatted value is longer than the cutoff
+    // also if the width is less than a certain multiplier of the number of digits
+    const displayCompact =
+      fullScalarValue !== null &&
+      fullScalarValue.length > COMPACT_MIN_LENGTH &&
+      (width < COMPACT_MAX_WIDTH ||
+        width < COMPACT_WIDTH_PER_DIGIT * fullScalarValue.length);
+    const displayValue = displayCompact ? compactScalarValue : fullScalarValue;
+
     const granularity = formatBucketing(insight["unit"]).toLowerCase();
 
     const lastChange = insight["last-change"];
@@ -164,25 +183,6 @@ export default class Smart extends React.Component {
     };
 
     const isClickable = visualizationIsClickable(clicked);
-
-    const lastValue = insight["last-value"];
-    const formatOptions = settings.column(column);
-
-    const fullScalarValue = formatValue(lastValue, formatOptions);
-    const compactScalarValue = formatValue(lastValue, {
-      ...formatOptions,
-      compact: true,
-    });
-
-    // use the compact version of formatting if the component is narrower than
-    // the cutoff and the formatted value is longer than the cutoff
-    // also if the width is less than a certain multiplier of the number of digits
-    const displayCompact =
-      fullScalarValue !== null &&
-      fullScalarValue.length > COMPACT_MIN_LENGTH &&
-      (width < COMPACT_MAX_WIDTH ||
-        width < COMPACT_WIDTH_PER_DIGIT * fullScalarValue.length);
-    const displayValue = displayCompact ? compactScalarValue : fullScalarValue;
 
     return (
       <ScalarWrapper>
