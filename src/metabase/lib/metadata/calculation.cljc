@@ -255,9 +255,6 @@
 (mr/register! ::display-info
   [:map
    [:display_name :string]
-   ;; For Columns. `base_type` not included here, FE doesn't need to know about that.
-   [:effective_type {:optional true} [:maybe [:ref ::lib.schema.common/base-type]]]
-   [:semantic_type  {:optional true} [:maybe [:ref ::lib.schema.common/semantic-type]]]
    ;; for things that have a Table, e.g. a Field
    [:table {:optional true} [:maybe [:ref ::display-info]]]
    ;; these are derived from the `:lib/source`/`:metabase.lib.metadata/column-source`, but instead of using that value

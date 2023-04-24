@@ -17,6 +17,9 @@ import { getUser } from "metabase/selectors/user";
 
 import { revertToRevision } from "metabase/dashboard/actions";
 
+import Toggle from "metabase/core/components/Toggle";
+import FormField from "metabase/core/components/FormField";
+import { useUniqueId } from "metabase/hooks/use-unique-id";
 import {
   DashboardInfoSidebarRoot,
   HistoryHeader,
@@ -24,9 +27,11 @@ import {
   DescriptionHeader,
 } from "./DashboardInfoSidebar.styled";
 
+type DashboardAttributeType = string | number | null | boolean;
+
 interface DashboardInfoSidebarProps {
   dashboard: Dashboard;
-  setDashboardAttribute: (name: string, value: string | number | null) => void;
+  setDashboardAttribute: (name: string, value: DashboardAttributeType) => void;
   saveDashboardAndCards: (id: number) => void;
   revisions: RevisionType[];
   currentUser: User;
@@ -47,17 +52,28 @@ const DashboardInfoSidebar = ({
     PLUGIN_CACHING.isEnabled() && MetabaseSettings.get("enable-query-caching");
 
   const handleDescriptionChange = useCallback(
-    async (description: string) => {
-      await setDashboardAttribute("description", description);
+    (description: string) => {
+      setDashboardAttribute("description", description);
       saveDashboardAndCards(dashboard.id);
     },
-    [setDashboardAttribute, saveDashboardAndCards, dashboard],
+    [dashboard.id, saveDashboardAndCards, setDashboardAttribute],
   );
 
-  const handleUpdateCacheTTL = async (cache_ttl: number | null) => {
-    await setDashboardAttribute("cache_ttl", cache_ttl);
-    saveDashboardAndCards(dashboard.id);
-  };
+  const handleUpdateCacheTTL = useCallback(
+    (cache_ttl: number | null) => {
+      setDashboardAttribute("cache_ttl", cache_ttl);
+      saveDashboardAndCards(dashboard.id);
+    },
+    [dashboard.id, saveDashboardAndCards, setDashboardAttribute],
+  );
+
+  const handleToggleAutoApplyFilters = useCallback(
+    (isAutoApplyingFilters: boolean) => {
+      setDashboardAttribute("auto_apply_filters", isAutoApplyingFilters);
+      saveDashboardAndCards(dashboard.id);
+    },
+    [dashboard.id, saveDashboardAndCards, setDashboardAttribute],
+  );
 
   const events = useMemo(
     () =>
@@ -67,6 +83,8 @@ const DashboardInfoSidebar = ({
       }),
     [revisions, currentUser, canWrite],
   );
+
+  const autoApplyFilterToggleId = useUniqueId();
 
   return (
     <DashboardInfoSidebarRoot data-testid="sidebar-right">
@@ -83,6 +101,19 @@ const DashboardInfoSidebar = ({
         />
       </ContentSection>
 
+      <ContentSection>
+        <FormField
+          title={t`Auto-apply filters`}
+          orientation="horizontal"
+          htmlFor={autoApplyFilterToggleId}
+        >
+          <Toggle
+            id={autoApplyFilterToggleId}
+            value={dashboard.auto_apply_filters}
+            onChange={handleToggleAutoApplyFilters}
+          />
+        </FormField>
+      </ContentSection>
       {showCaching && (
         <ContentSection>
           <PLUGIN_CACHING.DashboardCacheSection

@@ -154,6 +154,8 @@ class ParameterValueWidget extends Component {
               className={cx(S.parameter, className, {
                 [S.selected]: hasValue,
               })}
+              role="button"
+              aria-label={placeholder}
             >
               {showTypeIcon && (
                 <Icon

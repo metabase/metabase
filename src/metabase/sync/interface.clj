@@ -33,6 +33,7 @@
    (s/optional-key :field-comment)              (s/maybe su/NonBlankString)
    (s/optional-key :pk?)                        s/Bool
    (s/optional-key :nested-fields)              #{(s/recursive #'TableMetadataField)}
+   (s/optional-key :json-unfolding)             s/Bool
    (s/optional-key :nfc-path)                   [s/Any]
    (s/optional-key :custom)                     {s/Any s/Any}
    (s/optional-key :database-is-auto-increment) s/Bool
