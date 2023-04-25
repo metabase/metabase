@@ -22,17 +22,13 @@ export function useDashboardTabs() {
 
   useMount(() => dispatch(initTabs()));
 
-  const createNewTab = () => dispatch(createNewTabAction());
-
-  const deleteTab = (tabId: SelectedTabId) =>
-    dispatch(deleteTabAction({ tabId }));
-
-  const renameTab = (tabId: SelectedTabId, name: string) =>
-    dispatch(renameTabAction({ tabId, name }));
-
-  const selectTab = (tabId: SelectedTabId) =>
-    dispatch(selectTabAction({ tabId }));
-
-  // TODO define the functions here?
-  return { tabs, selectedTabId, createNewTab, deleteTab, renameTab, selectTab };
+  return {
+    tabs,
+    selectedTabId,
+    createNewTab: () => dispatch(createNewTabAction()),
+    deleteTab: (tabId: SelectedTabId) => dispatch(deleteTabAction({ tabId })),
+    renameTab: (tabId: SelectedTabId, name: string) =>
+      dispatch(renameTabAction({ tabId, name })),
+    selectTab: (tabId: SelectedTabId) => dispatch(selectTabAction({ tabId })),
+  };
 }
