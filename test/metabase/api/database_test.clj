@@ -1025,6 +1025,18 @@
         (is (= ["" " "]
                (mt/user-http-request :lucky :get 200 (format "database/%d/schemas" db-id))))))))
 
+(deftest get-schemas-should-not-return-schemas-with-no-visible-tables
+  (testing "GET /api/database/:id/schemas should not return schemas with no VISIBLE TABLES"
+    (mt/with-temp* [Database [{db-id :id}]
+                    Table    [_ {:db_id db-id, :schema "schema_1", :name "table_1"}]
+                    ;; table is not visible. Any non-nil value of `visibility_type` means Table shouldn't be visible
+                    Table    [_ {:db_id db-id, :schema "schema_2", :name "table_2a", :visibility_type "hidden"}]
+                    Table    [_ {:db_id db-id, :schema "schema_2", :name "table_2b", :visibility_type "cruft"}]
+                    ;; table is not active
+                    Table    [_ {:db_id db-id, :schema "schema_3", :name "table_3", :active false}]]
+      (is (= #{"schema_1"}
+             (set (mt/user-http-request :crowberto :get 200 (format "database/%d/schemas" db-id))))))))
+
 (deftest get-schemas-permissions-test
   (testing "GET /api/database/:id/schemas against permissions"
     (mt/with-temp* [Database [{db-id :id}]
@@ -1067,18 +1079,6 @@
         (perms/grant-permissions! (perms-group/all-users) database-id "schema-with-perms")
         (is (= ["schema-with-perms"]
                (mt/user-http-request :rasta :get 200 (format "database/%s/schemas" database-id))))))))
-
-(deftest get-schemas-should-not-return-schemas-with-no-visible-tables
-  (testing "GET /api/database/:id/schemas should not return schemas with no VISIBLE TABLES"
-    (mt/with-temp* [Database [{db-id :id}]
-                    Table    [_ {:db_id db-id, :schema "schema_1", :name "table_1"}]
-                    ;; table is not visible. Any non-nil value of `visibility_type` means Table shouldn't be visible
-                    Table    [_ {:db_id db-id, :schema "schema_2", :name "table_2a", :visibility_type "hidden"}]
-                    Table    [_ {:db_id db-id, :schema "schema_2", :name "table_2b", :visibility_type "cruft"}]
-                    ;; table is not active
-                    Table    [_ {:db_id db-id, :schema "schema_3", :name "table_3", :active false}]]
-      (is (= #{"schema_1"}
-             (set (mt/user-http-request :crowberto :get 200 (format "database/%d/schemas" db-id))))))))
 
 (deftest get-schema-tables-test
   (testing "GET /api/database/:id/schema/:schema"
