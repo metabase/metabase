@@ -197,6 +197,8 @@
                                                [[:case
                                                  [:= "google" :u.sso_source]
                                                  (h2x/literal "Google Sign-In")
+                                                 [:= "saml" :u.sso_source]
+                                                 (h2x/literal "SAML")
                                                  [:= nil :u.sso_source]
                                                  (h2x/literal "Email")
                                                  :else
