@@ -203,13 +203,16 @@
                  (hydrate (t2/select 'Table :id [:in table-ids]) :fields))]
     (into {}
           (for [table tables
-                :let [fields (:fields table)]
+                :let [table-fields (:fields table)]
                 ;; Skip tables for have conflicting slugified columns i.e. table has "name" and "NAME" columns.
-                :when (unique-field-slugs? fields)
-                :let [card (get card-by-table-id (:id table))
-                      exposed-fields (into #{} (keep :id) (:result_metadata card))
+                :when (unique-field-slugs? table-fields)
+                :let [card         (get card-by-table-id (:id table))
+                      id->metadata (m/index-by :id (:result_metadata card))
+                      fields       (keep (fn [field]
+                                           (when-let [metadata (id->metadata (:id field))]
+                                             (assoc field :display_name (:display_name metadata))))
+                                         table-fields)
                       parameters (->> fields
-                                      (filter #(contains? exposed-fields (:id %)))
                                       ;; remove exploded json fields and any structured field
                                       (remove (some-fn
                                                ;; exploded json fields can't be recombined in sql yet
@@ -220,6 +223,7 @@
                                                (comp #{:type/*} :effective_type)))
                                       (map (fn [field]
                                              {:id (u/slugify (:name field))
+                                              :display-name (:display_name field)
                                               :target [:variable [:template-tag (u/slugify (:name field))]]
                                               :type (:base_type field)
                                               :required (:database_required field)
