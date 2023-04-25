@@ -27,7 +27,9 @@
        (qs/standby scheduler#)
        (#'task.index-values/job-init!)
        (qs/start scheduler#)
-       ~@body)))
+       (try
+         ~@body
+         (finally (qs/shutdown scheduler#))))))
 
 (deftest quick-run-through
   (with-scheduler-setup
