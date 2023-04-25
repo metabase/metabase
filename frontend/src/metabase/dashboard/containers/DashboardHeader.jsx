@@ -129,7 +129,10 @@ class DashboardHeader extends Component {
   }
 
   onAddLinkCard() {
-    this.props.addLinkDashCardToDashboard({ dashId: this.props.dashboard.id });
+    this.props.addLinkDashCardToDashboard({
+      dashId: this.props.dashboard.id,
+      tabId: this.props.selectedTabId,
+    });
   }
 
   onAddAction() {

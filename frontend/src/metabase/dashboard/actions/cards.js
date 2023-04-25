@@ -113,7 +113,7 @@ export const addTextDashCardToDashboard = function ({ dashId, tabId }) {
   });
 };
 
-export const addLinkDashCardToDashboard = function ({ dashId }) {
+export const addLinkDashCardToDashboard = function ({ dashId, tabId }) {
   const virtualLinkCard = {
     ...createCard(),
     display: "link",
@@ -129,6 +129,7 @@ export const addLinkDashCardToDashboard = function ({ dashId }) {
   return addDashCardToDashboard({
     dashId: dashId,
     dashcardOverrides: dashcardOverrides,
+    tabId,
   });
 };
 
