@@ -164,6 +164,7 @@
    :cache_ttl               nil
    :position                nil
    :public_uuid             nil
+   :auto_apply_filters      true
    :show_in_getting_started false
    :updated_at              true})
 
@@ -302,7 +303,6 @@
                      :collection_authority_level nil
                      :can_write                  false
                      :param_fields               nil
-                     :param_values               nil
                      :last-edit-info             {:timestamp true :id true :first_name "Test" :last_name "User" :email "test@example.com"}
                      :ordered_cards              [{:size_x                     4
                                                    :size_y                     4
@@ -383,7 +383,6 @@
                            :collection_id              true
                            :collection_authority_level nil
                            :can_write                  false
-                           :param_values  nil
                            :param_fields               {field-id {:id               field-id
                                                                   :table_id         table-id
                                                                   :display_name     display-name
@@ -447,35 +446,6 @@
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403 (format "dashboard/%d" dashboard-id)))))))))
 
-(deftest param-values-test
-  (testing "Don't return `param_values` for Fields for which the current User has no data perms."
-    (mt/with-temp-copy-of-db
-      (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
-      (perms/grant-permissions! (perms-group/all-users) (perms/table-read-path (mt/id :venues)))
-      (mt/with-temp* [Dashboard     [{dashboard-id :id} {:name "Test Dashboard"}]
-                      Card          [{card-id :id}      {:name "Dashboard Test Card"}]
-                      DashboardCard [{_ :id}            {:dashboard_id       dashboard-id
-                                                         :card_id            card-id
-                                                         :parameter_mappings [{:card_id      card-id
-                                                                               :parameter_id "foo"
-                                                                               :target       [:dimension
-                                                                                              [:field (mt/id :venues :name) nil]]}
-                                                                              {:card_id      card-id
-                                                                               :parameter_id "bar"
-                                                                               :target       [:dimension
-                                                                                              [:field (mt/id :categories :name) nil]]}]}]]
-
-        (is (= {(mt/id :venues :name) {:values                ["20th Century Cafe"
-                                                               "25°"
-                                                               "33 Taps"]
-                                       :field_id              (mt/id :venues :name)
-                                       :human_readable_values []}}
-               (let [response (:param_values (mt/user-http-request :rasta :get 200 (str "dashboard/" dashboard-id)))]
-                 (into {} (for [[field-id m] response]
-                            [field-id (update m :values (partial take 3))])))))))))
-
-
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             PUT /api/dashboard/:id                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -525,7 +495,21 @@
             ;; In the interest of un-busting the e2e tests let's just check to make sure the endpoint no-ops
             (is (=? {:id dashboard-id}
                     (mt/user-http-request :rasta :put 200 (str "dashboard/" dashboard-id)
-                                          {:cards [(select-keys dashcard [:id :card_id :row_col :size_x :size_y])]})))))))))
+                                          {:cards [(select-keys dashcard [:id :card_id :row_col :size_x :size_y])]})))))))
+    (testing "auto_apply_filters test"
+      (doseq [enabled? [true false]]
+        (mt/with-temp Dashboard [{dashboard-id :id} {:name "Test Dashboard"
+                                                     :auto_apply_filters enabled?}]
+          (testing "Can set it"
+            (mt/user-http-request :rasta :put 200 (str "dashboard/" dashboard-id)
+                                  {:auto_apply_filters (not enabled?)})
+            (is (= (not enabled?)
+                   (t2/select-one-fn :auto_apply_filters Dashboard :id dashboard-id))))
+          (testing "If not in put it is not changed"
+            (mt/user-http-request :rasta :put 200 (str "dashboard/" dashboard-id)
+                                  {:description "foo"})
+            (is (= (not enabled?)
+                   (t2/select-one-fn :auto_apply_filters Dashboard :id dashboard-id)))))))))
 
 (deftest update-dashboard-guide-columns-test
   (testing "PUT /api/dashboard/:id"

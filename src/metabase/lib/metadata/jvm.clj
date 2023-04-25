@@ -1,4 +1,4 @@
- (ns metabase.lib.metadata.jvm
+(ns metabase.lib.metadata.jvm
   "Implementation(s) of [[metabase.lib.metadata.protocols/MetadataProvider]] only for the JVM."
   (:require
    [metabase.lib.metadata.cached-provider :as lib.metadata.cached-provider]
@@ -13,7 +13,7 @@
     :metadata/database :metabase.models.database/Database
     :metadata/table    :metabase.models.table/Table
     :metadata/field    :metabase.models.field/Field
-    :metadata/card     :metabase.models.card/Card
+    :metadata/card     :model/Card
     :metadata/metric   :metabase.models.metric/Metric
     :metadata/segment  :metabase.models.segment/Segment))
 

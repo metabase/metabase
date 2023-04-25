@@ -71,7 +71,7 @@
    stage-number   :- :int
    unique-name-fn :- fn?]
   (not-empty
-   (for [breakout (lib.breakout/breakouts query stage-number)]
+   (for [breakout (lib.breakout/breakouts-metadata query stage-number)]
      (assoc breakout
             :lib/source               :source/breakouts
             :lib/source-column-alias  (:name breakout)
@@ -129,10 +129,15 @@
      (for [col  (stage-metadata query previous-stage-number)
            :let [source-alias (or ((some-fn :lib/desired-column-alias :lib/source-column-alias) col)
                                   (lib.metadata.calculation/column-name query stage-number col))]]
-       (assoc col
-              :lib/source               :source/previous-stage
-              :lib/source-column-alias  source-alias
-              :lib/desired-column-alias (unique-name-fn source-alias))))))
+       (-> col
+           (assoc :lib/source               :source/previous-stage
+                  :lib/source-column-alias  source-alias
+                  :lib/desired-column-alias (unique-name-fn source-alias))
+           ;; do not retain `:temporal-unit`; it's not like we're doing a extract(month from <x>) twice, in both
+           ;; stages of a query. It's a little hacky that we're manipulating `::lib.field` keys directly here since
+           ;; they're presumably supposed to be private-ish, but I don't have a more elegant way of solving this sort
+           ;; of problem at this point in time.
+           (dissoc ::lib.field/temporal-unit))))))
 
 (mu/defn ^:private saved-question-metadata :- [:maybe lib.metadata.calculation/ColumnsWithUniqueAliases]
   "Metadata associated with a Saved Question, if `:source-table` is a `card__<id>` string."

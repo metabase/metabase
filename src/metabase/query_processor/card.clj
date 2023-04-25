@@ -108,7 +108,8 @@
              ;; specified by `:widget-type`. Non-Field-filter parameters just have `:type`. So prefer
              ;; `:widget-type` if available but fall back to `:type` if not.
              (cond
-               (= tag-type :dimension)
+               (and (= tag-type :dimension)
+                    (not= widget-type :none))
                [param-name widget-type]
 
                (contains? mbql.s/raw-value-template-tag-types tag-type)
@@ -135,7 +136,7 @@
 
   Background: some more-specific parameter types aren't allowed for certain types of parameters.
   See [[metabase.mbql.schema/parameter-types]] for details."
-  [parameter-name widget-type :- mbql.s/ParameterType parameter-value-type :- mbql.s/ParameterType]
+  [parameter-name widget-type :- mbql.s/WidgetType parameter-value-type :- mbql.s/ParameterType]
   (when-not (allowed-parameter-type-for-template-tag-widget-type? parameter-value-type widget-type)
     (let [allowed-types (allowed-parameter-types-for-template-tag-widget-type widget-type)]
       (throw (ex-info (tru "Invalid parameter type {0} for parameter {1}. Parameter type must be one of: {2}"

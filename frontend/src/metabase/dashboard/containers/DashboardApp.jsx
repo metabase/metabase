@@ -4,8 +4,8 @@ import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import _ from "underscore";
 import { useUnmount } from "react-use";
-
 import { t } from "ttag";
+import useBeforeUnload from "metabase/hooks/use-before-unload";
 
 import title from "metabase/hoc/Title";
 import favicon from "metabase/hoc/Favicon";
@@ -18,12 +18,12 @@ import { useLoadingTimer } from "metabase/hooks/use-loading-timer";
 import { useWebNotification } from "metabase/hooks/use-web-notification";
 
 import { fetchDatabaseMetadata } from "metabase/redux/metadata";
-import { getIsNavbarOpen, closeNavbar, setErrorPage } from "metabase/redux/app";
+import { closeNavbar, getIsNavbarOpen, setErrorPage } from "metabase/redux/app";
 
 import { getDatabases, getMetadata } from "metabase/selectors/metadata";
 import {
-  getUserIsAdmin,
   canManageSubscriptions,
+  getUserIsAdmin,
 } from "metabase/selectors/user";
 
 import { getEmbedOptions } from "metabase/selectors/embed";
@@ -35,27 +35,28 @@ import Dashboards from "metabase/entities/dashboards";
 
 import * as dashboardActions from "../actions";
 import {
-  getIsEditing,
-  getIsSharing,
-  getDashboardBeforeEditing,
-  getIsEditingParameter,
-  getIsDirty,
-  getDashboardComplete,
   getCardData,
-  getSlowCards,
+  getClickBehaviorSidebarDashcard,
+  getDashboardBeforeEditing,
+  getDashboardComplete,
+  getDocumentTitle,
   getEditingParameter,
+  getFavicon,
+  getIsAdditionalInfoVisible,
+  getIsAddParameterPopoverOpen,
+  getIsDirty,
+  getIsEditing,
+  getIsEditingParameter,
+  getIsHeaderVisible,
+  getIsLoadingComplete,
+  getIsRunning,
+  getIsSharing,
+  getLoadingStartTime,
   getParameters,
   getParameterValues,
-  getLoadingStartTime,
-  getClickBehaviorSidebarDashcard,
-  getIsAddParameterPopoverOpen,
+  getDraftParameterValues,
   getSidebar,
-  getFavicon,
-  getDocumentTitle,
-  getIsRunning,
-  getIsLoadingComplete,
-  getIsHeaderVisible,
-  getIsAdditionalInfoVisible,
+  getSlowCards,
 } from "../selectors";
 
 function getDashboardId({ dashboardId, params }) {
@@ -83,6 +84,7 @@ const mapStateToProps = (state, props) => {
     editingParameter: getEditingParameter(state, props),
     parameters: getParameters(state, props),
     parameterValues: getParameterValues(state, props),
+    draftParameterValues: getDraftParameterValues(state, props),
     metadata: getMetadata(state),
     loadingStartTime: getLoadingStartTime(state),
     clickBehaviorSidebarDashcard: getClickBehaviorSidebarDashcard(state),
@@ -109,7 +111,7 @@ const mapDispatchToProps = {
 
 // NOTE: should use DashboardControls and DashboardData HoCs here?
 const DashboardApp = props => {
-  const { isRunning, isLoadingComplete, dashboard } = props;
+  const { isRunning, isLoadingComplete, dashboard, isEditing, isDirty } = props;
 
   const options = parseHashOptions(window.location.hash);
   const editingOnLoad = options.edit;
@@ -131,6 +133,8 @@ const DashboardApp = props => {
   const [requestPermission, showNotification] = useWebNotification();
 
   useUnmount(props.reset);
+
+  useBeforeUnload(isEditing && isDirty);
 
   useEffect(() => {
     if (isLoadingComplete) {

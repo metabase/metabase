@@ -20,6 +20,11 @@
   (deferred-tru "The OpenAI Organization ID.")
   :visibility :settings-manager)
 
+(defsetting metabot-default-embedding-model
+  (deferred-tru "The default embeddings model to be used for metabot.")
+  :visibility :internal
+  :default "text-embedding-ada-002")
+
 (defsetting metabot-get-prompt-templates-url
   (deferred-tru "The URL in which metabot versioned prompt templates are stored.")
   :visibility :settings-manager
@@ -104,3 +109,9 @@
   :type :integer
   :visibility :internal
   :default 60)
+
+(defsetting metabot-prompt-generator-token-limit
+  (deferred-tru "When attempting to assemble prompts, the threshold at which prompt will no longer be appended to.")
+  :type :integer
+  :visibility :internal
+  :default 6000)
