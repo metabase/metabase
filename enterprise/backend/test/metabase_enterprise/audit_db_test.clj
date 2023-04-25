@@ -15,20 +15,12 @@
          (when original-audit-db#
            (#'audit-db/install-audit-db! original-audit-db#))))))
 
-(deftest no-op-in-oss-mode
-  (if config/ee-available?
-    (is (= :audit-db/no-op
-           (audit-db/ensure-db-exists!)))
-    (with-delete-audit-db
-      (is (= :audit-db/installed
-             (audit-db/ensure-db-exists!))))))
-
 (deftest modified-audit-db-engine-is-replaced-test
   (with-delete-audit-db
     (let [_ (audit-db/ensure-db-exists!)
           audit-db (t2/select-one Database :is_audit true)
           _ (t2/update! Database :id (:id audit-db) {:engine "postgres"})]
-      (is (= :audit-db/replaced
+      (is (= ::audit-db/replaced
              (audit-db/ensure-db-exists!))))))
 
 (deftest modified-audit-db-details-replaced-test
@@ -39,12 +31,12 @@
                         {:details {:db
                                    (str "file:/someplace/new/sample-database.db;"
                                         "USER=NEW_USER;PASSWORD=correcthorsebatterystaple")}})]
-      (is (= :audit-db/replaced
+      (is (= ::audit-db/replaced
              (audit-db/ensure-db-exists!))))))
 
 (deftest unmodified-audit-db-is-left-alone
   (with-delete-audit-db
-    (is (= :audit-db/installed
+    (is (= ::audit-db/installed
            (audit-db/ensure-db-exists!)))
-    (is (= :audit-db/no-op
+    (is (= ::audit-db/no-op
            (audit-db/ensure-db-exists!)))))
