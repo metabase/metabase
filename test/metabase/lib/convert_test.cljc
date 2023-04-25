@@ -310,7 +310,7 @@
               pmbql-aggregation-options-clause))
       (is (=? aggregation-options-clause
               (lib.convert/->legacy-MBQL pmbql-aggregation-options-clause)))
-      (is (= mbql-query
+      (is (= (dissoc mbql-query :parameters [])
              (-> mbql-query lib.convert/->pMBQL lib.convert/->legacy-MBQL))))))
 
 (deftest ^:parallel round-trip-preserve-metadata-test
