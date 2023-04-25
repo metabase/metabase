@@ -14,7 +14,7 @@
     :metadata/database :metabase.models.database/Database
     :metadata/table    :metabase.models.table/Table
     :metadata/field    :metabase.models.field/Field
-    :metadata/card     :metabase.models.card/Card
+    :metadata/card     :model/Card
     :metadata/metric   :metabase.models.metric/Metric
     :metadata/segment  :metabase.models.segment/Segment))
 

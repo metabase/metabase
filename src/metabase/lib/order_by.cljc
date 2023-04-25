@@ -155,7 +155,7 @@
                               (some (fn [existing-order-by]
                                       (lib.equality/= (lib.ref/ref x) existing-order-by))
                                     existing-order-bys))
-         breakouts          (not-empty (lib.breakout/breakouts query stage-number))
+         breakouts          (not-empty (lib.breakout/breakouts-metadata query stage-number))
          aggregations       (not-empty (lib.aggregation/aggregations query stage-number))
          columns            (if (or breakouts aggregations)
                               (concat breakouts aggregations)

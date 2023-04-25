@@ -42,36 +42,38 @@
   (when (seq new-field-metadatas)
     (t2/insert-returning-pks! Field
       (for [{:keys [database-type database-is-auto-increment database-required base-type effective-type coercion-strategy
-                    field-comment database-position nfc-path visibility-type], field-name :name :as field} new-field-metadatas]
+                    field-comment database-position nfc-path visibility-type json-unfolding]
+             field-name :name :as field} new-field-metadatas]
         (do
-         (when (and effective-type
-                    base-type
-                    (not= effective-type base-type)
-                    (nil? coercion-strategy))
-           (log/warn (u/format-color 'red
-                                     (str
-                                      "WARNING: Field `%s`: effective type `%s` provided but no coercion strategy provided."
-                                      " Using base-type: `%s`")
-                                     field-name
-                                     effective-type
-                                     base-type)))
-         {:table_id                  (u/the-id table)
-          :name                      field-name
-          :display_name              (humanization/name->human-readable-name field-name)
-          :database_type             (or database-type "NULL") ; placeholder for Fields w/ no type info (e.g. Mongo) & all NULL
-          :base_type                 base-type
-          ;; todo test this?
-          :effective_type            (if (and effective-type coercion-strategy) effective-type base-type)
-          :coercion_strategy         (when effective-type coercion-strategy)
-          :semantic_type             (common/semantic-type field)
-          :parent_id                 parent-id
-          :nfc_path                  nfc-path
-          :description               field-comment
-          :position                  database-position
-          :database_position         database-position
-          :database_is_auto_increment (or database-is-auto-increment false)
-          :database_required         (or database-required false)
-          :visibility_type           (or visibility-type :normal)})))))
+          (when (and effective-type
+                     base-type
+                     (not= effective-type base-type)
+                     (nil? coercion-strategy))
+            (log/warn (u/format-color 'red
+                                      (str
+                                       "WARNING: Field `%s`: effective type `%s` provided but no coercion strategy provided."
+                                       " Using base-type: `%s`")
+                                      field-name
+                                      effective-type
+                                      base-type)))
+          {:table_id                   (u/the-id table)
+           :name                       field-name
+           :display_name               (humanization/name->human-readable-name field-name)
+           :database_type              (or database-type "NULL") ; placeholder for Fields w/ no type info (e.g. Mongo) & all NULL
+           :base_type                  base-type
+           ;; todo test this?
+           :effective_type             (if (and effective-type coercion-strategy) effective-type base-type)
+           :coercion_strategy          (when effective-type coercion-strategy)
+           :semantic_type              (common/semantic-type field)
+           :parent_id                  parent-id
+           :nfc_path                   nfc-path
+           :description                field-comment
+           :position                   database-position
+           :database_position          database-position
+           :json_unfolding             (or json-unfolding false)
+           :database_is_auto_increment (or database-is-auto-increment false)
+           :database_required          (or database-required false)
+           :visibility_type            (or visibility-type :normal)})))))
 
 (s/defn ^:private create-or-reactivate-fields! :- (s/maybe [i/FieldInstance])
   "Create (or reactivate) Metabase Field object(s) for any Fields in `new-field-metadatas`. Does *NOT* recursively

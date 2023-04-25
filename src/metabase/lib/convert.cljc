@@ -249,14 +249,17 @@
   ;; In pMBQL, the :lib/stage-metadata is attached to the same stage it applies to.
   ;; So when chaining pMBQL stages back into legacy form, if stage n has :lib/stage-metadata, stage n+1 needs
   ;; :source-metadata attached.
-  (first (reduce (fn [[inner stage-metadata] stage]
-                   [(cond-> (->legacy-MBQL stage)
-                      inner          (assoc :source-query inner)
-                      stage-metadata (assoc :source-metadata (stage-metadata->legacy-metadata stage-metadata)))
-                    ;; Get the :lib/stage-metadata off the original pMBQL stage, not the converted one.
-                    (:lib/stage-metadata stage)])
-                 nil
-                 stages)))
+  (let [inner-query (first (reduce (fn [[inner stage-metadata] stage]
+                                     [(cond-> (->legacy-MBQL stage)
+                                        inner          (assoc :source-query inner)
+                                        stage-metadata (assoc :source-metadata (stage-metadata->legacy-metadata stage-metadata)))
+                                      ;; Get the :lib/stage-metadata off the original pMBQL stage, not the converted one.
+                                      (:lib/stage-metadata stage)])
+                                   nil
+                                   stages))]
+    (cond-> inner-query
+      ;; If this is a native query, inner query will be used like: `{:type :native :native #_inner-query {:query ...}}`
+      (:native inner-query) (set/rename-keys {:native :query}))))
 
 (defmethod ->legacy-MBQL :dispatch-type/map [m]
   (into {}
@@ -322,12 +325,13 @@
 
 (defmethod ->legacy-MBQL :mbql/query [query]
   (let [base        (disqualify query)
+        parameters  (:parameters base)
         inner-query (chain-stages base)
         query-type  (if (-> query :stages last :lib/type (= :mbql.stage/native))
                       :native
                       :query)]
     (merge (-> base
-               (dissoc :stages)
+               (dissoc :stages :parameters)
                (update-vals ->legacy-MBQL))
-           {:type      query-type
-            query-type inner-query})))
+           (cond-> {:type query-type query-type inner-query}
+             (seq parameters) (assoc :parameters parameters)))))

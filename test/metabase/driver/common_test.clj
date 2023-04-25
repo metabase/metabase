@@ -65,3 +65,12 @@
             ip-address-field (first
                               (filter #(= (:name %) "cloud-ip-address-info") connection-props))]
         (is (re-find #"If your database is behind a firewall" (:placeholder ip-address-field)))))))
+
+(deftest ^:parallel json-unfolding-default-test
+  (testing "JSON Unfolding database support details behave as they're supposed to"
+    (are [details expected] (= expected
+                               (driver.common/json-unfolding-default {:details details}))
+      {}                      true
+      {:json-unfolding nil}   true
+      {:json-unfolding true}  true
+      {:json-unfolding false} false)))

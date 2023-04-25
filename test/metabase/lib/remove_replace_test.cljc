@@ -41,16 +41,16 @@
   (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
                   (lib/breakout (lib/field "VENUES" "ID"))
                   (lib/breakout (lib/field "VENUES" "NAME")))
-        breakouts (lib/current-breakouts query)]
+        breakouts (lib/breakouts query)]
     (is (= 2 (count breakouts)))
     (is (= 1 (-> query
                  (lib/remove-clause (first breakouts))
-                 (lib/current-breakouts)
+                 (lib/breakouts)
                  count)))
     (is (= 0 (-> query
                  (lib/remove-clause (first breakouts))
                  (lib/remove-clause (second breakouts))
-                 (lib/current-breakouts)
+                 (lib/breakouts)
                  count)))
     (testing "removing breakout with dependent should not be allowed"
       (is (thrown-with-msg?
@@ -77,7 +77,7 @@
                    ;; TODO Should be able to create a ref with lib/field [#29763]
                    (lib/filter (lib/= [:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} "ID"] 1))
                    (lib/remove-clause 0 (first breakouts))
-                   (lib/current-breakouts 0)
+                   (lib/breakouts 0)
                    count))))))
 
 (deftest ^:parallel remove-clause-fields-test
@@ -157,10 +157,10 @@
   (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
                   (lib/breakout (lib/field (meta/id :venues :id)))
                   (lib/breakout (lib/field (meta/id :venues :name))))
-        breakouts (lib/current-breakouts query)
+        breakouts (lib/breakouts query)
         replaced (-> query
                      (lib/replace-clause (first breakouts) (lib/field (meta/id :venues :price))))
-        replaced-breakouts (lib/current-breakouts replaced)]
+        replaced-breakouts (lib/breakouts replaced)]
     (is (= 2 (count breakouts)))
     (is (=? [:field {} (meta/id :venues :price)]
             (first replaced-breakouts)))
@@ -181,7 +181,7 @@
                               ;; TODO Should be able to create a ref with lib/field [#29763]
                               (lib/filter (lib/= [:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} "ID"] 1))
                               (lib/replace-clause 0 (second breakouts) (lib/field "VENUES" "PRICE"))
-                              (lib/current-breakouts 0)))))))
+                              (lib/breakouts 0)))))))
 
 (deftest ^:parallel replace-clause-fields-by-test
   (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")

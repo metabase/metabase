@@ -59,6 +59,9 @@ describe("scenarios > metabot", () => {
     cy.intercept("POST", "/api/metabot/database/*", PROMPT_RESPONSE).as(
       "databasePrompt",
     );
+    cy.intercept("POST", "/api/metabot/feedback", {
+      message: "Thanks for your feedback",
+    });
   });
 
   it("should allow to submit prompts based on the database", () => {
@@ -108,6 +111,9 @@ describeWithSnowplow("scenarios > metabot", () => {
     cy.intercept("POST", "/api/metabot/database/*", PROMPT_RESPONSE).as(
       "databasePrompt",
     );
+    cy.intercept("POST", "/api/metabot/feedback", {
+      message: "Thanks for your feedback",
+    });
   });
 
   afterEach(() => {
@@ -117,13 +123,16 @@ describeWithSnowplow("scenarios > metabot", () => {
   it("should send snowplow events when submitting metabot feedback", () => {
     cy.createQuestion(MODEL_DETAILS);
     enableMetabot();
+    resetSnowplow();
     verifyHomeMetabot();
     verifyMetabotFeedback();
 
-    // 1 - new_instance_created
-    // 2 - pageview
-    // 4 - metabot_feedback_received
-    expectGoodSnowplowEvents(3);
+    // home page_view
+    // metabot page_view
+    // metabot_query_run
+    // metabot_feedback_received
+    // metabot_query_run
+    expectGoodSnowplowEvents(5);
   });
 });
 

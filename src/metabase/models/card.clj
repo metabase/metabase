@@ -25,15 +25,39 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [toucan.models :as models]
-   [toucan2.core :as t2]))
+   [methodical.core :as methodical]
+   [toucan2.core :as t2]
+   [toucan2.tools.hydrate :as t2.hydrate]))
 
 (set! *warn-on-reflection* true)
 
-(models/defmodel Card :report_card)
+(def Card
+  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], not it's a reference to the toucan2 model name.
+  We'll keep this till we replace all the Card symbol in our codebase."
+  :model/Card)
+
+(methodical/defmethod t2/table-name :model/Card [_model] :report_card)
+
+(methodical/defmethod t2.hydrate/model-for-automagic-hydration [#_model :default #_k :card]
+  [_original-model _k]
+  :model/Card)
+
+(t2/deftransforms :model/Card
+  {:dataset_query          mi/transform-metabase-query
+   :display                mi/transform-keyword
+   :embedding_params       mi/transform-json
+   :query_type             mi/transform-keyword
+   :result_metadata        mi/transform-result-metadata
+   :visualization_settings mi/transform-visualization-settings
+   :parameters             mi/transform-parameters-list
+   :parameter_mappings     mi/transform-parameters-list})
 
 ;;; You can read/write a Card if you can read/write its parent Collection
-(derive Card ::perms/use-parent-collection-perms)
+(doto :model/Card
+  (derive :metabase/model)
+  (derive ::perms/use-parent-collection-perms)
+  (derive :hook/timestamped?)
+  (derive :hook/entity-id))
 
 ;;; -------------------------------------------------- Hydration --------------------------------------------------
 
@@ -81,7 +105,7 @@
 
 ;;; --------------------------------------------------- Revisions ----------------------------------------------------
 
-(defmethod revision/serialize-instance Card
+(defmethod revision/serialize-instance :model/Card
   ([instance]
    (revision/serialize-instance Card nil instance))
   ([_model _id instance]
@@ -256,15 +280,6 @@
       (params/assert-valid-parameter-mappings card)
       (collection/check-collection-namespace Card (:collection_id card)))))
 
-(defn- post-insert [card]
-  ;; if this Card has any native template tag parameters we need to update FieldValues for any Fields that are
-  ;; eligible for FieldValues and that belong to a 'On-Demand' database
-  (u/prog1 card
-    (when-let [field-ids (seq (params/card->template-tag-field-ids card))]
-      (log/info "Card references Fields in params:" field-ids)
-      (field-values/update-field-values-for-on-demand-dbs! field-ids))
-    (parameter-card/upsert-or-delete-from-parameters! "card" (:id card) (:parameters card))))
-
 (defenterprise pre-update-check-sandbox-constraints
  "Checks additional sandboxing constraints for Metabase Enterprise Edition. The OSS implementation is a no-op."
   metabase-enterprise.sandbox.models.group-table-access-policy
@@ -339,7 +354,7 @@
           old-card-info (when (or (contains? changes :dataset)
                                   (:dataset_query changes)
                                   (get-in changes [:dataset_query :native]))
-                          (t2/select-one [Card :dataset_query :dataset] :id id))]
+                          (t2/select-one [:model/Card :dataset_query :dataset] :id id))]
       ;; if the Card is archived, then remove it from any Dashboards
       (when archived?
         (t2/delete! 'DashboardCard :card_id id))
@@ -381,8 +396,38 @@
       (pre-update-check-sandbox-constraints changes)
       (assert-valid-model (merge old-card-info changes)))))
 
+(t2/define-after-select :model/Card
+  [card]
+  (public-settings/remove-public-uuid-if-public-sharing-is-disabled card))
+
+(t2/define-before-insert :model/Card
+  [card]
+  (-> card
+      maybe-normalize-query
+      populate-result-metadata
+      pre-insert
+      populate-query-fields))
+
+(t2/define-after-insert :model/Card
+  [card]
+  (u/prog1 card
+    (when-let [field-ids (seq (params/card->template-tag-field-ids card))]
+      (log/info "Card references Fields in params:" field-ids)
+      (field-values/update-field-values-for-on-demand-dbs! field-ids))
+    (parameter-card/upsert-or-delete-from-parameters! "card" (:id card) (:parameters card))))
+
+(t2/define-before-update :model/Card
+  [card]
+  (-> (merge (t2/instance :model/Card {:id (:id card)})
+             (t2/changes card))
+      maybe-normalize-query
+      populate-result-metadata
+      pre-update
+      populate-query-fields))
+
 ;; Cards don't normally get deleted (they get archived instead) so this mostly affects tests
-(defn- pre-delete [{:keys [id]}]
+(t2/define-before-delete :model/Card
+  [{:keys [id] :as _card}]
   ;; delete any ParameterCard that the parameters on this card linked to
   (parameter-card/delete-all-for-parameterized-object! "card" id)
   ;; delete any ParameterCard linked to this card
@@ -390,38 +435,7 @@
   (t2/delete! 'ModerationReview :moderated_item_type "card", :moderated_item_id id)
   (t2/delete! 'Revision :model "Card", :model_id id))
 
-(defn- result-metadata-out
-  "Transform the Card result metadata as it comes out of the DB. Convert columns to keywords where appropriate."
-  [metadata]
-  (when-let [metadata (not-empty (mi/json-out-with-keywordization metadata))]
-    (seq (map mbql.normalize/normalize-source-metadata metadata))))
-
-(models/add-type! ::result-metadata
-  :in mi/json-in
-  :out result-metadata-out)
-
-(mi/define-methods
- Card
- {:hydration-keys (constantly [:card])
-  :types          (constantly {:dataset_query          :metabase-query
-                               :display                :keyword
-                               :embedding_params       :json
-                               :query_type             :keyword
-                               :result_metadata        ::result-metadata
-                               :visualization_settings :visualization-settings
-                               :parameters             :parameters-list
-                               :parameter_mappings     :parameters-list})
-  :properties     (constantly {::mi/timestamped? true
-                               ::mi/entity-id    true})
-  ;; Make sure we normalize the query before calling `pre-update` or `pre-insert` because some of the
-  ;; functions those fns call assume normalized queries
-  :pre-update     (comp populate-query-fields pre-update populate-result-metadata maybe-normalize-query)
-  :pre-insert     (comp populate-query-fields pre-insert populate-result-metadata maybe-normalize-query)
-  :post-insert    post-insert
-  :pre-delete     pre-delete
-  :post-select    public-settings/remove-public-uuid-if-public-sharing-is-disabled})
-
-(defmethod serdes/hash-fields Card
+(defmethod serdes/hash-fields :model/Card
   [_card]
   [:name (serdes/hydrated-hash :collection) :created_at])
 

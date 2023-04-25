@@ -71,7 +71,7 @@
    stage-number   :- :int
    unique-name-fn :- fn?]
   (not-empty
-   (for [breakout (lib.breakout/breakouts query stage-number)]
+   (for [breakout (lib.breakout/breakouts-metadata query stage-number)]
      (assoc breakout
             :lib/source               :source/breakouts
             :lib/source-column-alias  (:name breakout)

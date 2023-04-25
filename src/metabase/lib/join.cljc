@@ -1,6 +1,7 @@
 (ns metabase.lib.join
   (:require
    [medley.core :as m]
+   [metabase.lib.common :as lib.common]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata :as lib.metadata]
@@ -8,7 +9,6 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.util :as lib.util]
    [metabase.shared.util.i18n :as i18n]
@@ -204,41 +204,6 @@
                                            :stage-number stage-number
                                            :f            f})))))
 
-;; TODO this is basically the same as lib.common/->op-args,
-;; but requiring lib.common leads to crircular dependencies:
-;; join -> common -> field -> join.
-(defmulti ^:private ->join-condition
-  {:arglists '([query stage-number x])}
-  (fn [_query _stage-number x]
-    (lib.dispatch/dispatch-value x))
-  :hierarchy lib.hierarchy/hierarchy)
-
-(defmethod ->join-condition :default
-  [_query _stage-number x]
-  x)
-
-(defmethod ->join-condition :lib/external-op
-  [query stage-number {:keys [operator options args] :or {options {}}}]
-  (->join-condition query stage-number
-                    (lib.options/ensure-uuid (into [operator options] args))))
-
-(defmethod ->join-condition :dispatch-type/fn
-  [query stage-number f]
-  (->join-condition query stage-number (f query stage-number)))
-
-(mu/defn join-condition :- [:or
-                            fn?
-                            ::lib.schema.expression/boolean]
-  "Create a MBQL condition expression to include in the `:conditions` in a join map.
-
-  - One arity: return a function that will be resolved later once we have `query` and `stage-number.`
-  - Three arity: return the join condition expression immediately."
-  ([x]
-   (fn [query stage-number]
-     (join-condition query stage-number x)))
-  ([query stage-number x]
-   (->join-condition query stage-number x)))
-
 (defn join-clause
   "Create an MBQL join map from something that can conceptually be joined against. A `Table`? An MBQL or native query? A
   Saved Question? You should be able to join anything, and this should return a sensible MBQL join map."
@@ -255,7 +220,7 @@
 
   ([query stage-number x conditions]
    (cond-> (join-clause query stage-number x)
-     conditions (assoc :conditions (mapv #(join-condition query stage-number %) conditions)))))
+     conditions (assoc :conditions (mapv #(lib.common/->op-arg query stage-number %) conditions)))))
 
 (defmulti with-join-fields-method
   "Impl for [[with-join-fields]]."
@@ -267,7 +232,9 @@
 (defmethod with-join-fields-method :dispatch-type/fn
   [f fields]
   (fn [query stage-number]
-    (with-join-fields-method (f query stage-number) fields)))
+    (with-join-fields-method (f query stage-number) (if (keyword? fields)
+                                                      fields
+                                                      (mapv #(lib.common/->op-arg query stage-number %) fields)))))
 
 (defmethod with-join-fields-method :mbql/join
   [join fields]
@@ -276,7 +243,7 @@
 (mu/defn with-join-fields
   "Update a join (or a function that will return a join) to include `:fields`, either `:all`, `:none`, or a sequence of
   references."
-  [x fields :- ::lib.schema.join/fields]
+  [x fields]
   (with-join-fields-method x fields))
 
 (mu/defn join :- ::lib.schema/query

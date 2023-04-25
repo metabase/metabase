@@ -10,5 +10,13 @@
         ]
       }
     ]
-  }
+  },
+  "overrides": [
+    {
+      "files": ["**/*.unit.spec.{js,jsx,ts,tsx}"],
+      "rules": {
+        "no-console": 0
+      }
+    }
+  ]
 }

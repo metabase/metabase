@@ -5,6 +5,7 @@ import {
   visitQuestion,
   visitDashboard,
   openQuestionActions,
+  rightSidebar,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -200,5 +201,44 @@ describe("scenarios > public", () => {
         });
       }),
     );
+
+    describe("Disable auto-apply filters", () => {
+      before(() => {
+        cy.signInAsAdmin();
+        visitDashboard(dashboardId);
+
+        openDashboardSidebar();
+        rightSidebar()
+          .findByLabelText("Auto-apply filters")
+          .click()
+          .should("not.be.checked");
+      });
+
+      it("should be able to view public dashboards by anonymous users", () => {
+        cy.signOut();
+        cy.visit(dashboardPublicLink);
+        cy.contains(COUNT_ALL);
+
+        cy.button("Apply").should("not.exist");
+
+        cy.contains("Text").click();
+        cy.contains("Doohickey").click();
+        cy.contains("Add filter").click();
+
+        cy.button("Apply").should("be.visible").click();
+        cy.button("Apply").should("not.exist");
+
+        cy.contains(COUNT_DOOHICKEY);
+
+        // Enter full-screen button
+        cy.icon("expand");
+      });
+    });
   });
 });
+
+function openDashboardSidebar() {
+  cy.get("main header").within(() => {
+    cy.icon("info").click();
+  });
+}
