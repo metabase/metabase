@@ -412,9 +412,9 @@
       ;; description, position, collection_id, and collection_position are allowed to be `nil`. Everything else must be
       ;; non-nil
       (when-let [updates (not-empty (u/select-keys-when dash-updates
-                                      :present #{:description :position :collection_id :collection_position :cache_ttl}
-                                      :non-nil #{:name :parameters :caveats :points_of_interest :show_in_getting_started :enable_embedding
-                                                 :embedding_params :archived :auto_apply_filters}))]
+                                                        :present #{:description :position :collection_id :collection_position :cache_ttl}
+                                                        :non-nil #{:name :parameters :caveats :points_of_interest :show_in_getting_started :enable_embedding
+                                                                   :embedding_params :archived :auto_apply_filters}))]
         (t2/update! Dashboard id updates))))
   ;; now publish an event and return the updated Dashboard
   (let [dashboard (t2/select-one Dashboard :id id)]

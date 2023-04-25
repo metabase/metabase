@@ -209,6 +209,12 @@
              (:dataset model-object) (assoc :model "dataset")))
          (take 5))))
 
+(api/defendpoint GET "/most_recently_viewed_dashboard"
+  "Get the most recently viewed dashboard for the current user. Returns a 204 if the user has not viewed any dashboards
+   in the last 24 hours."
+  []
+  (view-log/most-recently-viewed-dashboard))
+
 (defn- official?
   "Returns true if the item belongs to an official collection. False otherwise. Assumes that `:authority_level` exists
   if the item can be placed in a collection."
