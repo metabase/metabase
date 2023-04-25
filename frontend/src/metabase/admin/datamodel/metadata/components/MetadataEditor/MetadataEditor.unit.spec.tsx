@@ -164,6 +164,21 @@ describe("MetadataEditor", () => {
       ).not.toBeChecked();
     });
 
+    it("should display sort options", async () => {
+      await setup();
+
+      userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
+      expect(
+        await screen.findByDisplayValue(ORDERS_TABLE.display_name),
+      ).toBeInTheDocument();
+
+      userEvent.click(screen.getByLabelText("Sort"));
+      expect(await screen.findByText("Database")).toBeInTheDocument();
+      expect(screen.getByText("Alphabetical")).toBeInTheDocument();
+      expect(screen.getByText("Custom")).toBeInTheDocument();
+      expect(screen.getByText("Smart")).toBeInTheDocument();
+    });
+
     it("should allow to navigate to and from table settings", async () => {
       await setup();
 

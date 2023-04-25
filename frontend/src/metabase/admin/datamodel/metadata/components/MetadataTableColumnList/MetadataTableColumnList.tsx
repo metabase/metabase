@@ -157,6 +157,7 @@ const TableFieldOrderDropdown = ({
         <span
           className="text-brand text-bold"
           style={{ textTransform: "none", letterSpacing: 0 }}
+          aria-label={t`Sort`}
         >
           <Icon
             className="ml1"
