@@ -2,6 +2,7 @@
   (:require [clojure.test :refer [deftest is]]
             [metabase-enterprise.audit-db :as audit-db]
             [metabase.models.database :refer [Database]]
+            [metabase.util.log :as log]
             [toucan2.core :as t2]))
 
 (defmacro with-delete-audit-db [& body]
@@ -12,6 +13,7 @@
        (finally
          (t2/delete! Database :is_audit true)
          (when original-audit-db#
+           (log/fatal (str "Original Audit DB: " (pr-str original-audit-db#)))
            (#'audit-db/install-audit-db! original-audit-db#))))))
 
 (deftest modified-audit-db-engine-is-replaced-test
@@ -35,7 +37,5 @@
 
 (deftest unmodified-audit-db-is-left-alone
   (with-delete-audit-db
-    (is (= ::audit-db/installed
-           (audit-db/ensure-db-exists!)))
-    (is (= ::audit-db/no-op
-           (audit-db/ensure-db-exists!)))))
+    (is (= ::audit-db/installed (audit-db/ensure-db-exists!)))
+    (is (= ::audit-db/no-op (audit-db/ensure-db-exists!)))))
