@@ -42,9 +42,8 @@
        :month-of-year   (i18n/trun "Month of year"   "Months of year"   n)
        :quarter-of-year (i18n/trun "Quarter of year" "Quarters of year" n)
        ;; e.g. :unknown-unit => "Unknown unit"
-       (as-> (str/split (name unit) #"-") <>
-         (update (vec <>) 0 str/capitalize)
-         (str/join \space <>))))))
+       (let [[unit & more] (str/split (name unit) #"-")]
+         (str/join \space (cons (str/capitalize unit) more)))))))
 
 (def ^:private TemporalIntervalAmount
   [:or [:enum :current :last :next] :int])
@@ -52,22 +51,22 @@
 (defn- interval-n->int [n]
   (if (number? n)
     n
-    (condp = n
+    (case n
       :current 0
       :next    1
       :last    -1
       0)))
 
 (mu/defn describe-temporal-interval :- ::lib.schema.common/non-blank-string
-  "Get a translated description of a temporal bucketing interval."
+  "Get a translated description of a temporal bucketing interval. If unit is unspecified, assume `:day`."
   [n    :- TemporalIntervalAmount
    unit :- [:maybe :keyword]]
-  (let [n (interval-n->int n)]
+  (let [n    (interval-n->int n)
+        unit (or unit :day)]
     (cond
-      (zero? n) (cond
-                  (= unit :day) (i18n/tru "Today")
-                  unit          (i18n/tru "This {0}" (describe-temporal-unit unit))
-                  :else         (i18n/tru "Today"))
+      (zero? n) (if (= unit :day)
+                  (i18n/tru "Today")
+                  (i18n/tru "This {0}" (describe-temporal-unit unit)))
       (= n 1)   (if (= unit :day)
                   (i18n/tru "Tomorrow")
                   (i18n/tru "Next {0}" (describe-temporal-unit unit)))
@@ -81,10 +80,13 @@
   "Get a translated description of a relative datetime interval, ported from
  `frontend/src/metabase-lib/queries/utils/query-time.js`.
 
-  e.g. if the relative interval is `-1 days`, then `n` = `-1` and `unit` = `:days`."
+  e.g. if the relative interval is `-1 days`, then `n` = `-1` and `unit` = `:day`.
+
+  If `:unit` is unspecified, assume `:day`."
   [n    :- TemporalIntervalAmount
    unit :- [:maybe :keyword]]
-  (let [n (interval-n->int n)]
+  (let [n    (interval-n->int n)
+        unit (or unit :day)]
     (cond
       (zero? n)
       (i18n/tru "Now")
