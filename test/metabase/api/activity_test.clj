@@ -96,7 +96,7 @@
                                      :description "rand-name2"
                                      :creator_id  (mt/user->id :crowberto)}]
                   Table     [table-1 {:name "rand-name"}]]
-    (testing "recent_views endpoint shows the current user's recently viewed items."
+    (testing "most_recently_viewed_dashboard endpoint shows the current user's most recently viewed dashboard."
       (mt/with-model-cleanup [ViewLog]
         (mt/with-test-user :crowberto
           (mt/with-temporary-setting-values [user-recent-views []]
