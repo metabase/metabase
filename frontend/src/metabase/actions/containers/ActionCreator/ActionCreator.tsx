@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import { connect } from "react-redux";
@@ -85,23 +85,18 @@ function ActionCreator({
   onUpdateAction,
   onSubmit,
   onClose,
-  initialAction,
 }: Props) {
   const {
     action,
     formSettings,
     isNew,
     canSave,
+    isDirty,
     ui: UIProps,
     handleActionChange,
     handleFormSettingsChange,
     renderEditorBody,
   } = useActionContext();
-
-  const isDirty = useMemo(
-    () => !_.isEqual(action, initialAction),
-    [action, initialAction],
-  );
 
   useBeforeUnload(isDirty);
 
