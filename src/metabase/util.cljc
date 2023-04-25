@@ -148,11 +148,9 @@
         (str text ".")))))
 
 (defn lower-case-en
-  "Locale-agnostic version of `clojure.string/lower-case`.
-  `clojure.string/lower-case` uses the default locale in conversions, turning
-  `ID` into `ıd`, in the Turkish locale. This function always uses the
-  `en-US` locale."
-  [^CharSequence s]
+  "Locale-agnostic version of [[clojure.string/lower-case]]. [[clojure.string/lower-case]] uses the default locale in
+  conversions, turning `ID` into `ıd`, in the Turkish locale. This function always uses the `en-US` locale."
+  ^String [^CharSequence s]
   #?(:clj  (.. s toString (toLowerCase (Locale/US)))
      :cljs (.toLowerCase s)))
 
@@ -161,14 +159,14 @@
   `clojure.string/upper-case` uses the default locale in conversions, turning
   `id` into `İD`, in the Turkish locale. This function always uses the
   `en-US` locale."
-  [^CharSequence s]
+  ^String [^CharSequence s]
   #?(:clj  (.. s toString (toUpperCase (Locale/US)))
      :cljs (.toUpperCase s)))
 
 (defn capitalize-en
   "Locale-agnostic version of [[clojure.string/capitalize]]."
-  [s]
-  (let [s (str s)]
+  ^String [^CharSequence s]
+  (when-let [s (some-> s str)]
     (if (< (count s) 2)
       (upper-case-en s)
       (str (upper-case-en (subs s 0 1))
@@ -198,23 +196,23 @@
         (f x)))))
 
 (def ^{:arglists '([x])} ->kebab-case-en
-  "Like [[camel-snake-kebab.core/->kebab-case]], but always uses English for lower-casing, and also supports keywords
-  with namespaces, and `nil`."
+  "Like [[camel-snake-kebab.core/->kebab-case]], but always uses English for lower-casing, supports keywords with
+  namespaces, and returns `nil` when passed `nil` (rather than throwing an exception)."
   (wrap-csk-conversion-fn-to-handle-nil-and-namespaced-keywords ->kebab-case-en*))
 
 (def ^{:arglists '([x])} ->snake_case_en
-  "Like [[camel-snake-kebab.core/->snake_case]], but always uses English for lower-casing, and also supports keywords
-  with namespaces, and `nil`."
+  "Like [[camel-snake-kebab.core/->snake_case]], but always uses English for lower-casing, supports keywords with
+  namespaces, and returns `nil` when passed `nil` (rather than throwing an exception)."
   (wrap-csk-conversion-fn-to-handle-nil-and-namespaced-keywords ->snake_case_en*))
 
 (def ^{:arglists '([x])} ->camelCaseEn
-  "Like [[camel-snake-kebab.core/->camelCaseEn]], but always uses English for upper- and lower-casing, and also supports
-  keywords with namespaces, and `nil`."
+  "Like [[camel-snake-kebab.core/->camelCase]], but always uses English for upper- and lower-casing, supports keywords
+  with namespaces, and returns `nil` when passed `nil` (rather than throwing an exception)."
   (wrap-csk-conversion-fn-to-handle-nil-and-namespaced-keywords ->camelCaseEn*))
 
 (def ^{:arglists '([x])} ->SCREAMING_SNAKE_CASE_EN
-  "Like [[camel-snake-kebab.core/->SCREAMING_SNAKE_CASE]], but always uses English for upper- and lower-casing, and also
-  supports keywords with namespaces, and `nil`."
+  "Like [[camel-snake-kebab.core/->SCREAMING_SNAKE_CASE]], but always uses English for upper- and lower-casing, supports
+  keywords with namespaces, and returns `nil` when passed `nil` (rather than throwing an exception)."
   (wrap-csk-conversion-fn-to-handle-nil-and-namespaced-keywords ->SCREAMING_SNAKE_CASE_EN*))
 
 (defn capitalize-first-char
@@ -227,7 +225,7 @@
          (subs s 1))))
 
 (defn snake-keys
-  "Convert the keys in a map from `lisp-case` to `snake_case`."
+  "Convert the keys in a map from `kebab-case` to `snake_case`."
   [m]
   (recursive-map-keys ->snake_case_en m))
 
@@ -237,7 +235,6 @@
   - Clojure map with string or keyword keys,
   - JS object (with string keys)
   The keys are converted to `kebab-case` from `camelCase` or `snake_case` as necessary, and turned into keywords.
-  Namespaces keywords are rejected with an exception.
 
   Returns an empty map if nil is input (like [[update-keys]])."
   [m]

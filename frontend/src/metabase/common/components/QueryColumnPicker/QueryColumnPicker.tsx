@@ -81,7 +81,7 @@ function QueryColumnPicker({
 }
 
 function renderItemName(item: ColumnListItem) {
-  return item.display_name;
+  return item.displayName;
 }
 
 function omitItemDescription() {
@@ -95,17 +95,17 @@ function renderItemIcon(item: ColumnListItem) {
 function getGroupName(groupInfo: Lib.ColumnDisplayInfo | Lib.TableDisplayInfo) {
   const columnInfo = groupInfo as Lib.ColumnDisplayInfo;
   const tableInfo = groupInfo as Lib.TableDisplayInfo;
-  return columnInfo.fk_reference_name || singularize(tableInfo.display_name);
+  return columnInfo.fkReferenceName || singularize(tableInfo.displayName);
 }
 
 function getGroupIcon(groupInfo: Lib.ColumnDisplayInfo | Lib.TableDisplayInfo) {
-  if ((groupInfo as Lib.TableDisplayInfo).is_source_table) {
+  if ((groupInfo as Lib.TableDisplayInfo).isSourceTable) {
     return "table";
   }
-  if (groupInfo.is_from_join) {
+  if (groupInfo.isFromJoin) {
     return "join_left_outer";
   }
-  if (groupInfo.is_implicitly_joinable) {
+  if (groupInfo.isImplicitlyJoinable) {
     return "connections";
   }
   return;

@@ -227,31 +227,48 @@
     {}  nil
     nil nil))
 
-(deftest lower-case-en-test
+(deftest ^:parallel lower-case-en-test
   (is (= "id"
-         (u/lower-case-en "ID")))
-  ;; TODO Can we achieve something like with-locale in CLJS?
-  #?(:clj (mt/with-locale "tr"
-            (is (= "id"
-                   (u/lower-case-en "ID"))))))
+         (u/lower-case-en "ID"))))
 
-(deftest upper-case-en-test
+#?(:clj
+   (deftest lower-case-en-turkish-test
+     ;; TODO Can we achieve something like with-locale in CLJS?
+     (mt/with-locale "tr"
+       (is (= "id"
+              (u/lower-case-en "ID"))))))
+
+(deftest ^:parallel upper-case-en-test
   (is (= "ID"
-         (u/upper-case-en "id")))
-  #?(:clj (mt/with-locale "tr"
-            (is (= "ID"
-                   (u/upper-case-en "id"))))))
+         (u/upper-case-en "id"))))
 
-(deftest capitalize-en-test
-  (is (= "Ibis"
-         (u/capitalize-en "ibis")
-         (u/capitalize-en "IBIS")
-         (u/capitalize-en "Ibis")))
-  #?(:clj (mt/with-locale "tr"
-            (is (= "Ibis"
-                   (u/capitalize-en "ibis")
-                   (u/capitalize-en "IBIS")
-                   (u/capitalize-en "Ibis"))))))
+#?(:clj
+   (deftest upper-case-en-turkish-test
+     (mt/with-locale "tr"
+       (is (= "ID"
+              (u/upper-case-en "id"))))))
+
+(deftest ^:parallel capitalize-en-test
+  (are [s expected] (= expected
+                       (u/capitalize-en s))
+    nil                 nil
+    ""                  ""
+    "ibis"              "Ibis"
+    "IBIS"              "Ibis"
+    "Ibis"              "Ibis"
+    ;; technically this is only supposed to be called with a `CharSequence`, but we're calling `.toString` on it which
+    ;; is a `java.lang.Object` method, so it actually works on anything. Thankfully Kondo will call us out about
+    ;; incorrect usage, hence the `:clj-kondo/ignore` comments below.
+    #_:clj-kondo/ignore 1  "1"
+    #_:clj-kondo/ignore {} "{}"))
+
+#?(:clj
+   (deftest capitalize-en-turkish-test
+     (mt/with-locale "tr"
+       (is (= "Ibis"
+              (u/capitalize-en "ibis")
+              (u/capitalize-en "IBIS")
+              (u/capitalize-en "Ibis"))))))
 
 (deftest ^:parallel parse-currency-test
   (are [s expected] (= expected
