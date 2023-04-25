@@ -4,7 +4,7 @@ title: Database users, roles, and privileges
 
 # Database users, roles, and privileges
 
-We recommend creating a `metabase` user with the following roles:
+We recommend creating a `metabase` database user with the following database roles:
 
 - [`analytics` for read access](#minimum-database-privileges) to any schemas or tables used for analysis.
 - Optional [`metabase_actions` for write access](#privileges-to-enable-actions) to tables used for Metabase actions.
@@ -45,8 +45,9 @@ CREATE USER metabase WITH PASSWORD "your_password";
 GRANT analytics TO metabase;
 
 -- Add query privileges to the role (options 1-3):
--- Option 1: Let users with the analytics role query anything in the DATABASE.
-GRANT pg_read_all_data ON DATABASE "your_database" TO analytics;
+
+-- Option 1: Uncomment the line below to let users with the analytics role query anything in the DATABASE.
+-- GRANT pg_read_all_data ON DATABASE "your_database" TO analytics;
 
 -- Option 2: Uncomment the line below to let users with the analytics role query anything in a specific SCHEMA.
 -- GRANT USAGE ON SCHEMA "your_schema" TO analytics;
@@ -83,11 +84,10 @@ This is a good option if you're connecting to a local database for development o
 
 ## Privileges to enable actions
 
-[Actions](../actions/introduction.md) let Metabase write back to specific tables in your database. 
+[Actions](../actions/introduction.md) let Metabase write back to specific tables in your database.
 
 In addition to the [minimum database privileges](#minimum-database-privileges), you'll need to grant write access to any tables used with actions:
 
-- If you haven't already, [create a `metabase` user](#minimum-database-privileges) in your database.
 - Create a new role called `metabase_actions`.
 - Give the role `INSERT`, `UPDATE`, and `DELETE` privileges to any tables used with Metabase actions.
 - Give the `metabase_actions` role to the `metabase` user.
@@ -107,7 +107,8 @@ GRANT metabase_actions TO metabase;
 
 [Model caching](../data-modeling/models.md#model-caching) lets Metabase save query results to a specific schema in your database. Metabase's database user will need the `CREATE` privilege to set up the dedicated schema for model caching, as well as write access (`INSERT`, `UPDATE`, `DELETE`) to that schema.
 
-- If you haven't already, [create a `metabase` user](#minimum-database-privileges) in your database.
+In addition to the [minimum database privileges](#minimum-database-privileges):
+
 - Create a new role called `metabase_model_caching`.
 - Give the role `CREATE` access to the database.
 - Give the role `INSERT`, `UPDATE`, and `DELETE` privileges to the schema used for model caching.
@@ -122,6 +123,7 @@ CREATE ROLE metabase_model_caching WITH LOGIN;
 GRANT CREATE ON "database" TO metabase_model_caching;
 
 -- Grant write privileges to the SCHEMA used for model caching.
+GRANT USAGE ON "your_schema" TO metabase_model_caching;
 GRANT INSERT, UPDATE, DELETE ON "your_model's_table" IN SCHEMA "your_schema" TO metabase_model_caching;
 
 -- Grant role to the metabase user.
@@ -130,15 +132,15 @@ GRANT metabase_model_caching TO metabase;
 
 ## Multi-tenant permissions
 
-If you're setting up multi-tenant permissions for customers who need SQL access, you can [create one database connection per customer](https://www.metabase.com/learn/permissions/multi-tenant-permissions#option-2-granting-customers-native-sql-access-to-their-schema). That means each customer will connect to the database using their own database user. 
+If you're setting up multi-tenant permissions for customers who need SQL access, you can [create one database connection per customer](https://www.metabase.com/learn/permissions/multi-tenant-permissions#option-2-granting-customers-native-sql-access-to-their-schema). That means each customer will connect to the database using their own database user.
 
 Let's say you have customers named Tangerine and Lemon:
 
 - Create new database users `metabase_tangerine` and `metabase_lemon`.
-- Create a `customer_facing_analytics` role with the [minimum database privileges](#minimum-database-privileges).
+- Create a `customer_facing_analytics` role with the `CONNECT` privilege.
 - Create roles to bundle privileges specific to each customer's use case. For example:
-  - `tangerine_queries` to bundle `SELECT` and `EXECUTE` access to query and create stored procedures against the Orange schema.
-  - `lemon_queries` for `SELECT` access to query all tables in the Lemon schema.
+  - `tangerine_queries` to bundle read privileges for people to query and create stored procedures against the Orange schema.
+  - `lemon_queries` to bundle read privileges for people to query tables in the Lemon schema.
   - `lemon_actions` to bundle the write privileges needed to create [actions](#privileges-to-enable-actions) on a Lemonade table in the Lemon schema.
 - Add each user to their respective roles.
 
@@ -154,11 +156,13 @@ GRANT customer_facing_analytics TO metabase_tangerine, metabase_lemon;
 
 -- Create a role to bundle analytics read access for customer Tangerine.
 CREATE ROLE tangerine_queries;
+GRANT USAGE ON SCHEMA "tangerine" TO tangerine_queries;
 GRANT SELECT, EXECUTE ON ALL TABLES IN SCHEMA "tangerine" TO tangerine_queries;
 GRANT tangerine_queries TO metabase_tangerine;
 
 -- Create a role to bundle analytics read access for customer Lemon.
 CREATE ROLE lemon_queries;
+GRANT USAGE ON SCHEMA "lemon" TO lemon_queries;
 GRANT SELECT ON ALL TABLES IN SCHEMA "lemon" TO lemon_queries;
 GRANT lemon_queries TO metabase_lemon;
 
