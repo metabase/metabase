@@ -202,6 +202,41 @@
                  (map :name (mt/user-http-request :rasta :get 200 (format "database/%d/schema/%s" db-id "schema1")
                                                   :include_editable_data_model true)))))))))
 
+(deftest get-schema-with-empty-name-and-advanced-perms-test
+  (testing "Permissions: We can verify include_editable_data_model flag works for the `/:id/schema/` endpoint"
+    (mt/with-temp* [Database [{db-id :id}]
+                    Table    [t1 {:db_id db-id, :schema nil, :name "t1"}]
+                    Table    [_t2 {:db_id db-id, :schema "public"}]
+                    Table    [t3 {:db_id db-id, :schema "", :name "t3"}]]
+      (with-all-users-data-perms {db-id {:data       {:schemas :all :native :write}
+                                         :data-model {:schemas :all}}}
+        (perms/revoke-data-perms! (perms-group/all-users) db-id)
+        (testing "If data permissions are revoked, it should be a 403"
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :get 403 (format "database/%d/schema/" db-id)))))
+        (testing "If include_editable_data_model=true and data permissions are revoked, it should return tables with both
+                  `nil` and \"\" as its schema"
+          (is (= ["t1" "t3"]
+                 (map :name (mt/user-http-request :rasta :get 200 (format "database/%d/schema/" db-id)
+                                                  :include_editable_data_model true))))))
+
+      (testing "If include_editable_data_model=true and a non-admin does not have data model perms, it should respond
+                with a 404"
+        (with-all-users-data-perms {db-id {:data       {:schemas :all :native :write}
+                                           :data-model {:schemas :none}}}
+          (is (= "Not found."
+                 (mt/user-http-request :rasta :get 404 (format "database/%d/schema/" db-id)
+                                       :include_editable_data_model true)))))
+
+      (testing "If include_editable_data_model=true and a non-admin has data model perms for a single table in an empty
+                string schema, it should return the table"
+        (with-all-users-data-perms {db-id {:data       {:schemas :all :native :write}
+                                           :data-model {:schemas {"" {(u/the-id t1) :all
+                                                                      (u/the-id t3) :none}}}}}
+          (is (= ["t1"]
+                 (map :name (mt/user-http-request :rasta :get 200 (format "database/%d/schema/" db-id)
+                                                  :include_editable_data_model true)))))))))
+
 (deftest get-schemas-with-advanced-perms-test
   (testing "Permissions: We can verify include_editable_data_model flag works for the `/:id/:schemas` endpoint"
     (mt/with-temp* [Database [{db-id :id}]
