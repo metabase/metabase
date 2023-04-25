@@ -1217,29 +1217,28 @@
                (map :name (mt/user-http-request :lucky :get 200 (format "database/%d/schema/" db-id)))))))))
 
 (deftest get-schema-tables-permissions-test
-  (testing "GET /api/database/:id/schema/:schema\n"
-    (testing "Permissions: Can we fetch the Tables in a schema?"
-      (mt/with-temp* [Database [{db-id :id}]
-                      Table    [t1  {:db_id db-id, :schema "schema1", :name "t1"}]
-                      Table    [_t2 {:db_id db-id, :schema "schema2"}]
-                      Table    [t3  {:db_id db-id, :schema "schema1", :name "t3"}]]
-        (testing "if we have full DB perms"
-          (is (= ["t1" "t3"]
-                 (map :name (mt/user-http-request :rasta :get 200 (format "database/%d/schema/%s" db-id "schema1"))))))
+  (testing "GET /api/database/:id/schema/:schema against permissions"
+    (mt/with-temp* [Database [{db-id :id}]
+                    Table    [t1  {:db_id db-id, :schema "schema1", :name "t1"}]
+                    Table    [_t2 {:db_id db-id, :schema "schema2"}]
+                    Table    [t3  {:db_id db-id, :schema "schema1", :name "t3"}]]
+      (testing "if we have full DB perms"
+        (is (= ["t1" "t3"]
+               (map :name (mt/user-http-request :rasta :get 200 (format "database/%d/schema/%s" db-id "schema1"))))))
 
-        (testing "if we have full schema perms"
-          (perms/revoke-data-perms! (perms-group/all-users) db-id)
-          (perms/grant-permissions! (perms-group/all-users) db-id "schema1")
-          (is (= ["t1" "t3"]
-                 (map :name (mt/user-http-request :rasta :get 200 (format "database/%d/schema/%s" db-id "schema1"))))))
+      (testing "if we have full schema perms"
+        (perms/revoke-data-perms! (perms-group/all-users) db-id)
+        (perms/grant-permissions! (perms-group/all-users) db-id "schema1")
+        (is (= ["t1" "t3"]
+               (map :name (mt/user-http-request :rasta :get 200 (format "database/%d/schema/%s" db-id "schema1"))))))
 
-        (testing "if we have full Table perms"
-          (perms/revoke-data-perms! (perms-group/all-users) db-id)
-          (perms/revoke-data-perms! (perms-group/all-users) db-id "schema1")
-          (perms/grant-permissions! (perms-group/all-users) db-id "schema1" t1)
-          (perms/grant-permissions! (perms-group/all-users) db-id "schema1" t3)
-          (is (= ["t1" "t3"]
-                 (map :name (mt/user-http-request :rasta :get 200 (format "database/%d/schema/%s" db-id "schema1"))))))))
+      (testing "if we have full Table perms"
+        (perms/revoke-data-perms! (perms-group/all-users) db-id)
+        (perms/revoke-data-perms! (perms-group/all-users) db-id "schema1")
+        (perms/grant-permissions! (perms-group/all-users) db-id "schema1" t1)
+        (perms/grant-permissions! (perms-group/all-users) db-id "schema1" t3)
+        (is (= ["t1" "t3"]
+               (map :name (mt/user-http-request :rasta :get 200 (format "database/%d/schema/%s" db-id "schema1")))))))
 
     (testing "should return a 403 for a user that doesn't have read permissions"
       (testing "for the DB"
