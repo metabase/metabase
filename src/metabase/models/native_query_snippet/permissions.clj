@@ -32,7 +32,8 @@
 (defenterprise can-create?
   "Can the current User save a new Snippet with the values in `m`?"
   metabase-enterprise.enhancements.models.native-query-snippet.permissions
-  [_ _] (has-any-native-permissions?))
+  [_ _]
+  (has-any-native-permissions?))
 
 (defenterprise can-update?
   "Can the current User apply a map of `changes` to a `snippet`?"

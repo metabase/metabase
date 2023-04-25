@@ -29,14 +29,13 @@
       (premium-features-test/with-premium-features #{}
         (testing "should NOT be allowed if you don't have native perms for at least one DB"
           (test-perms* false))
-        (testing "should be allowed if you don't have native perms for at least one DB"
+        (testing "should be allowed if you have native perms for at least one DB"
           (perms/grant-native-readwrite-permissions! (perms-group/all-users) (mt/id))
           (test-perms* true))))
 
     (testing "if EE perms are enabled: "
       (premium-features-test/with-premium-features #{:enhancements}
         (testing "should be allowed if you have collection perms, native perms for at least one DB, and are not sandboxed"
-          (perms/grant-native-readwrite-permissions! (perms-group/all-users) (mt/id))
           (grant-collection-perms!)
           (test-perms* true))
         (testing "should NOT be allowed if you do not have collection perms"

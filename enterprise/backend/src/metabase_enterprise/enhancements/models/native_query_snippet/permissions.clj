@@ -51,8 +51,8 @@
   :feature :any
   [snippet changes]
   (and
+   (not (mt.api.u/segmented-user?))
    (snippet.perms/has-any-native-permissions?)
    (has-parent-collection-perms? snippet :write)
-   (not (mt.api.u/segmented-user?))
    (or (not (contains? changes :collection_id))
        (has-parent-collection-perms? changes :write))))
