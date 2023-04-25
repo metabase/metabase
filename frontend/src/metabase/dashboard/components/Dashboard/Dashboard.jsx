@@ -56,6 +56,7 @@ class Dashboard extends Component {
 
     dashboard: PropTypes.object,
     dashboardId: PropTypes.number,
+    selectedTabId: PropTypes.number,
     parameters: PropTypes.array,
     parameterValues: PropTypes.object,
     draftParameterValues: PropTypes.object,
@@ -139,7 +140,8 @@ class Dashboard extends Component {
       this.throttleParameterWidgetStickiness();
     } else if (
       !_.isEqual(prevProps.parameterValues, this.props.parameterValues) ||
-      (!prevProps.dashboard && this.props.dashboard)
+      (!prevProps.dashboard && this.props.dashboard) ||
+      prevProps.selectedTabId !== this.props.selectedTabId
     ) {
       this.props.fetchDashboardCardData({ reload: false, clear: true });
     }
