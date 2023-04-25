@@ -53,7 +53,7 @@ function ImplicitActionContextProvider({
     (nextFormSettings: ActionFormSettings) => {
       setFormSettings(cleanFormSettings(nextFormSettings));
     },
-    [setFormSettings],
+    [],
   );
 
   const canSave = useMemo(() => {
