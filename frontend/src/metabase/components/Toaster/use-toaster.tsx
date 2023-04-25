@@ -2,6 +2,7 @@ import React, {
   ReactNode,
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -88,10 +89,13 @@ export function useToaster(): [ToasterApi, ReactNode] {
     />
   ) : null;
 
-  const api = {
-    show,
-    hide,
-  };
+  const api = useMemo(
+    () => ({
+      show,
+      hide,
+    }),
+    [hide, show],
+  );
 
   return [api, toaster];
 }

@@ -107,7 +107,7 @@ export const getDraftParameterValues = state =>
   state.dashboard.draftParameterValues;
 export const getIsAutoApplyFilters = createSelector(
   [getDashboard],
-  dashboard => dashboard.auto_apply_filters,
+  dashboard => dashboard?.auto_apply_filters,
 );
 export const getHasUnappliedParameterValues = createSelector(
   [getParameterValues, getDraftParameterValues],
