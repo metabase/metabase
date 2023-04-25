@@ -3,10 +3,13 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [malli.core :as mc]
+            [malli.generator :as mg]
             [malli.json-schema :as mjs]
             [malli.transform :as mtx]
             [metabase.metabot.client :as metabot-client]
-            [metabase.metabot.util :as metabot-util]))
+            [metabase.metabot.util :as metabot-util]
+            [metabase.query-processor :as qp]
+            [toucan2.core :as t2]))
 
 (defn schema
   "Returns Malli schema for subset of MBQL constrained to available field IDs"
@@ -188,6 +191,7 @@
       {:mbql mbql
        :data (qp/process-query mbql)}))
 
+  ; [:fail {:aggregation [], :breakout [65 36], :fields [], :filters [], :limit 10, :order-by [["desc" 65]]}]
   (let [{:keys [fail] :as mbql} (infer-mbql
                                   "What are the 10 highest rated products?"
                                   (t2/select-one 'Card :id 1))]
@@ -195,12 +199,43 @@
       [:fail fail]
       mbql))
 
+  ;; A working solution
+  ;; 65 is RATING
+  ;; 64 is EAN
+  (qp/process-query
+    {:database 1,
+     :type     :query,
+     :query    {:aggregation  [[:max [:field 65 {:join-alias "Products"}]]],
+                :breakout     [[:field 64 {:join-alias "Products"}]],
+                :order-by     [[:desc [:field 65 {:join-alias "Products"}]]],
+                :limit        10,
+                :source-table "card__1"}})
+
   (let [{:keys [fail] :as mbql} (infer-mbql
                                   "What products have a rating greater than 2.0?"
                                   (t2/select-one 'Card :id 1))]
     (if fail
       [:fail fail]
       mbql))
+
+  ;; A working solution to the above
+  ;; 36 is PRODUCT_ID
+  ;; 59 is TITLE
+  ;; 65 is RATING
+  (qp/process-query
+    {:database 1,
+     :type     :query,
+     :query    {:fields       [[:field 36 nil] [:field 59 {:join-alias "Products"}]],
+                :filters      [[:> [:field 65 {:join-alias "Products"}] 2.0]],
+                :source-table "card__1"}})
+
+  (let [{:keys [fail] :as mbql} (infer-mbql
+                                  "Show me total sales grouped by category where rating is between 1.5 and 3.4."
+                                  (t2/select-one 'Card :id 1))]
+    (if fail
+      [:fail fail]
+      mbql))
+
 
   ;; So close =>  [:fail {:filters [["=" {:field_id 47} {:value "@gmail.com"}]], :breakout [{:field_id 47}]}]
   (let [{:keys [fail] :as mbql} (infer-mbql
@@ -216,6 +251,7 @@
     (if fail
       [:fail fail]
       mbql))
+
   ;; Bad results
   {:aggregation [["sum" 41]], :filters [["=" 50 "Boston"]]}
 
@@ -249,7 +285,8 @@
                         json-response)]
     (qp/process-query result))
 
-
+  ;; Random query generator -- useful for checking our schema
+  ;; It frequently generates good queries/data...and also frequently does not
   (let [model        (t2/select-one 'Card :id 1)
         malli-schema (schema model)
         result       (postprocess-result
@@ -260,5 +297,4 @@
                        (nil? limit)
                        (assoc-in [:query :limit] 2))]
     (qp/process-query result))
-
   )
