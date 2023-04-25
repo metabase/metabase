@@ -1081,47 +1081,10 @@
              (set (mt/user-http-request :crowberto :get 200 (format "database/%d/schemas" db-id))))))))
 
 (deftest get-schema-tables-test
-  (testing "GET /api/database/:id/schema/:schema\n"
-    (testing "Permissions: Can we fetch the Tables in a schema?"
-      (mt/with-temp* [Database [{db-id :id}]
-                      Table    [t1  {:db_id db-id, :schema "schema1", :name "t1"}]
-                      Table    [_t2 {:db_id db-id, :schema "schema2"}]
-                      Table    [t3  {:db_id db-id, :schema "schema1", :name "t3"}]]
-        (testing "if we have full DB perms"
-          (is (= ["t1" "t3"]
-                 (map :name (mt/user-http-request :rasta :get 200 (format "database/%d/schema/%s" db-id "schema1"))))))
-
-        (testing "if we have full schema perms"
-          (perms/revoke-data-perms! (perms-group/all-users) db-id)
-          (perms/grant-permissions!  (perms-group/all-users) db-id "schema1")
-          (is (= ["t1" "t3"]
-                 (map :name (mt/user-http-request :rasta :get 200 (format "database/%d/schema/%s" db-id "schema1"))))))
-
-        (testing "if we have full Table perms"
-          (perms/revoke-data-perms! (perms-group/all-users) db-id)
-          (perms/revoke-data-perms! (perms-group/all-users) db-id "schema1")
-          (perms/grant-permissions!  (perms-group/all-users) db-id "schema1" t1)
-          (perms/grant-permissions!  (perms-group/all-users) db-id "schema1" t3)
-          (is (= ["t1" "t3"]
-                 (map :name (mt/user-http-request :rasta :get 200 (format "database/%d/schema/%s" db-id "schema1"))))))))
-
-    (testing "should return a 403 for a user that doesn't have read permissions"
-      (testing "for the DB"
-        (mt/with-temp* [Database [{database-id :id}]
-                        Table    [_ {:db_id database-id, :schema "test"}]]
-          (perms/revoke-data-perms! (perms-group/all-users) database-id)
-          (is (= "You don't have permissions to do that."
-                 (mt/user-http-request :rasta :get 403 (format "database/%s/schema/%s" database-id "test"))))))
-
-      (testing "for the schema"
-        (mt/with-temp* [Database [{database-id :id}]
-                        Table    [_ {:db_id database-id, :schema "schema-with-perms"}]
-                        Table    [_ {:db_id database-id, :schema "schema-without-perms"}]]
-          (perms/revoke-data-perms! (perms-group/all-users) database-id)
-          (perms/grant-permissions!  (perms-group/all-users) database-id "schema-with-perms")
-          (is (= "You don't have permissions to do that."
-                 (mt/user-http-request :rasta :get 403 (format "database/%s/schema/%s" database-id "schema-without-perms")))))))
-
+  (testing "GET /api/database/:id/schema/:schema"
+    (testing "Should return a 404 if the database isn't found"
+      (is (= "Not found."
+             (mt/user-http-request :crowberto :get 404 (format "database/%s/schema/%s" Integer/MAX_VALUE "schema1")))))
     (testing "Should return a 404 if the schema isn't found"
       (mt/with-temp* [Database [{db-id :id}]
                       Table    [_ {:db_id db-id, :schema "schema1"}]]
@@ -1252,6 +1215,48 @@
       (testing "to fetch Tables with `nil` or empty schemas, use the blank string"
         (is (= ["t1" "t2"]
                (map :name (mt/user-http-request :lucky :get 200 (format "database/%d/schema/" db-id)))))))))
+
+(deftest get-schema-tables-permissions-test
+  (testing "GET /api/database/:id/schema/:schema\n"
+    (testing "Permissions: Can we fetch the Tables in a schema?"
+      (mt/with-temp* [Database [{db-id :id}]
+                      Table    [t1  {:db_id db-id, :schema "schema1", :name "t1"}]
+                      Table    [_t2 {:db_id db-id, :schema "schema2"}]
+                      Table    [t3  {:db_id db-id, :schema "schema1", :name "t3"}]]
+        (testing "if we have full DB perms"
+          (is (= ["t1" "t3"]
+                 (map :name (mt/user-http-request :rasta :get 200 (format "database/%d/schema/%s" db-id "schema1"))))))
+
+        (testing "if we have full schema perms"
+          (perms/revoke-data-perms! (perms-group/all-users) db-id)
+          (perms/grant-permissions! (perms-group/all-users) db-id "schema1")
+          (is (= ["t1" "t3"]
+                 (map :name (mt/user-http-request :rasta :get 200 (format "database/%d/schema/%s" db-id "schema1"))))))
+
+        (testing "if we have full Table perms"
+          (perms/revoke-data-perms! (perms-group/all-users) db-id)
+          (perms/revoke-data-perms! (perms-group/all-users) db-id "schema1")
+          (perms/grant-permissions! (perms-group/all-users) db-id "schema1" t1)
+          (perms/grant-permissions! (perms-group/all-users) db-id "schema1" t3)
+          (is (= ["t1" "t3"]
+                 (map :name (mt/user-http-request :rasta :get 200 (format "database/%d/schema/%s" db-id "schema1"))))))))
+
+    (testing "should return a 403 for a user that doesn't have read permissions"
+      (testing "for the DB"
+        (mt/with-temp* [Database [{database-id :id}]
+                        Table    [_ {:db_id database-id, :schema "test"}]]
+          (perms/revoke-data-perms! (perms-group/all-users) database-id)
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :get 403 (format "database/%s/schema/%s" database-id "test"))))))
+
+      (testing "for the schema"
+        (mt/with-temp* [Database [{database-id :id}]
+                        Table    [_ {:db_id database-id, :schema "schema-with-perms"}]
+                        Table    [_ {:db_id database-id, :schema "schema-without-perms"}]]
+          (perms/revoke-data-perms! (perms-group/all-users) database-id)
+          (perms/grant-permissions! (perms-group/all-users) database-id "schema-with-perms")
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :get 403 (format "database/%s/schema/%s" database-id "schema-without-perms")))))))))
 
 (deftest slashes-in-identifiers-test
   (testing "We should handle Databases with slashes in identifiers correctly (#12450)"
