@@ -6,6 +6,7 @@ import { Database } from "metabase-types/api";
 import {
   createOrdersTable,
   createPeopleTable,
+  createProductsTable,
   createReviewsTable,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
@@ -26,7 +27,7 @@ const ORDERS_TABLE = createOrdersTable({
   visibility_type: "technical",
 });
 
-const PRODUCTS_TABLE = createPeopleTable();
+const PRODUCTS_TABLE = createProductsTable();
 
 const SAMPLE_DB = createSampleDatabase({
   tables: [ORDERS_TABLE, PRODUCTS_TABLE],
@@ -38,7 +39,7 @@ const PEOPLE_TABLE = createPeopleTable({
 
 const REVIEWS_TABLE = createReviewsTable({
   db_id: 2,
-  schema: "private",
+  schema: "PRIVATE",
 });
 
 const SAMPLE_DB_MULTI_SCHEMA = createSampleDatabase({
@@ -88,13 +89,9 @@ describe("MetadataEditor", () => {
     it("should select the first database and the only schema by default", async () => {
       await setup();
 
-      expect(screen.getByText(SAMPLE_DB.name)).toBeInTheDocument(); // TODO
-      expect(
-        screen.getByRole("listitem", { name: ORDERS_TABLE.display_name }),
-      ).toBeInTheDocument();
-      expect(
-        screen.queryByRole("listitem", { name: ORDERS_TABLE.schema }),
-      ).not.toBeInTheDocument();
+      expect(screen.getByText(SAMPLE_DB.name)).toBeInTheDocument();
+      expect(screen.getByText(ORDERS_TABLE.display_name)).toBeInTheDocument();
+      expect(screen.queryByText(ORDERS_TABLE.schema)).not.toBeInTheDocument();
     });
 
     it("should allow to search for a table", async () => {
@@ -103,11 +100,9 @@ describe("MetadataEditor", () => {
       const searchValue = ORDERS_TABLE.name.substring(0, 3);
       userEvent.type(screen.getByPlaceholderText("Find a table"), searchValue);
 
+      expect(screen.getByText(ORDERS_TABLE.display_name)).toBeInTheDocument();
       expect(
-        screen.getByRole("listitem", { name: ORDERS_TABLE.display_name }),
-      ).toBeInTheDocument();
-      expect(
-        screen.queryByRole("listitem", { name: PRODUCTS_TABLE.display_name }),
+        screen.queryByText(PRODUCTS_TABLE.display_name),
       ).not.toBeInTheDocument();
     });
 
@@ -115,9 +110,7 @@ describe("MetadataEditor", () => {
       const fields = ORDERS_TABLE.fields ?? [];
       await setup();
 
-      userEvent.click(
-        screen.getByRole("listitem", { name: ORDERS_TABLE.display_name }),
-      );
+      userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
       expect(
         await screen.findByDisplayValue(ORDERS_TABLE.display_name),
       ).toBeInTheDocument();
@@ -132,24 +125,19 @@ describe("MetadataEditor", () => {
     it("should allow to navigate to and from table settings", async () => {
       await setup();
 
-      userEvent.click(
-        screen.getByRole("listitem", { name: ORDERS_TABLE.display_name }),
-      );
-      userEvent.click(screen.getByRole("link", { name: "Settings" }));
+      userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
+      userEvent.click(screen.getByLabelText("Settings"));
       expect(await screen.findByText("Settings")).toBeInTheDocument();
 
-      userEvent.click(screen.getByRole("link", { name: SAMPLE_DB.name }));
-      expect(await screen.findByText("2 Queryable Tables")).toBeInTheDocument();
+      userEvent.click(screen.getByText(SAMPLE_DB.name));
+      expect(await screen.findByText("1 Queryable Table")).toBeInTheDocument();
+      expect(screen.getByText("1 Hidden Table")).toBeInTheDocument();
 
-      userEvent.click(
-        screen.getByRole("listitem", { name: ORDERS_TABLE.display_name }),
-      );
-      expect(screen.getByText("Settings")).toBeInTheDocument();
+      userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
+      userEvent.click(screen.getByLabelText("Settings"));
       expect(await screen.findByText("Settings")).toBeInTheDocument();
 
-      userEvent.click(
-        screen.getByRole("listitem", { name: ORDERS_TABLE.display_name }),
-      );
+      userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
       expect(
         await screen.findByDisplayValue(ORDERS_TABLE.display_name),
       ).toBeInTheDocument();
@@ -158,10 +146,8 @@ describe("MetadataEditor", () => {
     it("should allow to rescan field values", async () => {
       await setup();
 
-      userEvent.click(
-        screen.getByRole("listitem", { name: ORDERS_TABLE.display_name }),
-      );
-      userEvent.click(screen.getByRole("link", { name: "Settings" }));
+      userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
+      userEvent.click(screen.getByLabelText("Settings"));
       userEvent.click(
         await screen.findByRole("button", { name: "Re-scan this table" }),
       );
@@ -176,7 +162,7 @@ describe("MetadataEditor", () => {
       await setup();
 
       userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
-      userEvent.click(screen.getByRole("link", { name: "Settings" }));
+      userEvent.click(screen.getByLabelText("Settings"));
       userEvent.click(
         await screen.findByRole("button", {
           name: "Discard cached field values",
@@ -194,15 +180,11 @@ describe("MetadataEditor", () => {
     it("should not select the first schema if there are multiple schemas", async () => {
       await setup({ databases: [SAMPLE_DB_MULTI_SCHEMA] });
 
-      expect(screen.getByText(SAMPLE_DB_MULTI_SCHEMA.name)).toBeInTheDocument(); // TODO
+      expect(screen.getByText(SAMPLE_DB_MULTI_SCHEMA.name)).toBeInTheDocument();
+      expect(screen.getByText(PEOPLE_TABLE.schema)).toBeInTheDocument();
+      expect(screen.getByText(REVIEWS_TABLE.schema)).toBeInTheDocument();
       expect(
-        screen.getByRole("listitem", { name: PEOPLE_TABLE.schema }),
-      ).toBeInTheDocument();
-      expect(
-        screen.getByRole("listitem", { name: REVIEWS_TABLE.schema }),
-      ).toBeInTheDocument();
-      expect(
-        screen.queryByRole("listitem", { name: PEOPLE_TABLE.display_name }),
+        screen.queryByText(PEOPLE_TABLE.display_name),
       ).not.toBeInTheDocument();
     });
 
@@ -212,80 +194,50 @@ describe("MetadataEditor", () => {
       const searchValue = PEOPLE_TABLE.schema.substring(0, 3);
       userEvent.type(screen.getByPlaceholderText("Find a schema"), searchValue);
 
-      expect(
-        screen.getByRole("listitem", { name: PEOPLE_TABLE.schema }),
-      ).toBeInTheDocument();
-      expect(
-        screen.queryByRole("listitem", { name: REVIEWS_TABLE.schema }),
-      ).not.toBeInTheDocument();
+      expect(screen.getByText(PEOPLE_TABLE.schema)).toBeInTheDocument();
+      expect(screen.queryByText(REVIEWS_TABLE.schema)).not.toBeInTheDocument();
     });
 
     it("should allow to search for a table", async () => {
       await setup({ databases: [SAMPLE_DB_MULTI_SCHEMA] });
 
-      userEvent.click(
-        screen.getByRole("listitem", { name: PEOPLE_TABLE.schema }),
-      );
+      userEvent.click(screen.getByText(PEOPLE_TABLE.schema));
       expect(
-        await screen.findByRole("listitem", {
-          name: PEOPLE_TABLE.display_name,
-        }),
+        await screen.findByText(PEOPLE_TABLE.display_name),
       ).toBeInTheDocument();
       expect(
-        screen.queryByRole("listitem", { name: REVIEWS_TABLE.display_name }),
+        screen.queryByText(REVIEWS_TABLE.display_name),
       ).not.toBeInTheDocument();
 
-      userEvent.click(screen.getByRole("link", { name: "Schemas" }));
-      expect(
-        screen.getByRole("listitem", { name: PEOPLE_TABLE.schema }),
-      ).toBeInTheDocument();
-      expect(
-        screen.getByRole("listitem", { name: REVIEWS_TABLE.schema }),
-      ).toBeInTheDocument();
+      userEvent.click(screen.getByText("Schemas"));
+      expect(screen.getByText(PEOPLE_TABLE.schema)).toBeInTheDocument();
+      expect(screen.getByText(REVIEWS_TABLE.schema)).toBeInTheDocument();
     });
 
     it("should allow to navigate to and from table settings", async () => {
       await setup({ databases: [SAMPLE_DB_MULTI_SCHEMA] });
 
-      userEvent.click(
-        screen.getByRole("listitem", { name: PEOPLE_TABLE.schema }),
-      );
-      userEvent.click(
-        await screen.findByRole("listitem", {
-          name: PEOPLE_TABLE.display_name,
-        }),
-      );
-      userEvent.click(screen.getByRole("link", { name: "Settings" }));
+      userEvent.click(screen.getByText(PEOPLE_TABLE.schema));
+      userEvent.click(await screen.findByText(PEOPLE_TABLE.display_name));
+      userEvent.click(screen.getByLabelText("Settings"));
       expect(await screen.findByText("Settings")).toBeInTheDocument();
 
-      userEvent.click(
-        screen.getByRole("link", { name: SAMPLE_DB_MULTI_SCHEMA.name }),
-      );
+      userEvent.click(screen.getByText(SAMPLE_DB_MULTI_SCHEMA.name));
       expect(await screen.findByText("2 schemas")).toBeInTheDocument();
 
-      userEvent.click(
-        screen.getByRole("listitem", { name: PEOPLE_TABLE.schema }),
-      );
-      userEvent.click(
-        screen.getByRole("listitem", { name: PEOPLE_TABLE.display_name }),
-      );
-      userEvent.click(screen.getByRole("link", { name: "Settings" }));
+      userEvent.click(screen.getByText(PEOPLE_TABLE.schema));
+      userEvent.click(screen.getByText(PEOPLE_TABLE.display_name));
+      userEvent.click(screen.getByLabelText("Settings"));
       expect(await screen.findByText("Settings")).toBeInTheDocument();
 
-      userEvent.click(screen.getByRole("link", { name: PEOPLE_TABLE.schema }));
+      userEvent.click(screen.getByText(PEOPLE_TABLE.schema));
       expect(await screen.findByText("1 Queryable Table")).toBeInTheDocument();
 
-      userEvent.click(
-        await screen.findByRole("listitem", {
-          name: PEOPLE_TABLE.display_name,
-        }),
-      );
-      userEvent.click(screen.getByRole("link", { name: "Settings" }));
+      userEvent.click(await screen.findByText(PEOPLE_TABLE.display_name));
+      userEvent.click(screen.getByLabelText("Settings"));
       expect(await screen.findByText("Settings")).toBeInTheDocument();
 
-      userEvent.click(
-        screen.getByRole("link", { name: PEOPLE_TABLE.display_name }),
-      );
+      userEvent.click(screen.getByText(PEOPLE_TABLE.display_name));
       expect(
         await screen.findByDisplayValue(PEOPLE_TABLE.display_name),
       ).toBeInTheDocument();
@@ -296,20 +248,14 @@ describe("MetadataEditor", () => {
     it("should be able to switch databases", async () => {
       await setup({ databases: [SAMPLE_DB, SAMPLE_DB_MULTI_SCHEMA] });
       expect(
-        await screen.findByText(ORDERS_TABLE.display_name), // TODO
+        await screen.findByText(ORDERS_TABLE.display_name),
       ).toBeInTheDocument();
 
-      userEvent.click(screen.getByText(SAMPLE_DB.name)); // TODO
-      userEvent.click(
-        screen.getByRole("listitem", { name: SAMPLE_DB_MULTI_SCHEMA.name }),
-      );
-      userEvent.click(
-        await screen.findByRole("listitem", { name: PEOPLE_TABLE.schema }),
-      );
+      userEvent.click(screen.getByText(SAMPLE_DB.name));
+      userEvent.click(screen.getByText(SAMPLE_DB_MULTI_SCHEMA.name));
+      userEvent.click(await screen.findByText(PEOPLE_TABLE.schema));
       expect(
-        await screen.findByRole("listitem", {
-          name: PEOPLE_TABLE.display_name,
-        }),
+        await screen.findByText(PEOPLE_TABLE.display_name),
       ).toBeInTheDocument();
     });
   });

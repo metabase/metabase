@@ -211,8 +211,8 @@ const TableHeader = ({
 }: TableHeaderProps) => {
   const title = isHidden
     ? ngettext(
-        msgid`${tables.length} Queryable Table`,
-        `${tables.length} Queryable Tables`,
+        msgid`${tables.length} Hidden Table`,
+        `${tables.length} Hidden Tables`,
         tables.length,
       )
     : ngettext(
@@ -234,7 +234,7 @@ const TableHeader = ({
 };
 
 const TableEmptyState = () => {
-  return <li className="AdminList-section">{t`0 Tables`}</li>;
+  return <div className="AdminList-section">{t`0 Tables`}</div>;
 };
 
 interface TableRowProps {
