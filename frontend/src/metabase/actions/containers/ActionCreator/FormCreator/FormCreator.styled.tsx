@@ -40,9 +40,6 @@ export const ExplainerTitle = styled.h3`
   margin-bottom: ${space(1)};
 `;
 
-// REMINDER: mention that using `styled.p` causes a
-// "<ul> cannot appear as a descendant of <p>" error
-// in the console
 export const ExplainerText = styled.div`
   font-weight: 400;
   line-height: 1.5rem;
@@ -67,7 +64,6 @@ export const ExplainerLink = styled(ExternalLink)`
   margin-top: ${space(2)};
 
   color: ${color("brand")};
-
   &:hover {
     color: ${lighten("brand", 0.1)};
   }
