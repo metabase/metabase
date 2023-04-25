@@ -242,7 +242,7 @@
     (mt/with-temp* [Database [{db-id :id}]
                     Table    [t1 {:db_id db-id, :schema "schema1", :name "t1"}]
                     Table    [_t2 {:db_id db-id, :schema "schema2"}]
-                    Table    [t3 {:db_id db-id, :schema "schema1", :name "t3"}]]
+                    Table    [_t3 {:db_id db-id, :schema "schema1", :name "t3"}]]
       (with-all-users-data-perms {db-id {:data       {:schemas :all :native :write}
                                          :data-model {:schemas :all}}}
         (perms/revoke-data-perms! (perms-group/all-users) db-id)
