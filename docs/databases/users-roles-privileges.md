@@ -87,7 +87,7 @@ This is a good option if you're connecting to a local database for development o
 
 In addition to the [minimum database privileges](#minimum-database-privileges), you'll need to grant write access to any tables used with actions:
 
-- If you haven't already, [create a `metabase` user](#organize-database-privileges-with-roles) in your database.
+- If you haven't already, [create a `metabase` user](#minimum-database-privileges) in your database.
 - Create a new role called `metabase_actions`.
 - Give the role `INSERT`, `UPDATE`, and `DELETE` privileges to any tables used with Metabase actions.
 - Give the `metabase_actions` role to the `metabase` user.
@@ -139,7 +139,7 @@ Let's say you have customers named Tangerine and Lemon:
 - Create roles to bundle privileges specific to each customer's use case. For example:
   - `tangerine_queries` to bundle `SELECT` and `EXECUTE` access to query and create stored procedures against the Orange schema.
   - `lemon_queries` for `SELECT` access to query all tables in the Lemon schema.
-  - `lemon_actions` to bundle the write privileges needed to create [actions](#actions) on a Lemonade table in the Lemon schema.
+  - `lemon_actions` to bundle the write privileges needed to create [actions](#privileges-to-enable-actions) on a Lemonade table in the Lemon schema.
 - Add each user to their respective roles.
 
 ```sql
