@@ -286,8 +286,8 @@
    (= email maybe-new-email)
    ;; We should not allow a regular user to change their email address if they are a google/ldap user
    (and
-    (not (= "google" sso_source))
-    (not (= "ldap" sso_source)))))
+    (not (= :google sso_source))
+    (not (= :ldap sso_source)))))
 
 (defn- valid-name-update?
   "This predicate tests whether or not the user is allowed to update the first/last name associated with this account.
