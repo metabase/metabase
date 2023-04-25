@@ -135,7 +135,7 @@ describe.skip("scenarios > admin > datamodel > field", () => {
     });
   });
 });
-    
+
 function getUnfoldJsonContent() {
   return cy
     .findByText("Unfold JSON")
@@ -150,7 +150,7 @@ describe("Unfold JSON", () => {
     cy.signInAsAdmin();
     resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: "many_data_types" });
   });
-  
+
   it("lets you enable/disable 'Unfold JSON' for JSON columns", () => {
     cy.intercept("POST", `/api/database/${WRITABLE_DB_ID}/sync_schema`).as(
       "sync_schema",
@@ -161,8 +161,10 @@ describe("Unfold JSON", () => {
 
     // Check json is unfolded initially
     cy.findByText(/json.a/i).should("be.visible");
-    cy.findByTestId("column-json").within(() => { cy.icon("gear").click(); });
-    
+    cy.findByTestId("column-json").within(() => {
+      cy.icon("gear").click();
+    });
+
     getUnfoldJsonContent().findByText(/Yes/i).click();
     popover().within(() => {
       cy.findByText(/No/i).click();

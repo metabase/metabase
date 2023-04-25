@@ -138,10 +138,27 @@
   (testing "Check that old revisions get deleted"
     (mt/with-temp Card [{card-id :id}]
       ;; e.g. if max-revisions is 15 then insert 16 revisions
-      (dorun (repeatedly (inc revision/max-revisions) #(push-fake-revision! card-id, :name "Tips Created by Day")))
+      (dorun (doseq [i (range (inc revision/max-revisions))]
+               (push-fake-revision! card-id, :name (format "Tips Created by Day %d" i))))
       (is (= revision/max-revisions
              (count (revision/revisions FakedCard card-id)))))))
 
+(deftest do-not-record-if-object-is-not-changed-test
+  (testing "Check that we don't record a revision if the object hasn't changed"
+    (mt/with-temp Card [{card-id :id}]
+      (let [new-revision (fn [x]
+                           (push-fake-revision! card-id, :name (format "Tips Created by Day %s" x)))]
+        (testing "first revision should be recorded"
+          (new-revision 1)
+          (is (= 1 (count (revision/revisions FakedCard card-id)))))
+
+        (testing "repeatedly push reivisions with thesame object shouldn't create new revision"
+          (dorun (repeatedly 5 #(new-revision 1)))
+          (is (= 1 (count (revision/revisions FakedCard card-id)))))
+
+        (testing "push a revision with different object should create new revision"
+          (new-revision 2)
+          (is (= 2 (count (revision/revisions FakedCard card-id)))))))))
 
 ;;; # REVISIONS+DETAILS
 
