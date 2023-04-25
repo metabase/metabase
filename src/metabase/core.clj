@@ -55,9 +55,6 @@
              (deferred-trs "See {0} for details." "https://www.metabase.com/license/commercial/"))
         (deferred-trs "Metabase Enterprise Edition extensions are NOT PRESENT."))))
 
-(when config/ee-available?
-   ((requiring-resolve 'metabase-enterprise.core/ensure-audit-db-exists!)))
-
 ;;; --------------------------------------------------- Lifecycle ----------------------------------------------------
 
 (defn- print-setup-url
@@ -136,6 +133,8 @@
       ;; otherwise update if appropriate
       (sample-data/update-sample-database-if-needed!))
     (init-status/set-progress! 0.9))
+  (when config/ee-available?
+    ((requiring-resolve 'metabase-enterprise.audit-db/ensure-db-exists!)))
   ;; start scheduler at end of init!
   (task/start-scheduler!)
   (init-status/set-complete!)
