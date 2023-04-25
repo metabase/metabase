@@ -38,6 +38,7 @@ const PEOPLE_TABLE = createPeopleTable({
 const REVIEWS_TABLE = createReviewsTable({
   db_id: 2,
   schema: "private",
+  visibility_type: "technical",
 });
 
 const SAMPLE_DB_MULTI_SCHEMA = createSampleDatabase({
@@ -102,6 +103,23 @@ describe("MetadataEditor", () => {
       expect(
         screen.queryByText(PRODUCTS_TABLE.display_name),
       ).not.toBeInTheDocument();
+    });
+
+    it("should allow to switch between metadata and original schema", async () => {
+      const fields = ORDERS_TABLE.fields ?? [];
+      await setup();
+
+      userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
+      expect(
+        await screen.findByDisplayValue(ORDERS_TABLE.display_name),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByDisplayValue(fields[0].display_name),
+      ).toBeInTheDocument();
+
+      userEvent.click(screen.getByText("Original schema"));
+      expect(screen.getByText(ORDERS_TABLE.name)).toBeInTheDocument();
+      expect(screen.getByText(fields[0].name)).toBeInTheDocument();
     });
 
     it("should allow to navigate to and from table settings", async () => {
