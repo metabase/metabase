@@ -79,6 +79,7 @@ describe("scenarios > admin > datamodel > editor", () => {
     cy.wait("@updateField");
 
     openOrdersTable();
+    cy.findByText("Total").should("be.visible");
     cy.findByText("Tax").should("not.exist");
   });
 
