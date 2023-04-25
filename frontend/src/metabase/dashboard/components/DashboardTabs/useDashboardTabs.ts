@@ -8,17 +8,22 @@ import {
   initTabs,
   selectTab as selectTabAction,
 } from "metabase/dashboard/actions";
-import { SelectedTabId } from "metabase-types/store";
+import { SelectedTabId, State } from "metabase-types/store";
+import { getDashboardId } from "metabase/dashboard/selectors";
+
+export function getSelectedTabId(state: State) {
+  return state.dashboard.selectedTabId;
+}
 
 export function useDashboardTabs() {
   const dispatch = useDispatch();
-  const dashboardId = useSelector(state => state.dashboard.dashboardId);
+  const dashboardId = useSelector(getDashboardId);
   const tabs = useSelector(state =>
     dashboardId
       ? state.dashboard.dashboards[dashboardId].ordered_tabs ?? []
       : [],
   );
-  const selectedTabId = useSelector(state => state.dashboard.selectedTabId);
+  const selectedTabId = useSelector(getSelectedTabId);
 
   useMount(() => dispatch(initTabs()));
 

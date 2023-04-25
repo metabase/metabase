@@ -12,6 +12,7 @@ import ClickBehaviorSidebar from "./ClickBehaviorSidebar";
 import DashboardInfoSidebar from "./DashboardInfoSidebar";
 import { AddCardSidebar } from "./add-card-sidebar/AddCardSidebar";
 import { ActionSidebar } from "./ActionSidebar";
+import { getSelectedTabId } from "./DashboardTabs";
 
 DashboardSidebars.propTypes = {
   dashboard: PropTypes.object,
@@ -75,7 +76,7 @@ export function DashboardSidebars({
   setDashboardAttribute,
   saveDashboardAndCards,
 }) {
-  const tabId = useSelector(state => state.dashboard.selectedTabId);
+  const tabId = useSelector(getSelectedTabId);
   const handleAddCard = useCallback(
     cardId => {
       addCardToDashboard({
