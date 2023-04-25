@@ -145,6 +145,7 @@
    join
    join-clause
    join-conditions
+   join-fields
    joins
    with-join-alias
    with-join-fields]

@@ -23,11 +23,11 @@
 (defn- target-ref-for-stage
   "Gets the ref for the target-id exposed by the previous stage"
   [query stage-number target-id]
-  (->> (let [stage (lib.util/query-stage query stage-number)]
-         (lib.metadata.calculation/visible-columns query stage-number stage))
-       (some (fn [{:keys [lib/source id] :as column}]
-               (when (and (= :source/previous-stage source) (= target-id id))
-                 (lib.ref/ref column))))))
+  (let [stage (lib.util/query-stage query stage-number)]
+    (->> (lib.metadata.calculation/visible-columns query stage-number stage)
+         (some (fn [{:keys [lib/source id] :as column}]
+                 (when (and (= :source/previous-stage source) (= target-id id))
+                   (lib.ref/ref column)))))))
 
 (defn- check-subsequent-stages-for-invalid-target!
   "Throws if target-clause is used in a subsequent stage"
@@ -46,21 +46,21 @@
               (recur next-stage-number))))))))
 
 (defn- remove-replace* [query stage-number target-clause remove-replace-fn]
-  (let [query-stage (lib.util/query-stage query stage-number)
-        indexed-joins (m/indexed (lib.join/joins query stage-number))
+  (let [indexed-joins (m/indexed (lib.join/joins query stage-number))
         join-condition-paths (for [[idx _] indexed-joins]
                                [:joins idx :conditions])
         join-field-paths (for [[idx _] indexed-joins]
-                           [:joins idx :conditions])]
+                           [:joins idx :fields])]
     (reduce
       (fn [query location]
         (let [target-clause (lib.common/->op-arg query stage-number target-clause)
               result (lib.util/update-query-stage query stage-number
                                                   remove-replace-fn location target-clause)]
           (when (not= query result)
-            (case (last location)
-              :breakout (check-subsequent-stages-for-invalid-target! query result stage-number (lib.ref/ref target-clause))
-              :fields (check-subsequent-stages-for-invalid-target! query result stage-number (lib.ref/ref target-clause))
+            (mbql.match/match location
+              [:breakout _ _]   (check-subsequent-stages-for-invalid-target! query result stage-number (lib.ref/ref target-clause))
+              [:fields _ _]     (check-subsequent-stages-for-invalid-target! query result stage-number (lib.ref/ref target-clause))
+              [:joins _ :fields] (check-subsequent-stages-for-invalid-target! query result stage-number (lib.ref/ref target-clause))
               nil)
             (reduced result))
           result))
