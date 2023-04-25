@@ -122,6 +122,48 @@ describe("MetadataEditor", () => {
       expect(screen.getByText(ORDERS_TABLE.name)).toBeInTheDocument();
     });
 
+    it("should display visible visibility type", async () => {
+      await setup();
+      expect(await screen.findByText("1 Queryable Table")).toBeInTheDocument();
+      expect(screen.getByText("1 Hidden Table")).toBeInTheDocument();
+
+      userEvent.click(screen.getByText(PRODUCTS_TABLE.display_name));
+      expect(
+        await screen.findByDisplayValue(PRODUCTS_TABLE.display_name),
+      ).toBeInTheDocument();
+      expect(screen.getByRole("checkbox", { name: "Queryable" })).toBeChecked();
+      expect(
+        screen.getByRole("checkbox", { name: "Hidden" }),
+      ).not.toBeChecked();
+      expect(
+        screen.queryByRole("checkbox", { name: "Technical Data" }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("checkbox", { name: "Irrelevant/Cruft" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should display hidden visibility type", async () => {
+      await setup();
+      expect(await screen.findByText("1 Queryable Table")).toBeInTheDocument();
+      expect(screen.getByText("1 Hidden Table")).toBeInTheDocument();
+
+      userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
+      expect(
+        await screen.findByDisplayValue(ORDERS_TABLE.display_name),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("checkbox", { name: "Queryable" }),
+      ).not.toBeChecked();
+      expect(screen.getByRole("checkbox", { name: "Hidden" })).toBeChecked();
+      expect(
+        screen.getByRole("checkbox", { name: "Technical Data" }),
+      ).toBeChecked();
+      expect(
+        screen.getByRole("checkbox", { name: "Irrelevant/Cruft" }),
+      ).not.toBeChecked();
+    });
+
     it("should allow to navigate to and from table settings", async () => {
       await setup();
 
