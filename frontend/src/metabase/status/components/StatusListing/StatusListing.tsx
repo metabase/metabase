@@ -1,27 +1,26 @@
 import React from "react";
-import { connect } from "react-redux";
+import { t } from "ttag";
+import { useSelector } from "react-redux";
+import { useBeforeUnload } from "react-use";
 
 import { getUserIsAdmin, getUser } from "metabase/selectors/user";
-import type { State } from "metabase-types/store";
+import { hasActiveUploads } from "metabase/redux/uploads";
 
 import DatabaseStatus from "../../containers/DatabaseStatus";
 import FileUploadStatus from "../FileUploadStatus";
 import { StatusListingRoot } from "./StatusListing.styled";
 
-const mapStateToProps = (state: State) => ({
-  isAdmin: getUserIsAdmin(state),
-  isLoggedIn: !!getUser(state),
-});
+const StatusListingView = () => {
+  const isLoggedIn = !!useSelector(getUser);
+  const isAdmin = useSelector(getUserIsAdmin);
 
-export interface StatusListingProps {
-  isAdmin: boolean;
-  isLoggedIn: boolean;
-}
+  const uploadInProgress = useSelector(hasActiveUploads);
 
-export const StatusListingView = ({
-  isAdmin,
-  isLoggedIn,
-}: StatusListingProps) => {
+  useBeforeUnload(
+    uploadInProgress,
+    t`CSV Upload in progress. Are you sure you want to leave?`,
+  );
+
   if (!isLoggedIn) {
     return null;
   }
@@ -34,4 +33,4 @@ export const StatusListingView = ({
   );
 };
 
-export default connect(mapStateToProps)(StatusListingView);
+export default StatusListingView;

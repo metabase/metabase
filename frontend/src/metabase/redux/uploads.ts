@@ -35,7 +35,9 @@ const uploadError = createAction(UPLOAD_FILE_TO_COLLECTION_ERROR);
 const clearUpload = createAction(UPLOAD_FILE_TO_COLLECTION_CLEAR);
 
 export const getAllUploads = (state: State) =>
-  Object.keys(state.upload).map(key => state.upload[key]);
+  Object.values(state.upload);
+
+export const hasActiveUploads = (state: State) => getAllUploads(state).some(upload => upload.status === "in-progress");
 
 export const uploadFile = createThunkAction(
   UPLOAD_FILE_TO_COLLECTION,
