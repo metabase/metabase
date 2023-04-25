@@ -584,7 +584,7 @@
                                     :ldap_auth     true}]})
       (migrate!)
       (is (= [{:first_name "Cam", :password "password", :password_salt "and pepper", :sso_source nil}
-              {:first_name "LDAP Cam", :password nil, :password_salt nil, :sso_source :ldap}]
+              {:first_name "LDAP Cam", :password nil, :password_salt nil, :sso_source "ldap"}]
              (mdb.query/query {:select   [:first_name :password :password_salt :sso_source]
                                :from     [:core_user]
                                :order-by [[:id :asc]]}))))))

@@ -712,7 +712,7 @@
     (testing "Google auth users shouldn't be able to change their own password as we get that from Google"
       (mt/with-temp User [user {:email       "anemail@metabase.com"
                                 :password    "def123"
-                                :sso_source  :google}]
+                                :sso_source  "google"}]
         (let [creds {:username "anemail@metabase.com"
                      :password "def123"}]
           (is (= "You don't have permissions to do that."
@@ -723,7 +723,7 @@
                   "as we get that from the LDAP server")
       (mt/with-temp User [user {:email     "anemail@metabase.com"
                                 :password  "def123"
-                                :sso_source :ldap}]
+                                :sso_source "ldap"}]
         (let [creds {:username "anemail@metabase.com"
                      :password "def123"}]
           (is (= "You don't have permissions to do that."
