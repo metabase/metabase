@@ -11,7 +11,8 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [toucan.db :as db]
-   [toucan.util.test :as tt]))
+   [toucan.util.test :as tt]
+   [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :test-users :web-server))
 
