@@ -225,6 +225,22 @@ describe("MetadataEditor", () => {
     });
   });
 
+  describe("multiple databases", () => {
+    it("should be able to switch databases", async () => {
+      await setup({ databases: [SAMPLE_DB, SAMPLE_DB_MULTI_SCHEMA] });
+      expect(
+        await screen.findByText(ORDERS_TABLE.display_name),
+      ).toBeInTheDocument();
+
+      userEvent.click(screen.getByText(SAMPLE_DB.name));
+      userEvent.click(screen.getByText(SAMPLE_DB_MULTI_SCHEMA.name));
+      userEvent.click(await screen.findByText(PEOPLE_TABLE.schema));
+      expect(
+        await screen.findByText(PEOPLE_TABLE.display_name),
+      ).toBeInTheDocument();
+    });
+  });
+
   describe("no databases", () => {
     it("should display an empty state", async () => {
       await setup({ databases: [] });
