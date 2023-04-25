@@ -1025,7 +1025,7 @@
                                                         :google_auth   true}]})
                           (migrate!)
                           (is (= [{:first_name "Cam", :sso_source nil}
-                                  {:first_name "Google Cam", :sso_source :google}]
+                                  {:first_name "Google Cam", :sso_source "google"}]
                                  (mdb.query/query {:select   [:first_name :sso_source]
                                                    :from     [:core_user]
                                                    :order-by [[:id :asc]]}))))))
@@ -1050,7 +1050,7 @@
                                     :ldap_auth     true}]})
       (migrate!)
       (is (= [{:first_name "Cam", :sso_source nil}
-              {:first_name "LDAP Cam", :sso_source :ldap}]
+              {:first_name "LDAP Cam", :sso_source "ldap"}]
              (mdb.query/query {:select   [:first_name :sso_source]
                                :from     [:core_user]
                                :order-by [[:id :asc]]}))))))
