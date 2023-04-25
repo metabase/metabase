@@ -171,36 +171,76 @@
 (deftest get-schema-with-advanced-perms-test
   (testing "Permissions: We can verify include_editable_data_model flag works for the `/:id/schema/:schema` endpoint"
     (mt/with-temp* [Database [{db-id :id}]
-                    Table    [_t1 {:db_id db-id, :schema "schema1", :name "t1"}]
+                    Table    [t1 {:db_id db-id, :schema "schema1", :name "t1"}]
                     Table    [_t2 {:db_id db-id, :schema "schema2"}]
-                    Table    [_t3 {:db_id db-id, :schema "schema1", :name "t3"}]]
+                    Table    [t3 {:db_id db-id, :schema "schema1", :name "t3"}]]
       (with-all-users-data-perms {db-id {:data       {:schemas :all :native :write}
                                          :data-model {:schemas :all}}}
         (perms/revoke-data-perms! (perms-group/all-users) db-id)
-        (testing "Should return values when permissions are revoked but include_editable_data_model=true"
+        (testing "If data permissions are revoked, it should be a 403"
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :get 403 (format "database/%d/schema/%s" db-id "schema1")))))
+        (testing "If include_editable_data_model=true and data permissions are revoked, it should return values"
           (is (= ["t1" "t3"]
                  (map :name (mt/user-http-request :rasta :get 200 (format "database/%d/schema/%s" db-id "schema1")
-                                                  :include_editable_data_model true)))))
-        (testing "Should be a 403 when permissions are revoked"
-          (is (= "You don't have permissions to do that."
-                 (mt/user-http-request :rasta :get 403 (format "database/%d/schema/%s" db-id "schema1")))))))))
+                                                  :include_editable_data_model true))))))
+
+      (testing "If include_editable_data_model=true and a non-admin does not have data model perms, it should respond
+                with a 404"
+        (with-all-users-data-perms {db-id {:data       {:schemas :all :native :write}
+                                           :data-model {:schemas :none}}}
+          (is (= "Not found."
+                 (mt/user-http-request :rasta :get 404 (format "database/%d/schema/%s" db-id "schema1")
+                                       :include_editable_data_model true)))))
+
+      (testing "If include_editable_data_model=true and a non-admin has data model perms for a single table in a schema,
+                the table is returned"
+        (with-all-users-data-perms {db-id {:data       {:schemas :all :native :write}
+                                           :data-model {:schemas {"schema1" {(u/the-id t1) :all
+                                                                             (u/the-id t3) :none}}}}}
+          (is (= ["t1"]
+                 (map :name (mt/user-http-request :rasta :get 200 (format "database/%d/schema/%s" db-id "schema1")
+                                                  :include_editable_data_model true)))))))))
 
 (deftest get-schemas-with-advanced-perms-test
   (testing "Permissions: We can verify include_editable_data_model flag works for the `/:id/:schemas` endpoint"
     (mt/with-temp* [Database [{db-id :id}]
-                    Table    [_t1 {:db_id db-id, :schema "schema1", :name "t1"}]
+                    Table    [t1 {:db_id db-id, :schema "schema1", :name "t1"}]
                     Table    [_t2 {:db_id db-id, :schema "schema2"}]
-                    Table    [_t3 {:db_id db-id, :schema "schema1", :name "t3"}]]
+                    Table    [t3 {:db_id db-id, :schema "schema1", :name "t3"}]]
       (with-all-users-data-perms {db-id {:data       {:schemas :all :native :write}
                                          :data-model {:schemas :all}}}
         (perms/revoke-data-perms! (perms-group/all-users) db-id)
-        (testing "Should return values when permissions are revoked but include_editable_data_model=true"
+        (testing "If data permissions are revoked, it should be a 403"
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :get 403 (format "database/%d/schemas" db-id)))))
+        (testing "If include_editable_data_model=true and data permissions are revoked, it should return values"
           (is (= ["schema1" "schema2"]
                  (mt/user-http-request :rasta :get 200 (format "database/%d/schemas" db-id)
                                        :include_editable_data_model true))))
-        (testing "Should be a 403 when permissions are revoked"
-          (is (= "You don't have permissions to do that."
-                 (mt/user-http-request :rasta :get 403 (format "database/%d/schemas" db-id)))))))))
+        (testing "If include_editable_data_model=true and a non-admin does not have data model perms, it should return []"
+          (with-all-users-data-perms {db-id {:data       {:schemas :all :native :write}
+                                             :data-model {:schemas :none}}}
+            (is (= []
+                   (mt/user-http-request :rasta :get 200 (format "database/%d/schemas" db-id)
+                                         :include_editable_data_model true)))))
+
+        (testing "If include_editable_data_model=true and a non-admin has data model perms for a schema,
+                  it should return the schema"
+          (with-all-users-data-perms {db-id {:data       {:schemas :all :native :write}
+                                             :data-model {:schemas {"schema1" :all}}}}
+            (is (= ["schema1"]
+                   (mt/user-http-request :rasta :get 200 (format "database/%d/schemas" db-id)
+                                         :include_editable_data_model true)))))
+
+        ;; TODO: check that this is the desired behaviour
+        (testing "If include_editable_data_model=true and a non-admin has data model perms for a single table in a schema,
+                  it should not return the schema"
+          (with-all-users-data-perms {db-id {:data       {:schemas :all :native :write}
+                                             :data-model {:schemas {"schema1" {(u/the-id t1) :all}}}}}
+            (is (= []
+                   (mt/user-http-request :rasta :get 200 (format "database/%d/schemas" db-id)
+                                         :include_editable_data_model true)))))))))
 
 (deftest update-field-test
   (mt/with-temp Field [{field-id :id, table-id :table_id} {:name "Field Test"}]
