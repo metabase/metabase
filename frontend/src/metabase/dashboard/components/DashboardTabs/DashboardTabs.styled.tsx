@@ -18,7 +18,7 @@ const _PlaceholderTab = styled(BaseTabButton)`
   padding-bottom: 0.5rem;
 `;
 export const PlaceholderTab = () => (
-  <_PlaceholderTab label={t`Page 1`} disabled />
+  <_PlaceholderTab label={t`Page 1`} value={null} disabled />
 );
 
 // Manually styling this component because `styled` doesn't work with generics

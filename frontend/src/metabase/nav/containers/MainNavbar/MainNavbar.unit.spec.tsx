@@ -16,7 +16,7 @@ import {
 import * as Urls from "metabase/lib/urls";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 
-import type { Card, Dashboard, User } from "metabase-types/api";
+import type { Card, Dashboard, DashboardId, User } from "metabase-types/api";
 import {
   createMockCard,
   createMockCollection,
@@ -31,6 +31,7 @@ import {
   createMockQueryBuilderState,
 } from "metabase-types/store/mocks";
 
+import { DashboardState, EntitiesState } from "metabase-types/store";
 import MainNavbar from "./MainNavbar";
 
 type SetupOpts = {
@@ -106,13 +107,26 @@ async function setup({
     setupCardsEndpoints([openQuestionCard]);
   }
 
-  const dashboards = openDashboard ? { [openDashboard.id]: openDashboard } : {};
-  const dashboardId = openDashboard ? openDashboard.id : null;
+  let dashboardId: DashboardId | null = null;
+  const dashboardsForState: DashboardState["dashboards"] = {};
+  const dashboardsForEntities: EntitiesState["dashboards"] = {};
+  if (openDashboard) {
+    dashboardId = openDashboard.id;
+    dashboardsForState[openDashboard.id] = {
+      ...openDashboard,
+      ordered_cards: openDashboard.ordered_cards.map(c => c.id),
+    };
+    dashboardsForEntities[openDashboard.id] = openDashboard;
+  }
+
   const storeInitialState = createMockState({
     currentUser: user,
-    dashboard: createMockDashboardState({ dashboardId, dashboards }),
+    dashboard: createMockDashboardState({
+      dashboardId,
+      dashboards: dashboardsForState,
+    }),
     qb: createMockQueryBuilderState({ card: openQuestionCard }),
-    entities: createMockEntitiesState({ dashboards }),
+    entities: createMockEntitiesState({ dashboards: dashboardsForEntities }),
   });
 
   renderWithProviders(

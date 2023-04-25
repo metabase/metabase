@@ -21,5 +21,7 @@ export const createMockDashboardState = (
   sidebar: {
     props: {},
   },
+  selectedTabId: null,
+  missingActionParameters: null,
   ...opts,
 });

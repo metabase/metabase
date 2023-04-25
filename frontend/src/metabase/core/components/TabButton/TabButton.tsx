@@ -37,7 +37,7 @@ export interface TabButtonMenuItem<T> {
 
 export interface TabButtonProps<T> extends HTMLAttributes<HTMLDivElement> {
   label: string;
-  value?: T;
+  value: T;
   showMenu?: boolean;
   menuItems?: TabButtonMenuItem<T>[];
   onEdit?: ChangeEventHandler<HTMLInputElement>;
@@ -139,7 +139,7 @@ const TabButton = forwardRef(function TabButton<T>(
             />
           )}
           popoverContent={({ closePopover }) => (
-            <TabButtonMenu
+            <TabButtonMenu<T>
               menuItems={menuItems}
               value={value}
               closePopover={closePopover}
