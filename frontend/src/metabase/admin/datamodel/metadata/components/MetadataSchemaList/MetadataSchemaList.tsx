@@ -74,13 +74,13 @@ const MetadataSchemaList = ({
         />
       </div>
       <ul className="AdminList-items">
-        <li className="AdminList-section">
+        <div className="AdminList-section">
           {ngettext(
             msgid`${schemas.length} schema`,
             `${schemas.length} schemas`,
             schemas.length,
           )}
-        </li>
+        </div>
         {schemas.map(schema => (
           <SchemaRow
             key={schema.id}

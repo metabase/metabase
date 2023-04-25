@@ -2,6 +2,7 @@ import React, { useLayoutEffect } from "react";
 import { connect } from "react-redux";
 import { Link } from "react-router";
 import { push } from "react-router-redux";
+import { t } from "ttag";
 import _ from "underscore";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import * as Urls from "metabase/lib/urls";
@@ -64,6 +65,7 @@ const MetadataHeader = ({
         <div className="MetadataEditor-headerSection flex flex-align-right align-center flex-no-shrink">
           <span className="ml4 mr3">
             <Link
+              aria-label={t`Settings`}
               to={Urls.dataModelTableSettings(
                 selectedDatabaseId,
                 selectedSchemaId,

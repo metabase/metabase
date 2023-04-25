@@ -222,14 +222,14 @@ const TableHeader = ({
       );
 
   return (
-    <li className="AdminList-section flex justify-between align-center">
+    <div className="AdminList-section flex justify-between align-center">
       {title}
       <ToggleVisibilityButton
         tables={tables}
         isHidden={isHidden}
         onUpdateTableVisibility={onUpdateTableVisibility}
       />
-    </li>
+    </div>
   );
 };
 
@@ -298,6 +298,7 @@ const ToggleVisibilityButton = ({
   onUpdateTableVisibility,
 }: ToggleVisibilityButtonProps) => {
   const hasMultipleTables = tables.length > 1;
+  const tooltip = getToggleTooltip(isHidden, hasMultipleTables);
   const [{ loading }, handleUpdate] = useAsyncFn(onUpdateTableVisibility);
 
   const handleClick = useCallback(
@@ -309,13 +310,14 @@ const ToggleVisibilityButton = ({
   );
 
   return (
-    <Tooltip tooltip={getToggleTooltip(isHidden, hasMultipleTables)}>
+    <Tooltip tooltip={tooltip}>
       <IconButtonWrapper
         className={cx(
           "float-right",
           loading ? "cursor-not-allowed" : "text-brand-hover",
         )}
         disabled={loading}
+        aria-label={tooltip}
         onClick={handleClick}
       >
         <Icon name={isHidden ? "eye" : "eye_crossed_out"} size={18} />
