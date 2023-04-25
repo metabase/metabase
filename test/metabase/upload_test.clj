@@ -347,7 +347,7 @@
           (let [table (t2/select-one Table :db_id (mt/id))]
             (is (=? {:name #"(?i)upload_test"} table))
             (testing "Check the data was uploaded into the table correctly"
-              (is (= ["unnamed_column_1", "ship_name", "unnamed_column_3"]
+              (is (= ["unnamed_column", "ship_name", "unnamed_column_2"]
                      (column-names-for-table table))))))))))
 
 (deftest load-from-csv-duplicate-names-test
@@ -358,15 +358,15 @@
          driver/*driver*
          (mt/id)
          "upload_test"
-         (csv-file-with ["unknown,unknown,unknown"
-                         "1,Serenity,Malcolm Reynolds"
-                         "2,Millennium Falcon, Han Solo"]))
+         (csv-file-with ["unknown,unknown,unknown,unknown_2"
+                         "1,Serenity,Malcolm Reynolds,Pistol"
+                         "2,Millennium Falcon, Han Solo,Blaster"]))
         (testing "Table and Fields exist after sync"
           (sync/sync-database! (mt/db))
           (let [table (t2/select-one Table :db_id (mt/id))]
             (is (=? {:name #"(?i)upload_test"} table))
             (testing "Check the data was uploaded into the table correctly"
-              (is (= ["unknown", "unknown_1", "unknown_2"]
+              (is (= ["unknown", "unknown_2", "unknown_3", "unknown_2_2"]
                      (column-names-for-table table))))))))))
 
 (deftest load-from-csv-reserved-db-words-test
