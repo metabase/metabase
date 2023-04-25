@@ -58,8 +58,8 @@
                                                   remove-replace-fn location target-clause)]
           (when (not= query result)
             (mbql.match/match location
-              [:breakout _ _]   (check-subsequent-stages-for-invalid-target! query result stage-number (lib.ref/ref target-clause))
-              [:fields _ _]     (check-subsequent-stages-for-invalid-target! query result stage-number (lib.ref/ref target-clause))
+              [:breakout]        (check-subsequent-stages-for-invalid-target! query result stage-number (lib.ref/ref target-clause))
+              [:fields]          (check-subsequent-stages-for-invalid-target! query result stage-number (lib.ref/ref target-clause))
               [:joins _ :fields] (check-subsequent-stages-for-invalid-target! query result stage-number (lib.ref/ref target-clause))
               nil)
             (reduced result))
