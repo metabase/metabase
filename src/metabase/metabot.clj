@@ -7,7 +7,9 @@
    [metabase.metabot.client :as metabot-client]
    [metabase.metabot.settings :as metabot-settings]
    [metabase.metabot.util :as metabot-util]
-   [metabase.util.log :as log]))
+   [metabase.models :refer [Table]]
+   [metabase.util.log :as log]
+   [toucan2.core :as t2]))
 
 (defn infer-viz
   "Determine an 'interesting' visualization for this data."
@@ -68,12 +70,12 @@
                       (map (fn [{:keys [create_table_ddl] :as model}]
                              (let [{:keys [prompt embedding tokens]} (metabot-client/create-embedding create_table_ddl)]
                                (assoc model
-                                 :prompt prompt
-                                 :embedding embedding
-                                 :tokens tokens)))))]
+                                      :prompt prompt
+                                      :embedding embedding
+                                      :tokens tokens)))))]
       (if-some [{best-mode-name :name
-                 best-model-id :id
-                 :as model} (metabot-util/best-prompt-object models user_prompt)]
+                 best-model-id  :id
+                 :as            model} (metabot-util/best-prompt-object models user_prompt)]
         (do
           (log/infof "Metabot selected best model for database '%s' with prompt '%s' as '%s' (%s)."
                      database-id user_prompt best-model-id best-mode-name)
@@ -81,18 +83,41 @@
         (log/infof "No model inferred for database '%s' with prompt '%s'." database-id user_prompt)))
     (log/warn "Metabot is not enabled")))
 
+(defn infer-model
+  "Find the model in the db that best matches the prompt. Return nil if no good model found."
+  [{{database-id :id :keys [models]} :database :keys [user_prompt] :as context}]
+  (log/infof "Metabot is inferring model for database '%s' with prompt '%s'." database-id user_prompt)
+  (if (metabot-settings/is-metabot-enabled)
+    (let [{:keys [prompt_template version] :as prompt} (metabot-util/create-prompt context)
+          ids->models   (zipmap (map :id models) models)
+          candidates    (set (keys ids->models))
+          best-model-id (metabot-util/find-result
+                         (fn [message]
+                           (some->> message
+                                    (re-seq #"\d+")
+                                    (map parse-long)
+                                    (some candidates)))
+                         (metabot-client/invoke-metabot prompt))]
+      (if-some [model (ids->models best-model-id)]
+        (do
+          (log/infof "Metabot selected best model for database '%s' with prompt '%s' as '%s'."
+                     database-id user_prompt best-model-id)
+          (update model
+                  :prompt_template_versions
+                  (fnil conj [])
+                  (format "%s:%s" prompt_template version)))
+        (log/infof "No model inferred for database '%s' with prompt '%s'." database-id user_prompt)))
+    (log/warn "Metabot is not enabled")))
+
 (defn infer-native-sql-query
   "Given a database and user prompt, determine a sql query to answer my question."
-  [{{database-id :id :keys [create_table_ddls]} :database
-    :keys                                       [user_prompt prompt_template_versions] :as context}]
+  [{{database-id :id} :database
+    :keys             [user_prompt prompt_template_versions] :as context}]
   (log/infof "Metabot is inferring sql for database '%s' with prompt '%s'." database-id user_prompt)
   (if (metabot-settings/is-metabot-enabled)
-    (let [prompt-objects (map (fn [ddl]
-                                (let [{:keys [prompt embedding tokens]} (metabot-client/create-embedding ddl)]
-                                  {:prompt    prompt
-                                   :embedding embedding
-                                   :tokens    tokens}))
-                              create_table_ddls)
+    (let [prompt-objects (->> (t2/select [Table :name :schema :id] :db_id database-id)
+                              (map metabot-util/memoized-create-table-embedding)
+                              (filter identity))
           ddl            (metabot-util/generate-prompt prompt-objects user_prompt)
           context        (assoc-in context [:database :create_database_ddl] ddl)
           {:keys [prompt_template version] :as prompt} (metabot-util/create-prompt context)]

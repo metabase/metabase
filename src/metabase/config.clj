@@ -20,6 +20,15 @@
     (catch Throwable _
       false)))
 
+(def tests-available?
+  "Whether code from `./test` is available. This is mainly to facilitate certain things like test QP middleware that we
+  want to load only when test code is present."
+  (try
+    (classloader/require 'metabase.test.core)
+    true
+    (catch Throwable _
+      false)))
+
 (def ^Boolean is-windows?
   "Are we running on a Windows machine?"
   #_{:clj-kondo/ignore [:discouraged-var]}

@@ -1,0 +1,44 @@
+name: Require Percy specs
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+jobs:
+  files-changed:
+    if: github.event.pull_request.draft == false && !contains(github.event.pull_request.labels.*.name, 'visual')
+    name: Check which files changed
+    runs-on: ubuntu-22.04
+    timeout-minutes: 3
+    outputs:
+      visualizations: ${{ steps.changes.outputs.visualizations }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: Test which files changed
+        uses: dorny/paths-filter@v2.11.1
+        id: changes
+        with:
+          token: ${{ github.token }}
+          filters: .github/file-paths.yaml
+
+  add-label:
+    needs: files-changed
+    if: needs.files-changed.outputs.visualizations == 'true'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - uses: tibdex/github-app-token@v1.6.0
+        id: generate-token
+        with:
+          app_id: ${{ secrets.METABASE_BOT_APP_ID }}
+          private_key: ${{ secrets.METABASE_BOT_APP_PRIVATE_KEY }}
+      - uses: actions/github-script@v6
+        with:
+          github-token: ${{ steps.generate-token.outputs.token }}
+          script: |
+            github.rest.issues.addLabels({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: ["visual"]
+            })

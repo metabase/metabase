@@ -163,7 +163,7 @@
                :message      nil
                :user         @rasta-revision-info
                :diff         nil
-               :description  "rearranged the cards."}]
+               :description  "rearranged the cards and set auto apply filters to true."}]
              (->> (get-revisions :dashboard id)
                   (mapv (fn [rev]
                           (if-not (:diff rev)
@@ -178,6 +178,8 @@
       (mt/with-temp* [Collection [collection {:name "Personal collection"}]
                       Dashboard  [dashboard {:collection_id (u/the-id collection) :name "Personal dashboard"}]]
         (create-dashboard-revision! dashboard true :crowberto)
+        ;; update so that the revision is accepted
+        (t2/update! Dashboard :id (:id dashboard) {:name "Personal dashboard edited"})
         (create-dashboard-revision! dashboard false :crowberto)
         (let [dashboard-id          (u/the-id dashboard)
               [_ {prev-rev-id :id}] (revision/revisions Dashboard dashboard-id)
