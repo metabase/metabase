@@ -45,6 +45,7 @@ const mapStateToProps = (state, props) => {
     isBookmarked: getIsBookmarked(state, props),
     isNavBarOpen: getIsNavbarOpen(state),
     isShowingDashboardInfoSidebar: getIsShowDashboardInfoSidebar(state),
+    selectedTabId: state.dashboard.selectedTabId,
   };
 };
 
@@ -123,7 +124,10 @@ class DashboardHeader extends Component {
   }
 
   onAddTextBox() {
-    this.props.addTextDashCardToDashboard({ dashId: this.props.dashboard.id });
+    this.props.addTextDashCardToDashboard({
+      dashId: this.props.dashboard.id,
+      tabId: this.props.selectedTabId,
+    });
   }
 
   onAddLinkCard() {
