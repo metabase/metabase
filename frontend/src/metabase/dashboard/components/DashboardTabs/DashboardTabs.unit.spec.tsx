@@ -27,11 +27,13 @@ const TEST_CARD = createMockCard({
   },
 });
 
-function createMockDashCard(
-  dashCardId: number,
-  tabId: number | undefined,
-  options?: Partial<StoreDashcard>,
-) {
+function createMockDashCard({
+  dashCardId,
+  tabId,
+}: {
+  dashCardId: number;
+  tabId: number | undefined;
+}) {
   return {
     id: dashCardId,
     dashboard_id: 1,
@@ -45,7 +47,6 @@ function createMockDashCard(
     created_at: "",
     updated_at: "",
     card: TEST_CARD,
-    ...options,
   };
 }
 
@@ -69,14 +70,14 @@ const TEST_DASHBOARD_STATE: DashboardState = {
       },
       ordered_cards: [1, 2],
       ordered_tabs: [
-        getDefaultTab(1, 1, "Page 1"),
-        getDefaultTab(2, 1, "Page 2"),
+        getDefaultTab({ tabId: 1, dashId: 1, name: "Page 1" }),
+        getDefaultTab({ tabId: 2, dashId: 1, name: "Page 2" }),
       ],
     },
   },
   dashcards: {
-    1: createMockDashCard(1, 1),
-    2: createMockDashCard(2, 2),
+    1: createMockDashCard({ dashCardId: 1, tabId: 1 }),
+    2: createMockDashCard({ dashCardId: 2, tabId: 2 }),
   },
 };
 
@@ -158,7 +159,7 @@ describe("DashboardTabs", () => {
     it("should not display tabs when there is one", () => {
       setup({
         isEditing: false,
-        tabs: [getDefaultTab(1, 1, "Page 1")],
+        tabs: [getDefaultTab({ tabId: 1, dashId: 1, name: "Page 1" })],
       });
 
       expect(queryTab(1)).not.toBeInTheDocument();

@@ -61,11 +61,15 @@ function getPrevDashAndTabs(state: DashboardState) {
   return { dashId, prevDash, prevTabs };
 }
 
-export function getDefaultTab(
-  tabId: DashboardTabId,
-  dashId: DashboardId,
-  name: string,
-) {
+export function getDefaultTab({
+  tabId,
+  dashId,
+  name,
+}: {
+  tabId: DashboardTabId;
+  dashId: DashboardId;
+  name: string;
+}) {
   return {
     id: tabId,
     dashboard_id: dashId,
@@ -92,11 +96,11 @@ export const tabsReducer = handleActions<DashboardState, TabsReducerPayload>(
       // Case 1: Dashboard already has tabs
       if (prevTabs.length !== 0) {
         // 1. Create new tab, add to dashboard
-        const newTab = getDefaultTab(
+        const newTab = getDefaultTab({
           tabId,
           dashId,
-          `Page ${prevTabs.length + 1}`,
-        );
+          name: `Page ${prevTabs.length + 1}`,
+        });
         const dashboards: DashboardState["dashboards"] = {
           ...state.dashboards,
           [dashId]: {
@@ -117,8 +121,8 @@ export const tabsReducer = handleActions<DashboardState, TabsReducerPayload>(
       const firstTabId = tabId + 1;
       const secondTabId = tabId;
       const newTabs = [
-        getDefaultTab(firstTabId, dashId, "Page 1"),
-        getDefaultTab(secondTabId, dashId, "Page 2"),
+        getDefaultTab({ tabId: firstTabId, dashId, name: "Page 1" }),
+        getDefaultTab({ tabId: secondTabId, dashId, name: "Page 2" }),
       ];
       const dashboards: DashboardState["dashboards"] = {
         ...state.dashboards,
