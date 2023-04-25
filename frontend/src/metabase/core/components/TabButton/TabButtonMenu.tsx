@@ -1,27 +1,23 @@
 import React, { useContext } from "react";
 import { TabContext } from "../Tab/TabContext";
 import { getTabButtonInputId } from "../Tab/utils";
-import {
-  TabButtonMenuAction,
-  TabButtonMenuItem,
-  TabButtonValue,
-} from "./TabButton";
+import { TabButtonMenuAction, TabButtonMenuItem } from "./TabButton";
 import { MenuContent, MenuItem } from "./TabButton.styled";
 
-interface TabButtonMenuProps {
-  menuItems: TabButtonMenuItem[];
-  value?: TabButtonValue;
+interface TabButtonMenuProps<T> {
+  menuItems: TabButtonMenuItem<T>[];
+  value: T;
   closePopover: () => void;
 }
 
-export default function TabButtonMenu({
+export default function TabButtonMenu<T>({
   menuItems,
   value,
   closePopover,
-}: TabButtonMenuProps) {
+}: TabButtonMenuProps<T>) {
   const context = useContext(TabContext);
 
-  const clickHandler = (action: TabButtonMenuAction) => () => {
+  const clickHandler = (action: TabButtonMenuAction<T>) => () => {
     action(context, value);
     closePopover();
   };
