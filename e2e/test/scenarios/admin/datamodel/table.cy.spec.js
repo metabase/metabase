@@ -34,7 +34,7 @@ describe("scenarios > admin > databases > table", () => {
   it("should show 404 if database does not exist (metabase#14652)", () => {
     cy.visit("/admin/datamodel/database/54321");
     cy.get(".AdminList-item").should("have.length", 0);
-    cy.findByText("The page you asked for couldn't be found.");
+    cy.findByText("Not found.");
     cy.findByText("Select a database");
   });
 
