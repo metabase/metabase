@@ -306,7 +306,7 @@ function QueryBuilder(props) {
     return () => window.removeEventListener("resize", forceUpdateDebounced);
   }, []);
 
-  const isExistingModelDirty = useCallback(
+  const isExistingModelDirty = useMemo(
     () => !isNew && (isModelQueryDirty || isResultDirty || isMetadataDirty),
     [isMetadataDirty, isModelQueryDirty, isNew, isResultDirty],
   );

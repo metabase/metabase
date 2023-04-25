@@ -413,15 +413,6 @@ function areQueriesEquivalent({
   currentQuestion,
   tableMetadata,
 }) {
-  console.log(
-    areLegacyQueriesEqual(
-      lastRunQuestion?.datasetQuery(),
-      currentQuestion?.datasetQuery(),
-      tableMetadata,
-    ),
-    lastRunQuestion,
-    currentQuestion,
-  );
   return (
     areLegacyQueriesEqual(
       lastRunQuestion?.datasetQuery(),
