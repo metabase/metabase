@@ -8,6 +8,7 @@
    [flatland.ordered.set :as ordered-set]
    [java-time :as t]
    [metabase.driver :as driver]
+   [metabase.mbql.util :as mbql.u]
    [metabase.search.util :as search-util]
    [metabase.util :as u]))
 
@@ -118,25 +119,16 @@
   (first (partition n n (repeat nil) values)))
 
 (defn- normalize-column-name
-  [[raw-name index]]
-  (let [normalized (u/slugify (str/trim raw-name))]
-    (if-not (str/blank? normalized)
-      normalized
-      (format "unnamed_column_%s" (inc index)))))
-
-(defn- deduplicate
-  "Add `new-name` to the vector (must be a vector so that `conj` works!) of `names-so-far`, adding a unique suffix if
-  necessary."
-  [names-so-far new-name]
-  (if (some #(= % new-name) names-so-far)
-    (if-let [dupe-number (second (re-matches #".*_(\d+)" new-name))]
-      (recur names-so-far (str/replace new-name #"_\d+$" (str "_" (inc (parse-long dupe-number)))))
-      (recur names-so-far (str new-name "_1")))
-    (conj names-so-far new-name)))
+  [raw-name]
+  (if (str/blank? raw-name)
+    "unnamed_column"
+    (u/slugify (str/trim raw-name))))
 
 (defn- rows->schema
   [header rows]
-  (let [normalized-header (reduce deduplicate [] (mapv normalize-column-name (map vector header (range))))
+  (let [normalized-header (->> header
+                               (map normalize-column-name)
+                               (mbql.u/uniquify-names))
         column-count      (count normalized-header)]
     (->> rows
          (map row->types)
