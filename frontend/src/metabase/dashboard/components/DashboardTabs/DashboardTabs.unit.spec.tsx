@@ -72,6 +72,7 @@ const TEST_DASHBOARD_STATE: DashboardState = {
       ordered_tabs: [
         getDefaultTab({ tabId: 1, dashId: 1, name: "Page 1" }),
         getDefaultTab({ tabId: 2, dashId: 1, name: "Page 2" }),
+        getDefaultTab({ tabId: 3, dashId: 1, name: "Page 3" }),
       ],
     },
   },
@@ -193,7 +194,16 @@ describe("DashboardTabs", () => {
     it("should display a placeholder tab when there are none", () => {
       setup({ tabs: [] });
 
-      const placeholderTab = screen.getByRole("tab", { name: "Page 1" });
+      const placeholderTab = queryTab("Page 1");
+      expect(placeholderTab).toHaveAttribute("aria-disabled", "true");
+    });
+
+    it("should display a placeholder tab when there is only one", () => {
+      setup({
+        tabs: [getDefaultTab({ tabId: 1, dashId: 1, name: "Lonely tab" })],
+      });
+
+      const placeholderTab = queryTab("Lonely tab");
       expect(placeholderTab).toHaveAttribute("aria-disabled", "true");
     });
 
@@ -225,12 +235,13 @@ describe("DashboardTabs", () => {
       it("should add add one tab, not reassign cards, and select the tab when adding an additional tab", () => {
         const { getDashcards } = setup();
         createNewTab();
-        const newTab = queryTab(3);
+        const newTab = queryTab(4);
 
         expect(newTab).toBeVisible();
 
         expect(queryTab(1)).toHaveAttribute("aria-selected", "false");
         expect(queryTab(2)).toHaveAttribute("aria-selected", "false");
+        expect(queryTab(3)).toHaveAttribute("aria-selected", "false");
         expect(newTab).toHaveAttribute("aria-selected", "true");
 
         const dashcards = getDashcards();
@@ -244,9 +255,7 @@ describe("DashboardTabs", () => {
         const { getDashcards } = setup();
         await deleteTab(2);
 
-        expect(
-          screen.queryByRole("tab", { name: "Page 2" }),
-        ).not.toBeInTheDocument();
+        expect(queryTab(2)).not.toBeInTheDocument();
 
         const dashcards = getDashcards();
         expect(dashcards[0].isRemoved).toEqual(undefined);

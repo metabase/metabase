@@ -20,7 +20,7 @@ export function DashboardTabs({ isEditing }: DashboardTabsProps) {
   const { tabs, createNewTab, deleteTab, renameTab, selectTab, selectedTabId } =
     useDashboardTabs();
   const showTabs = tabs.length > 1 || isEditing;
-  const showPlaceholder = tabs.length === 0 && isEditing;
+  const showPlaceholder = tabs.length <= 1 && isEditing;
 
   if (!showTabs) {
     return null;
@@ -29,22 +29,27 @@ export function DashboardTabs({ isEditing }: DashboardTabsProps) {
   return (
     <Container>
       <TabRow<SelectedTabId> value={selectedTabId} onChange={selectTab}>
-        {showPlaceholder && <PlaceholderTab />}
-        {tabs.map(tab => (
-          <Tab<SelectedTabId>
-            key={tab.id}
-            value={tab.id}
-            label={tab.name}
-            onRename={name => renameTab(tab.id, name)}
-            showMenu={isEditing}
-            menuItems={[
-              {
-                label: t`Delete`,
-                action: (_, value) => deleteTab(value),
-              },
-            ]}
+        {showPlaceholder ? (
+          <PlaceholderTab
+            label={tabs.length === 1 ? tabs[0].name : t`Page 1`}
           />
-        ))}
+        ) : (
+          tabs.map(tab => (
+            <Tab<SelectedTabId>
+              key={tab.id}
+              value={tab.id}
+              label={tab.name}
+              onRename={name => renameTab(tab.id, name)}
+              showMenu={isEditing}
+              menuItems={[
+                {
+                  label: t`Delete`,
+                  action: (_, value) => deleteTab(value),
+                },
+              ]}
+            />
+          ))
+        )}
       </TabRow>
       {isEditing && (
         <CreateTabButton icon="add" iconSize={12} onClick={createNewTab} />

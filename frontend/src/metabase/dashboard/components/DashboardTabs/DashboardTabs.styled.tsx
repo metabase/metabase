@@ -1,5 +1,4 @@
 import React from "react";
-import { t } from "ttag";
 import styled from "@emotion/styled";
 
 import BaseTabButton, {
@@ -17,8 +16,8 @@ const _PlaceholderTab = styled(BaseTabButton)`
   padding-top: 0;
   padding-bottom: 0.5rem;
 `;
-export const PlaceholderTab = () => (
-  <_PlaceholderTab label={t`Page 1`} value={null} disabled />
+export const PlaceholderTab = ({ label }: { label: string }) => (
+  <_PlaceholderTab label={label} value={null} disabled />
 );
 
 // Manually styling this component because `styled` doesn't work with generics
