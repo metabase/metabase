@@ -36,6 +36,7 @@
     (testing "if EE perms are enabled: "
       (premium-features-test/with-premium-features #{:enhancements}
         (testing "should be allowed if you have collection perms, native perms for at least one DB, and are not sandboxed"
+          (perms/grant-native-readwrite-permissions! (perms-group/all-users) (mt/id))
           (grant-collection-perms!)
           (test-perms* true))
         (testing "should NOT be allowed if you do not have collection perms"
@@ -73,7 +74,7 @@
     (test-with-root-collection-and-collection
      (fn [coll snippet]
        (test-perms
-        :has-perms-for-obj?    #(mi/can-create? NativeQuerySnippet (dissoc snippet :id))
+        :has-perms-for-obj?       #(mi/can-create? NativeQuerySnippet (dissoc snippet :id))
         :grant-collection-perms!  #(perms/grant-collection-readwrite-permissions! (perms-group/all-users) coll)
         :revoke-collection-perms! #(perms/revoke-collection-permissions! (perms-group/all-users) coll))))))
 
