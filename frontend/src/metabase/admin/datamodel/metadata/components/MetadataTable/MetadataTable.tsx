@@ -198,10 +198,10 @@ const TableTitleSection = ({
       if (event.target.value) {
         onChangeName(event.target.value);
       } else {
-        event.target.value = "";
+        event.target.value = table.displayName();
       }
     },
-    [onChangeName],
+    [table, onChangeName],
   );
 
   const handleDescriptionChange = useCallback(
