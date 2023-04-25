@@ -14421,6 +14421,65 @@ databaseChangeLog:
                   constraints:
                     nullable: false
 
+  - changeSet:
+      id: v47.00-009
+      author: qwef
+      comment: Added 0.47.0 - Replace user google_auth and ldap_auth columns with sso_source values
+      changes:
+        - sql:
+            sql: UPDATE core_user SET sso_source = 'google' WHERE google_auth = true;
+      rollback:
+        - sql:
+            sql: UPDATE core_user SET google_auth = true, sso_source = NULL WHERE sso_source = 'google';
+
+  - changeSet:
+      id: v47.00-012
+      author: qwef
+      comment: Added 0.47.0 - Replace user google_auth and ldap_auth columns with sso_source values
+      changes:
+        - dropColumn:
+            tableName: core_user
+            columnName: google_auth
+      rollback:
+        - addColumn:
+            tableName: core_user
+            columns:
+              - column:
+                  name: google_auth
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v47.00-013
+      author: qwef
+      comment: Added 0.47.0 - Replace user google_auth and ldap_auth columns with sso_source values
+      changes:
+        - sql:
+            sql: UPDATE core_user SET sso_source = 'ldap' WHERE ldap_auth = true;
+      rollback:
+        - sql:
+            sql: UPDATE core_user SET ldap_auth = true, sso_source = NULL WHERE sso_source = 'ldap';
+
+  - changeSet:
+      id: v47.00-014
+      author: qwef
+      comment: Added 0.47.0 - Replace user google_auth and ldap_auth columns with sso_source values
+      changes:
+        - dropColumn:
+            tableName: core_user
+            columnName: ldap_auth
+      rollback:
+        - addColumn:
+            tableName: core_user
+            columns:
+              - column:
+                  name: ldap_auth
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
