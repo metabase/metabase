@@ -107,7 +107,7 @@ GRANT metabase_actions TO metabase;
 
 [Model caching](../data-modeling/models.md#model-caching) lets Metabase save query results to a specific schema in your database. Metabase's database user will need the `CREATE` privilege to set up the dedicated schema for model caching, as well as write access (`INSERT`, `UPDATE`, `DELETE`) to that schema.
 
-- If you haven't already, [create a `metabase` user](#organize-database-privileges-with-roles) in your database.
+- If you haven't already, [create a `metabase` user](#minimum-database-privileges) in your database.
 - Create a new role called `metabase_model_caching`.
 - Give the role `CREATE` access to the database.
 - Give the role `INSERT`, `UPDATE`, and `DELETE` privileges to the schema used for model caching.
