@@ -223,7 +223,6 @@ function QueryBuilder(props) {
     isLoadingComplete,
     isNew,
     isDirty: isModelQueryDirty,
-    isResultDirty,
     isMetadataDirty,
   } = props;
 
@@ -307,8 +306,8 @@ function QueryBuilder(props) {
   }, []);
 
   const isExistingModelDirty = useMemo(
-    () => !isNew && (isModelQueryDirty || isResultDirty || isMetadataDirty),
-    [isMetadataDirty, isModelQueryDirty, isNew, isResultDirty],
+    () => !isNew && (isModelQueryDirty || isMetadataDirty),
+    [isMetadataDirty, isModelQueryDirty, isNew],
   );
 
   useBeforeUnload(isExistingModelDirty);
