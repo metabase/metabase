@@ -53,6 +53,7 @@ Metabase's reference documentation.
 
 - [Databases overview](./databases/start.md)
 - [Adding and managing databases](./databases/connecting.md)
+- [Database users, roles, and privileges](./databases/users-roles-privileges.md)
 - [Syncing and scanning databases](./databases/sync-scan.md)
 - [Encrypting your database connection](./databases/encrypting-details-at-rest.md)
 - [SSH tunneling](./databases/ssh-tunnel.md)
