@@ -217,7 +217,7 @@ class FieldApp extends React.Component {
                       [db.name, Urls.dataModelDatabase(db.id)],
                       [
                         table.display_name,
-                        Urls.dataModelTable(db.id, table.schema_name, table.id),
+                        Urls.dataModelTable(db.id, schemaId, table.id),
                       ],
                       t`${field.display_name} – Field Settings`,
                     ]}
