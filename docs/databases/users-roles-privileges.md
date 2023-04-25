@@ -179,6 +179,6 @@ We recommend bundling privileges into roles based on use cases per customer. Tha
 
 ## Further reading
 
-- [Permissions](../permissions/introduction.md)
-- [People and groups](../people-and-groups/start.md)
-- [Data sandboxing](../permissions/data-sandboxes.md)
+- [Permissions strategies](https://www.metabase.com/learn/permissions/strategy)
+- [Permissions introduction](../permissions/introduction.md)
+- [People overview](../people-and-groups/start.md)
