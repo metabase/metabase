@@ -4,30 +4,25 @@ title: Database users, roles, and privileges
 
 # Database users, roles, and privileges
 
-Metabase needs some [minimum database privileges](#minimum-database-privileges) to successfully connect to your database, as well as some additional database privileges for features like [actions](#actions) and [model caching](#model-caching).
-
-The structure of your database privileges should fit into your [permissions strategy](https://www.metabase.com/learn/permissions/strategy).
-
-## Organize database privileges with roles
-
-Database roles can be used to bundle database privileges for different use cases. One user can belong to multiple roles and get the total set of privileges across those roles.
-
 We recommend creating a `metabase` user with the following roles:
 
-- [`analytics` for read access](#granting-read-access-to-analytics-tables) to any schemas or tables used for analysis.
-- Optional [`metabase_actions` for write access](#actions) to tables used for Metabase actions.
-- Optional [`metabase_model_caching` for write access](#model-caching) to the schema used for Metabase model caching.
+- [`analytics` for read access](#minimum-database-privileges) to any schemas or tables used for analysis.
+- Optional [`metabase_actions` for write access](#privileges-to-enable-actions) to tables used for Metabase actions.
+- Optional [`metabase_model_caching` for write access](#privileges-to-enable-model-caching) to the schema used for Metabase model caching.
 
 Bundling your privileges into roles based on use cases makes it easier to manage privileges in the future (especially in [multi-tenant situations](#multi-tenant-permissions)). For example, you could:
 
 - Use the same `analytics` role for other BI tools in your [data stack](https://www.metabase.com/learn/databases/data-landscape#data-analysis-layer) that need read-only access to the analytics tables in your database.
 - Revoke the write access for `metabase_model_caching` without affecting the write access for `metabase_actions`.
 
-## Granting read access to analytics tables
+## Minimum database privileges
 
-Most analytics tools will need the same [minimum database privileges](#minimum-database-privileges) to connect and read from analytics tables in your database.
+In order to view and query your tables in Metabase, you'll have to give Metabase's database user:
 
-To organize those minimum privileges, you'll:
+- `CONNECT` to your database.
+- `SELECT` privileges to any schemas or tables that you want to use in Metabase.
+
+To organize these privileges (and make maintenance easier down the line):
 
 - Create a database role called `analytics`.
 - Create a database user called `metabase`.
@@ -51,34 +46,27 @@ GRANT analytics TO metabase;
 
 -- Add query privileges to the role (options 1-3):
 -- Option 1: Let users with the analytics role query anything in the DATABASE.
-GRANT SELECT ON DATABASE "your_database" TO analytics;
+GRANT pg_read_all_data ON DATABASE "your_database" TO analytics;
 
--- Option 2: Let users with the analytics role query anything in a specific SCHEMA.
--- GRANT SELECT ON ALL TABLES IN SCHEMA "schema" TO analytics;
+-- Option 2: Uncomment the line below to let users with the analytics role query anything in a specific SCHEMA.
+-- GRANT USAGE ON SCHEMA "your_schema" TO analytics;
+-- GRANT SELECT ON ALL TABLES IN SCHEMA "your_schema" TO analytics;
 
--- Option 3: Let users with the analytics role query anything in a specific TABLE.
--- GRANT SELECT ON ALL TABLES IN SCHEMA "schema" TO analytics;
+-- Option 3: Uncomment the line below to let users with the analytics role query anything in a specific TABLE.
+-- GRANT USAGE ON SCHEMA "your_schema" TO analytics;
+-- GRANT SELECT ON "your_table" IN SCHEMA "your_schema" TO analytics;
 ```
 
-Remember that when you grant privileges to a role, all users with that role will get those privileges.
-
-## Minimum database privileges
-
-In order to view and query your tables in Metabase, you'll have to give Metabase's database user:
-
-- `CONNECT` to your database.
-- `SELECT` privileges to any schemas or tables that you want to use in Metabase.
-
-Depending on how you use Metabase, you may also want to grant:
+Depending on how you use Metabase, you can also additonally grant:
 
 - `TEMPORARY` privileges to create temp tables.
 - `EXECUTE` privileges to use stored procedures or user-defined functions.
 
-See [Granting read access to analytics tables](#granting-read-access-to-analytics-tables) or [multi-tenant permissions](#multi-tenant-permissions) for examples.
+Remember that when you grant privileges to a role, all users with that role will get those privileges.
 
 ## Grant all database privileges
 
-We recommend [using roles to organize your privileges](#organize-database-privileges-with-roles), but if you're looking for a shortcut:
+If you don't want to structure your database privileges yet:
 
 - Create a `metabase` database user.
 - Give `metabase` all privileges to the database.
@@ -91,9 +79,9 @@ CREATE USER metabase WITH PASSWORD "your_password";
 GRANT ALL PRIVILEGES ON "database" TO metabase;
 ```
 
-This option is great if you're connecting to a local database for development or testing.
+This is a good option if you're connecting to a local database for development or testing.
 
-## Actions
+## Privileges to enable actions
 
 [Actions](../actions/introduction.md) let Metabase write back to specific tables in your database. 
 
@@ -115,7 +103,7 @@ GRANT INSERT, UPDATE, DELETE ON "your_table" IN SCHEMA "your_schema" TO metabase
 GRANT metabase_actions TO metabase;
 ```
 
-## Model caching
+## Privileges to enable model caching
 
 [Model caching](../data-modeling/models.md#model-caching) lets Metabase save query results to a specific schema in your database. Metabase's database user will need the `CREATE` privilege to set up the dedicated schema for model caching, as well as write access (`INSERT`, `UPDATE`, `DELETE`) to that schema.
 
