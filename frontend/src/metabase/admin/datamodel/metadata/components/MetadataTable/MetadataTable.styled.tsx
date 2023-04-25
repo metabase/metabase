@@ -41,7 +41,7 @@ export const TableDescriptionInput = styled(InputBlurChange)`
 `;
 
 interface VisibilityBadgeProps {
-  isSelected: boolean;
+  isChecked: boolean;
 }
 
 export const VisibilityBadge = styled.span<VisibilityBadgeProps>`
@@ -49,7 +49,7 @@ export const VisibilityBadge = styled.span<VisibilityBadgeProps>`
   font-weight: bold;
   cursor: pointer;
 
-  color: ${props => (props.isSelected ? color("brand") : color("text-dark"))};
+  color: ${props => (props.isChecked ? color("brand") : color("text-dark"))};
 
   &:hover {
     color: ${color("brand")};

@@ -23,7 +23,9 @@ import {
 import MetadataTableSettings from "../MetadataTableSettings";
 import MetadataEditor from "./MetadataEditor";
 
-const ORDERS_TABLE = createOrdersTable();
+const ORDERS_TABLE = createOrdersTable({
+  visibility_type: "technical",
+});
 
 const PRODUCTS_TABLE = createPeopleTable();
 
@@ -38,7 +40,6 @@ const PEOPLE_TABLE = createPeopleTable({
 const REVIEWS_TABLE = createReviewsTable({
   db_id: 2,
   schema: "private",
-  visibility_type: "technical",
 });
 
 const SAMPLE_DB_MULTI_SCHEMA = createSampleDatabase({
@@ -119,7 +120,6 @@ describe("MetadataEditor", () => {
 
       userEvent.click(screen.getByText("Original schema"));
       expect(screen.getByText(ORDERS_TABLE.name)).toBeInTheDocument();
-      expect(screen.getByText(fields[0].name)).toBeInTheDocument();
     });
 
     it("should allow to navigate to and from table settings", async () => {

@@ -1,4 +1,4 @@
-import React, { ChangeEvent, useCallback, useState } from "react";
+import React, { ChangeEvent, ReactNode, useCallback, useState } from "react";
 import { connect } from "react-redux";
 import { useAsync } from "react-use";
 import { t } from "ttag";
@@ -276,40 +276,63 @@ const TableVisibilitySection = ({
     <div className="MetadataTable-header flex align-center py2 text-medium">
       <span className="mx1 text-uppercase">{t`Visibility`}</span>
       <span id="VisibilityTypes">
-        <VisibilityBadge
-          isSelected={table.visibility_type == null}
+        <MetadataVisibilityBadge
+          isChecked={table.visibility_type == null}
           onClick={handleChangeVisible}
         >
           {t`Queryable`}
-        </VisibilityBadge>
-        <VisibilityBadge
-          isSelected={
+        </MetadataVisibilityBadge>
+        <MetadataVisibilityBadge
+          isChecked={
             table.visibility_type != null || table.visibility_type === "hidden"
           }
           onClick={handleChangeHidden}
         >
           {t`Hidden`}
-        </VisibilityBadge>
+        </MetadataVisibilityBadge>
 
         {table.visibility_type && (
           <span id="VisibilitySubTypes" className="border-left mx2">
             <span className="mx2 text-uppercase text-medium">{t`Why Hide?`}</span>
-            <VisibilityBadge
-              isSelected={table.visibility_type === "technical"}
+            <MetadataVisibilityBadge
+              isChecked={table.visibility_type === "technical"}
               onClick={handleChangeTechnical}
             >
               {t`Technical Data`}
-            </VisibilityBadge>
-            <VisibilityBadge
-              isSelected={table.visibility_type === "cruft"}
+            </MetadataVisibilityBadge>
+            <MetadataVisibilityBadge
+              isChecked={table.visibility_type === "cruft"}
               onClick={handleChangeCruft}
             >
               {t`Irrelevant/Cruft`}
-            </VisibilityBadge>
+            </MetadataVisibilityBadge>
           </span>
         )}
       </span>
     </div>
+  );
+};
+
+interface MetadataVisibilityBadgeProps {
+  isChecked: boolean;
+  children?: ReactNode;
+  onClick?: () => void;
+}
+
+const MetadataVisibilityBadge = ({
+  isChecked,
+  children,
+  onClick,
+}: MetadataVisibilityBadgeProps) => {
+  return (
+    <VisibilityBadge
+      isChecked={isChecked}
+      role="checkbox"
+      aria-checked={isChecked}
+      onClick={onClick}
+    >
+      {children}
+    </VisibilityBadge>
   );
 };
 
