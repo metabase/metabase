@@ -146,6 +146,13 @@
                                              :type/*))]
     (lib.options/ensure-uuid [:value opts value])))
 
+(defmethod ->pMBQL :case
+  [[_tag pred-expr-pairs options]]
+  (let [default (:default options)]
+    (cond-> [:case (dissoc options :default) (mapv ->pMBQL pred-expr-pairs)]
+      :always lib.options/ensure-uuid
+      default (conj (->pMBQL default)))))
+
 (doseq [tag [:aggregation :expression]]
   (lib.hierarchy/derive tag ::aggregation-or-expression-ref))
 
@@ -197,7 +204,12 @@
          m)))
 
 (defn- aggregation->legacy-MBQL [[tag options & args]]
-  (let [inner (into [tag] (map ->legacy-MBQL args))]
+  (let [inner (into [tag] (map ->legacy-MBQL) args)
+        ;; the default value of the :case expression is in the options
+        ;; in legacy MBQL
+        inner (if (and (= tag :case) (next args))
+                (conj (pop inner) {:default (peek inner)})
+                inner)]
     (if-let [aggregation-opts (not-empty (options->legacy-MBQL options))]
       [:aggregation-options inner aggregation-opts]
       inner)))
