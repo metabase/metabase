@@ -60,7 +60,11 @@ export const addCardToDashboard =
     dispatch(loadMetadataForDashboard([dashcard]));
   };
 
-export const addDashCardToDashboard = function ({ dashId, dashcardOverrides }) {
+export const addDashCardToDashboard = function ({
+  dashId,
+  dashcardOverrides,
+  tabId,
+}) {
   return function (dispatch, getState) {
     const { dashboards, dashcards } = getState().dashboard;
     const dashboard = dashboards[dashId];
@@ -76,6 +80,7 @@ export const addDashCardToDashboard = function ({ dashId, dashcardOverrides }) {
       card_id: null,
       card: null,
       dashboard_id: dashId,
+      dashboard_tab_id: tabId ?? null,
       series: [],
       ...getPositionForNewDashCard(
         existingCards,
@@ -90,7 +95,7 @@ export const addDashCardToDashboard = function ({ dashId, dashcardOverrides }) {
   };
 };
 
-export const addTextDashCardToDashboard = function ({ dashId }) {
+export const addTextDashCardToDashboard = function ({ dashId, tabId }) {
   const virtualTextCard = createCard();
   virtualTextCard.display = "text";
   virtualTextCard.archived = false;
@@ -104,6 +109,7 @@ export const addTextDashCardToDashboard = function ({ dashId }) {
   return addDashCardToDashboard({
     dashId: dashId,
     dashcardOverrides: dashcardOverrides,
+    tabId,
   });
 };
 
