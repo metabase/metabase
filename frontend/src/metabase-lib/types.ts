@@ -25,7 +25,7 @@ export type ColumnGroup = unknown & { _opaque: typeof ColumnGroup };
 
 export type TableDisplayInfo = {
   name: string;
-  displayNname: string;
+  displayName: string;
   isSourceTable: boolean;
   isFromJoin: boolean;
   isImplicitlyJoinable: boolean;
