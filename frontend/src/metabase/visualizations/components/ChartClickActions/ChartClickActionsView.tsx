@@ -51,7 +51,7 @@ const ChartClickActionsView = ({
             <p className="mt0 text-medium text-small">{t`Summarize`}</p>
           )}
           {SECTIONS[key].icon === "bolt" && (
-            <p className="mt0 text-medium text-small">
+            <p className="mt1 text-medium text-small">
               {t`Automatic explorations`}
             </p>
           )}
@@ -59,7 +59,7 @@ const ChartClickActionsView = ({
             <p
               className={cx(
                 "text-small",
-                "mt0",
+                "mt1",
                 hasOnlyOneSection ? "text-dark" : "text-medium",
               )}
             >

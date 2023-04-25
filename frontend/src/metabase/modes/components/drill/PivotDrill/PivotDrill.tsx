@@ -27,17 +27,13 @@ const PivotDrill = ({
     ...categoryDrillOptions,
   ];
 
-  if (!drillOptions.length) {
+  if (drillOptions.length === 0) {
     return [];
   }
 
   const Component = (props: ClickActionPopoverProps) => {
     const [activeDrillOption, setActiveDrillOption] =
       useState<PivotByDrillOption | null>(null);
-
-    const handleSelectDrill = (option: PivotByDrillOption) => {
-      setActiveDrillOption(option);
-    };
 
     if (activeDrillOption) {
       return <activeDrillOption.popover {...props} />;
@@ -51,8 +47,8 @@ const PivotDrill = ({
             <ClickActionButton
               key={icon}
               icon={<ActionIcon name={icon} />}
-              role="button"
-              onClick={() => handleSelectDrill(option)}
+              small
+              onClick={() => setActiveDrillOption(option)}
             >
               {title}
             </ClickActionButton>

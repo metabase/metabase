@@ -22,7 +22,7 @@ export const Section = styled.div<{
   hasOnlyOneSection: boolean;
 }>`
   &:not(:last-child):not(:first-child) {
-    padding-bottom: 1.5rem;
+    padding-bottom: 1rem;
   }
 
   ${({ type, hasOnlyOneSection }) =>

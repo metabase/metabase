@@ -26,7 +26,7 @@ export const ContentWrapper = styled.div`
 `;
 
 export const ActionIcon = styled(Icon)`
-  margin-right: 0.75rem;
+  margin-right: 0.25rem;
 
   color: ${color("brand")};
   transition: all 200ms linear;
@@ -39,6 +39,8 @@ export const ClickActionButton = styled(Button)`
 
   border-radius: 8px;
   border: none;
+
+  padding: 0.5rem 0.75rem;
 
   &:hover {
     color: ${color("white")};
