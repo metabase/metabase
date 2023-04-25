@@ -58,8 +58,9 @@ const MetadataTableColumn = ({
   );
 
   return (
-    <div
+    <section
       className="py2 pl2 pr1 mt1 mb3 flex bordered rounded"
+      aria-label={field.name}
       data-testid={`column-${field.name}`}
     >
       <div className="flex flex-column flex-auto">
@@ -119,7 +120,7 @@ const MetadataTableColumn = ({
         </div>
       </div>
       {dragHandle}
-    </div>
+    </section>
   );
 };
 

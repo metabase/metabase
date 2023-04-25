@@ -2,6 +2,7 @@ import React from "react";
 import { IndexRedirect, Route } from "react-router";
 import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
+import { within } from "@testing-library/react";
 import { Database } from "metabase-types/api";
 import {
   createOrdersTable,
@@ -107,16 +108,14 @@ describe("MetadataEditor", () => {
     });
 
     it("should allow to switch between metadata and original schema", async () => {
-      const fields = ORDERS_TABLE.fields ?? [];
+      const [field] = ORDERS_TABLE.fields ?? [];
       await setup();
 
       userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
       expect(
         await screen.findByDisplayValue(ORDERS_TABLE.display_name),
       ).toBeInTheDocument();
-      expect(
-        screen.getByDisplayValue(fields[0].display_name),
-      ).toBeInTheDocument();
+      expect(screen.getByDisplayValue(field.display_name)).toBeInTheDocument();
 
       userEvent.click(screen.getByRole("radio", { name: "Original schema" }));
       expect(screen.getByText(ORDERS_TABLE.name)).toBeInTheDocument();
@@ -168,15 +167,44 @@ describe("MetadataEditor", () => {
       await setup();
 
       userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
-      expect(
-        await screen.findByDisplayValue(ORDERS_TABLE.display_name),
-      ).toBeInTheDocument();
+      userEvent.click(await screen.findByLabelText("Sort"));
 
-      userEvent.click(screen.getByLabelText("Sort"));
       expect(await screen.findByText("Database")).toBeInTheDocument();
       expect(screen.getByText("Alphabetical")).toBeInTheDocument();
       expect(screen.getByText("Custom")).toBeInTheDocument();
       expect(screen.getByText("Smart")).toBeInTheDocument();
+    });
+
+    it("should display field visibility options", async () => {
+      const [field] = ORDERS_TABLE.fields ?? [];
+      await setup();
+
+      userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
+      userEvent.click(await screen.findByLabelText(field.name));
+      userEvent.click(
+        within(screen.getByLabelText(field.name)).getByText("Everywhere"),
+      );
+
+      expect(
+        await screen.findByText("Only in detail views"),
+      ).toBeInTheDocument();
+      expect(screen.getByText("Do not include")).toBeInTheDocument();
+    });
+
+    it("should allow to search for field semantic types", async () => {
+      const [field] = ORDERS_TABLE.fields ?? [];
+      await setup();
+
+      userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
+      userEvent.click(await screen.findByLabelText(field.name));
+      userEvent.click(
+        within(screen.getByLabelText(field.name)).getByText("Entity Key"),
+      );
+      expect(await screen.findByText("Entity Name")).toBeInTheDocument();
+
+      userEvent.type(screen.getByPlaceholderText("Find..."), "Pri");
+      expect(screen.getByText("Price")).toBeInTheDocument();
+      expect(screen.queryByText("Score")).not.toBeInTheDocument();
     });
 
     it("should allow to navigate to and from table settings", async () => {
