@@ -3,7 +3,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import _ from "underscore";
-import { useTimeout, useUnmount } from "react-use";
+import { useUnmount } from "react-use";
 
 import { t } from "ttag";
 
@@ -12,7 +12,7 @@ import favicon from "metabase/hoc/Favicon";
 import titleWithLoadingTime from "metabase/hoc/TitleWithLoadingTime";
 
 import Dashboard from "metabase/dashboard/components/Dashboard/Dashboard";
-import Toaster, { useToaster } from "metabase/components/Toaster";
+import Toaster from "metabase/components/Toaster";
 
 import { useLoadingTimer } from "metabase/hooks/use-loading-timer";
 import { useWebNotification } from "metabase/hooks/use-web-notification";
@@ -59,6 +59,7 @@ import {
   getIsAdditionalInfoVisible,
 } from "../selectors";
 import { DASHBOARD_SLOW_TIMEOUT } from "../constants";
+import AutoApplyFilterToast from "../components/AutoApplyFilterToast/AutoApplyFilterToast";
 
 function getDashboardId({ dashboardId, params }) {
   if (dashboardId) {
@@ -160,60 +161,6 @@ const DashboardApp = props => {
     setIsShowingSlowToaster(false);
   }, []);
 
-  const { parameterValues, setDashboardAttributes, saveDashboardAndCards } =
-    props;
-
-  const [shouldShowAutoApplyFiltersToast, cancel, reset] = useTimeout(
-    DASHBOARD_SLOW_TIMEOUT,
-  );
-  useEffect(() => {
-    if (isLoadingComplete && !shouldShowAutoApplyFiltersToast()) {
-      cancel();
-    }
-    return () => cancel;
-  }, [cancel, isLoadingComplete, shouldShowAutoApplyFiltersToast]);
-
-  useEffect(() => {
-    const isShowingAutoApplyFiltersToast =
-      dashboard?.auto_apply_filters &&
-      !_.isEmpty(parameterValues) &&
-      isLoadingComplete &&
-      shouldShowAutoApplyFiltersToast();
-
-    if (isShowingAutoApplyFiltersToast) {
-      autoApplyFiltersToasterApi.show({
-        message: t`You can make this dashboard snappier by turning off auto-applying filters.`,
-        confirmText: t`Turn off`,
-        onConfirm: () => {
-          setDashboardAttributes({
-            id: dashboard?.id,
-            attributes: {
-              auto_apply_filters: false,
-            },
-          });
-          saveDashboardAndCards(dashboard?.id);
-          autoApplyFiltersToasterApi.hide();
-          // XXX: Make the dashboard not reload after clicking the button
-        },
-      });
-    }
-  }, [
-    autoApplyFiltersToasterApi,
-    dashboard?.auto_apply_filters,
-    dashboard?.id,
-    isLoadingComplete,
-    parameterValues,
-    saveDashboardAndCards,
-    setDashboardAttributes,
-    shouldShowAutoApplyFiltersToast,
-  ]);
-
-  const [autoApplyFiltersToasterApi, autoApplyFiltersToaster] = useToaster();
-
-  // Display toasts only when
-  // 1. dashboard.auto_apply_filters = false
-  // 2. dashboard has filters applied
-  // 3. when all dashboard cards are loaded but after the 15s timeout, which is when we determine that the dashboard is slow
   return (
     <div className="shrink-below-content-size full-height">
       <Dashboard
@@ -230,9 +177,7 @@ const DashboardApp = props => {
         onConfirm={onConfirmToast}
         fixed
       />
-      {/* XXX: Make toaster stackable */}
-      {/* XXX: Make toaster longer */}
-      {autoApplyFiltersToaster}
+      <AutoApplyFilterToast isShowingSlowToaster={isShowingSlowToaster} />
     </div>
   );
 };
