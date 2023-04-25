@@ -1,5 +1,6 @@
 import { RowValue } from "./dataset";
 import { TableId } from "./table";
+import type { FieldReference } from "./query";
 
 export type FieldId = number;
 
@@ -106,6 +107,7 @@ export interface FieldValues {
 
 export type Field = Omit<ConcreteField, "id"> & {
   id?: FieldId;
+  field_ref?: FieldReference;
 };
 
 export interface FieldFormattingSettings {
