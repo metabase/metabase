@@ -268,12 +268,11 @@
                    (mt/user-http-request :rasta :get 200 (format "database/%d/schemas" db-id)
                                          :include_editable_data_model true)))))
 
-        ;; TODO: check that this is the desired behaviour
         (testing "If include_editable_data_model=true and a non-admin has data model perms for a single table in a schema,
-                  it should not return the schema"
+                  it should return the schema"
           (with-all-users-data-perms {db-id {:data       {:schemas :all :native :write}
                                              :data-model {:schemas {"schema1" {(u/the-id t1) :all}}}}}
-            (is (= []
+            (is (= ["schema1"]
                    (mt/user-http-request :rasta :get 200 (format "database/%d/schemas" db-id)
                                          :include_editable_data_model true)))))))))
 
