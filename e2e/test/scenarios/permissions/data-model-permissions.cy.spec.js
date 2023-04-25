@@ -6,7 +6,7 @@ import {
   modifyPermission,
 } from "e2e/support/helpers";
 
-import { SAMPLE_DB_ID, SAMPLE_DB_SCHEMA } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, SAMPLE_DB_SCHEMA_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
@@ -112,7 +112,7 @@ describeEE("scenarios > admin > permissions", () => {
     // Check limited access as a non-admin user
     cy.signIn("none");
     cy.visit(
-      `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA}/table/${ORDERS_ID}`,
+      `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}`,
     );
 
     // Find foreign key from table the user does not have access to

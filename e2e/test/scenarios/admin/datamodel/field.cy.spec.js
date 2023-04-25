@@ -9,7 +9,7 @@ import {
 } from "e2e/support/helpers";
 import {
   SAMPLE_DB_ID,
-  SAMPLE_DB_SCHEMA,
+  SAMPLE_DB_SCHEMA_ID,
   WRITABLE_DB_ID,
 } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -23,7 +23,7 @@ describe.skip("scenarios > admin > datamodel > field", () => {
 
     ["CREATED_AT", "PRODUCT_ID", "QUANTITY"].forEach(name => {
       cy.wrap(
-        `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA}/table/${ORDERS_ID}/field/${ORDERS[name]}/general`,
+        `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/field/${ORDERS[name]}/general`,
       ).as(`ORDERS_${name}_URL`);
     });
 
@@ -118,7 +118,7 @@ describe.skip("scenarios > admin > datamodel > field", () => {
         dbId,
         ({ number_with_nulls: { num }, number_with_nulls_ID }) =>
           cy.visit(
-            `/admin/datamodel/database/${dbId}/schema/${SAMPLE_DB_SCHEMA}/table/${number_with_nulls_ID}/field/${num}/general`,
+            `/admin/datamodel/database/${dbId}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${number_with_nulls_ID}/field/${num}/general`,
           ),
       );
 
