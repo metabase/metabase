@@ -1,5 +1,6 @@
 import React, { ReactNode, useCallback, useMemo } from "react";
 import { connect } from "react-redux";
+import cx from "classnames";
 import { t } from "ttag";
 import _ from "underscore";
 import Tables from "metabase/entities/tables";
@@ -59,7 +60,8 @@ const MetadataTableColumnList = ({
   onUpdateTable,
   onUpdateFieldOrder,
 }: MetadataTableColumnListProps) => {
-  const { fields = [] } = table;
+  const { fields = [], visibility_type } = table;
+  const isHidden = visibility_type != null;
 
   const sortedFields = useMemo(
     () => _.sortBy(fields, field => field.position),
@@ -81,7 +83,7 @@ const MetadataTableColumnList = ({
   );
 
   return (
-    <div id="ColumnsList" className="my3">
+    <div id="ColumnsList" className={cx("my3", { disabled: isHidden })}>
       <div className="text-uppercase text-medium py1">
         <div className="relative">
           <div
