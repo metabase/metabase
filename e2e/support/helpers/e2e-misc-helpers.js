@@ -124,7 +124,7 @@ export function visitQuestion(id) {
   // In case we use this function multiple times in a test, make sure aliases are unique for each question
   const alias = "cardQuery" + id;
 
-  // We need to use the wildcard becase endpoint for pivot tables has the following format: `/api/card/pivot/${id}/query`
+  // We need to use the wildcard because endpoint for pivot tables has the following format: `/api/card/pivot/${id}/query`
   cy.intercept("POST", `/api/card/**/${id}/query`).as(alias);
 
   cy.visit(`/question/${id}`);
