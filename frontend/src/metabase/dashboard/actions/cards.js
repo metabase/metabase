@@ -134,7 +134,7 @@ export const addLinkDashCardToDashboard = function ({ dashId, tabId }) {
 };
 
 export const addActionToDashboard =
-  async ({ dashId, action, displayType }) =>
+  async ({ dashId, tabId, action, displayType }) =>
   dispatch => {
     const virtualActionsCard = {
       ...createCard(),
@@ -161,6 +161,7 @@ export const addActionToDashboard =
       addDashCardToDashboard({
         dashId: dashId,
         dashcardOverrides: dashcardOverrides,
+        tabId,
       }),
     );
   };

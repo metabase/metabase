@@ -140,6 +140,7 @@ class DashboardHeader extends Component {
   onAddAction() {
     this.props.addActionToDashboard({
       dashId: this.props.dashboard.id,
+      tabId: this.props.selectedTabId,
       displayType: "button",
       action: {},
     });
