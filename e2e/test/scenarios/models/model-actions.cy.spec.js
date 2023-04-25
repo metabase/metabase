@@ -405,7 +405,7 @@ describe(
         cy.visit(url);
 
         // team 2 has 10 points, let's give them more
-        cy.findByLabelText("Id").type("2");
+        cy.findByLabelText("ID").type("2");
         cy.findByLabelText(/score/i).type("16");
         cy.findByLabelText(/team name/i).type("Bouncy Bears");
 
