@@ -24,13 +24,11 @@ import ActionParametersInputModal, {
 const parameter1 = createMockActionParameter({
   id: "parameter_1",
   type: "type/Text",
-  "display-name": "Parameter 1",
 });
 
 const parameter2 = createMockActionParameter({
   id: "parameter_2",
   type: "type/Text",
-  "display-name": "Parameter 2",
 });
 
 const mockAction = createMockQueryAction({
@@ -140,6 +138,18 @@ describe("Actions > ActionParametersInputForm", () => {
     setupPrefetch();
 
     const idParameter = createMockActionParameter({ id: "id" });
+
+    const parameter1 = createMockActionParameter({
+      id: "parameter_1",
+      type: "type/Text",
+      "display-name": "Parameter 1",
+    });
+
+    const parameter2 = createMockActionParameter({
+      id: "parameter_2",
+      type: "type/Text",
+      "display-name": "Parameter 2",
+    });
 
     await setup({
       action: createMockImplicitQueryAction({
