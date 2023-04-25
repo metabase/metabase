@@ -11,7 +11,8 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [toucan.db :as db]
-   [toucan.util.test :as tt]))
+   [toucan.util.test :as tt]
+   [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :test-users :web-server))
 
@@ -178,6 +179,8 @@
       (mt/with-temp* [Collection [collection {:name "Personal collection"}]
                       Dashboard  [dashboard {:collection_id (u/the-id collection) :name "Personal dashboard"}]]
         (create-dashboard-revision! dashboard true :crowberto)
+        ;; update so that the revision is accepted
+        (t2/update! Dashboard :id (:id dashboard) {:name "Personal dashboard edited"})
         (create-dashboard-revision! dashboard false :crowberto)
         (let [dashboard-id          (u/the-id dashboard)
               [_ {prev-rev-id :id}] (revision/revisions Dashboard dashboard-id)
