@@ -68,7 +68,9 @@
                                              :exclusions  [org.clojure/clojurescript]}
   info.sunng/ring-jetty9-adapter            {:mvn/version "0.18.5"}             ; Drop-in replacement for official Ring Jetty adapter. Supports Jetty 11 webserver.
   instaparse/instaparse                     {:mvn/version "1.4.12"}             ; Make your own parser
-  clj-commons/clj-yaml                      {:mvn/version "1.0.26"}             ; Clojure wrapper for YAML library SnakeYAML
+                                                                                ; Clojure wrapper for YAML library SnakeYAML
+  clj-commons/clj-yaml                      {:git/url "https://github.com/clj-commons/clj-yaml.git"
+                                             :git/sha "68f960cf6d49d824ea537c98ad7193991c5f0fd5"}
   io.github.camsaul/toucan2                 {:mvn/version "1.0.520"}
   io.github.camsaul/toucan2-toucan1         {:mvn/version "1.0.520"}
   ;; The 2.X line of Resilience4j requires Java 17, so we cannot upgrade this dependency until that is our minimum JVM version
