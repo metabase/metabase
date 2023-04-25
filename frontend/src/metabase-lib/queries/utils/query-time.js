@@ -122,10 +122,10 @@ export function generateTimeFilterValuesDescriptions(filter) {
 
   if (operator === "time-interval") {
     const [n, unit] = values;
-    return [Lib.describeTimeInterval(n, unit)];
+    return [Lib.describeTemporalInterval(n, unit)];
   } else if (isStartingFrom(filter)) {
     const [interval, unit] = getRelativeDatetimeInterval(filter);
-    const prefix = Lib.describeTimeInterval(interval, unit);
+    const prefix = Lib.describeTemporalInterval(interval, unit);
     const startingFrom = getStartingFrom(filter);
     if (!startingFrom) {
       return [prefix];
@@ -161,7 +161,7 @@ function generateTimeValueDescription(value, bucketing, isExclude) {
     }
 
     return bucketing === unit
-      ? Lib.describeTimeInterval(n, unit)
+      ? Lib.describeTemporalInterval(n, unit)
       : Lib.describeRelativeDatetime(n, unit);
   } else {
     console.warn("Unknown datetime format", value);
