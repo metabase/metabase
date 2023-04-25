@@ -24,8 +24,10 @@ title: DatetimeDiff
 - "year"
 - "quarter"
 - "month"
+- "week"
 - "day"
 - "hour"
+- "minute"
 - "second"
 - "millisecond"
 

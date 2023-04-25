@@ -53,7 +53,6 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2])
   (:import
@@ -355,13 +354,13 @@ saved later when it is ready."
          metadata-timeout     (a/timeout metadata-sync-wait-ms)
          [metadata port]      (a/alts!! [result-metadata-chan metadata-timeout])
          timed-out?           (= port metadata-timeout)
-         card                 (db/transaction
+         card                 (t2/with-transaction [_conn]
                                ;; Adding a new card at `collection_position` could cause other cards in this
                                ;; collection to change position, check that and fix it if needed
                                (api/maybe-reconcile-collection-position! card-data)
-                               (db/insert! Card (cond-> card-data
-                                                  (and metadata (not timed-out?))
-                                                  (assoc :result_metadata metadata))))]
+                               (first (t2/insert-returning-instances! Card (cond-> card-data
+                                                                             (and metadata (not timed-out?))
+                                                                             (assoc :result_metadata metadata)))))]
      (when-not delay-event?
        (events/publish-event! :card-create card))
      (when timed-out?
@@ -569,7 +568,7 @@ saved later when it is ready."
   included, otherwise the metadata will be saved to the database asynchronously."
   [{:keys [id], :as card-before-update} {:keys [archived], :as card-updates}]
   ;; don't block our precious core.async thread, run the actual DB updates on a separate thread
-  (db/transaction
+  (t2/with-transaction [_conn]
    (api/maybe-reconcile-collection-position! card-before-update card-updates)
 
    (when (and (card-is-verified? card-before-update)
@@ -697,7 +696,8 @@ saved later when it is ready."
             (api/reconcile-position-for-collection! collection_id collection_position nil)
             ;; Now we can update the card with the new collection and a new calculated position
             ;; that appended to the end
-            (t2/update! Card (u/the-id card)
+            (t2/update! Card
+                        (u/the-id card)
                         {:collection_position idx
                          :collection_id       new-collection-id-or-nil}))
           ;; These are reversed because of the classic issue when removing an item from array. If we remove an
@@ -728,7 +728,7 @@ saved later when it is ready."
       ;; here. We are querying for the max card position for a given collection, then using that to base our position
       ;; changes if the cards are moving to a different collection. Without repeatable read here, it's possible we'll
       ;; get duplicates
-      (db/transaction
+      (t2/with-transaction [_conn]
         ;; If any of the cards have a `:collection_position`, we'll need to fixup the old collection now that the cards
         ;; are gone and update the position in the new collection
         (when-let [cards-with-position (seq (filter :collection_position cards))]
@@ -738,8 +738,9 @@ saved later when it is ready."
         (when-let [cards-without-position (seq (for [card cards
                                                      :when (not (:collection_position card))]
                                                  (u/the-id card)))]
-          (db/update-where! Card {:id [:in (set cards-without-position)]}
-            :collection_id new-collection-id-or-nil))))))
+          (t2/update! (t2/table-name Card)
+                      {:id [:in (set cards-without-position)]}
+                      {:collection_id new-collection-id-or-nil}))))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/collections"

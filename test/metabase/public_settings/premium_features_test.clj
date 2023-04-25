@@ -40,7 +40,7 @@
   [token premium-features-response]
   (http-fake/with-fake-routes-in-isolation
     {{:address      (#'premium-features/token-status-url token @#'premium-features/token-check-url)
-      :query-params {:users     (str (#'premium-features/active-users-count*))
+      :query-params {:users     (str (#'premium-features/cached-active-users-count))
                      :site-uuid (public-settings/site-uuid-for-premium-features-token-checks)}}
      (constantly premium-features-response)}
     (#'premium-features/fetch-token-status* token)))
@@ -210,7 +210,7 @@
   "Returns a greeting for a user. Only EE version is defined with defenterprise-schema."
   metabase-enterprise.util-test
   [username]
-  (format "Hi %s, you're an OSS customer!"))
+  (format "Hi %s, you're an OSS customer!" username))
 
 (deftest defenterprise-schema-test
   (when-not config/ee-available?
@@ -264,7 +264,8 @@
     ;; premium-features/active-users-count is cached so it could be make the test flaky
     ;; rebinding to avoid caching
     (testing "returns the number of active users"
-      (with-redefs [premium-features/cached-active-user-count #'premium-features/active-users-count*]
+      (with-redefs [premium-features/cached-active-users-count (fn []
+                                                                 (t2/count :core_user :is_active true))]
         (is (= (t2/count :core_user :is_active true)
                (premium-features/active-users-count)))))
 

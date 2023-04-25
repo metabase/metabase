@@ -197,9 +197,7 @@
                                                      (when dataset?
                                                        {:info {:metadata/dataset-metadata (:result_metadata card)}}))))))))))))
 
-
-
-(deftest sql-source-query-breakout-aggregation-test
+(deftest ^:parallel sql-source-query-breakout-aggregation-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
     (testing "make sure we can do a query with breakout and aggregation using a SQL source query"
       (is (= (:rows (breakout-results))
@@ -209,7 +207,6 @@
                   {:source-query {:native (compile-to-native (mt/mbql-query venues))}
                    :aggregation  [:count]
                    :breakout     [*price]}))))))))
-
 
 (defn- mbql-card-def
   "Basic MBQL Card definition. Pass kv-pair clauses for the inner query."

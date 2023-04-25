@@ -22,7 +22,6 @@
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan.hydrate :as hydrate :refer [hydrate]]
    [toucan2.core :as t2]))
 
@@ -37,11 +36,9 @@
     (merge
      (mt/object-defaults User)
      {:date_joined      true
-      :google_auth      false
       :id               true
       :is_active        true
       :last_login       false
-      :ldap_auth        false
       :sso_source       nil
       :login_attributes nil
       :updated_at       true
@@ -159,7 +156,7 @@
              (mt/user-http-request :rasta :get 403 "user", :status "all"))))
 
     (testing "Pagination gets the total users _in query_"
-      (is (= (db/count User)
+      (is (= (t2/count User)
              ((mt/user-http-request :crowberto :get 200 "user" :status "all") :total))))
     (testing "for admins, it should include those inactive users as we'd expect"
       (is (= (->> [{:email                  "trashbird@metabase.com"
@@ -247,7 +244,7 @@
       (is (= (mt/user-http-request :crowberto :get 200 "user" :limit "50" :offset "1")
              (mt/user-http-request :crowberto :get 200 "user" :offset "1"))))
     (testing "Limit and offset pagination get the total"
-      (is (= (db/count User :is_active true)
+      (is (= (t2/count User :is_active true)
              ((mt/user-http-request :crowberto :get 200 "user" :offset "1" :limit "1") :total))))
     (testing "Limit and offset pagination works for user list"
       (let [first-three-users (:data (mt/user-http-request :rasta :get 200 "user" :limit "3", :offset "0"))]
@@ -432,11 +429,11 @@
                                  :email                  email
                                  :user_group_memberships (group-or-ids->user-group-memberships [group])})
           (is (= false
-                 (db/exists? User :%lower.email (u/lower-case-en email)))))))))
+                 (t2/exists? User :%lower.email (u/lower-case-en email)))))))))
 
 (defn- superuser-and-admin-pgm-info [email]
   {:is-superuser? (t2/select-one-fn :is_superuser User :%lower.email (u/lower-case-en email))
-   :pgm-exists?   (db/exists? PermissionsGroupMembership
+   :pgm-exists?   (t2/exists? PermissionsGroupMembership
                     :user_id  (t2/select-one-pk User :%lower.email (u/lower-case-en email))
                     :group_id (u/the-id (perms-group/admin)))})
 
@@ -715,7 +712,7 @@
     (testing "Google auth users shouldn't be able to change their own password as we get that from Google"
       (mt/with-temp User [user {:email       "anemail@metabase.com"
                                 :password    "def123"
-                                :google_auth true}]
+                                :sso_source  "google"}]
         (let [creds {:username "anemail@metabase.com"
                      :password "def123"}]
           (is (= "You don't have permissions to do that."
@@ -726,7 +723,7 @@
                   "as we get that from the LDAP server")
       (mt/with-temp User [user {:email     "anemail@metabase.com"
                                 :password  "def123"
-                                :ldap_auth true}]
+                                :sso_source "ldap"}]
         (let [creds {:username "anemail@metabase.com"
                      :password "def123"}]
           (is (= "You don't have permissions to do that."
@@ -917,13 +914,13 @@
                   "Google Auth (#3323)")
       (mt/with-temporary-setting-values [google-auth-client-id "pretend-client-id.apps.googleusercontent.com"
                                          google-auth-enabled    true]
-        (mt/with-temp User [user {:google_auth true}]
+        (mt/with-temp User [user {:sso_source "google"}]
           (t2/update! User (u/the-id user)
                       {:is_active false})
           (mt/with-temporary-setting-values [google-auth-enabled false]
             (mt/user-http-request :crowberto :put 200 (format "user/%s/reactivate" (u/the-id user)))
-            (is (= {:is_active true, :google_auth false}
-                   (mt/derecordize (t2/select-one [User :is_active :google_auth] :id (u/the-id user)))))))))))
+            (is (= {:is_active true, :sso_source nil}
+                   (mt/derecordize (t2/select-one [User :is_active :sso_source] :id (u/the-id user)))))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -970,6 +967,20 @@
                                    {:password     "whateverUP12!!"
                                     :old_password "mismatched"}))))))
 
+(deftest reset-password-session-test
+  (testing "PUT /api/user/:id/password"
+    (testing "Test that we return a session if we are changing our own password"
+      (mt/with-temp User [user {:password "def", :is_superuser false}]
+        (let [creds {:username (:email user), :password "def"}]
+          (is (schema= {:session_id (s/pred mt/is-uuid-string? "session")
+                        :success    (s/eq true)}
+                       (mt/client creds :put 200 (format "user/%d/password" (:id user)) {:password     "abc123!!DEF"
+                                                                                         :old_password "def"}))))))
+
+    (testing "Test that we don't return a session if we are changing our someone else's password as a superuser"
+      (mt/with-temp User [user {:password "def", :is_superuser false}]
+        (is (nil? (mt/user-http-request :crowberto :put 204 (format "user/%d/password" (:id user)) {:password     "abc123!!DEF"
+                                                                                                    :old_password "def"})))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                             Deleting (Deactivating) a User -- DELETE /api/user/:id                             |

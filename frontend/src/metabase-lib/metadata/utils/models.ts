@@ -1,10 +1,10 @@
-import { TemplateTag } from "metabase-types/types/Query";
 import {
   DatasetColumn,
   Field,
   FieldReference,
   ModelCacheRefreshStatus,
   TableColumnOrderSetting,
+  TemplateTag,
 } from "metabase-types/api";
 import {
   Card as CardObject,

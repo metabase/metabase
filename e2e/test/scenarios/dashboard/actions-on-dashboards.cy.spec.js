@@ -55,7 +55,10 @@ const MODEL_NAME = "Test Action Model";
           restore(`${dialect}-writable`);
           cy.signInAsAdmin();
           resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: TEST_TABLE });
-          createModelFromTableName({ tableName: TEST_TABLE, modelName: MODEL_NAME });
+          createModelFromTableName({
+            tableName: TEST_TABLE,
+            modelName: MODEL_NAME,
+          });
         });
 
         it("adds a custom query action to a dashboard and runs it", () => {
@@ -87,13 +90,13 @@ const MODEL_NAME = "Test Action Model";
           dragField(1, 0);
 
           cy.findByRole("dialog").within(() => {
-            cy.findAllByText("Number").click({ multiple: true })
+            cy.findAllByText("Number").each(el => {
+              cy.wrap(el).click();
+            });
             cy.findByText("Save").click();
           });
 
-          cy.findByPlaceholderText("My new fantastic action").type(
-            ACTION_NAME
-          );
+          cy.findByPlaceholderText("My new fantastic action").type(ACTION_NAME);
           cy.findByText("Create").click();
 
           createDashboardWithActionButton({
@@ -102,12 +105,12 @@ const MODEL_NAME = "Test Action Model";
           });
 
           filterWidget().click();
-          addWidgetStringFilter("1")
+          addWidgetStringFilter("1");
 
           clickHelper("Update Score");
 
           cy.findByRole("dialog").within(() => {
-            cy.findByLabelText("New score").type("55");
+            cy.findByLabelText("New Score").type("55");
             cy.button(ACTION_NAME).click();
           });
 
@@ -246,8 +249,14 @@ const MODEL_NAME = "Test Action Model";
           resetTestTable({ type: dialect, table: TEST_COLUMNS_TABLE });
           restore(`${dialect}-writable`);
           cy.signInAsAdmin();
-          resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: TEST_COLUMNS_TABLE });
-          createModelFromTableName({ tableName: TEST_COLUMNS_TABLE, modelName: MODEL_NAME });
+          resyncDatabase({
+            dbId: WRITABLE_DB_ID,
+            tableName: TEST_COLUMNS_TABLE,
+          });
+          createModelFromTableName({
+            tableName: TEST_COLUMNS_TABLE,
+            modelName: MODEL_NAME,
+          });
         });
 
         it("can update various data types via implicit actions", () => {
@@ -569,7 +578,8 @@ const MODEL_NAME = "Test Action Model";
           });
         });
       });
-    });
+    },
+  );
 });
 
 function createDashboardWithActionButton({

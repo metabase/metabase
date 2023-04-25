@@ -8,6 +8,7 @@ import {
   isOSS,
   visitDashboard,
   sendEmailAndAssert,
+  addOrUpdateDashboardCard,
 } from "e2e/support/helpers";
 import { USERS } from "e2e/support/cypress_data";
 
@@ -192,34 +193,20 @@ describe("scenarios > dashboard > subscriptions", () => {
             });
 
             // Add question to the dashboard
-            cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-              cardId: QUESTION_ID,
-              row: 0,
-              col: 0,
-              size_x: 12,
-              size_y: 10,
-            }).then(({ body: { id: DASH_CARD_ID } }) => {
-              // Connect filter to that question
-              cy.request("PUT", `/api/dashboard/${DASHBOARD_ID}/cards`, {
-                cards: [
+            addOrUpdateDashboardCard({
+              dashboard_id: DASHBOARD_ID,
+              card_id: QUESTION_ID,
+              card: {
+                parameter_mappings: [
                   {
-                    id: DASH_CARD_ID,
+                    parameter_id: "930e4001",
                     card_id: QUESTION_ID,
-                    row: 0,
-                    col: 0,
-                    size_x: 12,
-                    size_y: 10,
-                    parameter_mappings: [
-                      {
-                        parameter_id: "930e4001",
-                        card_id: QUESTION_ID,
-                        target: ["variable", ["template-tag", "qty"]],
-                      },
-                    ],
+                    target: ["variable", ["template-tag", "qty"]],
                   },
                 ],
-              });
+              },
             });
+
             assignRecipient({ dashboard_id: DASHBOARD_ID });
           },
         );

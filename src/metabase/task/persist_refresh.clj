@@ -26,7 +26,6 @@
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [potemkin.types :as p]
-   [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2])
   (:import
@@ -117,7 +116,7 @@
             db-id
             persisted-infos
             (:trigger task-details)))))
-    (db/insert! TaskHistory {:task         task-type
+    (t2/insert! TaskHistory {:task         task-type
                              :db_id        db-id
                              :started_at   start-time
                              :ended_at     end-time

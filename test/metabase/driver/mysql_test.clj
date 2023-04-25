@@ -422,9 +422,12 @@
 ;; Therefore, no JSON tests.
 (defn- version-query [db-id] {:type :native, :native {:query "SELECT VERSION();"}, :database db-id})
 
-(defn- is-mariadb? [db-id] (str/includes?
-                             (or (get-in (qp/process-userland-query (version-query db-id)) [:data :rows 0 0]) "")
-                             "Maria"))
+(defn is-mariadb?
+  "Returns true if the database is MariaDB, false otherwise."
+  [db-id]
+  (str/includes?
+   (or (get-in (qp/process-userland-query (version-query db-id)) [:data :rows 0 0]) "")
+   "Maria"))
 
 (deftest nested-field-column-test
   (mt/test-driver :mysql
@@ -435,60 +438,69 @@
                     :database-type "timestamp",
                     :base-type :type/DateTime,
                     :database-position 0,
+                    :json-unfolding false,
                     :visibility-type :normal,
                     :nfc-path [:json_bit "1234123412314"]}
                    {:name "json_bit → boop",
                     :database-type "timestamp",
                     :base-type :type/DateTime,
                     :database-position 0,
+                    :json-unfolding false,
                     :visibility-type :normal,
                     :nfc-path [:json_bit "boop"]}
                    {:name "json_bit → genres",
                     :database-type "text",
                     :base-type :type/Array,
                     :database-position 0,
+                    :json-unfolding false,
                     :visibility-type :normal,
                     :nfc-path [:json_bit "genres"]}
                    {:name "json_bit → 1234",
                     :database-type "bigint",
                     :base-type :type/Integer,
                     :database-position 0,
+                    :json-unfolding false,
                     :visibility-type :normal,
                     :nfc-path [:json_bit "1234"]}
                    {:name "json_bit → doop",
                     :database-type "text",
                     :base-type :type/Text,
                     :database-position 0,
+                    :json-unfolding false,
                     :visibility-type :normal,
                     :nfc-path [:json_bit "doop"]}
                    {:name "json_bit → noop",
                     :database-type "timestamp",
                     :base-type :type/DateTime,
                     :database-position 0,
+                    :json-unfolding false,
                     :visibility-type :normal,
                     :nfc-path [:json_bit "noop"]}
                    {:name "json_bit → zoop",
                     :database-type "timestamp",
                     :base-type :type/DateTime,
                     :database-position 0,
+                    :json-unfolding false,
                     :visibility-type :normal,
                     :nfc-path [:json_bit "zoop"]}
                    {:name "json_bit → published",
                     :database-type "text",
                     :base-type :type/Text,
                     :database-position 0,
+                    :json-unfolding false,
                     :visibility-type :normal,
                     :nfc-path [:json_bit "published"]}
                    {:name "json_bit → title",
                     :database-type "text",
                     :base-type :type/Text,
                     :database-position 0,
+                    :json-unfolding false,
                     :visibility-type :normal,
                     :nfc-path [:json_bit "title"]}}
                  (sql-jdbc.sync/describe-nested-field-columns
                    :mysql
                    (mt/db)
-                   {:name "json"}))))))))
+                   {:name "json" :id (mt/id "json")}))))))))
 
 (deftest big-nested-field-column-test
   (mt/test-driver :mysql
@@ -499,7 +511,7 @@
                  (count (sql-jdbc.sync/describe-nested-field-columns
                          :mysql
                          (mt/db)
-                         {:name "big_json"})))))))))
+                         {:name "big_json" :id (mt/id "big_json")})))))))))
 
 (deftest json-query-test
   (let [boop-identifier (h2x/identifier :field "boop" "bleh -> meh")]
@@ -577,7 +589,7 @@
         (sync/sync-database! (mt/db))
         (testing "Fields marked as :type/SerializedJSON are fingerprinted that way"
           (is (= #{{:name "id", :base_type :type/Integer, :semantic_type :type/PK}
-                   {:name "jsoncol", :base_type :type/SerializedJSON, :semantic_type :type/SerializedJSON}
+                   {:name "jsoncol", :base_type :type/JSON, :semantic_type :type/SerializedJSON}
                    {:name "jsoncol → myint", :base_type :type/Number, :semantic_type :type/Category}
                    {:name "jsoncol → mybool", :base_type :type/Boolean, :semantic_type :type/Category}}
                  (db->fields (mt/db)))))
@@ -586,32 +598,20 @@
                     :database-type     "boolean"
                     :base-type         :type/Boolean
                     :database-position 0
+                    :json-unfolding    false
                     :visibility-type   :normal
                     :nfc-path          [:jsoncol "mybool"]}
                    {:name              "jsoncol → myint"
                     :database-type     "double precision"
                     :base-type         :type/Number
                     :database-position 0
+                    :json-unfolding    false
                     :visibility-type   :normal
                     :nfc-path          [:jsoncol "myint"]}}
                  (sql-jdbc.sync/describe-nested-field-columns
                   :mysql
                   (mt/db)
                   (t2/select-one Table :db_id (mt/id) :name "bigint-and-bool-table")))))))))
-
-(deftest can-shut-off-json-unwrapping
-  (mt/test-driver :mysql
-    ;; in here we fiddle with the mysql db details
-    (let [db (t2/select-one Database :id (mt/id))]
-      (try
-        (t2/update! Database (mt/id) {:details (assoc (:details db) :json-unfolding true)})
-        (is (= true (driver/database-supports? :mysql :nested-field-columns (mt/db))))
-        (t2/update! Database (mt/id) {:details (assoc (:details db) :json-unfolding false)})
-        (is (= false (driver/database-supports? :mysql :nested-field-columns (mt/db))))
-        (t2/update! Database (mt/id) {:details (assoc (:details db) :json-unfolding nil)})
-        (is (= true (driver/database-supports? :mysql :nested-field-columns (mt/db))))
-        ;; un fiddle with the mysql db details.
-        (finally (t2/update! Database (mt/id) {:details (:details db)}))))))
 
 (deftest ddl-execute-with-timeout-test1
   (mt/test-driver :mysql

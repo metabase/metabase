@@ -22,7 +22,6 @@
             [metabase.util.log :as log]
             [monger.collection :as mcoll]
             [taoensso.nippy :as nippy]
-            [toucan.db :as db]
             [toucan2.core :as t2])
   (:import org.bson.types.ObjectId))
 
@@ -88,7 +87,7 @@
               :expected false}]]
       (testing (str "supports with " dbms_version)
         (is (= expected
-               (let [db (db/insert! Database {:name "dummy", :engine "mongo", :dbms_version dbms_version})]
+               (let [db (first (t2/insert-returning-instances! Database {:name "dummy", :engine "mongo", :dbms_version dbms_version}))]
                  (driver/database-supports? :mongo :expressions db))))))))
 
 
@@ -446,7 +445,7 @@
             (log/infof "Inserted %d rows into %s collection %s."
                        (count row-maps) (pr-str database-name) (pr-str collection-name)))
           ;; now sync the Database.
-          (let [db (db/insert! Database {:name database-name, :engine "mongo", :details details})]
+          (let [db (first (t2/insert-returning-instances! Database {:name database-name, :engine "mongo", :details details}))]
             (sync/sync-database! db)
             db)))))
 

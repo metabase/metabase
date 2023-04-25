@@ -14,7 +14,6 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
@@ -52,7 +51,7 @@
                                       :collection_id (:collection_id timeline)}
                                (boolean source)      (assoc :source source)
                                (boolean question_id) (assoc :question_id question_id)))
-      (db/insert! TimelineEvent tl-event))))
+      (first (t2/insert-returning-instances! TimelineEvent tl-event)))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:id"

@@ -10,7 +10,6 @@
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
    [ring.mock.request :as ring.mock]
-   [toucan.db :as db]
    [toucan2.core :as t2])
   (:import
    (java.util UUID)))
@@ -43,7 +42,7 @@
   (testing "Valid requests should add `metabase-user-id` to requests with valid session info"
     (let [session-id (random-session-id)]
       (try
-        (db/insert! Session {:id      session-id
+        (t2/insert! Session {:id      session-id
                              :user_id (test.users/user->id :rasta)})
         (is (= (test.users/user->id :rasta)
                (-> (auth-enforced-handler (request-with-session-id session-id))
@@ -61,10 +60,10 @@
       ;; expiration
       (let [session-id (random-session-id)]
         (try
-          (db/insert! Session {:id      session-id
+          (t2/insert! Session {:id      session-id
                                :user_id (test.users/user->id :rasta)})
-          (db/update-where! Session {:id session-id}
-            :created_at (t/instant 0))
+          (t2/update! (t2/table-name Session) {:id session-id}
+            {:created_at (t/instant 0)})
           (is (= mw.util/response-unauthentic
                  (auth-enforced-handler (request-with-session-id session-id))))
           (finally (t2/delete! Session :id session-id)))))
@@ -75,7 +74,7 @@
       ;; NOTE that :trashbird is our INACTIVE test user
       (let [session-id (random-session-id)]
         (try
-          (db/insert! Session {:id      session-id
+          (t2/insert! Session {:id      session-id
                                :user_id (test.users/user->id :trashbird)})
           (is (= mw.util/response-unauthentic
                  (auth-enforced-handler

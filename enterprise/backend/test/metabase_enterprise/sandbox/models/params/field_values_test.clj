@@ -19,7 +19,6 @@
     :as premium-features-test]
    [metabase.server.middleware.session :as mw.session]
    [metabase.test :as mt]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -31,7 +30,7 @@
                                                                                        [:> $id 3]
                                                                                        [:< $id 6]]})}}}
         ;; the categories-id doesn't have a field values, we fake it with a full fieldvalues to make it easier to test
-        (db/insert! FieldValues {:type                  :full
+        (t2/insert! FieldValues {:type                  :full
                                  :field_id              (mt/id :categories :id)
                                  :values                (range 10)
                                  :human_readable_values (map #(str "id_" %) (range 10))})
@@ -50,7 +49,7 @@
             (params.field-values/get-or-create-advanced-field-values!
              fv-type
              (t2/select-one Field :id (mt/id :categories :id)))
-            (is (= 1 (db/count FieldValues :field_id categories-id :type fv-type))))
+            (is (= 1 (t2/count FieldValues :field_id categories-id :type fv-type))))
 
           (testing "after changing the question, should create new FieldValues"
             (let [new-query (mt/mbql-query categories

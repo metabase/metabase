@@ -46,3 +46,7 @@ export function setupUnauthorizedCardEndpoints(card: Card) {
 export function setupUnauthorizedCardsEndpoints(cards: Card[]) {
   cards.forEach(card => setupUnauthorizedCardEndpoints(card));
 }
+
+export function setupCardQueryDownloadEndpoint(card: Card, type: string) {
+  fetchMock.post(`path:/api/card/${card.id}/query/${type}`, {});
+}

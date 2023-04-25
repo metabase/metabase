@@ -20,7 +20,6 @@
    [metabase.util.encryption-test :as encryption-test]
    [metabase.util.i18n :as i18n]
    [methodical.core :as methodical]
-   [toucan.db :as db]
    [toucan.models :as models]
    [toucan2.core :as t2])
   (:import
@@ -97,27 +96,27 @@
               (when-not (= driver/*driver* :h2)
                 (tx/create-db! driver/*driver* {:database-name db-name}))
               (load-from-h2/load-from-h2! h2-fixture-db-file)
-              (db/insert! Setting {:key "nocrypt", :value "unencrypted value"})
-              (db/insert! Setting {:key "settings-last-updated", :value original-timestamp})
-              (let [u (db/insert! User {:email        "nobody@nowhere.com"
-                                        :first_name   "No"
-                                        :last_name    "Body"
-                                        :password     "nopassword"
-                                        :is_active    true
-                                        :is_superuser false})]
+              (t2/insert! Setting {:key "nocrypt", :value "unencrypted value"})
+              (t2/insert! Setting {:key "settings-last-updated", :value original-timestamp})
+              (let [u (first (t2/insert-returning-instances! User {:email        "nobody@nowhere.com"
+                                                                   :first_name   "No"
+                                                                   :last_name    "Body"
+                                                                   :password     "nopassword"
+                                                                   :is_active    true
+                                                                   :is_superuser false}))]
                 (reset! user-id (u/the-id u)))
-              (let [secret (db/insert! Secret {:name       "My Secret (plaintext)"
-                                               :kind       "password"
-                                               :value      (.getBytes secret-val StandardCharsets/UTF_8)
-                                               :creator_id @user-id})]
+              (let [secret (first (t2/insert-returning-instances! Secret {:name       "My Secret (plaintext)"
+                                                                          :kind       "password"
+                                                                          :value      (.getBytes secret-val StandardCharsets/UTF_8)
+                                                                          :creator_id @user-id}))]
                 (reset! secret-id-unenc (u/the-id secret)))
               (encryption-test/with-secret-key k1
-                (db/insert! Setting {:key "k1crypted", :value "encrypted with k1"})
-                (t2/update! Database 1 {:details "{\"db\":\"/tmp/test.db\"}"})
-                (let [secret (db/insert! Secret {:name       "My Secret (encrypted)"
-                                                 :kind       "password"
-                                                 :value      (.getBytes secret-val StandardCharsets/UTF_8)
-                                                 :creator_id @user-id})]
+                (t2/insert! Setting {:key "k1crypted", :value "encrypted with k1"})
+                (t2/update! Database 1 {:details {:db "/tmp/test.db"}})
+                (let [secret (first (t2/insert-returning-instances! Secret {:name       "My Secret (encrypted)"
+                                                                            :kind       "password"
+                                                                            :value      (.getBytes secret-val StandardCharsets/UTF_8)
+                                                                            :creator_id @user-id}))]
                   (reset! secret-id-enc (u/the-id secret))))
 
               (testing "rotating with the same key is a noop"
@@ -154,11 +153,11 @@
 
               (testing "full rollback when a database details looks encrypted with a different key than the current one"
                 (encryption-test/with-secret-key k3
-                  (let [db (db/insert! Database {:name "k3", :engine :mysql, :details "{\"db\":\"/tmp/k3.db\"}"})]
+                  (let [db (first (t2/insert-returning-instances! Database {:name "k3", :engine :mysql, :details {:db "/tmp/k3.db"}}))]
                     (is (=? {:name "k3"}
                             db))))
                 (encryption-test/with-secret-key k2
-                  (let [db (db/insert! Database {:name "k2", :engine :mysql, :details "{\"db\":\"/tmp/k2.db\"}"})]
+                  (let [db (first (t2/insert-returning-instances! Database {:name "k2", :engine :mysql, :details {:db "/tmp/k3.db"}}))]
                     (is (=? {:name "k2"}
                             db)))
                   (is (thrown-with-msg?
@@ -170,8 +169,8 @@
                   (is (= {:db "/tmp/k3.db"} (t2/select-one-fn :details Database :name "k3")))))
 
               (testing "rotate-encryption-key! to nil decrypts the encrypted keys"
-                (t2/update! Database 1 {:details "{\"db\":\"/tmp/test.db\"}"})
-                (db/update-where! Database {:name "k3"} :details "{\"db\":\"/tmp/test.db\"}")
+                (t2/update! Database 1 {:details {:db "/tmp/test.db"}})
+                (t2/update! Database {:name "k3"} {:details {:db "/tmp/test.db"}})
                 (encryption-test/with-secret-key k2 ; with the last key that we rotated to in the test
                   (rotate-encryption-key! nil))
                 (is (= "unencrypted value" (raw-value "nocrypt")))

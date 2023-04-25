@@ -19,7 +19,6 @@
    [metabase.test.data :as data]
    [metabase.test.sync :as test.sync :refer [sync-survives-crash?]]
    [metabase.util :as u]
-   [toucan.db :as db]
    [toucan.util.test :as tt]
    [toucan2.core :as t2]))
 
@@ -27,10 +26,10 @@
   (testing "Check that Fields do *not* get analyzed if they're not newly created and fingerprint version is current"
     (data/with-temp-copy-of-db
       ;; mark all the Fields as analyzed with so they won't be subject to analysis
-      (db/update-where! Field {:table_id (data/id :venues)}
-        :last_analyzed       #t "2017-08-01T00:00"
-        :semantic_type       nil
-        :fingerprint_version Short/MAX_VALUE)
+      (t2/update! Field {:table_id (data/id :venues)}
+                  {:last_analyzed       #t "2017-08-01T00:00"
+                   :semantic_type       nil
+                   :fingerprint_version Short/MAX_VALUE})
       ;; the type of the value that comes back may differ a bit between different application DBs
       (let [analysis-date (t2/select-one-fn :last_analyzed Field :table_id (data/id :venues))]
         ;; ok, NOW run the analysis process
@@ -152,8 +151,8 @@
 (defn- fake-field-was-analyzed? [field]
   ;; don't let ourselves be fooled if the test passes because the table is
   ;; totally broken or has no fields. Make sure we actually test something
-  (assert (db/exists? Field :id (u/the-id field)))
-  (db/exists? Field :id (u/the-id field), :last_analyzed [:not= nil]))
+  (assert (t2/exists? Field :id (u/the-id field)))
+  (t2/exists? Field :id (u/the-id field), :last_analyzed [:not= nil]))
 
 (defn- latest-sync-time [table]
   (t2/select-one-fn :last_analyzed Field

@@ -9,7 +9,6 @@
    [metabase.test :as mt]
    [metabase.test.mock.moviedb :as moviedb]
    [metabase.util :as u]
-   [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2]))
 
@@ -23,11 +22,11 @@
                   mt/boolean-ids-and-timestamps))]
       (mt/with-temp Database [db {:engine ::moviedb/moviedb}]
         ;; manually add in the movies table
-        (let [table (db/insert! Table
-                      :db_id  (u/the-id db)
-                      :name   "movies"
-                      :active true)]
-          (db/insert! Field
+        (let [table (first (t2/insert-returning-instances! Table
+                                                           :db_id  (u/the-id db)
+                                                           :name   "movies"
+                                                           :active true))]
+          (t2/insert! Field
             :database_type "BOOL"
             :base_type     :type/Boolean
             :table_id      (u/the-id table)

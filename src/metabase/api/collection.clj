@@ -35,7 +35,6 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2]))
 
@@ -323,25 +322,28 @@
             :dataset_query)))
 
 (defn- card-query [dataset? collection {:keys [archived? pinned-state]}]
-  (-> {:select    [:c.id :c.name :c.description :c.entity_id :c.collection_position :c.display :c.collection_preview
-                   :c.dataset_query
-                   [(h2x/literal (if dataset? "dataset" "card")) :model]
-                   [:u.id :last_edit_user]
-                   [:u.email :last_edit_email]
-                   [:u.first_name :last_edit_first_name]
-                   [:u.last_name :last_edit_last_name]
-                   [:r.timestamp :last_edit_timestamp]
-                   [{:select   [:status]
-                     :from     [:moderation_review]
-                     :where    [:and
-                                [:= :moderated_item_type "card"]
-                                [:= :moderated_item_id :c.id]
-                                [:= :most_recent true]]
-                     ;; limit 1 to ensure that there is only one result but this invariant should hold true, just
-                     ;; protecting against potential bugs
-                     :order-by [[:id :desc]]
-                     :limit    1}
-                    :moderated_status]]
+  (-> {:select    (cond->
+                    [:c.id :c.name :c.description :c.entity_id :c.collection_position :c.display :c.collection_preview
+                     :c.dataset_query
+                     [(h2x/literal (if dataset? "dataset" "card")) :model]
+                     [:u.id :last_edit_user]
+                     [:u.email :last_edit_email]
+                     [:u.first_name :last_edit_first_name]
+                     [:u.last_name :last_edit_last_name]
+                     [:r.timestamp :last_edit_timestamp]
+                     [{:select   [:status]
+                       :from     [:moderation_review]
+                       :where    [:and
+                                  [:= :moderated_item_type "card"]
+                                  [:= :moderated_item_id :c.id]
+                                  [:= :most_recent true]]
+                       ;; limit 1 to ensure that there is only one result but this invariant should hold true, just
+                       ;; protecting against potential bugs
+                       :order-by [[:id :desc]]
+                       :limit    1}
+                      :moderated_status]]
+                    dataset?
+                    (conj :c.database_id))
        :from      [[:report_card :c]]
        ;; todo: should there be a flag, or a realized view?
        :left-join [[{:select    [:r1.*]
@@ -558,7 +560,7 @@
   [:id :name :description :entity_id :display [:collection_preview :boolean] :dataset_query
    :model :collection_position :authority_level [:personal_owner_id :integer]
    :last_edit_email :last_edit_first_name :last_edit_last_name :moderated_status :icon
-   [:last_edit_user :integer] [:last_edit_timestamp :timestamp]])
+   [:last_edit_user :integer] [:last_edit_timestamp :timestamp] [:database_id :integer]])
 
 (defn- add-missing-columns
   "Ensures that all necessary columns are in the select-columns collection, adding `[nil :column]` as necessary."
@@ -833,15 +835,17 @@
   ;; Now create the new Collection :)
   (api/check-403 (or (nil? authority_level)
                      (and api/*is-superuser?* authority_level)))
-  (db/insert! Collection
-    (merge
-     {:name        name
-      :color       color
-      :description description
-      :authority_level authority_level
-      :namespace   namespace}
-     (when parent_id
-       {:location (collection/children-location (t2/select-one [Collection :location :id] :id parent_id))}))))
+  (first
+    (t2/insert-returning-instances!
+      Collection
+      (merge
+        {:name        name
+         :color       color
+         :description description
+         :authority_level authority_level
+         :namespace   namespace}
+        (when parent_id
+          {:location (collection/children-location (t2/select-one [Collection :location :id] :id parent_id))})))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/"

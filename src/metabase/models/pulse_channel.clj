@@ -12,7 +12,6 @@
    [metabase.util.i18n :refer [tru]]
    [methodical.core :as methodical]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan.models :as models]
    [toucan2.core :as t2]))
 
@@ -137,11 +136,19 @@
                  [:= :u.is_active true]]
      :order-by [[:u.id :asc]]})))
 
-(defn- pre-delete [pulse-channel]
-  ;; Call [[metabase.models.pulse/will-delete-channel]] to let it know we're about to delete a PulseChannel; that
-  ;; function will decide whether or not to automatically archive the Pulse as well.
-  (classloader/require 'metabase.models.pulse)
-  ((resolve 'metabase.models.pulse/will-delete-channel) pulse-channel))
+(def ^:dynamic *archive-parent-pulse-when-last-channel-is-deleted*
+  "Should we automatically archive a Pulse when its last `PulseChannel` is deleted? Normally we do, but this is disabled
+  in [[update-notification-channels!]] which creates/deletes/updates several channels sequentially."
+  true)
+
+(defn- pre-delete
+  "This function is called by [[metabase.models.pulse-channel/pre-delete]] when the `PulseChannel` is about to be
+  deleted. Archives `Pulse` if the channel being deleted is its last channel."
+  [{pulse-id :pulse_id, pulse-channel-id :id}]
+  (when *archive-parent-pulse-when-last-channel-is-deleted*
+    (let [other-channels-count (t2/count PulseChannel :pulse_id pulse-id, :id [:not= pulse-channel-id])]
+      (when (zero? other-channels-count)
+        (t2/update! :metabase.models.pulse/Pulse pulse-id {:archived true})))))
 
 ;; we want to load this at the top level so the Setting the namespace defines gets loaded
 (def ^:private ^{:arglists '([email-addresses])} validate-email-domains*
@@ -203,22 +210,6 @@
   [_pulse-channel]
   [(serdes/hydrated-hash :pulse) :channel_type :details :created_at])
 
-(defn will-delete-recipient
-  "This function is called by [[metabase.models.pulse-channel-recipient/pre-delete]] when a `PulseChannelRecipient` is
-  about to be deleted. Deletes `PulseChannel` if the recipient being deleted is its last recipient. (This only applies
-  to PulseChannels with User subscriptions; Slack PulseChannels and ones with email address subscriptions are not
-  automatically deleted.)"
-  [{channel-id :pulse_channel_id, pulse-channel-recipient-id :id}]
-  (let [other-recipients-count (db/count PulseChannelRecipient :pulse_channel_id channel-id, :id [:not= pulse-channel-recipient-id])
-        last-recipient?        (zero? other-recipients-count)]
-    (when last-recipient?
-      ;; make sure this channel doesn't have any email-address (non-User) recipients.
-      (let [details              (t2/select-one-fn :details PulseChannel :id channel-id)
-            has-email-addresses? (seq (:emails details))]
-        (when-not has-email-addresses?
-          (t2/delete! PulseChannel :id channel-id))))))
-
-
 ;; ## Persistence Functions
 
 (s/defn retrieve-scheduled-channels
@@ -279,9 +270,9 @@
         recipients-    (set/difference recipients-old recipients-new)]
     (when (seq recipients+)
       (let [vs (map #(assoc {:pulse_channel_id id} :user_id %) recipients+)]
-        (db/insert-many! PulseChannelRecipient vs)))
+        (t2/insert! PulseChannelRecipient vs)))
     (when (seq recipients-)
-      (db/simple-delete! PulseChannelRecipient
+      (t2/delete! (t2/table-name PulseChannelRecipient)
         :pulse_channel_id id
         :user_id          [:in recipients-]))))
 
@@ -329,19 +320,20 @@
          (coll? recipients)
          (every? map? recipients)]}
   (let [recipients-by-type (group-by integer? (filter identity (map #(or (:id %) (:email %)) recipients)))
-        {:keys [id]} (db/insert! PulseChannel
-                       :pulse_id       pulse_id
-                       :channel_type   channel_type
-                       :details        (cond-> details
-                                         (supports-recipients? channel_type) (assoc :emails (get recipients-by-type false)))
-                       :enabled        enabled
-                       :schedule_type  schedule_type
-                       :schedule_hour  (when (not= schedule_type :hourly)
-                                         schedule_hour)
-                       :schedule_day   (when (contains? #{:weekly :monthly} schedule_type)
-                                         schedule_day)
-                       :schedule_frame (when (= schedule_type :monthly)
-                                         schedule_frame))]
+        {:keys [id]}       (first (t2/insert-returning-instances!
+                                    PulseChannel
+                                    :pulse_id       pulse_id
+                                    :channel_type   channel_type
+                                    :details        (cond-> details
+                                                      (supports-recipients? channel_type) (assoc :emails (get recipients-by-type false)))
+                                    :enabled        enabled
+                                    :schedule_type  schedule_type
+                                    :schedule_hour  (when (not= schedule_type :hourly)
+                                                      schedule_hour)
+                                    :schedule_day   (when (contains? #{:weekly :monthly} schedule_type)
+                                                      schedule_day)
+                                    :schedule_frame (when (= schedule_type :monthly)
+                                                      schedule_frame)))]
     (when (and (supports-recipients? channel_type) (seq (get recipients-by-type true)))
       (update-recipients! id (get recipients-by-type true)))
     ;; return the id of our newly created channel
@@ -366,13 +358,13 @@
                                                   :join   [[:core_user :user] [:= :user.id :pcr.user_id]]
                                                   :where  [:= :pcr.pulse_channel_id (:id channel)]}))]
     (-> (serdes/extract-one-basics "PulseChannel" channel)
-        (update :pulse_id   serdes/export-fk 'Pulse)
+        (update :pulse_id   serdes/*export-fk* 'Pulse)
         (assoc  :recipients recipients))))
 
 (defmethod serdes/load-xform "PulseChannel" [channel]
   (-> channel
       serdes/load-xform-basics
-      (update :pulse_id serdes/import-fk 'Pulse)))
+      (update :pulse_id serdes/*import-fk* 'Pulse)))
 
 (defn- import-recipients [channel-id emails]
   (let [incoming-users (set (for [email emails

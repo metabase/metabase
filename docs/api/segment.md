@@ -28,7 +28,7 @@ Fetch `Segment` with ID.
 
 ### PARAMS:
 
-*  **`id`**
+*  **`id`** value must be an integer greater than zero.
 
 ## `GET /api/segment/:id/related`
 

@@ -194,7 +194,6 @@
    [metabase.util.regex :as u.regex]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan.models :as models]
    [toucan2.core :as t2]))
 
@@ -395,11 +394,6 @@
       (throw (ex-info "Unclassified data path!!" {:data-path data-path :result result})))
     (first result)))
 
-(def segmented-perm-regex
-  "Regex that matches a segmented permission. Used internally for some EE stuff
-  e.g. [[metabase-enterprise.sandbox.api.util/segmented-user?]]."
-  (re-pattern (str #"^/db/\d+/schema/" path-char "*" #"/table/\d+/query/segmented/$")))
-
 (defn- escape-path-component
   "Escape slashes in something that might be passed as a string part of a permissions path (e.g. DB schema name or
   Collection name).
@@ -533,12 +527,6 @@
 
   ([database-or-id schema-name table-or-id]
    (str (data-perms-path (u/the-id database-or-id) schema-name (u/the-id table-or-id)) "query/segmented/")))
-
-(s/defn execute-query-perms-path :- PathSchema
-  "Return the execute query action permissions path for a database.
-   This grants you permissions to run arbitary query actions."
-  [database-or-id :- MapOrID]
-  (str "/execute" (data-perms-path database-or-id)))
 
 (s/defn database-block-perms-path :- PathSchema
   "Return the permissions path for the Block 'anti-permissions'. Block anti-permissions means a User cannot run a query
@@ -935,62 +923,6 @@
 ;;; |                                                  GRAPH UPDATE                                                  |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;;; --------------------------------------------------- Helper Fns ---------------------------------------------------
-
-(s/defn delete-related-permissions!
-  "Delete all 'related' permissions for `group-or-id` (i.e., perms that grant you full or partial access to `path`).
-  This includes *both* ancestor and descendant paths. For example:
-
-  Suppose we asked this functions to delete related permssions for `/db/1/schema/PUBLIC/`. Depending on the
-  permissions the group has, it could end up doing something like:
-
-    *  deleting `/db/1/` permissions (because the ancestor perms implicity grant you full perms for `schema/PUBLIC`)
-    *  deleting perms for `/db/1/schema/PUBLIC/table/2/` (because Table 2 is a descendant of `schema/PUBLIC`)
-
-  In short, it will delete any permissions that contain `/db/1/schema/` as a prefix, or that themeselves are prefixes
-  for `/db/1/schema/`.
-
-  You can optionally include `other-conditions`, which are anded into the filter clause, to further restrict what is
-  deleted.
-
-  NOTE: This function is meant for internal usage in this namespace only; use one of the other functions like
-  `revoke-data-perms!` elsewhere instead of calling this directly."
-  {:style/indent 2}
-  [group-or-id :- (s/cond-pre su/Map su/IntGreaterThanZero) path :- PathSchema & other-conditions]
-  (let [where {:where (apply list
-                             :and
-                             [:= :group_id (u/the-id group-or-id)]
-                             [:or
-                              [:like path (h2x/concat :object (h2x/literal "%"))]
-                              [:like :object (str path "%")]]
-                             other-conditions)}]
-    (when-let [revoked (t2/select-fn-set :object Permissions where)]
-      (log/debug (u/format-color 'red "Revoking permissions for group %d: %s" (u/the-id group-or-id) revoked))
-      (t2/delete! Permissions where))))
-
-;; TODO: rename this function to `revoke-permissions!` and make its behavior consistent with `grant-permissions!`
-(defn revoke-data-perms!
-  "Revoke all permissions for `group-or-id` to object with `path-components`, *including* related permissions (i.e,
-  permissions that grant full or partial access to the object in question).
-
-
-    (revoke-data-perms! my-group my-db)"
-  {:arglists '([group-or-id database-or-id]
-               [group-or-id database-or-id schema-name]
-               [group-or-id database-or-id schema-name table-or-id])}
-  [group-or-id & path-components]
-  (delete-related-permissions! group-or-id (apply data-perms-path path-components)))
-
-(defn revoke-download-perms!
-  "Revoke all full and limited download permissions for `group-or-id` to object with `path-components`."
-  {:arglists '([group-id db-id]
-               [group-id db-id schema-name]
-               [group-id db-id schema-name table-or-id])}
-  [group-or-id & path-components]
-  (delete-related-permissions! group-or-id (apply (partial feature-perms-path :download :full) path-components))
-  (delete-related-permissions! group-or-id (apply (partial feature-perms-path :download :limited) path-components)))
-
-
 (letfn [(delete [s to-delete] (str/replace s to-delete ""))
         (data-query-split [path] [(str "/data" path) (str "/query" path)])]
   (def ^:private data-kind->rewrite-fn
@@ -1022,9 +954,66 @@
       ;; other paths should be unchanged too.
       [path])))
 
+;;; --------------------------------------------------- Helper Fns ---------------------------------------------------
+
+(s/defn delete-related-permissions!
+  "Delete all 'related' permissions for `group-or-id` (i.e., perms that grant you full or partial access to `path`).
+  This includes *both* ancestor and descendant paths. For example:
+
+  Suppose we asked this functions to delete related permssions for `/db/1/schema/PUBLIC/`. Depending on the
+  permissions the group has, it could end up doing something like:
+
+    *  deleting `/db/1/` permissions (because the ancestor perms implicity grant you full perms for `schema/PUBLIC`)
+    *  deleting perms for `/db/1/schema/PUBLIC/table/2/` (because Table 2 is a descendant of `schema/PUBLIC`)
+
+  In short, it will delete any permissions that contain `/db/1/schema/` as a prefix, or that themeselves are prefixes
+  for `/db/1/schema/`.
+
+  You can optionally include `other-conditions`, which are anded into the filter clause, to further restrict what is
+  deleted.
+
+  NOTE: This function is meant for internal usage in this namespace only; use one of the other functions like
+  `revoke-data-perms!` elsewhere instead of calling this directly."
+  {:style/indent 2}
+  [group-or-id :- (s/cond-pre su/Map su/IntGreaterThanZero) path :- PathSchema & other-conditions]
+  (let [paths (conj (->v2-path path) path)
+        where {:where (apply list
+                             :and
+                             [:= :group_id (u/the-id group-or-id)]
+                             (into [:or
+                                    [:like path (h2x/concat :object (h2x/literal "%"))]]
+                                   (map (fn [path-form] [:like :object (str path-form "%")])
+                                        paths))
+                             other-conditions)}]
+    (when-let [revoked (t2/select-fn-set :object Permissions where)]
+      (log/debug (u/format-color 'red "Revoking permissions for group %d: %s" (u/the-id group-or-id) revoked))
+      (t2/delete! Permissions where))))
+
+;; TODO: rename this function to `revoke-permissions!` and make its behavior consistent with `grant-permissions!`
+(defn revoke-data-perms!
+  "Revoke all permissions for `group-or-id` to object with `path-components`, *including* related permissions (i.e,
+  permissions that grant full or partial access to the object in question).
+
+
+    (revoke-data-perms! my-group my-db)"
+  {:arglists '([group-or-id database-or-id]
+               [group-or-id database-or-id schema-name]
+               [group-or-id database-or-id schema-name table-or-id])}
+  [group-or-id & path-components]
+  (delete-related-permissions! group-or-id (apply data-perms-path path-components)))
+
+(defn revoke-download-perms!
+  "Revoke all full and limited download permissions for `group-or-id` to object with `path-components`."
+  {:arglists '([group-id db-id]
+               [group-id db-id schema-name]
+               [group-id db-id schema-name table-or-id])}
+  [group-or-id & path-components]
+  (delete-related-permissions! group-or-id (apply (partial feature-perms-path :download :full) path-components))
+  (delete-related-permissions! group-or-id (apply (partial feature-perms-path :download :limited) path-components)))
+
 (defn grant-permissions!
-  "Grant permissions for `group-or-id`. Two-arity grants any arbitrary Permissions `path`. With > 2 args, grants the
-  data permissions from calling [[data-perms-path]]."
+  "Grant permissions for `group-or-id` and return the inserted permissions. Two-arity grants any arbitrary Permissions `path`.
+  With > 2 args, grants the data permissions from calling [[data-perms-path]]."
   ([group-or-id db-id schema & more]
    (grant-permissions! group-or-id (apply data-perms-path db-id schema more)))
 
@@ -1036,10 +1025,10 @@
    (t2/delete! Permissions :group_id (u/the-id group-or-id) :object [:like "/query/%"])
    (t2/delete! Permissions :group_id (u/the-id group-or-id) :object [:like "/data/%"])
    (try
-     (db/insert-many! Permissions
-       (map (fn [path-object]
-              {:group_id (u/the-id group-or-id) :object path-object})
-            (distinct (conj (->v2-path path) path))))
+     (t2/insert-returning-instances! Permissions
+                                     (map (fn [path-object]
+                                            {:group_id (u/the-id group-or-id) :object path-object})
+                                          (distinct (conj (->v2-path path) path))))
      ;; on some occasions through weirdness we might accidentally try to insert a key that's already been inserted
      (catch Throwable e
        (log/error e (u/format-color 'red (tru "Failed to grant permissions")))
@@ -1273,7 +1262,7 @@
   ;; revoke-native-permissions! will delete all entries that would give permissions for native access. Thus if you had
   ;; a root DB entry like `/db/11/` this will delete that too. In that case we want to create a new full schemas entry
   ;; so you don't lose access to all schemas when we modify native access.
-  (let [has-full-access? (db/exists? Permissions :group_id group-id, :object (data-perms-path db-id))]
+  (let [has-full-access? (t2/exists? Permissions :group_id group-id, :object (data-perms-path db-id))]
     (revoke-native-permissions! group-id db-id)
     (when has-full-access?
       (grant-permissions-for-all-schemas! group-id db-id)))
@@ -1378,13 +1367,13 @@
   *  `changes` -- set of changes applied in this revision."
   [model current-revision before changes]
   (when *current-user-id*
-    (db/insert! model
-      ;; manually specify ID here so if one was somehow inserted in the meantime in the fraction of a second since we
-      ;; called `check-revision-numbers` the PK constraint will fail and the transaction will abort
-      :id      (inc current-revision)
-      :before  before
-      :after   changes
-      :user_id *current-user-id*)))
+    (first (t2/insert-returning-instances! model
+                                           ;; manually specify ID here so if one was somehow inserted in the meantime in the fraction of a second since we
+                                           ;; called `check-revision-numbers` the PK constraint will fail and the transaction will abort
+                                           :id      (inc current-revision)
+                                           :before  before
+                                           :after   changes
+                                           :user_id *current-user-id*))))
 
 (defn log-permissions-changes
   "Log changes to the permissions graph."
@@ -1410,7 +1399,7 @@
      (when (or (seq old) (seq new))
        (log-permissions-changes old new)
        (check-revision-numbers old-graph new-graph)
-       (db/transaction
+       (t2/with-transaction [_conn]
         (doseq [[group-id changes] new]
           (update-group-permissions! group-id changes))
         (save-perms-revision! PermissionsRevision (:revision old-graph) old new)
@@ -1435,7 +1424,7 @@
      (when (or (seq old) (seq new))
        (log-permissions-changes old new)
        (check-revision-numbers old-graph new-graph)
-       (db/transaction
+       (t2/with-transaction [_conn]
          (doseq [[group-id changes] new]
            (update-execution-permissions! group-id changes))
          (save-perms-revision! PermissionsRevision (:revision old-graph) old new)))))

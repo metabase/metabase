@@ -18,11 +18,11 @@
                             Table]]
    [metabase.models.action :as action]
    [metabase.models.serialization :as serdes]
+   [metabase.models.setting :as setting]
    [metabase.test :as mt]
    [metabase.test.generate :as test-gen]
    [metabase.util.yaml :as yaml]
    [reifyhealth.specmonstah.core :as rs]
-   [toucan.db :as db]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
  (:import
@@ -171,8 +171,10 @@
                                                 {:table_id      [:t    10]
                                                  :collection_id [:coll 10]
                                                  :creator_id    [:u    10]}))
-               :dashboard               (many-random-fks 100 {} {:collection_id [:coll 100]
-                                                                 :creator_id    [:u    10]})
+               :dashboard               (concat (many-random-fks 100 {} {:collection_id [:coll 100]
+                                                                         :creator_id    [:u    10]})
+                                                ;; create some root collection dashboards
+                                                (many-random-fks 50 {} {:creator_id    [:u 10]}))
                :dashboard-card          (many-random-fks 300 {} {:card_id      [:c 100]
                                                                  :dashboard_id [:d 100]})
                :dimension               (vec (concat
@@ -223,7 +225,7 @@
           (is (= 100 (count (t2/select-fn-set :email 'User))))
 
           (testing "extraction"
-            (reset! extraction (into [] (extract/extract-metabase {})))
+            (reset! extraction (serdes/with-cache (into [] (extract/extract-metabase {}))))
             (reset! entities   (reduce (fn [m entity]
                                          (update m (-> entity :serdes/meta last :model)
                                                  (fnil conj []) entity))
@@ -271,7 +273,7 @@
                               (reduce +)))))
 
             (testing "for dashboards"
-              (is (= 100 (->> (io/file dump-dir "collections")
+              (is (= 150 (->> (io/file dump-dir "collections")
                               collections
                               (map (comp count dir->file-set #(io/file % "dashboards")))
                               (reduce +)))))
@@ -315,7 +317,7 @@
                          (set (ingest/ingest-list (ingest/ingest-yaml dump-dir)))))))
 
               (testing "doing ingestion"
-                (is (serdes.load/load-metabase (ingest/ingest-yaml dump-dir))
+                (is (serdes/with-cache (serdes.load/load-metabase (ingest/ingest-yaml dump-dir)))
                     "successful"))
 
               (testing "for Actions"
@@ -334,8 +336,8 @@
                               clean-entity)))))
 
               (testing "for Databases"
-                (doseq [{:keys [name] :as coll} (get @entities "Database")]
-                  (is (= (clean-entity coll)
+                (doseq [{:keys [name] :as db} (get @entities "Database")]
+                  (is (= (assoc (clean-entity db) :initial_sync_status "complete")
                          (->> (t2/select-one 'Database :name name)
                               (serdes/extract-one "Database" {})
                               clean-entity)))))
@@ -415,9 +417,12 @@
                               clean-entity)))))
 
               (testing "for settings"
-                (is (= (into {} (for [{:keys [key value]} (get @entities "Setting")]
-                                  [key value]))
-                       (yaml/from-file (io/file dump-dir "settings.yaml"))))))))))))
+                (let [settings (get @entities "Setting")]
+                  (is (every? @#'setting/exported-settings
+                              (set (map (comp symbol :key) settings))))
+                  (is (= (into {} (for [{:keys [key value]} settings]
+                                    [key value]))
+                         (yaml/from-file (io/file dump-dir "settings.yaml")))))))))))))
 
 ;; This is a seperate test instead of a `testing` block inside `e2e-storage-ingestion-test`
 ;; because it's quite tricky to set up the generative test to generate parameters with source is card
@@ -458,10 +463,10 @@
 
             (testing "make sure we insert ParameterCard when insert Dashboard/Card"
               ;; one for parameter on card card2s, and one for parmeter on dashboard dash1s
-              (is (= 2 (db/count ParameterCard))))
+              (is (= 2 (t2/count ParameterCard))))
 
             (testing "extract and store"
-              (let [extraction (into [] (extract/extract-metabase {}))]
+              (let [extraction (serdes/with-cache (into [] (extract/extract-metabase {})))]
                 (is (= [{:id                   "abc",
                          :name                 "CATEGORY",
                          :type                 :category,
@@ -488,7 +493,7 @@
               (ts/with-dest-db
                 ;; ingest
                 (testing "doing ingestion"
-                  (is (serdes.load/load-metabase (ingest/ingest-yaml dump-dir))
+                  (is (serdes/with-cache (serdes.load/load-metabase (ingest/ingest-yaml dump-dir)))
                       "successful"))
 
                 (let [dash1d (t2/select-one Dashboard :name (:name dash1s))
@@ -570,7 +575,7 @@
              DashboardCard _                         {:dashboard_id           dashboard-id
                                                       :visualization_settings (link-card-viz-setting "dataset" model-id)}]
             (testing "extract and store"
-              (let [extraction          (into [] (extract/extract-metabase {}))
+              (let [extraction          (serdes/with-cache (into [] (extract/extract-metabase {})))
                     extracted-dashboard (first (filter #(= (:name %) "Test Dashboard") (by-model extraction "Dashboard")))]
                 (is (= [{:model "collection" :id coll-eid}
                         {:model "database"   :id "Linked database"}
@@ -596,7 +601,7 @@
               ;; ingest
               (ts/with-dest-db
                 (testing "doing ingestion"
-                  (is (serdes.load/load-metabase (ingest/ingest-yaml dump-dir))
+                  (is (serdes/with-cache (serdes.load/load-metabase (ingest/ingest-yaml dump-dir)))
                       "successful"))
 
                 (doseq [[name model]

@@ -1,7 +1,6 @@
 import _ from "underscore";
 import { t } from "ttag";
 import { createAction } from "metabase/lib/redux";
-import { measureText } from "metabase/lib/measure-text";
 
 import Questions from "metabase/entities/questions";
 
@@ -19,8 +18,9 @@ import { loadMetadataForDashboard } from "./metadata";
 export const MARK_NEW_CARD_SEEN = "metabase/dashboard/MARK_NEW_CARD_SEEN";
 export const markNewCardSeen = createAction(MARK_NEW_CARD_SEEN);
 
+let tempId = -1;
 function generateTemporaryDashcardId() {
-  return Math.random();
+  return tempId--;
 }
 
 export const addCardToDashboard =
@@ -35,8 +35,10 @@ export const addCardToDashboard =
     const existingCards = dashboard.ordered_cards
       .map(id => dashcards[id])
       .filter(dc => !dc.isRemoved);
+
     const { visualization } = getVisualizationRaw([{ card }]);
-    const createdCardSize = visualization.minSize || DEFAULT_CARD_SIZE;
+    const createdCardSize = visualization.defaultSize || DEFAULT_CARD_SIZE;
+
     const dashcard = {
       id: generateTemporaryDashcardId(),
       dashboard_id: dashId,
@@ -64,13 +66,21 @@ export const addDashCardToDashboard = function ({ dashId, dashcardOverrides }) {
     const existingCards = dashboard.ordered_cards
       .map(id => dashcards[id])
       .filter(dc => !dc.isRemoved);
+
+    const { visualization } = getVisualizationRaw([dashcardOverrides]);
+    const createdCardSize = visualization.defaultSize || DEFAULT_CARD_SIZE;
+
     const dashcard = {
       id: generateTemporaryDashcardId(),
       card_id: null,
       card: null,
       dashboard_id: dashId,
       series: [],
-      ...getPositionForNewDashCard(existingCards),
+      ...getPositionForNewDashCard(
+        existingCards,
+        createdCardSize.width,
+        createdCardSize.height,
+      ),
       parameter_mappings: [],
       visualization_settings: {},
     };
@@ -97,9 +107,6 @@ export const addTextDashCardToDashboard = function ({ dashId }) {
 };
 
 export const addLinkDashCardToDashboard = function ({ dashId }) {
-  const DEFAULT_HEIGHT = 1;
-  const DEFAULT_WIDTH = 3;
-
   const virtualLinkCard = {
     ...createCard(),
     display: "link",
@@ -108,8 +115,6 @@ export const addLinkDashCardToDashboard = function ({ dashId }) {
 
   const dashcardOverrides = {
     card: virtualLinkCard,
-    size_x: DEFAULT_WIDTH,
-    size_y: DEFAULT_HEIGHT,
     visualization_settings: {
       virtual_card: virtualLinkCard,
     },
@@ -118,37 +123,6 @@ export const addLinkDashCardToDashboard = function ({ dashId }) {
     dashId: dashId,
     dashcardOverrides: dashcardOverrides,
   });
-};
-
-const estimateCardSize = (displayType, action, buttonLabel) => {
-  const BASE_HEIGHT = 3;
-  const HEIGHT_PER_FIELD = 1.5;
-
-  const PIXELS_PER_BLOCK = 49;
-  const MAX_BUTTON_BLOCK_WIDTH = 18;
-
-  if (displayType === "button") {
-    const textWidth = measureText(buttonLabel, {
-      family: "Lato",
-      size: 14,
-      weight: 700,
-    });
-
-    return {
-      size_x: Math.min(
-        Math.ceil((textWidth + PIXELS_PER_BLOCK) / PIXELS_PER_BLOCK),
-        MAX_BUTTON_BLOCK_WIDTH,
-      ),
-      size_y: 1,
-    };
-  }
-
-  return {
-    size_x: 6,
-    size_y: Math.round(
-      BASE_HEIGHT + action.parameters.length * HEIGHT_PER_FIELD,
-    ),
-  };
 };
 
 export const addActionToDashboard =
@@ -168,7 +142,6 @@ export const addActionToDashboard =
       action_id: action.id,
       card_id: action.model_id,
       card: virtualActionsCard,
-      ...estimateCardSize(displayType, action, buttonLabel),
       visualization_settings: {
         actionDisplayType: displayType ?? "button",
         virtual_card: virtualActionsCard,

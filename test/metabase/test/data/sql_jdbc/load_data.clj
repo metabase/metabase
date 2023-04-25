@@ -23,9 +23,9 @@
 
 (defmulti load-data!
   "Load the rows for a specific table (which has already been created) into a DB. `load-data-chunked!` is the default
-  implementation (see below); several other implementations like `load-data-all-at-once!` and
-  `load-data-one-at-a-time!` are already defined; see below. It will likely take some experimentation to see which
-  implementation works correctly and performs best with your driver."
+  implementation (see below); several other implementations like `load-data-all-at-once!` are already defined; see
+  below. It will likely take some experimentation to see which implementation works correctly and performs best with
+  your driver."
   {:arglists '([driver dbdef tabledef])}
   tx/dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
@@ -74,7 +74,7 @@
 
 (defn load-data-add-ids
   "Middleware function intended for use with `make-load-data-fn`. Add IDs to each row, presumabily for doing a parallel
-  insert. This function should go before `load-data-chunked` or `load-data-one-at-a-time` in the `make-load-data-fn`
+  insert. This function should go before `load-data-chunked` in the `make-load-data-fn`
   args."
   [insert!]
   (fn [rows]
@@ -91,12 +91,6 @@
   ([map-fn insert!]            (load-data-chunked map-fn *chunk-size* insert!))
   ([map-fn chunk-size insert!] (fn [rows]
                                  (dorun (map-fn insert! (partition-all chunk-size rows))))))
-
-(defn load-data-one-at-a-time
-  "Middleware function intended for use with `make-load-data-fn`. Insert rows one at a time."
-  ([insert!]        (load-data-one-at-a-time map insert!))
-  ([map-fn insert!] (fn [rows]
-                      (dorun (map-fn insert! rows)))))
 
 
 ;;; -------------------------------- Making a load-data! impl with make-load-data-fn ---------------------------------
@@ -146,10 +140,6 @@
   "Implementation of `load-data!`. Insert rows in chunks of [[*chunk-size*]] (default 200) at a time."
   (make-load-data-fn load-data-chunked))
 
-(def ^{:arglists '([driver dbdef tabledef])} load-data-one-at-a-time!
-  "Implementation of `load-data!`. Insert rows one at a time."
-  (make-load-data-fn load-data-one-at-a-time))
-
 (def ^{:arglists '([driver dbdef tabledef])} load-data-add-ids!
   "Implementation of `load-data!`. Insert all rows at once; add IDs."
   (make-load-data-fn load-data-add-ids))
@@ -157,20 +147,6 @@
 (def ^{:arglists '([driver dbdef tabledef])} load-data-add-ids-chunked!
   "Implementation of `load-data!`. Insert rows in chunks of [[*chunk-size*]] (default 200) at a time; add IDs."
   (make-load-data-fn load-data-add-ids load-data-chunked))
-
-(def ^{:arglists '([driver dbdef tabledef])} load-data-one-at-a-time-add-ids!
-  "Implementation of `load-data!` that inserts rows one at a time, but adds IDs."
-  (make-load-data-fn load-data-add-ids load-data-one-at-a-time))
-
-(def ^{:arglists '([driver dbdef tabledef])} load-data-chunked-parallel!
-  "Implementation of `load-data!`. Insert rows in chunks of [[*chunk-size*]] (default 200) at a time, in parallel."
-  (make-load-data-fn load-data-add-ids (partial load-data-chunked pmap)))
-
-(def ^{:arglists '([driver dbdef tabledef])} load-data-one-at-a-time-parallel!
-  "Implementation of `load-data!`. Insert rows one at a time, in parallel."
-  (make-load-data-fn load-data-add-ids (partial load-data-one-at-a-time pmap)))
-;; ^ the parallel versions aren't neccesarily faster than the sequential versions for all drivers so make sure to do
-;; some profiling in order to pick the appropriate implementation
 
 ;; Default impl
 
@@ -213,7 +189,7 @@
   "Default implementation of `create-db!` for SQL drivers."
   {:arglists '([driver dbdef & {:keys [skip-drop-db?]}])}
   [driver {:keys [table-definitions], :as dbdef} & options]
-  (binding [hx/*honey-sql-version* (sql.qp/honey-sql-version driver)]
+  (sql.qp/with-driver-honey-sql-version driver
     ;; first execute statements to drop the DB if needed (this will do nothing if `skip-drop-db?` is true)
     (doseq [statement (apply ddl/drop-db-ddl-statements driver dbdef options)]
       (execute/execute-sql! driver :server dbdef statement))

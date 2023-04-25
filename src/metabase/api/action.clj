@@ -139,7 +139,7 @@
                                                                             :num_parameters (count parameters)})
     (if action-id
       (action/select-action :id action-id)
-      ;; db/insert! does not return a value when used with h2
+      ;; t2/insert! does not return a value when used with h2
       ;; so we return the most recently updated http action.
       (last (action/select-actions nil :type type)))))
 

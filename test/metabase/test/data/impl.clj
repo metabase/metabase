@@ -104,10 +104,10 @@
         (tx/create-db! driver database-definition)))
     ;; Add DB object to Metabase DB
     (let [connection-details (tx/dbdef->connection-details driver :db database-definition)
-          db                 (db/insert! Database
-                               :name    database-name
-                               :engine  (u/qualified-name driver)
-                               :details connection-details)]
+          db                 (first (t2/insert-returning-instances! Database
+                                                                    :name    database-name
+                                                                    :engine  (u/qualified-name driver)
+                                                                    :details connection-details))]
       (try
         ;; sync newly added DB
         (u/with-timeout sync-timeout-ms
@@ -252,14 +252,14 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- copy-table-fields! [old-table-id new-table-id]
-  (db/insert-many! Field
+  (t2/insert! Field
     (for [field (t2/select Field :table_id old-table-id {:order-by [[:id :asc]]})]
       (-> field (dissoc :id :fk_target_field_id) (assoc :table_id new-table-id))))
   ;; now copy the FieldValues as well.
   (let [old-field-id->name (t2/select-pk->fn :name Field :table_id old-table-id)
         new-field-name->id (t2/select-fn->pk :name Field :table_id new-table-id)
         old-field-values   (t2/select FieldValues :field_id [:in (set (keys old-field-id->name))])]
-    (db/insert-many! FieldValues
+    (t2/insert! FieldValues
       (for [{old-field-id :field_id, :as field-values} old-field-values
             :let                                       [field-name (get old-field-id->name old-field-id)]]
         (-> field-values
@@ -268,7 +268,7 @@
 
 (defn- copy-db-tables! [old-db-id new-db-id]
   (let [old-tables    (t2/select Table :db_id old-db-id {:order-by [[:id :asc]]})
-        new-table-ids (db/insert-many! Table
+        new-table-ids (t2/insert-returning-pks! Table
                         (for [table old-tables]
                           (-> table (dissoc :id) (assoc :db_id new-db-id))))]
     (doseq [[old-table-id new-table-id] (zipmap (map :id old-tables) new-table-ids)]
@@ -310,7 +310,7 @@
   (let [prop->old-id (get-linked-secrets database)]
     (if (seq prop->old-id)
       (let [secrets (t2/select [Secret :id :name :kind :source :value] :id [:in (set (vals prop->old-id))])
-            new-ids (db/insert-many! Secret (map #(dissoc % :id) secrets))
+            new-ids (t2/insert-returning-pks! Secret (map #(dissoc % :id) secrets))
             old-id->new-id (zipmap (map :id secrets) new-ids)]
         (assoc database
                :details
@@ -330,7 +330,7 @@
   [f]
   (let [{old-db-id :id, :as old-db} (*get-db*)
         original-db (-> old-db copy-secrets (select-keys [:details :engine :name]))
-        {new-db-id :id, :as new-db} (db/insert! Database original-db)]
+        {new-db-id :id, :as new-db} (first (t2/insert-returning-instances! Database original-db))]
     (try
       (copy-db-tables-and-fields! old-db-id new-db-id)
       (binding [*db-is-temp-copy?* true]
@@ -363,7 +363,7 @@
                              (binding [db/*disable-db-logging* true]
                                (let [db (get-or-create-database! driver dbdef)]
                                  (assert db)
-                                 (assert (db/exists? Database :id (u/the-id db)))
+                                 (assert (t2/exists? Database :id (u/the-id db)))
                                  db))))]
     (binding [*get-db* (fn []
                          (locking do-with-dataset

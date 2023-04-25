@@ -15,7 +15,6 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan2.core :as t2])
   (:import
    (java.time OffsetDateTime)))
@@ -108,7 +107,7 @@
               (is (some? child-dest))
               (is (some? grandchild-dest))
               (is (not= (:id parent-dest) (:id @parent)) "should have different primary keys")
-              (is (= 4 (db/count Collection)))
+              (is (= 4 (t2/count Collection)))
               (is (= "/"
                      (:location parent-dest)))
               (is (= (format "/%d/" (:id parent-dest))
@@ -163,13 +162,14 @@
             (reset! db1d (t2/select-one Database :name (:name @db1s)))
             (reset! db2d (t2/select-one Database :name (:name @db2s)))
 
-            (is (= 3 (db/count Database)))
+            (is (= 3 (t2/count Database)))
+            (is (every? #(= "complete" (:initial_sync_status %)) (t2/select Database)))
             (is (= #{"db1" "db2" "test-data"}
                    (t2/select-fn-set :name Database)))
             (is (= #{(:id @db1d) (:id @db2d)}
                    (t2/select-fn-set :db_id Table :name "posts")))
-            (is (db/exists? Table :name "posts" :db_id (:id @db1d)))
-            (is (db/exists? Table :name "posts" :db_id (:id @db2d)))))))))
+            (is (t2/exists? Table :name "posts" :db_id (:id @db1d)))
+            (is (t2/exists? Table :name "posts" :db_id (:id @db2d)))))))))
 
 (deftest card-dataset-query-test
   ;; Card.dataset_query is a JSON-encoded MBQL query, which contain database, table, and field IDs - these need to be
@@ -612,7 +612,7 @@
                                            :time_matters true :timestamp (t/offset-date-time 2022 10 31 19 00 00)))
 
             (testing "expecting 3 events"
-              (is (= 3 (db/count TimelineEvent))))
+              (is (= 3 (t2/count TimelineEvent))))
 
             (reset! serialized (into [] (serdes.extract/extract-metabase {})))
 
@@ -838,7 +838,7 @@
 
           (testing "there are 2 FieldValues defined under fields of table1d"
             (let [fields (t2/select-pks-set Field :table_id (:id @table1d))]
-              (is (= 2 (db/count FieldValues :field_id [:in fields])))))
+              (is (= 2 (t2/count FieldValues :field_id [:in fields])))))
 
           (testing "existing FieldValues are properly found and updated"
             (is (= (set (:values @fv1s)) (set (:values @fv1d)))))

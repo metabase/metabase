@@ -4,6 +4,7 @@ import { t } from "ttag";
 
 import { isMac } from "metabase/lib/browser";
 
+import Tooltip from "metabase/core/components/Tooltip";
 import DataReferenceButton from "metabase/query_builder/components/view/DataReferenceButton";
 import NativeVariablesButton from "metabase/query_builder/components/view/NativeVariablesButton";
 import SnippetSidebarButton from "metabase/query_builder/components/view/SnippetSidebarButton";
@@ -12,6 +13,7 @@ import PreviewQueryButton from "metabase/query_builder/components/view/PreviewQu
 import {
   Container,
   RunButtonWithTooltipStyled,
+  SidebarButton,
 } from "./NativeQueryEditorSidebar.styled";
 
 const propTypes = {
@@ -20,10 +22,19 @@ const propTypes = {
   isResultDirty: PropTypes.bool,
   isRunnable: PropTypes.bool,
   isRunning: PropTypes.bool,
+  isPromptInputVisible: PropTypes.bool,
+  canUsePromptInput: PropTypes.bool,
   nativeEditorSelectedText: PropTypes.string,
   runQuery: PropTypes.func,
   snippetCollections: PropTypes.array,
   snippets: PropTypes.array,
+  features: {
+    dataReference: PropTypes.bool,
+    variables: PropTypes.bool,
+    snippets: PropTypes.bool,
+    promptInput: PropTypes.bool,
+  },
+  onShowPromptInput: PropTypes.func,
 };
 
 const ICON_SIZE = 18;
@@ -35,10 +46,14 @@ const NativeQueryEditorSidebar = props => {
     isResultDirty,
     isRunnable,
     isRunning,
+    isPromptInputVisible,
     nativeEditorSelectedText,
     runQuery,
     snippetCollections,
     snippets,
+    features,
+    onShowPromptInput,
+    canUsePromptInput,
   } = props;
 
   // hide the snippet sidebar if there aren't any visible snippets/collections
@@ -63,11 +78,26 @@ const NativeQueryEditorSidebar = props => {
 
   return (
     <Container>
-      <DataReferenceButton {...props} size={ICON_SIZE} className="mt3" />
-      <NativeVariablesButton {...props} size={ICON_SIZE} className="mt3" />
-      {showSnippetSidebarButton && (
+      {canUsePromptInput && features.promptInput && !isPromptInputVisible ? (
+        <Tooltip tooltip={t`Ask a question`}>
+          <SidebarButton
+            aria-label={t`Ask a question`}
+            onClick={onShowPromptInput}
+            icon="insight"
+            iconSize={20}
+            onlyIcon
+          />
+        </Tooltip>
+      ) : null}
+      {features.dataReference ? (
+        <DataReferenceButton {...props} size={ICON_SIZE} className="mt3" />
+      ) : null}
+      {features.variables ? (
+        <NativeVariablesButton {...props} size={ICON_SIZE} className="mt3" />
+      ) : null}
+      {features.snippets && showSnippetSidebarButton ? (
         <SnippetSidebarButton {...props} size={ICON_SIZE} className="mt3" />
-      )}
+      ) : null}
       {PreviewQueryButton.shouldRender({ question }) && (
         <PreviewQueryButton {...props} />
       )}

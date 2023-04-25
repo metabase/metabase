@@ -6,6 +6,7 @@ import _ from "underscore";
 import { createMemoryHistory, History } from "history";
 import { Router } from "react-router";
 import { routerReducer, routerMiddleware } from "react-router-redux";
+import type { Reducer } from "@reduxjs/toolkit";
 import { Provider } from "react-redux";
 import { ThemeProvider } from "@emotion/react";
 import { DragDropContextProvider } from "react-dnd";
@@ -23,6 +24,11 @@ import publicReducers from "metabase/reducers-public";
 
 import { getStore } from "./entities-store";
 
+type ReducerValue = ReducerObject | Reducer;
+interface ReducerObject {
+  [slice: string]: ReducerValue;
+}
+
 export interface RenderWithProvidersOptions {
   mode?: "default" | "public";
   initialRoute?: string;
@@ -30,6 +36,7 @@ export interface RenderWithProvidersOptions {
   withSampleDatabase?: boolean;
   withRouter?: boolean;
   withDND?: boolean;
+  customReducers?: ReducerObject;
 }
 
 /**
@@ -46,6 +53,7 @@ export function renderWithProviders(
     withSampleDatabase,
     withRouter = false,
     withDND = false,
+    customReducers,
     ...options
   }: RenderWithProvidersOptions = {},
 ) {
@@ -64,10 +72,13 @@ export function renderWithProviders(
     ? createMemoryHistory({ entries: [initialRoute] })
     : undefined;
 
-  const reducers = mode === "default" ? mainReducers : publicReducers;
+  let reducers = mode === "default" ? mainReducers : publicReducers;
 
   if (withRouter) {
     Object.assign(reducers, { routing: routerReducer });
+  }
+  if (customReducers) {
+    reducers = { ...reducers, ...customReducers };
   }
 
   const store = getStore(

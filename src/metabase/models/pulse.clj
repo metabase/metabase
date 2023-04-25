@@ -30,7 +30,6 @@
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
    [toucan.models :as models]
    [toucan2.core :as t2]))
@@ -154,20 +153,6 @@
 (defmethod serdes/hash-fields Pulse
   [_pulse]
   [:name (serdes/hydrated-hash :collection) :created_at])
-
-(def ^:private ^:dynamic *automatically-archive-when-last-channel-is-deleted*
-  "Should we automatically archive a Pulse when its last `PulseChannel` is deleted? Normally we do, but this is disabled
-  in [[update-notification-channels!]] which creates/deletes/updates several channels sequentially."
-  true)
-
-(defn will-delete-channel
-  "This function is called by [[metabase.models.pulse-channel/pre-delete]] when the `PulseChannel` is about to be
-  deleted. Archives `Pulse` if the channel being deleted is its last channel."
-  [{pulse-id :pulse_id, pulse-channel-id :id}]
-  (when *automatically-archive-when-last-channel-is-deleted*
-    (let [other-channels-count (db/count PulseChannel :pulse_id pulse-id, :id [:not= pulse-channel-id])]
-      (when (zero? other-channels-count)
-        (t2/update! Pulse pulse-id {:archived true})))))
 
 ;;; ---------------------------------------------------- Schemas -----------------------------------------------------
 
@@ -427,7 +412,7 @@
                                 :include_xls       include_xls
                                 :dashboard_card_id dashboard_card_id})
                              card-refs)]
-      (db/insert-many! PulseCard cards))))
+      (t2/insert! PulseCard cards))))
 
 (defn- create-update-delete-channel!
   "Utility function used by [[update-notification-channels!]] which determines how to properly update a single pulse
@@ -473,7 +458,7 @@
       "Cannot have channels without a :channel_type attribute")
     ;; don't automatically archive this Pulse if we end up deleting its last PulseChannel -- we're probably replacing
     ;; it with a new one immediately thereafter.
-    (binding [*automatically-archive-when-last-channel-is-deleted* false]
+    (binding [pulse-channel/*archive-parent-pulse-when-last-channel-is-deleted* false]
       ;; for each of our possible channel types call our handler function
       (doseq [[channel-type] pulse-channel/channel-types]
         (handle-channel channel-type)))))
@@ -482,8 +467,8 @@
   "Create a new Pulse/Alert with the properties specified in `notification`; add the `card-refs` to the Notification and
   add the Notification to `channels`. Returns the `id` of the newly created Notification."
   [notification card-refs :- (s/maybe [CardRef]) channels]
-  (db/transaction
-    (let [notification (db/insert! Pulse notification)]
+  (t2/with-transaction [_conn]
+    (let [notification (first (t2/insert-returning-instances! Pulse notification))]
       (update-notification-cards! notification card-refs)
       (update-notification-channels! notification channels)
       (u/the-id notification))))
@@ -590,15 +575,15 @@
 (defmethod serdes/extract-one "Pulse"
   [_model-name _opts pulse]
   (cond-> (serdes/extract-one-basics "Pulse" pulse)
-    (:collection_id pulse) (update :collection_id serdes/export-fk 'Collection)
-    (:dashboard_id  pulse) (update :dashboard_id  serdes/export-fk 'Dashboard)
-    true                   (update :creator_id    serdes/export-user)))
+    (:collection_id pulse) (update :collection_id serdes/*export-fk* 'Collection)
+    (:dashboard_id  pulse) (update :dashboard_id  serdes/*export-fk* 'Dashboard)
+    true                   (update :creator_id    serdes/*export-user*)))
 
 (defmethod serdes/load-xform "Pulse" [pulse]
   (cond-> (serdes/load-xform-basics pulse)
-      true                   (update :creator_id    serdes/import-user)
-      (:collection_id pulse) (update :collection_id serdes/import-fk 'Collection)
-      (:dashboard_id  pulse) (update :dashboard_id  serdes/import-fk 'Dashboard)))
+      true                   (update :creator_id    serdes/*import-user*)
+      (:collection_id pulse) (update :collection_id serdes/*import-fk* 'Collection)
+      (:dashboard_id  pulse) (update :dashboard_id  serdes/*import-fk* 'Dashboard)))
 
 (defmethod serdes/dependencies "Pulse" [{:keys [collection_id dashboard_id]}]
   (filterv some? [(when collection_id [{:model "Collection" :id collection_id}])

@@ -20,7 +20,6 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -311,6 +310,6 @@
 (deftest create-database-with-null-details-test
   (testing "Details should get a default value of {} if unspecified"
     (mt/with-model-cleanup [Database]
-      (let [db (db/insert! Database (dissoc (mt/with-temp-defaults Database) :details))]
+      (let [db (first (t2/insert-returning-instances! Database (dissoc (mt/with-temp-defaults Database) :details)))]
         (is (partial= {:details {}}
                       db))))))

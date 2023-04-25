@@ -11,6 +11,7 @@ import { isPreviewShown, isRootCollection } from "metabase/collections/utils";
 import PinDropZone from "metabase/collections/components/PinDropZone";
 import ItemDragSource from "metabase/containers/dnd/ItemDragSource";
 import Metadata from "metabase-lib/metadata/Metadata";
+import Database from "metabase-lib/metadata/Database";
 
 import {
   Container,
@@ -20,6 +21,7 @@ import {
 } from "./PinnedItemOverview.styled";
 
 type Props = {
+  databases?: Database[];
   bookmarks?: Bookmark[];
   createBookmark: (id: string, collection: string) => void;
   deleteBookmark: (id: string, collection: string) => void;
@@ -31,6 +33,7 @@ type Props = {
 };
 
 function PinnedItemOverview({
+  databases,
   bookmarks,
   createBookmark,
   deleteBookmark,
@@ -73,6 +76,7 @@ function PinnedItemOverview({
                         item={item}
                         metadata={metadata}
                         collection={collection}
+                        databases={databases}
                         bookmarks={bookmarks}
                         onCopy={onCopy}
                         onMove={onMove}
@@ -110,6 +114,7 @@ function PinnedItemOverview({
                 <ItemDragSource item={item} collection={collection}>
                   <div>
                     <PinnedItemCard
+                      databases={databases}
                       bookmarks={bookmarks}
                       createBookmark={createBookmark}
                       deleteBookmark={deleteBookmark}
@@ -156,6 +161,7 @@ function PinnedItemOverview({
                 <ItemDragSource item={item} collection={collection}>
                   <div>
                     <PinnedItemCard
+                      databases={databases}
                       bookmarks={bookmarks}
                       createBookmark={createBookmark}
                       deleteBookmark={deleteBookmark}

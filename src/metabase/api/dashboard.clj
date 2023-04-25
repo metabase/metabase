@@ -42,7 +42,6 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2])
   (:import
@@ -96,12 +95,12 @@
                         :cache_ttl           cache_ttl
                         :collection_id       collection_id
                         :collection_position collection_position}
-        dash           (db/transaction
+        dash           (t2/with-transaction [_conn]
                         ;; Adding a new dashboard at `collection_position` could cause other dashboards in this collection to change
                         ;; position, check that and fix up if needed
                         (api/maybe-reconcile-collection-position! dashboard-data)
                         ;; Ok, now save the Dashboard
-                        (db/insert! Dashboard dashboard-data))]
+                        (first (t2/insert-returning-instances! Dashboard dashboard-data)))]
     (events/publish-event! :dashboard-create dash)
     (snowplow/track-event! ::snowplow/dashboard-created api/*current-user-id* {:dashboard-id (u/the-id dash)})
     (assoc dash :last-edit-info (last-edit/edit-information-for-user @api/*current-user*))))
@@ -335,21 +334,21 @@
                         :collection_id       collection_id
                         :collection_position collection_position}
         new-cards      (atom nil)
-        dashboard      (db/transaction
+        dashboard      (t2/with-transaction [_conn]
                         ;; Adding a new dashboard at `collection_position` could cause other dashboards in this
                         ;; collection to change position, check that and fix up if needed
                         (api/maybe-reconcile-collection-position! dashboard-data)
                         ;; Ok, now save the Dashboard
-                        (let [dash (db/insert! Dashboard dashboard-data)
+                        (let [dash (first (t2/insert-returning-instances! Dashboard dashboard-data))
                               {id->new-card :copied uncopied :uncopied}
                               (when is_deep_copy
                                 (duplicate-cards existing-dashboard collection_id))]
                           (reset! new-cards (vals id->new-card))
-                          (doseq [card (update-cards-for-copy from-dashboard-id
-                                                              (:ordered_cards existing-dashboard)
-                                                              is_deep_copy
-                                                              id->new-card)]
-                            (api/check-500 (dashboard/add-dashcard! dash (:card_id card) card)))
+                          (when-let [dashcards (seq (update-cards-for-copy from-dashboard-id
+                                                                           (:ordered_cards existing-dashboard)
+                                                                           is_deep_copy
+                                                                           id->new-card))]
+                            (api/check-500 (dashboard/add-dashcards! dash dashcards)))
                           (cond-> dash
                             (seq uncopied)
                             (assoc :uncopied uncopied))))]
@@ -359,7 +358,6 @@
       (doseq [card newly-created-cards]
         (events/publish-event! :card-create card)))
     (events/publish-event! :dashboard-create dashboard)))
-
 
 ;;; --------------------------------------------- Fetching/Updating/Etc. ---------------------------------------------
 
@@ -407,7 +405,7 @@
     ;; Do various permissions checks as needed
     (collection/check-allowed-to-change-collection dash-before-update dash-updates)
     (check-allowed-to-change-embedding dash-before-update dash-updates)
-    (db/transaction
+    (t2/with-transaction [_conn]
       ;; If the dashboard has an updated position, or if the dashboard is moving to a new collection, we might need to
       ;; adjust the collection position of other dashboards in the collection
       (api/maybe-reconcile-collection-position! dash-before-update dash-updates)
@@ -416,7 +414,7 @@
       (when-let [updates (not-empty (u/select-keys-when dash-updates
                                       :present #{:description :position :collection_id :collection_position :cache_ttl}
                                       :non-nil #{:name :parameters :caveats :points_of_interest :show_in_getting_started :enable_embedding
-                                                 :embedding_params :archived}))]
+                                                 :embedding_params :archived :auto_apply_filters}))]
         (t2/update! Dashboard id updates))))
   ;; now publish an event and return the updated Dashboard
   (let [dashboard (t2/select-one Dashboard :id id)]
@@ -482,31 +480,6 @@
                                :table-id           table-id
                                :actual-permissions @api/*current-user-permissions-set*})))))))))
 
-;; TODO - param should be `card_id`, not `cardId` (fix here + on frontend at the same time)
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/:id/cards"
-  "Add a `Card` or `Action` to a Dashboard."
-  [id :as {{:keys [cardId parameter_mappings row col size_x size_y action_id], :as dashboard-card} :body}]
-  {cardId             (s/maybe su/IntGreaterThanZero)
-   parameter_mappings (s/maybe [dashboard-card/ParamMapping])
-   row                su/IntGreaterThanOrEqualToZero
-   col                su/IntGreaterThanOrEqualToZero
-   size_x             su/IntGreaterThanZero
-   size_y             su/IntGreaterThanZero
-   action_id          (s/maybe su/IntGreaterThanZero)}
-  (api/check-not-archived (api/write-check Dashboard id))
-  (when cardId
-    (api/check-not-archived (api/read-check Card cardId)))
-  (check-parameter-mapping-permissions (for [mapping parameter_mappings]
-                                         (assoc mapping :card-id cardId)))
-  (u/prog1 (api/check-500 (dashboard/add-dashcard! id cardId (-> dashboard-card
-                                                                 (assoc :creator_id api/*current-user*)
-                                                                 (dissoc :cardId))))
-    (events/publish-event! :dashboard-add-cards {:id id, :actor_id api/*current-user-id*, :dashcards [<>]})
-    (snowplow/track-event! ::snowplow/question-added-to-dashboard
-                           api/*current-user-id*
-                           {:dashboard-id id, :question-id cardId})))
-
 (defn- existing-parameter-mappings
   "Returns a map of DashboardCard ID -> parameter mappings for a Dashboard of the form
 
@@ -540,24 +513,74 @@
                                          (assoc mapping :card-id (get dashcard-id->card-id dashcard-id)))]
     (check-parameter-mapping-permissions new-mappings)))
 
-(def ^:private UpdatedDashboardCard
-  (su/with-api-error-message
-    {:id                                  (su/with-api-error-message su/IntGreaterThanOrEqualToZero
-                                            "value must be a DashboardCard ID.")
-     :size_x                              su/IntGreaterThanZero
-     :size_y                              su/IntGreaterThanZero
-     :row                                 su/IntGreaterThanOrEqualToZero
-     :col                                 su/IntGreaterThanOrEqualToZero
-     (s/optional-key :parameter_mappings) (s/maybe [{:parameter_id su/NonBlankString
-                                                     :target       s/Any
-                                                     s/Keyword     s/Any}])
-     (s/optional-key :series)             (s/maybe [su/Map])
-     s/Keyword                            s/Any}
-    "value must be a valid DashboardCard map."))
+(mu/defn ^:private classify-changes :- [:map
+                                        [:to-create [:sequential [:map [:id ms/NegativeInt]]]]
+                                        [:to-update [:sequential [:map [:id ms/PositiveInt]]]]
+                                        [:to-delete [:sequential [:map [:id ms/PositiveInt]]]]]
+  "Given 2 lists of seq maps changes, where each map an `id` keys,
+  return a map of 3 keys, `:to-create`, `:to-update`, `:to-delete`.
 
-;; TODO - we should use schema to validate the format of the Cards :D
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema PUT "/:id/cards"
+  Where:
+    :to-create is a list of maps that has negative ids in `new-items`
+    :to-update is a list of maps that has ids in both `current-items` and `new-items`
+    :to delete is a list of maps that has ids only in `current-items`"
+  [current-items :- [:sequential [:map [:id ms/PositiveInt]]]
+   new-items     :- [:sequential [:map [:id int?]]]]
+  (let [new-change-ids     (set (map :id new-items))
+        to-create          (remove (comp pos? :id) new-items)
+        ;; to-update items are new items with id in the current items
+        to-update          (remove (comp neg? :id) new-items)
+        ;; to delete items in current but not new items
+        to-delete          (remove (comp new-change-ids :id) current-items)]
+    {:to-update to-update
+     :to-delete to-delete
+     :to-create to-create}))
+
+(defn- create-dashcards!
+  [dashboard dashcards]
+  (doseq [{:keys [card_id]} dashcards
+          :when  (pos-int? card_id)]
+    (api/check-not-archived (api/read-check Card card_id)))
+  (check-parameter-mapping-permissions (for [{:keys [card_id parameter_mappings]} dashcards
+                                             mapping parameter_mappings]
+                                        (assoc mapping :card-id card_id)))
+  (u/prog1 (api/check-500 (dashboard/add-dashcards! dashboard (map #(assoc % :creator_id @api/*current-user*) dashcards)))
+    (events/publish-event! :dashboard-add-cards {:id (:id dashboard) :actor_id api/*current-user-id* :dashcards <>})
+    (for [{:keys [card_id]} <>
+          :when             (pos-int? card_id)]
+      (snowplow/track-event! ::snowplow/question-added-to-dashboard
+                             api/*current-user-id*
+                             {:dashboard-id (:id dashboard) :question-id card_id}))))
+
+(defn- update-dashcards! [dashboard dashcards]
+  (check-updated-parameter-mapping-permissions (:id dashboard) dashcards)
+  ;; transform the dashcard data to the format of the DashboardCard model
+  ;; so update-dashcards! can compare them with existing dashcards
+  (dashboard/update-dashcards! dashboard (map dashboard-card/from-parsed-json dashcards))
+  ;; TODO this is potentially misleading, we don't know for sure here that the dashcards are repositioned
+  (events/publish-event! :dashboard-reposition-cards {:id (:id dashboard) :actor_id api/*current-user-id* :dashcards dashcards}))
+
+(defn- delete-dashcards! [{dashboard-id :id :as _dashboard} dashcard-ids]
+  (when (seq dashcard-ids)
+    (dashboard-card/delete-dashboard-cards!
+      (t2/select DashboardCard :id [:in dashcard-ids])
+      dashboard-id
+      api/*current-user-id*)))
+
+(def ^:private UpdatedDashboardCard
+  [:map
+   ;; id can be negative, it indicates a new card and BE should create them
+   [:id                                  int?]
+   [:size_x                              ms/PositiveInt]
+   [:size_y                              ms/PositiveInt]
+   [:row                                 ms/IntGreaterThanOrEqualToZero]
+   [:col                                 ms/IntGreaterThanOrEqualToZero]
+   [:parameter_mappings {:optional true} [:maybe [:sequential [:map
+                                                               [:parameter_id ms/NonBlankString]
+                                                               [:target       :any]]]]]
+   [:series             {:optional true} [:maybe [:sequential map?]]]])
+
+(api/defendpoint PUT "/:id/cards"
   "Update `Cards` on a Dashboard. Request body should have the form:
 
     {:cards [{:id                 ... ; DashboardCard ID
@@ -570,24 +593,24 @@
                                     ...}]}
              ...]}"
   [id :as {{:keys [cards]} :body}]
-  {cards (su/non-empty [UpdatedDashboardCard])}
-  (let [dashboard (api/check-not-archived (api/write-check Dashboard id))]
-    (check-updated-parameter-mapping-permissions id cards)
-    ;; transform the card data to the format of the DashboardCard model
-    ;; so update-dashcards! can compare them with existing cards
-    (dashboard/update-dashcards! dashboard (map dashboard-card/from-parsed-json cards))
-    (events/publish-event! :dashboard-reposition-cards {:id id, :actor_id api/*current-user-id*, :dashcards cards})
-    {:status :ok}))
+  {id    ms/PositiveInt
+   cards [:sequential UpdatedDashboardCard]}
+  (let [dashboard     (-> (api/write-check Dashboard id)
+                          api/check-not-archived
+                          (t2/hydrate [:ordered_cards :series :card]))
+        current-cards (:ordered_cards dashboard)
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema DELETE "/:id/cards"
-  "Remove a `DashboardCard` from a Dashboard."
-  [id dashcardId]
-  {dashcardId su/IntStringGreaterThanZero}
-  (api/check-not-archived (api/write-check Dashboard id))
-  (when-let [dashboard-card (t2/select-one DashboardCard :id (Integer/parseInt dashcardId))]
-    (api/check-500 (dashboard-card/delete-dashboard-card! dashboard-card api/*current-user-id*))
-    api/generic-204-no-content))
+        {:keys [to-update to-delete to-create]} (classify-changes current-cards cards)]
+    (api/check-500
+      (t2/with-transaction [_conn]
+        (when (seq to-delete)
+          (delete-dashcards! dashboard (map :id to-delete)))
+        (when (seq to-create)
+          (create-dashcards! dashboard (map #(dissoc % :id) to-create)))
+        (when (seq to-update)
+          (update-dashcards! dashboard to-update))
+        true))
+    (t2/hydrate (dashboard/ordered-cards id) :series)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:id/revisions"

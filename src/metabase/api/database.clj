@@ -30,6 +30,7 @@
    [metabase.models.table :refer [Table]]
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings :as public-settings]
+   [metabase.public-settings.premium-features :as premium-features]
    [metabase.sample-data :as sample-data]
    [metabase.sync.analyze :as analyze]
    [metabase.sync.field-values :as field-values]
@@ -409,7 +410,7 @@
   [id]
   {id ms/PositiveInt}
   (api/check-superuser)
-  (api/check-404 (db/exists? Database :id id))
+  (api/check-404 (t2/exists? Database :id id))
   (let [table-ids (t2/select-pks-set Table :db_id id)]
     (first (mdb.query/query
              {:select [:*]
@@ -745,6 +746,10 @@
    auto_run_queries (s/maybe s/Bool)
    cache_ttl        (s/maybe su/IntGreaterThanZero)}
   (api/check-superuser)
+  (when cache_ttl
+    (api/check (premium-features/enable-advanced-config?)
+               [402 (tru (str "The cache TTL database setting is only enabled if you have a premium token with the "
+                              "advanced-config feature."))]))
   (let [is-full-sync?    (or (nil? is_full_sync)
                              (boolean is_full_sync))
         details-or-error (test-connection-details engine details)
@@ -752,21 +757,22 @@
     (if valid?
       ;; no error, proceed with creation. If record is inserted successfuly, publish a `:database-create` event.
       ;; Throw a 500 if nothing is inserted
-      (u/prog1 (api/check-500 (db/insert! Database
-                                (merge
-                                  {:name         name
-                                   :engine       engine
-                                   :details      details-or-error
-                                   :is_full_sync is-full-sync?
-                                   :is_on_demand (boolean is_on_demand)
-                                   :cache_ttl    cache_ttl
-                                   :creator_id   api/*current-user-id*}
-                                  (sync.schedules/schedule-map->cron-strings
-                                    (if (:let-user-control-scheduling details)
-                                      (sync.schedules/scheduling schedules)
-                                      (sync.schedules/default-randomized-schedule)))
-                                  (when (some? auto_run_queries)
-                                    {:auto_run_queries auto_run_queries}))))
+      (u/prog1 (api/check-500 (first (t2/insert-returning-instances!
+                                       Database
+                                       (merge
+                                         {:name         name
+                                          :engine       engine
+                                          :details      details-or-error
+                                          :is_full_sync is-full-sync?
+                                          :is_on_demand (boolean is_on_demand)
+                                          :cache_ttl    cache_ttl
+                                          :creator_id   api/*current-user-id*}
+                                         (sync.schedules/schedule-map->cron-strings
+                                           (if (:let-user-control-scheduling details)
+                                             (sync.schedules/scheduling schedules)
+                                             (sync.schedules/default-randomized-schedule)))
+                                         (when (some? auto_run_queries)
+                                           {:auto_run_queries auto_run_queries})))))
         (events/publish-event! :database-create <>)
         (snowplow/track-event! ::snowplow/database-connection-successful
                                api/*current-user-id*
@@ -834,8 +840,7 @@
             schema           (ddl.i/schema-name database (public-settings/site-uuid))]
         (if success?
           ;; do secrets require special handling to not clobber them or mess up encryption?
-          (do (t2/update! Database id :options
-                          (assoc (:options database) :persist-models-enabled true))
+          (do (t2/update! Database id {:options (assoc (:options database) :persist-models-enabled true)})
               (task.persist-refresh/schedule-persistence-for-database!
                 database
                 (public-settings/persisted-model-refresh-cron-schedule))
@@ -852,8 +857,7 @@
   (api/let-404 [database (t2/select-one Database :id id)]
     (api/write-check database)
     (if (-> database :options :persist-models-enabled)
-      (do (t2/update! Database id :options
-                      (dissoc (:options database) :persist-models-enabled))
+      (do (t2/update! Database id {:options (dissoc (:options database) :persist-models-enabled)})
           (persisted-info/mark-for-pruning! {:database_id id})
           (task.persist-refresh/unschedule-persistence-for-database! database)
           api/generic-204-no-content)
@@ -928,8 +932,10 @@
         ;; do nothing in the case that user is not in control of
         ;; scheduling. leave them as they are in the db
 
-        ;; unlike the other fields, folks might want to nil out cache_ttl
-        (t2/update! Database id {:cache_ttl cache_ttl})
+        ;; unlike the other fields, folks might want to nil out cache_ttl. it should also only be settable on EE
+        ;; with the advanced-config feature enabled.
+        (when (premium-features/enable-advanced-config?)
+          (t2/update! Database id {:cache_ttl cache_ttl}))
 
         (let [db (t2/select-one Database :id id)]
           (events/publish-event! :database-update db)
@@ -989,7 +995,7 @@
         tables (map api/write-check (:tables (first (add-tables [db]))))]
     (sync-util/set-initial-database-sync-complete! db)
     ;; avoid n+1
-    (db/update-where! Table {:id [:in (map :id tables)]} :initial_sync_status "complete"))
+    (t2/update! Table {:id [:in (map :id tables)]} {:initial_sync_status "complete"}))
   {:status :ok})
 
 ;; TODO - do we also want an endpoint to manually trigger analysis. Or separate ones for classification/fingerprinting?
@@ -1025,8 +1031,8 @@
 
 (defn- delete-all-field-values-for-database! [database-or-id]
   (when-let [field-values-ids (seq (database->field-values-ids database-or-id))]
-    (db/execute! {:delete-from :metabase_fieldvalues
-                  :where       [:in :id field-values-ids]})))
+    (t2/query-one {:delete-from :metabase_fieldvalues
+                   :where       [:in :id field-values-ids]})))
 
 
 ;; TODO - should this be something like DELETE /api/database/:id/field_values instead?

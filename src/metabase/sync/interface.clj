@@ -33,6 +33,7 @@
    (s/optional-key :field-comment)              (s/maybe su/NonBlankString)
    (s/optional-key :pk?)                        s/Bool
    (s/optional-key :nested-fields)              #{(s/recursive #'TableMetadataField)}
+   (s/optional-key :json-unfolding)             s/Bool
    (s/optional-key :nfc-path)                   [s/Any]
    (s/optional-key :custom)                     {s/Any s/Any}
    (s/optional-key :database-is-auto-increment) s/Bool
@@ -47,9 +48,11 @@
    :fields                       #{TableMetadataField}
    (s/optional-key :description) (s/maybe s/Str)})
 
-(def NestedFCMetadata
-  "Schema for the expected output of `describe-nested-field-columns`."
-  (s/maybe #{TableMetadataField}))
+;;; not actually used; leaving here for now because it serves as documentation
+(comment
+  (def NestedFCMetadata
+    "Schema for the expected output of [[metabase.driver.sql-jdbc.sync/describe-nested-field-columns]]."
+    (s/maybe #{TableMetadataField})))
 
 (def FKMetadataEntry
   "Schema for an individual entry in `FKMetadata`."
@@ -67,10 +70,9 @@
 ;; out from the ns declaration when running `cljr-clean-ns`. Plus as a bonus in the future we could add additional
 ;; validations to these, e.g. requiring that a Field have a base_type
 
-(def DatabaseInstance             "Schema for a valid instance of a Metabase Database." (mi/InstanceOf Database))
-(def TableInstance                "Schema for a valid instance of a Metabase Table."    (mi/InstanceOf Table))
-(def FieldInstance                "Schema for a valid instance of a Metabase Field."    (mi/InstanceOf Field))
-(def ResultColumnMetadataInstance "Schema for result column metadata."                  su/Map)
+(def DatabaseInstance "Schema for a valid instance of a Metabase Database." (mi/InstanceOf Database))
+(def TableInstance    "Schema for a valid instance of a Metabase Table."    (mi/InstanceOf Table))
+(def FieldInstance    "Schema for a valid instance of a Metabase Field."    (mi/InstanceOf Field))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

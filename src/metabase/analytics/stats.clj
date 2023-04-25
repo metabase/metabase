@@ -139,24 +139,24 @@
    :slack_configured     (slack/slack-configured?)
    :sso_configured       (google/google-auth-enabled)
    :instance_started     (snowplow/instance-creation)
-   :has_sample_data      (db/exists? Database, :is_sample true)})
+   :has_sample_data      (t2/exists? Database, :is_sample true)})
 
 (defn- user-metrics
   "Get metrics based on user records.
   TODO: get activity in terms of created questions, pulses and dashboards"
   []
-  {:users (merge-count-maps (for [user (t2/select [User :is_active :is_superuser :last_login :google_auth])]
+  {:users (merge-count-maps (for [user (t2/select [User :is_active :is_superuser :last_login :sso_source])]
                               {:total     1
                                :active    (:is_active    user)
                                :admin     (:is_superuser user)
                                :logged_in (:last_login   user)
-                               :sso       (:google_auth  user)}))})
+                               :sso       (= "google" (:sso_source  user))}))})
 
 (defn- group-metrics
   "Get metrics based on groups:
   TODO characterize by # w/ sql access, # of users, no self-serve data access"
   []
-  {:groups (db/count PermissionsGroup)})
+  {:groups (t2/count PermissionsGroup)})
 
 (defn- card-has-params? [card]
   (boolean (get-in card [:dataset_query :native :template-tags])))
@@ -261,7 +261,7 @@
   TODO: characterize by non-user account emails, # emails"
   []
   (let [pulse-conditions {:left-join [:pulse [:= :pulse.id :pulse_id]], :where [:= :pulse.alert_condition nil]}]
-    {:pulses               (db/count Pulse :alert_condition nil)
+    {:pulses               (t2/count Pulse :alert_condition nil)
      ;; "Table Cards" are Cards that include a Table you can download
      :with_table_cards     (num-notifications-with-xls-or-csv-cards [:= :alert_condition nil])
      :pulse_types          (db-frequencies PulseChannel :channel_type  pulse-conditions)
@@ -272,10 +272,10 @@
 
 (defn- alert-metrics []
   (let [alert-conditions {:left-join [:pulse [:= :pulse.id :pulse_id]], :where [:not= (db/qualify Pulse :alert_condition) nil]}]
-    {:alerts               (db/count Pulse :alert_condition [:not= nil])
+    {:alerts               (t2/count Pulse :alert_condition [:not= nil])
      :with_table_cards     (num-notifications-with-xls-or-csv-cards [:not= :alert_condition nil])
-     :first_time_only      (db/count Pulse :alert_condition [:not= nil], :alert_first_only true)
-     :above_goal           (db/count Pulse :alert_condition [:not= nil], :alert_above_goal true)
+     :first_time_only      (t2/count Pulse :alert_condition [:not= nil], :alert_first_only true)
+     :above_goal           (t2/count Pulse :alert_condition [:not= nil], :alert_above_goal true)
      :alert_types          (db-frequencies PulseChannel :channel_type alert-conditions)
      :num_alerts_per_user  (medium-histogram (vals (db-frequencies Pulse     :creator_id (dissoc alert-conditions :left-join))))
      :num_alerts_per_card  (medium-histogram (vals (db-frequencies PulseCard :card_id    alert-conditions)))
@@ -324,12 +324,12 @@
 (defn- segment-metrics
   "Get metrics based on Segments."
   []
-  {:segments (db/count Segment)})
+  {:segments (t2/count Segment)})
 
 (defn- metric-metrics
   "Get metrics based on Metrics."
   []
-  {:metrics (db/count Metric)})
+  {:metrics (t2/count Metric)})
 
 
 ;;; Execution Metrics

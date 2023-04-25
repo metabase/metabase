@@ -3,20 +3,18 @@
   (:require
    [compojure.core :refer [DELETE GET POST PUT]]
    [metabase.api.common :as api]
-   [metabase.api.query-description :as api.qd]
    [metabase.events :as events]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.models.interface :as mi]
    [metabase.models.revision :as revision]
    [metabase.models.segment :as segment :refer [Segment]]
-   [metabase.models.table :as table :refer [Table]]
    [metabase.related :as related]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2]))
 
@@ -31,12 +29,12 @@
   ;; TODO - why can't we set other properties like `show_in_getting_started` when we create the Segment?
   (api/create-check Segment body)
   (let [segment (api/check-500
-                 (db/insert! Segment
-                   :table_id    table_id
-                   :creator_id  api/*current-user-id*
-                   :name        name
-                   :description description
-                   :definition  definition))]
+                  (first (t2/insert-returning-instances! Segment
+                                                         :table_id    table_id
+                                                         :creator_id  api/*current-user-id*
+                                                         :name        name
+                                                         :description description
+                                                         :definition  definition)))]
     (-> (events/publish-event! :segment-create segment)
         (hydrate :creator))))
 
@@ -44,29 +42,18 @@
   (-> (api/read-check (t2/select-one Segment :id id))
       (hydrate :creator)))
 
-(defn- add-query-descriptions
-  [segments] {:pre [(coll? segments)]}
-  (when (some? segments)
-    (for [segment segments]
-      (let [table (t2/select-one Table :id (:table_id segment))]
-        (assoc segment
-               :query_description
-               (api.qd/generate-query-description table (:definition segment)))))))
-
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/:id"
+(api/defendpoint GET "/:id"
   "Fetch `Segment` with ID."
   [id]
-  (first (add-query-descriptions [(hydrated-segment id)])))
+  {id ms/PositiveInt}
+  (hydrated-segment id))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/"
+(api/defendpoint GET "/"
   "Fetch *all* `Segments`."
   []
   (as-> (t2/select Segment, :archived false, {:order-by [[:%lower.name :asc]]}) segments
     (filter mi/can-read? segments)
-    (hydrate segments :creator)
-    (add-query-descriptions segments)))
+    (hydrate segments :creator :definition_description)))
 
 (defn- write-check-and-update-segment!
   "Check whether current user has write permissions, then update Segment with values in `body`. Publishes appropriate
@@ -115,14 +102,12 @@
   (write-check-and-update-segment! id {:archived true, :revision_message revision_message})
   api/generic-204-no-content)
 
-
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:id/revisions"
   "Fetch `Revisions` for `Segment` with ID."
   [id]
   (api/read-check Segment id)
   (revision/revisions+details Segment id))
-
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/:id/revert"

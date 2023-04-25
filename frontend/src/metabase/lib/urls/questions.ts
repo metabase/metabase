@@ -20,6 +20,7 @@ type Card = Partial<BaseCard> & {
 export const newQuestionFlow = () => "/question/new";
 
 export type QuestionUrlBuilderParams = {
+  mode?: "view" | "notebook";
   hash?: Card | string;
   query?: Record<string, unknown> | string;
   objectId?: number | string;
@@ -27,7 +28,12 @@ export type QuestionUrlBuilderParams = {
 
 export function question(
   card: Card | null,
-  { hash = "", query = "", objectId }: QuestionUrlBuilderParams = {},
+  {
+    mode = "view",
+    hash = "",
+    query = "",
+    objectId,
+  }: QuestionUrlBuilderParams = {},
 ) {
   if (hash && typeof hash === "object") {
     hash = serializeCardForUrl(hash);
@@ -74,7 +80,9 @@ export function question(
     path = appendSlug(path, slugg(name));
   }
 
-  if (objectId) {
+  if (mode === "notebook") {
+    path = `${path}/notebook`;
+  } else if (objectId) {
     path = `${path}/${objectId}`;
   }
 

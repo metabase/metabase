@@ -23,7 +23,6 @@
    [metabase.util :as u]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan2.core :as t2])
   (:import
    (java.util UUID)))
@@ -86,7 +85,7 @@
                    (first (mt/with-log-messages-for-level :error
                             (mt/client :post 400 "session" {:email (:email user), :password "wooo"}))))))))
 
-(deftest login-validation-test
+(deftest ^:parallel login-validation-test
   (testing "POST /api/session"
     (testing "Test for required params"
       (is (= {:errors {:username "value must be a non-blank string."}}
@@ -148,25 +147,23 @@
 
 (deftest failure-threshold-throttling-test
   (testing "Test that source based throttling kicks in after the login failure threshold (50) has been reached"
-    ;; disable this when we're testing drivers since it tends to F L A K E.
-    (mt/disable-flaky-test-when-running-driver-tests-in-ci
-      (with-redefs [api.session/login-throttlers          (cleaned-throttlers #'api.session/login-throttlers
-                                                                              [:username :ip-address])
-                    public-settings/source-address-header (constantly "x-forwarded-for")]
-        (dotimes [n 50]
-          (let [response    (send-login-request (format "user-%d" n)
-                                                {"x-forwarded-for" "10.1.2.3"})
-                status-code (:status response)]
-            (assert (= status-code 401) (str "Unexpected response status code:" status-code))))
-        (let [error (fn []
-                      (-> (send-login-request "last-user" {"x-forwarded-for" "10.1.2.3"})
-                          :body
-                          json/parse-string
-                          (get-in ["errors" "username"])))]
-          (is (re= #"^Too many attempts! You must wait \d+ seconds before trying again\.$"
-                   (error)))
-          (is (re= #"^Too many attempts! You must wait \d+ seconds before trying again\.$"
-                   (error))))))))
+    (with-redefs [api.session/login-throttlers          (cleaned-throttlers #'api.session/login-throttlers
+                                                                            [:username :ip-address])
+                  public-settings/source-address-header (constantly "x-forwarded-for")]
+      (dotimes [n 50]
+        (let [response    (send-login-request (format "user-%d" n)
+                                              {"x-forwarded-for" "10.1.2.3"})
+              status-code (:status response)]
+          (assert (= status-code 401) (str "Unexpected response status code:" status-code))))
+      (let [error (fn []
+                    (-> (send-login-request "last-user" {"x-forwarded-for" "10.1.2.3"})
+                        :body
+                        json/parse-string
+                        (get-in ["errors" "username"])))]
+        (is (re= #"^Too many attempts! You must wait \d+ seconds before trying again\.$"
+                 (error)))
+        (is (re= #"^Too many attempts! You must wait \d+ seconds before trying again\.$"
+                 (error)))))))
 
 (deftest failure-threshold-per-request-source
   (testing "The same as above, but ensure that throttling is done on a per request source basis."
@@ -474,7 +471,7 @@
                        (mt/client :post 200 "session" {:username "fred.taylor@metabase.com", :password "pa$$word"})))
           (testing "PermissionsGroupMembership should exist"
             (let [user-id (t2/select-one-pk User :email "fred.taylor@metabase.com")]
-              (is (db/exists? PermissionsGroupMembership :group_id (u/the-id group) :user_id (u/the-id user-id))))))))))
+              (is (t2/exists? PermissionsGroupMembership :group_id (u/the-id group) :user_id (u/the-id user-id))))))))))
 
 (deftest no-password-no-login-test
   (testing "A user with no password should not be able to do password-based login"

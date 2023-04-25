@@ -10,7 +10,6 @@
    [metabase.server.middleware.util :as mw.util]
    [metabase.test :as mt]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (deftest require-auth-test
@@ -254,7 +253,7 @@
                         :attribute_remappings {:foo 1}
                         :permission_id        #hawk/schema s/Int}]
                       (:sandboxes result)))
-              (is (db/exists? GroupTableAccessPolicy :table_id table-id-1 :group_id group-id))))
+              (is (t2/exists? GroupTableAccessPolicy :table_id table-id-1 :group_id group-id))))
 
           (testing "Test that we can update a sandbox using the permission graph API"
             (let [sandbox-id (t2/select-one-fn :id GroupTableAccessPolicy

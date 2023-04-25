@@ -17,7 +17,6 @@
    [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (defn- check-card-and-dashcard-are-in-dashboard
@@ -25,15 +24,15 @@
   `dashcard-id` at the top level or as a series. If not such relationship exists this will throw a 404 Exception."
   [dashboard-id card-id dashcard-id]
   (api/check-404
-   (or (db/exists? DashboardCard
+   (or (t2/exists? DashboardCard
          :id           dashcard-id
          :dashboard_id dashboard-id
          :card_id      card-id)
        (and
-        (db/exists? DashboardCard
+        (t2/exists? DashboardCard
           :id           dashcard-id
           :dashboard_id dashboard-id)
-        (db/exists? DashboardCardSeries
+        (t2/exists? DashboardCardSeries
           :card_id          card-id
           :dashboardcard_id dashcard-id)))))
 
@@ -66,7 +65,8 @@
       (when (:type request-param)
         (qp.card/check-allowed-parameter-value-type
          param-id
-         (or (when (= (:type matching-param) :dimension)
+         (or (when (and (= (:type matching-param) :dimension)
+                        (not= (:widget-type matching-param) :none))
                (:widget-type matching-param))
              (:type matching-param))
          (:type request-param)))

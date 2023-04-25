@@ -16,14 +16,13 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :test-users))
 
 (deftest admin-root-entry-test
   (testing "Check that the root entry for Admin was created"
-    (is (db/exists? Permissions :group_id (u/the-id (perms-group/admin)), :object "/"))))
+    (is (t2/exists? Permissions :group_id (u/the-id (perms-group/admin)), :object "/"))))
 
 (deftest magic-groups-test
   (testing "check that we can get the magic permissions groups through the helper functions\n"
@@ -49,22 +48,22 @@
     (testing "regular user"
       (mt/with-temp User [{user-id :id}]
         (testing "Should be added to All Users group"
-          (is (db/exists? PermissionsGroupMembership
+          (is (t2/exists? PermissionsGroupMembership
                 :user_id  user-id
                 :group_id (u/the-id (perms-group/all-users)))))
         (testing "Should not be added to Admin group"
-          (is (not (db/exists? PermissionsGroupMembership
+          (is (not (t2/exists? PermissionsGroupMembership
                      :user_id  user-id
                      :group_id (u/the-id (perms-group/admin))))))))
 
     (testing "superuser"
       (mt/with-temp User [{user-id :id} {:is_superuser true}]
         (testing "Should be added to All Users group"
-          (is (db/exists? PermissionsGroupMembership
+          (is (t2/exists? PermissionsGroupMembership
                 :user_id  user-id
                 :group_id (u/the-id (perms-group/all-users)))))
         (testing "Should be added to Admin group"
-          (is (db/exists? PermissionsGroupMembership
+          (is (t2/exists? PermissionsGroupMembership
                 :user_id  user-id
                 :group_id (u/the-id (perms-group/admin)))))))))
 
@@ -72,7 +71,7 @@
   "Does a group have permissions for `object` and *all* of its children?"
   [group-id :- su/IntGreaterThanOrEqualToZero object :- perms/PathSchema]
   ;; e.g. WHERE (object || '%') LIKE '/db/1000/'
-  (db/exists? Permissions
+  (t2/exists? Permissions
     :group_id group-id
     object    [:like (h2x/concat :object (h2x/literal "%"))]))
 
@@ -88,7 +87,7 @@
   (testing "flipping the is_superuser bit should add/remove user from Admin group as appropriate"
     (testing "adding user to Admin should set is_superuser -> true")
     (mt/with-temp User [{user-id :id}]
-      (db/insert! PermissionsGroupMembership, :user_id user-id, :group_id (u/the-id (perms-group/admin)))
+      (t2/insert! PermissionsGroupMembership, :user_id user-id, :group_id (u/the-id (perms-group/admin)))
       (is (= true
              (t2/select-one-fn :is_superuser User, :id user-id))))
 
@@ -102,10 +101,10 @@
       (mt/with-temp User [{user-id :id}]
         (t2/update! User user-id {:is_superuser true})
         (is (= true
-               (db/exists? PermissionsGroupMembership, :user_id user-id, :group_id (u/the-id (perms-group/admin)))))))
+               (t2/exists? PermissionsGroupMembership, :user_id user-id, :group_id (u/the-id (perms-group/admin)))))))
 
     (testing "setting is_superuser -> false should remove user from Admin"
       (mt/with-temp User [{user-id :id} {:is_superuser true}]
         (t2/update! User user-id {:is_superuser false})
         (is (= false
-               (db/exists? PermissionsGroupMembership, :user_id user-id, :group_id (u/the-id (perms-group/admin)))))))))
+               (t2/exists? PermissionsGroupMembership, :user_id user-id, :group_id (u/the-id (perms-group/admin)))))))))

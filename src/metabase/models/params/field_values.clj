@@ -7,7 +7,6 @@
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.util :as u]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (defn default-get-or-create-field-values-for-current-user!
@@ -87,13 +86,13 @@
                                                  :field_id (:id field)
                                                  :type :full)
                                   values)]
-      (db/insert! FieldValues
-                  :field_id (:id field)
-                  :type fv-type
-                  :hash_key hash-key
-                  :has_more_values has_more_values
-                  :human_readable_values human-readable-values
-                  :values values))))
+      (first (t2/insert-returning-instances! FieldValues
+                                             :field_id (:id field)
+                                             :type fv-type
+                                             :hash_key hash-key
+                                             :has_more_values has_more_values
+                                             :human_readable_values human-readable-values
+                                             :values values)))))
 
 (defn get-or-create-advanced-field-values!
   "Fetch an Advanced FieldValues with type `fv-type` for a `field`, creating them if needed.

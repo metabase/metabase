@@ -34,7 +34,6 @@
   (let [query (lib/saved-question-query meta/metadata-provider meta/saved-question)]
     (are [x] (=? {:lib/type       :metadata/field
                   :display_name   "CATEGORY_ID"
-                  :field_ref      [:field "CATEGORY_ID" {:base-type :type/Integer}]
                   :name           "CATEGORY_ID"
                   :base_type      :type/Integer
                   :effective_type :type/Integer

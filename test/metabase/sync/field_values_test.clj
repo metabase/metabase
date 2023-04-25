@@ -12,7 +12,6 @@
    [metabase.test :as mt]
    [metabase.test.data :as data]
    [metabase.test.data.one-off-dbs :as one-off-dbs]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (defn- venues-price-field-values []
@@ -93,8 +92,8 @@
            valid-sandbox-id
            valid-linked-filter-id
            old-full-id
-           new-full-id]             (db/simple-insert-many!
-                                      FieldValues
+           new-full-id]             (t2/insert-returning-pks!
+                                      (t2/table-name FieldValues)
                                       [;; expired sandbox fieldvalues
                                        {:field_id   field-id
                                         :type       "sandbox"
@@ -132,9 +131,9 @@
       (is (= (repeat 2 {:deleted 2})
              (sync-database!' "delete-expired-advanced-field-values" (data/db))))
       (testing "The expired Advanced FieldValues should be deleted"
-        (is (not (db/exists? FieldValues :id [:in [expired-sandbox-id expired-linked-filter-id]]))))
+        (is (not (t2/exists? FieldValues :id [:in [expired-sandbox-id expired-linked-filter-id]]))))
       (testing "The valid Advanced FieldValues and full Fieldvalues(both old and new) should not be deleted"
-        (is (db/exists? FieldValues :id [:in [valid-sandbox-id valid-linked-filter-id new-full-id old-full-id]]))))))
+        (is (t2/exists? FieldValues :id [:in [valid-sandbox-id valid-linked-filter-id new-full-id old-full-id]]))))))
 
 (deftest auto-list-with-cardinality-threshold-test
   ;; A Field with 50 values should get marked as `auto-list` on initial sync, because it should be 'list', but was
@@ -154,7 +153,7 @@
                                      :field_id (mt/id :blueberries_consumed :str))))))
 
     ;; Manually add an advanced field values to test whether or not it got deleted later
-    (db/insert! FieldValues {:field_id (mt/id :blueberries_consumed :str)
+    (t2/insert! FieldValues {:field_id (mt/id :blueberries_consumed :str)
                              :type :sandbox
                              :hash_key "random-key"})
 
@@ -208,7 +207,7 @@
         (is (= false
                (t2/select-one-fn :has_more_values FieldValues :field_id (mt/id :blueberries_consumed :str)))))
       ;; Manually add an advanced field values to test whether or not it got deleted later
-      (db/insert! FieldValues {:field_id (mt/id :blueberries_consumed :str)
+      (t2/insert! FieldValues {:field_id (mt/id :blueberries_consumed :str)
                                :type :sandbox
                                :hash_key "random-key"})
       (testing "adding more values even if it's exceed our cardinality limit, "
@@ -225,7 +224,7 @@
                  (into {} (t2/select-one [FieldValues :values :human_readable_values :has_more_values]
                                          :field_id (mt/id :blueberries_consumed :str))))))
         (testing "The advanced field values of this field should be deleted"
-          (is (= 0 (db/count FieldValues :field_id (mt/id :blueberries_consumed :str)
+          (is (= 0 (t2/count FieldValues :field_id (mt/id :blueberries_consumed :str)
                              :type [:not= :full]))))))))
 
 (deftest list-with-max-length-threshold-test

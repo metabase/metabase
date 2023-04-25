@@ -79,7 +79,7 @@ if (hasPremiumFeature("whitelabel")) {
         },
         {
           key: "show-metabot",
-          display_name: t`Metabot`,
+          display_name: t`Metabot greeting`,
           description: null,
           type: "boolean",
           widget: MetabotToggleWidget,

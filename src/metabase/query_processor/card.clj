@@ -12,6 +12,7 @@
    [metabase.models.database :refer [Database]]
    [metabase.models.query :as query]
    [metabase.public-settings :as public-settings]
+   [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
@@ -41,13 +42,18 @@
                   (u/emoji "💾"))
         ttl-seconds))))
 
+(defenterprise db-cache-ttl
+  "Fetches the cache TTL set for the given database. Returns nil on OSS."
+  metabase-enterprise.advanced-config.caching
+  [_database])
+
 (defn- ttl-hierarchy
   "Returns the cache ttl (in seconds), by first checking whether there is a stored value for the database,
   dashboard, or card (in that order of increasing preference), and if all of those don't exist, then the
   `query-magic-ttl`, which is based on average execution time."
   [card dashboard database query]
   (when (public-settings/enable-query-caching)
-    (let [ttls (map :cache_ttl [card dashboard database])
+    (let [ttls              [(:cache_ttl card) (:cache_ttl dashboard) (db-cache-ttl database)]
           most-granular-ttl (first (filter some? ttls))]
       (or (when most-granular-ttl ; stored TTLs are in hours; convert to seconds
             (* most-granular-ttl 3600))
@@ -102,7 +108,8 @@
              ;; specified by `:widget-type`. Non-Field-filter parameters just have `:type`. So prefer
              ;; `:widget-type` if available but fall back to `:type` if not.
              (cond
-               (= tag-type :dimension)
+               (and (= tag-type :dimension)
+                    (not= widget-type :none))
                [param-name widget-type]
 
                (contains? mbql.s/raw-value-template-tag-types tag-type)
@@ -129,7 +136,7 @@
 
   Background: some more-specific parameter types aren't allowed for certain types of parameters.
   See [[metabase.mbql.schema/parameter-types]] for details."
-  [parameter-name widget-type :- mbql.s/ParameterType parameter-value-type :- mbql.s/ParameterType]
+  [parameter-name widget-type :- mbql.s/WidgetType parameter-value-type :- mbql.s/ParameterType]
   (when-not (allowed-parameter-type-for-template-tag-widget-type? parameter-value-type widget-type)
     (let [allowed-types (allowed-parameter-types-for-template-tag-widget-type widget-type)]
       (throw (ex-info (tru "Invalid parameter type {0} for parameter {1}. Parameter type must be one of: {2}"

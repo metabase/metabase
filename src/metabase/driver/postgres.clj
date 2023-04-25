@@ -46,17 +46,15 @@
 
 (driver/register! :postgres, :parent :sql-jdbc)
 
-(defmethod driver/database-supports? [:postgres :nested-field-columns] [_ _ database]
-  (let [json-setting (get-in database [:details :json-unfolding])
-        ;; If not set at all, default to true, actually
-        setting-nil? (nil? json-setting)]
-    (or json-setting setting-nil?)))
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             metabase.driver impls                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defmethod driver/display-name :postgres [_] "PostgreSQL")
+
+(defmethod driver/database-supports? [:postgres :nested-field-columns]
+  [_driver _feat db]
+  (driver.common/json-unfolding-default db))
 
 (defmethod driver/database-supports? [:postgres :datetime-diff]
   [_driver _feat _db]
@@ -575,8 +573,8 @@
    :int4          :type/Integer
    :int8          :type/BigInteger
    :interval      :type/*               ; time span
-   :json          :type/Structured
-   :jsonb         :type/Structured
+   :json          :type/JSON
+   :jsonb         :type/JSON
    :line          :type/*
    :lseg          :type/*
    :macaddr       :type/Structured

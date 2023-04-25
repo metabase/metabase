@@ -25,7 +25,6 @@
    [metabase.util.schema :as su]
    [schema.core :as s]
    [throttle.core :as throttle]
-   [toucan.db :as db]
    [toucan2.core :as t2])
   (:import
    (com.unboundid.util LDAPSDKException)
@@ -35,7 +34,7 @@
 
 (s/defn ^:private record-login-history!
   [session-id :- UUID user-id :- su/IntGreaterThanZero device-info :- request.u/DeviceInfo]
-  (db/insert! LoginHistory (merge {:user_id    user-id
+  (t2/insert! LoginHistory (merge {:user_id    user-id
                                    :session_id (str session-id)}
                                   device-info)))
 
@@ -54,9 +53,9 @@
 (s/defmethod create-session! :sso :- {:id UUID, :type (s/enum :normal :full-app-embed) s/Keyword s/Any}
   [_ user :- CreateSessionUserInfo device-info :- request.u/DeviceInfo]
   (let [session-uuid (UUID/randomUUID)
-        session      (db/insert! Session
-                                 :id      (str session-uuid)
-                                 :user_id (u/the-id user))]
+        session      (first (t2/insert-returning-instances! Session
+                                                            :id      (str session-uuid)
+                                                            :user_id (u/the-id user)))]
     (assert (map? session))
     (events/publish-event! :user-login
       {:user_id (u/the-id user), :session_id (str session-uuid), :first_login (nil? (:last_login user))})
@@ -204,20 +203,18 @@
   [email]
   (future
     (when-let [{user-id      :id
-                google-auth? :google_auth
-                ldap-auth?   :ldap_auth
                 sso-source   :sso_source
                 is-active?   :is_active}
-               (t2/select-one [User :id :google_auth :ldap_auth :sso_source :is_active]
+               (t2/select-one [User :id :sso_source :is_active]
                               :%lower.email
                               (u/lower-case-en email))]
-      (if (or google-auth? ldap-auth? sso-source)
+      (if (some? sso-source)
         ;; If user uses any SSO method to log in, no need to generate a reset token
-        (messages/send-password-reset-email! email google-auth? (boolean (or ldap-auth? sso-source)) nil is-active?)
+        (messages/send-password-reset-email! email sso-source nil is-active?)
         (let [reset-token        (user/set-password-reset-token! user-id)
               password-reset-url (str (public-settings/site-url) "/auth/reset_password/" reset-token)]
           (log/info password-reset-url)
-          (messages/send-password-reset-email! email false false password-reset-url is-active?))))))
+          (messages/send-password-reset-email! email nil password-reset-url is-active?))))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/forgot_password"

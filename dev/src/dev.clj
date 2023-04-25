@@ -216,9 +216,10 @@
         (let [details (#'metabase.db.env/broken-out-details
                        (mdb.connection/db-type)
                        @#'metabase.db.env/env)
-              app-db  (db/insert! Database {:name    "Application Database"
-                                            :engine  (mdb.connection/db-type)
-                                            :details details})]
+              app-db  (first (t2/insert-returning-instances! Database
+                                                             {:name    "Application Database"
+                                                              :engine  (mdb.connection/db-type)
+                                                              :details details}))]
           (sync/sync-database! app-db)
           app-db))))
 

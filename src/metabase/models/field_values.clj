@@ -267,7 +267,7 @@
 (defenterprise hash-key-for-sandbox
   "Return a hash-key that will be used for sandboxed fieldvalues."
   metabase-enterprise.sandbox.models.params.field-values
-  [field-id]
+  [_field-id]
   nil)
 
 (defn default-hash-key-for-linked-filters
@@ -372,12 +372,12 @@
       values
       (do
         (log/debug (trs "Storing FieldValues for Field {0}..." field-name))
-        (db/insert! FieldValues
-          :type :full
-          :field_id              (u/the-id field)
-          :has_more_values       has_more_values
-          :values                values
-          :human_readable_values human-readable-values)
+        (t2/insert! FieldValues
+                    :type :full
+                    :field_id              (u/the-id field)
+                    :has_more_values       has_more_values
+                    :values                values
+                    :human_readable_values human-readable-values)
         ::fv-created)
 
       ;; otherwise this Field isn't eligible, so delete any FieldValues that might exist
@@ -468,7 +468,7 @@
                     ;; It's too short, so no schema. Shift them over and add a nil schema.
                     [db nil schema table])]
     (-> (serdes/load-xform-basics fv)
-        (assoc :field_id (serdes/import-field-fk field-ref))
+        (assoc :field_id (serdes/*import-field-fk* field-ref))
         (update :type keyword))))
 
 (defmethod serdes/load-find-local "FieldValues" [path]

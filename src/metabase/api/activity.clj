@@ -5,6 +5,7 @@
    [compojure.core :refer [GET]]
    [medley.core :as m]
    [metabase.api.common :as api :refer [*current-user-id* define-routes]]
+   [metabase.events.view-log :as view-log]
    [metabase.models.activity :refer [Activity]]
    [metabase.models.card :refer [Card]]
    [metabase.models.dashboard :refer [Dashboard]]
@@ -135,7 +136,7 @@
         (group-by :model views)))
 
 (defn- views-and-runs
-  "Common query implementation for `recent_views` and `popular_items`. Tables and Dashboards have a query limit of `views-limit`.
+  "Query implementation for `popular_items`. Tables and Dashboards have a query limit of `views-limit`.
   Cards have a query limit of `card-runs-limit`.
 
   The expected output of the query is a single row per unique model viewed by the current user including a `:max_ts` which
@@ -189,20 +190,21 @@
 (def ^:private views-limit 8)
 (def ^:private card-runs-limit 8)
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/recent_views"
-  "Get the list of 5 things the current user has been viewing most recently."
+(api/defendpoint GET "/recent_views"
+  "Get a list of 5 things the current user has been viewing most recently."
   []
-  (let [views (views-and-runs views-limit card-runs-limit false)
+  (let [views            (view-log/user-recent-views)
         model->id->items (models-for-views views)]
     (->> (for [{:keys [model model_id] :as view-log} views
-               :let [model-object (-> (get-in model->id->items [model model_id])
-                                      (dissoc :dataset_query))]
-               :when (and model-object
-                          (mi/can-read? model-object)
-                          ;; hidden tables, archived cards/dashboards
-                          (not (or (:archived model-object)
-                                   (= (:visibility_type model-object) :hidden))))]
+               :let
+               [model-object (-> (get-in model->id->items [model model_id])
+                                 (dissoc :dataset_query))]
+               :when
+               (and model-object
+                    (mi/can-read? model-object)
+                    ;; hidden tables, archived cards/dashboards
+                    (not (or (:archived model-object)
+                             (= (:visibility_type model-object) :hidden))))]
            (cond-> (assoc view-log :model_object model-object)
              (:dataset model-object) (assoc :model "dataset")))
          (take 5))))

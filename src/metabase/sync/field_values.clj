@@ -12,11 +12,10 @@
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (s/defn ^:private clear-field-values-for-field! [field :- i/FieldInstance]
-  (when (db/exists? FieldValues :field_id (u/the-id field))
+  (when (t2/exists? FieldValues :field_id (u/the-id field))
     (log/debug (format "Based on cardinality and/or type information, %s should no longer have field values.\n"
                        (sync-util/name-for-logging field))
                "Deleting FieldValues...")
@@ -82,7 +81,7 @@
                                        :%now
                                        (- (t/as field-values/advanced-field-values-max-age :days))
                                        :day)]]
-          rows-count (apply db/count FieldValues conditions)]
+          rows-count (apply t2/count FieldValues conditions)]
       (apply t2/delete! FieldValues conditions)
       rows-count)))
 

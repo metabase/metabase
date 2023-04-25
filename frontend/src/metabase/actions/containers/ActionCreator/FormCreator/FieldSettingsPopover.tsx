@@ -100,14 +100,16 @@ export function FormCreatorPopoverBody({
         fieldType={fieldSettings.fieldType}
         onChange={handleUpdateInputType}
       />
-      <Divider />
+      <Divider data-testid="divider" />
       {hasPlaceholder && (
-        <PlaceholderInput
-          value={fieldSettings.placeholder ?? ""}
-          onChange={handleUpdatePlaceholder}
-        />
+        <>
+          <PlaceholderInput
+            value={fieldSettings.placeholder ?? ""}
+            onChange={handleUpdatePlaceholder}
+          />
+          <Divider data-testid="divider" />
+        </>
       )}
-      <Divider />
       <RequiredInput
         fieldSettings={fieldSettings}
         onChangeRequired={handleUpdateRequired}

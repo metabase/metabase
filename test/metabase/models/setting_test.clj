@@ -15,7 +15,6 @@
    [metabase.util.encryption-test :as encryption-test]
    [metabase.util.i18n :as i18n :refer [deferred-tru]]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
@@ -514,7 +513,7 @@
 (defn clear-settings-last-updated-value-in-db!
   "Deletes the timestamp for the last updated setting from the DB."
   []
-  (db/simple-delete! Setting {:key setting.cache/settings-last-updated-key}))
+  (t2/delete! (t2/table-name Setting) :key setting.cache/settings-last-updated-key))
 
 (defn settings-last-updated-value-in-db
   "Fetches the timestamp of the last updated setting."
@@ -535,8 +534,8 @@
 
     (testing "make sure that fetching the Setting always fetches the latest value from the DB"
       (uncached-setting! "ABCDEF")
-      (db/update-where! Setting {:key "uncached-setting"}
-                        :value "123456")
+      (t2/update! Setting {:key "uncached-setting"}
+                  {:value "123456"})
       (is (= "123456"
              (uncached-setting))))
 
@@ -571,11 +570,11 @@
 (deftest cache-sync-test
   (testing "make sure that if for some reason the cache gets out of sync it will reset so we can still set new settings values (#4178)"
     ;; clear out any existing values of `toucan-name`
-    (db/simple-delete! setting/Setting {:key "toucan-name"})
+    (t2/delete! (t2/table-name setting/Setting) :key "toucan-name")
     ;; restore the cache
     (setting.cache/restore-cache-if-needed!)
     ;; now set a value for the `toucan-name` setting the wrong way
-    (db/insert! setting/Setting {:key "toucan-name", :value "Reggae"})
+    (t2/insert! setting/Setting {:key "toucan-name", :value "Reggae"})
     ;; ok, now try to set the Setting the correct way
     (toucan-name! "Banana Beak")
     ;; ok, make sure the setting was set
@@ -683,7 +682,7 @@
                                            ;; Setting is Database-local-only
                                            (t2/delete! Setting :key (name setting-name))
                                            (when site-wide-value
-                                             (db/insert! Setting :key (name setting-name), :value (str site-wide-value)))
+                                             (t2/insert! Setting :key (name setting-name), :value (str site-wide-value)))
                                            (setting.cache/restore-cache!)
                                            (try
                                              (thunk)
