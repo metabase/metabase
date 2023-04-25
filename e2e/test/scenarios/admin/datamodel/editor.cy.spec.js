@@ -1,165 +1,115 @@
-import { restore, popover, visitAlias } from "e2e/support/helpers";
-
-import { SAMPLE_DB_ID, SAMPLE_DB_SCHEMA } from "e2e/support/cypress_data";
+import { restore, popover } from "e2e/support/helpers";
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
-const { ORDERS_ID, PRODUCTS_ID } = SAMPLE_DATABASE;
+const { ORDERS_ID } = SAMPLE_DATABASE;
+const ORDERS_DESCRIPTION =
+  "Confirmed Sample Company orders for a product, from a user.";
 
-const SAMPLE_DB_URL = `/admin/datamodel/database/${SAMPLE_DB_ID}`;
-
-// [quarantine] flaky
-describe.skip("scenarios > admin > datamodel > editor", () => {
+describe("scenarios > admin > datamodel > editor", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    cy.intercept("PUT", "/api/table/*").as("tableUpdate");
-    cy.intercept("PUT", "/api/field/*").as("fieldUpdate");
-    cy.wrap(
-      `${SAMPLE_DB_URL}/schema/${SAMPLE_DB_SCHEMA}/table/${ORDERS_ID}`,
-    ).as(`ORDERS_URL`);
+    cy.intercept("GET", "/api/database/*/schema/*").as("fetchTables");
+    cy.intercept("GET", "/api/table/*/query_metadata*").as("fetchMetadata");
+    cy.intercept("PUT", "/api/table").as("updateTables");
+    cy.intercept("PUT", "/api/table/*").as("updateTable");
+    cy.intercept("PUT", "/api/field/*").as("updateField");
+    cy.intercept("PUT", "/api/table/*/fields/order").as("updateFieldOrder");
   });
 
   it("should allow editing of the name and description", () => {
-    cy.intercept(
-      "GET",
-      "/api/table/2/query_metadata?include_sensitive_fields=true",
-    ).as("tableMetadataFetch");
-    visitAlias("@ORDERS_URL");
+    visitOrdersTable();
 
-    cy.get('input[name="display_name"]').as("display_name");
-    cy.get('input[name="description"]').as("description");
+    cy.findByDisplayValue("Orders").clear().type("New name").blur();
+    cy.wait("@updateTable");
 
-    cy.wait("@tableMetadataFetch");
-
-    // update the name
-    cy.get("@display_name")
-      .should("have.value", "Orders")
+    cy.findByDisplayValue(ORDERS_DESCRIPTION)
       .clear()
-      .should("have.value", "")
-      .type("new display_name")
+      .type("New description")
       .blur();
-    cy.wait("@tableUpdate");
+    cy.wait("@updateTable");
 
-    // update the description
-    cy.get("@description")
-      .should(
-        "have.value",
-        "Confirmed Sample Company orders for a product, from a user.",
-      )
-      .clear()
-      .should("have.value", "")
-      .type("new description")
-      .blur();
-    cy.wait("@tableUpdate");
-
-    // reload and verify they have been updated
-    cy.reload();
-    cy.get("@display_name").should("have.value", "new display_name");
-    cy.get("@description").should("have.value", "new description");
+    cy.findByDisplayValue("New name").should("be.visible");
+    cy.findByDisplayValue("New description").should("be.visible");
   });
 
-  it("shouild allow changing the visibility and reason", () => {
-    visitAlias("@ORDERS_URL");
+  it("should allow changing the visibility and reason", () => {
+    visitOrdersTable();
 
-    // visibility
-    cy.contains(/^Queryable$/).should("have.class", "text-brand");
-    cy.contains(/^Hidden$/).should("not.have.class", "text-brand");
+    cy.findByText("Hidden").click();
+    cy.wait("@updateTable");
+    cy.findByText("5 Hidden Tables").should("be.visible");
 
-    cy.contains(/^Hidden$/).click();
-    cy.wait("@tableUpdate");
-
-    cy.reload();
-    cy.contains(/^Queryable$/).should("not.have.class", "text-brand");
-    cy.contains(/^Hidden$/).should("have.class", "text-brand");
-
-    // hidden reason
-    cy.contains("Technical Data").should("not.have.class", "text-brand");
     cy.contains("Technical Data").click();
-    cy.wait("@tableUpdate");
-
-    cy.reload();
-    cy.contains("Technical Data").should("have.class", "text-brand");
-
-    // check that it still appears in the sidebar on the db page
-    cy.visit(SAMPLE_DB_URL);
-    cy.contains("1 Hidden Table");
-    cy.contains("Orders");
+    cy.wait("@updateTable");
+    cy.findByText("5 Hidden Tables").should("be.visible");
   });
-
-  function field(name) {
-    return cy.get(`input[value="${name}"]`).parent().parent();
-  }
-
-  function testSelect(alias, initialOption, desiredOption) {
-    cy.get(alias).contains(initialOption).click({ force: true });
-    popover().contains(desiredOption).click({ force: true });
-    cy.get(alias).contains(desiredOption);
-
-    cy.wait("@fieldUpdate");
-
-    cy.reload();
-    cy.get(alias).contains(desiredOption);
-  }
 
   it("should allow hiding of columns outside of detail views", () => {
-    visitAlias("@ORDERS_URL");
+    visitOrdersTable();
 
-    field("Created At").as("created_at");
-    testSelect("@created_at", "Everywhere", "Only in detail views");
+    selectValue({
+      field: "CREATED_AT",
+      oldValue: "Everywhere",
+      newValue: "Only in detail views",
+    });
+    cy.wait("@updateField");
   });
 
   it("should allow hiding of columns entirely", () => {
-    visitAlias("@ORDERS_URL");
+    visitOrdersTable();
 
-    field("Created At").as("created_at");
-    testSelect("@created_at", "Everywhere", "Do not include");
-
-    // click over to products and back so we refresh the columns
-    cy.contains("Products").click();
-    cy.url().should(
-      "include",
-      `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA}/table/${PRODUCTS_ID}`,
-    );
-    cy.contains("Orders").click();
-
-    // created at should still be there
-    field("Created At");
+    selectValue({
+      field: "CREATED_AT",
+      oldValue: "Everywhere",
+      newValue: "Do not include",
+    });
+    cy.wait("@updateField");
   });
 
   it("should allow changing of semantic type and currency", () => {
-    visitAlias("@ORDERS_URL");
+    visitOrdersTable();
 
-    field("Tax").as("tax");
-    testSelect("@tax", "No semantic type", "Currency");
-    testSelect("@tax", "US Dollar", "Canadian Dollar");
+    searchAndSelectValue({
+      field: "TAX",
+      oldValue: "No semantic type",
+      newValue: "Currency",
+    });
+    cy.wait("@updateField");
+
+    searchAndSelectValue({
+      field: "TAX",
+      oldValue: "US Dollar",
+      newValue: "Canadian Dollar",
+    });
+    cy.wait("@updateField");
   });
 
   it("should allow changing of foreign key target", () => {
-    visitAlias("@ORDERS_URL");
+    visitOrdersTable();
 
-    field("User ID").as("user_id");
-    testSelect("@user_id", "People → ID", "Products → ID");
+    searchAndSelectValue({
+      field: "USER_ID",
+      oldValue: "People → ID",
+      newValue: "Products → ID",
+      newValueSearchText: "Products",
+    });
+    cy.wait("@updateField");
   });
 
   it("should allow sorting columns", () => {
-    cy.intercept("PUT", "/api/table/2/fields/order").as("fieldReorder");
+    visitOrdersTable();
 
-    visitAlias("@ORDERS_URL");
-    cy.icon("sort_arrows").click();
+    cy.findByLabelText("Sort").click();
+    popover().findByText("Alphabetical").click();
+    cy.wait("@updateTable");
 
-    // switch to alphabetical ordering
-    popover().contains("Alphabetical").click({ force: true });
-
-    cy.wait("@tableUpdate");
-
-    // move product_id to the top
     cy.get(".Grabber").eq(3).trigger("mousedown", 0, 0);
     cy.get("#ColumnsList")
       .trigger("mousemove", 10, 10)
       .trigger("mouseup", 10, 10);
-
-    // wait for request to complete
-    cy.wait("@fieldReorder");
+    cy.wait("@updateFieldOrder");
 
     // check that new order is obeyed in queries
     cy.request("POST", "/api/dataset", {
@@ -172,12 +122,50 @@ describe.skip("scenarios > admin > datamodel > editor", () => {
   });
 
   it("should allow bulk hiding tables", () => {
-    visitAlias("@ORDERS_URL");
+    visitOrdersTable();
+    cy.findByText("4 Queryable Tables").should("be.visible");
 
-    cy.findByText("4 Queryable Tables");
-    cy.get(".AdminList-section .Icon-eye_crossed_out").click();
-    cy.findByText("4 Hidden Tables");
-    cy.get(".AdminList-section .Icon-eye").click();
-    cy.findByText("4 Queryable Tables");
+    cy.findByLabelText("Hide all").click();
+    cy.wait("@updateTables");
+    cy.findByText("8 Hidden Tables").should("be.visible");
+
+    cy.findByLabelText("Unhide all").click();
+    cy.wait("@updateTables");
+    cy.findByText("8 Queryable Tables").should("be.visible");
   });
 });
+
+const visitOrdersTable = () => {
+  cy.visit("/admin/datamodel");
+  cy.wait("@fetchTables");
+
+  cy.findByText("Orders").click();
+  cy.wait("@fetchMetadata");
+};
+
+const selectValue = ({ field, oldValue, newValue }) => {
+  cy.findByLabelText(field).within(() => {
+    cy.findByText(oldValue).click();
+  });
+
+  popover().within(() => {
+    cy.findByText(newValue).click();
+  });
+};
+
+const searchAndSelectValue = ({
+  field,
+  oldValue,
+  newValue,
+  newValueSearchText = newValue,
+}) => {
+  cy.findByLabelText(field).within(() => {
+    cy.findByText(oldValue).click();
+  });
+
+  popover().within(() => {
+    cy.findByRole("grid").scrollTo("top", { ensureScrollable: false });
+    cy.findByPlaceholderText("Find...").type(newValueSearchText);
+    cy.findByText(newValue).click();
+  });
+};

@@ -65,7 +65,7 @@ interface ColumnRowProps {
 const ColumnRow = ({ field, isBordered, isSecondary }: ColumnRowProps) => (
   <tr>
     <ColumnNameCell
-      data-testid="table-name"
+      data-testid="field-name"
       isBordered={isBordered}
       isSecondary={isSecondary}
     >
