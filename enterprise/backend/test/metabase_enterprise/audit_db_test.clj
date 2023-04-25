@@ -1,7 +1,6 @@
 (ns metabase-enterprise.audit-db-test
   (:require [clojure.test :refer [deftest is]]
             [metabase-enterprise.audit-db :as audit-db]
-            [metabase.config :as config]
             [metabase.models.database :refer [Database]]
             [toucan2.core :as t2]))
 
