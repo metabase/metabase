@@ -1,5 +1,6 @@
 (ns metabase.upload
   (:require
+   [clj-bom.core :as bom]
    [clojure.data.csv :as csv]
    [clojure.java.io :as io]
    [clojure.set :as set]
@@ -194,7 +195,7 @@
     (str truncated-name-without-time
          (t/format time-format (t/local-date-time)))))
 
-(def max-sample-rows "Maximum number of values to use for detecting a column's type" 1000)
+(def ^:private max-sample-rows "Maximum number of values to use for detecting a column's type" 1000)
 
 (defn- sample-rows
   "Returns an improper subset of the rows no longer than [[max-sample-rows]]. Takes an evenly-distributed sample (not
@@ -216,7 +217,7 @@
 
   A column that is completely blank is assumed to be of type ::text."
   [csv-file]
-  (with-open [reader (io/reader csv-file)]
+  (with-open [reader (bom/bom-reader csv-file)]
     (let [[header & rows] (csv/read-csv reader)]
       (rows->schema header (sample-rows rows)))))
 
