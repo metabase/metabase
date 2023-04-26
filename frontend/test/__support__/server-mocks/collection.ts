@@ -61,7 +61,7 @@ export function setupCollectionVirtualSchemaEndpoints(
 }
 
 export function setupUnauthorizedCollectionEndpoints(collection: Collection) {
-  fetchMock.get(`path:/api/card/${collection.id}`, {
+  fetchMock.get(`path:/api/collection/${collection.id}`, {
     status: 403,
     body: PERMISSION_ERROR,
   });

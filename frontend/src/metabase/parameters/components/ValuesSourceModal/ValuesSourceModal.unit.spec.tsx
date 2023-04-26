@@ -1,12 +1,7 @@
 import React from "react";
 import userEvent from "@testing-library/user-event";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
-import {
-  Card,
-  Collection,
-  Database,
-  ParameterValues,
-} from "metabase-types/api";
+import { Card, ParameterValues } from "metabase-types/api";
 import {
   createMockCard,
   createMockCollection,
@@ -380,8 +375,6 @@ describe("ValuesSourceModal", () => {
 interface SetupOpts {
   parameter?: UiParameter;
   parameterValues?: ParameterValues;
-  databases?: Database[];
-  collections?: Collection[];
   cards?: Card[];
   hasCollectionAccess?: boolean;
   hasParameterValuesError?: boolean;
@@ -390,12 +383,12 @@ interface SetupOpts {
 const setup = async ({
   parameter = createMockUiParameter(),
   parameterValues = createMockParameterValues(),
-  databases = [createMockDatabase()],
-  collections = [createMockCollection(ROOT_COLLECTION)],
   cards = [],
   hasCollectionAccess = true,
   hasParameterValuesError = false,
 }: SetupOpts = {}) => {
+  const databases = [createMockDatabase()];
+  const collections = [createMockCollection(ROOT_COLLECTION)];
   const onSubmit = jest.fn();
   const onClose = jest.fn();
 
