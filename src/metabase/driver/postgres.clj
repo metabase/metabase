@@ -764,3 +764,10 @@
     ::upload/boolean     "BOOLEAN"
     ::upload/date        "DATE"
     ::upload/datetime    "TIMESTAMP"))
+
+(defmethod driver/table-name-length-limit :postgres
+  [_driver]
+  ;; https://www.postgresql.org/docs/current/sql-syntax-lexical.html#SQL-SYNTAX-IDENTIFIERS
+  ;; This could be incorrect if Postgres has been compiled with a value for NAMEDATALEN other than the default (64), but
+  ;; that seems unlikely and there's not an easy way to find out.
+  63)

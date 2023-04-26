@@ -818,6 +818,12 @@
 ;;; |                                                    Upload                                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defmulti table-name-length-limit
+  "Return the maximum number of characters allowed in a table name, or `nil` if there is no limit."
+  {:added "0.47.0", :arglists '([driver])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
 (defmulti create-table
   "Create a table named `table-name`. If the table already exists it will throw an error."
   {:added "0.47.0", :arglists '([driver db-id table-name col->type])}

@@ -39,8 +39,8 @@
    [metabase.models.query :as query]
    [metabase.models.query.permissions :as query-perms]
    [metabase.models.revision.last-edit :as last-edit]
-   [metabase.models.setting :as setting]
    [metabase.models.timeline :as timeline]
+   [metabase.public-settings :as public-settings]
    [metabase.query-processor.async :as qp.async]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.pivot :as qp.pivot]
@@ -976,39 +976,27 @@ saved later when it is ready."
    query     ms/NonBlankString}
   (param-values (api/read-check Card card-id) param-key query))
 
-(defn- value-or-throw!
-  [value ^String message]
-  (let [test-fn (if (string? value) str/blank? nil?)]
-    (if (test-fn value)
-      (throw (Exception. message))
-      value)))
-
-(defn- get-setting-or-throw!
-  [setting-name]
-  (value-or-throw! (setting/get setting-name)
-                   (trs "You must set the `{0}` before uploading files." (name setting-name))))
-
 (defn upload-csv!
   "Main entry point for CSV uploading. Coordinates detecting the schema, inserting it into an appropriate database,
   syncing and scanning the new data, and creating an appropriate model. May throw validation or DB errors."
   [collection-id filename csv-file]
-  (when (not (setting/get :uploads-enabled))
+  (when (not (public-settings/uploads-enabled))
     (throw (Exception. "Uploads are not enabled.")))
   (collection/check-write-perms-for-collection collection-id)
-  (let [db-id             (get-setting-or-throw! :uploads-database-id)
+  (let [db-id             (public-settings/uploads-database-id)
         database          (or (t2/select-one Database :id db-id)
                               (throw (Exception. (tru "The uploads database does not exist."))))
-        schema-name       (setting/get :uploads-schema-name)
+        schema-name       (public-settings/uploads-schema-name)
         filename-prefix   (or (second (re-matches #"(.*)\.csv$" filename))
                               filename)
-        table-name        (-> (str (setting/get :uploads-table-prefix) filename-prefix)
-                              upload/unique-table-name)
-        schema+table-name (if (str/blank? schema-name)
-                            table-name
-                            (str schema-name "." table-name))
         driver            (driver.u/database->driver database)
         _                 (or (driver/database-supports? driver :uploads nil)
                               (throw (Exception. (tru "Uploads are not supported on {0} databases." (str/capitalize (name driver))))))
+        table-name        (->> (str (public-settings/uploads-table-prefix) filename-prefix)
+                               (upload/unique-table-name driver))
+        schema+table-name (if (str/blank? schema-name)
+                            table-name
+                            (str schema-name "." table-name))
         _                 (upload/load-from-csv driver db-id schema+table-name csv-file)
         _                 (sync/sync-database! database)
         table-id          (t2/select-one-fn :id Table :db_id db-id :%lower.name table-name)]

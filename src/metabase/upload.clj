@@ -8,6 +8,7 @@
    [flatland.ordered.set :as ordered-set]
    [java-time :as t]
    [metabase.driver :as driver]
+   [metabase.mbql.util :as mbql.u]
    [metabase.search.util :as search-util]
    [metabase.util :as u]))
 
@@ -117,9 +118,17 @@
   [n values]
   (first (partition n n (repeat nil) values)))
 
+(defn- normalize-column-name
+  [raw-name]
+  (if (str/blank? raw-name)
+    "unnamed_column"
+    (u/slugify (str/trim raw-name))))
+
 (defn- rows->schema
   [header rows]
-  (let [normalized-header (map (comp u/slugify str/trim) header)
+  (let [normalized-header (->> header
+                               (map normalize-column-name)
+                               (mbql.u/uniquify-names))
         column-count      (count normalized-header)]
     (->> rows
          (map row->types)
@@ -176,11 +185,23 @@
 ;;;; +------------------+
 
 (defn unique-table-name
-  "Append the current datetime to the given name to create a unique table name."
-  [table-name]
-  (str (u/slugify table-name)
-       (t/format "_yyyyMMddHHmmss" (t/local-date-time))))
+  "Append the current datetime to the given name to create a unique table name. The resulting name will be short enough for the given driver (truncating the supplised `table-name` if necessary)."
+  [driver table-name]
+  (let [time-format                 "_yyyyMMddHHmmss"
+        acceptable-length           (min (count table-name)
+                                         (- (driver/table-name-length-limit driver) (count time-format)))
+        truncated-name-without-time (subs (u/slugify table-name) 0 acceptable-length)]
+    (str truncated-name-without-time
+         (t/format time-format (t/local-date-time)))))
 
+(def max-sample-rows "Maximum number of values to use for detecting a column's type" 1000)
+
+(defn- sample-rows
+  "Returns an improper subset of the rows no longer than [[max-sample-rows]]. Takes an evenly-distributed sample (not
+  just the first n)."
+  [rows]
+  (take max-sample-rows (take-nth (max 1 (long (/ (count rows) max-sample-rows)))
+                                  rows)))
 (defn detect-schema
   "Returns an ordered map of `normalized-column-name -> type` for the given CSV file. The CSV file *must* have headers as the
   first row. Supported types are:
@@ -197,7 +218,7 @@
   [csv-file]
   (with-open [reader (io/reader csv-file)]
     (let [[header & rows] (csv/read-csv reader)]
-      (rows->schema header rows))))
+      (rows->schema header (sample-rows rows)))))
 
 (defn load-from-csv
   "Loads a table from a CSV file. If the table already exists, it will throw an error. Returns nil."

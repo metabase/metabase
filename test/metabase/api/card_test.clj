@@ -281,10 +281,11 @@
                         card-3 :rasta]
         (with-cards-in-readable-collection [card-1 card-2 card-3 card-4]
           (testing "\nShould return cards that were recently viewed by current user only"
-            (is (= ["Card 3"
-                    "Card 4"
-                    "Card 1"]
-                   (map :name (mt/user-http-request :rasta :get 200 "card", :f :recent))))))))))
+            (let [recent-card-names (->> (mt/user-http-request :rasta :get 200 "card", :f :recent)
+                                         (map :name)
+                                         (filter #{"Card 1" "Card 2" "Card 3" "Card 4"}))]
+              (is (= ["Card 3" "Card 4" "Card 1"]
+                     recent-card-names)))))))))
 
 (deftest filter-by-popular-test
   (testing "GET /api/card?f=popular"
@@ -300,9 +301,12 @@
         (with-cards-in-readable-collection [card-1 card-2 card-3]
           (testing (str "`f=popular` should return cards sorted by number of ViewLog entries for all users; cards with "
                         "no entries should be excluded")
-            (is (= ["Card 3"
-                    "Card 2"]
-                   (map :name (mt/user-http-request :rasta :get 200 "card", :f :popular))))))))))
+            (let [popular-card-names (->> (mt/user-http-request :rasta :get 200 "card", :f :popular)
+                                          (map :name)
+                                          (filter #{"Card 1" "Card 2" "Card 3"}))]
+              (is (= ["Card 3"
+                      "Card 2"]
+                     popular-card-names)))))))))
 
 (deftest filter-by-archived-test
   (testing "GET /api/card?f=archived"
@@ -2561,7 +2565,7 @@
           ;; create not_public schema in the db
           (let [details (mt/dbdef->connection-details driver/*driver* :db {:database-name (:name (mt/db))})]
             (jdbc/execute! (sql-jdbc.conn/connection-details->spec driver/*driver* details)
-                           ["CREATE SCHEMA not_public;"]))
+                           ["CREATE SCHEMA \"not_public\";"]))
           (mt/with-temporary-setting-values [uploads-enabled      true
                                              uploads-database-id  db-id
                                              uploads-schema-name  "not_public"
