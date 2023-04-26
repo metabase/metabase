@@ -2628,7 +2628,7 @@
                                              uploads-table-prefix "uploaded_magic_"]
             (is (thrown-with-msg?
                  java.lang.Exception
-                 #"^You must set the `uploads-database-id` before uploading files\.$"
+                 #"^The uploads database does not exist\.$"
                  (upload-example-csv! nil)))))
         (testing "Database ID must be valid"
           (mt/with-temporary-setting-values [uploads-enabled      true
