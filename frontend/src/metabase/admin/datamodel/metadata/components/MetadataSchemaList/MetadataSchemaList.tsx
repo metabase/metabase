@@ -124,6 +124,7 @@ export default _.compose(
   Schemas.loadList({
     query: (_: State, { selectedDatabaseId }: OwnProps) => ({
       dbId: selectedDatabaseId,
+      include_hidden: true,
       ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
     }),
   }),

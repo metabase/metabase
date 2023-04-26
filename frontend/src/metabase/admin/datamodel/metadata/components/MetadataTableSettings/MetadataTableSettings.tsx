@@ -135,6 +135,7 @@ export default _.compose(
   Schemas.loadList({
     query: (_: State, { database }: DatabaseLoaderProps) => ({
       dbId: database.id,
+      include_hidden: true,
       ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
     }),
   }),
