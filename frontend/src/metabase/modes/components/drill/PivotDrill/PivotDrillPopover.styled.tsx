@@ -2,21 +2,20 @@ import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon/Icon";
 import Button from "metabase/core/components/Button";
+import BreakoutPopover from "metabase/query_builder/components/BreakoutPopover";
 
 export const Container = styled.div`
   min-width: 210px;
 
-  padding: 1rem 1rem 1rem;
+  padding: 1.5rem 1rem 1rem;
 `;
 export const Title = styled.p`
   font-weight: 700;
   font-size: 0.75rem;
-  line-height: 0.875rem;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  color: ${color("brand")};
+  line-height: 1rem;
+  color: ${color("text-light")};
 
-  margin: 0 0 0.5rem 0.5rem;
+  margin: 0 0 1rem 0.5rem;
 `;
 export const ContentWrapper = styled.div`
   display: flex;
@@ -40,7 +39,7 @@ export const ClickActionButton = styled(Button)`
   border-radius: 8px;
   border: none;
 
-  padding: 0.5rem 0.75rem;
+  padding: 0.5rem;
 
   &:hover {
     color: ${color("white")};
@@ -49,5 +48,21 @@ export const ClickActionButton = styled(Button)`
     ${ActionIcon} {
       color: ${color("white")};
     }
+  }
+`;
+
+export const StyledBreakoutPopover = styled(BreakoutPopover)`
+  .List-item:not(.List-item--disabled):hover {
+    color: ${color("brand")};
+  }
+
+  .List-section-header-dimension {
+    font-weight: 700;
+    font-size: 0.75rem;
+    line-height: 1rem;
+    color: ${color("text-light")};
+
+    text-transform: none;
+    letter-spacing: normal;
   }
 `;

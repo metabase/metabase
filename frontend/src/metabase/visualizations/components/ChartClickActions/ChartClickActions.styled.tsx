@@ -76,7 +76,7 @@ export const ClickActionButton = styled.div<ClickActionButtonProps>`
       flex: auto;
       align-items: center;
       padding: 0.5rem;
-      border-radius: 4px;
+      border-radius: 8px;
 
       color: ${color("text-dark")};
 
@@ -130,4 +130,6 @@ export const ClickActionButton = styled.div<ClickActionButtonProps>`
 
 export const FlexTippyPopover = styled(TippyPopover)`
   display: flex;
+
+  border: none;
 `;
