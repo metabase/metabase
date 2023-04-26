@@ -3,6 +3,7 @@ import { GET, PUT, POST, DELETE } from "metabase/lib/api";
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 
 import Question from "metabase-lib/Question";
+import { normalizeParameters } from "metabase-lib/parameters/utils/parameter-values";
 import { getPivotColumnSplit } from "metabase-lib/queries/utils/pivot";
 import { injectTableMetadata } from "metabase-lib/metadata/utils/tables";
 
@@ -80,6 +81,65 @@ export function maybeUsePivotEndpoint(api, card, metadata) {
   return api;
 }
 
+export async function runQuestionQuery(
+  question,
+  {
+    cancelDeferred,
+    isDirty = false,
+    ignoreCache = false,
+    collectionPreview = false,
+  } = {},
+) {
+  const canUseCardApiEndpoint = !isDirty && question.isSaved();
+  const parameters = normalizeParameters(question.parameters());
+  const card = question.card();
+
+  if (canUseCardApiEndpoint) {
+    const { dashboardId, dashcardId } = card;
+
+    const queryParams = {
+      cardId: question.id(),
+      dashboardId,
+      dashcardId,
+      ignore_cache: ignoreCache,
+      collection_preview: collectionPreview,
+      parameters,
+    };
+
+    return [
+      await maybeUsePivotEndpoint(
+        dashboardId ? DashboardApi.cardQuery : CardApi.query,
+        card,
+        question.metadata(),
+      )(queryParams, {
+        cancelled: cancelDeferred.promise,
+      }),
+    ];
+  }
+
+  const getDatasetQueryResult = datasetQuery => {
+    const datasetQueryWithParameters = { ...datasetQuery, parameters };
+    return maybeUsePivotEndpoint(
+      MetabaseApi.dataset,
+      card,
+      question.metadata(),
+    )(
+      datasetQueryWithParameters,
+      cancelDeferred
+        ? {
+            cancelled: cancelDeferred.promise,
+          }
+        : {},
+    );
+  };
+
+  const datasetQueries = question
+    .atomicQueries()
+    .map(query => query.datasetQuery());
+
+  return Promise.all(datasetQueries.map(getDatasetQueryResult));
+}
+
 export const CardApi = {
   list: GET("/api/card", (cards, { data }) =>
     // HACK: support for the "q" query param until backend implements it
@@ -121,8 +181,6 @@ export const DashboardApi = {
   get: GET("/api/dashboard/:dashId"),
   update: PUT("/api/dashboard/:id"),
   delete: DELETE("/api/dashboard/:dashId"),
-  addCard: POST("/api/dashboard/:dashId/cards"),
-  removeCard: DELETE("/api/dashboard/:dashId/cards"),
   updateCards: PUT("/api/dashboard/:dashId/cards"),
   favorite: POST("/api/dashboard/:dashId/favorite"),
   unfavorite: DELETE("/api/dashboard/:dashId/favorite"),

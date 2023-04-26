@@ -17,7 +17,7 @@
   "Given `:metadata/field` column metadata for an aggregation, construct an `:aggregation` reference."
   [metadata :- lib.metadata/ColumnMetadata]
   (let [options {:lib/uuid       (str (random-uuid))
-                 :effective-type ((some-fn :effective_type :base_type) metadata)}
+                 :effective-type ((some-fn :effective-type :base-type) metadata)}
         index   (::aggregation-index metadata)]
     (assert (integer? index) "Metadata for an aggregation reference should include ::aggregation-index")
     [:aggregation options index]))
@@ -44,15 +44,16 @@
        (lib.metadata.calculation/display-name query stage-number aggregation :long)))))
 
 (defmethod lib.metadata.calculation/metadata-method :aggregation
-  [query stage-number [_ag opts index, :as _aggregation-ref]]
+  [query stage-number [_ag {:keys [base-type effective-type], :as _opts} index, :as _aggregation-ref]]
   (let [aggregation (resolve-aggregation query stage-number index)]
     (merge
      (lib.metadata.calculation/metadata query stage-number aggregation)
-     {:lib/source :source/aggregations}
-     (when (:base-type opts)
-       {:base_type (:base-type opts)})
-     (when (:effective-type opts)
-       {:effective_type opts}))))
+     {:lib/source         :source/aggregations
+      ::aggregation-index index}
+     (when base-type
+       {:base-type base-type})
+     (when effective-type
+       {:effective-type effective-type}))))
 
 ;;; TODO -- merge this stuff into `defop` somehow.
 
@@ -207,12 +208,7 @@
   ([query an-aggregate-clause]
    (aggregate query -1 an-aggregate-clause))
   ([query stage-number an-aggregate-clause]
-   (let [stage-number (or stage-number -1)]
-     (lib.util/update-query-stage
-       query stage-number
-       update :aggregation
-       (fn [aggregations]
-         (conj (vec aggregations) (lib.common/->op-arg query stage-number an-aggregate-clause)))))))
+   (lib.util/add-summary-clause query stage-number :aggregation an-aggregate-clause)))
 
 (mu/defn aggregations :- [:maybe [:sequential lib.metadata/ColumnMetadata]]
   "Get metadata about the aggregations in a given stage of a query."

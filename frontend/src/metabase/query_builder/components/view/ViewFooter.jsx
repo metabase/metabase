@@ -122,7 +122,7 @@ const ViewFooter = ({
             <QueryDownloadWidget
               key="download"
               className="mx1 hide sm-show"
-              card={question.card()}
+              question={question}
               result={result}
               visualizationSettings={visualizationSettings}
             />

@@ -19,7 +19,7 @@ export const rescanFieldValues = createThunkAction(
         );
         return call;
       } catch (error) {
-        console.log("error manually re-scanning field values", error);
+        console.error("error manually re-scanning field values", error);
       }
     };
   },
@@ -37,7 +37,7 @@ export const discardFieldValues = createThunkAction(
         );
         return call;
       } catch (error) {
-        console.log("error discarding field values", error);
+        console.error("error discarding field values", error);
       }
     };
   },

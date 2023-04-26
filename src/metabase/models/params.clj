@@ -279,5 +279,5 @@
 (defmethod param-values :metabase.models.card/Card [card]
   (-> card card->template-tag-field-ids field-ids->param-field-values))
 
-(defmethod param-fields :metabase.models.card/Card [card]
+(defmethod param-fields :model/Card [card]
   (-> card card->template-tag-field-ids param-field-ids->fields))

@@ -36,11 +36,9 @@
     (merge
      (mt/object-defaults User)
      {:date_joined      true
-      :google_auth      false
       :id               true
       :is_active        true
       :last_login       false
-      :ldap_auth        false
       :sso_source       nil
       :login_attributes nil
       :updated_at       true
@@ -655,7 +653,7 @@
       (mt/with-temp User [{user-id :id} {:first_name   "SSO"
                                          :last_name    "User"
                                          :email        "sso-user@metabase.com"
-                                         :sso_source   "jwt"
+                                         :sso_source   :jwt
                                          :is_superuser true}]
         (letfn [(change-user-via-api! [expected-status m]
                   (mt/user-http-request :crowberto :put expected-status (str "user/" user-id) m))]
@@ -714,7 +712,7 @@
     (testing "Google auth users shouldn't be able to change their own password as we get that from Google"
       (mt/with-temp User [user {:email       "anemail@metabase.com"
                                 :password    "def123"
-                                :google_auth true}]
+                                :sso_source  "google"}]
         (let [creds {:username "anemail@metabase.com"
                      :password "def123"}]
           (is (= "You don't have permissions to do that."
@@ -725,7 +723,7 @@
                   "as we get that from the LDAP server")
       (mt/with-temp User [user {:email     "anemail@metabase.com"
                                 :password  "def123"
-                                :ldap_auth true}]
+                                :sso_source "ldap"}]
         (let [creds {:username "anemail@metabase.com"
                      :password "def123"}]
           (is (= "You don't have permissions to do that."
@@ -916,13 +914,13 @@
                   "Google Auth (#3323)")
       (mt/with-temporary-setting-values [google-auth-client-id "pretend-client-id.apps.googleusercontent.com"
                                          google-auth-enabled    true]
-        (mt/with-temp User [user {:google_auth true}]
+        (mt/with-temp User [user {:sso_source :google}]
           (t2/update! User (u/the-id user)
                       {:is_active false})
           (mt/with-temporary-setting-values [google-auth-enabled false]
             (mt/user-http-request :crowberto :put 200 (format "user/%s/reactivate" (u/the-id user)))
-            (is (= {:is_active true, :google_auth false}
-                   (mt/derecordize (t2/select-one [User :is_active :google_auth] :id (u/the-id user)))))))))))
+            (is (= {:is_active true, :sso_source nil}
+                   (mt/derecordize (t2/select-one [User :is_active :sso_source] :id (u/the-id user)))))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -969,6 +967,20 @@
                                    {:password     "whateverUP12!!"
                                     :old_password "mismatched"}))))))
 
+(deftest reset-password-session-test
+  (testing "PUT /api/user/:id/password"
+    (testing "Test that we return a session if we are changing our own password"
+      (mt/with-temp User [user {:password "def", :is_superuser false}]
+        (let [creds {:username (:email user), :password "def"}]
+          (is (schema= {:session_id (s/pred mt/is-uuid-string? "session")
+                        :success    (s/eq true)}
+                       (mt/client creds :put 200 (format "user/%d/password" (:id user)) {:password     "abc123!!DEF"
+                                                                                         :old_password "def"}))))))
+
+    (testing "Test that we don't return a session if we are changing our someone else's password as a superuser"
+      (mt/with-temp User [user {:password "def", :is_superuser false}]
+        (is (nil? (mt/user-http-request :crowberto :put 204 (format "user/%d/password" (:id user)) {:password     "abc123!!DEF"
+                                                                                                    :old_password "def"})))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                             Deleting (Deactivating) a User -- DELETE /api/user/:id                             |

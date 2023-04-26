@@ -49,6 +49,12 @@
     pos-int?
     (deferred-tru "value must be an integer greater than zero.")))
 
+(def NegativeInt
+  "Schema representing an integer than must be less than zero."
+  (mu/with-api-error-message
+    neg?
+    (deferred-tru "value must be a negative integer")))
+
 (def PositiveNum
   "Schema representing a numeric value greater than zero. This allows floating point numbers and integers."
   (mu/with-api-error-message

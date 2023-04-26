@@ -1,18 +1,13 @@
 import React from "react";
 import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
-import { waitFor } from "@testing-library/react";
 import {
   renderWithProviders,
   screen,
   waitForElementToBeRemoved,
   within,
 } from "__support__/ui";
-import {
-  createMockCollectionItem,
-  createMockUser,
-} from "metabase-types/api/mocks";
-import { setupSearchEndpoints } from "__support__/server-mocks";
+import { createMockUser } from "metabase-types/api/mocks";
 import ItemPicker from "./ItemPicker";
 
 function collection({
@@ -122,8 +117,6 @@ function mockCollectionItemsEndpoint() {
       data,
     };
   });
-
-  fetchMock.get("path:/api/collection/personal/items", []);
 }
 
 async function setup({
@@ -131,12 +124,6 @@ async function setup({
   extraCollections = [],
   ...props
 } = {}) {
-  const collections = [Object.values(COLLECTION)];
-  const collectionItems = collections.map(collection =>
-    createMockCollectionItem({ ...collection, model: "collection" }),
-  );
-  setupSearchEndpoints(collectionItems);
-
   mockCollectionEndpoint({ extraCollections });
   mockCollectionItemsEndpoint();
 
@@ -151,11 +138,7 @@ async function setup({
     },
   );
 
-  // sometimes it expects entities to be in the Redux store so there might not be a loading state
-  // ex: collections are stored in Redux, so there isn't a meaningful loading state here
-  await waitFor(() => {
-    expect(screen.queryByText("Loading...")).not.toBeInTheDocument();
-  });
+  await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
 
   return { onChange };
 }
@@ -270,19 +253,5 @@ describe("ItemPicker", () => {
     expect(list.getByText(COLLECTION_OTHER_USERS.name)).toBeInTheDocument();
     expect(list.getByText(COLLECTION.PERSONAL.name)).toBeInTheDocument();
     expect(list.getAllByTestId("item-picker-item")).toHaveLength(2);
-  });
-
-  it("displays relevant collections after a search", async () => {
-    await setup({ models: ["collection"] });
-
-    await userEvent.click(within(getItemPickerHeader()).getByRole("button"));
-    await userEvent.type(
-      within(getItemPickerHeader()).getByPlaceholderText("Search"),
-      COLLECTION.PERSONAL.name,
-    );
-
-    expect(
-      await screen.findByText(COLLECTION.PERSONAL.name),
-    ).toBeInTheDocument();
   });
 });

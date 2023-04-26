@@ -69,7 +69,8 @@
    var]
   [lib.breakout
    breakout
-   current-breakouts]
+   breakoutable-columns
+   breakouts]
   [lib.column-group
    columns-group-columns
    group-columns]
@@ -184,4 +185,9 @@
    append-stage
    drop-stage]
   [lib.temporal-bucket
-   temporal-bucket])
+   describe-temporal-unit
+   describe-temporal-interval
+   describe-relative-datetime
+   available-temporal-buckets
+   temporal-bucket
+   with-temporal-bucket])

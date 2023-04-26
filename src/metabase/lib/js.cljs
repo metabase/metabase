@@ -5,12 +5,7 @@
    [metabase.lib.convert :as convert]
    [metabase.lib.core :as lib.core]
    [metabase.lib.js.metadata :as js.metadata]
-   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
-   [metabase.lib.normalize :as lib.normalize]
-   [metabase.lib.order-by :as lib.order-by]
-   [metabase.lib.query :as lib.query]
-   [metabase.lib.remove-replace :as lib.remove-replace]
    [metabase.mbql.js :as mbql.js]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.util :as u]
@@ -54,7 +49,7 @@
 (defn ^:export suggestedName
   "Return a nice description of a query."
   [query]
-  (lib.metadata.calculation/suggested-name query))
+  (lib.core/suggested-name query))
 
 (defn- pMBQL [query-map]
   (as-> query-map <>
@@ -77,7 +72,7 @@
   [database-id metadata query-map]
   (let [query-map (pMBQL query-map)]
     (log/debugf "query map: %s" (pr-str query-map))
-    (lib.query/query (metadataProvider database-id metadata) query-map)))
+    (lib.core/query (metadataProvider database-id metadata) query-map)))
 
 (defn- fix-namespaced-values
   "This converts namespaced keywords to strings as `\"foo/bar\"`.
@@ -96,7 +91,7 @@
 (defn ^:export legacy-query
   "Coerce a CLJS pMBQL query back to (1) a legacy query (2) in vanilla JS."
   [query-map]
-  (-> query-map convert/->legacy-MBQL fix-namespaced-values clj->js))
+  (-> query-map convert/->legacy-MBQL fix-namespaced-values (clj->js :keyword-fn u/qualified-name)))
 
 (defn ^:export orderable-columns
   "Return a sequence of Column metadatas about the columns you can add order bys for in a given stage of `a-query.` To
@@ -104,15 +99,18 @@
   ([a-query]
    (orderable-columns a-query -1))
   ([a-query stage-number]
-   (to-array (lib.order-by/orderable-columns a-query stage-number))))
+   (to-array (lib.core/orderable-columns a-query stage-number))))
 
 (defn ^:export display-info
   "Given an opaque Cljs object, return a plain JS object with info you'd need to implement UI for it.
-  See `:metabase.lib.metadata.calculation/display-info` for the keys this might contain."
+  See `:metabase.lib.metadata.calculation/display-info` for the keys this might contain. Note that the JS versions of
+  the keys are converted to the equivalent `camelCase` strings from the original `:kebab-case`."
   ([a-query x]
    (display-info a-query -1 x))
   ([a-query stage-number x]
-   (-> (lib.metadata.calculation/display-info a-query stage-number x)
+   (-> (lib.core/display-info a-query stage-number x)
+       (update-keys u/->camelCaseEn)
+       (update :table update-keys u/->camelCaseEn)
        (clj->js :keyword-fn u/qualified-name))))
 
 (defn ^:export order-by-clause
@@ -120,7 +118,7 @@
   ([a-query stage-number x]
    (order-by-clause a-query stage-number x nil))
   ([a-query stage-number x direction]
-   (lib.order-by/order-by-clause a-query stage-number (lib.normalize/normalize (js->clj x :keywordize-keys true)) direction)))
+   (lib.core/order-by-clause a-query stage-number (lib.core/normalize (js->clj x :keywordize-keys true)) direction)))
 
 (defn ^:export order-by
   "Add an `order-by` clause to `a-query`. Returns updated query."
@@ -131,7 +129,7 @@
    (order-by a-query -1 x direction))
 
   ([a-query stage-number x direction]
-   (lib.order-by/order-by a-query stage-number x (keyword direction))))
+   (lib.core/order-by a-query stage-number x (keyword direction))))
 
 (defn ^:export order-bys
   "Get the order-by clauses (as an array of opaque objects) in `a-query` at a given `stage-number`.
@@ -139,31 +137,55 @@
   ([a-query]
    (order-bys a-query -1))
   ([a-query stage-number]
-   (to-array (lib.order-by/order-bys a-query stage-number))))
+   (to-array (lib.core/order-bys a-query stage-number))))
 
 (defn ^:export change-direction
   "Flip the direction of `current-order-by` in `a-query`."
   [a-query current-order-by]
-  (lib.order-by/change-direction a-query current-order-by))
+  (lib.core/change-direction a-query current-order-by))
+
+(defn ^:export breakoutable-columns
+  "Return an array of Column metadatas about the columns that can be broken out by in a given stage of `a-query.`
+  To break out by a given column, the corresponding element of the result has to be added to the query using
+  [[breakout]]."
+  ([a-query]
+   (breakoutable-columns a-query -1))
+  ([a-query stage-number]
+   (to-array (lib.core/breakoutable-columns a-query stage-number))))
+
+(defn ^:export breakouts
+  "Get the breakout clauses (as an array of opaque objects) in `a-query` at a given `stage-number`.
+  Returns an empty array if there are no order bys in the query."
+  ([a-query]
+   (breakouts a-query -1))
+  ([a-query stage-number]
+   (to-array (lib.core/breakouts a-query stage-number))))
+
+(defn ^:export breakout
+  "Add an `order-by` clause to `a-query`. Returns updated query."
+  ([a-query x]
+   (breakout a-query -1 x))
+  ([a-query stage-number x]
+   (lib.core/breakout a-query stage-number (lib.core/ref x))))
 
 (defn ^:export remove-clause
   "Removes the `target-clause` in the filter of the `query`."
   ([a-query clause]
    (remove-clause a-query -1 clause))
   ([a-query stage-number clause]
-   (lib.remove-replace/remove-clause
+   (lib.core/remove-clause
      a-query stage-number
-     (lib.normalize/normalize (js->clj clause :keywordize-keys true)))))
+     (lib.core/normalize (js->clj clause :keywordize-keys true)))))
 
 (defn ^:export replace-clause
   "Replaces the `target-clause` with `new-clause` in the `query` stage."
   ([a-query target-clause new-clause]
    (replace-clause a-query -1 target-clause new-clause))
   ([a-query stage-number target-clause new-clause]
-   (lib.remove-replace/replace-clause
+   (lib.core/replace-clause
      a-query stage-number
-     (lib.normalize/normalize (js->clj target-clause :keywordize-keys true))
-     (lib.normalize/normalize (js->clj new-clause :keywordize-keys true)))))
+     (lib.core/normalize (js->clj target-clause :keywordize-keys true))
+     (lib.core/normalize (js->clj new-clause :keywordize-keys true)))))
 
 (defn- prep-query-for-equals [a-query field-ids]
   (-> a-query
@@ -193,3 +215,54 @@
    (let [n1 (prep-query-for-equals query1 field-ids)
          n2 (prep-query-for-equals query2 field-ids)]
      (= n1 n2))))
+
+(defn ^:export group-columns
+  "Given a group of columns returned by a function like [[metabase.lib.js/orderable-columns]], group the columns
+  by Table or equivalent (e.g. Saved Question) so that they're in an appropriate shape for showing in the Query
+  Builder. e.g a sequence of columns like
+
+    [venues.id
+     venues.name
+     venues.category-id
+     ;; implicitly joinable
+     categories.id
+     categories.name]
+
+  would get grouped into groups like
+
+    [{::columns [venues.id
+                 venues.name
+                 venues.category-id]}
+     {::columns [categories.id
+                 categories.name]}]
+
+  Groups have the type `:metadata/column-group` and can be passed directly
+  to [[metabase.lib.js/display-info]].
+  Use [[metabase.lib.js/columns-group-columns]] to extract the columns from a group."
+  [column-metadatas]
+  (to-array (lib.core/group-columns column-metadatas)))
+
+(defn ^:export columns-group-columns
+  "Get the columns associated with a column group"
+  [column-group]
+  (to-array (lib.core/columns-group-columns column-group)))
+
+(defn ^:export describe-temporal-unit
+  "Get a translated description of a temporal bucketing unit."
+  [n unit]
+  (let [unit (if (string? unit) (keyword unit) unit)]
+    (lib.core/describe-temporal-unit n unit)))
+
+(defn ^:export describe-temporal-interval
+  "Get a translated description of a temporal bucketing interval."
+  [n unit]
+  (let [n    (if (string? n) (keyword n) n)
+        unit (if (string? unit) (keyword unit) unit)]
+    (lib.core/describe-temporal-interval n unit)))
+
+(defn ^:export describe-relative-datetime
+  "Get a translated description of a relative datetime interval."
+  [n unit]
+  (let [n    (if (string? n) (keyword n) n)
+        unit (if (string? unit) (keyword unit) unit)]
+      (lib.core/describe-relative-datetime n unit)))

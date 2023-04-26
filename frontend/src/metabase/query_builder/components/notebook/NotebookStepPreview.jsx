@@ -38,8 +38,9 @@ class NotebookStepPreview extends React.Component {
 
   getPreviewQuestion(step) {
     const query = step.previewQuery;
+    const hasSuitableLimit = query.hasLimit() && query.limit() < 10;
     return Question.create()
-      .setQuery(query.limit() < 10 ? query : query.updateLimit(10))
+      .setQuery(hasSuitableLimit ? query : query.updateLimit(10))
       .setDisplay("table")
       .setSettings({ "table.pivot": false });
   }

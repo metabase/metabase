@@ -6,6 +6,9 @@
    [metabase.lib.util :as lib.util]
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
 
+#?(:cljs
+   (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
+
 (deftest ^:parallel pipeline-test
   (are [query expected] (=? expected
                             (lib.util/pipeline query))
@@ -307,3 +310,11 @@
              (unique-name-fn "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")))
       (is (= "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXY_1380b38f"
              (unique-name-fn "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"))))))
+
+(deftest ^:parallel strip-id-test
+  (are [exp in] (= exp (lib.util/strip-id in))
+    "foo"            "foo"
+    "Fancy Name"     "Fancy Name"
+    "Customer"       "Customer ID"
+    "Customer"       "Customer id"
+    "some id number" "some id number"))

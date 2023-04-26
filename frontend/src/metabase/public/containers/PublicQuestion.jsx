@@ -178,10 +178,10 @@ class PublicQuestion extends Component {
     const actionButtons = result && (
       <QueryDownloadWidget
         className="m1 text-medium-hover"
+        question={question}
+        result={result}
         uuid={uuid}
         token={token}
-        result={result}
-        card={card}
       />
     );
 
