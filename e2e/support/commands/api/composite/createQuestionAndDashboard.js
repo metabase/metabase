@@ -19,7 +19,7 @@ Cypress.Commands.add(
             ],
           }).then(response => ({
             ...response,
-            body: response.body[0],
+            body: response.body.cards[0],
           }));
         },
       );
