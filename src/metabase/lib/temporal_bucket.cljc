@@ -22,28 +22,29 @@
     unit :- [:maybe :keyword]]
    (if-not unit
      ""
-     (case (keyword unit)
-       :default         (i18n/trun "Default period"  "Default periods"  n)
-       :millisecond     (i18n/trun "Millisecond"     "Milliseconds"     n)
-       :second          (i18n/trun "Second"          "Seconds"          n)
-       :minute          (i18n/trun "Minute"          "Minutes"          n)
-       :hour            (i18n/trun "Hour"            "Hours"            n)
-       :day             (i18n/trun "Day"             "Days"             n)
-       :week            (i18n/trun "Week"            "Weeks"            n)
-       :month           (i18n/trun "Month"           "Months"           n)
-       :quarter         (i18n/trun "Quarter"         "Quarters"         n)
-       :year            (i18n/trun "Year"            "Years"            n)
-       :minute-of-hour  (i18n/trun "Minute of hour"  "Minutes of hour"  n)
-       :hour-of-day     (i18n/trun "Hour of day"     "Hours of day"     n)
-       :day-of-week     (i18n/trun "Day of week"     "Days of week"     n)
-       :day-of-month    (i18n/trun "Day of month"    "Days of month"    n)
-       :day-of-year     (i18n/trun "Day of year"     "Days of year"     n)
-       :week-of-year    (i18n/trun "Week of year"    "Weeks of year"    n)
-       :month-of-year   (i18n/trun "Month of year"   "Months of year"   n)
-       :quarter-of-year (i18n/trun "Quarter of year" "Quarters of year" n)
-       ;; e.g. :unknown-unit => "Unknown unit"
-       (let [[unit & more] (str/split (name unit) #"-")]
-         (str/join \space (cons (str/capitalize unit) more)))))))
+     (let [n (abs n)]
+       (case (keyword unit)
+         :default         (i18n/trun "Default period"  "Default periods"  n)
+         :millisecond     (i18n/trun "Millisecond"     "Milliseconds"     n)
+         :second          (i18n/trun "Second"          "Seconds"          n)
+         :minute          (i18n/trun "Minute"          "Minutes"          n)
+         :hour            (i18n/trun "Hour"            "Hours"            n)
+         :day             (i18n/trun "Day"             "Days"             n)
+         :week            (i18n/trun "Week"            "Weeks"            n)
+         :month           (i18n/trun "Month"           "Months"           n)
+         :quarter         (i18n/trun "Quarter"         "Quarters"         n)
+         :year            (i18n/trun "Year"            "Years"            n)
+         :minute-of-hour  (i18n/trun "Minute of hour"  "Minutes of hour"  n)
+         :hour-of-day     (i18n/trun "Hour of day"     "Hours of day"     n)
+         :day-of-week     (i18n/trun "Day of week"     "Days of week"     n)
+         :day-of-month    (i18n/trun "Day of month"    "Days of month"    n)
+         :day-of-year     (i18n/trun "Day of year"     "Days of year"     n)
+         :week-of-year    (i18n/trun "Week of year"    "Weeks of year"    n)
+         :month-of-year   (i18n/trun "Month of year"   "Months of year"   n)
+         :quarter-of-year (i18n/trun "Quarter of year" "Quarters of year" n)
+         ;; e.g. :unknown-unit => "Unknown unit"
+         (let [[unit & more] (str/split (name unit) #"-")]
+           (str/join \space (cons (str/capitalize unit) more))))))))
 
 (def ^:private TemporalIntervalAmount
   [:or [:enum :current :last :next] :int])
