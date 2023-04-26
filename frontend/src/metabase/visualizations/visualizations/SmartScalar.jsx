@@ -10,7 +10,7 @@ import Icon from "metabase/components/Icon";
 
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import { NoBreakoutError } from "metabase/visualizations/lib/errors";
-import { compactifyValue } from "metabase/visualizations/lib/scalarUtils";
+import { compactifyValue } from "metabase/visualizations/lib/scalar_utils";
 
 import ScalarValue, {
   ScalarWrapper,
@@ -121,11 +121,11 @@ export default class Smart extends React.Component {
     const lastValue = insight["last-value"];
     const formatOptions = settings.column(column);
 
-    const { displayValue, fullScalarValue } = compactifyValue({
+    const { displayValue, fullScalarValue } = compactifyValue(
       formatOptions,
-      value: lastValue,
+      lastValue,
       width,
-    });
+    );
 
     const granularity = formatBucketing(insight["unit"]).toLowerCase();
 

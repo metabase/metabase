@@ -6,7 +6,7 @@ import _ from "underscore";
 
 import { fieldSetting } from "metabase/visualizations/lib/settings/utils";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
-import { compactifyValue } from "metabase/visualizations/lib/scalarUtils";
+import { compactifyValue } from "metabase/visualizations/lib/scalar_utils";
 
 import ScalarValue, {
   ScalarWrapper,
@@ -186,11 +186,11 @@ export default class Scalar extends Component {
       jsx: true,
     };
 
-    const { displayValue, fullScalarValue } = compactifyValue({
+    const { displayValue, fullScalarValue } = compactifyValue(
       formatOptions,
       value,
       width,
-    });
+    );
 
     const clicked = {
       value,

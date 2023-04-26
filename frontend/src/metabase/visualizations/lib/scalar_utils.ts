@@ -1,11 +1,16 @@
 import { formatValue } from "metabase/lib/formatting";
+import { OptionsType } from "metabase/lib/formatting/types";
 
 // used below to determine whether we show compact formatting
 const COMPACT_MAX_WIDTH = 250;
 const COMPACT_WIDTH_PER_DIGIT = 25;
 const COMPACT_MIN_LENGTH = 6;
 
-export function compactifyValue({ formatOptions, value, width }) {
+export function compactifyValue(
+  formatOptions: OptionsType = {},
+  value: number,
+  width: number,
+) {
   const fullScalarValue = formatValue(value, formatOptions);
   const compactScalarValue = formatValue(value, {
     ...formatOptions,
@@ -17,6 +22,7 @@ export function compactifyValue({ formatOptions, value, width }) {
   // also if the width is less than a certain multiplier of the number of digits
   const displayCompact =
     fullScalarValue !== null &&
+    typeof fullScalarValue === "string" &&
     fullScalarValue.length > COMPACT_MIN_LENGTH &&
     (width < COMPACT_MAX_WIDTH ||
       width < COMPACT_WIDTH_PER_DIGIT * fullScalarValue.length);
