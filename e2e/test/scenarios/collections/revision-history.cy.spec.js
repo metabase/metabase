@@ -6,6 +6,7 @@ import {
   visitQuestion,
   questionInfoButton,
   rightSidebar,
+  openQuestionsSidebar,
 } from "e2e/support/helpers";
 
 const PERMISSIONS = {
@@ -67,7 +68,7 @@ describe("revision history", () => {
               cy.createDashboard().then(({ body }) => {
                 visitAndEditDashboard(body.id);
               });
-              cy.icon("add").last().click();
+              openQuestionsSidebar();
               cy.findByText("Orders, Count").click();
               saveDashboard();
               openRevisionHistory();

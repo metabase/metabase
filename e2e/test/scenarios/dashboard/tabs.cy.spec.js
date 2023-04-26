@@ -3,6 +3,7 @@ import {
   restore,
   visitDashboard,
   saveDashboard,
+  openQuestionsSidebar,
 } from "e2e/support/helpers";
 
 describe("scenarios > dashboard tabs", () => {
@@ -19,7 +20,7 @@ describe("scenarios > dashboard tabs", () => {
     cy.findByText("Orders").should("not.exist");
 
     cy.icon("pencil").click();
-    cy.get(".QueryBuilder-section .Icon-add").click();
+    openQuestionsSidebar();
     cy.findByText("Orders, Count").click();
     saveDashboard();
 
