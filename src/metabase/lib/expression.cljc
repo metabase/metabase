@@ -14,6 +14,7 @@
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.temporal-bucketing
     :as lib.schema.temporal-bucketing]
+   [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
    [metabase.shared.util.i18n :as i18n]
    [metabase.types :as types]
@@ -23,8 +24,8 @@
   "Given `:metadata/field` column metadata for an expression, construct an `:expression` reference."
   [metadata :- lib.metadata/ColumnMetadata]
   (let [options {:lib/uuid       (str (random-uuid))
-                 :base-type      (:base_type metadata)
-                 :effective-type ((some-fn :effective_type :base_type) metadata)}]
+                 :base-type      (:base-type metadata)
+                 :effective-type ((some-fn :effective-type :base-type) metadata)}]
     [:expression options (:name metadata)]))
 
 (mu/defn resolve-expression :- ::lib.schema.expression/expression
@@ -49,8 +50,8 @@
   [query stage-number [_expression _opts expression-name, :as expression-ref]]
   {:lib/type     :metadata/field
    :name         expression-name
-   :display_name (lib.metadata.calculation/display-name query stage-number expression-ref)
-   :base_type    (lib.metadata.calculation/type-of query stage-number expression-ref)
+   :display-name (lib.metadata.calculation/display-name query stage-number expression-ref)
+   :base-type    (lib.metadata.calculation/type-of query stage-number expression-ref)
    :lib/source   :source/expressions})
 
 (defmethod lib.metadata.calculation/display-name-method :dispatch-type/integer
@@ -133,17 +134,13 @@
    (for [arg args]
      (lib.metadata.calculation/type-of query stage-number arg))))
 
+;;; TODO -- this stuff should probably be moved into [[metabase.lib.temporal-bucket]]
+
 (defn- interval-unit-str [amount unit]
-  (clojure.core/case unit
-    :millisecond (i18n/trun "millisecond" "milliseconds" (clojure.core/abs amount))
-    :second      (i18n/trun "second"      "seconds"      (clojure.core/abs amount))
-    :minute      (i18n/trun "minute"      "minutes"      (clojure.core/abs amount))
-    :hour        (i18n/trun "hour"        "hours"        (clojure.core/abs amount))
-    :day         (i18n/trun "day"         "days"         (clojure.core/abs amount))
-    :week        (i18n/trun "week"        "weeks"        (clojure.core/abs amount))
-    :month       (i18n/trun "month"       "months"       (clojure.core/abs amount))
-    :quarter     (i18n/trun "quarter"     "quarters"     (clojure.core/abs amount))
-    :year        (i18n/trun "year"        "years"        (clojure.core/abs amount))))
+  ;; this uses [[clojure.string/lower-case]] so its in the user's locale in the browser rather than always using
+  ;; English lower-casing rules.
+  #_{:clj-kondo/ignore [:discouraged-var]}
+  (str/lower-case (lib.temporal-bucket/describe-temporal-unit amount unit)))
 
 (mu/defn ^:private interval-display-name  :- ::lib.schema.common/non-blank-string
   "e.g. something like \"- 2 days\""
@@ -253,7 +250,7 @@
                     (-> (lib.metadata.calculation/metadata query stage-number expression-definition)
                         (assoc :lib/source   :source/expressions
                                :name         expression-name
-                               :display_name expression-name)))))))
+                               :display-name expression-name)))))))
 
 (defmethod lib.ref/ref-method :expression
   [expression-clause]

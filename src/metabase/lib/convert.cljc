@@ -254,6 +254,12 @@
   [input]
   (aggregation->legacy-MBQL input))
 
+(defn- stage-metadata->legacy-metadata [stage-metadata]
+  (into []
+        (comp (map #(update-keys % u/->snake_case_en))
+              (map ->legacy-MBQL))
+        (:columns stage-metadata)))
+
 (defn- chain-stages [{:keys [stages]}]
   ;; :source-metadata aka :lib/stage-metadata is handled differently in the two formats.
   ;; In legacy, an inner query might have both :source-query, and :source-metadata giving the metadata for that nested
@@ -264,7 +270,7 @@
   (let [inner-query (first (reduce (fn [[inner stage-metadata] stage]
                                      [(cond-> (->legacy-MBQL stage)
                                         inner          (assoc :source-query inner)
-                                        stage-metadata (assoc :source-metadata (mapv ->legacy-MBQL (:columns stage-metadata))))
+                                        stage-metadata (assoc :source-metadata (stage-metadata->legacy-metadata stage-metadata)))
                                       ;; Get the :lib/stage-metadata off the original pMBQL stage, not the converted one.
                                       (:lib/stage-metadata stage)])
                                    nil

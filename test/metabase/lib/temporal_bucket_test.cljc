@@ -54,7 +54,8 @@
          (lib.temporal-bucket/describe-temporal-unit nil)))
   (is (= "Day"
          (lib.temporal-bucket/describe-temporal-unit :day)
-         (lib.temporal-bucket/describe-temporal-unit 1 :day)))
+         (lib.temporal-bucket/describe-temporal-unit 1 :day)
+         (lib.temporal-bucket/describe-temporal-unit -1 :day)))
   (is (= "Days"
          (lib.temporal-bucket/describe-temporal-unit 2 :day)))
   (is (= "Unknown unit"
