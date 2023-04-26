@@ -11,7 +11,6 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 import { DatasetData } from "metabase-types/types/Dataset";
-import { isEmpty } from "metabase/lib/validate";
 
 import Button from "metabase/core/components/Button";
 import { NotFound } from "metabase/containers/ErrorPages";
@@ -151,14 +150,17 @@ export function ObjectDetailView({
   const prevTableForeignKeys = usePrevious(tableForeignKeys);
   const [data, setData] = useState<DatasetData>(passedData);
 
-  const pkIndex = useMemo(
-    () => passedData?.cols?.findIndex(isPK),
-    [passedData],
-  );
+  const pkIndex = useMemo(() => {
+    const pkCount = passedData?.cols?.filter(isPK)?.length;
+    if (pkCount !== 1) {
+      return undefined;
+    }
+    return passedData?.cols?.findIndex(isPK);
+  }, [passedData]);
   const zoomedRow = useMemo(
     () =>
       passedZoomedRow ||
-      (!isEmpty(pkIndex) &&
+      (pkIndex !== undefined &&
         data.rows.find(row => row[pkIndex] === zoomedRowID)) ||
       undefined,
     [passedZoomedRow, pkIndex, data, zoomedRowID],
