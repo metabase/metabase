@@ -261,7 +261,7 @@ describe("ValuesSourceModal", () => {
       ).toBeInTheDocument();
     });
 
-    it("should allow searching for a card without access to the root collection", async () => {
+    it("should allow searching for a card without access to the root collection (metabase#30355)", async () => {
       await setup({
         hasCollectionAccess: false,
       });
