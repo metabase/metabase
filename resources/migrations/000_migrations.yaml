@@ -2728,7 +2728,7 @@ databaseChangeLog:
                   constraints:
                     nullable: false
 
-  # There was a typo in this: `addNotNullContstraint` rather than `addNotNullConstraint`. Fixed in 46
+  # There was a typo in this: `addNotNullContstraint` rather than `addNotNullConstraint`. Fixed in 47
   - changeSet:
       validCheckSum: ANY
       id: 35
