@@ -1,9 +1,10 @@
 import { t } from "ttag";
 
-import { singularize } from "metabase/lib/formatting";
+import { singularize, formatValue } from "metabase/lib/formatting";
 
-import { DatasetData, Column } from "metabase-types/types/Dataset";
-import { TableId } from "metabase-types/api";
+import type { DatasetData, Column } from "metabase-types/types/Dataset";
+import type { TableId, VisualizationSettings } from "metabase-types/api";
+
 import {
   getIsPKFromTablePredicate,
   isEntityName,
@@ -14,8 +15,8 @@ import Table from "metabase-lib/metadata/Table";
 import { ObjectId } from "./types";
 
 export interface GetObjectNameArgs {
-  table: Table | null;
-  question: Question;
+  table?: Table | null;
+  question?: Question;
   cols: Column[];
   zoomedRow: unknown[] | undefined;
 }
@@ -47,12 +48,14 @@ export interface GetDisplayIdArgs {
   cols: Column[];
   zoomedRow: unknown[] | undefined;
   tableId?: TableId;
+  settings: VisualizationSettings;
 }
 
 export const getDisplayId = ({
   cols,
   zoomedRow,
   tableId,
+  settings,
 }: GetDisplayIdArgs): ObjectId | null => {
   const hasSinglePk =
     cols.filter(getIsPKFromTablePredicate(tableId)).length === 1;
@@ -62,8 +65,14 @@ export const getDisplayId = ({
   }
 
   if (hasSinglePk) {
-    const pkColumn = cols.findIndex(getIsPKFromTablePredicate(tableId));
-    return zoomedRow[pkColumn] as ObjectId;
+    const pkColumnIndex = cols.findIndex(getIsPKFromTablePredicate(tableId));
+    const pkColumn = cols[pkColumnIndex];
+    const columnSetting = settings?.column?.(pkColumn) ?? {};
+
+    return formatValue(zoomedRow[pkColumnIndex], {
+      ...columnSetting,
+      column: pkColumn,
+    }) as ObjectId;
   }
 
   const hasEntityName = cols && !!cols?.find(isEntityName);
@@ -73,7 +82,13 @@ export const getDisplayId = ({
   }
 
   // TODO: respect user column reordering
-  return zoomedRow[0] as ObjectId;
+  const defaultColumn = cols[0];
+  const columnSetting = settings?.column?.(defaultColumn) ?? {};
+
+  return formatValue(zoomedRow[0], {
+    ...columnSetting,
+    column: defaultColumn,
+  }) as ObjectId;
 };
 
 export interface GetIdValueArgs {

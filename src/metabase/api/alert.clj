@@ -20,8 +20,8 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]]))
+   [toucan.hydrate :refer [hydrate]]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -251,9 +251,9 @@
   (let [alert (pulse/retrieve-alert id)]
     (api/read-check alert)
     (api/let-404 [alert-id (u/the-id alert)
-                  pc-id    (db/select-one-id PulseChannel :pulse_id alert-id :channel_type "email")
-                  pcr-id   (db/select-one-id PulseChannelRecipient :pulse_channel_id pc-id :user_id api/*current-user-id*)]
-      (db/delete! PulseChannelRecipient :id pcr-id))
+                  pc-id    (t2/select-one-pk PulseChannel :pulse_id alert-id :channel_type "email")
+                  pcr-id   (t2/select-one-pk PulseChannelRecipient :pulse_channel_id pc-id :user_id api/*current-user-id*)]
+      (t2/delete! PulseChannelRecipient :id pcr-id))
     ;; Send emails letting people know they have been unsubscribe
     (when (email/email-configured?)
       (messages/send-you-unsubscribed-alert-email! alert @api/*current-user*))

@@ -3,12 +3,11 @@
  * @deprecated use existing types from, or add to metabase-types/api/*
  */
 
-import { DatetimeUnit } from "metabase-types/api/query";
+import { TemplateTags, DatetimeUnit } from "metabase-types/api";
 import { TableId } from "./Table";
-import { FieldId, BaseType } from "./Field";
+import { BaseType, FieldId } from "./Field";
 import { SegmentId } from "./Segment";
 import { MetricId } from "./Metric";
-import { ParameterType } from "./Parameter";
 
 export type ExpressionName = string;
 
@@ -33,36 +32,6 @@ export type RelativeDatetimeUnit =
   | "month"
   | "quarter"
   | "year";
-
-export type TemplateTagId = string;
-export type TemplateTagName = string;
-export type TemplateTagType =
-  | "card"
-  | "text"
-  | "number"
-  | "date"
-  | "dimension"
-  | "snippet";
-
-export type TemplateTag = {
-  id: TemplateTagId;
-  name: TemplateTagName;
-  "display-name": string;
-  type: TemplateTagType;
-  dimension?: LocalFieldReference;
-  "widget-type"?: ParameterType;
-  required?: boolean;
-  default?: string;
-
-  // Card template specific
-  "card-id"?: number;
-
-  // Snippet specific
-  "snippet-id"?: number;
-  "snippet-name"?: string;
-};
-
-export type TemplateTags = { [key: TemplateTagName]: TemplateTag };
 
 export type NativeQuery = {
   query: string;
@@ -98,6 +67,7 @@ export type Aggregation =
   | CountAgg
   | CountFieldAgg
   | AvgAgg
+  | MedianAgg
   | CumSumAgg
   | DistinctAgg
   | StdDevAgg
@@ -120,6 +90,7 @@ type CountAgg = ["count"];
 
 type CountFieldAgg = ["count", ConcreteField];
 type AvgAgg = ["avg", ConcreteField];
+type MedianAgg = ["median", ConcreteField];
 type CumSumAgg = ["cum-sum", ConcreteField];
 type DistinctAgg = ["distinct", ConcreteField];
 type StdDevAgg = ["stddev", ConcreteField];
@@ -242,12 +213,13 @@ export type Join = {
   fields?: JoinFields;
 };
 
-export type LimitClause = number;
+type LimitClause = number;
 
 export type Field = ConcreteField | AggregateField;
 
 export type ConcreteField =
   | LocalFieldReference
+  | FieldLiteral
   | ForeignFieldReference
   | JoinedFieldReference
   | ExpressionReference
@@ -300,14 +272,26 @@ export type ExpressionClause = {
   [key: ExpressionName]: Expression;
 };
 
-export type Expression = [
-  ExpressionOperator,
-  ExpressionOperand,
-  ExpressionOperand,
-];
+export type Expression =
+  | NumericLiteral
+  | StringLiteral
+  | boolean
+  | [ExpressionOperator, ExpressionOperand]
+  | [ExpressionOperator, ExpressionOperand, ExpressionOperand]
+  | [
+      ExpressionOperator,
+      ExpressionOperand,
+      ExpressionOperand,
+      ExpressionOperand,
+    ];
 
-export type ExpressionOperator = "+" | "-" | "*" | "/";
-export type ExpressionOperand = ConcreteField | NumericLiteral | Expression;
+export type ExpressionOperator = string;
+export type ExpressionOperand =
+  | ConcreteField
+  | NumericLiteral
+  | StringLiteral
+  | boolean
+  | Expression;
 
 export type FieldsClause = ConcreteField[];
 

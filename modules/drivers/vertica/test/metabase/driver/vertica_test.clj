@@ -1,6 +1,8 @@
 (ns metabase.driver.vertica-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.query-processor :as qp]
@@ -23,15 +25,35 @@
                                                              :db                 "birds-near-me"
                                                              :additional-options "ConnectionLoadBalance=1"})))))
 
-(deftest dots-in-column-names-test
+(defn- compile-query [query]
+  (-> (qp/compile query)
+      (update :query #(str/split-lines (mdb.query/format-sql % :vertica)))))
+
+(deftest ^:parallel percentile-test
+  (mt/test-driver :vertica
+    (is (= {:query  ["SELECT"
+                     "  APPROXIMATE_PERCENTILE("
+                     "    \"public\".\"test_data_venues\".\"id\" USING PARAMETERS percentile = 1"
+                     "  ) AS \"percentile\""
+                     "FROM"
+                     "  \"public\".\"test_data_venues\""]
+            :params nil}
+           (compile-query
+            (mt/mbql-query venues
+              {:aggregation [[:percentile $id 1]]}))))))
+
+(deftest ^:parallel dots-in-column-names-test
   (mt/test-driver :vertica
     (testing "Columns with dots in the name should be properly quoted (#13932)"
       (mt/dataset dots-in-names
-        (is (= {:query  (str "SELECT * "
-                             "FROM table "
-                             "WHERE \"public\".\"dots_in_names_objects.stuff\".\"dotted.name\" = ?")
+        (is (= {:query  ["SELECT"
+                         "  *"
+                         "FROM"
+                         "  table"
+                         "WHERE"
+                         "  \"public\".\"dots_in_names_objects.stuff\".\"dotted.name\" = ?"]
                 :params ["ouija_board"]}
-               (qp/compile
+               (compile-query
                 {:database   (mt/id)
                  :type       :native
                  :native     {:query         "SELECT * FROM table WHERE {{x}}"

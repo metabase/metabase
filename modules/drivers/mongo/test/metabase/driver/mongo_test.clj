@@ -22,7 +22,7 @@
             [metabase.util.log :as log]
             [monger.collection :as mcoll]
             [taoensso.nippy :as nippy]
-            [toucan.db :as db])
+            [toucan2.core :as t2])
   (:import org.bson.types.ObjectId))
 
 ;; ## Constants + Helper Fns/Macros
@@ -87,7 +87,7 @@
               :expected false}]]
       (testing (str "supports with " dbms_version)
         (is (= expected
-               (let [db (db/insert! Database {:name "dummy", :engine "mongo", :dbms_version dbms_version})]
+               (let [db (first (t2/insert-returning-instances! Database {:name "dummy", :engine "mongo", :dbms_version dbms_version}))]
                  (driver/database-supports? :mongo :expressions db))))))))
 
 
@@ -158,7 +158,7 @@
                        :base-type         :type/Integer
                        :pk?               true
                        :database-position 0}}}
-           (driver/describe-table :mongo (mt/db) (db/select-one Table :id (mt/id :venues)))))))
+           (driver/describe-table :mongo (mt/db) (t2/select-one Table :id (mt/id :venues)))))))
 
 (deftest nested-columns-test
   (mt/test-driver :mongo
@@ -199,7 +199,7 @@
               {:name "name",           :database_type "java.lang.String", :base_type :type/Text,    :semantic_type :type/Name}]
              (map
               (partial into {})
-              (db/select [Field :name :database_type :base_type :semantic_type]
+              (t2/select [Field :name :database_type :base_type :semantic_type]
                 :table_id (mt/id :bird_species)
                 {:order-by [:name]})))))))
 
@@ -226,15 +226,15 @@
                    {:name "max_wingspan", :database_type "java.lang.Long", :base_type :type/Integer, :semantic_type nil}}
                  (into #{}
                        (map (partial into {}))
-                       (db/select [Field :name :database_type :base_type :semantic_type]
+                       (t2/select [Field :name :database_type :base_type :semantic_type]
                          :table_id (mt/id :bird_species)
                          {:order-by [:name]})))))))))
 
 (deftest table-rows-sample-test
   (mt/test-driver :mongo
     (testing "Should return the latest `nested-field-sample-limit` rows"
-      (let [table (db/select-one Table :id (mt/id :venues))
-            fields (map #(db/select-one Field :id (mt/id :venues %)) [:name :category_id])
+      (let [table (t2/select-one Table :id (mt/id :venues))
+            fields (map #(t2/select-one Field :id (mt/id :venues %)) [:name :category_id])
             rff (constantly conj)]
         (with-redefs [metadata-queries/nested-field-sample-limit 5]
           (is (= [["Mohawk Bend" 46]
@@ -251,7 +251,7 @@
             {:active true, :name "checkins"}
             {:active true, :name "users"}
             {:active true, :name "venues"}]
-           (for [field (db/select [Table :name :active]
+           (for [field (t2/select [Table :name :active]
                          :db_id (mt/id)
                          {:order-by [:name]})]
              (into {} field)))
@@ -277,7 +277,7 @@
                {:semantic_type :type/Name,      :base_type :type/Text,     :name "name"}
                {:semantic_type :type/Category,  :base_type :type/Integer,  :name "price"}]]
              (vec (for [table-name table-names]
-                    (vec (for [field (db/select [Field :name :base_type :semantic_type]
+                    (vec (for [field (t2/select [Field :name :base_type :semantic_type]
                                        :active   true
                                        :table_id (mt/id table-name)
                                        {:order-by [:name]})]
@@ -380,7 +380,7 @@
   (mt/test-driver :mongo
     (testing "make sure x-rays don't use features that the driver doesn't support"
       (is (empty?
-           (mbql.u/match-one (->> (magic/automagic-analysis (db/select-one Field :id (mt/id :venues :price)) {})
+           (mbql.u/match-one (->> (magic/automagic-analysis (t2/select-one Field :id (mt/id :venues :price)) {})
                                   :ordered_cards
                                   (mapcat (comp :breakout :query :dataset_query :card)))
              [:field _ (_ :guard :binning)]))))))
@@ -427,7 +427,7 @@
                             :collection  "venues"}})))))))
 
 (defn- create-database-from-row-maps! [database-name collection-name row-maps]
-  (or (db/select-one Database :engine "mongo", :name database-name)
+  (or (t2/select-one Database :engine "mongo", :name database-name)
       (let [dbdef {:database-name database-name}]
         ;; destroy Mongo database if it already exists.
         (tx/destroy-db! :mongo dbdef)
@@ -445,7 +445,7 @@
             (log/infof "Inserted %d rows into %s collection %s."
                        (count row-maps) (pr-str database-name) (pr-str collection-name)))
           ;; now sync the Database.
-          (let [db (db/insert! Database {:name database-name, :engine "mongo", :details details})]
+          (let [db (first (t2/insert-returning-instances! Database {:name database-name, :engine "mongo", :details details}))]
             (sync/sync-database! db)
             db)))))
 

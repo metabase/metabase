@@ -17,7 +17,7 @@
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 ;;; ------------------------------------------------ "Crufty" Tables -------------------------------------------------
 
@@ -89,32 +89,32 @@
   "If there is a version in the db-metadata update the DB to have that in the DB model"
   [database :- i/DatabaseInstance db-metadata :- i/DatabaseMetadata]
   (log/info (trs "Found new version for DB: {0}" (:version db-metadata)))
-  (db/update! Database (u/the-id database)
-    :details
-    (assoc (:details database) :version (:version db-metadata))))
+  (t2/update! Database (u/the-id database)
+              {:details
+               (assoc (:details database) :version (:version db-metadata))}))
 
 (defn create-or-reactivate-table!
   "Create a single new table in the database, or mark it as active if it already exists."
   [database {schema :schema, table-name :name, :as table}]
-  (if-let [existing-id (db/select-one-id Table
+  (if-let [existing-id (t2/select-one-pk Table
                          :db_id (u/the-id database)
                          :schema schema
                          :name table-name
                          :active false)]
     ;; if the table already exists but is marked *inactive*, mark it as *active*
-    (db/update! Table existing-id
-      :active true)
+    (t2/update! Table existing-id
+      {:active true})
     ;; otherwise create a new Table
     (let [is-crufty? (is-crufty-table? table)]
-      (db/insert! Table
-        :db_id (u/the-id database)
-        :schema schema
-        :name table-name
-        :display_name (humanization/name->human-readable-name table-name)
-        :active true
-        :visibility_type (when is-crufty? :cruft)
-        ;; if this is a crufty table, mark initial sync as complete since we'll skip the subsequent sync steps
-        :initial_sync_status (if is-crufty? "complete" "incomplete")))))
+      (first (t2/insert-returning-instances! Table
+                                             :db_id (u/the-id database)
+                                             :schema schema
+                                             :name table-name
+                                             :display_name (humanization/name->human-readable-name table-name)
+                                             :active true
+                                             :visibility_type (when is-crufty? :cruft)
+                                             ;; if this is a crufty table, mark initial sync as complete since we'll skip the subsequent sync steps
+                                             :initial_sync_status (if is-crufty? "complete" "incomplete"))))))
 
 ;; TODO - should we make this logic case-insensitive like it is for fields?
 
@@ -135,11 +135,11 @@
             (for [table old-tables]
               (sync-util/name-for-logging (mi/instance Table table))))
   (doseq [{schema :schema, table-name :name, :as _table} old-tables]
-    (db/update-where! Table {:db_id  (u/the-id database)
-                             :schema schema
-                             :name   table-name
-                             :active true}
-      :active false)))
+    (t2/update! Table {:db_id  (u/the-id database)
+                       :schema schema
+                       :name   table-name
+                       :active true}
+                {:active false})))
 
 
 (s/defn ^:private update-table-description!
@@ -150,11 +150,11 @@
               (sync-util/name-for-logging (mi/instance Table table))))
   (doseq [{schema :schema, table-name :name, description :description} changed-tables]
     (when-not (str/blank? description)
-      (db/update-where! Table {:db_id       (u/the-id database)
-                               :schema      schema
-                               :name        table-name
-                               :description nil}
-                        :description description))))
+      (t2/update! Table {:db_id       (u/the-id database)
+                         :schema      schema
+                         :name        table-name
+                         :description nil}
+                  {:description description}))))
 
 
 (s/defn ^:private table-set :- #{i/DatabaseMetadataTable}
@@ -169,7 +169,7 @@
   "Return information about what Tables we have for this DB in the Metabase application DB."
   [database :- i/DatabaseInstance]
   (set (map (partial into {})
-            (db/select [Table :name :schema :description]
+            (t2/select [Table :name :schema :description]
               :db_id  (u/the-id database)
               :active true))))
 

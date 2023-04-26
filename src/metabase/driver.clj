@@ -15,7 +15,7 @@
    [metabase.util.i18n :refer [deferred-tru trs tru]]
    [metabase.util.log :as log]
    [potemkin :as p]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -29,7 +29,7 @@
   `nil` (meaning subsequent queries will not attempt to change the session timezone) or something considered invalid
   by a given Database (meaning subsequent queries will fail to change the session timezone)."
   []
-  (doseq [{driver :engine, id :id, :as database} (db/select 'Database)]
+  (doseq [{driver :engine, id :id, :as database} (t2/select 'Database)]
     (try
       (notify-database-updated driver database)
       (catch Throwable e
@@ -139,7 +139,7 @@
     (the-driver \"h2\") ; -> :h2
 
     ;; Ensuring a driver you are passed is valid
-    (db/insert! Database :engine (name (the-driver driver)))
+    (t2/insert! Database :engine (name (the-driver driver)))
 
     (the-driver :postgres) ; -> :postgres
     (the-driver :baby)     ; -> Exception"
@@ -235,7 +235,7 @@
 
 (defmulti display-name
   "A nice name for the driver that we'll display to in the admin panel, e.g. \"PostgreSQL\" for `:postgres`. Default
-  implementation capitializes the name of the driver, e.g. `:presto` becomes \"Presto\".
+  implementation capitializes the name of the driver, e.g. `:oracle` becomes \"Oracle\".
 
   When writing a driver that you plan to ship as a separate, lazy-loading plugin (including core drivers packaged this
   way, like SQLite), you do not need to implement this method; instead, specifiy it in your plugin manifest, and
@@ -312,7 +312,7 @@
 (defmulti describe-table-fks
   "Return information about the foreign keys in a `table`. Required for drivers that support `:foreign-keys`. Results
   should match the [[metabase.sync.interface/FKMetadata]] schema."
-  {:arglists '([this database table])}
+  {:arglists '([driver database table])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
@@ -545,12 +545,6 @@
   :hierarchy #'hierarchy)
 
 (defmethod database-supports? :default [driver feature _] (supports? driver feature))
-
-(defmulti ^{:deprecated "0.42.0"} format-custom-field-name
-  "Unused in Metabase 0.42.0+. Implement [[escape-alias]] instead. This method will be removed in a future release."
-  {:arglists '([driver custom-field-name])}
-  dispatch-on-initialized-driver
-  :hierarchy #'hierarchy)
 
 (defmulti ^String escape-alias
   "Escape a `column-or-table-alias` string in a way that makes it valid for your database. This method is used for

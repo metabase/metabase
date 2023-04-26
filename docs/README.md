@@ -9,6 +9,8 @@ redirect_from:
 
 # Metabase documentation
 
+![Metabase dashboard](./images/metabase-product-screenshot.png)
+
 Metabase is an open-source business intelligence platform. You can use Metabase to ask questions about your data, or embed Metabase in your app to let your customers explore their data on their own.
 
 ## First steps
@@ -51,6 +53,8 @@ Metabase's reference documentation.
 
 - [Databases overview](./databases/start.md)
 - [Adding and managing databases](./databases/connecting.md)
+- [Database users, roles, and privileges](./databases/users-roles-privileges.md)
+- [Syncing and scanning databases](./databases/sync-scan.md)
 - [Encrypting your database connection](./databases/encrypting-details-at-rest.md)
 - [SSH tunneling](./databases/ssh-tunnel.md)
 - [SSL certificate](./databases/ssl-certificates.md)
@@ -89,6 +93,7 @@ Metabase's reference documentation.
 - [Interactive dashboards](./dashboards/interactive.md)
 - [Charts with multiple series](./dashboards/multiple-series.md)
 - [Dashboard subscriptions](./dashboards/subscriptions.md)
+- [Actions on dashboards](./dashboards/actions.md)
 
 ### Data modeling
 
@@ -98,6 +103,13 @@ Metabase's reference documentation.
 - [Field types](./data-modeling/field-types.md)
 - [Formatting defaults](./data-modeling/formatting.md)
 - [Segments and metrics](./data-modeling/segments-and-metrics.md)
+
+### Actions
+
+- [Actions overview](./actions/start.md)
+- [Introduction to actions](./actions/introduction.md)
+- [Basic actions](./actions/basic.md)
+- [Custom actions](./actions/custom.md)
 
 ### Organization
 
@@ -169,6 +181,10 @@ Metabase's reference documentation.
 - [Auditing tools](./usage-and-performance-tools/audit.md)
 - [Admin tools](./usage-and-performance-tools/tools.md)
 
+### Cloud
+
+- [Documentation for Metabase Cloud and Store](https://www.metabase.com/docs/latest/cloud/start)
+
 ### Metabase API
 
 - [Metabase API documentation](./api-documentation.md)
@@ -190,7 +206,7 @@ Metabase's reference documentation.
 - [Metabase forum](https://discourse.metabase.com/)
 - [Configuring logging](./configuring-metabase/log-configuration.md)
 
-### [Tutorials and guides](https://www.metabase.com/learn)
+### Tutorials and guides
 
 [Learn Metabase](https://www.metabase.com/learn) has a ton of articles on how to use Metabase, data best practices, and more.
 

@@ -6,8 +6,6 @@ import Button from "metabase/core/components/Button";
 
 import DataReference from "metabase/query_builder/components/dataref/DataReference";
 
-import { DataReferenceContainer } from "./InlineDataReference.styled";
-
 export const DataReferenceInline = ({ onClose }: { onClose: () => void }) => {
   const [dataRefStack, setDataRefStack] = useState<any[]>([]);
 
@@ -20,14 +18,12 @@ export const DataReferenceInline = ({ onClose }: { onClose: () => void }) => {
   };
 
   return (
-    <DataReferenceContainer>
-      <DataReference
-        dataReferenceStack={dataRefStack}
-        popDataReferenceStack={popRefStack}
-        pushDataReferenceStack={pushRefStack}
-        onClose={onClose}
-      />
-    </DataReferenceContainer>
+    <DataReference
+      dataReferenceStack={dataRefStack}
+      popDataReferenceStack={popRefStack}
+      pushDataReferenceStack={pushRefStack}
+      onClose={onClose}
+    />
   );
 };
 

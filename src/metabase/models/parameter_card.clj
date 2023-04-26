@@ -1,14 +1,12 @@
 (ns metabase.models.parameter-card
   (:require
    [metabase.models.interface :as mi]
-   [metabase.models.serialization.base :as serdes.base]
-   [metabase.models.serialization.util :as serdes.util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [toucan.db :as db]
-   [toucan.models :as models]))
+   [toucan.models :as models]
+   [toucan2.core :as t2]))
 
 (models/defmodel ParameterCard :parameter_card)
 
@@ -31,7 +29,8 @@
 (defn- pre-update
   [pc]
   (u/prog1 pc
-    (validate-parameterized-object-type pc)))
+    (when (:parameterized_object_type pc)
+      (validate-parameterized-object-type pc))))
 
 (mi/define-methods
  ParameterCard
@@ -52,7 +51,7 @@
                              :parameterized_object_id parameterized-object-id]
                             (when (seq parameter-ids-still-in-use)
                               [:parameter_id [:not-in parameter-ids-still-in-use]]))]
-     (apply db/delete! ParameterCard conditions))))
+     (apply t2/delete! ParameterCard conditions))))
 
 (defn- upsert-from-parameters!
   [parameterized-object-type parameterized-object-id parameters]
@@ -61,14 +60,14 @@
           conditions {:parameterized_object_id   parameterized-object-id
                       :parameterized_object_type parameterized-object-type
                       :parameter_id              id}]
-      (or (db/update-where! ParameterCard conditions :card_id card-id)
-          (db/insert! ParameterCard (merge conditions {:card_id card-id}))))))
+      (or (pos? (t2/update! ParameterCard conditions {:card_id card-id}))
+          (t2/insert! ParameterCard (merge conditions {:card_id card-id}))))))
 
 (mu/defn upsert-or-delete-from-parameters!
   "From a parameters list on card or dashboard, create, update,
   or delete appropriate ParameterCards for each parameter in the dashboard"
   [parameterized-object-type :- ms/NonBlankString
-   parameterized-object-id   :- ms/IntGreaterThanZero
+   parameterized-object-id   :- ms/PositiveInt
    parameters                :- [:maybe [:sequential ms/Parameter]]]
   (let [upsertable?           (fn [{:keys [values_source_type values_source_config id]}]
                                 (and values_source_type id (:card_id values_source_config)
@@ -76,18 +75,3 @@
         upsertable-parameters (filter upsertable? parameters)]
     (upsert-from-parameters! parameterized-object-type parameterized-object-id upsertable-parameters)
     (delete-all-for-parameterized-object! parameterized-object-type parameterized-object-id (map :id upsertable-parameters))))
-
-;;; ----------------------------------------------- SERIALIZATION ----------------------------------------------------
-;; ParameterCard are not serialized as their own, separate entities. They are inlined onto their parent ParameterizedObjects
-
-(defmethod serdes.base/load-xform "ParameterCard"
-  [parameter-card]
-  (let [parameterized-model (case (:parameterized_object_type parameter-card)
-                              "dashboard" 'Dashboard
-                              "card"      'Card)]
-    (-> parameter-card
-        (dissoc :serdes/meta)
-        (update :card_id                 serdes.util/import-fk 'Card)
-        (update :parameterized_object_id serdes.util/import-fk parameterized-model)
-        (update :parameter_mappings      serdes.util/import-parameter-mappings)
-        (update :visualization_settings  serdes.util/import-visualization-settings))))

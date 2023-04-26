@@ -614,6 +614,15 @@
     {[:field 2 {}]
      [:field 2 nil]}))
 
+(t/deftest ^:parallel canonicalize-substring-test
+  (canonicalize-tests
+   "substring index 0 -> 1"
+   {[:substring "foo" 0 1]
+    [:substring "foo" 1 1]
+
+    [:substring "foo" 0 1 3]
+    [:substring "foo" 1 1 3]}))
+
 
 ;;; ------------------------------------------------ binning strategy ------------------------------------------------
 

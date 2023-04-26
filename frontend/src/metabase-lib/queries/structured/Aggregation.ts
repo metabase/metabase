@@ -12,7 +12,10 @@ import Metric from "metabase-lib/metadata/Metric";
 import StructuredQuery from "../StructuredQuery";
 import Dimension, { AggregationDimension } from "../../Dimension";
 import MBQLClause from "./MBQLClause";
+
 const INTEGER_AGGREGATIONS = new Set(["count", "cum-count", "distinct"]);
+const ORIGINAL_FIELD_TYPE_AGGREGATIONS = new Set(["min", "max"]);
+
 export default class Aggregation extends MBQLClause {
   /**
    * Replaces the aggregation in the parent query and returns the new StructuredQuery
@@ -134,7 +137,16 @@ export default class Aggregation extends MBQLClause {
 
   baseType() {
     const short = this.short();
-    return INTEGER_AGGREGATIONS.has(short) ? TYPE.Integer : TYPE.Float;
+    if (INTEGER_AGGREGATIONS.has(short)) {
+      return TYPE.Integer;
+    }
+
+    const field = this.dimension()?.field();
+    if (ORIGINAL_FIELD_TYPE_AGGREGATIONS.has(short) && field) {
+      return field.base_type;
+    }
+
+    return TYPE.Float;
   }
 
   /**
@@ -145,9 +157,7 @@ export default class Aggregation extends MBQLClause {
       return this.aggregation().isValid();
     } else if (this.isStandard() && this.dimension()) {
       const dimension = this.dimension();
-      const aggregationOperator = this.query()
-        .table()
-        .aggregationOperator(this[0]);
+      const aggregationOperator = this.query().aggregationOperator(this[0]);
       return (
         aggregationOperator &&
         (!aggregationOperator.requiresField ||

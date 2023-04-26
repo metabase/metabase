@@ -8,7 +8,7 @@ on:
 jobs:
 
   trigger-docs-update:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 10
     steps:
       - uses: actions/github-script@v6
@@ -25,7 +25,7 @@ jobs:
             });
 
   download-uberjar:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 10
     steps:
     - name: Download Uberjar for ${{ github.ref_name }}
@@ -56,7 +56,7 @@ jobs:
           ./SHA256.sum
 
   check-uberjar:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     needs: download-uberjar
     timeout-minutes: 10
     strategy:
@@ -90,7 +90,7 @@ jobs:
       run: curl -s localhost:3000/api/health
 
   containerize:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     needs: check-uberjar
     timeout-minutes: 15
     services:
@@ -239,7 +239,7 @@ jobs:
         echo "Finished!"
 
   verify-docker-pull:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     needs: containerize
     timeout-minutes: 15
     steps:
@@ -266,3 +266,22 @@ jobs:
     - name: Wait for Metabase to start
       run: while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
       timeout-minutes: 3
+
+  publish-elastic-beanstalk-artifacts:
+    runs-on: ubuntu-22.04
+    needs: containerize
+    timeout-minutes: 15
+    env:
+      NO_SLACK: 1
+    steps:
+    - uses: actions/checkout@v3
+    - name: Prepare back-end environment
+      uses: ./.github/actions/prepare-backend
+    - name: Configure AWS credentials for S3
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_S3_RELEASE_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_S3_RELEASE_SECRET_ACCESS_KEY }}
+        aws-region: us-east-1
+    - name: Publish Elastic Beanstalk artifacts
+      run: ./bin/ebs.sh :version ${{ github.ref_name }}

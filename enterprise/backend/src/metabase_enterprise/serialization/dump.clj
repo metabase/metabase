@@ -17,25 +17,18 @@
    [metabase.models.setting :as setting]
    [metabase.models.table :refer [Table]]
    [metabase.models.user :refer [User]]
-   [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :as i18n :refer [trs]]
    [metabase.util.log :as log]
-   [toucan.db :as db]
-   [yaml.core :as yaml]
-   [yaml.writer :as y.writer])
-  (:import
-   (java.time.temporal Temporal)))
+   [metabase.util.yaml :as yaml]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
-(extend-type Temporal y.writer/YAMLWriter
-             (encode [data]
-               (u.date/format data)))
-
-(defn- spit-yaml
+(defn spit-yaml
+  "Writes obj to filename and creates parent directories if necessary"
   [filename obj]
   (io/make-parents filename)
-  (spit filename (yaml/generate-string obj :dumper-options {:flow-style :block})))
+  (spit filename (yaml/generate-string obj :dumper-options {:flow-style :block, :split-lines false})))
 
 (defn- as-file?
   [instance]
@@ -78,8 +71,8 @@
   "Combine all dimensions into a vector and dump it into YAML at in the directory for the
    corresponding schema starting at `path`."
   [path]
-  (doseq [[table-id dimensions] (group-by (comp :table_id Field :field_id) (db/select Dimension))
-          :let [table (db/select-one Table :id table-id)]]
+  (doseq [[table-id dimensions] (group-by (comp :table_id Field :field_id) (t2/select Dimension))
+          :let [table (t2/select-one Table :id table-id)]]
     (spit-yaml (if (:schema table)
                  (format "%s%s/schemas/%s/dimensions.yaml"
                          path

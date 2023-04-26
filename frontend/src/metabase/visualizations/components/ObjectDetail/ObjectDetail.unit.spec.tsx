@@ -6,6 +6,7 @@ import {
   ObjectDetailFn as ObjectDetail,
   ObjectDetailHeader,
   ObjectDetailBody,
+  ObjectDetailWrapper,
 } from "./ObjectDetail";
 
 describe("Object Detail", () => {
@@ -97,6 +98,7 @@ describe("Object Detail", () => {
         settings={{
           column: () => null,
         }}
+        showHeader
         canZoom={true}
         canZoomPreviousRow={false}
         canZoomNextRow={false}
@@ -121,5 +123,131 @@ describe("Object Detail", () => {
     expect(
       screen.getByText(testDataset.rows[0][4].toString()),
     ).toBeInTheDocument();
+  });
+
+  it("renders an object detail with a paginator", () => {
+    render(
+      <ObjectDetailWrapper
+        data={testDataset as any}
+        question={
+          {
+            displayName: () => "Product",
+            database: () => ({
+              getPlainObject: () => ({}),
+            }),
+          } as any
+        }
+        table={
+          {
+            objectName: () => "Product",
+          } as any
+        }
+        zoomedRow={testDataset.rows[0]}
+        zoomedRowID={0}
+        tableForeignKeys={[]}
+        tableForeignKeyReferences={[]}
+        settings={{
+          column: () => null,
+        }}
+        showHeader
+        canZoom={true}
+        canZoomPreviousRow={false}
+        canZoomNextRow={false}
+        followForeignKey={() => null}
+        onVisualizationClick={() => null}
+        visualizationIsClickable={() => false}
+        fetchTableFks={() => null}
+        loadObjectDetailFKReferences={() => null}
+        viewPreviousObjectDetail={() => null}
+        viewNextObjectDetail={() => null}
+        closeObjectDetail={() => null}
+      />,
+    );
+
+    expect(screen.getByText(/Item 1 of 10/i)).toBeInTheDocument();
+  });
+
+  it("shows object detail header", () => {
+    render(
+      <ObjectDetailWrapper
+        data={testDataset as any}
+        question={
+          {
+            displayName: () => "Product",
+            database: () => ({
+              getPlainObject: () => ({}),
+            }),
+          } as any
+        }
+        table={
+          {
+            objectName: () => "Product",
+          } as any
+        }
+        zoomedRow={testDataset.rows[0]}
+        zoomedRowID={0}
+        tableForeignKeys={[]}
+        tableForeignKeyReferences={[]}
+        settings={{
+          column: () => null,
+          "detail.showHeader": true,
+        }}
+        canZoom={true}
+        canZoomPreviousRow={false}
+        canZoomNextRow={false}
+        followForeignKey={() => null}
+        onVisualizationClick={() => null}
+        visualizationIsClickable={() => false}
+        fetchTableFks={() => null}
+        loadObjectDetailFKReferences={() => null}
+        viewPreviousObjectDetail={() => null}
+        viewNextObjectDetail={() => null}
+        closeObjectDetail={() => null}
+      />,
+    );
+
+    expect(screen.getByText(/Product/i)).toBeInTheDocument();
+  });
+
+  it("hides object detail header", () => {
+    render(
+      <ObjectDetailWrapper
+        data={testDataset as any}
+        question={
+          {
+            displayName: () => "Product",
+            database: () => ({
+              getPlainObject: () => ({}),
+            }),
+          } as any
+        }
+        table={
+          {
+            objectName: () => "Product",
+          } as any
+        }
+        zoomedRow={testDataset.rows[0]}
+        zoomedRowID={0}
+        tableForeignKeys={[]}
+        tableForeignKeyReferences={[]}
+        settings={{
+          column: () => null,
+          "detail.showHeader": false,
+        }}
+        canZoom={true}
+        canZoomPreviousRow={false}
+        canZoomNextRow={false}
+        followForeignKey={() => null}
+        onVisualizationClick={() => null}
+        visualizationIsClickable={() => false}
+        fetchTableFks={() => null}
+        loadObjectDetailFKReferences={() => null}
+        viewPreviousObjectDetail={() => null}
+        viewNextObjectDetail={() => null}
+        closeObjectDetail={() => null}
+      />,
+    );
+
+    expect(screen.queryByText(/Product/i)).not.toBeInTheDocument();
   });
 });

@@ -7,13 +7,13 @@
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
-   [metabase.models.database :refer [Database]]
+   [metabase.models :refer [Database]]
    [metabase.models.setting :as setting]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [schema.core :as schema]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (setting/defsetting database-enable-actions
   (i18n/deferred-tru "Whether to enable Actions for a specific Database.")
@@ -114,8 +114,8 @@
           (swap! *misc-value-cache* assoc unique-key value))
         value)))
 
-(defn check-actions-enabled!
-  "Throws an appropriate error if actions are unsupported or disabled, otherwise returns nil."
+(defn check-actions-enabled-for-database!
+  "Throws an appropriate error if actions are unsupported or disabled for a database, otherwise returns nil."
   [{db-settings :settings db-id :id driver :engine db-name :name :as db}]
   (when-not (driver/database-supports? driver :actions db)
     (throw (ex-info (i18n/tru "{0} Database {1} does not support actions."
@@ -130,6 +130,19 @@
 
   nil)
 
+(defn- database-for-action [action-or-id]
+  (t2/select-one Database {:select [:db.*]
+                           :from   :action
+                           :join   [[:report_card :card] [:= :card.id :action.model_id]
+                                    [:metabase_database :db] [:= :db.id :card.database_id]]
+                           :where  [:= :action.id (u/the-id action-or-id)]}))
+
+(defn check-actions-enabled!
+  "Throws an appropriate error if actions are unsupported or disabled for the database of the action's model,
+   otherwise returns nil."
+  [action-or-id]
+  (check-actions-enabled-for-database! (database-for-action action-or-id)))
+
 (defn perform-action!
   "Perform an `action`. Invoke this function for performing actions, e.g. in API endpoints;
   implement [[perform-action!*]] to add support for a new driver/action combo. The shape of `arg-map` depends on the
@@ -142,11 +155,12 @@
     (when (s/invalid? (s/conform spec arg-map))
       (throw (ex-info (format "Invalid Action arg map for %s: %s" action (s/explain-str spec arg-map))
                       (s/explain-data spec arg-map))))
-    (let [{driver :engine :as db} (api/check-404 (db/select-one Database :id (:database arg-map)))]
-      (check-actions-enabled! db)
+    (let [{driver :engine :as db} (api/check-404 (t2/select-one Database :id (:database arg-map)))]
+      (check-actions-enabled-for-database! db)
       (binding [*misc-value-cache* (atom {})]
         (qp.perms/check-query-action-permissions* arg-map)
-        (perform-action!* driver action db arg-map)))))
+        (driver/with-driver driver
+          (perform-action!* driver action db arg-map))))))
 
 ;;;; Action definitions.
 

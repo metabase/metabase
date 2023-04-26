@@ -11,7 +11,7 @@
    [metabase.util.date-2.parse :as u.date.parse]
    [metabase.util.date-2.parse.builder :as u.date.builder]
    [metabase.util.log :as log]
-   [toucan.db :as db])
+   [toucan2.core :as t2])
   (:import
    (com.google.api.services.analytics.model Column GaData GaData$ColumnHeaders)
    (java.time DayOfWeek)
@@ -24,7 +24,7 @@
   (some (fn [^Column column]
           (when (= (.getId column) (name column-name))
             column))
-        (ga.metadata/columns (db/select-one Database :id (u/the-id database-or-id)) {:status "PUBLIC"})))
+        (ga.metadata/columns (t2/select-one Database :id (u/the-id database-or-id)) {:status "PUBLIC"})))
 
 (defn- column-metadata [database-id column-name]
   (when-let [ga-column (column-with-name database-id column-name)]

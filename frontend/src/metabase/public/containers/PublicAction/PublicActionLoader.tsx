@@ -62,7 +62,7 @@ function PublicActionLoader({ params, setErrorPage }: Props) {
   }, [action, params.uuid, setErrorPage]);
 
   return (
-    <EmbedFrame footerVariant="big">
+    <EmbedFrame footerVariant="large">
       <LoadingAndErrorWrapper loading={!action}>
         {renderContent}
       </LoadingAndErrorWrapper>

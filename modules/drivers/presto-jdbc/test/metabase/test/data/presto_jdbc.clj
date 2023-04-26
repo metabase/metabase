@@ -29,6 +29,18 @@
 ;; during unit tests don't treat presto as having FK support
 (defmethod driver/supports? [:presto-jdbc :foreign-keys] [_ _] (not config/is-test?))
 
+(defmethod tx/aggregate-column-info :presto-jdbc
+  ([driver ag-type]
+   ((get-method tx/aggregate-column-info ::tx/test-extensions) driver ag-type))
+
+  ([driver ag-type field]
+   (merge
+    ((get-method tx/aggregate-column-info ::tx/test-extensions) driver ag-type field)
+    (when (= ag-type :sum)
+      {:base_type :type/BigInteger}))))
+
+(prefer-method tx/aggregate-column-info :presto-jdbc ::tx/test-extensions)
+
 ;; in the past, we had to manually update our Docker image and add a new catalog for every new dataset definition we
 ;; added. That's insane. Just use the `test-data` catalog and put everything in that, and use
 ;; `db-qualified-table-name` like everyone else.

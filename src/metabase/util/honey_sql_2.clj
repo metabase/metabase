@@ -7,6 +7,7 @@
   (:require
    [clojure.string :as str]
    [honey.sql :as sql]
+   [honey.sql.protocols :as sql.protocols]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -15,6 +16,23 @@
    (java.util Locale)))
 
 (set! *warn-on-reflection* true)
+
+;;; `[:inline <clojure.lang.Ratio>] should emit something wrapped in parens. Because otherwise the result could be
+;;; something unintended. e.g.
+;;;
+;;;    [:/ 4 (/ 1 3)] => 4 / 1 / 3
+;;;
+;;; is a different result than
+;;;
+;;;    [:/ 4 (/ 1 3)] => 4 / (1 / 3)
+;;;
+;;; See #28354
+(extend-protocol sql.protocols/InlineValue
+  clojure.lang.Ratio
+  (sqlize [this]
+    (let [numerator   (.numerator ^clojure.lang.Ratio this)
+          denominator (.denominator ^clojure.lang.Ratio this)]
+      (clojure.core/format "(%d.0 / %d.0)" numerator denominator))))
 
 (defn- english-upper-case
   "Use this function when you need to upper-case an identifier or table name. Similar to `clojure.string/upper-case`

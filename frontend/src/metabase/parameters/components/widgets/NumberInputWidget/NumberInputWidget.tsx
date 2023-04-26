@@ -75,8 +75,9 @@ function NumberInputWidget({
         </TokenFieldWrapper>
       ) : (
         _.times(arity, i => (
-          <div className="inline-block" key={i}>
+          <div key={i}>
             <NumericInput
+              fullWidth
               className="p1"
               autoFocus={autoFocus && i === 0}
               value={unsavedArrayValue[i]}

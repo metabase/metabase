@@ -90,10 +90,10 @@ export function getFieldType(field) {
     COORDINATE,
     FOREIGN_KEY,
     PRIMARY_KEY,
+    BOOLEAN,
     STRING,
     STRING_LIKE,
     NUMBER,
-    BOOLEAN,
   ]) {
     if (isFieldType(type, field)) {
       return type;
@@ -149,8 +149,6 @@ export const isNumber = field =>
   field &&
   isNumericBaseType(field) &&
   (field.semantic_type == null || isa(field.semantic_type, TYPE.Number));
-
-export const isBinnedNumber = field => isNumber(field) && !!field.binning_info;
 
 export const isTime = field => {
   if (!field) {

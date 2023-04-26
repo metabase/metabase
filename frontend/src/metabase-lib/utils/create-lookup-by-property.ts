@@ -1,8 +1,8 @@
-export function createLookupByProperty(items: any[], property: string) {
-  const lookup: Record<string, any> = {};
+export function createLookupByProperty<T>(items: T[], property: keyof T) {
+  const lookup: Record<string, T> = {};
 
   for (const item of items) {
-    lookup[item[property]] = item;
+    lookup[item[property] as unknown as string] = item;
   }
 
   return lookup;

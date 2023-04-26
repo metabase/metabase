@@ -12,7 +12,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -668,12 +668,12 @@
 (deftest broken-out-read-query-perms-in-graph-test
   (testing "Make sure we can set the new broken-out read/query perms for a Table and the graph works as we'd expect"
     (mt/with-temp PermissionsGroup [group]
-      (perms/grant-permissions! group (perms/table-read-path (db/select-one Table :id (mt/id :venues))))
+      (perms/grant-permissions! group (perms/table-read-path (t2/select-one Table :id (mt/id :venues))))
       (is (= {(mt/id :venues) {:read :all}}
              (test-data-graph group))))
 
     (mt/with-temp PermissionsGroup [group]
-      (perms/grant-permissions! group (perms/table-segmented-query-path (db/select-one Table :id (mt/id :venues))))
+      (perms/grant-permissions! group (perms/table-segmented-query-path (t2/select-one Table :id (mt/id :venues))))
       (is (= {(mt/id :venues) {:query :segmented}}
              (test-data-graph group))))
 
@@ -689,7 +689,7 @@
 (deftest root-permissions-graph-test
   (testing "A \"/\" permission grants all dataset permissions"
     (mt/with-temp Database [{db-id :id}]
-      (let [{:keys [group_id]} (db/select-one Permissions :object "/")]
+      (let [{:keys [group_id]} (t2/select-one Permissions :object "/")]
         (is (= {db-id {:data       {:native  :write
                                     :schemas :all}
                        :download   {:native  :full
@@ -776,7 +776,7 @@
     (is (thrown? Exception
                  (perms/revoke-collection-permissions!
                   (perms-group/all-users)
-                  (u/the-id (db/select-one Collection :personal_owner_id (mt/user->id :lucky))))))
+                  (u/the-id (t2/select-one Collection :personal_owner_id (mt/user->id :lucky))))))
 
     (testing "(should apply to descendants as well)"
       (mt/with-temp Collection [collection {:location (collection/children-location
@@ -790,7 +790,7 @@
     (mt/with-temp Collection [{collection-id :id}]
       (perms/revoke-collection-permissions! (perms-group/all-users) collection-id)
       (testing "Collection should still exist"
-        (is (some? (db/select-one Collection :id collection-id)))))))
+        (is (some? (t2/select-one Collection :id collection-id)))))))
 
 (deftest disallow-granting-personal-collection-perms-test
   (mt/with-temp Collection [collection {:location (collection/children-location
@@ -803,7 +803,7 @@
         (is (thrown?
              Exception
              (f (perms-group/all-users)
-                (u/the-id (db/select-one Collection :personal_owner_id (mt/user->id :lucky))))))
+                (u/the-id (t2/select-one Collection :personal_owner_id (mt/user->id :lucky))))))
 
         (testing "(should apply to descendants as well)"
           (is (thrown?
@@ -813,9 +813,9 @@
 (deftest grant-revoke-root-collection-permissions-test
   (mt/with-temp PermissionsGroup [{group-id :id}]
     (letfn [(perms []
-              (db/select-field :object Permissions {:where [:and
-                                                            [:like :object "/collection/%"]
-                                                            [:= :group_id group-id]]}))]
+              (t2/select-fn-set :object Permissions {:where [:and
+                                                             [:like :object "/collection/%"]
+                                                             [:= :group_id group-id]]}))]
       (is (= nil
              (perms)))
       (testing "Should be able to grant Root Collection perms"
@@ -846,7 +846,7 @@
 (deftest grant-revoke-application-permissions-test
   (mt/with-temp PermissionsGroup [{group-id :id}]
     (letfn [(perms []
-              (db/select-field :object Permissions
+              (t2/select-fn-set :object Permissions
                                {:where [:and [:= :group_id group-id]
                                              [:like :object "/application/%"]]}))]
       (is (= nil (perms)))
@@ -865,13 +865,15 @@
   (is (= :block           (perms/classify-path "/block/db/0/")))
   (is (= :collection      (perms/classify-path "/collection/7/")))
   (is (= :data            (perms/classify-path "/db/3/")))
-  (is (= :data-model      (perms/classify-path "/data-model/db/0/schema/\\/\\/\\/񊏱\\\\\\\\\\\\򍕦\\/\\/\\\\\\/\\/񴹰󿧊񢣣\\/𪄬\\/\\\\\\/񺟭\\\\򾔪\\/\\\\\\/򛱞򰫰\\\\𰑨񓊼\\\\\\/\\\\\\/\\/\\/򐮫\\/\\\\妕\\/\\/򆀀񚷮\\/\\/󷨾򂁚\\\\\\/󽝅\\/\\\\\\/\\\\\\\\񡳮񯲱󴲱\\\\𹂆𦅧\\\\񰑯\\/\\/\\\\\\\\񜍖\\\\\\\\\\/\\/\\\\\\\\񯦊\\/󗦯\\/\\\\\\\\􇿤\\\\\\\\򄩂\\/𵚰񝐜\\\\\\\\􅸷\\/\\\\󙼳\\\\򍁀񷓧\\\\򛍐𽸁\\\\񂲝񢄘\\\\􊻄\\/𰊸\\/\\/\\\\\\\\󭽾򼪿\\/𖉠\\/\\\\\\\\\\/򂬘\\\\\\\\\\\\\\/\\\\󉁡\\/\\\\\\\\󰈤\\\\\\\\/table/4/")))
-  (is (= :data-v2         (perms/classify-path "/data/db/3/schema/򰴕\\/\\\\\\/\\\\\\/\\/\\/\\\\\\/󇄤\\\\\\/\\/\\/󬽐\\\\\\/\\/򟇌\\\\񅂲\\/\\/\\/\\/\\\\񋐡􌵬\\\\\\\\񄵕\\/\\/򪰫\\\\򉍼\\/\\/\\/\\/򻍄\\\\񄤆\\\\\\/\\\\\\\\񷱨\\/򷣙\\/񰅡򲏪\\/\\/맳\\\\\\\\\\\\\\/񥟬\\\\蝝\\\\\\/\\/\\/\\\\񶫑\\/\\/\\\\򿄚򜬹\\/򄫑\\/\\/\\\\\\/\\\\\\/񠉅\\\\\\\\󽜔\\/\\\\\\\\\\\\\\\\젭񅄾\\/\\/񵊊\\\\\\/󫊽\\\\𻴄\\\\𳇖\\/\\/\\\\\\\\𨴟򫔌\\/񿶮\\/񦀯덱\\/󤯲\\/򡔾􆎱\\\\\\/\\/󕅀򩤞\\\\\\\\􊍧\\/\\\\\\/󤄹\\\\\\\\\\\\󡎨񃩍𬛫\\\\𗦣\\/󭭤\\\\\\/򈅎\\\\\\/\\\\\\/\\\\\\/🯐\\\\󍬠񸇊񆰕錪󰱗񎛣񆛀\\\\\\\\򻒉𝬘\\\\\\\\򺬅\\/\\\\\\/\\\\򡱉\\\\񸇹\\\\񅴅\\\\㏎𸷙\\\\\\/\\/\\/򤟉\\/\\/񑴍\\/\\/\\/\\/\\\\𠳏\\/\\\\󙇅\\\\\\\\􇟞\\\\\\\\󛞯\\\\\\\\\\\\\\\\󮕧\\\\񇰞񡿳\\/\\/\\\\󒧡\\/\\/\\/\\\\\\\\\\/򍊫\\\\\\/󼹅\\/񘖰񠔕򕀏\\/\\\\񀫸\\/󓤧\\\\\\/\\/\\\\\\/\\/Ꚋ\\\\\\/\\/\\/\\/\\\\󏏎󬂊\\/\\/\\\\􌍎\\\\\\\\ꗴ\\\\\\\\\\\\󡉕\\\\񖮖\\\\\\\\\\\\\\/瓮񋞈򺏽𺵩\\\\򷗇\\/\\\\\\\\\\\\\\/\\\\󀍋󦜩򱽙\\\\\\\\򓩥\\\\\\/\\/\\\\\\\\󂻑\\/򪲮\\/񣁛\\/𝵼\\/\\/򁗩\\/\\\\\\\\\\\\\\\\\\/\\\\􇸧􈣤\\\\򭤃\\/\\\\򽗗\\\\\\\\\\\\\\\\\\/\\/\\\\\\/񒆐򿞿\\/񌥊\\/򼻪\\/\\\\\\/\\\\\\\\\\/\\\\񻽁\\/𹈏\\/\\\\\\\\󃝈\\/\\/\\/\\/𫟗\\\\𦁺\\\\\\/\\\\\\\\ျ􍂮򧚾󹵞\\\\\\/\\\\󮋵\\/\\/𧻄\\/\\\\󊢔\\\\\\/\\\\\\/\\/󵲴\\\\\\\\\\/\\/\\\\𫲉\\/\\\\\\\\󥞥\\\\\\/\\/\\/󯇥\\\\\\\\\\/\\/􄢒\\/\\/\\/\\/򉢬\\/򭻄\\/\\/􀤻\\/\\/񌒾󦼿\\/\\/\\\\񎊢\\/\\\\򚻇\\\\񛀪𦢵\\\\􈀤\\/\\/\\\\\\/\\\\\\\\󀹎/table/3/")))
+  (is (= :data-model      (perms/classify-path "/data-model/db/0/schema/\\/\\/\\/񊏱\\\\\\\\\\\\򍕦/table/4/")))
   (is (= :db-conn-details (perms/classify-path "/details/db/6/")))
   (is (= :download        (perms/classify-path "/download/db/7/")))
   (is (= :execute         (perms/classify-path "/execute/")))
   (is (= :non-scoped      (perms/classify-path "/application/monitoring/")))
-  (is (= :query-v2        (perms/classify-path "/query/db/0/native/"))))
+
+  (is (= :query-v2        (perms/classify-path "/query/db/0/native/")))
+  (is (= :data-v2         (perms/classify-path "/data/db/3/schema/something/table/3/"))))
+
 
 (deftest data-permissions-classify-path
   (is (= :data (perms/classify-path "/db/3/")))
@@ -970,3 +972,28 @@
 
 (deftest quickcheck-->v2-path-test
   (is (:pass? (check-fn! #'perms/->v2-path))))
+
+(deftest generate-graph-test
+  (is (= {1 {2 {:data {:native :write, :schemas :all}}}}
+         (#'perms/generate-graph #{2} {1 ["/db/2/"]})))
+
+  (is (= {1 {2 {:data {:native :write}}}}
+         (#'perms/generate-graph #{2} {1 ["/data/db/2/"]})))
+
+  (is (= {1 {2 {:query {:schemas :all, :native :none}}}}
+         (#'perms/generate-graph #{2} {1 ["/query/db/2/schema/"]})))
+
+  (is (= {1 {2 {:query {:schemas {"PUBLIC" :all}}}}}
+         (#'perms/generate-graph #{2} {1 ["/query/db/2/schema/PUBLIC/"]})))
+
+  (is (= {1 {2 {:query {:schemas {"" :all}}}}}
+         (#'perms/generate-graph #{2} {1 ["/query/db/2/schema//"]})))
+
+  (is (= {1 {2 {:data {:schemas :all}}}}
+         (#'perms/generate-graph #{2} {1 ["/db/2/schema/"]})))
+
+  (is (= {1 {2 {:query {:schemas :all}, :data {:native :write}}}}
+         (#'perms/generate-graph #{2} {1 ["/query/db/2/schema/" "/data/db/2/"]})))
+
+  (is (= {1 {2 {:data {:native :write, :schemas :all}}}}
+         (#'perms/generate-graph #{2} {1 ["/db/2/"]}))))

@@ -31,8 +31,10 @@ export interface Card extends UnsavedCard {
   };
 }
 
+export type CardDisplayType = string;
+
 export interface UnsavedCard {
-  display: string;
+  display: CardDisplayType;
   dataset_query: DatasetQuery;
   visualization_settings: VisualizationSettings;
 }

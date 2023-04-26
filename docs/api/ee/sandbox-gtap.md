@@ -14,7 +14,7 @@ Delete a GTAP entry.
 
 ### PARAMS:
 
-*  **`id`**
+*  **`id`** value must be an integer greater than zero.
 
 ## `GET /api/mt/gtap/`
 
@@ -22,9 +22,9 @@ Fetch a list of all GTAPs currently in use, or a single GTAP if both `group_id` 
 
 ### PARAMS:
 
-*  **`group_id`** nullable integer greater than 0
+*  **`group_id`** nullable value must be an integer greater than zero.
 
-*  **`table_id`** nullable integer greater than 0
+*  **`table_id`** nullable value must be an integer greater than zero.
 
 ## `GET /api/mt/gtap/:id`
 
@@ -32,7 +32,7 @@ Fetch GTAP by `id`.
 
 ### PARAMS:
 
-*  **`id`**
+*  **`id`** value must be an integer greater than zero.
 
 ## `POST /api/mt/gtap/`
 
@@ -47,6 +47,17 @@ Create a new GTAP.
 *  **`group_id`** value must be an integer greater than zero.
 
 *  **`attribute_remappings`**
+
+## `POST /api/mt/gtap/validate`
+
+Validate a sandbox which may not have yet been saved. This runs the same validation that is performed when the
+  sandbox is saved, but doesn't actually save the sandbox.
+
+### PARAMS:
+
+*  **`table_id`** value must be an integer greater than zero.
+
+*  **`card_id`** nullable value must be an integer greater than zero.
 
 ## `PUT /api/mt/gtap/:id`
 

@@ -1,6 +1,6 @@
 import React from "react";
-import nock from "nock";
 import { Route } from "react-router";
+import fetchMock from "fetch-mock";
 
 import {
   renderWithProviders,
@@ -75,8 +75,6 @@ async function setup({
   openDashboard,
   openQuestionCard,
 }: SetupOpts = {}) {
-  const scope = nock(location.origin);
-
   const databases = [];
   const collections = [TEST_COLLECTION];
 
@@ -100,12 +98,12 @@ async function setup({
     collections.push(personalCollection);
   }
 
-  setupCollectionsEndpoints(scope, collections);
-  setupDatabasesEndpoints(scope, databases);
-  scope.get("/api/bookmark").reply(200, []);
+  setupCollectionsEndpoints(collections);
+  setupDatabasesEndpoints(databases);
+  fetchMock.get("path:/api/bookmark", []);
 
   if (openQuestionCard) {
-    setupCardsEndpoints(scope, [openQuestionCard]);
+    setupCardsEndpoints([openQuestionCard]);
   }
 
   const dashboards = openDashboard ? { [openDashboard.id]: openDashboard } : {};

@@ -1,24 +1,28 @@
+import { t } from "ttag";
+import { isNotNull } from "metabase/core/utils/types";
 import { Collection, CollectionId } from "metabase-types/api";
 
 export const getCrumbs = (
   collection: Collection,
-  collectionsById: Record<CollectionId, Collection>,
+  collectionsById: Partial<Record<CollectionId, Collection>>,
   callback: (id: CollectionId) => void,
 ) => {
   if (collection && collection.path) {
     return [
       ...collection.path
-        .filter(id => collectionsById[id])
-        .map(id => [collectionsById[id].name, () => callback(id)]),
+        .map(id => collectionsById[id])
+        .filter(isNotNull)
+        .map(collection => [collection.name, () => callback(collection.id)]),
       [collection.name],
     ];
   } else {
+    const rootCollection = collectionsById.root;
+
     return [
-      [
-        collectionsById["root"].name,
-        () => callback(collectionsById["root"].id),
-      ],
-      ["Unknown"],
+      ...(rootCollection
+        ? [[rootCollection.name, () => callback(rootCollection.id)]]
+        : []),
+      [t`Unknown`],
     ];
   }
 };

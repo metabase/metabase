@@ -2,24 +2,26 @@ import React, { useEffect, useCallback, useMemo, useState } from "react";
 import _ from "underscore";
 import { connect } from "react-redux";
 import { replace } from "react-router-redux";
+import { useMount } from "react-use";
 import type { Location, LocationDescriptor } from "history";
 
-import { useMount } from "react-use";
+import { NotFound } from "metabase/containers/ErrorPages";
+
 import * as Urls from "metabase/lib/urls";
 
+import Actions from "metabase/entities/actions";
 import Databases from "metabase/entities/databases";
 import Questions from "metabase/entities/questions";
 import Tables from "metabase/entities/tables";
 import { getMetadata } from "metabase/selectors/metadata";
 import title from "metabase/hoc/Title";
 
-import { checkDatabaseActionsEnabled } from "metabase/actions/utils";
 import { loadMetadataForCard } from "metabase/questions/actions";
 
 import ModelDetailPageView from "metabase/models/components/ModelDetailPage";
 import QuestionMoveToast from "metabase/questions/components/QuestionMoveToast";
 
-import type { Card, Collection } from "metabase-types/api";
+import type { Card, Collection, WritebackAction } from "metabase-types/api";
 import type { Card as LegacyCardType } from "metabase-types/types/Card";
 import type { State } from "metabase-types/store";
 
@@ -32,9 +34,11 @@ type OwnProps = {
     slug: string;
     tab?: string;
   };
+  children: React.ReactNode;
 };
 
-type ModelEntityLoaderProps = {
+type EntityLoadersProps = {
+  actions: WritebackAction[];
   modelCard: Card;
 };
 
@@ -61,12 +65,9 @@ type DispatchProps = {
   onChangeLocation: (location: LocationDescriptor) => void;
 };
 
-type Props = OwnProps & ModelEntityLoaderProps & StateProps & DispatchProps;
+type Props = OwnProps & EntityLoadersProps & StateProps & DispatchProps;
 
-function mapStateToProps(
-  state: State,
-  props: OwnProps & ModelEntityLoaderProps,
-) {
+function mapStateToProps(state: State, props: OwnProps & EntityLoadersProps) {
   const metadata = getMetadata(state);
   const model = new Question(props.modelCard, metadata);
   return { model };
@@ -84,7 +85,9 @@ const FALLBACK_TAB = "usage";
 
 function ModelDetailPage({
   model,
+  actions,
   location,
+  children,
   loadMetadataForCard,
   fetchTableForeignKeys,
   onChangeModel,
@@ -93,9 +96,12 @@ function ModelDetailPage({
 }: Props) {
   const [hasFetchedTableMetadata, setHasFetchedTableMetadata] = useState(false);
 
-  const database = model.database()?.getPlainObject();
-  const hasActionsEnabled =
-    database != null && checkDatabaseActionsEnabled(database);
+  const database = model.database();
+  const hasDataPermissions = model.query().isEditable();
+  const hasActions = actions.length > 0;
+  const hasActionsEnabled = database != null && database.hasActionsEnabled();
+  const hasActionsTab = hasActions || hasActionsEnabled;
+  const canRunActions = hasActionsEnabled && hasDataPermissions;
 
   const mainTable = useMemo(
     () => (model.isStructured() ? model.query().sourceTable() : null),
@@ -103,12 +109,24 @@ function ModelDetailPage({
   );
 
   const tab = useMemo(() => {
-    const [tab] = location.pathname.split("/").reverse();
+    const pathname = location.pathname;
+
+    if (pathname.endsWith("/actions/new")) {
+      return "actions";
+    }
+
+    const [tab] = pathname.split("/").reverse();
     return tab ?? FALLBACK_TAB;
   }, [location.pathname]);
 
   useMount(() => {
-    loadMetadataForCard(model.card());
+    const card = model.card();
+    const isModel = model.isDataset();
+    if (isModel) {
+      loadMetadataForCard(card);
+    } else {
+      onChangeLocation(Urls.question(card));
+    }
   });
 
   useEffect(() => {
@@ -119,11 +137,11 @@ function ModelDetailPage({
   }, [mainTable, hasFetchedTableMetadata, fetchTableForeignKeys]);
 
   useEffect(() => {
-    if (tab === "actions" && !hasActionsEnabled) {
+    if (tab === "actions" && !hasActionsTab) {
       const nextUrl = Urls.modelDetail(model.card(), FALLBACK_TAB);
       onChangeLocation(nextUrl);
     }
-  }, [model, tab, hasActionsEnabled, onChangeLocation]);
+  }, [model, tab, hasActionsTab, onChangeLocation]);
 
   const handleNameChange = useCallback(
     name => {
@@ -157,28 +175,31 @@ function ModelDetailPage({
     [model, onChangeCollection],
   );
 
+  if (model.isArchived()) {
+    return <NotFound />;
+  }
+
   return (
-    <ModelDetailPageView
-      model={model}
-      mainTable={mainTable}
-      tab={tab}
-      hasActionsTab={hasActionsEnabled}
-      onChangeName={handleNameChange}
-      onChangeDescription={handleDescriptionChange}
-      onChangeCollection={handleCollectionChange}
-    />
+    <>
+      <ModelDetailPageView
+        model={model}
+        mainTable={mainTable}
+        tab={tab}
+        hasDataPermissions={hasDataPermissions}
+        canRunActions={canRunActions}
+        hasActionsTab={hasActionsTab}
+        onChangeName={handleNameChange}
+        onChangeDescription={handleDescriptionChange}
+        onChangeCollection={handleCollectionChange}
+      />
+      {/* Required for rendering child `ModalRoute` elements */}
+      {children}
+    </>
   );
 }
 
 function getModelId(state: State, props: OwnProps) {
   return Urls.extractEntityId(props.params.slug);
-}
-
-function getModelDatabaseId(
-  state: State,
-  props: OwnProps & ModelEntityLoaderProps,
-) {
-  return props.modelCard.dataset_query.database;
 }
 
 function getPageTitle({ modelCard }: Props) {
@@ -187,8 +208,13 @@ function getPageTitle({ modelCard }: Props) {
 
 export default _.compose(
   Questions.load({ id: getModelId, entityAlias: "modelCard" }),
-  Databases.load({ id: getModelDatabaseId }),
-  connect<StateProps, DispatchProps, OwnProps & ModelEntityLoaderProps, State>(
+  Databases.loadList(),
+  Actions.loadList({
+    query: (state: State, props: OwnProps) => ({
+      "model-id": getModelId(state, props),
+    }),
+  }),
+  connect<StateProps, DispatchProps, OwnProps & EntityLoadersProps, State>(
     mapStateToProps,
     mapDispatchToProps,
   ),

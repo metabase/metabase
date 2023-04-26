@@ -18,6 +18,7 @@
     (is (= ["\"SETTING\""]
            (hformat/format :setting :quoting :h2)))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (deftest ^:parallel literal-test
   (testing "`literal` should be compiled to a single-quoted literal"
     (is (= ["WHERE name = 'Cam'"]
@@ -116,6 +117,7 @@
 (defn- ->sql [expr]
   (hsql/format {:select [expr]}))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (deftest ^:parallel maybe-cast-test
   (testing "maybe-cast should only cast things that need to be cast"
     (letfn [(maybe-cast [expr]
@@ -140,6 +142,7 @@
           (is (= ["SELECT CAST(field AS text)"]
                  (maybe-cast (h1x/maybe-cast "text" :field)))))))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (deftest ^:parallel cast-unless-type-in-test
   (letfn [(cast-unless-type-in [expr]
             (first (->sql (h1x/cast-unless-type-in "timestamp" #{"timestamp" "timestamptz"} expr))))]
@@ -173,6 +176,7 @@
       (is (= (h1x/with-type-info :field {::hx/database-type "date"})
              (h1x/with-type-info typed-form {::hx/database-type "date"}))))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (deftest ^:parallel with-database-type-info-test
   (testing "should be the same as calling `with-type-info` with `::hx/database-type`"
     (is (= (h1x/with-type-info :field {::hx/database-type "date"})
@@ -185,6 +189,7 @@
       (is (= :field
              (h1x/with-database-type-info (h1x/with-database-type-info :field "date") nil))))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (deftest ^:parallel is-of-type?-test
   (are [expr tyype expected] (= expected (h1x/is-of-type? expr tyype))
     typed-form     "text"   true
@@ -211,6 +216,7 @@
     (is (= nil
            (h1x/unwrap-typed-honeysql-form nil)))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (deftest ^:parallel math-operators-propagate-type-info-test
   (testing "Math operators like `+` should propagate the type info of their args\n"
     ;; just pass along type info of the first arg with type info.

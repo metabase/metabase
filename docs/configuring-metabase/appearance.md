@@ -49,6 +49,14 @@ You can customize the colors that Metabase uses throughout the app:
 
 You can choose up to 24 hex values. If you choose fewer than 24 colors, Metabase will auto-generate colors to fill in the rest of the values.
 
+Custom colors are unavailable for:
+
+- [Number charts](../questions/sharing/visualizing-results.md#numbers)
+- [Trend charts](../questions/sharing/visualizing-results.md#trends)
+- [Funnel charts](../questions/sharing/visualizing-results.md#funnel-charts)
+- Conditional formatting ([tables](../questions/sharing/visualizing-results.md#tables) and [pivot tables](../questions/sharing/visualizing-results.md#pivot-tables))
+- [Maps](../questions/sharing/visualizing-results.md#maps)
+
 ## Logo
 
 You can replace Metabase’s familiar, tasteful, inspired-yet-not-threateningly-avant-garde dotted M logo with your very own logo. For things to work best, the logo you upload should be an SVG file that looks good when it’s around 60px tall. (In other words, ask the nearest designer for help.)

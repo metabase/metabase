@@ -52,3 +52,12 @@ export const groupExcessiveTooltipRows = (
 
   return [...rowsToKeep, groupedRow];
 };
+
+export const getSortedRows = (rows: TooltipRowModel[]) => {
+  return [...rows].sort(({ value: leftValue }, { value: rightValue }) => {
+    return (
+      (typeof rightValue === "number" ? rightValue : 0) -
+      (typeof leftValue === "number" ? leftValue : 0)
+    );
+  });
+};

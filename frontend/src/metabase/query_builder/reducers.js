@@ -251,11 +251,15 @@ export const uiControls = handleActions(
       ...state,
       ...UI_CONTROLS_SIDEBAR_DEFAULTS,
     }),
-    [onOpenChartSettings]: (state, { payload: initial }) => ({
+    [onOpenChartSettings]: (
+      state,
+      { payload: { initialChartSettings, showSidebarTitle = false } = {} },
+    ) => ({
       ...state,
       ...UI_CONTROLS_SIDEBAR_DEFAULTS,
       isShowingChartSettingsSidebar: true,
-      initialChartSetting: initial,
+      initialChartSetting: initialChartSettings,
+      showSidebarTitle: showSidebarTitle,
     }),
     [onCloseChartSettings]: state => ({
       ...state,

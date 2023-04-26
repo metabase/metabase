@@ -18,7 +18,7 @@ export function model(
 }
 
 export function modelDetail(card: CardOrSearchResult, tab = "") {
-  const baseUrl = `${model(card)}/detail`;
+  const baseUrl = `${model({ ...card, dataset: true })}/detail`;
   return tab ? `${baseUrl}/${tab}` : baseUrl;
 }
 

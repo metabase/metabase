@@ -22,16 +22,17 @@
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log])
   (:import
-   (java.sql Connection PreparedStatement ResultSet Types)
+   (com.amazon.redshift.util RedshiftInterval)
+   (java.sql Connection PreparedStatement ResultSet ResultSetMetaData Types)
    (java.time OffsetTime)))
 
 (set! *warn-on-reflection* true)
 
 (driver/register! :redshift, :parent #{:postgres ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
 
-(defmethod driver/database-supports? [:redshift :test/jvm-timezone-setting]
-  [_driver _feature _database]
-  false)
+(doseq [[feature supported?] {:test/jvm-timezone-setting false
+                              :nested-field-columns      false}]
+  (defmethod driver/database-supports? [:redshift feature] [_driver _feat _db] supported?))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             metabase.driver impls                                              |
@@ -281,6 +282,13 @@
  sql-jdbc.execute/read-column-thunk
  [::sql-jdbc.legacy/use-legacy-classes-for-read-and-set Types/TIMESTAMP]
  [:postgres Types/TIMESTAMP])
+
+(defmethod sql-jdbc.execute/read-column-thunk
+ [:redshift Types/OTHER]
+ [driver ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
+ (if (= "interval" (.getColumnTypeName rsmeta i))
+   #(.getValue ^RedshiftInterval (.getObject rs i RedshiftInterval))
+   ((get-method sql-jdbc.execute/read-column-thunk [:postgres (.getColumnType rsmeta i)]) driver rs rsmeta i)))
 
 (prefer-method
  sql-jdbc.execute/read-column-thunk

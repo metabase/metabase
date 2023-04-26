@@ -1,5 +1,4 @@
 import userEvent from "@testing-library/user-event";
-import nock from "nock";
 
 import { screen, waitForElementToBeRemoved } from "__support__/ui";
 
@@ -19,10 +18,6 @@ import {
 describe("DataPicker — picking raw data", () => {
   beforeAll(() => {
     window.HTMLElement.prototype.scrollIntoView = jest.fn();
-  });
-
-  afterEach(() => {
-    nock.cleanAll();
   });
 
   it("opens the picker", async () => {

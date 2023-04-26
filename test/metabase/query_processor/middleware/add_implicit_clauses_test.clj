@@ -13,13 +13,13 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (deftest ordering-test
   (testing "check we fetch Fields in the right order"
     (mt/with-temp-vals-in-db Field (mt/id :venues :price) {:position -1}
       (let [ids       (map second (#'qp.add-implicit-clauses/sorted-implicit-fields-for-table (mt/id :venues)))
-            id->field (m/index-by :id (db/select [Field :id :position :name :semantic_type] :id [:in ids]))]
+            id->field (m/index-by :id (t2/select [Field :id :position :name :semantic_type] :id [:in ids]))]
         (is (= [ ;; sorted first because it has lowest positon
                 {:position -1, :name "PRICE", :semantic_type :type/Category}
                 ;; PK

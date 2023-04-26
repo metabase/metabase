@@ -9,6 +9,14 @@
    #_{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.util.honeysql-extensions :as hx]))
 
+(deftest ^:parallel inline-Ratio-test
+  (testing ":inline behavior for clojure.lang.Ratio should make sense (#28354)"
+    (is (= ["SELECT 4 / (1.0 / 3.0) AS x"]
+           (sql/format {:select [[[:/
+                                   [:inline 4]
+                                   [:inline (/ 1 3)]]
+                                  :x]]})))))
+
 (deftest ^:parallel custom-functions-test
   (testing `::h2x/extract
     (is (= ["extract(a from b)"]

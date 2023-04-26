@@ -2,4 +2,4 @@
  ["src" "resources"]
 
  :deps
- {net.snowflake/snowflake-jdbc {:mvn/version "3.13.26"}}}
+ {net.snowflake/snowflake-jdbc {:mvn/version "3.13.30"}}}

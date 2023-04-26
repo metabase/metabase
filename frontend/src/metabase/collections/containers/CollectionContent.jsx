@@ -26,6 +26,7 @@ import PaginationControls from "metabase/components/PaginationControls";
 import { usePagination } from "metabase/hooks/use-pagination";
 import { useListSelect } from "metabase/hooks/use-list-select";
 import { isSmallScreen } from "metabase/lib/dom";
+import Databases from "metabase/entities/databases";
 import {
   CollectionEmptyContent,
   CollectionMain,
@@ -62,6 +63,7 @@ const mapDispatchToProps = {
 };
 
 function CollectionContent({
+  databases,
   bookmarks,
   collection,
   collections: collectionList = [],
@@ -80,7 +82,8 @@ function CollectionContent({
     sort_column: "name",
     sort_direction: "asc",
   });
-  const { handleNextPage, handlePreviousPage, setPage, page } = usePagination();
+  const { handleNextPage, handlePreviousPage, setPage, page, resetPage } =
+    usePagination();
   const { selected, toggleItem, toggleAll, getIsSelected, clear } =
     useListSelect(itemKeyFn);
   const previousCollection = usePrevious(collection);
@@ -94,8 +97,9 @@ function CollectionContent({
   useEffect(() => {
     if (previousCollection && previousCollection.id !== collection.id) {
       clear();
+      resetPage();
     }
-  }, [previousCollection, collection, clear]);
+  }, [previousCollection, collection, clear, resetPage]);
 
   useEffect(() => {
     const shouldBeBookmarked = bookmarks.some(
@@ -205,6 +209,7 @@ function CollectionContent({
                 onDeleteBookmark={handleDeleteBookmark}
               />
               <PinnedItemOverview
+                databases={databases}
                 bookmarks={bookmarks}
                 createBookmark={createBookmark}
                 deleteBookmark={deleteBookmark}
@@ -252,6 +257,7 @@ function CollectionContent({
                   return (
                     <CollectionTable>
                       <ItemsTable
+                        databases={databases}
                         bookmarks={bookmarks}
                         createBookmark={createBookmark}
                         deleteBookmark={deleteBookmark}
@@ -262,11 +268,14 @@ function CollectionContent({
                           handleUnpinnedItemsSortingChange
                         }
                         selectedItems={selected}
+                        hasUnselected={hasUnselected}
                         getIsSelected={getIsSelected}
                         onToggleSelected={toggleItem}
                         onDrop={clear}
                         onMove={handleMove}
                         onCopy={handleCopy}
+                        onSelectAll={handleSelectAll}
+                        onSelectNone={clear}
                       />
                       <div className="flex justify-end my3">
                         {hasPagination && (
@@ -283,14 +292,12 @@ function CollectionContent({
                       </div>
                       <BulkActions
                         selected={selected}
-                        onSelectAll={handleSelectAll}
-                        onSelectNone={clear}
+                        collection={collection}
                         onArchive={handleBulkArchive}
                         onMoveStart={handleBulkMoveStart}
                         onMove={handleBulkMove}
                         onCloseModal={handleCloseModal}
                         onCopy={clear}
-                        hasUnselected={hasUnselected}
                         selectedItems={selectedItems}
                         selectedAction={selectedAction}
                         isNavbarOpen={isNavbarOpen}
@@ -314,8 +321,13 @@ function CollectionContent({
 
 export default _.compose(
   Bookmark.loadList(),
+  Databases.loadList(),
   Collection.loadList({
-    query: () => ({ tree: true }),
+    query: {
+      tree: true,
+      "exclude-other-user-collections": true,
+      "exclude-archived": true,
+    },
     loadingAndErrorWrapper: false,
   }),
   Collection.load({

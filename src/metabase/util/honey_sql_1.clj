@@ -1,4 +1,6 @@
 (ns ^{:deprecated "0.46.0"} metabase.util.honey-sql-1
+  "Everything in this namespace is deprecated in 0.46.0. Switch to [[metabase.util.honey-sql-2]] instead. This namespace
+  is planned for removal in Metabase 0.49.0."
   (:refer-clojure
    :exclude
    [+ - / * abs mod inc dec cast concat format second])
@@ -21,7 +23,7 @@
 
 (comment honeysql.types/keep-me)
 
-(defn- english-upper-case
+(defn- ^{:deprecated "0.46.0"} english-upper-case
   "Use this function when you need to upper-case an identifier or table name. Similar to `clojure.string/upper-case`
   but always converts the string to upper-case characters in the English locale. Using `clojure.string/upper-case` for
   table names, like we are using below in the `:h2` `honeysql.format` function can cause issues when the user has
@@ -32,6 +34,7 @@
 
 ;; Add an `:h2` quote style that uppercases the identifier
 (let [{ansi-quote-fn :ansi} @#'honeysql.format/quote-fns]
+  #_{:clj-kondo/ignore [:deprecated-var]}
   (alter-var-root #'hformat/quote-fns assoc :h2 (comp english-upper-case ansi-quote-fn)))
 
 ;; register the `extract` function with HoneySQL
@@ -65,7 +68,7 @@
   clojure.lang.Ratio
   (to-sql [x] (hformat/to-sql (double x))))
 
-(def IdentifierType
+(def ^{:deprecated "0.46.0"} IdentifierType
   "Schema for valid Identifier types."
   (s/enum
    :database
@@ -80,7 +83,7 @@
    :field          ; is `my_field`
    :field-alias))  ; is `f`
 
-(p.types/defrecord+ Identifier [identifier-type components]
+(p.types/defrecord+ ^{:deprecated "0.46.0"} Identifier [identifier-type components]
   ToSql
   (to-sql [_]
     (binding [hformat/*allow-dashed-names?* true]
@@ -90,15 +93,22 @@
          (hformat/quote-identifier component, :split false)))))
   pretty/PrettyPrintable
   (pretty [this]
+    #_{:clj-kondo/ignore [:deprecated-var]}
     (if (= (set (keys this)) #{:identifier-type :components})
       (cons `identifier (cons identifier-type components))
-      ;; if there's extra info beyond the usual two keys print with the record type reader literal syntax e.g. #metabase..Identifier {...}
+      ;; if there's extra info beyond the usual two keys print with the record type reader literal syntax e.g.
+      ;; #metabase..Identifier {...}
       (list (symbol (str \# `Identifier)) (into {} this)))))
 
-;; don't use `->Identifier` or `map->Identifier`. Use the `identifier` function instead, which cleans up its input
+;;; don't use `->Identifier` or `map->Identifier`. Use the `identifier` function instead, which cleans up its input
+
+#_{:clj-kondo/ignore [:deprecated-var]}
 (alter-meta! #'->Identifier    assoc :private true)
+
+#_{:clj-kondo/ignore [:deprecated-var]}
 (alter-meta! #'map->Identifier assoc :private true)
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (s/defn identifier :- Identifier
   "Define an identifer of type with `components`. Prefer this to using keywords for identifiers, as those do not
   properly handle identifiers with slashes in them.
@@ -108,6 +118,7 @@
 
   This function automatically unnests any Identifiers passed as arguments, removes nils, and converts all args to
   strings."
+  {:deprecated "0.46.0"}
   [identifier-type :- IdentifierType, & components]
   (Identifier.
    identifier-type
@@ -120,22 +131,30 @@
 
 (defn identifier?
   "Whether `x` is an instance of `Identifier`."
+  {:deprecated "0.46.0"}
   [x]
+  #_{:clj-kondo/ignore [:deprecated-var]}
   (instance? Identifier x))
 
 ;; Single-quoted string literal
-(p.types/defrecord+ Literal [literal]
+(p.types/defrecord+ ^{:deprecated "0.46.0"} Literal [literal]
   ToSql
   (to-sql [_]
+    #_{:clj-kondo/ignore [:deprecated-var]}
     (as-> literal <>
       (str/replace <> #"(?<![\\'])'(?![\\'])"  "''")
       (str \' <> \')))
   pretty/PrettyPrintable
   (pretty [_]
+    #_{:clj-kondo/ignore [:deprecated-var]}
     (list `literal literal)))
 
-;; as with `Identifier` you should use the the `literal` function below instead of the auto-generated factory functions.
+;;; as with `Identifier` you should use the the `literal` function below instead of the auto-generated factory functions.
+
+#_{:clj-kondo/ignore [:deprecated-var]}
 (alter-meta! #'->Literal    assoc :private true)
+
+#_{:clj-kondo/ignore [:deprecated-var]}
 (alter-meta! #'map->Literal assoc :private true)
 
 (defn literal
@@ -145,23 +164,25 @@
   this won't handle wacky cases like three single quotes in a row.
 
   DON'T USE `LITERAL` FOR THINGS THAT MIGHT BE WACKY (USER INPUT). Only use it for things that are hardcoded."
+  {:deprecated "0.46.0"}
   [s]
+  #_{:clj-kondo/ignore [:deprecated-var]}
   (Literal. (u/qualified-name s)))
 
-(p.types/defprotocol+ TypedHoneySQL
+(p.types/defprotocol+ ^{:deprecated "0.46.0"} TypedHoneySQL
   "Protocol for a HoneySQL form that has type information such as `:metabase.util.honeysql-extensions/database-type`.
   See #15115 for background."
-  (type-info [honeysql-form]
+  (^{:deprecated "0.46.0"} type-info [honeysql-form]
     "Return type information associated with `honeysql-form`, if any (i.e., if it is a `TypedHoneySQLForm`); otherwise
     returns `nil`.")
-  (with-type-info [honeysql-form new-type-info]
+  (^{:deprecated "0.46.0"} with-type-info [honeysql-form new-type-info]
     "Add type information to a `honeysql-form`. Wraps `honeysql-form` and returns a `TypedHoneySQLForm`.")
-  (unwrap-typed-honeysql-form [honeysql-form]
+  (^{:deprecated "0.46.0"} unwrap-typed-honeysql-form [honeysql-form]
     "If `honeysql-form` is a `TypedHoneySQLForm`, unwrap it and return the original form without type information.
     Otherwise, returns form as-is."))
 
 ;; a wrapped for any HoneySQL form that records additional type information in an `info` map.
-(p.types/defrecord+ TypedHoneySQLForm [form info]
+(p.types/defrecord+ ^{:deprecated "0.46.0"} TypedHoneySQLForm [form info]
   pretty/PrettyPrintable
   (pretty [_]
     `(with-type-info ~form ~info))
@@ -170,18 +191,22 @@
   (to-sql [_]
     (hformat/to-sql form)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (alter-meta! #'->TypedHoneySQLForm assoc :private true)
+
+#_{:clj-kondo/ignore [:deprecated-var]}
 (alter-meta! #'map->TypedHoneySQLForm assoc :private true)
 
-(p.types/defrecord+ AtTimeZone
+(p.types/defrecord+ ^{:deprecated "0.46.0"} AtTimeZone
   [expr zone]
   hformat/ToSql
   (to-sql [_]
+    #_{:clj-kondo/ignore [:deprecated-var]}
     (clojure.core/format "(%s AT TIME ZONE %s)"
-            (hformat/to-sql expr)
-            (hformat/to-sql (literal zone)))))
+                         (hformat/to-sql expr)
+                         (hformat/to-sql (literal zone)))))
 
-(def ^:private NormalizedTypeInfo
+(def ^{:deprecated "0.46.0"} ^:private NormalizedTypeInfo
   {(s/optional-key :metabase.util.honeysql-extensions/database-type)
    (s/constrained
     su/NonBlankString
@@ -189,10 +214,13 @@
       (= s (u/lower-case-en s)))
     "lowercased string")})
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (s/defn ^:private normalize-type-info :- NormalizedTypeInfo
   "Normalize the values in the `type-info` for a `TypedHoneySQLForm` for easy comparisons (e.g., normalize
   `:metabase.util.honeysql-extensions/database-type` to a lower-case string)."
+  {:deprecated "0.46.0"}
   [type-info]
+  #_{:clj-kondo/ignore [:deprecated-var]}
   (cond-> type-info
     (:metabase.util.honeysql-extensions/database-type type-info)
     (update :metabase.util.honeysql-extensions/database-type (comp u/lower-case-en name))))
@@ -202,6 +230,7 @@
   (type-info [_]
     nil)
   (with-type-info [this new-info]
+    #_{:clj-kondo/ignore [:deprecated-var]}
     (TypedHoneySQLForm. this (normalize-type-info new-info)))
   (unwrap-typed-honeysql-form [this]
     this)
@@ -210,14 +239,17 @@
   (type-info [_]
     nil)
   (with-type-info [_ new-info]
+    #_{:clj-kondo/ignore [:deprecated-var]}
     (TypedHoneySQLForm. nil (normalize-type-info new-info)))
   (unwrap-typed-honeysql-form [_]
     nil)
 
+  #_{:clj-kondo/ignore [:deprecated-var]}
   TypedHoneySQLForm
   (type-info [this]
     (:info this))
   (with-type-info [this new-info]
+    #_{:clj-kondo/ignore [:deprecated-var]}
     (assoc this :info (normalize-type-info new-info)))
   (unwrap-typed-honeysql-form [this]
     (:form this)))
@@ -225,12 +257,13 @@
 (defn type-info->db-type
   "For a given type-info, returns the `database-type`."
   [type-info]
-  {:added "0.39.0"}
+  {:added "0.39.0", :deprecated "0.46.0"}
   (:metabase.util.honeysql-extensions/database-type type-info))
 
 (defn database-type
   "Returns the `database-type` from the type-info of `honeysql-form` if present.
    Otherwise, returns `nil`."
+  {:deprecated "0.46.0"}
   [honeysql-form]
   (some-> honeysql-form type-info type-info->db-type))
 
@@ -240,7 +273,9 @@
 
     (is-of-type? expr \"datetime\") ; -> true
     (is-of-type? expr #\"int*\") ; -> true"
+  {:deprecated "0.46.0"}
   [honeysql-form db-type]
+  #_{:clj-kondo/ignore [:deprecated-var]}
   (let [form-type (some-> honeysql-form database-type u/lower-case-en)]
     (if (instance? java.util.regex.Pattern db-type)
       (and (some? form-type) (some? (re-find db-type form-type)))
@@ -253,19 +288,22 @@
 
     (with-database-type-info :field \"text\")
     ;; -> #TypedHoneySQLForm{:form :field, :info {::hx/database-type \"text\"}}"
-  {:style/indent [:form]}
+  {:deprecated "0.46.0", :style/indent [:form]}
   [honeysql-form db-type :- (s/maybe su/KeywordOrString)]
   (if (some? db-type)
     (with-type-info honeysql-form {:metabase.util.honeysql-extensions/database-type db-type})
     (unwrap-typed-honeysql-form honeysql-form)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (s/defn cast :- TypedHoneySQLForm
   "Generate a statement like `cast(expr AS sql-type)`. Returns a typed HoneySQL form."
+  {:deprecated "0.46.0"}
   [db-type expr]
   #_{:clj-kondo/ignore [:discouraged-var]}
   (-> (hsql/call :cast expr (hsql/raw (name db-type)))
       (with-type-info {:metabase.util.honeysql-extensions/database-type db-type})))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (s/defn quoted-cast :- TypedHoneySQLForm
   "Generate a statement like `cast(expr AS \"sql-type\")`.
 
@@ -273,14 +311,17 @@
   that may have a space in the name, for example Postgres enum types.
 
   Returns a typed HoneySQL form."
+  {:deprecated "0.46.0"}
   [sql-type expr]
   #_{:clj-kondo/ignore [:discouraged-var]}
   (-> (hsql/call :cast expr (keyword sql-type))
       (with-type-info {:metabase.util.honeysql-extensions/database-type sql-type})))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (s/defn maybe-cast :- TypedHoneySQLForm
   "Cast `expr` to `sql-type`, unless `expr` is typed and already of that type. Returns a typed HoneySQL form."
   [sql-type expr]
+  {:deprecated "0.46.0"}
   (if (is-of-type? expr sql-type)
       expr
       (cast sql-type expr)))
@@ -290,65 +331,98 @@
 
     ;; cast to TIMESTAMP unless form is already a TIMESTAMP, TIMESTAMPTZ, or DATE
     (cast-unless-type-in \"timestamp\" #{\"timestamp\" \"timestamptz\" \"date\"} form)"
-  {:added "0.42.0"}
+  {:added "0.42.0", :deprecated "0.46.0"}
   [desired-type acceptable-types expr]
   {:pre [(string? desired-type) (set? acceptable-types)]}
+  #_{:clj-kondo/ignore [:deprecated-var]}
   (if (some (partial is-of-type? expr)
             acceptable-types)
     expr
     (cast desired-type expr)))
 
-(defn- math-operator [operator]
+(defn- math-operator
+  {:deprecated "0.46.0"}
+  [operator]
   (fn [& args]
     (let [arg-db-type (some (fn [arg]
                               (-> arg type-info type-info->db-type))
                             args)]
-      #_{:clj-kondo/ignore [:discouraged-var]}
+      #_{:clj-kondo/ignore [:deprecated-var :discouraged-var]}
       (cond-> (apply hsql/call operator args)
         arg-db-type (with-database-type-info arg-db-type)))))
 
-(def ^{:arglists '([& exprs])}  +  "Math operator. Interpose `+` between `exprs` and wrap in parentheses." (math-operator :+))
-(def ^{:arglists '([& exprs])}  -  "Math operator. Interpose `-` between `exprs` and wrap in parentheses." (math-operator :-))
-(def ^{:arglists '([& exprs])}  /  "Math operator. Interpose `/` between `exprs` and wrap in parentheses." (math-operator :/))
-(def ^{:arglists '([& exprs])}  *  "Math operator. Interpose `*` between `exprs` and wrap in parentheses." (math-operator :*))
-(def ^{:arglists '([& exprs])} mod "Math operator. Interpose `%` between `exprs` and wrap in parentheses." (math-operator :%))
+(def ^{:deprecated "0.46.0", :arglists '([& exprs])}  +
+  "Math operator. Interpose `+` between `exprs` and wrap in parentheses."
+  #_{:clj-kondo/ignore [:deprecated-var]}
+  (math-operator :+))
 
-(defn inc "Add 1 to `x`."        [x] (+ x 1))
-(defn dec "Subtract 1 from `x`." [x] (- x 1))
+(def ^{:deprecated "0.46.0", :arglists '([& exprs])}  -
+  "Math operator. Interpose `-` between `exprs` and wrap in parentheses."
+  #_{:clj-kondo/ignore [:deprecated-var]}
+  (math-operator :-))
 
-(defn format
+(def ^{:deprecated "0.46.0", :arglists '([& exprs])}  /
+  "Math operator. Interpose `/` between `exprs` and wrap in parentheses."
+  #_{:clj-kondo/ignore [:deprecated-var]}
+  (math-operator :/))
+
+(def ^{:deprecated "0.46.0", :arglists '([& exprs])}  *
+  "Math operator. Interpose `*` between `exprs` and wrap in parentheses."
+  #_{:clj-kondo/ignore [:deprecated-var]}
+  (math-operator :*))
+
+(def ^{:deprecated "0.46.0", :arglists '([& exprs])} mod
+  "Math operator. Interpose `%` between `exprs` and wrap in parentheses."
+  #_{:clj-kondo/ignore [:deprecated-var]}
+  (math-operator :%))
+
+(defn inc
+  "Add 1 to `x`."
+  {:deprecated "0.46.0"}
+  [x]
+  #_{:clj-kondo/ignore [:deprecated-var]}
+  (+ x 1))
+
+(defn dec
+  "Subtract 1 from `x`."
+  {:deprecated "0.46.0"}
+  [x]
+  #_{:clj-kondo/ignore [:deprecated-var]}
+  (- x 1))
+
+(defn ^{:deprecated "0.46.0"} format
   "SQL `format` function."
   [format-str expr]
-  #_{:clj-kondo/ignore [:discouraged-var]}
+  #_{:clj-kondo/ignore [:deprecated-var :discouraged-var]}
   (hsql/call :format expr (literal format-str)))
 
-(defn round
+(defn ^{:deprecated "0.46.0"} round
   "SQL `round` function."
   [x decimal-places]
   #_{:clj-kondo/ignore [:discouraged-var]}
   (hsql/call :round x decimal-places))
 
-(defn ->date                     "CAST `x` to a `date`."                     [x] (maybe-cast :date x))
-(defn ->datetime                 "CAST `x` to a `datetime`."                 [x] (maybe-cast :datetime x))
-(defn ->timestamp                "CAST `x` to a `timestamp`."                [x] (maybe-cast :timestamp x))
-(defn ->timestamp-with-time-zone "CAST `x` to a `timestamp with time zone`." [x] (maybe-cast "timestamp with time zone" x))
-(defn ->integer                  "CAST `x` to a `integer`."                  [x] (maybe-cast :integer x))
-(defn ->time                     "CAST `x` to a `time` datatype"             [x] (maybe-cast :time x))
-(defn ->boolean                  "CAST `x` to a `boolean` datatype"          [x] (maybe-cast :boolean x))
+(defn ^{:deprecated "0.46.0"} ->date                     "CAST `x` to a `date`."                     [x] (maybe-cast :date x))
+(defn ^{:deprecated "0.46.0"} ->datetime                 "CAST `x` to a `datetime`."                 [x] (maybe-cast :datetime x))
+(defn ^{:deprecated "0.46.0"} ->timestamp                "CAST `x` to a `timestamp`."                [x] (maybe-cast :timestamp x))
+(defn ^{:deprecated "0.46.0"} ->timestamp-with-time-zone "CAST `x` to a `timestamp with time zone`." [x] (maybe-cast "timestamp with time zone" x))
+(defn ^{:deprecated "0.46.0"} ->integer                  "CAST `x` to a `integer`."                  [x] (maybe-cast :integer x))
+(defn ^{:deprecated "0.46.0"} ->time                     "CAST `x` to a `time` datatype"             [x] (maybe-cast :time x))
+(defn ^{:deprecated "0.46.0"} ->boolean                  "CAST `x` to a `boolean` datatype"          [x] (maybe-cast :boolean x))
 
 ;;; Random SQL fns. Not all DBs support all these!
-(def ^{:arglists '([& exprs])} abs     "SQL `abs` function."     (partial #_{:clj-kondo/ignore [:discouraged-var]} hsql/call :abs))
-(def ^{:arglists '([& exprs])} ceil    "SQL `ceil` function."    (partial #_{:clj-kondo/ignore [:discouraged-var]} hsql/call :ceil))
-(def ^{:arglists '([& exprs])} floor   "SQL `floor` function."   (partial #_{:clj-kondo/ignore [:discouraged-var]} hsql/call :floor))
-(def ^{:arglists '([& exprs])} second  "SQL `second` function."  (partial #_{:clj-kondo/ignore [:discouraged-var]} hsql/call :second))
-(def ^{:arglists '([& exprs])} minute  "SQL `minute` function."  (partial #_{:clj-kondo/ignore [:discouraged-var]} hsql/call :minute))
-(def ^{:arglists '([& exprs])} hour    "SQL `hour` function."    (partial #_{:clj-kondo/ignore [:discouraged-var]} hsql/call :hour))
-(def ^{:arglists '([& exprs])} day     "SQL `day` function."     (partial #_{:clj-kondo/ignore [:discouraged-var]} hsql/call :day))
-(def ^{:arglists '([& exprs])} week    "SQL `week` function."    (partial #_{:clj-kondo/ignore [:discouraged-var]} hsql/call :week))
-(def ^{:arglists '([& exprs])} month   "SQL `month` function."   (partial #_{:clj-kondo/ignore [:discouraged-var]} hsql/call :month))
-(def ^{:arglists '([& exprs])} quarter "SQL `quarter` function." (partial #_{:clj-kondo/ignore [:discouraged-var]} hsql/call :quarter))
-(def ^{:arglists '([& exprs])} year    "SQL `year` function."    (partial #_{:clj-kondo/ignore [:discouraged-var]} hsql/call :year))
-(def ^{:arglists '([& exprs])} concat  "SQL `concat` function."  (partial #_{:clj-kondo/ignore [:discouraged-var]} hsql/call :concat))
+(def ^{:deprecated "0.46.0", :arglists '([& exprs])} abs     "SQL `abs` function."     (partial #_{:clj-kondo/ignore [:discouraged-var]} hsql/call :abs))
+(def ^{:deprecated "0.46.0", :arglists '([& exprs])} ceil    "SQL `ceil` function."    (partial #_{:clj-kondo/ignore [:discouraged-var]} hsql/call :ceil))
+(def ^{:deprecated "0.46.0", :arglists '([& exprs])} floor   "SQL `floor` function."   (partial #_{:clj-kondo/ignore [:discouraged-var]} hsql/call :floor))
+(def ^{:deprecated "0.46.0", :arglists '([& exprs])} second  "SQL `second` function."  (partial #_{:clj-kondo/ignore [:discouraged-var]} hsql/call :second))
+(def ^{:deprecated "0.46.0", :arglists '([& exprs])} minute  "SQL `minute` function."  (partial #_{:clj-kondo/ignore [:discouraged-var]} hsql/call :minute))
+(def ^{:deprecated "0.46.0", :arglists '([& exprs])} hour    "SQL `hour` function."    (partial #_{:clj-kondo/ignore [:discouraged-var]} hsql/call :hour))
+(def ^{:deprecated "0.46.0", :arglists '([& exprs])} day     "SQL `day` function."     (partial #_{:clj-kondo/ignore [:discouraged-var]} hsql/call :day))
+(def ^{:deprecated "0.46.0", :arglists '([& exprs])} week    "SQL `week` function."    (partial #_{:clj-kondo/ignore [:discouraged-var]} hsql/call :week))
+(def ^{:deprecated "0.46.0", :arglists '([& exprs])} month   "SQL `month` function."   (partial #_{:clj-kondo/ignore [:discouraged-var]} hsql/call :month))
+(def ^{:deprecated "0.46.0", :arglists '([& exprs])} quarter "SQL `quarter` function." (partial #_{:clj-kondo/ignore [:discouraged-var]} hsql/call :quarter))
+(def ^{:deprecated "0.46.0", :arglists '([& exprs])} year    "SQL `year` function."    (partial #_{:clj-kondo/ignore [:discouraged-var]} hsql/call :year))
+(def ^{:deprecated "0.46.0", :arglists '([& exprs])} concat  "SQL `concat` function."  (partial #_{:clj-kondo/ignore [:discouraged-var]} hsql/call :concat))
 
 ;; Etc (Dev Stuff)
 

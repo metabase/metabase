@@ -16,3 +16,9 @@ export const getHasNativeWrite = (databases: Database[]) => {
 export const getHasDatabaseWithJsonEngine = (databases: Database[]) => {
   return databases.some(d => getEngineNativeType(d.engine) === "json");
 };
+
+export const getHasDatabaseWithActionsEnabled = (databases: Database[]) => {
+  return databases.some(
+    database => !!database.settings?.["database-enable-actions"],
+  );
+};

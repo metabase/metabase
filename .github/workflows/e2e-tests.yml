@@ -1,17 +1,21 @@
-name: E2E Tests for PR
+name: E2E Tests
 
 on:
+  push:
+    branches:
+      - "master"
+      - 'release-**'
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
   cancel-in-progress: true
 
 jobs:
   files-changed:
     name: Check which files changed
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 3
     outputs:
       e2e_all: ${{ steps.changes.outputs.e2e_all }}
@@ -27,7 +31,7 @@ jobs:
   build:
     needs: files-changed
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.e2e_all == 'true'
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 25
     strategy:
       matrix:
@@ -44,7 +48,8 @@ jobs:
         with:
           m2-cache-key: e2e-tests
 
-      - run: ./bin/build version translations frontend licenses drivers uberjar
+      - name: Build uberjar with ./bin/build.sh
+        run: ./bin/build.sh
 
       - name: Prepare uberjar artifact
         uses: ./.github/actions/prepare-uberjar-artifact
@@ -54,9 +59,9 @@ jobs:
     if: |
       always() &&
       needs.files-changed.outputs.e2e_all == 'true' &&
-      (needs.build.result == 'success' || needs.build.result == 'skipped')
-    runs-on: ubuntu-20.04
-    timeout-minutes: 45
+      needs.build.result == 'success'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
     name: e2e-tests-${{ matrix.folder }}${{ matrix.context }}-${{ matrix.edition }}
     env:
       MB_EDITION: ${{ matrix.edition }}
@@ -66,6 +71,7 @@ jobs:
       MB_SNOWPLOW_AVAILABLE: true
       MB_SNOWPLOW_URL: "http://localhost:9090" # Snowplow micro
       ELECTRON_EXTRA_LAUNCH_ARGS: "--remote-debugging-port=40500" # deploysentinel
+      TZ: US/Pacific # to make node match the instance tz
     strategy:
       fail-fast: false
       matrix:
@@ -97,10 +103,10 @@ jobs:
             java-version: 11
     services:
       maildev:
-        image: maildev/maildev:1.1.0
+        image: maildev/maildev:2.0.5
         ports:
-          - "80:80"
-          - "25:25"
+          - "1080:1080"
+          - "1025:1025"
         credentials:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
@@ -119,7 +125,7 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       mongo-sample:
-        image: metabase/qa-databases:mongo-sample-4.0
+        image: metabase/qa-databases:mongo-sample-4.4
         ports:
           - 27004:27017
         credentials:
@@ -134,11 +140,10 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v3
-      - name: Set conditional ENVs
+      - name: Record runs using Deploysentinel except for the release branch
+        if: ${{ github.ref == 'refs/heads/master' || !(startsWith(github.event.pull_request.base.ref, 'release')) }}
         run: |
-          if [[ ${{ github.event.pull_request.base.ref }} != release* ]]; then
-            echo "CYPRESS_DEPLOYSENTINEL_KEY=${{ secrets.CYPRESS_DEPLOYSENTINEL_KEY }}" >> $GITHUB_ENV
-          fi
+          echo "CYPRESS_DEPLOYSENTINEL_KEY=${{ secrets.CYPRESS_DEPLOYSENTINEL_KEY }}" >> $GITHUB_ENV
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
       - name: Prepare JDK ${{ matrix.java-version }}
@@ -165,7 +170,7 @@ jobs:
         run: |
           yarn run test-cypress-run \
           --env grepTags=@OSS \
-          --spec './frontend/test/metabase/scenarios/**/*.cy.spec.js'
+          --spec './e2e/test/scenarios/**/*.cy.spec.js'
         env:
           TERM: xterm
 
@@ -194,7 +199,7 @@ jobs:
       always() &&
       needs.files-changed.outputs.e2e_all == 'false' &&
       needs.build.result == 'skipped'
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 5
     name: e2e-tests-${{ matrix.folder }}${{ matrix.context }}-${{ matrix.edition }}
     strategy:
@@ -231,45 +236,47 @@ jobs:
           echo "Didn't run due to conditional filtering"
 
   visual-regression-tests:
-    runs-on: ubuntu-20.04
-    timeout-minutes: 30
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
     needs: build
-    name: percy-tests-sanity-check-${{ matrix.edition }}
+    name: percy-visual-regression-tests
     env:
       MB_EDITION: ${{ matrix.edition }}
       MB_PREMIUM_EMBEDDING_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
-    strategy:
-      matrix:
-        java-version: [11]
-        edition: [ee]
     services:
       maildev:
-        image: maildev/maildev:1.1.0
+        image: maildev/maildev:2.0.5
         ports:
-          - "80:80"
-          - "25:25"
+          - "1080:1080"
+          - "1025:1025"
         credentials:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v3
+      - name: Enable Percy recording on master only
+        if: github.ref == 'refs/heads/master'
+        run: |
+          echo "PERCY_TOKEN=${{ secrets.PERCY_TOKEN }}" >> $GITHUB_ENV
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
-      - name: Prepare JDK ${{ matrix.java-version }}
+      - name: Prepare JDK 11
         uses: actions/setup-java@v3
         with:
-          java-version: ${{ matrix.java-version }}
-          distribution: "temurin"
+          java-version: 11
+          distribution: 'temurin'
       - name: Prepare Cypress environment
         uses: ./.github/actions/prepare-cypress
 
       - uses: actions/download-artifact@v3
-        name: Retrieve uberjar artifact for ${{ matrix.edition }}
+        name: Retrieve uberjar artifact for ee
         with:
-          name: metabase-${{ matrix.edition }}-uberjar
+          name: metabase-ee-uberjar
       - name: Get the version info
         run: |
           jar xf target/uberjar/metabase.jar version.properties
           mv version.properties resources/
       - name: Percy Test
         run: yarn run test-visual-run
+        env:
+          PERCY_TOKEN: ${{ env.PERCY_TOKEN }}

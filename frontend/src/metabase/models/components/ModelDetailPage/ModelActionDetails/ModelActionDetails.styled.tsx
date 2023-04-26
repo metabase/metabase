@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+import Alert from "metabase/core/components/Alert";
 import EntityMenu from "metabase/components/EntityMenu";
 import { breakpointMaxMedium } from "metabase/styled-components/theme";
 
@@ -28,4 +29,8 @@ export const ActionList = styled.ul`
   ${breakpointMaxMedium} {
     width: 100%;
   }
+`;
+
+export const ActionAlert = styled(Alert)`
+  width: 70%;
 `;

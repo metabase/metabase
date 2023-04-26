@@ -22,7 +22,8 @@
    [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db])
+   [toucan.db :as db]
+   [toucan2.core :as t2])
   (:import
    (java.time.temporal Temporal)))
 
@@ -268,19 +269,19 @@
   "Marks initial sync as complete for this table so that it becomes usable in the UI, if not already set"
   [table]
   (when (not= (:initial_sync_status table) "complete")
-    (db/update! Table (u/the-id table) :initial_sync_status "complete")))
+    (t2/update! Table (u/the-id table) {:initial_sync_status "complete"})))
 
 (defn set-initial-database-sync-complete!
   "Marks initial sync as complete for this database so that this is reflected in the UI, if not already set"
   [database]
   (when (not= (:initial_sync_status database) "complete")
-    (db/update! Database (u/the-id database) :initial_sync_status "complete")))
+    (t2/update! Database (u/the-id database) {:initial_sync_status "complete"})))
 
 (defn set-initial-database-sync-aborted!
   "Marks initial sync as aborted for this database so that an error can be displayed on the UI"
   [database]
   (when (not= (:initial_sync_status database) "complete")
-    (db/update! Database (u/the-id database) :initial_sync_status "aborted")))
+    (t2/update! Database (u/the-id database) {:initial_sync_status "aborted"})))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          OTHER SYNC UTILITY FUNCTIONS                                          |
@@ -289,7 +290,7 @@
 (defn db->sync-tables
   "Return all the Tables that should go through the sync processes for `database-or-id`."
   [database-or-id]
-  (db/select Table, :db_id (u/the-id database-or-id), :active true, :visibility_type nil))
+  (t2/select Table, :db_id (u/the-id database-or-id), :active true, :visibility_type nil))
 
 (defmulti name-for-logging
   "Return an appropriate string for logging an object in sync logging messages. Should be something like
@@ -457,10 +458,9 @@
                   :task_details (when (seq task-details)
                                   task-details)))
          (cons (create-task-history operation database sync-md))
-         ;; Using `insert!` instead of `insert-many!` here to make sure
-         ;; `post-insert` is triggered
-         (map #(db/insert! TaskHistory %))
-         (map :id)
+         ;; can't do `(t2/insert-returning-instances!)` with a seq because of this bug https://github.com/camsaul/toucan2/issues/130
+         (map #(t2/insert-returning-pks! TaskHistory %))
+         (map first)
          doall)
     (catch Throwable e
       (log/warn e (trs "Error saving task history")))))

@@ -1,7 +1,8 @@
 import * as questionActions from "metabase/questions/actions";
 import { createMockDataset } from "metabase-types/api/mocks";
 import { Card, StructuredDatasetQuery } from "metabase-types/types/Card";
-import { ConcreteField, TemplateTag } from "metabase-types/types/Query";
+import { ConcreteField } from "metabase-types/types/Query";
+import { TemplateTag } from "metabase-types/api";
 import { QueryBuilderMode } from "metabase-types/store";
 import {
   createMockState,
@@ -20,6 +21,7 @@ import Question from "metabase-lib/Question";
 import NativeQuery from "metabase-lib/queries/NativeQuery";
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import Join from "metabase-lib/queries/structured/Join";
+
 import {
   getAdHocQuestion,
   getSavedStructuredQuestion,
@@ -29,12 +31,11 @@ import {
   getNativeModel,
   getComposedModel,
 } from "metabase-lib/mocks";
-
 import * as navigation from "../navigation";
 import * as native from "../native";
 import * as querying from "../querying";
-import * as ui from "../ui";
 
+import * as ui from "../ui";
 import { updateQuestion, UPDATE_QUESTION } from "./updateQuestion";
 
 type SetupOpts = {

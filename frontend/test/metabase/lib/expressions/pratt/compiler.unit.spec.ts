@@ -76,9 +76,10 @@ describe("metabase-lib/expressions/compiler", () => {
       ]);
     });
 
-    it(`Seed 10099: CONtAinS ( [OF4wuV], SUbstriNG("_", -872096.613705, lENGtH("s Mfg7" ) ) )`, () => {
+    // note, changed from original to accommodate validation of substring args
+    it(`Seed 10099: CONtAinS ( [OF4wuV], SUbstriNG("_", 1, lENGtH("s Mfg7" ) ) )`, () => {
       const { oracle, compiled } = compare(
-        `CONtAinS ( [OF4wuV], SUbstriNG("_", -872096.613705, lENGtH("s Mfg7" ) ) )`,
+        `CONtAinS ( [OF4wuV], SUbstriNG("_", 1, lENGtH("s Mfg7" ) ) )`,
         "boolean",
         { throwOnError: true, resolverPass: false },
       );

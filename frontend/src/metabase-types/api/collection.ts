@@ -1,6 +1,10 @@
+import { UserId } from "./user";
+import { CardDisplayType } from "./card";
+import { DatabaseId } from "./database";
+
 export type RegularCollectionId = number;
 
-export type CollectionId = RegularCollectionId | "root";
+export type CollectionId = RegularCollectionId | "root" | "personal";
 
 export type CollectionContentModel = "card" | "dataset";
 
@@ -25,7 +29,7 @@ export interface Collection {
   authority_level?: "official" | null;
 
   parent_id?: CollectionId;
-  personal_owner_id?: number;
+  personal_owner_id?: UserId;
 
   location?: string;
   effective_ancestors?: Collection[];
@@ -38,7 +42,12 @@ export interface Collection {
   path?: CollectionId[];
 }
 
-type CollectionItemModel = "card" | "dataset" | "dashboard" | "pulse";
+type CollectionItemModel =
+  | "card"
+  | "dataset"
+  | "dashboard"
+  | "pulse"
+  | "collection";
 
 export interface CollectionItem<T = CollectionItemModel> {
   id: number;
@@ -49,6 +58,11 @@ export interface CollectionItem<T = CollectionItemModel> {
   collection_position?: number | null;
   collection_preview?: boolean | null;
   fully_parametrized?: boolean | null;
+  collection?: Collection;
+  display?: CardDisplayType;
+  personal_owner_id?: UserId;
+  database_id?: DatabaseId;
+  moderated_status?: string;
   getIcon: () => { name: string };
   getUrl: (opts?: Record<string, unknown>) => string;
   setArchived?: (isArchived: boolean) => void;

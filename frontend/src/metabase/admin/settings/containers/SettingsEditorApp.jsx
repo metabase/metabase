@@ -4,9 +4,9 @@ import PropTypes from "prop-types";
 import { Link } from "react-router";
 import { connect } from "react-redux";
 import { t } from "ttag";
-
 import _ from "underscore";
 import cx from "classnames";
+
 import title from "metabase/hoc/Title";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";

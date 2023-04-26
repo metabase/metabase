@@ -1,6 +1,6 @@
 (ns metabase.server.routes.index
   "Logic related to loading various versions of the index.html template. The actual template lives in
-  `resources/frontend_client/index_template.html`; when the frontend is built (e.g. via `./bin/build frontend`)
+  `resources/frontend_client/index_template.html`; when the frontend is built (e.g. via `./bin/build.sh frontend`)
   different versions that include the FE app are created as `index.html`, `public.html`, and `embed.html`."
   (:require
    [cheshire.core :as json]
@@ -78,7 +78,7 @@
 (defn- load-entrypoint-template [entrypoint-name embeddable? {:keys [uri params]}]
   (load-template
    (str "frontend_client/" entrypoint-name ".html")
-   (let [{:keys [anon-tracking-enabled google-auth-client-id], :as public-settings} (setting/user-readable-values-map :public)]
+   (let [{:keys [anon-tracking-enabled google-auth-client-id], :as public-settings} (setting/user-readable-values-map #{:public})]
      {:bootstrapJS          (load-inline-js "index_bootstrap")
       :googleAnalyticsJS    (load-inline-js "index_ganalytics")
       :bootstrapJSON        (escape-script (json/generate-string public-settings))

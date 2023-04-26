@@ -1,6 +1,6 @@
 import React from "react";
 import { Route } from "react-router";
-import nock from "nock";
+import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
 
 import {
@@ -51,7 +51,6 @@ type ExecuteActionRequestBody = {
 
 async function setup({
   action = TEST_ACTION,
-  expectedRequestBody,
   shouldFetchFail = false,
   shouldExecutionFail = false,
 }: {
@@ -60,22 +59,19 @@ async function setup({
   shouldFetchFail?: boolean;
   shouldExecutionFail?: boolean;
 } = {}) {
-  const scope = nock(location.origin);
-
-  scope
-    .get(`/api/public/action/${TEST_PUBLIC_ID}`)
-    .reply(
-      shouldFetchFail ? 404 : 200,
-      shouldFetchFail ? { message: "Not found" } : action,
-    );
+  fetchMock.get(`path:/api/public/action/${TEST_PUBLIC_ID}`, {
+    status: shouldFetchFail ? 404 : 200,
+    body: shouldFetchFail ? { message: "Not found" } : action,
+  });
 
   const executionResponse = shouldExecutionFail
     ? { message: "Something's off" }
     : { "rows-affected": [1] };
 
-  const executeActionEndpointSpy = scope
-    .post(`/api/public/action/${TEST_PUBLIC_ID}/execute`, expectedRequestBody)
-    .reply(shouldExecutionFail ? 400 : 200, executionResponse);
+  fetchMock.post(`path:/api/public/action/${TEST_PUBLIC_ID}/execute`, {
+    status: shouldExecutionFail ? 400 : 200,
+    body: executionResponse,
+  });
 
   renderWithProviders(
     <Route
@@ -96,31 +92,51 @@ async function setup({
   await waitForElementToBeRemoved(() =>
     screen.queryByTestId("loading-spinner"),
   );
-
-  return { executeActionEndpointSpy };
 }
 
 describe("PublicAction", () => {
-  beforeEach(() => {
-    nock.cleanAll();
-  });
-
   it("shows acton form", async () => {
     await setup();
 
-    expect(screen.getByText(TEST_ACTION.name)).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: TEST_ACTION.name }),
+    ).toBeInTheDocument();
     expect(screen.getByLabelText(SIZE_PARAMETER.name)).toBeInTheDocument();
     expect(screen.getByLabelText(COLOR_PARAMETER.name)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Submit" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: TEST_ACTION.name }),
+    ).toBeInTheDocument();
   });
 
-  it("doesn't let to submit a clean form", async () => {
+  it("should allow to submit a clean form if all parameters are optional", async () => {
     await setup();
-    expect(screen.getByRole("button", { name: "Submit" })).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: TEST_ACTION.name }),
+    ).toBeEnabled();
+  });
+
+  it("doesn't let to submit until required parameters are filled", async () => {
+    const action = {
+      ...TEST_ACTION,
+      parameters: [SIZE_PARAMETER, { ...COLOR_PARAMETER, required: true }],
+    };
+    await setup({ action });
+
+    userEvent.type(screen.getByLabelText("Size"), "42");
+    expect(
+      screen.getByRole("button", { name: TEST_ACTION.name }),
+    ).toBeDisabled();
+
+    userEvent.type(screen.getByLabelText("Color"), "metablue");
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: TEST_ACTION.name }),
+      ).toBeEnabled(),
+    );
   });
 
   it("submits form correctly", async () => {
-    const { executeActionEndpointSpy } = await setup({
+    await setup({
       expectedRequestBody: {
         parameters: {
           [SIZE_PARAMETER.id]: "42",
@@ -131,10 +147,12 @@ describe("PublicAction", () => {
 
     userEvent.type(screen.getByLabelText("Size"), "42");
     userEvent.type(screen.getByLabelText("Color"), "metablue");
-    userEvent.click(screen.getByRole("button", { name: "Submit" }));
+    userEvent.click(screen.getByRole("button", { name: TEST_ACTION.name }));
 
     await waitFor(() => {
-      expect(executeActionEndpointSpy.isDone()).toBe(true);
+      expect(
+        fetchMock.done(`path:/api/public/action/${TEST_PUBLIC_ID}/execute`),
+      ).toBe(true);
     });
   });
 
@@ -143,10 +161,10 @@ describe("PublicAction", () => {
 
     userEvent.type(screen.getByLabelText("Size"), "42");
     userEvent.type(screen.getByLabelText("Color"), "metablue");
-    userEvent.click(screen.getByRole("button", { name: "Submit" }));
+    userEvent.click(screen.getByRole("button", { name: TEST_ACTION.name }));
 
     expect(
-      await screen.findByText("Thanks for your submission."),
+      await screen.findByText(`${TEST_ACTION.name} ran successfully`),
     ).toBeInTheDocument();
     expect(screen.queryByText(TEST_ACTION.name)).not.toBeInTheDocument();
     expect(screen.queryByRole("form")).not.toBeInTheDocument();
@@ -157,7 +175,7 @@ describe("PublicAction", () => {
 
     userEvent.type(screen.getByLabelText("Size"), "42");
     userEvent.type(screen.getByLabelText("Color"), "metablue");
-    userEvent.click(screen.getByRole("button", { name: "Submit" }));
+    userEvent.click(screen.getByRole("button", { name: TEST_ACTION.name }));
 
     expect(await screen.findByText("Something's off")).toBeInTheDocument();
   });
@@ -168,17 +186,20 @@ describe("PublicAction", () => {
     expect(screen.queryByRole("form")).not.toBeInTheDocument();
   });
 
-  it("immediately executes an action without parameters", async () => {
-    const { executeActionEndpointSpy } = await setup({
+  it("handles actions without parameters", async () => {
+    await setup({
       action: { ...TEST_ACTION, parameters: [] },
       expectedRequestBody: { parameters: {} },
     });
 
     expect(
-      await screen.findByText("Thanks for your submission."),
+      screen.getByRole("heading", { name: TEST_ACTION.name }),
     ).toBeInTheDocument();
-    expect(screen.queryByText(TEST_ACTION.name)).not.toBeInTheDocument();
-    expect(screen.queryByRole("form")).not.toBeInTheDocument();
-    expect(executeActionEndpointSpy.isDone()).toBe(true);
+    userEvent.click(screen.getByRole("button", { name: TEST_ACTION.name }));
+    await waitFor(() =>
+      expect(
+        fetchMock.done(`path:/api/public/action/${TEST_PUBLIC_ID}/execute`),
+      ).toBe(true),
+    );
   });
 });

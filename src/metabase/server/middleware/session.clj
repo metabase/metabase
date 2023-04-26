@@ -22,8 +22,6 @@
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.server.request.util :as request.u]
    [metabase.util :as u]
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
-   [metabase.util.honeysql-extensions :as hx]
    [metabase.util.i18n :as i18n :refer [deferred-trs deferred-tru trs tru]]
    [metabase.util.log :as log]
    [ring.util.response :as response]
@@ -238,8 +236,10 @@
                 :where     [:and
                             [:= :user.is_active true]
                             [:= :session.id [:raw "?"]]
-                            (let [oldest-allowed [:inline (binding [hx/*honey-sql-version* 2]
-                                                            (sql.qp/add-interval-honeysql-form db-type :%now (- max-age-minutes) :minute))]]
+                            (let [oldest-allowed [:inline (sql.qp/add-interval-honeysql-form db-type
+                                                                                             :%now
+                                                                                             (- max-age-minutes)
+                                                                                             :minute)]]
                               [:> :session.created_at oldest-allowed])
                             [:= :session.anti_csrf_token (case session-type
                                                            :normal         nil
@@ -294,11 +294,11 @@
 
 (defn- find-user [user-id]
   (when user-id
-    (db/select-one current-user-fields, :id user-id)))
+    (t2/select-one current-user-fields, :id user-id)))
 
 (defn- user-local-settings [user-id]
   (when user-id
-    (or (:settings (db/select-one [User :settings] :id user-id))
+    (or (:settings (t2/select-one [User :settings] :id user-id))
         {})))
 
 (defn do-with-current-user
@@ -339,7 +339,7 @@
   "Part of the impl for `with-current-user` -- don't use this directly."
   [current-user-id]
   (when current-user-id
-    (db/select-one [User [:id :metabase-user-id] [:is_superuser :is-superuser?] [:locale :user-locale] :settings]
+    (t2/select-one [User [:id :metabase-user-id] [:is_superuser :is-superuser?] [:locale :user-locale] :settings]
       :id current-user-id)))
 
 (defmacro with-current-user
@@ -373,7 +373,7 @@
         :amount-must-be-less-than-100-years))))
 
 (defsetting session-timeout
-  ;; Should be in the form {:amount 60 :unit "minutes"} where the unit is one of "seconds", "minutes" or "hours".
+  ;; Should be in the form "{\"amount\":60,\"unit\":\"minutes\"}" where the unit is one of "seconds", "minutes" or "hours".
   ;; The amount is nillable.
   (deferred-tru "Time before inactive users are logged out. By default, sessions last indefinitely.")
   :type    :json

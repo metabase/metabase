@@ -21,7 +21,7 @@
    [metabase.test.util :as tu]
    [metabase.util :as u]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -371,7 +371,7 @@
       :fixture
       (fn [{:keys [pulse-id]} thunk]
         (mt/with-temp PulseChannelRecipient [_ {:user_id          (mt/user->id :crowberto)
-                                                :pulse_channel_id (db/select-one-id PulseChannel :pulse_id pulse-id)}]
+                                                :pulse_channel_id (t2/select-one-pk PulseChannel :pulse_id pulse-id)}]
           (thunk)))
 
       :assert
@@ -518,7 +518,7 @@
                (mt/summarize-multipart-email test-card-regex))) ;#"stop sending you alerts")))
         (testing "Pulse should be deleted"
           (is (= false
-                 (db/exists? Pulse :id pulse-id)))))}}
+                 (t2/exists? Pulse :id pulse-id)))))}}
 
     "first run alert with no data"
     {:card
@@ -532,7 +532,7 @@
                @mt/inbox))
         (testing "Pulse should still exist"
           (is (= true
-                 (db/exists? Pulse :id pulse-id)))))}}))
+                 (t2/exists? Pulse :id pulse-id)))))}}))
 
 (deftest above-goal-alert-test
   (testing "above goal alert"
@@ -826,7 +826,8 @@
              (send-pulse-created-by-user!* :rasta)))))))
 
 (defn- get-retry-metrics []
-  (-> @@#'metabase.pulse/retry-state :retry .getMetrics bean))
+  (let [^io.github.resilience4j.retry.Retry retry (:retry @@#'metabase.pulse/retry-state)]
+    (bean (.getMetrics retry))))
 
 (defn- pos-metrics [m]
   (into {}

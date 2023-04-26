@@ -56,7 +56,7 @@
         ]
       }
     ],
-    "no-console": 0,
+    "no-console": [2, {"allow": ["warn", "error"]}],
     "react/no-is-mounted": 2,
     "react/prefer-es6-class": 2,
     "react/display-name": 1,
@@ -118,9 +118,6 @@
       "extends": ["plugin:@typescript-eslint/recommended"],
       "files": ["*.ts", "*.tsx"],
       "parser": "@typescript-eslint/parser",
-      "parserOptions": {
-        "project": "./tsconfig.json"
-      },
       "plugins": ["@typescript-eslint"],
       "rules": {
         "prefer-rest-params": "off",

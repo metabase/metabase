@@ -33,7 +33,7 @@
 
 (deftest mu-defn-docstrings
   (testing "docstrings are preserved"
-    (mu/defn ^:private boo :- :int "something very important to remember goes here" [x])
+    (mu/defn ^:private boo :- :int "something very important to remember goes here" [_x])
     (is (str/ends-with? (:doc (meta #'boo)) "something very important to remember goes here"))
     (ns-unmap *ns* 'boo))
 
@@ -53,11 +53,11 @@
     (ns-unmap *ns* 'qux))
 
   (testing "no return schemas given should work"
-    (mu/defn qux [x :- :int])
+    (mu/defn qux [x :- :int] x)
     (is (= "Inputs: [x :- :int]\n  Return: :any"
            (:doc (meta #'qux))))
     (ns-unmap *ns* 'qux)
-    (mu/defn qux "Original docstring." [x :- :int])
+    (mu/defn qux "Original docstring." [x :- :int] x)
     (is (= (str/join "\n"
                      [  "Inputs: [x :- :int]"
                       "  Return: :any"
@@ -74,7 +74,7 @@
     (ns-unmap *ns* 'qux)
     (mu/defn qux :- :int
       "Original docstring."
-      [x :- :int])
+      [x :- :int] x)
     (is (= (str/join "\n"
                      [  "Inputs: [x :- :int]"
                       "  Return: :int"
@@ -101,6 +101,7 @@
                                :name "Jim"
                                :address {:street (str  (+ a b (apply + c)) " ln")}}))
     (is (= (str/join "\n"
+                     ;;v---doc inserts 2 spaces here, it's not misaligned!
                      [  "Inputs: ([]"
                       "           [a :- :int]"
                       "           [a :- :int b :- :int]"
@@ -157,3 +158,11 @@
 
         (is (= "map where {:ltf-key -> <Special Number that has to be less than four>}"
                (umd/describe special-lt-4-schema)))))))
+
+(deftest ->malli-io-link-test
+  (is (= nil
+         (#'mu/->malli-io-link nil nil)))
+  (is (= nil
+         (#'mu/->malli-io-link nil :string)))
+  (is (= "https://malli.io?schema=%3Astring%0A&value=nil%0A"
+         (#'mu/->malli-io-link :string nil))))

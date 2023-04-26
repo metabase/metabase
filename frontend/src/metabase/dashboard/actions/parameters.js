@@ -12,7 +12,13 @@ import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 
 import { getMetadata } from "metabase/selectors/metadata";
 import { isActionDashCard } from "metabase/actions/utils";
-import { getDashboard, getParameterValues, getParameters } from "../selectors";
+import {
+  getDashboard,
+  getDraftParameterValues,
+  getIsAutoApplyFilters,
+  getParameterValues,
+  getParameters,
+} from "../selectors";
 
 import { isVirtualDashCard } from "../utils";
 
@@ -103,7 +109,7 @@ export const setParameterMapping = createThunkAction(
 
     let parameter_mappings = dashcard.parameter_mappings || [];
 
-    // allow mapping the same parameeter to multiple action targets
+    // allow mapping the same parameter to multiple action targets
     if (!isAction) {
       parameter_mappings = parameter_mappings.filter(
         m => m.card_id !== card_id || m.parameter_id !== parameter_id,
@@ -128,6 +134,23 @@ export const setParameterMapping = createThunkAction(
       setDashCardAttributes({
         id: dashcard_id,
         attributes: { parameter_mappings },
+      }),
+    );
+  },
+);
+
+export const SET_ACTION_FOR_DASHCARD =
+  "metabase/dashboard/SET_ACTION_FOR_DASHCARD";
+export const setActionForDashcard = createThunkAction(
+  SET_PARAMETER_MAPPING,
+  (dashcard, newAction) => dispatch => {
+    dispatch(
+      setDashCardAttributes({
+        id: dashcard.id,
+        attributes: {
+          action_id: newAction.id,
+          action: newAction,
+        },
       }),
     );
   },
@@ -158,13 +181,25 @@ export const setParameterFilteringParameters = createThunkAction(
 export const SET_PARAMETER_VALUE = "metabase/dashboard/SET_PARAMETER_VALUE";
 export const setParameterValue = createThunkAction(
   SET_PARAMETER_VALUE,
-  (parameterId, value) => (dispatch, getState) => {
-    return { id: parameterId, value };
+  (parameterId, value) => (_dispatch, getState) => {
+    const isSettingDraftParameterValues = !getIsAutoApplyFilters(getState());
+    return { id: parameterId, value, isDraft: isSettingDraftParameterValues };
   },
 );
 
 export const SET_PARAMETER_VALUES = "metabase/dashboard/SET_PARAMETER_VALUES";
 export const setParameterValues = createAction(SET_PARAMETER_VALUES);
+
+// Auto-apply filters
+const APPLY_DRAFT_PARAMETER_VALUES =
+  "metabase/dashboard/APPLY_DRAFT_PARAMETER_VALUES";
+export const applyDraftParameterValues = createThunkAction(
+  APPLY_DRAFT_PARAMETER_VALUES,
+  () => (dispatch, getState) => {
+    const draftParameterValues = getDraftParameterValues(getState());
+    dispatch(setParameterValues(draftParameterValues));
+  },
+);
 
 export const SET_PARAMETER_DEFAULT_VALUE =
   "metabase/dashboard/SET_PARAMETER_DEFAULT_VALUE";

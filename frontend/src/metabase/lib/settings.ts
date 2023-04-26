@@ -245,10 +245,6 @@ class MetabaseSettings {
     return `https://store.metabase.com/${path}`;
   }
 
-  upgradeUrl() {
-    return "https://www.metabase.com/upgrade/";
-  }
-
   migrateToCloudGuideUrl() {
     return "https://www.metabase.com/cloud/docs/migrate/guide";
   }
@@ -289,6 +285,10 @@ class MetabaseSettings {
 
   isPaidPlan() {
     return this.isHosted() || this.isEnterprise();
+  }
+
+  isMetabotEnabled() {
+    return this.get("is-metabot-enabled");
   }
 
   passwordComplexityRequirements(): PasswordComplexity {

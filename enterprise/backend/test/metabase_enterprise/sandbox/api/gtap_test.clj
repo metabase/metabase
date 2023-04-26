@@ -10,7 +10,7 @@
    [metabase.server.middleware.util :as mw.util]
    [metabase.test :as mt]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (deftest require-auth-test
   (testing "Must be authenticated to query for GTAPs"
@@ -128,6 +128,42 @@
                                                 :card_id              card-id
                                                 :attribute_remappings {"foo" 1}})))))))))
 
+(deftest validate-sandbox-test
+  (testing "POST /api/mt/gtap/validate"
+    (mt/with-temp* [Table            [{table-id :id}]
+                    PermissionsGroup [{group-id :id}]]
+      (testing "A valid sandbox passes validation and returns no error"
+        (mt/with-temp Card [{card-id :id}]
+          (with-gtap-cleanup
+            (mt/user-http-request :crowberto :post 204 "mt/gtap/validate"
+                                  {:table_id             table-id
+                                   :group_id             group-id
+                                   :card_id              card-id}))))
+
+      (testing "A sandbox without a card-id passes validation, because the validation is not applicable in this case"
+        (with-gtap-cleanup
+          (mt/user-http-request :crowberto :post 204 "mt/gtap/validate"
+                                {:table_id             table-id
+                                 :group_id             group-id
+                                 :card_id              nil
+                                 :attribute_remappings {"foo" 1}})))
+
+      (testing "An invalid sandbox results in a 400 error being returned"
+        (mt/with-temp* [Field [_ {:name "My field", :table_id table-id, :base_type :type/Integer}]
+                        Card  [{card-id :id} {:dataset_query (mt/mbql-query venues
+                                                               {:fields      [[:expression "My field"]]
+                                                                :expressions {"My field" [:ltrim "wow"]}})}]]
+          (with-gtap-cleanup
+            (is (schema= {:message  (s/eq "Sandbox Questions can't return columns that have different types than the Table they are sandboxing.")
+                          :expected (s/eq "type/Integer")
+                          :actual   (s/eq "type/Text")
+                          s/Keyword s/Any}
+                         (mt/user-http-request :crowberto :post 400 "mt/gtap/validate"
+                                               {:table_id             table-id
+                                                :group_id             group-id
+                                                :card_id              card-id
+                                                :attribute_remappings {"foo" 1}})))))))))
+
 (deftest delete-gtap-test
   (testing "DELETE /api/mt/gtap/:id"
     (testing "Test that we can delete a GTAP"
@@ -217,10 +253,10 @@
                         :attribute_remappings {:foo 1}
                         :permission_id        #hawk/schema s/Int}]
                       (:sandboxes result)))
-              (is (db/exists? GroupTableAccessPolicy :table_id table-id-1 :group_id group-id))))
+              (is (t2/exists? GroupTableAccessPolicy :table_id table-id-1 :group_id group-id))))
 
           (testing "Test that we can update a sandbox using the permission graph API"
-            (let [sandbox-id (db/select-one-field :id GroupTableAccessPolicy
+            (let [sandbox-id (t2/select-one-fn :id GroupTableAccessPolicy
                                                   :table_id table-id-1
                                                   :group_id group-id)
                   graph      (-> (perms/data-perms-graph)
@@ -232,12 +268,12 @@
                             (:sandboxes result)))
               (is (partial= {:card_id              card-id-2
                              :attribute_remappings {"foo" 2}}
-                            (db/select-one GroupTableAccessPolicy
+                            (t2/select-one GroupTableAccessPolicy
                                            :table_id table-id-1
                                            :group_id group-id)))))
 
           (testing "Test that we can create and update multiple sandboxes at once using the permission graph API"
-            (let [sandbox-id (db/select-one-field :id GroupTableAccessPolicy
+            (let [sandbox-id (t2/select-one-fn :id GroupTableAccessPolicy
                                                   :table_id table-id-1
                                                   :group_id group-id)
                   graph       (-> (perms/data-perms-graph)
@@ -256,13 +292,13 @@
               ;; Updated sandbox
               (is (partial= {:card_id              card-id-1
                              :attribute_remappings {"foo" 3}}
-                            (db/select-one GroupTableAccessPolicy
+                            (t2/select-one GroupTableAccessPolicy
                                            :table_id table-id-1
                                            :group_id group-id)))
               ;; Created sandbox
               (is (partial= {:card_id              card-id-2
                              :attribute_remappings {"foo" 10}}
-                            (db/select-one GroupTableAccessPolicy
+                            (t2/select-one GroupTableAccessPolicy
                                            :table_id table-id-2
                                            :group_id group-id))))))))))
 

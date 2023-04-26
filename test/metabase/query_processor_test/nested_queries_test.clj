@@ -2,7 +2,7 @@
   "Tests for handling queries with nested expressions."
   (:require
    [clojure.test :refer :all]
-   [honeysql.core :as hsql]
+   [honey.sql :as sql]
    [java-time :as t]
    [medley.core :as m]
    [metabase.driver :as driver]
@@ -20,9 +20,8 @@
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [metabase.util.honeysql-extensions :as hx]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (deftest basic-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
@@ -198,9 +197,7 @@
                                                      (when dataset?
                                                        {:info {:metadata/dataset-metadata (:result_metadata card)}}))))))))))))
 
-
-
-(deftest sql-source-query-breakout-aggregation-test
+(deftest ^:parallel sql-source-query-breakout-aggregation-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
     (testing "make sure we can do a query with breakout and aggregation using a SQL source query"
       (is (= (:rows (breakout-results))
@@ -210,7 +207,6 @@
                   {:source-query {:native (compile-to-native (mt/mbql-query venues))}
                    :aggregation  [:count]
                    :breakout     [*price]}))))))))
-
 
 (defn- mbql-card-def
   "Basic MBQL Card definition. Pass kv-pair clauses for the inner query."
@@ -335,7 +331,7 @@
   "Convert `honeysql-form` to the format returned by `compile`. Writing HoneySQL is a lot easier that writing
   giant SQL strings for the 'expected' part of the tests below."
   [honeysql-form]
-  (let [[sql & params] (hsql/format honeysql-form :quoting :ansi)]
+  (let [[sql & params] (sql/format honeysql-form {:dialect :ansi, :quoted true, :quoted-snake false})]
     {:query  sql
      :params (seq params)}))
 
@@ -357,8 +353,8 @@
                     [:source.LONGITUDE :LONGITUDE]
                     [:source.PRICE :PRICE]]
            :from   [[venues-source-honeysql :source]]
-           :where  [:= (hx/raw "\"source\".\"BIRD.ID\"") 1]
-           :limit  10})
+           :where  [:= [:raw "\"source\".\"BIRD.ID\""] [:inline 1]]
+           :limit  [:inline 10]})
          (qp/compile
           {:database (mt/id)
            :type     :query
@@ -376,9 +372,9 @@
                     [:source.PRICE :PRICE]]
            :from   [[venues-source-honeysql :source]]
            :where  [:and
-                    [:>= (hx/raw "\"source\".\"BIRD.ID\"") (t/zoned-date-time "2017-01-01T00:00Z[UTC]")]
-                    [:< (hx/raw "\"source\".\"BIRD.ID\"")  (t/zoned-date-time "2017-01-08T00:00Z[UTC]")]]
-           :limit  10})
+                    [:>= [:raw "\"source\".\"BIRD.ID\""] (t/zoned-date-time "2017-01-01T00:00Z[UTC]")]
+                    [:< [:raw "\"source\".\"BIRD.ID\""]  (t/zoned-date-time "2017-01-08T00:00Z[UTC]")]]
+           :limit  [:inline 10]})
          (qp/compile
           (mt/mbql-query venues
             {:source-query {:source-table $$venues}
@@ -389,12 +385,12 @@
 (deftest aggregatation-references-test
   (testing "make sure that aggregation references match up to aggregations from the same level they're from"
     ;; e.g. the ORDER BY in the source-query should refer the 'stddev' aggregation, NOT the 'avg' aggregation
-    (is (= {:query  (str "SELECT avg(\"source\".\"stddev\") AS \"avg\" FROM ("
-                         "SELECT \"PUBLIC\".\"VENUES\".\"PRICE\" AS \"PRICE\", stddev_pop(\"PUBLIC\".\"VENUES\".\"ID\") AS \"stddev\" "
+    (is (= {:query  (str "SELECT AVG(\"source\".\"stddev\") AS \"avg\" FROM ("
+                         "SELECT \"PUBLIC\".\"VENUES\".\"PRICE\" AS \"PRICE\", STDDEV_POP(\"PUBLIC\".\"VENUES\".\"ID\") AS \"stddev\" "
                          "FROM \"PUBLIC\".\"VENUES\" "
                          "GROUP BY \"PUBLIC\".\"VENUES\".\"PRICE\" "
                          "ORDER BY \"stddev\" DESC, \"PUBLIC\".\"VENUES\".\"PRICE\" ASC"
-                         ") \"source\"")
+                         ") AS \"source\"")
             :params nil}
            (qp/compile
             (mt/mbql-query venues
@@ -414,7 +410,7 @@
                                      VENUES.LONGITUDE   AS LONGITUDE
                                      VENUES.PRICE       AS PRICE]
                             :from [VENUES]}
-                           source]
+                           AS source]
                 :group-by [source.CATEGORY_ID]
                 :order-by [source.CATEGORY_ID ASC]
                 :limit    [10]}
@@ -435,7 +431,7 @@
              :from   [[venues-source-honeysql :source]]
              :where  [:or [:not= :source.text "Coo"]
                       [:= :source.text nil]]
-             :limit  10})
+             :limit  [:inline 10]})
            (qp/compile
             (mt/mbql-query nil
               {:source-query {:source-table $$venues}
@@ -452,8 +448,8 @@
                       [:source.LONGITUDE :LONGITUDE]
                       [:source.PRICE :PRICE]]
              :from   [[venues-source-honeysql :source]]
-             :where  [:> :source.sender_id 3]
-             :limit  10})
+             :where  [:> :source.sender_id [:inline 3]]
+             :limit  [:inline 10]})
            (qp/compile
             (mt/mbql-query nil
               {:source-query {:source-table $$venues}
@@ -462,7 +458,7 @@
 
 (deftest native-query-with-default-params-as-source-test
   (testing "make sure using a native query with default params as a source works"
-    (is (= {:query  "SELECT \"source\".* FROM (SELECT * FROM PRODUCTS WHERE CATEGORY = ? LIMIT 10) \"source\" LIMIT 1048575"
+    (is (= {:query  "SELECT \"source\".* FROM (SELECT * FROM PRODUCTS WHERE CATEGORY = ? LIMIT 10) AS \"source\" LIMIT 1048575"
             :params ["Widget"]}
            (mt/with-temp Card [card {:dataset_query {:database (mt/id)
                                                      :type     :native
@@ -549,13 +545,13 @@
 (deftest time-interval-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
     (testing "make sure using a time interval filter works"
-      (is (= :completed
-             (mt/with-temp Card [card (mbql-card-def (mt/$ids {:source-table $$checkins}))]
-               (-> (query-with-source-card card
-                     (mt/$ids checkins
-                       {:filter [:time-interval *date -30 :day]}))
-                   qp/process-query
-                   completed-status)))))))
+      (mt/with-temp Card [card (mbql-card-def (mt/$ids {:source-table $$checkins}))]
+        (let [query (query-with-source-card card
+                      (mt/$ids checkins
+                        {:filter [:time-interval *date -30 :day]}))]
+          (mt/with-native-query-testing-context query
+            (is (=? {:status :completed}
+                    (qp/process-query query)))))))))
 
 (deftest datetime-field-literals-in-filters-and-breakouts-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
@@ -952,8 +948,8 @@
                            (ean-metadata (qp/process-query query))))))))))))))
 
 (defn- field-id->name [field-id]
-  (let [{field-name :name, table-id :table_id} (db/select-one [Field :name :table_id] :id field-id)
-        table-name                             (db/select-one-field :name Table :id table-id)]
+  (let [{field-name :name, table-id :table_id} (t2/select-one [Field :name :table_id] :id field-id)
+        table-name                             (t2/select-one-fn :name Table :id table-id)]
     (format "%s.%s" table-name field-name)))
 
 (deftest inception-test
@@ -1240,10 +1236,10 @@
         (let [q1        (mt/mbql-query orders
                           {:aggregation [[:count]]
                            :filter      [:between $created_at "2020-02-01" "2020-02-29"]})
-              q1-native {:query  (str "SELECT count(*) AS \"count\" "
+              q1-native {:query  (str "SELECT COUNT(*) AS \"count\" "
                                       "FROM \"PUBLIC\".\"ORDERS\" "
-                                      "WHERE (\"PUBLIC\".\"ORDERS\".\"CREATED_AT\" >= ?"
-                                      " AND \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" < ?)")
+                                      "WHERE (\"PUBLIC\".\"ORDERS\".\"CREATED_AT\" >= ?)"
+                                      " AND (\"PUBLIC\".\"ORDERS\".\"CREATED_AT\" < ?)")
                          :params [#t "2020-02-01T00:00Z[UTC]" #t "2020-03-01T00:00Z[UTC]"]}]
           (testing "original query"
             (when (= driver/*driver* :h2)
@@ -1257,7 +1253,7 @@
               (when (= driver/*driver* :h2)
                 (is (= (update q1-native :query (fn [s]
                                                   (format (str "SELECT \"source\".\"count\" AS \"count\" "
-                                                               "FROM (%s) \"source\" "
+                                                               "FROM (%s) AS \"source\" "
                                                                "LIMIT 1048575")
                                                           s)))
                        (qp/compile q2))))
@@ -1344,7 +1340,9 @@
                        (qp/process-query query)))))))))))
 
 (deftest breakout-on-temporally-bucketed-implicitly-joined-column-inside-source-query-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :basic-aggregations :left-join)
+  (mt/test-drivers (disj (mt/normal-drivers-with-feature :nested-queries :basic-aggregations :left-join)
+                         ;; mongodb doesn't support foreign keys required by this test
+                         :mongo)
     (testing (str "Should be able to breakout on a temporally-bucketed, implicitly-joined column from the source query "
                   "incorrectly using `:field` literals to refer to the Field (#16389)")
       ;; See #19757 for more details on why this query is broken
@@ -1386,3 +1384,16 @@
                     ["Widget"    5061]]
                    (mt/formatted-rows [str int]
                      (qp/process-query query))))))))))
+
+(deftest unfolded-json-with-custom-expression-test
+  (testing "Should keep roots of unfolded JSON fields in the nested query (#29184)"
+    (mt/test-driver :postgres
+      (mt/dataset json
+        (let [db    (t2/select-one 'Database :name "json" :engine driver/*driver*)
+              table (t2/select-one 'Table :db_id (:id db) :name "json")
+              field (t2/select-one 'Field :table_id (:id table)
+                                   :name "json_bit → title")]
+          (is (seq (mt/run-mbql-query json
+                                      {:expressions  {"substring" [:substring [:field (:id field) nil] 1 10]}
+                                       :fields       [[:expression "substring"]
+                                                      [:field (:id field) nil]]}))))))))

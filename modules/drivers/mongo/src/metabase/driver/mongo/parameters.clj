@@ -209,7 +209,7 @@
 (defn- parse-and-substitute [param->value x]
   (if-not (string? x)
     x
-    (u/prog1 (substitute param->value (params.parse/parse x))
+    (u/prog1 (substitute param->value (params.parse/parse x false))
       (when-not (= x <>)
         (log/debug (tru "Substituted {0} -> {1}" (pr-str x) (pr-str <>)))))))
 

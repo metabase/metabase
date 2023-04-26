@@ -28,7 +28,7 @@ import Dimension from "../../Dimension";
 import StructuredQuery from "../StructuredQuery";
 import MBQLClause from "./MBQLClause";
 
-export interface FilterDisplayNameOpts {
+interface FilterDisplayNameOpts {
   includeDimension?: boolean;
   includeOperator?: boolean;
 }

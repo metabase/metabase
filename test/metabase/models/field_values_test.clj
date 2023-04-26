@@ -11,12 +11,12 @@
    [metabase.models.dimension :refer [Dimension]]
    [metabase.models.field :refer [Field]]
    [metabase.models.field-values :as field-values :refer [FieldValues]]
-   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.models.serialization :as serdes]
    [metabase.models.table :refer [Table]]
    [metabase.sync :as sync]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (deftest field-should-have-field-values?-test
   (doseq [[group input->expected] {"Text and Category Fields"
@@ -112,13 +112,13 @@
                   Field       [{field-id :id} {:table_id table-id}]
                   FieldValues [_              {:field_id field-id, :values "[1,2,3]"}]]
     (is (= [1 2 3]
-           (db/select-one-field :values FieldValues, :field_id field-id)))
+           (t2/select-one-fn :values FieldValues, :field_id field-id)))
     (field-values/clear-field-values-for-field! field-id)
     (is (= nil
-           (db/select-one-field :values FieldValues, :field_id field-id)))))
+           (t2/select-one-fn :values FieldValues, :field_id field-id)))))
 
 (defn- find-values [field-values-id]
-  (-> (db/select-one FieldValues :id field-values-id)
+  (-> (t2/select-one FieldValues :id field-values-id)
       (select-keys [:values :human_readable_values])))
 
 (defn- sync-and-find-values [db field-values-id]
@@ -128,39 +128,39 @@
 (deftest get-or-create-full-field-values!-test
   (mt/dataset test-data
     (testing "create a full Fieldvalues if it does not exist"
-      (db/delete! FieldValues :field_id (mt/id :categories :name) :type :full)
-      (is (= :full (-> (db/select-one Field :id (mt/id :categories :name))
+      (t2/delete! FieldValues :field_id (mt/id :categories :name) :type :full)
+      (is (= :full (-> (t2/select-one Field :id (mt/id :categories :name))
                        field-values/get-or-create-full-field-values!
                        :type))
-          (is (= 1 (db/count FieldValues :field_id (mt/id :categories :name) :type :full))))
+          (is (= 1 (t2/count FieldValues :field_id (mt/id :categories :name) :type :full))))
 
       (testing "if an Advanced FieldValues Exists, make sure we still returns the full FieldValues"
         (mt/with-temp FieldValues [_ {:field_id (mt/id :categories :name)
                                       :type     :sandbox
                                       :hash_key "random-hash"}]
-          (is (= :full (:type (field-values/get-or-create-full-field-values! (db/select-one Field :id (mt/id :categories :name))))))))
+          (is (= :full (:type (field-values/get-or-create-full-field-values! (t2/select-one Field :id (mt/id :categories :name))))))))
 
       (testing "if an old FieldValues Exists, make sure we still return the full FieldValues and update last_used_at"
-        (db/execute! {:update :metabase_fieldvalues
-                      :where [:and
-                              [:= :field_id (mt/id :categories :name)]
-                              [:= :type "full"]]
-                      :set {:last_used_at (t/offset-date-time 2001 12)}})
+        (t2/query-one {:update :metabase_fieldvalues
+                       :where [:and
+                               [:= :field_id (mt/id :categories :name)]
+                               [:= :type "full"]]
+                       :set {:last_used_at (t/offset-date-time 2001 12)}})
         (is (= (t/offset-date-time 2001 12)
-               (:last_used_at (db/select-one FieldValues :field_id (mt/id :categories :name) :type :full))))
-        (is (seq (:values (field-values/get-or-create-full-field-values! (db/select-one Field :id (mt/id :categories :name))))))
+               (:last_used_at (t2/select-one FieldValues :field_id (mt/id :categories :name) :type :full))))
+        (is (seq (:values (field-values/get-or-create-full-field-values! (t2/select-one Field :id (mt/id :categories :name))))))
         (is (not= (t/offset-date-time 2001 12)
-                  (:last_used_at (db/select-one FieldValues :field_id (mt/id :categories :name) :type :full))))))))
+                  (:last_used_at (t2/select-one FieldValues :field_id (mt/id :categories :name) :type :full))))))))
 
 (deftest normalize-human-readable-values-test
   (testing "If FieldValues were saved as a map, normalize them to a sequence on the way out"
     (mt/with-temp FieldValues [fv {:field_id (mt/id :venues :id)
                                    :values   (json/generate-string ["1" "2" "3"])}]
-      (is (db/execute! {:update :metabase_fieldvalues
-                        :set    {:human_readable_values (json/generate-string {"1" "a", "2" "b", "3" "c"})}
-                        :where  [:= :id (:id fv)]}))
+      (is (t2/query-one {:update :metabase_fieldvalues
+                         :set    {:human_readable_values (json/generate-string {"1" "a", "2" "b", "3" "c"})}
+                         :where  [:= :id (:id fv)]}))
       (is (= ["a" "b" "c"]
-             (:human_readable_values (db/select-one FieldValues :id (:id fv))))))))
+             (:human_readable_values (t2/select-one FieldValues :id (:id fv))))))))
 
 (deftest update-human-readable-values-test
   (testing "Test \"fixing\" of human readable values when field values change"
@@ -178,11 +178,11 @@
                                   :details      "{\"db\": \"mem:temp\"}"}]
         ;; Sync the database so we have the new table and it's fields
         (sync/sync-database! db)
-        (let [table-id        (db/select-one-field :id Table :db_id (u/the-id db) :name "FOO")
-              field-id        (db/select-one-field :id Field :table_id table-id :name "CATEGORY_ID")
-              field-values-id (db/select-one-field :id FieldValues :field_id field-id)]
+        (let [table-id        (t2/select-one-fn :id Table :db_id (u/the-id db) :name "FOO")
+              field-id        (t2/select-one-fn :id Field :table_id table-id :name "CATEGORY_ID")
+              field-values-id (t2/select-one-fn :id FieldValues :field_id field-id)]
           ;; Add in human readable values for remapping
-          (is (db/update! FieldValues field-values-id {:human_readable_values ["a" "b" "c"]}))
+          (is (t2/update! FieldValues field-values-id {:human_readable_values ["a" "b" "c"]}))
           (let [expected-original-values {:values                [1 2 3]
                                           :human_readable_values ["a" "b" "c"]}
                 expected-updated-values  {:values                [-2 -1 0 1 2 3]
@@ -223,14 +223,14 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"Invalid human-readable-values"
-             (db/update! FieldValues id :human_readable_values {"1" "A", "2", "B"})))))))
+             (t2/update! FieldValues id {:human_readable_values {"1" "A", "2", "B"}})))))))
 
 (deftest rescanned-human-readable-values-test
   (testing "Make sure FieldValues are calculated and saved correctly when remapping is in place (#13235)"
     (mt/dataset sample-dataset
       (mt/with-temp-copy-of-db
         (letfn [(field-values []
-                  (db/select-one FieldValues :field_id (mt/id :orders :product_id)))]
+                  (t2/select-one FieldValues :field_id (mt/id :orders :product_id)))]
           (testing "Should have no FieldValues initially"
             (is (= nil
                    (field-values))))
@@ -239,7 +239,7 @@
                                       :type                    "external"}]
             (mt/with-temp-vals-in-db Field (mt/id :orders :product_id) {:has_field_values "list"}
               (is (= ::field-values/fv-created
-                     (field-values/create-or-update-full-field-values! (db/select-one Field :id (mt/id :orders :product_id)))))
+                     (field-values/create-or-update-full-field-values! (t2/select-one Field :id (mt/id :orders :product_id)))))
               (is (partial= {:field_id              (mt/id :orders :product_id)
                              :values                [1 2 3 4]
                              :human_readable_values []}
@@ -269,9 +269,9 @@
   (mt/with-temp* [FieldValues [sandbox-fv {:field_id (mt/id :venues :id)
                                            :type     :sandbox
                                            :hash_key "random-hash"}]]
-    (db/insert! FieldValues {:field_id (mt/id :venues :id)
+    (t2/insert! FieldValues {:field_id (mt/id :venues :id)
                              :type     :full})
-    (is (not (db/exists? FieldValues :id (:id sandbox-fv))))))
+    (is (not (t2/exists? FieldValues :id (:id sandbox-fv))))))
 
 (deftest update-full-field-values-should-remove-all-cached-field-values
   (mt/with-temp* [FieldValues [fv         {:field_id (mt/id :venues :id)
@@ -279,8 +279,8 @@
                   FieldValues [sandbox-fv {:field_id (mt/id :venues :id)
                                            :type     :sandbox
                                            :hash_key "random-hash"}]]
-    (db/update! FieldValues (:id fv) :values [1 2 3])
-    (is (not (db/exists? FieldValues :id (:id sandbox-fv))))))
+    (t2/update! FieldValues (:id fv) {:values [1 2 3]})
+    (is (not (t2/exists? FieldValues :id (:id sandbox-fv))))))
 
 (deftest cant-update-type-or-has-of-a-field-values-test
   (mt/with-temp FieldValues [fv {:field_id (mt/id :venues :id)
@@ -289,12 +289,12 @@
     (is (thrown-with-msg?
           clojure.lang.ExceptionInfo
           #"Cant update type or hash_key for a FieldValues."
-          (db/update! FieldValues (:id fv) :type :full)))
+          (t2/update! FieldValues (:id fv) {:type :full})))
 
     (is (thrown-with-msg?
           clojure.lang.ExceptionInfo
           #"Cant update type or hash_key for a FieldValues."
-          (db/update! FieldValues (:id fv) :hash_key "new-hash")))))
+          (t2/update! FieldValues (:id fv) {:hash_key "new-hash"})))))
 
 
 (deftest identity-hash-test
@@ -304,5 +304,5 @@
                     Field       [field {:name "sku" :table_id (:id table)}]
                     FieldValues [fv    {:field_id (:id field)}]]
       (is (= "6f5bb4ba"
-             (serdes.hash/raw-hash [(serdes.hash/identity-hash field)])
-             (serdes.hash/identity-hash fv))))))
+             (serdes/raw-hash [(serdes/identity-hash field)])
+             (serdes/identity-hash fv))))))

@@ -1,10 +1,9 @@
 import React, { useCallback, useState } from "react";
 
-import { useMount } from "react-use";
 import title from "metabase/hoc/Title";
 import { PublicApi } from "metabase/services";
 
-import { ActionForm } from "metabase/actions/components/ActionForm";
+import ActionForm from "metabase/actions/components/ActionForm";
 import { getSuccessMessage } from "metabase/actions/utils";
 
 import type {
@@ -27,13 +26,12 @@ interface Props {
 
 function PublicAction({ action, publicId, onError }: Props) {
   const [isSubmitted, setSubmitted] = useState(false);
-
-  const hasParameters = action.parameters.length > 0;
+  const successMessage = getSuccessMessage(action);
 
   const handleSubmit = useCallback(
-    async (values: ParametersForActionExecution) => {
+    async (parameters: ParametersForActionExecution) => {
       try {
-        await PublicApi.executeAction({ uuid: publicId, parameters: values });
+        await PublicApi.executeAction({ uuid: publicId, parameters });
         setSubmitted(true);
       } catch (error) {
         onError(error as AppErrorDescriptor);
@@ -42,32 +40,14 @@ function PublicAction({ action, publicId, onError }: Props) {
     [publicId, onError],
   );
 
-  useMount(() => {
-    if (!hasParameters) {
-      handleSubmit({});
-    }
-  });
-
   if (isSubmitted) {
-    return (
-      <FormResultMessage>
-        {getSuccessMessage(action.visualization_settings)}
-      </FormResultMessage>
-    );
-  }
-
-  if (!hasParameters) {
-    return null;
+    return <FormResultMessage>{successMessage}</FormResultMessage>;
   }
 
   return (
     <FormContainer>
       <FormTitle>{action.name}</FormTitle>
-      <ActionForm
-        parameters={action.parameters}
-        formSettings={action.visualization_settings}
-        onSubmit={handleSubmit}
-      />
+      <ActionForm action={action} onSubmit={handleSubmit} />
     </FormContainer>
   );
 }

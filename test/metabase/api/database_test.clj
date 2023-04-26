@@ -10,10 +10,12 @@
    [metabase.driver.util :as driver.u]
    [metabase.mbql.schema :as mbql.s]
    [metabase.models
-    :refer [Card Collection Database Field FieldValues Table Metric Segment]]
+    :refer [Card Collection Database Field FieldValues Metric Segment Table]]
    [metabase.models.database :as database :refer [protected-password]]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
+   [metabase.models.setting :as setting :refer [defsetting]]
+   [metabase.public-settings.premium-features :as premium-features]
    [metabase.sync.analyze :as analyze]
    [metabase.sync.field-values :as field-values]
    [metabase.sync.sync-metadata :as sync-metadata]
@@ -22,11 +24,13 @@
    [metabase.test.util :as tu]
    [metabase.util :as u]
    [metabase.util.cron :as u.cron]
+   [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.schema :as su]
    [ring.util.codec :as codec]
    [schema.core :as s]
-   [toucan.db :as db]
-   [toucan.hydrate :as hydrate]))
+   [toucan.hydrate :as hydrate]
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (use-fixtures :once (fixtures/initialize :db :plugins :test-drivers))
 
@@ -66,7 +70,7 @@
       (update :visibility_type #(when % (name %)))))
 
 (defn- expected-tables [db-or-id]
-  (map table-details (db/select Table
+  (map table-details (t2/select Table
                        :db_id (u/the-id db-or-id), :active true, :visibility_type nil
                        {:order-by [[:%lower.schema :asc] [:%lower.display_name :asc]]})))
 
@@ -115,7 +119,7 @@
     (testing "DB details visibility"
       (testing "Regular users should not see DB details"
         (is (= (-> (db-details)
-                   (dissoc :details :schedules :settings))
+                   (dissoc :details :schedules))
                (-> (mt/user-http-request :rasta :get 200 (format "database/%d" (mt/id)))
                    (dissoc :schedules)))))
 
@@ -188,7 +192,7 @@
              (mt/user-http-request :crowberto :get 200 (format "database/%d/usage_info" db-id)))))
 
     (testing "404 if db does not exist"
-      (let [non-existing-db-id (inc (db/select-one-id Database {:order-by [[:id :desc]]}))]
+      (let [non-existing-db-id (inc (t2/select-one-pk Database {:order-by [[:id :desc]]}))]
         (is (= "Not found."
                (mt/user-http-request :crowberto :get 404
                                      (format "database/%d/usage_info" non-existing-db-id)))))))
@@ -216,8 +220,8 @@
                       s/Keyword s/Any}
                      response))
         (when (integer? db-id)
-          (db/select-one Database :id db-id)))
-      (finally (db/delete! Database :name db-name)))))
+          (t2/select-one Database :id db-id)))
+      (finally (t2/delete! Database :name db-name)))))
 
 (deftest create-db-test
   (testing "POST /api/database"
@@ -239,6 +243,7 @@
     (testing "can we set `is_full_sync` to `false` when we create the Database?"
       (is (= {:is_full_sync false}
              (select-keys (create-db-via-api! {:is_full_sync false}) [:is_full_sync]))))
+
     (testing "if `:let-user-control-scheduling` is false it will ignore any schedules provided"
       (let [monthly-schedule {:schedule_type "monthly" :schedule_day "fri" :schedule_frame "last"}
             {:keys [details metadata_sync_schedule cache_field_values_schedule]}
@@ -247,6 +252,7 @@
         (is (not (:let-user-control-scheduling details)))
         (is (= "daily" (-> cache_field_values_schedule u.cron/cron-string->schedule-map :schedule_type)))
         (is (= "hourly" (-> metadata_sync_schedule u.cron/cron-string->schedule-map :schedule_type)))))
+
     (testing "if `:let-user-control-scheduling` is true it will accept the schedules"
       (let [monthly-schedule {:schedule_type "monthly" :schedule_day "fri" :schedule_frame "last"}
             {:keys [details metadata_sync_schedule cache_field_values_schedule]}
@@ -256,6 +262,7 @@
         (is (:let-user-control-scheduling details))
         (is (= "monthly" (-> cache_field_values_schedule u.cron/cron-string->schedule-map :schedule_type)))
         (is (= "monthly" (-> metadata_sync_schedule u.cron/cron-string->schedule-map :schedule_type)))))
+
     (testing "well known connection errors are reported properly"
       (let [dbname (mt/random-name)
             exception (Exception. (format "FATAL: database \"%s\" does not exist" dbname))]
@@ -267,6 +274,7 @@
                                         :engine       "postgres"
                                         :details      {:host "localhost", :port 5432
                                                        :dbname "fakedb", :user "rastacan"}}))))))
+
     (testing "unknown connection errors are reported properly"
       (let [exception (Exception. "Unknown driver message" (java.net.ConnectException. "Failed!"))]
         (is (= {:errors  {:host "check your host settings"
@@ -277,14 +285,27 @@
                  (mt/user-http-request :crowberto :post 400 "database"
                                        {:name    (mt/random-name)
                                         :engine  (u/qualified-name ::test-driver)
-                                        :details {:db "my_db"}}))))))))
+                                        :details {:db "my_db"}}))))))
+
+    (testing "should throw a 402 error if trying to set `cache_ttl` on OSS"
+      (with-redefs [premium-features/enable-advanced-config? (constantly false)]
+        (mt/user-http-request :crowberto :post 402 "database"
+                              {:name      (mt/random-name)
+                               :engine    (u/qualified-name ::test-driver)
+                               :details   {:db "my_db"}
+                               :cache_ttl 13})))
+
+    (testing "should allow setting `cache_ttl` on EE"
+      (with-redefs [premium-features/enable-advanced-config? (constantly true)]
+        (is (partial= {:cache_ttl 13}
+                      (create-db-via-api! {:cache_ttl 13})))))))
 
 (deftest delete-database-test
   (testing "DELETE /api/database/:id"
     (testing "Check that a superuser can delete a Database"
       (mt/with-temp Database [db]
         (mt/user-http-request :crowberto :delete 204 (format "database/%d" (:id db)))
-        (is (false? (db/exists? Database :id (u/the-id db))))))
+        (is (false? (t2/exists? Database :id (u/the-id db))))))
 
     (testing "Check that a non-superuser cannot delete a Database"
       (mt/with-temp Database [db]
@@ -297,7 +318,6 @@
         (let [updates {:name         "Cam's Awesome Toucan Database"
                        :engine       "h2"
                        :is_full_sync false
-                       :cache_ttl    1337
                        :details      {:host "localhost", :port 5432, :dbname "fakedb", :user "rastacan"}}
               update! (fn [expected-status-code]
                         (mt/user-http-request :crowberto :put expected-status-code (format "database/%d" db-id) updates))]
@@ -307,11 +327,10 @@
             (with-redefs [driver/can-connect? (constantly true)]
               (is (= nil
                      (:valid (update! 200))))
-              (let [curr-db (db/select-one [Database :name :engine :cache_ttl :details :is_full_sync], :id db-id)]
+              (let [curr-db (t2/select-one [Database :name :engine :details :is_full_sync], :id db-id)]
                 (is (=
                      {:details      {:host "localhost", :port 5432, :dbname "fakedb", :user "rastacan"}
                       :engine       :h2
-                      :cache_ttl    1337
                       :name         "Cam's Awesome Toucan Database"
                       :is_full_sync false
                       :features     (driver.u/features :h2 curr-db)}
@@ -326,37 +345,47 @@
           (let [updates {:auto_run_queries false}]
             (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id) updates))
           (is (= false
-                 (db/select-one-field :auto_run_queries Database, :id db-id))))))
-    (testing "should be able to unset cache_ttl"
-      (mt/with-temp Database [{db-id :id}]
-        (let [updates1 {:cache_ttl    1337}
-              updates2 {:cache_ttl    nil}
-              updates1! (fn [] (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id) updates1))
-              updates2! (fn [] (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id) updates2))]
-          (updates1!)
-          (let [curr-db (db/select-one [Database :cache_ttl], :id db-id)]
-            (is (= 1337 (:cache_ttl curr-db))))
-          (updates2!)
-          (let [curr-db (db/select-one [Database :cache_ttl], :id db-id)]
-            (is (= nil (:cache_ttl curr-db)))))))))
+                 (t2/select-one-fn :auto_run_queries Database, :id db-id))))))
+
+    (testing "should not be able to modify `cache_ttl` in OSS"
+      (with-redefs [premium-features/enable-advanced-config? (constantly false)]
+        (mt/with-temp Database [{db-id :id} {:engine ::test-driver}]
+          (let [updates {:cache_ttl 13}]
+            (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id) updates))
+          (is (= nil
+                 (t2/select-one-fn :cache_ttl Database, :id db-id))))))
+
+    (testing "should be able to set and unset `cache_ttl` in EE"
+      (with-redefs [premium-features/enable-advanced-config? (constantly true)]
+        (mt/with-temp Database [{db-id :id} {:engine ::test-driver}]
+          (let [updates1 {:cache_ttl 1337}
+                updates2 {:cache_ttl nil}
+                updates1! (fn [] (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id) updates1))
+                updates2! (fn [] (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id) updates2))]
+            (updates1!)
+            (let [curr-db (t2/select-one [Database :cache_ttl], :id db-id)]
+              (is (= 1337 (:cache_ttl curr-db))))
+            (updates2!)
+            (let [curr-db (t2/select-one [Database :cache_ttl], :id db-id)]
+              (is (= nil (:cache_ttl curr-db))))))))))
 
 (deftest fetch-database-metadata-test
   (testing "GET /api/database/:id/metadata"
-    (is (= (merge (dissoc (mt/object-defaults Database) :details :settings)
+    (is (= (merge (dissoc (mt/object-defaults Database) :details)
                   (select-keys (mt/db) [:created_at :id :updated_at :timezone :initial_sync_status :dbms_version])
                   {:engine        "h2"
                    :name          "test-data"
                    :features      (map u/qualified-name (driver.u/features :h2 (mt/db)))
                    :tables        [(merge
                                     (mt/obj->json->obj (mt/object-defaults Table))
-                                    (db/select-one [Table :created_at :updated_at] :id (mt/id :categories))
+                                    (t2/select-one [Table :created_at :updated_at] :id (mt/id :categories))
                                     {:schema              "PUBLIC"
                                      :name                "CATEGORIES"
                                      :display_name        "Categories"
                                      :entity_type         "entity/GenericTable"
                                      :initial_sync_status "complete"
                                      :fields              [(merge
-                                                            (field-details (db/select-one Field :id (mt/id :categories :id)))
+                                                            (field-details (t2/select-one Field :id (mt/id :categories :id)))
                                                             {:table_id          (mt/id :categories)
                                                              :semantic_type     "type/PK"
                                                              :name              "ID"
@@ -367,9 +396,10 @@
                                                              :visibility_type   "normal"
                                                              :has_field_values  "none"
                                                              :database_position 0
-                                                             :database_required false})
+                                                             :database_required false
+                                                             :database_is_auto_increment true})
                                                            (merge
-                                                            (field-details (db/select-one Field :id (mt/id :categories :name)))
+                                                            (field-details (t2/select-one Field :id (mt/id :categories :name)))
                                                             {:table_id          (mt/id :categories)
                                                              :semantic_type     "type/Name"
                                                              :name              "NAME"
@@ -380,7 +410,8 @@
                                                              :visibility_type   "normal"
                                                              :has_field_values  "list"
                                                              :database_position 1
-                                                             :database_required true})]
+                                                             :database_required true
+                                                             :database_is_auto_increment false})]
                                      :segments     []
                                      :metrics      []
                                      :id           (mt/id :categories)
@@ -450,11 +481,11 @@
         (is (= expected (prefix-fn (mt/id) prefix))))
       (testing " handles large numbers of tables and fields sensibly with prefix"
         (mt/with-model-cleanup [Field Table Database]
-          (let [tmp-db (db/insert! Database {:name "Temp Autocomplete Pagination DB" :engine "h2" :details "{}"})]
+          (let [tmp-db (first (t2/insert-returning-instances! Database {:name "Temp Autocomplete Pagination DB" :engine "h2" :details "{}"}))]
             ;; insert more than 50 temporary tables and fields
             (doseq [i (range 60)]
-              (let [tmp-tbl (db/insert! Table {:name (format "My Table %d" i) :db_id (u/the-id tmp-db) :active true})]
-                (db/insert! Field {:name (format "My Field %d" i) :table_id (u/the-id tmp-tbl) :base_type "type/Text" :database_type "varchar"})))
+              (let [tmp-tbl (first (t2/insert-returning-instances! Table {:name (format "My Table %d" i) :db_id (u/the-id tmp-db) :active true}))]
+                (t2/insert! Field {:name (format "My Field %d" i) :table_id (u/the-id tmp-tbl) :base_type "type/Text" :database_type "varchar"})))
             ;; for each type-specific prefix, we should get 50 fields
             (is (= 50 (count (prefix-fn (u/the-id tmp-db) "My Field"))))
             (is (= 50 (count (prefix-fn (u/the-id tmp-db) "My Table"))))
@@ -516,8 +547,8 @@
   (testing "GET /api/database"
     (testing "Test that we can get all the DBs (ordered by name, then driver)"
       (testing "Database details/settings *should not* come back for Rasta since she's not a superuser"
-        (let [expected-keys (-> (into #{:features :native_permissions} (keys (db/select-one Database :id (mt/id))))
-                                (disj :details :settings))]
+        (let [expected-keys (-> (into #{:features :native_permissions} (keys (t2/select-one Database :id (mt/id))))
+                                (disj :details))]
           (doseq [db (:data (mt/user-http-request :rasta :get 200 "database"))]
             (testing (format "Database %s %d %s" (:engine db) (u/the-id db) (pr-str (:name db)))
               (is (= expected-keys
@@ -761,8 +792,8 @@
                                                          :metadata_sync      schedule-map-for-hourly}}))]
              (is (= {:cache_field_values_schedule "0 0 23 ? * 6L *"
                      :metadata_sync_schedule      "0 0 * * * ? *"}
-                    (into {} (db/select-one [Database :cache_field_values_schedule :metadata_sync_schedule] :id (u/the-id db))))))
-           (finally (db/delete! Database :name db-name))))))
+                    (into {} (t2/select-one [Database :cache_field_values_schedule :metadata_sync_schedule] :id (u/the-id db))))))
+           (finally (t2/delete! Database :name db-name))))))
 
 (deftest update-schedules-for-existing-db
   (let [attempted {:cache_field_values schedule-map-for-last-friday-at-11pm
@@ -776,7 +807,7 @@
                   (mt/user-http-request :crowberto :put 200 (format "database/%d" (u/the-id db))
                                         (assoc db :schedules attempted))))
           (is (not= expected
-                    (into {} (db/select-one [Database :cache_field_values_schedule :metadata_sync_schedule] :id (u/the-id db)))))))
+                    (into {} (t2/select-one [Database :cache_field_values_schedule :metadata_sync_schedule] :id (u/the-id db)))))))
       (testing "We can if we mark `:let-user-control-scheduling`"
         (mt/with-temp Database [db {:engine "h2", :details (:details (mt/db))}]
           (is (=? expected
@@ -785,7 +816,7 @@
                                             (assoc :schedules attempted)
                                             (assoc-in [:details :let-user-control-scheduling] true)))))
           (is (= expected
-                 (into {} (db/select-one [Database :cache_field_values_schedule :metadata_sync_schedule] :id (u/the-id db)))))))
+                 (into {} (t2/select-one [Database :cache_field_values_schedule :metadata_sync_schedule] :id (u/the-id db)))))))
       (testing "if we update back to metabase managed schedules it randomizes for us"
         (let [original-custom-schedules expected]
           (mt/with-temp Database [db (merge {:engine "h2" :details (assoc (:details (mt/db))
@@ -794,7 +825,7 @@
             (is (=? {:id (u/the-id db)}
                     (mt/user-http-request :crowberto :put 200 (format "database/%d" (u/the-id db))
                                           (assoc-in db [:details :let-user-control-scheduling] false))))
-            (let [schedules (into {} (db/select-one [Database :cache_field_values_schedule :metadata_sync_schedule] :id (u/the-id db)))]
+            (let [schedules (into {} (t2/select-one [Database :cache_field_values_schedule :metadata_sync_schedule] :id (u/the-id db)))]
               (is (not= original-custom-schedules schedules))
               (is (= "hourly" (-> schedules :metadata_sync_schedule u.cron/cron-string->schedule-map :schedule_type)))
               (is (= "daily" (-> schedules :cache_field_values_schedule u.cron/cron-string->schedule-map :schedule_type))))))))))
@@ -881,10 +912,10 @@
              (mt/user-http-request :crowberto :post 200 (format "database/%d/discard_values" (u/the-id db)))))
       (testing "values-1 still exists?"
         (is (= false
-               (db/exists? FieldValues :id (u/the-id values-1)))))
+               (t2/exists? FieldValues :id (u/the-id values-1)))))
       (testing "values-2 still exists?"
         (is (= false
-               (db/exists? FieldValues :id (u/the-id values-2))))))))
+               (t2/exists? FieldValues :id (u/the-id values-2))))))))
 
 (deftest nonadmins-cant-discard-all-fieldvalues
   (testing "Non-admins should not be allowed to discard all FieldValues"
@@ -1370,32 +1401,75 @@
                      (:details d)
                      (select-keys d [:password-source :password-value]))))))))
 
+;; these descriptions use deferred-tru because the `defsetting` macro complains if they're not, but since these are in
+;; tests they won't get scraped for i18n purposes so it's ok.
+(defsetting test-db-local-setting-public
+  (deferred-tru "Test Database-local Setting with internal visibility.")
+  :database-local :only
+  :visibility :public
+  :type :integer)
+
+(defsetting test-db-local-setting-authenticated
+  (deferred-tru "Test Database-local Setting with internal visibility.")
+  :database-local :only
+  :visibility :authenticated
+  :type :integer)
+
+(defsetting test-db-local-setting-admin
+  (deferred-tru "Test Database-local Setting with internal visibility.")
+  :database-local :only
+  :visibility :admin
+  :type :integer)
+
+(defsetting test-db-local-setting-internal
+  "Test Database-local Setting with internal visibility."
+  :database-local :only
+  :visibility :internal
+  :type :integer)
+
 (deftest database-local-settings-come-back-with-database-test
   (testing "Database-local Settings should come back with"
-    (mt/with-temp-vals-in-db Database (mt/id) {:settings {:max-results-bare-rows 1337}}
-      ;; only returned for admin users at this point in time. See #22683 -- issue to return them for non-admins as well.
-      (doseq [{:keys [endpoint response]} [{:endpoint "GET /api/database/:id"
-                                            :response (fn []
-                                                        (mt/user-http-request :crowberto :get 200 (format "database/%d" (mt/id))))}
-                                           {:endpoint "GET /api/database"
-                                            :response (fn []
-                                                        (some
-                                                         (fn [database]
-                                                           (when (= (:id database) (mt/id))
-                                                             database))
-                                                         (:data (mt/user-http-request :crowberto :get 200 "database"))))}]]
-        (testing endpoint
-          (let [{:keys [settings], :as response} (response)]
-            (testing (format "\nresponse = %s" (u/pprint-to-str response))
+    (mt/with-temp-vals-in-db Database (mt/id) {:settings {:test-db-local-setting-public        1
+                                                          :test-db-local-setting-authenticated 1
+                                                          :test-db-local-setting-admin         1
+                                                          :test-db-local-setting-internal      1}}
+      (doseq [[user user-type] {:crowberto :admin, :rasta :non-admin}]
+        (doseq [{:keys [endpoint response]} [{:endpoint "GET /api/database/:id"
+                                              :response (fn []
+                                                          (mt/user-http-request user :get 200 (format "database/%d" (mt/id))))}
+                                             {:endpoint "GET /api/database"
+                                              :response (fn []
+                                                          (some
+                                                           (fn [database]
+                                                             (when (= (:id database) (mt/id))
+                                                               database))
+                                                           (:data (mt/user-http-request user :get 200 "database"))))}]]
+          (testing endpoint
+            (let [{:keys [settings], :as response} (response)]
               (is (map? response))
-              (is (partial= {:max-results-bare-rows 1337}
-                            settings)))))))))
+              (is (map? settings))
+              (doseq [{:keys [setting visible?]} [{:setting  :test-db-local-setting-public
+                                                   :visible? (if (= user-type :non-admin) true true)}
+                                                  {:setting  :test-db-local-setting-authenticated
+                                                   :visible? (if (= user-type :non-admin) true true)}
+                                                  {:setting  :test-db-local-setting-admin
+                                                   :visible? (if (= user-type :non-admin) false true)}
+                                                  {:setting  :test-db-local-setting-internal
+                                                   :visible? (if (= user-type :non-admin) false false)}]
+                      :let                       [{:keys [visibility]} (setting/resolve-setting setting)]]
+                (testing (format "\nIf Setting visibility is %s, %s user should %s be able to see its value"
+                                 visibility user-type (if visible? "SHOULD" "SHOULD NOT"))
+                  (testing (format "\nresponse = %s" (u/pprint-to-str response))
+                    (if visible?
+                      (is (partial= {setting 1}
+                                    settings))
+                      (is (not (contains? settings setting))))))))))))))
 
 (deftest admins-set-database-local-settings-test
   (testing "Admins should be allowed to update Database-local Settings (#19409)"
     (mt/with-temp-vals-in-db Database (mt/id) {:settings nil}
       (letfn [(settings []
-                (db/select-one-field :settings Database :id (mt/id)))
+                (t2/select-one-fn :settings Database :id (mt/id)))
               (set-settings! [m]
                 (mt/user-http-request :crowberto :put 200 (format "database/%d" (mt/id))
                                       {:settings m}))]
@@ -1433,3 +1507,52 @@
           (testing "App DB"
             (is (= {:database-enable-actions false}
                    (settings)))))))))
+
+(deftest persist-database-test-2
+  (mt/test-drivers (mt/normal-drivers-with-feature :persist-models)
+    (mt/dataset test-data
+      (let [db-id (:id (mt/db))]
+        (t2.with-temp/with-temp
+          [Card card {:database_id db-id
+                      :dataset     true}]
+          (mt/with-temporary-setting-values [persisted-models-enabled false]
+            (testing "requires persist setting to be enabled"
+              (is (= "Persisting models is not enabled."
+                     (mt/user-http-request :crowberto :post 400 (str "database/" db-id "/persist"))))))
+
+          (mt/with-temporary-setting-values [persisted-models-enabled true]
+            (testing "only users with permissions can persist a database"
+              (is (= "You don't have permissions to do that."
+                     (mt/user-http-request :rasta :post 403 (str "database/" db-id "/persist")))))
+
+            (testing "should be able to persit an database"
+              (mt/user-http-request :crowberto :post 204 (str "database/" db-id "/persist"))
+              (is (= "creating" (t2/select-one-fn :state 'PersistedInfo
+                                                  :database_id db-id
+                                                  :card_id     (:id card))))
+              (is (true? (t2/select-one-fn (comp :persist-models-enabled :options)
+                                           Database
+                                           :id db-id))))
+            (testing "it's okay to trigger persist even though the database is already persisted"
+              (mt/user-http-request :crowberto :post 204 (str "database/" db-id "/persist")))))))))
+
+(deftest unpersist-database-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :persist-models)
+    (mt/dataset test-data
+      (let [db-id (:id (mt/db))]
+        (t2.with-temp/with-temp
+          [Card     _ {:database_id db-id
+                       :dataset     true}]
+          (testing "only users with permissions can persist a database"
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :rasta :post 403 (str "database/" db-id "/unpersist")))))
+
+          (mt/with-temporary-setting-values [persisted-models-enabled true]
+            (testing "should be able to persit an database"
+              ;; trigger persist first
+              (mt/user-http-request :crowberto :post 204 (str "database/" db-id "/unpersist"))
+              (is (nil? (t2/select-one-fn (comp :persist-models-enabled :options)
+                                          Database
+                                          :id db-id))))
+            (testing "it's okay to unpersist even though the database is not persisted"
+              (mt/user-http-request :crowberto :post 204 (str "database/" db-id "/unpersist")))))))))

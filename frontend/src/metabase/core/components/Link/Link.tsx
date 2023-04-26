@@ -1,9 +1,9 @@
-import React, { CSSProperties, HTMLAttributes, ReactNode } from "react";
+import React, { AnchorHTMLAttributes, CSSProperties, ReactNode } from "react";
 import Tooltip from "metabase/core/components/Tooltip";
 import { TooltipProps } from "metabase/core/components/Tooltip/Tooltip";
 import { LinkRoot } from "./Link.styled";
 
-export interface LinkProps extends HTMLAttributes<HTMLAnchorElement> {
+export interface LinkProps extends AnchorHTMLAttributes<HTMLAnchorElement> {
   to: string;
   disabled?: boolean;
   className?: string;

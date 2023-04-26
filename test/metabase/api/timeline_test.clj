@@ -12,7 +12,7 @@
    [metabase.server.middleware.util :as mw.util]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (deftest auth-tests
   (testing "Authentication"
@@ -159,10 +159,10 @@
                                    :collection_id id})
             (testing "check the collection to see if the timeline is there"
               (is (= "Rasta's TL"
-                     (-> (db/select-one Timeline :collection_id id) :name))))
+                     (-> (t2/select-one Timeline :collection_id id) :name))))
             (testing "Check that the icon is 'star' by default"
               (is (= "star"
-                     (-> (db/select-one-field :icon Timeline :collection_id id)))))))))))
+                     (-> (t2/select-one-fn :icon Timeline :collection_id id)))))))))))
 
 (deftest update-timeline-test
   (testing "PUT /api/timeline/:id"
@@ -181,14 +181,14 @@
           ;; update the timeline to be archived
           (mt/user-http-request :rasta :put 200 (str "timeline/" (u/the-id tl-b)) {:archived true})
           (is (true?
-               (->> (db/select TimelineEvent :timeline_id (u/the-id tl-b))
+               (->> (t2/select TimelineEvent :timeline_id (u/the-id tl-b))
                     (map :archived)
                     (every? true?)))))
         (testing "check that we un-archive all events in a timeline when the timeline is un-archived"
           ;; since we archived in the previous step, we unarchive the same timeline here.
           (mt/user-http-request :rasta :put 200 (str "timeline/" (u/the-id tl-b)) {:archived false})
           (is (true?
-               (->> (db/select TimelineEvent :timeline_id (u/the-id tl-b))
+               (->> (t2/select TimelineEvent :timeline_id (u/the-id tl-b))
                     (map :archived)
                     (every? false?)))))))))
 

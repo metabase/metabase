@@ -64,9 +64,12 @@ export function buildCollectionTree({
     }
   }
 
-  const targetModels: CollectionContentModel[] =
-    targetModel === "model" ? ["dataset"] : ["card"];
-  const tree = _buildCollectionTree(preparedCollections, { targetModels });
+  const modelFilter =
+    targetModel === "model"
+      ? (model: CollectionContentModel) => model === "dataset"
+      : (model: CollectionContentModel) => model === "card";
+
+  const tree = _buildCollectionTree(preparedCollections, modelFilter);
 
   if (rootCollection) {
     tree.unshift(getOurAnalyticsCollection(rootCollection));

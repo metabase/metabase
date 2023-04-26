@@ -45,7 +45,7 @@
     .getStyleSheets))
 
 (defn- render-to-png
-  [^String html, width]
+  ^java.awt.image.BufferedImage [^String html width]
   (style/register-fonts-if-needed!)
   (with-open [is         (ByteArrayInputStream. (.getBytes html StandardCharsets/UTF_8))
               doc-source (StreamDocumentSource. is nil "text/html; charset=utf-8")]

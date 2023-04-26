@@ -5,6 +5,7 @@
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.models.setting :as setting]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]))
 
 (defn- do-with-setting-access-control
@@ -30,7 +31,7 @@
   For non-superusers, a list of visible settings and values can be retrieved using the /api/session/properties endpoint."
   []
   (validation/check-has-application-permission :setting)
-  (setting/admin-writable-settings))
+  (setting/writable-settings))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema PUT "/"
@@ -43,7 +44,7 @@
 (api/defendpoint GET "/:key"
   "Fetch a single `Setting`."
   [key]
-  {key [:string {:min 1}]}
+  {key ms/NonBlankString}
   (with-setting-access-control
     (setting/user-facing-value key)))
 

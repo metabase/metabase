@@ -7,12 +7,9 @@
    [metabase.api.common :as api]
    [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
-   [metabase.models :refer [Database]]
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
-   [metabase.models.metric :refer [Metric]]
    [metabase.models.permissions :as perms]
-   [metabase.models.segment :refer [Segment]]
    [metabase.search.config :as search-config]
    [metabase.search.scoring :as scoring]
    [metabase.search.util :as search-util]
@@ -20,10 +17,11 @@
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan2.core :as t2]
+   [toucan2.instance :as t2.instance]
    [toucan2.realize :as t2.realize]))
 
 (set! *warn-on-reflection* true)
@@ -83,20 +81,28 @@
    :updated_at          :timestamp
    ;; returned for Card only
    :dashboardcard_count :integer
-   :dataset_query       :text
    :moderated_status    :text
    ;; returned for Metric and Segment
    :table_id            :integer
-   :database_id         :integer
    :table_schema        :text
    :table_name          :text
    :table_description   :text
+   ;; returned for Metric, Segment, and Action
+   :database_id         :integer
    ;; returned for Database and Table
-   :initial_sync_status :text))
+   :initial_sync_status :text
+   ;; returned for Action
+   :model_id            :integer
+   :model_name          :text
+   ;; returned for Card and Action
+   :dataset_query       :text))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               Shared Query Logic                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
+
+(def ^:private true-clause [:inline [:= 1 1]])
+(def ^:private false-clause [:inline [:= 0 1]])
 
 (s/defn ^:private model->alias :- s/Keyword
   [model :- SearchableModel]
@@ -167,13 +173,15 @@
 ;; Databases can't be archived
 (defmethod archived-where-clause "database"
   [_model archived?]
-  [:inline [:= 1 (if archived? 2 1)]])
+  (if-not archived?
+    true-clause
+    false-clause))
 
 ;; Table has an `:active` flag, but no `:archived` flag; never return inactive Tables
 (defmethod archived-where-clause "table"
   [model archived?]
   (if archived?
-    [:inline [:= 1 0]]  ; No tables should appear in archive searches
+    false-clause  ; No tables should appear in archive searches
     [:and
      [:= (keyword (name (model->alias model)) "active") true]
      [:= (keyword (name (model->alias model)) "visibility_type") nil]]))
@@ -272,6 +280,15 @@
       (add-collection-join-and-where-clauses :card.collection_id search-ctx)
       (add-card-db-id-clause (:table-db-id search-ctx))))
 
+(s/defmethod search-query-for-model "action"
+  [model search-ctx :- SearchContext]
+  (-> (base-query-for-model model search-ctx)
+      (sql.helpers/left-join [:report_card :model]
+                             [:= :model.id :action.model_id])
+      (sql.helpers/left-join :query_action
+                             [:= :query_action.action_id :action.id])
+      (add-collection-join-and-where-clauses :model.collection_id search-ctx)))
+
 (s/defmethod search-query-for-model "card"
   [_model search-ctx :- SearchContext]
   (shared-card-impl false search-ctx))
@@ -366,21 +383,21 @@
   true)
 
 (defmethod check-permissions-for-model :metric
-  [{:keys [id]}]
-  (-> (db/select-one Metric :id id) mi/can-read?))
+  [instance]
+  (mi/can-read? instance))
 
 (defmethod check-permissions-for-model :segment
-  [{:keys [id]}]
-  (-> (db/select-one Segment :id id) mi/can-read?))
+  [instance]
+  (mi/can-read? instance))
 
 (defmethod check-permissions-for-model :database
-  [{:keys [id]}]
-  (-> (db/select-one Database :id id) mi/can-read?))
+  [instance]
+  (mi/can-read? instance))
 
 (defn- query-model-set
   "Queries all models with respect to query for one result to see if we get a result or not"
   [search-ctx]
-  (map #((first %) :model)
+  (map #(get (first %) :model)
        (filter not-empty
                (for [model search-config/all-models]
                  (let [search-query     (search-query-for-model model search-ctx)
@@ -407,21 +424,23 @@
 (s/defn ^:private search
   "Builds a search query that includes all the searchable entities and runs it"
   [search-ctx :- SearchContext]
-  (let [search-query      (full-search-query search-ctx)
-        _                 (log/tracef "Searching with query:\n%s\n%s"
-                                      (u/pprint-to-str search-query)
-                                      (mdb.query/format-sql (first (mdb.query/compile search-query))))
-        reducible-results (mdb.query/reducible-query search-query :max-rows search-config/*db-max-results*)
-        xf                (comp
-                           (map t2.realize/realize)
-                           (filter check-permissions-for-model)
-                           ;; MySQL returns `:bookmark` and `:archived` as `1` or `0` so convert those to boolean as
-                           ;; needed
-                           (map #(update % :bookmark api/bit->boolean))
-                           (map #(update % :archived api/bit->boolean))
-                           (map (partial scoring/score-and-result (:search-string search-ctx)))
-                           (filter #(pos? (:score %))))
-        total-results     (scoring/top-results reducible-results search-config/max-filtered-results xf)]
+  (let [search-query       (full-search-query search-ctx)
+        _                  (log/tracef "Searching with query:\n%s\n%s"
+                                       (u/pprint-to-str search-query)
+                                       (mdb.query/format-sql (first (mdb.query/compile search-query))))
+        to-toucan-instance (fn [row] (t2.instance/instance (search-config/model-to-db-model (:model row)) row))
+        reducible-results  (mdb.query/reducible-query search-query :max-rows search-config/*db-max-results*)
+        xf                 (comp
+                            (map t2.realize/realize)
+                            (map to-toucan-instance)
+                            (filter check-permissions-for-model)
+                            ;; MySQL returns `:bookmark` and `:archived` as `1` or `0` so convert those to boolean as
+                            ;; needed
+                            (map #(update % :bookmark api/bit->boolean))
+                            (map #(update % :archived api/bit->boolean))
+                            (map (partial scoring/score-and-result (:search-string search-ctx)))
+                            (filter #(pos? (:score %))))
+        total-results      (scoring/top-results reducible-results search-config/max-filtered-results xf)]
     ;; We get to do this slicing and dicing with the result data because
     ;; the pagination of search is for UI improvement, not for performance.
     ;; We intend for the cardinality of the search results to be below the default max before this slicing occurs
@@ -443,12 +462,12 @@
 (def ^:private models-schema (s/conditional vector? [su/NonBlankString] :else su/NonBlankString))
 
 (s/defn ^:private search-context :- SearchContext
-  [search-string :-   (s/maybe su/NonBlankString),
+  [search-string   :- (s/maybe su/NonBlankString),
    archived-string :- (s/maybe su/BooleanString)
-   table-db-id :-     (s/maybe su/IntGreaterThanZero)
-   models :-          (s/maybe models-schema)
-   limit :-           (s/maybe su/IntGreaterThanZero)
-   offset :-          (s/maybe su/IntGreaterThanOrEqualToZero)]
+   table-db-id     :- (s/maybe su/IntGreaterThanZero)
+   models          :- (s/maybe models-schema)
+   limit           :- (s/maybe su/IntGreaterThanZero)
+   offset          :- (s/maybe su/IntGreaterThanOrEqualToZero)]
   (cond-> {:search-string      search-string
            :archived?          (Boolean/parseBoolean archived-string)
            :current-user-perms @api/*current-user-permissions-set*}
@@ -458,15 +477,16 @@
     (some? limit)       (assoc :limit-int limit)
     (some? offset)      (assoc :offset-int offset)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/models"
+(api/defendpoint GET "/models"
   "Get the set of models that a search query will return"
-  [q archived-string table-db-id] (query-model-set (search-context q archived-string table-db-id nil nil nil)))
+  [q archived-string table-db-id]
+  {table-db-id [:maybe ms/PositiveInt]}
+  (query-model-set (search-context q archived-string table-db-id nil nil nil)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/"
   "Search within a bunch of models for the substring `q`.
-  For the list of models, check `metabase.search.config/all-models.
+  For the list of models, check [[metabase.search.config/all-models]].
 
   To search in archived portions of models, pass in `archived=true`.
   To search for tables, cards, and models of a certain DB, pass in a DB id value

@@ -83,7 +83,7 @@
   (letfn [(tree [^Node node]
             (into [(.getNodeName node)]
                   (if (instance? org.apache.batik.dom.GenericText node)
-                    [(.getWholeText node)]
+                    [(.getWholeText ^org.apache.batik.dom.GenericText node)]
                     (map tree
                          (when (instance? Element node)
                            (let [children (.getChildNodes node)]

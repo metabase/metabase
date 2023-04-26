@@ -35,7 +35,7 @@
    [metabase.util.regex :as u.regex]
    [potemkin.types :as p.types]
    [pretty.core :as pretty]
-   [toucan.db :as db])
+   [toucan2.core :as t2])
   (:import [java.time LocalDate LocalDateTime]))
 
 (set! *warn-on-reflection* true)
@@ -888,11 +888,12 @@
 (defmethod mt/get-dataset-definition TimestampDatasetDef
   [^TimestampDatasetDef this]
   (let [interval-seconds (.intervalSeconds this)]
-    (mt/dataset-definition (str "checkins_interval_" interval-seconds)
-      ["checkins"
-       [{:field-name "timestamp"
-         :base-type  (or (driver->current-datetime-base-type driver/*driver*) :type/DateTime)}]
-       (vec (for [i (range -15 15)]
+    (mt/dataset-definition
+     (str "checkins_interval_" interval-seconds)
+     ["checkins"
+      [{:field-name "timestamp"
+        :base-type  (or (driver->current-datetime-base-type driver/*driver*) :type/DateTime)}]
+      (mapv (fn [i]
               ;; TIMESTAMP FIXME — not sure if still needed
               ;;
               ;; Create timestamps using relative dates (e.g. `DATEADD(second, -195, GETUTCDATE())` instead of
@@ -904,12 +905,15 @@
                                  ;; TODO -- make 'insert-rows-using-statements?` a multimethod so we don't need to
                                  ;; hardcode the whitelist here.
                                  (not (#{:vertica :bigquery-cloud-sdk} driver/*driver*)))
-                          (sql.qp/add-interval-honeysql-form driver/*driver*
-                                                             (sql.qp/current-datetime-honeysql-form driver/*driver*)
-                                                             (* i interval-seconds)
-                                                             :second)
+                          (sql.qp/with-driver-honey-sql-version driver/*driver*
+                            (sql.qp/compiled
+                             (sql.qp/add-interval-honeysql-form driver/*driver*
+                                                                (sql.qp/current-datetime-honeysql-form driver/*driver*)
+                                                                (* i interval-seconds)
+                                                                :second)))
                           (u.date/add :second (* i interval-seconds)))
-                 (assert <>))]))])))
+                 (assert <>))])
+            (range -15 15))])))
 
 (defn- dataset-def-with-timestamps [interval-seconds]
   (TimestampDatasetDef. interval-seconds))
@@ -947,7 +951,7 @@
     (if (and (checkins-db-is-old? (* (.intervalSeconds dataset) 5)) *recreate-db-if-stale?*)
       (binding [*recreate-db-if-stale?* false]
         (log/infof "DB for %s is stale! Deleteing and running test again\n" dataset)
-        (db/delete! Database :id (mt/id))
+        (t2/delete! Database :id (mt/id))
         (apply count-of-grouping dataset field-grouping relative-datetime-args))
       (let [results (mt/run-mbql-query checkins
                       {:aggregation [[:count]]
@@ -1114,27 +1118,28 @@
 
 (deftest additional-unit-filtering-tests
   (testing "Additional tests for filtering against various datetime bucketing units that aren't tested above"
-    (mt/test-drivers (mt/normal-drivers)
-      (doseq [[expected-count unit filter-value] addition-unit-filtering-vals]
-        (doseq [tz [nil "UTC"]] ;iterate on at least two report time zones to suss out bugs related to that
-          (mt/with-temporary-setting-values [report-timezone tz]
-            (testing (format "\nunit = %s" unit)
-              (is (= expected-count (count-of-checkins unit filter-value))
-                  (format
-                    "count of rows where (= (%s date) %s) should be %d"
-                    (name unit)
-                    filter-value
-                    expected-count)))))))))
+    (mt/with-temporary-setting-values [start-of-week :sunday]
+      (mt/test-drivers (mt/normal-drivers)
+        (doseq [[expected-count unit filter-value] addition-unit-filtering-vals]
+          (doseq [tz [nil "UTC"]]         ;iterate on at least two report time zones to suss out bugs related to that
+            (mt/with-temporary-setting-values [report-timezone tz]
+              (testing (format "\nunit = %s" unit)
+                (is (= expected-count (count-of-checkins unit filter-value))
+                    (format
+                     "count of rows where (= (%s date) %s) should be %d"
+                     (name unit)
+                     filter-value
+                     expected-count))))))))))
 
 (deftest legacy-default-datetime-bucketing-test
   (testing (str ":type/Date or :type/DateTime fields that don't have `:temporal-unit` clauses should get default `:day` "
                 "bucketing for legacy reasons. See #9014")
-    (is (= (str "SELECT count(*) AS \"count\" "
+    (is (= (str "SELECT COUNT(*) AS \"count\" "
                 "FROM \"PUBLIC\".\"CHECKINS\" "
                 "WHERE ("
-                "\"PUBLIC\".\"CHECKINS\".\"DATE\" >= CAST(now() AS date) "
+                "\"PUBLIC\".\"CHECKINS\".\"DATE\" >= CAST(NOW() AS date)) "
                 "AND "
-                "\"PUBLIC\".\"CHECKINS\".\"DATE\" < CAST(dateadd('day', CAST(1 AS long), CAST(now() AS datetime)) AS date)"
+                "(\"PUBLIC\".\"CHECKINS\".\"DATE\" < CAST(DATEADD('day', CAST(1 AS long), CAST(NOW() AS datetime)) AS date)"
                 ")")
            (:query
             (qp/compile
@@ -1148,9 +1153,9 @@
       (is (= (str "SELECT CHECKINS.DATE AS DATE "
                   "FROM CHECKINS "
                   "WHERE ("
-                  "CHECKINS.DATE >= date_trunc('month', dateadd('month', CAST(-4 AS long), CAST(now() AS datetime)))"
+                  "CHECKINS.DATE >= DATE_TRUNC('month', DATEADD('month', CAST(-4 AS long), CAST(NOW() AS datetime))))"
                   " AND "
-                  "CHECKINS.DATE < date_trunc('month', now())) "
+                  "(CHECKINS.DATE < DATE_TRUNC('month', NOW())) "
                   "GROUP BY CHECKINS.DATE "
                   "ORDER BY CHECKINS.DATE ASC "
                   "LIMIT 1048575")
@@ -1258,11 +1263,11 @@
                           #t "2022-03-31T00:00:00"
                           #t "2022-03-31T00:00:00-00:00"]]
           (testing (format "%d %s ^%s %s" n unit (.getCanonicalName (class t)) (pr-str t))
-            (binding [hx/*honey-sql-version* (sql.qp/honey-sql-version driver/*driver*)]
+            (sql.qp/with-driver-honey-sql-version driver/*driver*
               (let [march-31     (sql.qp/->honeysql driver/*driver* [:absolute-datetime t :day])
                     june-31      (sql.qp/add-interval-honeysql-form driver/*driver* march-31 n unit)
                     checkins     (mt/with-everything-store
-                                   (sql.qp/->honeysql driver/*driver* (db/select-one Table :id (mt/id :checkins))))
+                                   (sql.qp/->honeysql driver/*driver* (t2/select-one Table :id (mt/id :checkins))))
                     honeysql     {:select [[june-31 :june_31]]
                                   :from   [(sql.qp/maybe-wrap-unaliased-expr checkins)]}
                     honeysql     (sql.qp/apply-top-level-clause driver/*driver* :limit honeysql {:limit 1})

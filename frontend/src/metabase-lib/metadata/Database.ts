@@ -2,6 +2,8 @@
 // @ts-nocheck
 import {
   Database as IDatabase,
+  DatabaseFeature,
+  DatabaseSettings,
   NativePermissions,
   StructuredQuery,
 } from "metabase-types/api";
@@ -31,6 +33,8 @@ class DatabaseInner extends Base {
   tables: Table[];
   schemas: Schema[];
   metadata: Metadata;
+  features: DatabaseFeature[];
+  settings?: DatabaseSettings;
   native_permissions: NativePermissions;
 
   // Only appears in  GET /api/database/:id
@@ -126,6 +130,14 @@ class DatabaseInner extends Base {
     return this.hasFeature("persist-models");
   }
 
+  supportsActions() {
+    return this.hasFeature("actions");
+  }
+
+  hasActionsEnabled() {
+    return Boolean(this.settings?.["database-enable-actions"]);
+  }
+
   // QUESTIONS
   newQuestion() {
     return this.question().setDefaultQuery().setDefaultDisplay();
@@ -168,36 +180,6 @@ class DatabaseInner extends Base {
   /** Returns a database containing only the saved questions from the same database, if any */
   savedQuestionsDatabase() {
     return this.metadata.databasesList().find(db => db.is_saved_questions);
-  }
-
-  /**
-   * @private
-   * @param {number} id
-   * @param {string} name
-   * @param {?string} description
-   * @param {Table[]} tables
-   * @param {Schema[]} schemas
-   * @param {Metadata} metadata
-   * @param {boolean} auto_run_queries
-   */
-
-  /* istanbul ignore next */
-  _constructor(
-    id,
-    name,
-    description,
-    tables,
-    schemas,
-    metadata,
-    auto_run_queries,
-  ) {
-    this.id = id;
-    this.name = name;
-    this.description = description;
-    this.tables = tables;
-    this.schemas = schemas;
-    this.metadata = metadata;
-    this.auto_run_queries = auto_run_queries;
   }
 }
 

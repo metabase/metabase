@@ -102,6 +102,20 @@ export const getDashboardComplete = createSelector(
     },
 );
 
+// Auto-apply filters
+export const getDraftParameterValues = state =>
+  state.dashboard.draftParameterValues;
+export const getIsAutoApplyFilters = createSelector(
+  [getDashboard],
+  dashboard => dashboard.auto_apply_filters,
+);
+export const getHasUnappliedParameterValues = createSelector(
+  [getParameterValues, getDraftParameterValues],
+  (parameterValues, draftParameterValues) => {
+    return !_.isEqual(draftParameterValues, parameterValues);
+  },
+);
+
 export const getDocumentTitle = state =>
   state.dashboard.loadingControls.documentTitle;
 
@@ -127,6 +141,10 @@ export const getIsDirty = createSelector(
         ))
     ),
 );
+
+export const getEditingDashcardId = createSelector([getSidebar], sidebar => {
+  return sidebar?.props?.dashcardId;
+});
 
 export const getEditingParameterId = createSelector([getSidebar], sidebar => {
   return sidebar.name === SIDEBAR_NAME.editParameter
@@ -174,15 +192,12 @@ export const getParameters = createSelector(
   },
 );
 
-export const makeGetParameterMappingOptions = () => {
-  const getParameterMappingOptions = createSelector(
-    [getMetadata, getEditingParameter, getCard, getDashCard],
-    (metadata, parameter, card, dashcard) => {
-      return _getParameterMappingOptions(metadata, parameter, card, dashcard);
-    },
-  );
-  return getParameterMappingOptions;
-};
+export const getParameterMappingOptions = createSelector(
+  [getMetadata, getEditingParameter, getCard, getDashCard],
+  (metadata, parameter, card, dashcard) => {
+    return _getParameterMappingOptions(metadata, parameter, card, dashcard);
+  },
+);
 
 export const getDefaultParametersById = createSelector(
   [getDashboard],

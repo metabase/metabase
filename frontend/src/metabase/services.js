@@ -3,6 +3,7 @@ import { GET, PUT, POST, DELETE } from "metabase/lib/api";
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 
 import Question from "metabase-lib/Question";
+import { normalizeParameters } from "metabase-lib/parameters/utils/parameter-values";
 import { getPivotColumnSplit } from "metabase-lib/queries/utils/pivot";
 import { injectTableMetadata } from "metabase-lib/metadata/utils/tables";
 
@@ -33,9 +34,8 @@ export const BookmarkApi = {
 // only available with token loaded
 export const GTAPApi = {
   list: GET("/api/mt/gtap"),
-  create: POST("/api/mt/gtap"),
-  update: PUT("/api/mt/gtap/:id"),
   attributes: GET("/api/mt/user/attributes"),
+  validate: POST("/api/mt/gtap/validate"),
 };
 
 export const StoreApi = {
@@ -81,6 +81,65 @@ export function maybeUsePivotEndpoint(api, card, metadata) {
   return api;
 }
 
+export async function runQuestionQuery(
+  question,
+  {
+    cancelDeferred,
+    isDirty = false,
+    ignoreCache = false,
+    collectionPreview = false,
+  } = {},
+) {
+  const canUseCardApiEndpoint = !isDirty && question.isSaved();
+  const parameters = normalizeParameters(question.parameters());
+  const card = question.card();
+
+  if (canUseCardApiEndpoint) {
+    const { dashboardId, dashcardId } = card;
+
+    const queryParams = {
+      cardId: question.id(),
+      dashboardId,
+      dashcardId,
+      ignore_cache: ignoreCache,
+      collection_preview: collectionPreview,
+      parameters,
+    };
+
+    return [
+      await maybeUsePivotEndpoint(
+        dashboardId ? DashboardApi.cardQuery : CardApi.query,
+        card,
+        question.metadata(),
+      )(queryParams, {
+        cancelled: cancelDeferred.promise,
+      }),
+    ];
+  }
+
+  const getDatasetQueryResult = datasetQuery => {
+    const datasetQueryWithParameters = { ...datasetQuery, parameters };
+    return maybeUsePivotEndpoint(
+      MetabaseApi.dataset,
+      card,
+      question.metadata(),
+    )(
+      datasetQueryWithParameters,
+      cancelDeferred
+        ? {
+            cancelled: cancelDeferred.promise,
+          }
+        : {},
+    );
+  };
+
+  const datasetQueries = question
+    .atomicQueries()
+    .map(query => query.datasetQuery());
+
+  return Promise.all(datasetQueries.map(getDatasetQueryResult));
+}
+
 export const CardApi = {
   list: GET("/api/card", (cards, { data }) =>
     // HACK: support for the "q" query param until backend implements it
@@ -122,8 +181,6 @@ export const DashboardApi = {
   get: GET("/api/dashboard/:dashId"),
   update: PUT("/api/dashboard/:id"),
   delete: DELETE("/api/dashboard/:dashId"),
-  addCard: POST("/api/dashboard/:dashId/cards"),
-  removeCard: DELETE("/api/dashboard/:dashId/cards"),
   updateCards: PUT("/api/dashboard/:dashId/cards"),
   favorite: POST("/api/dashboard/:dashId/favorite"),
   unfavorite: DELETE("/api/dashboard/:dashId/favorite"),
@@ -215,6 +272,10 @@ export const SlackApi = {
 
 export const LdapApi = {
   updateSettings: PUT("/api/ldap/settings"),
+};
+
+export const SamlApi = {
+  updateSettings: PUT("/api/saml/settings"),
 };
 
 export const GoogleApi = {
@@ -369,8 +430,6 @@ export const SettingsApi = {
   list: GET("/api/setting"),
   put: PUT("/api/setting/:key"),
   putAll: PUT("/api/setting"),
-  // setAll:                      PUT("/api/setting"),
-  // delete:                   DELETE("/api/setting/:key"),
 };
 
 export const PermissionsApi = {
@@ -383,6 +442,7 @@ export const PermissionsApi = {
   createMembership: POST("/api/permissions/membership"),
   deleteMembership: DELETE("/api/permissions/membership/:id"),
   updateMembership: PUT("/api/permissions/membership/:id"),
+  clearGroupMembership: PUT("/api/permissions/membership/:id/clear"),
   updateGroup: PUT("/api/permissions/group/:id"),
   deleteGroup: DELETE("/api/permissions/group/:id"),
 };
@@ -499,10 +559,21 @@ export const ActionsApi = {
   get: GET("/api/action/:id"),
   create: POST("/api/action"),
   update: PUT("/api/action/:id"),
+  execute: POST("/api/action/:id/execute"),
   prefetchValues: GET(
     "/api/dashboard/:dashboardId/dashcard/:dashcardId/execute",
   ),
-  execute: POST("/api/dashboard/:dashboardId/dashcard/:dashcardId/execute"),
+  executeDashcardAction: POST(
+    "/api/dashboard/:dashboardId/dashcard/:dashcardId/execute",
+  ),
   createPublicLink: POST("/api/action/:id/public_link"),
   deletePublicLink: DELETE("/api/action/:id/public_link"),
+  listPublic: GET("/api/action/public"),
+};
+
+export const MetabotApi = {
+  modelPrompt: POST("/api/metabot/model/:modelId"),
+  databasePrompt: POST("/api/metabot/database/:databaseId"),
+  databasePromptQuery: POST("/api/metabot/database/:databaseId/query"),
+  sendFeedback: POST("/api/metabot/feedback"),
 };
