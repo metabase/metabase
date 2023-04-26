@@ -1058,11 +1058,13 @@
 
 (api/defendpoint GET "/:id/schemas"
   "Returns a list of all the schemas found for the database `id`"
-  [id include_editable_data_model]
+  [id include_editable_data_model include_hidden]
   {id                          ms/PositiveInt
-   include_editable_data_model [:maybe ms/BooleanString]}
+   include_editable_data_model [:maybe ms/BooleanString]
+   include_hidden              [:maybe ms/BooleanString]}
   (api/read-check Database id)
   (let [include_editable_data_model (Boolean/parseBoolean include_editable_data_model)
+        include_hidden              (Boolean/parseBoolean include_hidden)
         filter-schemas (fn [schemas]
                          (if include_editable_data_model
                            (if-let [f (u/ignore-exceptions
@@ -1073,9 +1075,10 @@
                            (filter (partial can-read-schema? id) schemas)))]
     (->> (t2/select-fn-set :schema Table
                            :db_id id :active true
-                         ;; a non-nil value means Table is hidden -- see [[metabase.models.table/visibility-types]]
-                           :visibility_type nil
-                           {:order-by [[:%lower.schema :asc]]})
+                           {:order-by [[:%lower.schema :asc]]
+                            ;; a non-nil value means Table is hidden -- see [[metabase.models.table/visibility-types]]
+                            :where (when-not include_hidden
+                                     [:= :visibility_type nil])})
          filter-schemas
          ;; for `nil` schemas return the empty string
          (map #(if (nil? %) "" %))
