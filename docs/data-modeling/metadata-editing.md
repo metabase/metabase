@@ -83,7 +83,7 @@ To add a description, click into the box below the column name. Descriptions are
 
 **Only in detail views** will hide lengthy text from question results. This setting is applied by default if a column's values have an average length of more than 50 characters. For example, you could use this setting on a column like "Customer Comments" if you already have a column for "Customer Rating".
 
-**Do not include** columns won't show up in the query builder or data reference. You can set "do not include" on sensitive columns (such as PII) or irrelevant columns. But this visibility option is a simple omit/hide option; it's not a security feature. These columns are still accessible for people with native query privileges; they can write `SELECT hidden_column FROM table` or `select * from table` in the [SQL editor](../questions/native-editor/writing-sql.md) and they'll be able to view these fields and their values. To prevent people from viewing certain columns, see [data sandboxing](../permissions/data-sandboxes.md).
+**Do not include** columns won't show up in the query builder or data reference. You can set "do not include" on sensitive columns (such as PII) or irrelevant columns. But this visibility option is a simple omit/hide option; it's not a security feature. These columns are still accessible for people with native query privileges; they can write `SELECT hidden_column FROM table` or `SELECT * from table` in the [SQL editor](../questions/native-editor/writing-sql.md) and they'll be able to view these fields and their values. To prevent people from viewing certain columns, see [data sandboxing](../permissions/data-sandboxes.md).
 
 
 ### Column order
