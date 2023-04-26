@@ -33,7 +33,8 @@
    [metabase.util.ui-logic :as ui-logic]
    [metabase.util.urls :as urls]
    [schema.core :as s]
-   [toucan2.core :as t2])
+   [toucan2.core :as t2]
+   [postal.message :as message])
   (:import
    (clojure.lang ExceptionInfo)))
 
