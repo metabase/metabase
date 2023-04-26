@@ -65,7 +65,7 @@
     expr-type))
 
 (defmethod expression/type-of* :case
-  [[_tag _opts pred-expr-pairs default :as clause]]
+  [[_tag _opts pred-expr-pairs default]]
   (-> (reduce
        (fn [best-guess [_pred expr]]
          (let [expr-type (expression/type-of expr)]
