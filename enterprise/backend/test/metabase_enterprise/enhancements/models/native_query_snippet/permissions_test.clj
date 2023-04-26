@@ -5,6 +5,7 @@
    [metabase.models :refer [Collection NativeQuerySnippet]]
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
+   [metabase.models.native-query-snippet.permissions :as snippet.perms]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.public-settings.premium-features-test
@@ -25,29 +26,29 @@
                   (is (= expected
                          (has-perms-for-id?)))))))]
     (testing "if EE perms aren't enabled: "
-      (perms/revoke-native-permissions! (perms-group/all-users) (mt/id))
       (premium-features-test/with-premium-features #{}
         (testing "should NOT be allowed if you don't have native perms for at least one DB"
-          (test-perms* false))
+          (with-redefs [snippet.perms/has-any-native-permissions? (constantly false)]
+            (test-perms* false)))
         (testing "should be allowed if you have native perms for at least one DB"
-          (perms/grant-native-readwrite-permissions! (perms-group/all-users) (mt/id))
-          (test-perms* true))))
+          (with-redefs [snippet.perms/has-any-native-permissions? (constantly true)]
+            (test-perms* true)))))
 
     (testing "if EE perms are enabled: "
       (premium-features-test/with-premium-features #{:enhancements}
-        (testing "should be allowed if you have collection perms, native perms for at least one DB, and are not sandboxed"
-          (grant-collection-perms!)
-          (test-perms* true))
-        (testing "should NOT be allowed if you do not have collection perms"
-          (revoke-collection-perms!)
-          (test-perms* false)
-          (grant-collection-perms!))
-        (testing "should NOT be allowed if you do not have native query perms for at least one DB"
-          (perms/revoke-native-permissions! (perms-group/all-users) (mt/id))
-          (test-perms* false)
-          (perms/grant-native-readwrite-permissions! (perms-group/all-users) (mt/id)))
-        (testing "should NOT be allowed if you are sandboxed"
-          (met/with-gtaps {:gtaps {:venues {:query (mt/mbql-query venues)}}}
+        (with-redefs [snippet.perms/has-any-native-permissions? (constantly true)]
+          (testing "should be allowed if you have collection perms, native perms for at least one DB, and are not sandboxed"
+            (grant-collection-perms!)
+            (test-perms* true))
+          (testing "should NOT be allowed if you do not have collection perms"
+            (revoke-collection-perms!)
+            (test-perms* false)
+            (grant-collection-perms!))
+          (testing "should NOT be allowed if you are sandboxed"
+            (met/with-gtaps {:gtaps {:venues {:query (mt/mbql-query venues)}}}
+              (test-perms* false))))
+        (with-redefs [snippet.perms/has-any-native-permissions? (constantly false)]
+          (testing "should NOT be allowed if you do not have native query perms for at least one DB"
             (test-perms* false)))))))
 
 (defn- test-with-root-collection-and-collection [f]
