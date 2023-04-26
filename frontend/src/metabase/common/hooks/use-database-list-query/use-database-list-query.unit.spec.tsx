@@ -12,7 +12,7 @@ import useDatabaseListQuery from "./use-database-list-query";
 const TEST_DB = createMockDatabase();
 
 const TestComponent = () => {
-  const { databases = [], isLoading, error } = useDatabaseListQuery();
+  const { data = [], isLoading, error } = useDatabaseListQuery();
 
   if (isLoading || error) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
@@ -20,7 +20,7 @@ const TestComponent = () => {
 
   return (
     <div>
-      {databases.map(database => (
+      {data.map(database => (
         <div key={database.id}>{database.name}</div>
       ))}
     </div>
