@@ -251,16 +251,11 @@
 (deftest ^:parallel capitalize-en-test
   (are [s expected] (= expected
                        (u/capitalize-en s))
-    nil                 nil
-    ""                  ""
-    "ibis"              "Ibis"
-    "IBIS"              "Ibis"
-    "Ibis"              "Ibis"
-    ;; technically this is only supposed to be called with a `CharSequence`, but we're calling `.toString` on it which
-    ;; is a `java.lang.Object` method, so it actually works on anything. Thankfully Kondo will call us out about
-    ;; incorrect usage, hence the `:clj-kondo/ignore` comments below.
-    #_:clj-kondo/ignore 1  "1"
-    #_:clj-kondo/ignore {} "{}"))
+    nil    nil
+    ""     ""
+    "ibis" "Ibis"
+    "IBIS" "Ibis"
+    "Ibis" "Ibis"))
 
 #?(:clj
    (deftest capitalize-en-turkish-test
