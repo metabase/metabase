@@ -1,28 +1,56 @@
-/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { CSSTransition, TransitionGroup } from "react-transition-group";
 import { t } from "ttag";
 
-import Form, { FormField, FormFooter } from "metabase/containers/FormikForm";
+import * as Yup from "yup";
+import * as Errors from "metabase/core/utils/errors";
+import { FormFooter } from "metabase/containers/FormikForm";
+import Form from "metabase/core/components/Form";
+import FormRadio from "metabase/core/components/FormRadio";
 import ModalContent from "metabase/components/ModalContent";
-import Radio from "metabase/core/components/Radio";
-import validate from "metabase/lib/validate";
 import { canonicalCollectionId } from "metabase/collections/utils";
 
 import "./SaveQuestionModal.css";
+import FormInput from "metabase/core/components/FormInput/FormInput";
+import FormProvider from "metabase/core/components/FormProvider";
+import { CollectionId } from "metabase-types/api";
+import Question from "metabase-lib/Question";
 
-const getSingleStepTitle = (questionType, showSaveType) => {
+const getSingleStepTitle = (questionType: string, showSaveType: boolean) => {
   if (questionType === "model") {
     return t`Save model`;
   } else if (showSaveType) {
     return t`Save question`;
-  } else {
-    return t`Save new question`;
   }
+
+  return t`Save new question`;
 };
 
-export default class SaveQuestionModal extends Component {
+interface SaveQuestionModalProps {
+  question: Question;
+  originalQuestion: Question;
+  onCreate: (question: Question) => void;
+  onSave: (question: Question) => void;
+  onClose: () => void;
+  multiStep?: boolean;
+  initialCollectionId: number;
+}
+
+const SAVE_QUESTION_SCHEMA = Yup.object({
+  saveType: Yup.boolean(),
+  name: Yup.string()
+    .default("")
+    .when("saveType", {
+      // We don't care if the form is valid when overwrite mode is enabled,
+      // as original question's data will be submitted instead of the form values
+      is: (value: string) => value !== "overwrite",
+      then: Yup.string().required(Errors.required),
+      otherwise: Yup.string(),
+    }),
+});
+
+export default class SaveQuestionModal extends Component<SaveQuestionModalProps> {
   static propTypes = {
     question: PropTypes.object.isRequired,
     originalQuestion: PropTypes.object,
@@ -32,15 +60,12 @@ export default class SaveQuestionModal extends Component {
     multiStep: PropTypes.bool,
   };
 
-  validateName = (name, { values }) => {
-    if (values.saveType !== "overwrite") {
-      // We don't care if the form is valid when overwrite mode is enabled,
-      // as original question's data will be submitted instead of the form values
-      return validate.required()(name);
-    }
-  };
-
-  handleSubmit = async details => {
+  handleSubmit = async (details: {
+    saveType: string;
+    collection_id: CollectionId | undefined | null;
+    name: string;
+    description: string;
+  }) => {
     const { question, originalQuestion, onCreate, onSave } = this.props;
 
     const collectionId = canonicalCollectionId(
@@ -119,28 +144,28 @@ export default class SaveQuestionModal extends Component {
         title={title}
         onClose={this.props.onClose}
       >
-        <Form
+        <FormProvider
           initialValues={initialValues}
-          fields={[
-            { name: "saveType" },
-            {
-              name: "name",
-              validate: this.validateName,
-            },
-            { name: "description" },
-            { name: "collection_id" },
-          ]}
           onSubmit={this.handleSubmit}
-          overwriteOnInitialValuesChange
+          validationSchema={SAVE_QUESTION_SCHEMA}
+          enableReinitialize
         >
-          {({ values, Form }) => (
+          {({ values }) => (
             <Form>
-              <FormField
+              <FormRadio
                 name="saveType"
                 title={t`Replace or save as new?`}
-                type={SaveTypeInput}
                 hidden={!showSaveType}
-                originalQuestion={originalQuestion}
+                options={[
+                  {
+                    name: t`Replace original question, "${
+                      originalQuestion && originalQuestion.displayName()
+                    }"`,
+                    value: "overwrite",
+                  },
+                  { name: t`Save as new question`, value: "create" },
+                ]}
+                vertical
               />
               <TransitionGroup>
                 {values.saveType === "create" && (
@@ -152,19 +177,19 @@ export default class SaveQuestionModal extends Component {
                     }}
                   >
                     <div className="saveQuestionModalFields">
-                      <FormField
+                      <FormInput
                         autoFocus
                         name="name"
                         title={t`Name`}
                         placeholder={nameInputPlaceholder}
                       />
-                      <FormField
+                      <FormInput
                         name="description"
                         type="text"
                         title={t`Description`}
                         placeholder={t`It's optional but oh, so helpful`}
                       />
-                      <FormField
+                      <FormInput
                         name="collection_id"
                         title={t`Which collection should this go in?`}
                         type="collection"
@@ -176,25 +201,8 @@ export default class SaveQuestionModal extends Component {
               <FormFooter submitTitle={t`Save`} onCancel={this.props.onClose} />
             </Form>
           )}
-        </Form>
+        </FormProvider>
       </ModalContent>
     );
   }
 }
-
-const SaveTypeInput = ({ field, originalQuestion }) => (
-  <Radio
-    {...field}
-    type={""}
-    options={[
-      {
-        name: t`Replace original question, "${
-          originalQuestion && originalQuestion.displayName()
-        }"`,
-        value: "overwrite",
-      },
-      { name: t`Save as new question`, value: "create" },
-    ]}
-    vertical
-  />
-);
