@@ -1,16 +1,23 @@
 import React from "react";
 import userEvent from "@testing-library/user-event";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
-import { Card, Collection, ParameterValues } from "metabase-types/api";
+import {
+  Card,
+  Collection,
+  Database,
+  ParameterValues,
+} from "metabase-types/api";
 import {
   createMockCard,
   createMockCollection,
+  createMockDatabase,
   createMockField,
   createMockParameterValues,
 } from "metabase-types/api/mocks";
 import {
   setupCardsEndpoints,
   setupCollectionsEndpoints,
+  setupDatabasesEndpoints,
   setupErrorParameterValuesEndpoints,
   setupParameterValuesEndpoints,
   setupUnauthorizedCardsEndpoints,
@@ -254,6 +261,23 @@ describe("ValuesSourceModal", () => {
       ).toBeInTheDocument();
     });
 
+    it("should allow searching for a card without access to the root collection", async () => {
+      await setup({
+        hasCollectionAccess: false,
+      });
+
+      userEvent.click(
+        screen.getByRole("radio", { name: "From another model or question" }),
+      );
+      userEvent.click(
+        screen.getByRole("button", { name: /Pick a model or question…/ }),
+      );
+
+      expect(
+        screen.getByPlaceholderText("Search for a question or model"),
+      ).toBeInTheDocument();
+    });
+
     it("should display a message when there is an error in the underlying query", async () => {
       await setup({
         parameter: createMockUiParameter({
@@ -356,8 +380,9 @@ describe("ValuesSourceModal", () => {
 interface SetupOpts {
   parameter?: UiParameter;
   parameterValues?: ParameterValues;
-  cards?: Card[];
+  databases?: Database[];
   collections?: Collection[];
+  cards?: Card[];
   hasCollectionAccess?: boolean;
   hasParameterValuesError?: boolean;
 }
@@ -365,26 +390,29 @@ interface SetupOpts {
 const setup = async ({
   parameter = createMockUiParameter(),
   parameterValues = createMockParameterValues(),
-  cards = [],
+  databases = [createMockDatabase()],
   collections = [createMockCollection(ROOT_COLLECTION)],
+  cards = [],
   hasCollectionAccess = true,
   hasParameterValuesError = false,
 }: SetupOpts = {}) => {
   const onSubmit = jest.fn();
   const onClose = jest.fn();
 
+  setupDatabasesEndpoints(databases);
+
   if (hasCollectionAccess) {
     setupCollectionsEndpoints(collections);
     setupCardsEndpoints(cards);
-
-    if (!hasParameterValuesError) {
-      setupParameterValuesEndpoints(parameterValues);
-    } else {
-      setupErrorParameterValuesEndpoints();
-    }
   } else {
     setupUnauthorizedCollectionsEndpoints(collections);
     setupUnauthorizedCardsEndpoints(cards);
+  }
+
+  if (!hasParameterValuesError) {
+    setupParameterValuesEndpoints(parameterValues);
+  } else {
+    setupErrorParameterValuesEndpoints();
   }
 
   renderWithProviders(
