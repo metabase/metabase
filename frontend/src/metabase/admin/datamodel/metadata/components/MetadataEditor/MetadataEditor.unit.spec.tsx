@@ -107,6 +107,31 @@ describe("MetadataEditor", () => {
       ).not.toBeInTheDocument();
     });
 
+    it("should not allow to enter an empty table name", async () => {
+      await setup();
+
+      userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
+      userEvent.clear(
+        await screen.findByDisplayValue(ORDERS_TABLE.display_name),
+      );
+      userEvent.tab();
+
+      expect(
+        screen.getByDisplayValue(ORDERS_TABLE.display_name),
+      ).toBeInTheDocument();
+    });
+
+    it("should not allow to enter an empty field name", async () => {
+      const [field] = ORDERS_TABLE.fields ?? [];
+      await setup();
+
+      userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
+      userEvent.clear(await screen.findByDisplayValue(field.display_name));
+      userEvent.tab();
+
+      expect(screen.getByDisplayValue(field.display_name)).toBeInTheDocument();
+    });
+
     it("should allow to switch between metadata and original schema", async () => {
       const [field] = ORDERS_TABLE.fields ?? [];
       await setup();
@@ -121,7 +146,7 @@ describe("MetadataEditor", () => {
       expect(screen.getByText(ORDERS_TABLE.name)).toBeInTheDocument();
     });
 
-    it("should display visible visibility type", async () => {
+    it("should display visible tables", async () => {
       await setup();
       expect(await screen.findByText("1 Queryable Table")).toBeInTheDocument();
       expect(screen.getByText("1 Hidden Table")).toBeInTheDocument();
@@ -142,7 +167,7 @@ describe("MetadataEditor", () => {
       ).not.toBeInTheDocument();
     });
 
-    it("should display hidden visibility type", async () => {
+    it("should display hidden tables", async () => {
       await setup();
       expect(await screen.findByText("1 Queryable Table")).toBeInTheDocument();
       expect(screen.getByText("1 Hidden Table")).toBeInTheDocument();
