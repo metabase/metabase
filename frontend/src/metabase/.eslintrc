@@ -24,6 +24,21 @@
       "rules": {
         "no-console": 0
       }
+    },
+    {
+      "files": ["lib/redux/hooks.ts"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              "metabase-enterprise",
+              "metabase-enterprise/*",
+              "cljs/metabase.lib*"
+            ]
+          }
+        ]
+      }
     }
   ]
 }
