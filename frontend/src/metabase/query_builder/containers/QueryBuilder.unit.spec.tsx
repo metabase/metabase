@@ -7,6 +7,7 @@ import {
   renderWithProviders,
   screen,
   waitForElementToBeRemoved,
+  act,
 } from "__support__/ui";
 import QueryBuilder from "metabase/query_builder/containers/QueryBuilder";
 import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/hooks/use-before-unload";
@@ -134,13 +135,16 @@ describe("QueryBuilder", () => {
   it("should have beforeunload event when user tries to leave an edited existing model", async () => {
     const { mockEventListener } = await setup({ mockCard: TEST_CARD });
 
-    screen.getByText("Row limit").click();
-    const rowLimitInputElem = await screen.findByPlaceholderText(
-      "Enter a limit",
-    );
-    rowLimitInputElem.click();
-    await userEvent.type(rowLimitInputElem, "100");
-    userEvent.tab();
+    // eslint-disable-next-line testing-library/no-unnecessary-act
+    await act(async () => {
+      screen.getByText("Row limit").click();
+      const rowLimitInputElem = await screen.findByPlaceholderText(
+        "Enter a limit",
+      );
+      rowLimitInputElem.click();
+      await userEvent.type(rowLimitInputElem, "100");
+      userEvent.tab();
+    });
 
     const mockEvent = callMockEvent(mockEventListener, "beforeunload");
     expect(mockEvent.preventDefault).toHaveBeenCalled();
