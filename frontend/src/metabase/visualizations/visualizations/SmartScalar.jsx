@@ -16,8 +16,8 @@ import ScalarValue, {
   ScalarWrapper,
   ScalarTitle,
 } from "metabase/visualizations/components/ScalarValue";
+import * as Lib from "metabase-lib";
 import { isDate } from "metabase-lib/types/utils/isa";
-import { formatBucketing } from "metabase-lib/queries/utils/query-time";
 import { ScalarContainer } from "./Scalar.styled";
 
 import {
@@ -127,7 +127,7 @@ export default class Smart extends React.Component {
       width,
     );
 
-    const granularity = formatBucketing(insight["unit"]).toLowerCase();
+    const granularity = Lib.describeTemporalUnit(insight["unit"]).toLowerCase();
 
     const lastChange = insight["last-change"];
     const previousValue = insight["previous-value"];

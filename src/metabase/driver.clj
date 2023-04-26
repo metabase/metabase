@@ -490,6 +490,9 @@
     ;; Does the driver support experimental "writeback" actions like "delete this row" or "insert a new row" from 44+?
     :actions
 
+    ;; Does the driver support uploading files
+    :uploads
+
     ;; Does the driver support custom writeback actions. Drivers that support this must
     ;; implement [[execute-write-query!]]
     :actions/custom
@@ -808,5 +811,40 @@
   `:truncation-size`: size to truncate text fields to if the driver supports
   expressions."
   {:arglists '([driver table fields rff opts]), :added "0.46.0"}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                    Upload                                                      |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defmulti table-name-length-limit
+  "Return the maximum number of characters allowed in a table name, or `nil` if there is no limit."
+  {:added "0.47.0", :arglists '([driver])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti create-table
+  "Create a table named `table-name`. If the table already exists it will throw an error."
+  {:added "0.47.0", :arglists '([driver db-id table-name col->type])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti drop-table
+  "Drop a table named `table-name`. If the table doesn't exist it will not be dropped."
+  {:added "0.47.0", :arglists '([driver db-id table-name])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti insert-into
+  "Insert `values` into a table named `table-name`. `values` is a sequence of rows, where each row's order matches
+   `column-names`."
+  {:added "0.47.0", :arglists '([driver db-id table-name column-names values])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti upload-type->database-type
+  "Returns the database type for a given `metabase.upload` type."
+  {:added "0.47.0", :arglists '([driver upload-type])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)

@@ -27,7 +27,7 @@
   (let [user {:first_name       first-name
               :last_name        last-name
               :email            email
-              :sso_source       "jwt"
+              :sso_source       :jwt
               :login_attributes user-attributes}]
     (or (sso-utils/fetch-and-update-login-attributes! user)
         (sso-utils/create-new-sso-user! user))))

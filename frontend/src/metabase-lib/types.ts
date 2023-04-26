@@ -25,32 +25,33 @@ export type ColumnGroup = unknown & { _opaque: typeof ColumnGroup };
 
 export type TableDisplayInfo = {
   name: string;
-  display_name: string;
-  is_source_table: boolean;
-  is_from_join: boolean;
-  is_implicitly_joinable: boolean;
+  displayName: string;
+  isSourceTable: boolean;
+  isFromJoin: boolean;
+  isImplicitlyJoinable: boolean;
 };
 
 type TableInlineDisplayInfo = Pick<
   TableDisplayInfo,
-  "name" | "display_name" | "is_source_table"
+  "name" | "displayName" | "isSourceTable"
 >;
 
 export type ColumnDisplayInfo = {
   name: string;
-  display_name: string;
-  fk_reference_name?: string;
-  semantic_type?: string | null;
-  effective_type: string;
+  displayName: string;
+  fkReferenceName?: string;
+  // TODO -- pretty sure the types were removed?
+  semanticType?: string | null;
+  effectiveType: string;
   is_calculated: boolean;
-  is_from_join: boolean;
-  is_implicitly_joinable: boolean;
+  isFromJoin: boolean;
+  isImplicitlyJoinable: boolean;
   table?: TableInlineDisplayInfo;
 };
 
 export type OrderByClauseDisplayInfo = Pick<
   ColumnDisplayInfo,
-  "name" | "display_name" | "effective_type" | "semantic_type" | "table"
+  "name" | "displayName" | "effectiveType" | "semanticType" | "table"
 > & {
   direction: OrderByDirection;
 };
