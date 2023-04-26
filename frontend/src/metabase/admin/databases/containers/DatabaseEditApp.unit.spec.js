@@ -1,16 +1,19 @@
 import React from "react";
 import { Route } from "react-router";
 
+import userEvent from "@testing-library/user-event";
 import {
   renderWithProviders,
   screen,
   waitForElementToBeRemoved,
+  act,
 } from "__support__/ui";
 import { setupEnterpriseTest } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
 
+import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/hooks/use-before-unload";
 import DatabaseEditApp from "./DatabaseEditApp";
 
 const ENGINES_MOCK = {
@@ -32,6 +35,17 @@ const ENGINES_MOCK = {
   },
 };
 
+const callMockEvent = (mockEventListener, eventName) => {
+  const mockEvent = {
+    preventDefault: jest.fn(),
+  };
+
+  mockEventListener.mock.calls
+    .filter(([event]) => eventName === event)
+    .forEach(([_, callback]) => callback(mockEvent));
+  return mockEvent;
+};
+
 const ComponentMock = () => <div />;
 jest.mock(
   "metabase/databases/containers/DatabaseHelpCard",
@@ -39,6 +53,8 @@ jest.mock(
 );
 
 async function setup({ cachingEnabled = false } = {}) {
+  const mockEventListener = jest.spyOn(window, "addEventListener");
+
   const settings = mockSettings({
     engines: ENGINES_MOCK,
     "token-features": createMockTokenFeatures({ advanced_config: true }),
@@ -53,9 +69,43 @@ async function setup({ cachingEnabled = false } = {}) {
   });
 
   await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
+
+  return { mockEventListener };
 }
 
 describe("DatabaseEditApp", () => {
+  describe("Database connections", () => {
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it("should trigger beforeunload event when database connection is edited", async () => {
+      const { mockEventListener } = await setup();
+
+      const databaseForm = await screen.findByTestId("database-name-field");
+
+      // Workaround for a known bug in Formik when testing with react-testing-library
+      // https://github.com/jaredpalmer/formik/issues/1543#issuecomment-547501926
+      // eslint-disable-next-line testing-library/no-unnecessary-act
+      await act(async () => {
+        await userEvent.type(databaseForm, "Test database");
+      });
+
+      const mockEvent = callMockEvent(mockEventListener, "beforeunload");
+
+      expect(mockEvent.preventDefault).toHaveBeenCalled();
+      expect(mockEvent.returnValue).toBe(BEFORE_UNLOAD_UNSAVED_MESSAGE);
+    });
+
+    it("should not trigger beforeunload event when database connection is unchanged", async () => {
+      const { mockEventListener } = await setup();
+      const mockEvent = callMockEvent(mockEventListener, "beforeunload");
+
+      expect(mockEvent.preventDefault).not.toHaveBeenCalled();
+      expect(mockEvent.returnValue).toBe(undefined);
+    });
+  });
+
   describe("Cache TTL field", () => {
     describe("OSS", () => {
       it("is invisible", async () => {

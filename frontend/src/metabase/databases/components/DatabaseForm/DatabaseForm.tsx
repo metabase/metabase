@@ -132,7 +132,7 @@ const DatabaseFormBody = ({
   }, [engine, values, isAdvanced]);
 
   return (
-    <Form>
+    <Form data-testid="database-edit-form">
       <DatabaseEngineField
         engineKey={engineKey}
         engines={engines}
