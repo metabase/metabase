@@ -1,10 +1,25 @@
-/* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import React, { Component, ReactNode } from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
 import Icon from "metabase/components/Icon";
 
-export default class ModalContent extends Component {
+interface ModalContentProps extends CommonModalProps {
+  id?: string;
+  title: string;
+  onClose?: () => void;
+  className?: string;
+  footer?: ReactNode;
+}
+
+interface CommonModalProps {
+  // takes over the entire screen
+  fullPageModal?: boolean;
+  // standard modal
+  formModal?: boolean;
+  centeredTitle?: boolean;
+}
+
+export default class ModalContent extends Component<ModalContentProps> {
   static propTypes = {
     id: PropTypes.string,
     title: PropTypes.string,
@@ -83,7 +98,15 @@ export default class ModalContent extends Component {
 
 const FORM_WIDTH = 500 + 32 * 2; // includes padding
 
-export const ModalHeader = ({ children, fullPageModal, centeredTitle }) => (
+interface ModalHeaderProps extends CommonModalProps {
+  children: ReactNode;
+}
+
+export const ModalHeader = ({
+  children,
+  fullPageModal,
+  centeredTitle,
+}: ModalHeaderProps) => (
   <div className={cx("ModalHeader flex-no-shrink px4 py4 full")}>
     <h2
       className={cx(
@@ -97,7 +120,15 @@ export const ModalHeader = ({ children, fullPageModal, centeredTitle }) => (
   </div>
 );
 
-export const ModalBody = ({ children, fullPageModal, formModal }) => (
+interface ModalBodyProps extends CommonModalProps {
+  children: ReactNode;
+}
+
+export const ModalBody = ({
+  children,
+  fullPageModal,
+  formModal,
+}: ModalBodyProps) => (
   <div
     className={cx("ModalBody", {
       px4: formModal,
@@ -113,7 +144,15 @@ export const ModalBody = ({ children, fullPageModal, formModal }) => (
   </div>
 );
 
-export const ModalFooter = ({ children, fullPageModal, formModal }) => (
+interface ModalFooterProps extends CommonModalProps {
+  children: ReactNode;
+}
+
+export const ModalFooter = ({
+  children,
+  fullPageModal,
+  formModal,
+}: ModalFooterProps) => (
   <div
     className={cx(
       "ModalFooter flex flex-no-shrink px4",
