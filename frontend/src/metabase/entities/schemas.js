@@ -16,7 +16,9 @@ import {
 
 // This is a weird entity because we don't have actual schema objects
 
-const listDatabaseSchemas = GET("/api/database/:dbId/schemas");
+const listDatabaseSchemas = GET(
+  "/api/database/:dbId/schemas?include_editable_data_model=true",
+);
 const getSchemaTables = GET("/api/database/:dbId/schema/:schemaName");
 const getVirtualDatasetTables = GET("/api/database/:dbId/datasets/:schemaName");
 
