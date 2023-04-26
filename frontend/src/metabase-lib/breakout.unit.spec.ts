@@ -1,40 +1,20 @@
-import { createQuery } from "./test-helpers";
+import { createQuery, findColumn } from "./test-helpers";
 import * as ML from "./v2";
-
-// This is a convenience for finding an breakout column (as an opaque object) by name
-// TODO change to breakoutableColumn
-const findBreakoutableColumn = (
-  query: ML.Query,
-  tableName: string,
-  fieldName: string,
-): ML.ColumnMetadata => {
-  const column = ML.orderableColumns(query).find(
-    (column: ML.ColumnMetadata) => {
-      const displayInfo = ML.displayInfo(query, column);
-      return (
-        displayInfo?.table?.name === tableName &&
-        displayInfo?.name === fieldName
-      );
-    },
-  );
-
-  if (!column) {
-    throw new Error(`Could not find ${tableName}.${fieldName}`);
-  }
-
-  return column;
-};
 
 describe("breakout", () => {
   describe("add breakout", () => {
     const query = createQuery();
+    const findBreakoutableColumn = findColumn(
+      query,
+      ML.breakoutableColumns(query),
+    );
 
     it("should handle no breakout clauses", () => {
       expect(ML.breakouts(query)).toHaveLength(0);
     });
 
     it("should update the query", () => {
-      const productTitle = findBreakoutableColumn(query, "PRODUCTS", "TITLE");
+      const productTitle = findBreakoutableColumn("PRODUCTS", "TITLE");
       const nextQuery = ML.breakout(query, productTitle);
       const breakouts = ML.breakouts(nextQuery);
 
@@ -45,14 +25,14 @@ describe("breakout", () => {
 
   describe("replace breakout", () => {
     const query = createQuery();
+    const findBreakoutableColumn = findColumn(
+      query,
+      ML.breakoutableColumns(query),
+    );
 
     it("should update the query", () => {
-      const productTitle = findBreakoutableColumn(query, "PRODUCTS", "TITLE");
-      const productCategory = findBreakoutableColumn(
-        query,
-        "PRODUCTS",
-        "CATEGORY",
-      );
+      const productTitle = findBreakoutableColumn("PRODUCTS", "TITLE");
+      const productCategory = findBreakoutableColumn("PRODUCTS", "CATEGORY");
 
       const breakoutQuery = ML.breakout(query, productTitle);
       const breakouts = ML.breakouts(breakoutQuery);
@@ -71,9 +51,13 @@ describe("breakout", () => {
 
   describe("remove breakout", () => {
     const query = createQuery();
+    const findBreakoutableColumn = findColumn(
+      query,
+      ML.breakoutableColumns(query),
+    );
 
     it("should update the query", () => {
-      const productTitle = findBreakoutableColumn(query, "PRODUCTS", "TITLE");
+      const productTitle = findBreakoutableColumn("PRODUCTS", "TITLE");
 
       const breakoutQuery = ML.breakout(query, productTitle);
       const breakouts = ML.breakouts(breakoutQuery);

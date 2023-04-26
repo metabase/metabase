@@ -42,3 +42,21 @@ export function createQuery({
   const metadataProvider = createMetadataProvider({ databaseId, metadata });
   return ML.fromLegacyQuery(databaseId, metadataProvider, query);
 }
+
+export const findColumn =
+  (query: ML.Query, columns: ML.ColumnMetadata[]) =>
+  (tableName: string, columnName: string): ML.ColumnMetadata => {
+    const column = columns.find(column => {
+      const displayInfo = ML.displayInfo(query, column);
+      return (
+        displayInfo?.table?.name === tableName &&
+        displayInfo?.name === columnName
+      );
+    });
+
+    if (!column) {
+      throw new Error(`Could not find ${tableName}.${columnName}`);
+    }
+
+    return column;
+  };
