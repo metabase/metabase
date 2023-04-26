@@ -32,7 +32,7 @@ type DashboardAttributeType = string | number | null | boolean;
 interface DashboardInfoSidebarProps {
   dashboard: Dashboard;
   setDashboardAttribute: (name: string, value: DashboardAttributeType) => void;
-  saveDashboardAndCards: (preserveParameters: boolean) => void;
+  saveDashboardAndCards: (preserveParameters?: boolean) => void;
   revisions: RevisionType[];
   currentUser: User;
   revertToRevision: (revision: RevisionType) => void;
