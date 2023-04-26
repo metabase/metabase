@@ -21,6 +21,7 @@ const sampleStyle = {
   width: "100%",
   padding: "10px",
   border: "1px solid #ccc",
+  backgroundColor: "white",
 };
 
 const Template: ComponentStory<typeof TabRow> = args => {
@@ -67,6 +68,11 @@ const Template: ComponentStory<typeof TabRow> = args => {
         <TabButton label="Tab 5" value={5} menuItems={menuItems} />
         <TabButton label="Tab 6" value={6} disabled />
         <TabButton label="Tab 7" value={7} menuItems={menuItems} disabled />
+        <TabButton
+          label="Tab 8 with a very long name"
+          value={8}
+          menuItems={menuItems}
+        />
       </TabRow>
       {message}
     </div>
