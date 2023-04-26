@@ -96,6 +96,12 @@ const setup = async ({ mockCard }: QBSpecSetupProps) => {
       storeInitialState: createMockState({
         qb: createMockQueryBuilderState({
           originalCard: TEST_CARD,
+
+          // OISIN REMOVE:
+          // isDirty within the QueryBuilder seems to be relying on the state
+          // between the card and the lastRunCard, so they need to stay the
+          // same from the start or the beforeunload hook will trigger when
+          // we don't want it.
           card: {
             original_card_id: TEST_CARD_ID,
             dataset_query: TEST_CARD.dataset_query,
