@@ -1,10 +1,7 @@
 import React from "react";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { createMockDatabase } from "metabase-types/api/mocks";
-import {
-  setupDatabasesEndpoints,
-  setupUnauthorizedDatabasesEndpoints,
-} from "__support__/server-mocks";
+import { setupDatabasesEndpoints } from "__support__/server-mocks";
 import {
   renderWithProviders,
   screen,
@@ -30,17 +27,8 @@ const TestComponent = () => {
   );
 };
 
-interface SetupOpts {
-  hasDataAccess?: boolean;
-}
-
-const setup = ({ hasDataAccess = true }: SetupOpts = {}) => {
-  if (hasDataAccess) {
-    setupDatabasesEndpoints([TEST_DB]);
-  } else {
-    setupUnauthorizedDatabasesEndpoints([TEST_DB]);
-  }
-
+const setup = () => {
+  setupDatabasesEndpoints([TEST_DB]);
   renderWithProviders(<TestComponent />);
 };
 
