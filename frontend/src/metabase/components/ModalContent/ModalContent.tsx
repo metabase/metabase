@@ -7,7 +7,7 @@ import Icon from "metabase/components/Icon";
 interface ModalContentProps extends CommonModalProps {
   id?: string;
   title: string;
-  onClose: () => void;
+  onClose?: () => void;
   className?: string;
   footer?: ReactNode;
 }
