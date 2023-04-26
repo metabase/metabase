@@ -15,6 +15,9 @@ import {
   NAV_SIDEBAR_WIDTH,
 } from "metabase/nav/constants";
 
+import { SAVING_DOM_IMAGE_CLASS } from "metabase/visualizations/lib/save-chart-image";
+import { DashCardRoot } from "../DashCard/DashCard.styled";
+
 // Class names are added here because we still use traditional css,
 // see dashboard.css
 export const DashboardLoadingAndErrorWrapper = styled(
@@ -138,4 +141,9 @@ export const CardsContainer = styled(FullWidthContainer)`
     css`
       margin-top: ${space(2)};
     `}
+
+  &.${SAVING_DOM_IMAGE_CLASS} ${DashCardRoot} {
+    box-shadow: none;
+    border: 1px solid ${color("border")};
+  }
 `;
