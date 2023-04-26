@@ -4,13 +4,17 @@ import PropTypes from "prop-types";
 import { CSSTransition, TransitionGroup } from "react-transition-group";
 import { t } from "ttag";
 
-import Form, { FormField, FormFooter } from "metabase/containers/FormikForm";
+import * as Yup from "yup";
+import * as Errors from "metabase/core/utils/errors";
+import { FormFooter } from "metabase/containers/FormikForm";
+import Form from "metabase/core/components/Form";
+import FormRadio from "metabase/core/components/FormRadio";
 import ModalContent from "metabase/components/ModalContent";
-import Radio from "metabase/core/components/Radio";
-import validate from "metabase/lib/validate";
 import { canonicalCollectionId } from "metabase/collections/utils";
 
 import "./SaveQuestionModal.css";
+import FormInput from "metabase/core/components/FormInput/FormInput";
+import FormProvider from "metabase/core/components/FormProvider";
 import Question from "metabase-lib/Question";
 
 const getSingleStepTitle = (questionType: string, showSaveType: boolean) => {
@@ -33,6 +37,19 @@ interface SaveQuestionModalProps {
   initialCollectionId: number;
 }
 
+const SAVE_QUESTION_SCHEMA = Yup.object({
+  saveType: Yup.boolean(),
+  name: Yup.string()
+    .default("")
+    .when("saveType", {
+      // We don't care if the form is valid when overwrite mode is enabled,
+      // as original question's data will be submitted instead of the form values
+      is: (value: string) => value !== "overwrite",
+      then: Yup.string().required(Errors.required),
+      otherwise: Yup.string(),
+    }),
+});
+
 export default class SaveQuestionModal extends Component<SaveQuestionModalProps> {
   static propTypes = {
     question: PropTypes.object.isRequired,
@@ -41,15 +58,6 @@ export default class SaveQuestionModal extends Component<SaveQuestionModalProps>
     onSave: PropTypes.func.isRequired,
     onClose: PropTypes.func.isRequired,
     multiStep: PropTypes.bool,
-  };
-
-  // @ts-expect-error provide better types for validation
-  validateName = (name, { values }) => {
-    if (values.saveType !== "overwrite") {
-      // We don't care if the form is valid when overwrite mode is enabled,
-      // as original question's data will be submitted instead of the form values
-      return validate.required()(name);
-    }
   };
 
   handleSubmit = async (details: {
@@ -136,30 +144,28 @@ export default class SaveQuestionModal extends Component<SaveQuestionModalProps>
         title={title}
         onClose={this.props.onClose}
       >
-        <Form
+        <FormProvider
           initialValues={initialValues}
-          fields={[
-            { name: "saveType" },
-            {
-              name: "name",
-              // @ts-expect-error provide correct types for validator
-              validate: this.validateName,
-            },
-            { name: "description" },
-            { name: "collection_id" },
-          ]}
           onSubmit={this.handleSubmit}
-          overwriteOnInitialValuesChange
+          validationSchema={SAVE_QUESTION_SCHEMA}
+          enableReinitialize
         >
-          {({ values, Form }) => (
+          {({ values }) => (
             <Form>
-              <FormField
+              <FormRadio
                 name="saveType"
                 title={t`Replace or save as new?`}
-                // @ts-expect-error old type
-                type={SaveTypeInput}
                 hidden={!showSaveType}
-                originalQuestion={originalQuestion}
+                options={[
+                  {
+                    name: t`Replace original question, "${
+                      originalQuestion && originalQuestion.displayName()
+                    }"`,
+                    value: "overwrite",
+                  },
+                  { name: t`Save as new question`, value: "create" },
+                ]}
+                vertical
               />
               <TransitionGroup>
                 {values.saveType === "create" && (
@@ -171,19 +177,19 @@ export default class SaveQuestionModal extends Component<SaveQuestionModalProps>
                     }}
                   >
                     <div className="saveQuestionModalFields">
-                      <FormField
+                      <FormInput
                         autoFocus
                         name="name"
                         title={t`Name`}
                         placeholder={nameInputPlaceholder}
                       />
-                      <FormField
+                      <FormInput
                         name="description"
                         type="text"
                         title={t`Description`}
                         placeholder={t`It's optional but oh, so helpful`}
                       />
-                      <FormField
+                      <FormInput
                         name="collection_id"
                         title={t`Which collection should this go in?`}
                         type="collection"
@@ -195,26 +201,8 @@ export default class SaveQuestionModal extends Component<SaveQuestionModalProps>
               <FormFooter submitTitle={t`Save`} onCancel={this.props.onClose} />
             </Form>
           )}
-        </Form>
+        </FormProvider>
       </ModalContent>
     );
   }
 }
-
-// @ts-expect-error provide correct Props type
-const SaveTypeInput = ({ field, originalQuestion }) => (
-  <Radio
-    {...field}
-    type={""}
-    options={[
-      {
-        name: t`Replace original question, "${
-          originalQuestion && originalQuestion.displayName()
-        }"`,
-        value: "overwrite",
-      },
-      { name: t`Save as new question`, value: "create" },
-    ]}
-    vertical
-  />
-);
