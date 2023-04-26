@@ -3,7 +3,7 @@ import jspdf from "jspdf";
 
 import { color } from "metabase/lib/colors";
 
-import { SAVING_CHART_IMAGE_CLASS } from "./save-chart-image";
+import { SAVING_DOM_IMAGE_CLASS } from "./save-chart-image";
 
 export const saveDashboardPdf = async (
   selector: string,
@@ -17,19 +17,10 @@ export const saveDashboardPdf = async (
     return;
   }
 
-  node.classList.add(SAVING_CHART_IMAGE_CLASS);
-
   const canvas = await html2canvas(node, {
     useCORS: true,
     onclone: (doc: Document, node: HTMLElement) => {
-      const style = doc.createElement("style");
-      style.innerHTML = `
-          .DashCard .Card {
-            box-shadow: none;
-            border: 1px solid ${color("border")};
-          }`;
-
-      doc.body.appendChild(style);
+      node.classList.add(SAVING_DOM_IMAGE_CLASS);
       node.style.paddingBottom = "20px";
 
       //This needs to be done manually due to how html2canvas treats styles in SVGs
@@ -42,8 +33,6 @@ export const saveDashboardPdf = async (
       });
     },
   });
-
-  node.classList.remove(SAVING_CHART_IMAGE_CLASS);
 
   const canvasHeight = parseInt(canvas.getAttribute("height") ?? "0");
   const canvasWidth = parseInt(canvas.getAttribute("width") ?? "0");
