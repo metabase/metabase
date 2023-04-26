@@ -84,8 +84,6 @@
   [_query _stage-number _case]
   "case")
 
-(lib.hierarchy/derive :case ::aggregation)
-
 (lib.hierarchy/derive ::unary-aggregation ::aggregation)
 
 (doseq [tag [:avg

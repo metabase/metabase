@@ -151,7 +151,7 @@
   (let [default (:default options)]
     (cond-> [:case (dissoc options :default) (mapv ->pMBQL pred-expr-pairs)]
       :always lib.options/ensure-uuid
-      default (conj (->pMBQL default)))))
+      (some? default) (conj (->pMBQL default)))))
 
 (doseq [tag [:aggregation :expression]]
   (lib.hierarchy/derive tag ::aggregation-or-expression-ref))
