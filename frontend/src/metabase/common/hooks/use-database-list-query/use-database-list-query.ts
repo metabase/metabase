@@ -5,7 +5,7 @@ import useEntityListQuery, {
 } from "metabase/common/hooks/use-entity-list-query";
 import Database from "metabase-lib/metadata/Database";
 
-interface DatabaseListQuery {
+export interface DatabaseListQuery {
   saved?: boolean;
 }
 
