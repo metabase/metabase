@@ -867,7 +867,7 @@
         (is (= [{:id 1, :group_id 1, :table_id table-id, :card_id nil, :attribute_remappings "{\"foo\", 1}", :permission_id perm-id}]
                (mdb.query/query {:select [:*] :from [:sandboxes]})))))))
 
-(deftest able-to-delete-db-with-actions-test
+(deftest ^:parallel able-to-delete-db-with-actions-test
   (testing "Migrations v46.00-084 and v46.00-085 set delete CASCADE for action.model_id to
            fix the bug of unable to delete database with actions"
     (impl/test-migrations ["v46.00-084" "v46.00-085"] [migrate!]
@@ -908,7 +908,7 @@
        (migrate!)
        (is (t2/delete! Database :id db-id))))))
 
-(deftest split-data-permission-test
+(deftest ^:parallel split-data-permission-test
   (testing "Migration v46.00-080: split existing v1 data permission paths into v2 data and query permission paths"
     (impl/test-migrations ["v46.00-080"] [migrate!]
       (let [[group-1-id]        (t2/insert-returning-pks! PermissionsGroup {:name "Test Group 1"})
@@ -963,7 +963,7 @@
                  ["invalid-path"                                 group-2-id]}
                new-paths-set))))))
 
-(deftest migrate-field-database-type-test
+(deftest ^:parallel migrate-field-database-type-test
   (testing "Migration v47.00-001: set base-type to type/JSON for JSON database-types for postgres and mysql"
     (impl/test-migrations ["v47.00-001"] [_]
       (let [{:keys [db-type ^javax.sql.DataSource
@@ -1005,7 +1005,7 @@
               mysql-field-1-id :type/SerializedJSON
               mysql-field-2-id :type/Text)))))))
 
-(deftest migrate-google-auth-test
+(deftest ^:parallel migrate-google-auth-test
   (testing "Migrations v47.00-009 and v47.00-012: migrate google_auth into sso_source"
     (impl/test-migrations ["v47.00-009" "v47.00-012"] [migrate!]
                           (t2/query-one {:insert-into :core_user
@@ -1030,7 +1030,7 @@
                                                    :from     [:core_user]
                                                    :order-by [[:id :asc]]}))))))
 
-(deftest migrate-ldap-auth-test
+(deftest ^:parallel migrate-ldap-auth-test
   (testing "Migration v47.00-013 and v47.00-014: migrate ldap_auth into sso_source"
     (impl/test-migrations ["v47.00-013" "v47.00-014"] [migrate!]
       (t2/query-one {:insert-into :core_user

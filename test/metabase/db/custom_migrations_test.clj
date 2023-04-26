@@ -16,7 +16,7 @@
 
 (jobs/defjob AbandonmentEmail [_] :default)
 
-(deftest delete-abandonment-email-task-test
+(deftest ^:parallel delete-abandonment-email-task-test
   (testing "Migration v46.00-086: Delete the abandonment email task"
     (impl/test-migrations ["v46.00-086"] [migrate!]
       (try (do (task/start-scheduler!)

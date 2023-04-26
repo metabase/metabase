@@ -13,8 +13,8 @@
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.scheduler :as qs]
    [clojurewerkz.quartzite.triggers :as triggers]
-   [metabase.db.connection :as mdb.connection]
    [metabase.plugins.classloader :as classloader]
+   [metabase.task.quartz-impl :as task.quartz-impl]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [toucan2.core :as t2]
@@ -106,47 +106,20 @@
                          :where [:or [:like :object (h2x/literal "/data/db/%")]
                                  [:like :object (h2x/literal "/query/db/%")]]}))
 
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                           Quartz Scheduler Helpers                                             |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-;; This section of code's purpose is to avoid the migration depending on the [[metabase.task]] namespace,
-;; which is likely to change, and might not have as tight test coverage as needed for custom migrations.
-
-(defn- load-class ^Class [^String class-name]
-  (Class/forName class-name true (classloader/the-classloader)))
-
-(defrecord ^:private ClassLoadHelper []
-  org.quartz.spi.ClassLoadHelper
-  (initialize [_])
-  (getClassLoader [_]
-    (classloader/the-classloader))
-  (loadClass [_ class-name]
-    (load-class class-name))
-  (loadClass [_ class-name _]
-    (load-class class-name)))
-
-(when-not *compile-files*
-  (System/setProperty "org.quartz.scheduler.classLoadHelper.class" (.getName ClassLoadHelper)))
-
-(defn- set-jdbc-backend-properties!
-  "Set the appropriate system properties needed so Quartz can connect to the JDBC backend. (Since we don't know our DB
-  connection properties ahead of time, we'll need to set these at runtime rather than Setting them in the
-  `quartz.properties` file.)"
-  []
-  (when (= (mdb.connection/db-type) :postgres)
-    (System/setProperty "org.quartz.jobStore.driverDelegateClass" "org.quartz.impl.jdbcjobstore.PostgreSQLDelegate")))
-
-;;; +----------------------------------------------------------------------------------------------------------------+
+;;; unfortunately `DeleteAbandonmentEmailTask` is not thread-safe, because creating, starting, and shutting down the
+;;; default scheduler is not thread-safe; we'll just have to put a lock around that part of this migration for the time
+;;; being so we can run the Liquibase tests in parallel without everything breaking.
+(defonce ^:private quartz-lock (Object.))
 
 (define-migration DeleteAbandonmentEmailTask
   (classloader/the-classloader)
-  (set-jdbc-backend-properties!)
-  (let [scheduler (qs/initialize)]
-    (qs/start scheduler)
-    (qs/delete-trigger scheduler (triggers/key "metabase.task.abandonment-emails.trigger"))
-    (qs/delete-job scheduler (jobs/key "metabase.task.abandonment-emails.job"))
-    (qs/shutdown scheduler)))
+  (task.quartz-impl/set-jdbc-backend-properties!)
+  (locking quartz-lock
+    (let [scheduler (qs/initialize)]
+      (qs/start scheduler)
+      (qs/delete-trigger scheduler (triggers/key "metabase.task.abandonment-emails.trigger"))
+      (qs/delete-job scheduler (jobs/key "metabase.task.abandonment-emails.job"))
+      (qs/shutdown scheduler))))
 
 (define-migration FillJSONUnfoldingDefault
   (let [db-ids-to-not-update (->> (t2/query {:select [:id :details]
