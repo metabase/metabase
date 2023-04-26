@@ -4,6 +4,8 @@
    [metabase.db.connection :as mdb.connection]
    [metabase.plugins.classloader :as classloader]))
 
+(set! *warn-on-reflection* true)
+
 ;; Custom `ConnectionProvider` implementation that uses our application DB connection pool to provide connections.
 
 (defrecord ^:private ConnectionProvider []
