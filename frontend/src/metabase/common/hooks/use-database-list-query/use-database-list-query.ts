@@ -3,11 +3,8 @@ import useEntityListQuery, {
   UseEntityListQueryProps,
   UseEntityListQueryResult,
 } from "metabase/common/hooks/use-entity-list-query";
+import { DatabaseListQuery } from "metabase-types/api";
 import Database from "metabase-lib/metadata/Database";
-
-export interface DatabaseListQuery {
-  saved?: boolean;
-}
 
 const useDatabaseListQuery = (
   props: UseEntityListQueryProps<DatabaseListQuery> = {},
