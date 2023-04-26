@@ -43,7 +43,8 @@ export function dataModelDatabase(databaseId: DatabaseId) {
 }
 
 export function dataModelSchema(databaseId: DatabaseId, schemaId: SchemaId) {
-  return `${dataModelDatabase(databaseId)}/schema/${schemaId}`;
+  const databaseUrl = dataModelDatabase(databaseId);
+  return `${databaseUrl}/schema/${schemaId}`;
 }
 
 export function dataModelTable(
@@ -51,7 +52,17 @@ export function dataModelTable(
   schemaId: SchemaId,
   tableId: TableId,
 ) {
-  return `${dataModelSchema(databaseId, schemaId)}/table/${tableId}`;
+  const schemaUrl = dataModelSchema(databaseId, schemaId);
+  return `${schemaUrl}/table/${tableId}`;
+}
+
+export function dataModelTableSettings(
+  databaseId: DatabaseId,
+  schemaId: SchemaId,
+  tableId: TableId,
+) {
+  const tableUrl = dataModelTable(databaseId, schemaId, tableId);
+  return `${tableUrl}/settings`;
 }
 
 export function dataModelField(
@@ -60,13 +71,16 @@ export function dataModelField(
   tableId: TableId,
   fieldId: FieldId,
 ) {
-  return `${dataModelTable(databaseId, schemaId, tableId)}/field/${fieldId}`;
+  const tableUrl = dataModelTable(databaseId, schemaId, tableId);
+  return `${tableUrl}/field/${fieldId}/general`;
 }
 
-export function dataModelTableSettings(
+export function dataModelFieldFormatting(
   databaseId: DatabaseId,
   schemaId: SchemaId,
   tableId: TableId,
+  fieldId: FieldId,
 ) {
-  return `${dataModelTable(databaseId, schemaId, tableId)}/settings`;
+  const tableUrl = dataModelTable(databaseId, schemaId, tableId);
+  return `${tableUrl}/field/${fieldId}/formatting`;
 }

@@ -173,7 +173,6 @@ class FieldApp extends React.Component {
       rescanFieldValues,
       discardFieldValues,
       fetchTableMetadata,
-      location,
       params: { section },
     } = this.props;
 
@@ -198,12 +197,22 @@ class FieldApp extends React.Component {
                 <LeftNavPane>
                   <LeftNavPaneItem
                     name={t`General`}
-                    path={location.pathname.replace(/[^/]+$/, "general")}
+                    path={Urls.dataModelField(
+                      databaseId,
+                      schemaId,
+                      table.id,
+                      field.id,
+                    )}
                     index
                   />
                   <LeftNavPaneItem
                     name={t`Formatting`}
-                    path={location.pathname.replace(/[^/]+$/, "formatting")}
+                    path={Urls.dataModelFieldFormatting(
+                      databaseId,
+                      schemaId,
+                      table.id,
+                      field.id,
+                    )}
                   />
                 </LeftNavPane>
               </div>
