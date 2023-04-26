@@ -30,6 +30,8 @@ const ChartSettingFieldsPicker = ({
     );
   };
 
+  const isDragDisabled = Array.isArray(fields) && fields.length <= 1;
+
   return (
     <div>
       {Array.isArray(fields) ? (
@@ -43,6 +45,7 @@ const ChartSettingFieldsPicker = ({
                       key={`draggable-${field}`}
                       draggableId={`draggable-${field}`}
                       index={fieldIndex}
+                      isDragDisabled={isDragDisabled}
                     >
                       {provided => (
                         <div
