@@ -246,3 +246,23 @@
   "Get the columns associated with a column group"
   [column-group]
   (to-array (lib.core/columns-group-columns column-group)))
+
+(defn ^:export describe-temporal-unit
+  "Get a translated description of a temporal bucketing unit."
+  [n unit]
+  (let [unit (if (string? unit) (keyword unit) unit)]
+    (lib.core/describe-temporal-unit n unit)))
+
+(defn ^:export describe-temporal-interval
+  "Get a translated description of a temporal bucketing interval."
+  [n unit]
+  (let [n    (if (string? n) (keyword n) n)
+        unit (if (string? unit) (keyword unit) unit)]
+    (lib.core/describe-temporal-interval n unit)))
+
+(defn ^:export describe-relative-datetime
+  "Get a translated description of a relative datetime interval."
+  [n unit]
+  (let [n    (if (string? n) (keyword n) n)
+        unit (if (string? unit) (keyword unit) unit)]
+      (lib.core/describe-relative-datetime n unit)))
