@@ -39,13 +39,12 @@ const mapDispatchToProps = {
   setQuestionCollection: Questions.actions.setCollection,
 };
 
-// TODO: choose a better name
-type _Modal = typeof MODAL_TYPES[keyof typeof MODAL_TYPES];
+type ModalType = typeof MODAL_TYPES[keyof typeof MODAL_TYPES];
 
 interface QueryModalsProps {
   questionAlerts: any;
   user: User;
-  modal: _Modal;
+  modal: ModalType;
   modalContext: number;
   question: Question;
   initialCollectionId: number;
@@ -56,7 +55,7 @@ interface QueryModalsProps {
   onCreate: (question: Question, flag?: boolean) => void;
   onSave: (question: Question, flag?: boolean) => void;
   onCloseModal: () => void;
-  onOpenModal: (modal: _Modal) => void;
+  onOpenModal: (modal: ModalType) => void;
   onChangeLocation: (location: string) => void;
   setQuestionCollection: (
     { id }: Partial<Collection>,
