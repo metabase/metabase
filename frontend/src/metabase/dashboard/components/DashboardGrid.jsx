@@ -33,6 +33,93 @@ import DashCard from "./DashCard";
 
 const mapDispatchToProps = { addUndo };
 
+const mapping = [
+  {
+    start: 0,
+    end: 0,
+  },
+  {
+    start: 1,
+    end: 2,
+  },
+  {
+    start: 3,
+    end: 3,
+  },
+  {
+    start: 4,
+    end: 4,
+  },
+  {
+    start: 5,
+    end: 6,
+  },
+  {
+    start: 7,
+    end: 7,
+  },
+  {
+    start: 8,
+    end: 8,
+  },
+  {
+    start: 9,
+    end: 10,
+  },
+  {
+    start: 11,
+    end: 11,
+  },
+  {
+    start: 12,
+    end: 12,
+  },
+  {
+    start: 13,
+    end: 14,
+  },
+  {
+    start: 15,
+    end: 15,
+  },
+  {
+    start: 16,
+    end: 16,
+  },
+  {
+    start: 17,
+    end: 18,
+  },
+  {
+    start: 19,
+    end: 19,
+  },
+  {
+    start: 20,
+    end: 20,
+  },
+  {
+    start: 21,
+    end: 22,
+  },
+  {
+    start: 23,
+    end: 23,
+  },
+];
+
+const migrate18to24 = (startX, width) => {
+  const endX = startX + width - 1;
+  const newStartX = mapping[startX].start;
+  const newEndX = mapping[endX].end;
+  const newWidth = newEndX - newStartX + 1;
+
+  return {
+    x: newStartX,
+    w: newWidth,
+  };
+};
+
 class DashboardGrid extends Component {
   static contextType = ContentViewportContext;
 
@@ -168,8 +255,9 @@ class DashboardGrid extends Component {
     let w = dashcard.size_x || initialSize.width;
 
     if (gridSize === 24) {
-      w = w + Math.floor((x + w + 2) / 3) - Math.floor((x + 1) / 3);
-      x = Math.round((x * 24) / 18);
+      const newDimensions = migrate18to24(x, w);
+      x = newDimensions.x;
+      w = newDimensions.w;
     }
 
     return {
