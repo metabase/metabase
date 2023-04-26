@@ -178,7 +178,7 @@
   [query stage-number {field-display-name :display-name
                        field-name         :name
                        temporal-unit      :unit
-                       binning            :binning
+                       binning            ::binning
                        join-alias         :source_alias
                        fk-field-id        :fk-field-id
                        table-id           :table-id
@@ -209,7 +209,7 @@
   (if-let [field-metadata (cond-> (resolve-field-metadata query stage-number field-clause)
                             join-alias    (assoc :source_alias join-alias)
                             temporal-unit (assoc :unit temporal-unit)
-                            binning       (assoc :binning binning)
+                            binning       (assoc ::binning binning)
                             source-field  (assoc :fk-field-id source-field))]
     (lib.metadata.calculation/display-name query stage-number field-metadata style)
     ;; mostly for the benefit of JS, which does not enforce the Malli schemas.
