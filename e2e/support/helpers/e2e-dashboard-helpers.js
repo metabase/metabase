@@ -99,3 +99,7 @@ export function addTextBox(string, options = {}) {
     "You can use Markdown here, and include variables {{like_this}}",
   ).type(string, options);
 }
+
+export function openQuestionsSidebar() {
+  cy.get(".QueryBuilder-section .Icon-add").click();
+}
