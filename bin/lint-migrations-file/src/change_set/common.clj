@@ -3,6 +3,8 @@
    [clojure.spec.alpha :as s]
    [clojure.string :as str]))
 
+(set! *warn-on-reflection* true)
+
 ;; See PR #18821 for more info on the new migration ID format adopted in 0.42.0+
 
 (s/def ::legacy-id
@@ -11,7 +13,7 @@
    :int    int?
    :string (s/and string?
                   #(re-matches #"^\d+$" %)
-                  #(<= 1 (Integer/parseUnsignedInt %) 382))))
+                  #(<= 1 (Integer/parseUnsignedInt ^String %) 382))))
 
 (s/def ::new-style-id
   (s/and string?
@@ -28,19 +30,18 @@
   (s/coll-of ::pre-condition))
 
 (s/def ::pre-condition
-  (s/keys :opt-un [::dbms]))
+  ;; don't use `dbms` preconditions, put them in `changeSet` instead; see
+  ;; https://github.com/liquibase/liquibase/issues/1459#issuecomment-725451371
+  (every-pred map? (complement :dbms)))
 
 (s/def ::dbms
-  (s/keys :req-un [::type]))
-
-(s/def ::type (s/and string? ::valid-dbs))
-
-(s/def ::valid-dbs
-  (fn [s]
-    (let [dbs (into #{} (map str/trim) (str/split s #","))]
-      (and (seq dbs)
-           (every? #{"h2" "mysql" "mariadb" "postgresql"} dbs)))))
+  (s/and
+   string?
+   (fn [s]
+     (let [dbs (into #{} (map str/trim) (str/split s #","))]
+       (and (seq dbs)
+            (every? #{"h2" "mysql" "mariadb" "postgresql"} dbs))))))
 
 (s/def ::change-set
   (s/keys :req-un [::id ::author]
-          :opt-un [::preConditions]))
+          :opt-un [::dbms ::preConditions]))

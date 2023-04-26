@@ -71,7 +71,12 @@
   "Execute body with an instance of a `Liquibase` bound to `liquibase-binding`.
 
     (liquibase/with-liquibase [liquibase {:subname :postgres, ...}]
-      (liquibase/migrate-up-if-needed! liquibase))"
+      (liquibase/migrate-up-if-needed! liquibase))
+
+  For REPL usage:
+
+  (liquibase/with-liquibase [liquibase metabase.db.connection/*application-db*]
+    ...)"
   {:style/indent 1}
   [[liquibase-binding conn-or-data-source] & body]
   `(do-with-liquibase

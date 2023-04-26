@@ -5598,10 +5598,7 @@ databaseChangeLog:
       id: 97
       author: senior
       comment: 'Added 0.32.0'
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: mysql,mariadb
+      dbms: mysql,mariadb
       changes:
         - modifyDataType:
             tableName: query_cache
@@ -5797,11 +5794,7 @@ databaseChangeLog:
           - onFail: MARK_RAN
           # If we're generating SQL output for migrations instead of running via liquibase, fail the preconditions which means these migrations will be skipped
           - onSqlOutput: FAIL
-          - or:
-              - dbms:
-                    type: mysql
-              - dbms:
-                    type: mariadb
+        dbms: mysql,mariadb
         changes:
           - sql:
                 sql: ALTER DATABASE CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
@@ -5813,11 +5806,7 @@ databaseChangeLog:
         preConditions:
           - onFail: MARK_RAN
           - onSqlOutput: FAIL
-          - or:
-              - dbms:
-                    type: mysql
-              - dbms:
-                    type: mariadb
+        dbms: mysql,mariadb
         changes:
           - sql:
                 sql: ALTER TABLE `DATABASECHANGELOG` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -5829,11 +5818,7 @@ databaseChangeLog:
         preConditions:
           - onFail: MARK_RAN
           - onSqlOutput: FAIL
-          - or:
-              - dbms:
-                    type: mysql
-              - dbms:
-                    type: mariadb
+        dbms: mysql,mariadb
         changes:
           - sql:
                 sql: ALTER TABLE `DATABASECHANGELOGLOCK` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -5845,11 +5830,7 @@ databaseChangeLog:
         preConditions:
           - onFail: MARK_RAN
           - onSqlOutput: FAIL
-          - or:
-              - dbms:
-                    type: mysql
-              - dbms:
-                    type: mariadb
+        dbms: mysql,mariadb
         changes:
           - sql:
                 sql: ALTER TABLE `QRTZ_CALENDARS` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -5861,11 +5842,7 @@ databaseChangeLog:
         preConditions:
           - onFail: MARK_RAN
           - onSqlOutput: FAIL
-          - or:
-              - dbms:
-                    type: mysql
-              - dbms:
-                    type: mariadb
+        dbms: mysql,mariadb
         changes:
           - sql:
                 sql: ALTER TABLE `QRTZ_FIRED_TRIGGERS` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -5877,11 +5854,7 @@ databaseChangeLog:
         preConditions:
           - onFail: MARK_RAN
           - onSqlOutput: FAIL
-          - or:
-              - dbms:
-                    type: mysql
-              - dbms:
-                    type: mariadb
+        dbms: mysql,mariadb
         changes:
           - sql:
                 sql: ALTER TABLE `QRTZ_JOB_DETAILS` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -5893,11 +5866,7 @@ databaseChangeLog:
         preConditions:
           - onFail: MARK_RAN
           - onSqlOutput: FAIL
-          - or:
-              - dbms:
-                    type: mysql
-              - dbms:
-                    type: mariadb
+        dbms: mysql,mariadb
         changes:
           - sql:
                 sql: ALTER TABLE `QRTZ_LOCKS` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -5909,11 +5878,7 @@ databaseChangeLog:
         preConditions:
           - onFail: MARK_RAN
           - onSqlOutput: FAIL
-          - or:
-              - dbms:
-                    type: mysql
-              - dbms:
-                    type: mariadb
+        dbms: mysql,mariadb
         changes:
           - sql:
                 sql: ALTER TABLE `QRTZ_PAUSED_TRIGGER_GRPS` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -5925,11 +5890,7 @@ databaseChangeLog:
         preConditions:
           - onFail: MARK_RAN
           - onSqlOutput: FAIL
-          - or:
-              - dbms:
-                    type: mysql
-              - dbms:
-                    type: mariadb
+        dbms: mysql,mariadb
         changes:
           - sql:
                 sql: ALTER TABLE `QRTZ_SCHEDULER_STATE` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -5941,11 +5902,7 @@ databaseChangeLog:
         preConditions:
           - onFail: MARK_RAN
           - onSqlOutput: FAIL
-          - or:
-              - dbms:
-                    type: mysql
-              - dbms:
-                    type: mariadb
+        dbms: mysql,mariadb
         changes:
           - sql:
                 sql: ALTER TABLE `core_user` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -5957,11 +5914,7 @@ databaseChangeLog:
         preConditions:
           - onFail: MARK_RAN
           - onSqlOutput: FAIL
-          - or:
-              - dbms:
-                    type: mysql
-              - dbms:
-                    type: mariadb
+        dbms: mysql,mariadb
         changes:
           - sql:
                 sql: ALTER TABLE `data_migrations` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -5973,11 +5926,7 @@ databaseChangeLog:
         preConditions:
           - onFail: MARK_RAN
           - onSqlOutput: FAIL
-          - or:
-              - dbms:
-                    type: mysql
-              - dbms:
-                    type: mariadb
+        dbms: mysql,mariadb
         changes:
           - sql:
                 sql: ALTER TABLE `dependency` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -5989,11 +5938,7 @@ databaseChangeLog:
         preConditions:
           - onFail: MARK_RAN
           - onSqlOutput: FAIL
-          - or:
-              - dbms:
-                    type: mysql
-              - dbms:
-                    type: mariadb
+        dbms: mysql,mariadb
         changes:
           - sql:
                 sql: ALTER TABLE `label` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -6005,11 +5950,7 @@ databaseChangeLog:
         preConditions:
           - onFail: MARK_RAN
           - onSqlOutput: FAIL
-          - or:
-              - dbms:
-                    type: mysql
-              - dbms:
-                    type: mariadb
+        dbms: mysql,mariadb
         changes:
           - sql:
                 sql: ALTER TABLE `metabase_database` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -6021,11 +5962,7 @@ databaseChangeLog:
         preConditions:
           - onFail: MARK_RAN
           - onSqlOutput: FAIL
-          - or:
-              - dbms:
-                    type: mysql
-              - dbms:
-                    type: mariadb
+        dbms: mysql,mariadb
         changes:
           - sql:
                 sql: ALTER TABLE `permissions_group` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -6037,11 +5974,7 @@ databaseChangeLog:
         preConditions:
           - onFail: MARK_RAN
           - onSqlOutput: FAIL
-          - or:
-              - dbms:
-                    type: mysql
-              - dbms:
-                    type: mariadb
+        dbms: mysql,mariadb
         changes:
           - sql:
                 sql: ALTER TABLE `query` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -6053,11 +5986,7 @@ databaseChangeLog:
         preConditions:
           - onFail: MARK_RAN
           - onSqlOutput: FAIL
-          - or:
-              - dbms:
-                    type: mysql
-              - dbms:
-                    type: mariadb
+        dbms: mysql,mariadb
         changes:
           - sql:
                 sql: ALTER TABLE `query_cache` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -6069,11 +5998,7 @@ databaseChangeLog:
         preConditions:
           - onFail: MARK_RAN
           - onSqlOutput: FAIL
-          - or:
-              - dbms:
-                    type: mysql
-              - dbms:
-                    type: mariadb
+        dbms: mysql,mariadb
         changes:
           - sql:
                 sql: ALTER TABLE `query_execution` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -6085,11 +6010,7 @@ databaseChangeLog:
         preConditions:
           - onFail: MARK_RAN
           - onSqlOutput: FAIL
-          - or:
-              - dbms:
-                    type: mysql
-              - dbms:
-                    type: mariadb
+        dbms: mysql,mariadb
         changes:
           - sql:
                 sql: ALTER TABLE `setting` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -6101,11 +6022,7 @@ databaseChangeLog:
         preConditions:
           - onFail: MARK_RAN
           - onSqlOutput: FAIL
-          - or:
-              - dbms:
-                    type: mysql
-              - dbms:
-                    type: mariadb
+        dbms: mysql,mariadb
         changes:
           - sql:
                 sql: ALTER TABLE `task_history` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -6117,11 +6034,7 @@ databaseChangeLog:
         preConditions:
           - onFail: MARK_RAN
           - onSqlOutput: FAIL
-          - or:
-              - dbms:
-                    type: mysql
-              - dbms:
-                    type: mariadb
+        dbms: mysql,mariadb
         changes:
           - sql:
                 sql: ALTER TABLE `QRTZ_TRIGGERS` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -6133,11 +6046,7 @@ databaseChangeLog:
         preConditions:
           - onFail: MARK_RAN
           - onSqlOutput: FAIL
-          - or:
-              - dbms:
-                    type: mysql
-              - dbms:
-                    type: mariadb
+        dbms: mysql,mariadb
         changes:
           - sql:
                 sql: ALTER TABLE `activity` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -6149,11 +6058,7 @@ databaseChangeLog:
         preConditions:
           - onFail: MARK_RAN
           - onSqlOutput: FAIL
-          - or:
-              - dbms:
-                    type: mysql
-              - dbms:
-                    type: mariadb
+        dbms: mysql,mariadb
         changes:
           - sql:
                 sql: ALTER TABLE `collection` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -6165,11 +6070,7 @@ databaseChangeLog:
         preConditions:
           - onFail: MARK_RAN
           - onSqlOutput: FAIL
-          - or:
-              - dbms:
-                    type: mysql
-              - dbms:
-                    type: mariadb
+        dbms: mysql,mariadb
         changes:
           - sql:
                 sql: ALTER TABLE `collection_revision` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -6181,11 +6082,7 @@ databaseChangeLog:
         preConditions:
           - onFail: MARK_RAN
           - onSqlOutput: FAIL
-          - or:
-              - dbms:
-                    type: mysql
-              - dbms:
-                    type: mariadb
+        dbms: mysql,mariadb
         changes:
           - sql:
                 sql: ALTER TABLE `computation_job` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -6197,11 +6094,7 @@ databaseChangeLog:
         preConditions:
           - onFail: MARK_RAN
           - onSqlOutput: FAIL
-          - or:
-              - dbms:
-                    type: mysql
-              - dbms:
-                    type: mariadb
+        dbms: mysql,mariadb
         changes:
           - sql:
                 sql: ALTER TABLE `core_session` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -6213,11 +6106,7 @@ databaseChangeLog:
         preConditions:
           - onFail: MARK_RAN
           - onSqlOutput: FAIL
-          - or:
-              - dbms:
-                    type: mysql
-              - dbms:
-                    type: mariadb
+        dbms: mysql,mariadb
         changes:
           - sql:
                 sql: ALTER TABLE `metabase_table` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -6229,11 +6118,7 @@ databaseChangeLog:
         preConditions:
           - onFail: MARK_RAN
           - onSqlOutput: FAIL
-          - or:
-              - dbms:
-                    type: mysql
-              - dbms:
-                    type: mariadb
+        dbms: mysql,mariadb
         changes:
           - sql:
                 sql: ALTER TABLE `permissions` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -6245,11 +6130,7 @@ databaseChangeLog:
         preConditions:
           - onFail: MARK_RAN
           - onSqlOutput: FAIL
-          - or:
-              - dbms:
-                    type: mysql
-              - dbms:
-                    type: mariadb
+        dbms: mysql,mariadb
         changes:
           - sql:
                 sql: ALTER TABLE `permissions_revision` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -6261,11 +6142,7 @@ databaseChangeLog:
         preConditions:
           - onFail: MARK_RAN
           - onSqlOutput: FAIL
-          - or:
-              - dbms:
-                    type: mysql
-              - dbms:
-                    type: mariadb
+        dbms: mysql,mariadb
         changes:
           - sql:
                 sql: ALTER TABLE `revision` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -6277,11 +6154,7 @@ databaseChangeLog:
         preConditions:
           - onFail: MARK_RAN
           - onSqlOutput: FAIL
-          - or:
-              - dbms:
-                    type: mysql
-              - dbms:
-                    type: mariadb
+        dbms: mysql,mariadb
         changes:
           - sql:
                 sql: ALTER TABLE `view_log` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -6293,11 +6166,7 @@ databaseChangeLog:
         preConditions:
           - onFail: MARK_RAN
           - onSqlOutput: FAIL
-          - or:
-              - dbms:
-                    type: mysql
-              - dbms:
-                    type: mariadb
+        dbms: mysql,mariadb
         changes:
           - sql:
                 sql: ALTER TABLE `QRTZ_BLOB_TRIGGERS` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -6309,11 +6178,7 @@ databaseChangeLog:
         preConditions:
           - onFail: MARK_RAN
           - onSqlOutput: FAIL
-          - or:
-              - dbms:
-                    type: mysql
-              - dbms:
-                    type: mariadb
+        dbms: mysql,mariadb
         changes:
           - sql:
                 sql: ALTER TABLE `QRTZ_CRON_TRIGGERS` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -6325,11 +6190,7 @@ databaseChangeLog:
         preConditions:
           - onFail: MARK_RAN
           - onSqlOutput: FAIL
-          - or:
-              - dbms:
-                    type: mysql
-              - dbms:
-                    type: mariadb
+        dbms: mysql,mariadb
         changes:
           - sql:
                 sql: ALTER TABLE `QRTZ_SIMPLE_TRIGGERS` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -6341,11 +6202,7 @@ databaseChangeLog:
         preConditions:
           - onFail: MARK_RAN
           - onSqlOutput: FAIL
-          - or:
-              - dbms:
-                    type: mysql
-              - dbms:
-                    type: mariadb
+        dbms: mysql,mariadb
         changes:
           - sql:
                 sql: ALTER TABLE `QRTZ_SIMPROP_TRIGGERS` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -6357,11 +6214,7 @@ databaseChangeLog:
         preConditions:
           - onFail: MARK_RAN
           - onSqlOutput: FAIL
-          - or:
-              - dbms:
-                    type: mysql
-              - dbms:
-                    type: mariadb
+        dbms: mysql,mariadb
         changes:
           - sql:
                 sql: ALTER TABLE `computation_job_result` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -6373,11 +6226,7 @@ databaseChangeLog:
         preConditions:
           - onFail: MARK_RAN
           - onSqlOutput: FAIL
-          - or:
-              - dbms:
-                    type: mysql
-              - dbms:
-                    type: mariadb
+        dbms: mysql,mariadb
         changes:
           - sql:
                 sql: ALTER TABLE `metabase_field` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -6389,11 +6238,7 @@ databaseChangeLog:
         preConditions:
           - onFail: MARK_RAN
           - onSqlOutput: FAIL
-          - or:
-              - dbms:
-                    type: mysql
-              - dbms:
-                    type: mariadb
+        dbms: mysql,mariadb
         changes:
           - sql:
                 sql: ALTER TABLE `permissions_group_membership` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -6405,11 +6250,7 @@ databaseChangeLog:
         preConditions:
           - onFail: MARK_RAN
           - onSqlOutput: FAIL
-          - or:
-              - dbms:
-                    type: mysql
-              - dbms:
-                    type: mariadb
+        dbms: mysql,mariadb
         changes:
           - sql:
                 sql: ALTER TABLE `pulse` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -6421,11 +6262,7 @@ databaseChangeLog:
         preConditions:
           - onFail: MARK_RAN
           - onSqlOutput: FAIL
-          - or:
-              - dbms:
-                    type: mysql
-              - dbms:
-                    type: mariadb
+        dbms: mysql,mariadb
         changes:
           - sql:
                 sql: ALTER TABLE `report_dashboard` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -6437,11 +6274,7 @@ databaseChangeLog:
         preConditions:
           - onFail: MARK_RAN
           - onSqlOutput: FAIL
-          - or:
-              - dbms:
-                    type: mysql
-              - dbms:
-                    type: mariadb
+        dbms: mysql,mariadb
         changes:
           - sql:
                 sql: ALTER TABLE `dashboard_favorite` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -6453,11 +6286,7 @@ databaseChangeLog:
         preConditions:
           - onFail: MARK_RAN
           - onSqlOutput: FAIL
-          - or:
-              - dbms:
-                    type: mysql
-              - dbms:
-                    type: mariadb
+        dbms: mysql,mariadb
         changes:
           - sql:
                 sql: ALTER TABLE `dimension` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -6469,11 +6298,7 @@ databaseChangeLog:
         preConditions:
           - onFail: MARK_RAN
           - onSqlOutput: FAIL
-          - or:
-              - dbms:
-                    type: mysql
-              - dbms:
-                    type: mariadb
+        dbms: mysql,mariadb
         changes:
           - sql:
                 sql: ALTER TABLE `metabase_fieldvalues` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -6485,11 +6310,7 @@ databaseChangeLog:
         preConditions:
           - onFail: MARK_RAN
           - onSqlOutput: FAIL
-          - or:
-              - dbms:
-                    type: mysql
-              - dbms:
-                    type: mariadb
+        dbms: mysql,mariadb
         changes:
           - sql:
                 sql: ALTER TABLE `metric` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -6501,11 +6322,7 @@ databaseChangeLog:
         preConditions:
           - onFail: MARK_RAN
           - onSqlOutput: FAIL
-          - or:
-              - dbms:
-                    type: mysql
-              - dbms:
-                    type: mariadb
+        dbms: mysql,mariadb
         changes:
           - sql:
                 sql: ALTER TABLE `pulse_channel` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -6517,11 +6334,7 @@ databaseChangeLog:
         preConditions:
           - onFail: MARK_RAN
           - onSqlOutput: FAIL
-          - or:
-              - dbms:
-                    type: mysql
-              - dbms:
-                    type: mariadb
+        dbms: mysql,mariadb
         changes:
           - sql:
                 sql: ALTER TABLE `segment` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -6533,11 +6346,7 @@ databaseChangeLog:
         preConditions:
           - onFail: MARK_RAN
           - onSqlOutput: FAIL
-          - or:
-              - dbms:
-                    type: mysql
-              - dbms:
-                    type: mariadb
+        dbms: mysql,mariadb
         changes:
           - sql:
                 sql: ALTER TABLE `pulse_channel_recipient` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -6549,11 +6358,7 @@ databaseChangeLog:
         preConditions:
           - onFail: MARK_RAN
           - onSqlOutput: FAIL
-          - or:
-              - dbms:
-                    type: mysql
-              - dbms:
-                    type: mariadb
+        dbms: mysql,mariadb
         changes:
           - sql:
                 sql: ALTER TABLE `report_card` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -6565,11 +6370,7 @@ databaseChangeLog:
         preConditions:
           - onFail: MARK_RAN
           - onSqlOutput: FAIL
-          - or:
-              - dbms:
-                    type: mysql
-              - dbms:
-                    type: mariadb
+        dbms: mysql,mariadb
         changes:
           - sql:
                 sql: ALTER TABLE `metric_important_field` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -6581,11 +6382,7 @@ databaseChangeLog:
         preConditions:
           - onFail: MARK_RAN
           - onSqlOutput: FAIL
-          - or:
-              - dbms:
-                    type: mysql
-              - dbms:
-                    type: mariadb
+        dbms: mysql,mariadb
         changes:
           - sql:
                 sql: ALTER TABLE `report_cardfavorite` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -6597,11 +6394,7 @@ databaseChangeLog:
         preConditions:
           - onFail: MARK_RAN
           - onSqlOutput: FAIL
-          - or:
-              - dbms:
-                    type: mysql
-              - dbms:
-                    type: mariadb
+        dbms: mysql,mariadb
         changes:
           - sql:
                 sql: ALTER TABLE `card_label` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -6613,11 +6406,7 @@ databaseChangeLog:
         preConditions:
           - onFail: MARK_RAN
           - onSqlOutput: FAIL
-          - or:
-              - dbms:
-                    type: mysql
-              - dbms:
-                    type: mariadb
+        dbms: mysql,mariadb
         changes:
           - sql:
                 sql: ALTER TABLE `pulse_card` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -6629,11 +6418,7 @@ databaseChangeLog:
         preConditions:
           - onFail: MARK_RAN
           - onSqlOutput: FAIL
-          - or:
-              - dbms:
-                    type: mysql
-              - dbms:
-                    type: mariadb
+        dbms: mysql,mariadb
         changes:
           - sql:
                 sql: ALTER TABLE `report_dashboardcard` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -6645,11 +6430,7 @@ databaseChangeLog:
         preConditions:
           - onFail: MARK_RAN
           - onSqlOutput: FAIL
-          - or:
-              - dbms:
-                    type: mysql
-              - dbms:
-                    type: mariadb
+        dbms: mysql,mariadb
         changes:
           - sql:
                 sql: ALTER TABLE `dashboardcard_series` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -8009,11 +7790,7 @@ databaseChangeLog:
       author: rlotun
       comment: Added 0.37.0  # create index on lower(email), for performance reasons (not availble on h2 and only on more recent versions of mysql)
       failOnError: false
-      preConditions:
-        - onFail: MARK_RAN
-        - and:
-            - dbms:
-                type: postgresql
+      dbms: postgresql
       # This has maybe never succeeded in creating the index because (at least with the current DB versions)
       # the syntax was wrong on all requested databases (postgresql, mysql and mariadb). Since this change is
       # not critical it's OK to ignore it.
@@ -8027,6 +7804,7 @@ databaseChangeLog:
                  type: varchar(254)
             tableName: core_user
             indexName: idx_lower_email
+
   - changeSet:
       id: 269
       author: rlotun
@@ -8034,47 +7812,40 @@ databaseChangeLog:
       changes:
         - sql :
             sql : UPDATE core_user SET email = lower(email) WHERE lower(email) NOT IN (SELECT * FROM (SELECT lower(email) FROM core_user GROUP BY lower(email) HAVING count(email) > 1) as e)
+
   - changeSet:
       id: 270
       author: rlotun
       comment: Added 0.37.0 # try to install citext extension on posgres (user requires privileges on postgres)
       failOnError: false
-      preConditions:
-        - onFail: MARK_RAN
-        - or:
-            - dbms:
-                type: postgresql
+      dbms: postgresql
       changes:
         - sql :
             sql : CREATE EXTENSION IF NOT EXISTS citext
+
   - changeSet:
       id: 271
       author: rlotun
       comment: Added 0.37.0 # try to convert email column to citext on postgres, if citext extension installed
       failOnError: false
+      dbms: postgresql
       preConditions:
         - onFail: MARK_RAN
-        - and:
-            - dbms:
-                type: postgresql
-            - sqlCheck:
-                expectedResult: 1
-                sql: SELECT count(*) FROM pg_extension WHERE extname = 'citext'
+        - sqlCheck:
+            expectedResult: 1
+            sql: SELECT count(*) FROM pg_extension WHERE extname = 'citext'
       changes:
         - modifyDataType:
             tableName: core_user
             columnName: email
             newDataType: citext
+
   - changeSet:
       id: 272
       author: rlotun
       comment: Added 0.37.0 # for H2 convert column to VARCHAR_IGNORECASE
       failOnError: false
-      preConditions:
-         - onFail: MARK_RAN
-         - or:
-             - dbms:
-                   type: h2
+      dbms: h2
       changes:
         - modifyDataType:
             tableName: core_user
@@ -8541,10 +8312,7 @@ databaseChangeLog:
       author: dpsutton
       comment: Added 0.40.0 renaming collection_revision to collection_permission_graph_revision
       failOnError: false # mysql and h2 don't have this sequence
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: postgresql
+      dbms: postgresql
       changes:
         - sql:
             - sql: ALTER SEQUENCE collection_revision_id_seq RENAME TO collection_permission_graph_revision_id_seq
@@ -8961,10 +8729,7 @@ databaseChangeLog:
       # If this migration fails for any reason continue with the next migration; do not fail the entire process if this one fails
       failOnError: false
       # Don't run for H2 -- the version of H2 we're using doesn't support JSON stuff.
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: postgresql,mysql,mariadb
+      dbms: postgresql,mysql,mariadb
       # The basic idea below is to parse the `database_id` from the JSON string query dictionary and use it to set the
       # database_id column as needed. We do an INNER JOIN against the Database table to make sure that Database
       # actually exists (so we don't attempt to set an invalid database_id)
@@ -9086,10 +8851,7 @@ databaseChangeLog:
             tableName: collection
             columnName: description
             newDataType: ${text.type}
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: mysql,mariadb
+      dbms: mysql,mariadb
 
   - changeSet:
       id: v42.00-006
@@ -9102,10 +8864,7 @@ databaseChangeLog:
             tableName: collection
             columnName: name
             newDataType: ${text.type}
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: mysql,mariadb
+      dbms: mysql,mariadb
 
   - changeSet:
       id: v42.00-007
@@ -9118,10 +8877,7 @@ databaseChangeLog:
             tableName: computation_job
             columnName: context
             newDataType: ${text.type}
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: mysql,mariadb
+      dbms: mysql,mariadb
 
   - changeSet:
       id: v42.00-008
@@ -9134,10 +8890,7 @@ databaseChangeLog:
             tableName: computation_job_result
             columnName: payload
             newDataType: ${text.type}
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: mysql,mariadb
+      dbms: mysql,mariadb
 
   - changeSet:
       id: v42.00-009
@@ -9150,10 +8903,7 @@ databaseChangeLog:
             tableName: core_session
             columnName: anti_csrf_token
             newDataType: ${text.type}
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: mysql,mariadb
+      dbms: mysql,mariadb
 
   - changeSet:
       id: v42.00-010
@@ -9166,10 +8916,7 @@ databaseChangeLog:
             tableName: core_user
             columnName: login_attributes
             newDataType: ${text.type}
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: mysql,mariadb
+      dbms: mysql,mariadb
 
   - changeSet:
       id: v42.00-011
@@ -9182,10 +8929,7 @@ databaseChangeLog:
             tableName: group_table_access_policy
             columnName: attribute_remappings
             newDataType: ${text.type}
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: mysql,mariadb
+      dbms: mysql,mariadb
 
   - changeSet:
       id: v42.00-012
@@ -9198,10 +8942,7 @@ databaseChangeLog:
             tableName: login_history
             columnName: device_description
             newDataType: ${text.type}
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: mysql,mariadb
+      dbms: mysql,mariadb
 
   - changeSet:
       id: v42.00-013
@@ -9214,10 +8955,7 @@ databaseChangeLog:
             tableName: login_history
             columnName: ip_address
             newDataType: ${text.type}
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: mysql,mariadb
+      dbms: mysql,mariadb
 
   - changeSet:
       id: v42.00-014
@@ -9230,10 +8968,7 @@ databaseChangeLog:
             tableName: metabase_database
             columnName: caveats
             newDataType: ${text.type}
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: mysql,mariadb
+      dbms: mysql,mariadb
 
   - changeSet:
       id: v42.00-015
@@ -9246,10 +8981,7 @@ databaseChangeLog:
             tableName: metabase_database
             columnName: description
             newDataType: ${text.type}
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: mysql,mariadb
+      dbms: mysql,mariadb
 
   - changeSet:
       id: v42.00-016
@@ -9262,10 +8994,7 @@ databaseChangeLog:
             tableName: metabase_database
             columnName: details
             newDataType: ${text.type}
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: mysql,mariadb
+      dbms: mysql,mariadb
 
   - changeSet:
       id: v42.00-017
@@ -9278,10 +9007,7 @@ databaseChangeLog:
             tableName: metabase_database
             columnName: options
             newDataType: ${text.type}
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: mysql,mariadb
+      dbms: mysql,mariadb
 
   - changeSet:
       id: v42.00-018
@@ -9294,10 +9020,7 @@ databaseChangeLog:
             tableName: metabase_database
             columnName: points_of_interest
             newDataType: ${text.type}
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: mysql,mariadb
+      dbms: mysql,mariadb
 
   - changeSet:
       id: v42.00-019
@@ -9310,10 +9033,7 @@ databaseChangeLog:
             tableName: metabase_field
             columnName: caveats
             newDataType: ${text.type}
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: mysql,mariadb
+      dbms: mysql,mariadb
 
   - changeSet:
       id: v42.00-020
@@ -9326,10 +9046,7 @@ databaseChangeLog:
             tableName: metabase_field
             columnName: database_type
             newDataType: ${text.type}
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: mysql,mariadb
+      dbms: mysql,mariadb
 
   - changeSet:
       id: v42.00-021
@@ -9342,10 +9059,7 @@ databaseChangeLog:
             tableName: metabase_field
             columnName: description
             newDataType: ${text.type}
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: mysql,mariadb
+      dbms: mysql,mariadb
 
   - changeSet:
       id: v42.00-022
@@ -9358,10 +9072,7 @@ databaseChangeLog:
             tableName: metabase_field
             columnName: fingerprint
             newDataType: ${text.type}
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: mysql,mariadb
+      dbms: mysql,mariadb
 
   - changeSet:
       id: v42.00-023
@@ -9374,10 +9085,7 @@ databaseChangeLog:
             tableName: metabase_field
             columnName: has_field_values
             newDataType: ${text.type}
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: mysql,mariadb
+      dbms: mysql,mariadb
 
   - changeSet:
       id: v42.00-024
@@ -9390,10 +9098,7 @@ databaseChangeLog:
             tableName: metabase_field
             columnName: points_of_interest
             newDataType: ${text.type}
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: mysql,mariadb
+      dbms: mysql,mariadb
 
   - changeSet:
       id: v42.00-025
@@ -9406,10 +9111,7 @@ databaseChangeLog:
             tableName: metabase_field
             columnName: settings
             newDataType: ${text.type}
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: mysql,mariadb
+      dbms: mysql,mariadb
 
   - changeSet:
       id: v42.00-026
@@ -9422,10 +9124,7 @@ databaseChangeLog:
             tableName: metabase_fieldvalues
             columnName: human_readable_values
             newDataType: ${text.type}
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: mysql,mariadb
+      dbms: mysql,mariadb
 
   - changeSet:
       id: v42.00-027
@@ -9438,10 +9137,7 @@ databaseChangeLog:
             tableName: metabase_fieldvalues
             columnName: values
             newDataType: ${text.type}
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: mysql,mariadb
+      dbms: mysql,mariadb
 
   - changeSet:
       id: v42.00-028
@@ -9454,10 +9150,7 @@ databaseChangeLog:
             tableName: metabase_table
             columnName: caveats
             newDataType: ${text.type}
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: mysql,mariadb
+      dbms: mysql,mariadb
 
   - changeSet:
       id: v42.00-029
@@ -9470,10 +9163,7 @@ databaseChangeLog:
             tableName: metabase_table
             columnName: description
             newDataType: ${text.type}
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: mysql,mariadb
+      dbms: mysql,mariadb
 
   - changeSet:
       id: v42.00-030
@@ -9486,10 +9176,7 @@ databaseChangeLog:
             tableName: metabase_table
             columnName: points_of_interest
             newDataType: ${text.type}
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: mysql,mariadb
+      dbms: mysql,mariadb
 
   - changeSet:
       id: v42.00-031
@@ -9502,10 +9189,7 @@ databaseChangeLog:
             tableName: metric
             columnName: caveats
             newDataType: ${text.type}
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: mysql,mariadb
+      dbms: mysql,mariadb
 
   - changeSet:
       id: v42.00-032
@@ -9518,10 +9202,7 @@ databaseChangeLog:
             tableName: metric
             columnName: definition
             newDataType: ${text.type}
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: mysql,mariadb
+      dbms: mysql,mariadb
 
   - changeSet:
       id: v42.00-033
@@ -9534,10 +9215,7 @@ databaseChangeLog:
             tableName: metric
             columnName: description
             newDataType: ${text.type}
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: mysql,mariadb
+      dbms: mysql,mariadb
 
   - changeSet:
       id: v42.00-034
@@ -9550,10 +9228,7 @@ databaseChangeLog:
             tableName: metric
             columnName: how_is_this_calculated
             newDataType: ${text.type}
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: mysql,mariadb
+      dbms: mysql,mariadb
 
   - changeSet:
       id: v42.00-035
@@ -9566,10 +9241,7 @@ databaseChangeLog:
             tableName: metric
             columnName: points_of_interest
             newDataType: ${text.type}
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: mysql,mariadb
+      dbms: mysql,mariadb
 
   - changeSet:
       id: v42.00-036
@@ -9582,10 +9254,7 @@ databaseChangeLog:
             tableName: moderation_review
             columnName: text
             newDataType: ${text.type}
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: mysql,mariadb
+      dbms: mysql,mariadb
 
   - changeSet:
       id: v42.00-037
@@ -9598,10 +9267,7 @@ databaseChangeLog:
             tableName: native_query_snippet
             columnName: content
             newDataType: ${text.type}
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: mysql,mariadb
+      dbms: mysql,mariadb
 
   - changeSet:
       id: v42.00-038
@@ -9614,10 +9280,7 @@ databaseChangeLog:
             tableName: native_query_snippet
             columnName: description
             newDataType: ${text.type}
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: mysql,mariadb
+      dbms: mysql,mariadb
 
   - changeSet:
       id: v42.00-039
@@ -9630,10 +9293,7 @@ databaseChangeLog:
             tableName: pulse
             columnName: parameters
             newDataType: ${text.type}
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: mysql,mariadb
+      dbms: mysql,mariadb
 
   - changeSet:
       id: v42.00-040
@@ -9646,10 +9306,7 @@ databaseChangeLog:
             tableName: pulse_channel
             columnName: details
             newDataType: ${text.type}
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: mysql,mariadb
+      dbms: mysql,mariadb
 
   - changeSet:
       id: v42.00-041
@@ -9662,10 +9319,7 @@ databaseChangeLog:
             tableName: query
             columnName: query
             newDataType: ${text.type}
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: mysql,mariadb
+      dbms: mysql,mariadb
 
   - changeSet:
       id: v42.00-042
@@ -9678,10 +9332,7 @@ databaseChangeLog:
             tableName: query_execution
             columnName: error
             newDataType: ${text.type}
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: mysql,mariadb
+      dbms: mysql,mariadb
 
   - changeSet:
       id: v42.00-043
@@ -9694,10 +9345,7 @@ databaseChangeLog:
             tableName: report_card
             columnName: dataset_query
             newDataType: ${text.type}
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: mysql,mariadb
+      dbms: mysql,mariadb
 
   - changeSet:
       id: v42.00-044
@@ -9710,10 +9358,7 @@ databaseChangeLog:
             tableName: report_card
             columnName: description
             newDataType: ${text.type}
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: mysql,mariadb
+      dbms: mysql,mariadb
 
   - changeSet:
       id: v42.00-045
@@ -9726,10 +9371,7 @@ databaseChangeLog:
             tableName: report_card
             columnName: embedding_params
             newDataType: ${text.type}
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: mysql,mariadb
+      dbms: mysql,mariadb
 
   - changeSet:
       id: v42.00-046
@@ -9742,10 +9384,7 @@ databaseChangeLog:
             tableName: report_card
             columnName: result_metadata
             newDataType: ${text.type}
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: mysql,mariadb
+      dbms: mysql,mariadb
 
   - changeSet:
       id: v42.00-047
@@ -9758,10 +9397,7 @@ databaseChangeLog:
             tableName: report_card
             columnName: visualization_settings
             newDataType: ${text.type}
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: mysql,mariadb
+      dbms: mysql,mariadb
 
   - changeSet:
       id: v42.00-048
@@ -9774,10 +9410,7 @@ databaseChangeLog:
             tableName: report_dashboard
             columnName: caveats
             newDataType: ${text.type}
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: mysql,mariadb
+      dbms: mysql,mariadb
 
   - changeSet:
       id: v42.00-049
@@ -9790,10 +9423,7 @@ databaseChangeLog:
             tableName: report_dashboard
             columnName: description
             newDataType: ${text.type}
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: mysql,mariadb
+      dbms: mysql,mariadb
 
   - changeSet:
       id: v42.00-050
@@ -9806,10 +9436,7 @@ databaseChangeLog:
             tableName: report_dashboard
             columnName: embedding_params
             newDataType: ${text.type}
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: mysql,mariadb
+      dbms: mysql,mariadb
 
   - changeSet:
       id: v42.00-051
@@ -9822,10 +9449,7 @@ databaseChangeLog:
             tableName: report_dashboard
             columnName: parameters
             newDataType: ${text.type}
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: mysql,mariadb
+      dbms: mysql,mariadb
 
   - changeSet:
       id: v42.00-052
@@ -9838,10 +9462,7 @@ databaseChangeLog:
             tableName: report_dashboard
             columnName: points_of_interest
             newDataType: ${text.type}
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: mysql,mariadb
+      dbms: mysql,mariadb
 
   - changeSet:
       id: v42.00-053
@@ -9854,10 +9475,7 @@ databaseChangeLog:
             tableName: report_dashboardcard
             columnName: parameter_mappings
             newDataType: ${text.type}
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: mysql,mariadb
+      dbms: mysql,mariadb
 
   - changeSet:
       id: v42.00-054
@@ -9870,10 +9488,7 @@ databaseChangeLog:
             tableName: report_dashboardcard
             columnName: visualization_settings
             newDataType: ${text.type}
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: mysql,mariadb
+      dbms: mysql,mariadb
 
   - changeSet:
       id: v42.00-055
@@ -9886,10 +9501,7 @@ databaseChangeLog:
             tableName: revision
             columnName: message
             newDataType: ${text.type}
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: mysql,mariadb
+      dbms: mysql,mariadb
 
   - changeSet:    # this one is run unconditionally so unify the type to ${text.type} across ALL dbs
       id: v42.00-056 # this differentiation was first done under changeSet 10 above
@@ -9913,10 +9525,7 @@ databaseChangeLog:
             tableName: segment
             columnName: caveats
             newDataType: ${text.type}
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: mysql,mariadb
+      dbms: mysql,mariadb
 
   - changeSet:
       id: v42.00-058
@@ -9929,10 +9538,7 @@ databaseChangeLog:
             tableName: segment
             columnName: definition
             newDataType: ${text.type}
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: mysql,mariadb
+      dbms: mysql,mariadb
 
   - changeSet:
       id: v42.00-059
@@ -9945,10 +9551,7 @@ databaseChangeLog:
             tableName: segment
             columnName: description
             newDataType: ${text.type}
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: mysql,mariadb
+      dbms: mysql,mariadb
 
   - changeSet:
       id: v42.00-060
@@ -9961,10 +9564,7 @@ databaseChangeLog:
             tableName: segment
             columnName: points_of_interest
             newDataType: ${text.type}
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: mysql,mariadb
+      dbms: mysql,mariadb
 
   - changeSet:
       id: v42.00-061
@@ -9977,10 +9577,7 @@ databaseChangeLog:
             tableName: setting
             columnName: value
             newDataType: ${text.type}
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: mysql,mariadb
+      dbms: mysql,mariadb
 
   - changeSet:
       id: v42.00-062
@@ -9993,10 +9590,7 @@ databaseChangeLog:
             tableName: task_history
             columnName: task_details
             newDataType: ${text.type}
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: mysql,mariadb
+      dbms: mysql,mariadb
 
   - changeSet:
       id: v42.00-063
@@ -10009,19 +9603,13 @@ databaseChangeLog:
             tableName: view_log
             columnName: metadata
             newDataType: ${text.type}
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: mysql,mariadb
+      dbms: mysql,mariadb
 
   - changeSet:
       id: v42.00-064
       author: jeff303
       comment: "Added 0.42.0 - fix type of query_cache.results on upgrade (in case changeSet 97 was run before #16095)"
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: mysql,mariadb
+      dbms: mysql,mariadb
       changes:
         - modifyDataType:
             tableName: query_cache
@@ -11511,10 +11099,7 @@ databaseChangeLog:
       author: qnkhuat
       comment: Added 0.43.0 - Rename general_permissions_revision_id_seq
       failOnError: false # mysql and h2 don't have this sequence
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: postgresql
+      dbms: postgresql
       changes:
         - sql:
             - sql: ALTER SEQUENCE general_permissions_revision_id_seq RENAME TO application_permissions_revision_id_seq;
@@ -12484,10 +12069,7 @@ databaseChangeLog:
       id: v45.00-032
       author: camsaul
       comment: Added 0.45.0 -- add default value for DashboardCard created_at (Postgres/H2)
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: postgresql,h2
+      dbms: postgresql,h2
       changes:
         - addDefaultValue:
             tableName: report_dashboardcard
@@ -12500,10 +12082,7 @@ databaseChangeLog:
       id: v45.00-033
       author: camsaul
       comment: Added 0.45.0 -- add default value for DashboardCard created_at (MySQL/MariaDB)
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: mysql,mariadb
+      dbms: mysql,mariadb
       changes:
         - sql:
             sql: >-
@@ -12516,10 +12095,7 @@ databaseChangeLog:
       id: v45.00-034
       author: camsaul
       comment: Added 0.45.0 -- add default value for DashboardCard updated_at (Postgres/H2)
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: postgresql,h2
+      dbms: postgresql,h2
       changes:
         - addDefaultValue:
             tableName: report_dashboardcard
@@ -12531,10 +12107,7 @@ databaseChangeLog:
       id: v45.00-035
       author: camsaul
       comment: Added 0.45.0 -- add default value for DashboardCard updated_at (MySQL/MariaDB)
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: mysql,mariadb
+      dbms: mysql,mariadb
       changes:
         - sql:
             sql: >-
@@ -12625,10 +12198,7 @@ databaseChangeLog:
       id: v45.00-038
       author: camsaul
       comment: Added 0.45.0 -- add default value for Database created_at (Postgres/H2)
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: postgresql,h2
+      dbms: postgresql,h2
       changes:
         - addDefaultValue:
             tableName: metabase_database
@@ -12641,10 +12211,7 @@ databaseChangeLog:
       id: v45.00-039
       author: camsaul
       comment: Added 0.45.0 -- add default value for Database created_at (MySQL/MariaDB)
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: mysql,mariadb
+      dbms: mysql,mariadb
       changes:
         - sql:
             sql: >-
@@ -12657,10 +12224,7 @@ databaseChangeLog:
       id: v45.00-040
       author: camsaul
       comment: Added 0.45.0 -- add default value for Database updated_at (Postgres/H2)
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: postgresql,h2
+      dbms: postgresql,h2
       changes:
         - addDefaultValue:
             tableName: metabase_database
@@ -12672,10 +12236,7 @@ databaseChangeLog:
       id: v45.00-041
       author: camsaul
       comment: Added 0.45.0 -- add default value for Database updated_at (MySQL/MariaDB)
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: mysql,mariadb
+      dbms: mysql,mariadb
       changes:
         - sql:
             sql: >-
@@ -12918,10 +12479,7 @@ databaseChangeLog:
             tableName: collection_permission_graph_revision
             columnName: after
             newDataType: text
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: mysql,mariadb
+      dbms: mysql,mariadb
 
   - changeSet:
       id: v45.00-052
@@ -12939,10 +12497,7 @@ databaseChangeLog:
             tableName: collection_permission_graph_revision
             columnName: before
             newDataType: text
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: mysql,mariadb
+      dbms: mysql,mariadb
 
   - changeSet:
       id: v45.00-053
@@ -12960,10 +12515,7 @@ databaseChangeLog:
             tableName: collection_permission_graph_revision
             columnName: remark
             newDataType: text
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: mysql,mariadb
+      dbms: mysql,mariadb
 
   - changeSet:
       id: v45.00-054
@@ -12981,10 +12533,7 @@ databaseChangeLog:
             tableName: permissions_revision
             columnName: after
             newDataType: text
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: mysql,mariadb
+      dbms: mysql,mariadb
 
   - changeSet:
       id: v45.00-055
@@ -13002,10 +12551,7 @@ databaseChangeLog:
             tableName: permissions_revision
             columnName: before
             newDataType: text
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: mysql,mariadb
+      dbms: mysql,mariadb
 
   - changeSet:
       id: v45.00-056
@@ -13023,10 +12569,7 @@ databaseChangeLog:
             tableName: permissions_revision
             columnName: remark
             newDataType: text
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: mysql,mariadb
+      dbms: mysql,mariadb
 
   - changeSet:
       id: v45.00-057
@@ -13044,10 +12587,7 @@ databaseChangeLog:
             tableName: secret
             columnName: value
             newDataType: ${blob.type}
-      preConditions:
-        - onFail: MARK_RAN
-        - dbms:
-            type: mysql,mariadb
+      dbms: mysql,mariadb
 
   - changeSet:
       id: v46.00-000
