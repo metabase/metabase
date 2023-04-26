@@ -14441,11 +14441,7 @@ databaseChangeLog:
             tableName: metabase_table
             columnName: name
             newDataType: varchar(256)
-      rollback:
-        - modifyDataType:
-            tableName: metabase_table
-            columnName: name
-            newDataType: varchar(254)
+      rollback: # no rollback needed, varchar(256) is backwards compatible
 
   - changeSet:
       id: v47.00-011
@@ -14456,11 +14452,7 @@ databaseChangeLog:
             tableName: metabase_table
             columnName: display_name
             newDataType: varchar(256)
-      rollback:
-        - modifyDataType:
-            tableName: metabase_table
-            columnName: display_name
-            newDataType: varchar(254)
+      rollback: # no rollback needed, varchar(256) is backwards compatible
 
   - changeSet:
       id: v47.00-012
