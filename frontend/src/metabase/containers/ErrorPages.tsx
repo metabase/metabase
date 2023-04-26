@@ -3,6 +3,7 @@ import React from "react";
 import { t } from "ttag";
 import { color } from "metabase/lib/colors";
 
+import type { ErrorDetailsProps } from "metabase/components/ErrorDetails/types";
 import Icon from "metabase/components/Icon";
 import EmptyState from "metabase/components/EmptyState";
 import ErrorDetails from "metabase/components/ErrorDetails/ErrorDetails";
@@ -14,6 +15,10 @@ export const GenericError = ({
   title = t`Something's gone wrong`,
   message = t`We've run into an error. You can try refreshing the page, or just go back.`,
   details,
+}: {
+  title?: string;
+  message?: string;
+  details: ErrorDetailsProps["details"];
 }) => (
   <ErrorPageRoot>
     <EmptyState
@@ -27,12 +32,18 @@ export const GenericError = ({
   </ErrorPageRoot>
 );
 
-export const NotFound = () => (
+export const NotFound = ({
+  title = t`We're a little lost...`,
+  message = t`The page you asked for couldn't be found.`,
+}: {
+  title?: string;
+  message?: string;
+}) => (
   <ErrorPageRoot>
     <EmptyState
       illustrationElement={<img src={NoResults} />}
-      title={t`We're a little lost...`}
-      message={t`The page you asked for couldn't be found.`}
+      title={title}
+      message={message}
     />
   </ErrorPageRoot>
 );
@@ -46,7 +57,13 @@ export const Unauthorized = () => (
   </ErrorPageRoot>
 );
 
-export const Archived = ({ entityName, linkTo }) => (
+export const Archived = ({
+  entityName,
+  linkTo,
+}: {
+  entityName: string;
+  linkTo: string;
+}) => (
   <ErrorPageRoot>
     <EmptyState
       title={t`This ${entityName} has been archived`}
