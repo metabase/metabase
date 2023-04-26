@@ -40,7 +40,6 @@ class AddToDashSelectDashModal extends Component<
     shouldCreateDashboard: false,
   };
 
-  // ugly hack with the type, could be better
   navigateToDashboard: Required<CreateDashboardFormOwnProps>["onCreate"] =
     dashboard => {
       const { card, onChangeLocation } = this.props;
