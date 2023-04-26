@@ -14,6 +14,7 @@
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.temporal-bucketing
     :as lib.schema.temporal-bucketing]
+   [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
    [metabase.shared.util.i18n :as i18n]
    [metabase.types :as types]
@@ -133,18 +134,13 @@
    (for [arg args]
      (lib.metadata.calculation/type-of query stage-number arg))))
 
-;;; TODO -- duplicated with [[metabase.lib.temporal-bucket/unit->i18n]]
+;;; TODO -- this stuff should probably be moved into [[metabase.lib.temporal-bucket]]
+
 (defn- interval-unit-str [amount unit]
-  (clojure.core/case unit
-    :millisecond (i18n/trun "millisecond" "milliseconds" (clojure.core/abs amount))
-    :second      (i18n/trun "second"      "seconds"      (clojure.core/abs amount))
-    :minute      (i18n/trun "minute"      "minutes"      (clojure.core/abs amount))
-    :hour        (i18n/trun "hour"        "hours"        (clojure.core/abs amount))
-    :day         (i18n/trun "day"         "days"         (clojure.core/abs amount))
-    :week        (i18n/trun "week"        "weeks"        (clojure.core/abs amount))
-    :month       (i18n/trun "month"       "months"       (clojure.core/abs amount))
-    :quarter     (i18n/trun "quarter"     "quarters"     (clojure.core/abs amount))
-    :year        (i18n/trun "year"        "years"        (clojure.core/abs amount))))
+  ;; this uses [[clojure.string/lower-case]] so its in the user's locale in the browser rather than always using
+  ;; English lower-casing rules.
+  #_{:clj-kondo/ignore [:discouraged-var]}
+  (str/lower-case (lib.temporal-bucket/describe-temporal-unit amount unit)))
 
 (mu/defn ^:private interval-display-name  :- ::lib.schema.common/non-blank-string
   "e.g. something like \"- 2 days\""
