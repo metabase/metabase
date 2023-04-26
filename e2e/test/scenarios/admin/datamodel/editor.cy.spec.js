@@ -129,14 +129,14 @@ describe("scenarios > admin > datamodel > editor", () => {
     cy.findAllByTestId("header-cell").first().should("have.text", "Product ID");
   });
 
-  it("should allow bulk hiding tables", () => {
+  it("should allow hiding and restoring all tables in a schema", () => {
     visitOrdersTableEditor();
     cy.findByText("4 Queryable Tables").should("be.visible");
-
     cy.findByLabelText("Hide all").click();
     cy.wait("@updateTables");
-    cy.findByText("8 Hidden Tables").should("be.visible");
 
+    visitOrdersTableEditor();
+    cy.findByText("8 Hidden Tables").should("be.visible");
     cy.findByLabelText("Unhide all").click();
     cy.wait("@updateTables");
     cy.findByText("8 Queryable Tables").should("be.visible");
