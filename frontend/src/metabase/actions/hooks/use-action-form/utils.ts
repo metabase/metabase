@@ -131,8 +131,8 @@ export const generateFieldSettingsFromParameters = (params: Parameter[]) => {
     fieldSettings[param.id] = getDefaultFieldSettings({
       id: param.id,
       name: param.name,
-      title: param["display-name"],
-      placeholder: param["display-name"],
+      title: field.displayName(),
+      placeholder: field.displayName(),
       required: !!param.required,
       order: index,
       description: "",
