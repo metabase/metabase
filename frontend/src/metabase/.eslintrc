@@ -7,6 +7,13 @@
           "metabase-enterprise",
           "metabase-enterprise/*",
           "cljs/metabase.lib*"
+        ],
+        "paths": [
+          {
+            "name": "react-redux",
+            "importNames": ["useSelector", "useDispatch"],
+            "message": "Please import from `metabase/lib/redux` instead."
+          }
         ]
       }
     ]
