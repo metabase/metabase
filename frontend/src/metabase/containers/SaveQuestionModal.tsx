@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { CSSTransition, TransitionGroup } from "react-transition-group";
@@ -15,6 +14,7 @@ import { canonicalCollectionId } from "metabase/collections/utils";
 import "./SaveQuestionModal.css";
 import FormInput from "metabase/core/components/FormInput/FormInput";
 import FormProvider from "metabase/core/components/FormProvider";
+import { CollectionId } from "metabase-types/api";
 import Question from "metabase-lib/Question";
 
 const getSingleStepTitle = (questionType: string, showSaveType: boolean) => {
@@ -62,7 +62,7 @@ export default class SaveQuestionModal extends Component<SaveQuestionModalProps>
 
   handleSubmit = async (details: {
     saveType: string;
-    collection_id: string | number | null | undefined;
+    collection_id: CollectionId | undefined | null;
     name: string;
     description: string;
   }) => {
