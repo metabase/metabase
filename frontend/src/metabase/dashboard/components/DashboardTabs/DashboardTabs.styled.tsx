@@ -10,6 +10,7 @@ export const Container = styled.div`
   display: flex;
   align-items: start;
   gap: 1.5rem;
+  width: 100%;
 `;
 
 const _PlaceholderTab = styled(BaseTabButton)`
