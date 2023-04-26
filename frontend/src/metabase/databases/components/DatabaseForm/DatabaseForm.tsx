@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useFormikContext } from "formik";
 import { t } from "ttag";
 import Button from "metabase/core/components/Button";
@@ -30,6 +30,8 @@ export interface DatabaseFormProps {
   onSubmit?: (values: DatabaseData) => void;
   onEngineChange?: (engineKey: string | undefined) => void;
   onCancel?: () => void;
+  onUpdate?: (values: DatabaseData) => void;
+  onFormDirty?: (isDirty: boolean) => void;
 }
 
 const DatabaseForm = ({
@@ -41,6 +43,7 @@ const DatabaseForm = ({
   onSubmit,
   onCancel,
   onEngineChange,
+  onFormDirty,
 }: DatabaseFormProps): JSX.Element => {
   const initialEngineKey = getEngineKey(engines, initialData, isAdvanced);
   const [engineKey, setEngineKey] = useState(initialEngineKey);
@@ -88,6 +91,7 @@ const DatabaseForm = ({
         isCachingEnabled={isCachingEnabled}
         onEngineChange={handleEngineChange}
         onCancel={onCancel}
+        onFormDirty={onFormDirty}
       />
     </FormProvider>
   );
@@ -102,6 +106,7 @@ interface DatabaseFormBodyProps {
   isCachingEnabled: boolean;
   onEngineChange: (engineKey: string | undefined) => void;
   onCancel?: () => void;
+  onFormDirty?: (isDirty: boolean) => void;
 }
 
 const DatabaseFormBody = ({
@@ -113,8 +118,13 @@ const DatabaseFormBody = ({
   isCachingEnabled,
   onEngineChange,
   onCancel,
+  onFormDirty,
 }: DatabaseFormBodyProps): JSX.Element => {
-  const { values } = useFormikContext<DatabaseData>();
+  const { values, dirty } = useFormikContext<DatabaseData>();
+
+  useEffect(() => {
+    onFormDirty?.(dirty);
+  }, [dirty, onFormDirty]);
 
   const fields = useMemo(() => {
     return engine ? getVisibleFields(engine, values, isAdvanced) : [];
