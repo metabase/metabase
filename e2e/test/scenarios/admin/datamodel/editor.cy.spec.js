@@ -143,9 +143,39 @@ describe("scenarios > admin > datamodel > editor", () => {
   });
 });
 
-const visitOrdersTableEditor = () => {
+describe(
+  "scenarios > admin > datamodel > editor",
+  { tags: ["@external"] },
+  () => {
+    beforeEach(() => {
+      restore("mysql-8");
+      cy.signInAsAdmin();
+      cy.intercept("GET", "/api/database").as("fetchDatabases");
+      cy.intercept("GET", "/api/database/*/schema/*").as("fetchTables");
+      cy.intercept("GET", "/api/table/*/query_metadata*").as("fetchMetadata");
+      cy.intercept("PUT", "/api/table/*").as("updateTable");
+      cy.intercept("PUT", "/api/field/*").as("updateField");
+    });
+
+    it("should be able to select and update a table in a database without schemas", () => {
+      visitOrdersTableEditor("QA MySQL8");
+      setInputValue("Orders", "New orders");
+      cy.wait("@updateTable");
+    });
+
+    it("should be able to select and update a field in a database without schemas", () => {
+      visitOrdersTableEditor("QA MySQL8");
+      getFieldSection("TAX").findByText("Everywhere").click();
+      setSelectValue("Do not include");
+      cy.wait("@updateField");
+    });
+  },
+);
+
+const visitOrdersTableEditor = (database = "Sample Database") => {
   cy.visit("/admin/datamodel");
   cy.wait("@fetchTables");
+  cy.findByText(database).should("be.visible");
 
   cy.findByText("Orders").click();
   cy.wait("@fetchMetadata");
