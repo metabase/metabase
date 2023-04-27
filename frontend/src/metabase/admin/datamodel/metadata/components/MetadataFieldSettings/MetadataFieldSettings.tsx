@@ -215,7 +215,10 @@ const FieldGeneralPane = ({
         onUpdateField={onUpdateField}
       />
       {field.hasJsonUnfoldingSettings() && (
-        <FieldJsonSection field={field} onUpdateField={onUpdateField} />
+        <FieldJsonUnfoldingSection
+          field={field}
+          onUpdateField={onUpdateField}
+        />
       )}
     </div>
   );
@@ -273,12 +276,15 @@ const JSON_OPTIONS = [
   { name: t`No`, value: false },
 ];
 
-interface FieldJsonSectionProps {
+interface FieldJsonUnfoldingSectionProps {
   field: Field;
   onUpdateField: (field: Field, updates: Partial<Field>) => void;
 }
 
-const FieldJsonSection = ({ field, onUpdateField }: FieldJsonSectionProps) => {
+const FieldJsonUnfoldingSection = ({
+  field,
+  onUpdateField,
+}: FieldJsonUnfoldingSectionProps) => {
   const handleChange = useCallback(
     (event: SelectChangeEvent<boolean>) => {
       onUpdateField(field, { json_unfolding: event.target.value });
