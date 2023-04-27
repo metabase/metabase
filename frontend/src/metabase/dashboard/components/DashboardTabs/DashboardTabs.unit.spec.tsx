@@ -1,12 +1,7 @@
 import React from "react";
 import userEvent from "@testing-library/user-event";
 
-import {
-  getIcon,
-  renderWithProviders,
-  screen,
-  fireEvent,
-} from "__support__/ui";
+import { renderWithProviders, screen, fireEvent } from "__support__/ui";
 import { DashboardState, State, StoreDashcard } from "metabase-types/store";
 import { DashboardOrderedTab } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
@@ -125,7 +120,7 @@ function selectTab(num: number) {
 }
 
 function createNewTab() {
-  userEvent.click(getIcon("add", "button"));
+  userEvent.click(screen.getByLabelText("Create new tab"));
 }
 
 async function selectTabMenuItem(num: number, name: "Delete" | "Rename") {
@@ -180,6 +175,7 @@ describe("DashboardTabs", () => {
 
       expect(queryTab(1)).toHaveAttribute("aria-selected", "true");
       expect(queryTab(2)).toHaveAttribute("aria-selected", "false");
+      expect(queryTab(3)).toHaveAttribute("aria-selected", "false");
     });
 
     it("should allow you to click to select tabs", () => {
@@ -187,6 +183,7 @@ describe("DashboardTabs", () => {
 
       expect(selectTab(2)).toHaveAttribute("aria-selected", "true");
       expect(queryTab(1)).toHaveAttribute("aria-selected", "false");
+      expect(queryTab(3)).toHaveAttribute("aria-selected", "false");
     });
   });
 
@@ -212,6 +209,7 @@ describe("DashboardTabs", () => {
 
       expect(selectTab(2)).toHaveAttribute("aria-selected", "true");
       expect(queryTab(1)).toHaveAttribute("aria-selected", "false");
+      expect(queryTab(3)).toHaveAttribute("aria-selected", "false");
     });
 
     describe("when adding tabs", () => {
