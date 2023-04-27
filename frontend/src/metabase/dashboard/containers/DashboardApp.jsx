@@ -178,7 +178,7 @@ const DashboardApp = props => {
         onConfirm={onConfirmToast}
         fixed
       />
-      <AutoApplyFilterToast isShowingSlowToaster={isShowingSlowToaster} />
+      <AutoApplyFilterToast />
     </div>
   );
 };
