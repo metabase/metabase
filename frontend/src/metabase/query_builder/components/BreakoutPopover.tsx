@@ -15,6 +15,11 @@ interface BreakoutPopoverProps {
   width?: number;
   maxHeight?: number;
   alwaysExpanded?: boolean;
+  renderItemIcon?: (item: DimensionOptions) => React.ReactNode;
+  renderItemWrapper?: (
+    content: React.ReactNode,
+    item: DimensionOptions,
+  ) => JSX.Element;
   onChangeBreakout: (breakout: ConcreteField) => void;
   onClose?: () => void;
 }
@@ -28,20 +33,14 @@ const BreakoutPopover = ({
   onClose,
   maxHeight,
   alwaysExpanded,
+  renderItemIcon,
+  renderItemWrapper,
   width = 400,
 }: BreakoutPopoverProps) => {
-  const table = query.table();
-  // FieldList requires table
-  if (!table) {
-    return null;
-  }
-
   const fieldOptions = breakoutOptions || query.breakoutOptions(breakout);
 
   return (
     <BreakoutFieldList
-      className={className}
-      width={width}
       field={breakout}
       query={query}
       metadata={query.metadata()}
@@ -52,11 +51,15 @@ const BreakoutPopover = ({
           onClose();
         }
       }}
-      table={table}
-      enableSubDimensions
+      // forward AccordionList props
+      className={className}
       maxHeight={maxHeight}
+      width={width}
       alwaysExpanded={alwaysExpanded}
-      searchable={false}
+      renderItemIcon={renderItemIcon}
+      renderItemWrapper={renderItemWrapper}
+      // forward DimensionList props
+      enableSubDimensions
     />
   );
 };

@@ -796,8 +796,8 @@ class StructuredQueryInner extends AtomicQuery {
    */
   breakoutOptions(
     includedBreakout?: any,
-    fieldFilter: (field: Field) => boolean = () => true,
-  ) {
+    fieldFilter: FieldFilter = () => true,
+  ): DimensionOptions {
     // the collection of field dimensions
     const breakoutDimensions =
       includedBreakout === true

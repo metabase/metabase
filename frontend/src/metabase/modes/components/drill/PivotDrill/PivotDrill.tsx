@@ -19,6 +19,7 @@ import PivotDrillPopover from "./PivotDrillPopover";
 import {
   ActionIcon,
   ClickActionButton,
+  RowItemWrapper,
   StyledBreakoutPopover,
 } from "./PivotDrillPopover.styled";
 
@@ -78,6 +79,10 @@ const PivotDrill = ({
           breakoutOptions={breakoutOptions}
           width={350}
           alwaysExpanded
+          renderItemWrapper={content => (
+            <RowItemWrapper>{content}</RowItemWrapper>
+          )}
+          renderItemIcon={() => null}
           onChangeBreakout={breakout => {
             const nextCard = question.pivot([breakout], dimensions).card();
 
