@@ -376,6 +376,7 @@
   (fn [pulse _ {:keys [channel_type]}]
     [(alert-or-pulse pulse) (keyword channel_type)]))
 
+#dbg
 (defmethod notification [:pulse :email]
   [{pulse-id :id, pulse-name :name, dashboard-id :dashboard_id, :as pulse} results {:keys [recipients]}]
   (log/debug (u/format-color 'cyan (trs "Sending Pulse ({0}: {1}) with {2} Cards via email"
@@ -383,7 +384,7 @@
   (let [email-recipients (filterv u/email? (map :email recipients))
         query-results    (filter :card results)
         timezone         (-> query-results first :card defaulted-timezone)
-        dashboard        (t2/select-one Dashboard :id dashboard-id)]
+        dashboard        (update (t2/select-one Dashboard :id dashboard-id) :description markdown/process-markdown :html)]
     {:subject      (subject pulse)
      :recipients   email-recipients
      :message-type :attachments

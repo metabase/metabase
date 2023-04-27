@@ -8,6 +8,8 @@
    [metabase.integrations.slack :as slack]
    [metabase.models
     :refer [Card Collection Pulse PulseCard PulseChannel PulseChannelRecipient]]
+   [metabase.models.dashboard :refer [Dashboard]]
+   [metabase.models.dashboard-card :refer [DashboardCard]]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.pulse :as pulse]
@@ -49,21 +51,25 @@
   [{:keys [pulse pulse-card channel card]
     :or   {channel :email}}
    f]
-  (mt/with-temp* [Pulse        [{pulse-id :id, :as pulse}
-                                (-> pulse
-                                    (merge {:name "Pulse Name"}))]
-                  PulseCard    [_ (merge {:pulse_id pulse-id
-                                          :card_id  (u/the-id card)
-                                          :position 0}
-                                         pulse-card)]
-                  PulseChannel [{pc-id :id} (case channel
-                                              :email
-                                              {:pulse_id pulse-id}
+  (mt/with-temp* [Dashboard     [{dashboard-id :id} {:description "# dashboard description"}]
+                  DashboardCard [{dashboard-card-id :id} {:dashboard_id dashboard-id
+                                                          :card_id (u/the-id card)}]
+                  Pulse         [{pulse-id :id, :as pulse}
+                                 (-> pulse
+                                     (merge {:name "Pulse Name"
+                                             :dashboard_id dashboard-id}))]
+                  PulseCard     [_ (merge {:pulse_id pulse-id
+                                           :card_id  (u/the-id card)
+                                           :dashboard_card_id dashboard-card-id}
+                                          pulse-card)]
+                  PulseChannel  [{pc-id :id} (case channel
+                                               :email
+                                               {:pulse_id pulse-id}
 
-                                              :slack
-                                              {:pulse_id     pulse-id
-                                               :channel_type "slack"
-                                               :details      {:channel "#general"}})]]
+                                               :slack
+                                               {:pulse_id     pulse-id
+                                                :channel_type "slack"
+                                                :details      {:channel "#general"}})]]
     (if (= channel :email)
       (mt/with-temp PulseChannelRecipient [_ {:user_id          (pulse.test-util/rasta-id)
                                               :pulse_channel_id pc-id}]
