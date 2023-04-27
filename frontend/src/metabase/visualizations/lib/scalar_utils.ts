@@ -11,7 +11,10 @@ export function compactifyValue(
   width: number,
   formatOptions: OptionsType = {},
 ) {
-  const fullScalarValue = formatValue(value, formatOptions);
+  const fullScalarValue = formatValue(value, {
+    ...formatOptions,
+    compact: false,
+  });
   const compactScalarValue = formatValue(value, {
     ...formatOptions,
     compact: true,
