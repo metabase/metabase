@@ -468,8 +468,8 @@
         filters         (when dashboard
                           (render-filters notification dashboard))
         message-body    (assoc message-context :pulse (html (vec (cons :div (map :content rendered-cards))))
-                                       :filters filters
-                                       :iconCid (:content-id icon-attachment))
+                               :filters filters
+                               :iconCid (:content-id icon-attachment))
         attachments     (apply merge (map :attachments rendered-cards))]
     (vec (concat [{:type "text/html; charset=utf-8" :content (stencil/render-file "metabase/email/pulse" message-body)}]
                  (map make-message-attachment attachments)
