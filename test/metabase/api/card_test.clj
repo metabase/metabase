@@ -466,14 +466,7 @@
                                                                    :graph.dimensions ["CATEGORY_ID"]}}
                                          attrs))]
     (t2.with-temp/with-temp
-      [:model/Card card (simple-mbql-chart-query {:name "Captain Toad 1"   :display :line})
-       :model/Card _    (simple-mbql-chart-query {:name "Captain Toad 2"   :display :line})
-       :model/Card _    (simple-mbql-chart-query {:name "Captain Toad 3"   :display :line})
-       :model/Card _    (simple-mbql-chart-query {:name "Captain Toad 4"   :display :line})
-       :model/Card _    (simple-mbql-chart-query {:name "Captain Toad 5"   :display :line})
-       :model/Card _    (simple-mbql-chart-query {:name "Captain Toad 6"   :display :line})
-       :model/Card _    (simple-mbql-chart-query {:name "Captain Toad 7"   :display :line})
-       :model/Card _    (simple-mbql-chart-query {:name "Captain Toad 8"   :display :line})
+      [:model/Card card (simple-mbql-chart-query {:name "Captain Toad" :display :line})
        :model/Card _    (simple-mbql-chart-query {:name "Luigi 1"  :display :line})
        :model/Card _    (simple-mbql-chart-query {:name "Luigi 2"  :display :line})
        :model/Card _    (simple-mbql-chart-query {:name "Luigi 3"  :display :line})
@@ -570,33 +563,33 @@
         (testing "can't combine card of any other types rather than line/bar/area"
           (is (nil? (api.card/series-are-compatible? datetime-card combo-card)))))))
 
- (testing "scalar test"
-   (t2.with-temp/with-temp
-     [:model/Card scalar-1       (merge (mt/card-with-source-metadata-for-query
-                                          (mt/mbql-query venues {:aggregation [[:count]]}))
-                                        {:name "A Scalar 1" :display :scalar})
-      :model/Card scalar-2       (merge (mt/card-with-source-metadata-for-query
-                                          (mt/mbql-query venues {:aggregation [[:count]]}))
-                                        {:name "A Scalar 2" :display :scalar})
+  (testing "scalar test"
+    (t2.with-temp/with-temp
+      [:model/Card scalar-1       (merge (mt/card-with-source-metadata-for-query
+                                           (mt/mbql-query venues {:aggregation [[:count]]}))
+                                         {:name "A Scalar 1" :display :scalar})
+       :model/Card scalar-2       (merge (mt/card-with-source-metadata-for-query
+                                           (mt/mbql-query venues {:aggregation [[:count]]}))
+                                         {:name "A Scalar 2" :display :scalar})
 
-      :model/Card scalar-2-cols  (merge (mt/card-with-source-metadata-for-query
-                                          (mt/mbql-query venues {:aggregation [[:count]
-                                                                               [:sum $venues.price]]}))
-                                        {:name "A Scalar with 2 columns" :display :scalar})
-      :model/Card line-card       (merge (mt/card-with-source-metadata-for-query
-                                           (mt/mbql-query venues {:aggregation [[:sum $venues.price]]
-                                                                  :breakout    [$venues.category_id]}))
-                                         {:visualization_settings {:graph.metrics    ["sum"]
-                                                                   :graph.dimensions ["CATEGORY_ID"]}}
-                                         {:name "Line card" :display :line})]
-     (testing "2 scalars with 1 column can be combined"
-       (is (true? (api.card/series-are-compatible? scalar-1 scalar-2))))
-     (testing "can't be combined if either one of 2 cards has more than one column"
-       (is (false? (api.card/series-are-compatible? scalar-1 scalar-2-cols)))
-       (is (false? (api.card/series-are-compatible? scalar-2-cols scalar-2))))
+       :model/Card scalar-2-cols  (merge (mt/card-with-source-metadata-for-query
+                                           (mt/mbql-query venues {:aggregation [[:count]
+                                                                                [:sum $venues.price]]}))
+                                         {:name "A Scalar with 2 columns" :display :scalar})
+       :model/Card line-card       (merge (mt/card-with-source-metadata-for-query
+                                            (mt/mbql-query venues {:aggregation [[:sum $venues.price]]
+                                                                   :breakout    [$venues.category_id]}))
+                                          {:visualization_settings {:graph.metrics    ["sum"]
+                                                                    :graph.dimensions ["CATEGORY_ID"]}}
+                                          {:name "Line card" :display :line})]
+      (testing "2 scalars with 1 column can be combined"
+        (is (true? (api.card/series-are-compatible? scalar-1 scalar-2))))
+      (testing "can't be combined if either one of 2 cards has more than one column"
+        (is (false? (api.card/series-are-compatible? scalar-1 scalar-2-cols)))
+        (is (false? (api.card/series-are-compatible? scalar-2-cols scalar-2))))
 
-     (testing "can only be cominbed with scalar cards"
-       (is (false? (api.card/series-are-compatible? scalar-1 line-card)))))))
+      (testing "can only be cominbed with scalar cards"
+        (is (false? (api.card/series-are-compatible? scalar-1 line-card)))))))
 
 
 
