@@ -28,4 +28,4 @@ bb test:bb
 
 ## Editing the page
 
-Edit the file: `./resources/releases.md`.
+Edit the file: [./resources/releases.md](./resources/releases.md).
