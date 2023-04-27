@@ -1,4 +1,5 @@
 import React, { ChangeEvent, useCallback } from "react";
+import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
@@ -8,12 +9,13 @@ import Databases from "metabase/entities/databases";
 import Schemas from "metabase/entities/schemas";
 import Tables from "metabase/entities/tables";
 import Fields from "metabase/entities/fields";
+import ActionButton from "metabase/components/ActionButton";
 import AdminLayout from "metabase/components/AdminLayout";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import InputBlurChange from "metabase/components/InputBlurChange";
 import { LeftNavPane, LeftNavPaneItem } from "metabase/components/LeftNavPane";
-import { FieldValuesType, Schema } from "metabase-types/api";
+import { FieldId, FieldValuesType, Schema } from "metabase-types/api";
 import { State } from "metabase-types/store";
 import Select, {
   SelectChangeEvent,
@@ -21,6 +23,7 @@ import Select, {
 import Database from "metabase-lib/metadata/Database";
 import Table from "metabase-lib/metadata/Table";
 import Field from "metabase-lib/metadata/Field";
+import { rescanFieldValues, discardFieldValues } from "../../actions";
 import FieldVisibilityPicker from "../FieldVisibilityPicker";
 import MetadataBackButton from "../MetadataBackButton";
 import MetadataSection from "../MetadataSection";
@@ -64,6 +67,8 @@ interface StateProps {
 
 interface DispatchProps {
   onUpdateField: (field: Field, updates: Partial<Field>) => void;
+  onRescanFieldValues: (fieldId: FieldId) => void;
+  onDiscardFieldValues: (fieldId: FieldId) => void;
 }
 
 type MetadataFieldSettingsProps = RouterProps &
@@ -74,6 +79,12 @@ type MetadataFieldSettingsProps = RouterProps &
   StateProps &
   DispatchProps;
 
+const mapDispatchToProps: DispatchProps = {
+  onUpdateField: Fields.actions.update,
+  onRescanFieldValues: rescanFieldValues,
+  onDiscardFieldValues: discardFieldValues,
+};
+
 const MetadataFieldSettings = ({
   database,
   schemas,
@@ -82,6 +93,8 @@ const MetadataFieldSettings = ({
   idFields = [],
   params: { schemaId, section },
   onUpdateField,
+  onRescanFieldValues,
+  onDiscardFieldValues,
 }: MetadataFieldSettingsProps) => {
   const schema = schemas.find(schema => schema.id === schemaId);
 
@@ -113,6 +126,8 @@ const MetadataFieldSettings = ({
             field={field}
             idFields={idFields}
             onUpdateField={onUpdateField}
+            onRescanFieldValues={onRescanFieldValues}
+            onDiscardFieldValues={onDiscardFieldValues}
           />
         )}
       </div>
@@ -202,12 +217,16 @@ interface FieldGeneralPaneProps {
   field: Field;
   idFields: Field[];
   onUpdateField: (field: Field, updates: Partial<Field>) => void;
+  onRescanFieldValues: (fieldId: FieldId) => void;
+  onDiscardFieldValues: (fieldId: FieldId) => void;
 }
 
 const FieldGeneralPane = ({
   field,
   idFields,
   onUpdateField,
+  onRescanFieldValues,
+  onDiscardFieldValues,
 }: FieldGeneralPaneProps) => {
   return (
     <div>
@@ -225,6 +244,11 @@ const FieldGeneralPane = ({
         />
       )}
       <FieldValuesTypeSection field={field} onUpdateField={onUpdateField} />
+      <FieldCachedValuesSection
+        field={field}
+        onRescanFieldValues={onRescanFieldValues}
+        onDiscardFieldValues={onDiscardFieldValues}
+      />
     </div>
   );
 };
@@ -397,6 +421,53 @@ const FieldValuesTypeSection = ({
   );
 };
 
+interface FieldCachedValuesSectionProps {
+  field: Field;
+  onRescanFieldValues: (fieldId: FieldId) => void;
+  onDiscardFieldValues: (fieldId: FieldId) => void;
+}
+
+const FieldCachedValuesSection = ({
+  field,
+  onRescanFieldValues,
+  onDiscardFieldValues,
+}: FieldCachedValuesSectionProps) => {
+  const fieldId = Number(field.id);
+
+  const handleRescanFieldValues = useCallback(async () => {
+    await onRescanFieldValues(fieldId);
+  }, [fieldId, onRescanFieldValues]);
+
+  const handleDiscardFieldValues = useCallback(async () => {
+    await onDiscardFieldValues(fieldId);
+  }, [fieldId, onDiscardFieldValues]);
+
+  return (
+    <MetadataSection last>
+      <MetadataSectionHeader
+        title={t`Cached field values`}
+        description={t`Metabase can scan the values for this field to enable checkbox filters in dashboards and questions.`}
+      />
+      <ActionButton
+        className="Button mr2"
+        actionFn={handleRescanFieldValues}
+        normalText={t`Re-scan this field`}
+        activeText={t`Starting…`}
+        failedText={t`Failed to start scan`}
+        successText={t`Scan triggered!`}
+      />
+      <ActionButton
+        className="Button Button--danger"
+        actionFn={handleDiscardFieldValues}
+        normalText={t`Discard cached field values`}
+        activeText={t`Starting…`}
+        failedText={t`Failed to discard values`}
+        successText={t`Discard triggered!`}
+      />
+    </MetadataSection>
+  );
+};
+
 export default _.compose(
   Databases.load({
     id: (_: State, { params }: RouterProps) =>
@@ -422,4 +493,5 @@ export default _.compose(
     query: PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
     selectorName: "getObjectUnfiltered",
   }),
+  connect(null, mapDispatchToProps),
 )(MetadataFieldSettings);
