@@ -63,6 +63,7 @@ const LONG_TEXT_MIN = 80;
 class FieldInner extends Base {
   id: number | FieldRef;
   name: string;
+  display_name: string;
   description: string | null;
   semantic_type: string | null;
   fingerprint?: FieldFingerprint;
