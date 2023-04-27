@@ -131,5 +131,7 @@ export const ClickActionButton = styled.div<ClickActionButtonProps>`
 export const FlexTippyPopover = styled(TippyPopover)`
   display: flex;
 
-  border: none;
+  &.tippy-box {
+    border: none;
+  }
 `;

@@ -77,7 +77,7 @@ const PivotDrill = ({
         <StyledBreakoutPopover
           query={query}
           breakoutOptions={breakoutOptions}
-          width={350}
+          width={256}
           alwaysExpanded
           renderItemWrapper={content => (
             <RowItemWrapper>{content}</RowItemWrapper>
