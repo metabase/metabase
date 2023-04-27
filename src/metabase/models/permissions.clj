@@ -647,7 +647,7 @@
   (boolean
     ;; Matches "/", "/db/:id/", or "/db/:id/native/"
     (some
-     #(first (re-find #"^/(db/\d+/(native/))?$" %))
+     #(first (re-find #"^/(db/\d+/(native/)?)?$" %))
      permissions-set)))
 
 (s/defn set-has-application-permission-of-type? :- s/Bool
