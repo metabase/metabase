@@ -1056,20 +1056,22 @@
    (perms/set-has-full-permissions? @api/*current-user-permissions-set*
                                     (perms/data-model-write-perms-path database-id schema-name))))
 
+(defn- filter-editable-data-model-schemas [database-id schemas]
+  (if-let [f (u/ignore-exceptions
+              (classloader/require 'metabase-enterprise.advanced-permissions.common)
+              (resolve 'metabase-enterprise.advanced-permissions.common/filter-schema-by-data-model-perms))]
+    (map :schema (f (map (fn [s] {:db_id database-id :schema s}) schemas)))
+    schemas))
+
 (api/defendpoint GET "/:id/schemas"
   "Returns a list of all the schemas found for the database `id`"
   [id include_editable_data_model]
   {id                          ms/PositiveInt
    include_editable_data_model [:maybe ms/BooleanString]}
   (let [include_editable_data_model (Boolean/parseBoolean include_editable_data_model)
-        f                           (u/ignore-exceptions
-                                     (classloader/require 'metabase-enterprise.advanced-permissions.common)
-                                     (resolve 'metabase-enterprise.advanced-permissions.common/filter-schema-by-data-model-perms))
         filter-schemas              (fn [schemas]
                                       (if include_editable_data_model
-                                        (if f
-                                          (map :schema (f (map (fn [s] {:db_id id :schema s}) schemas)))
-                                          schemas)
+                                        (filter-editable-data-model-schemas id schemas)
                                         (filter (partial can-read-schema? id) schemas)))]
     (when-not include_editable_data_model
       (api/read-check Database id))
