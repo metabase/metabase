@@ -526,7 +526,7 @@ class FieldInner extends Base {
     const database = this.table?.database;
 
     return (
-      isa(field.base_type, TYPE.JSON) &&
+      isa(this.base_type, TYPE.JSON) &&
       database != null &&
       database.hasFeature("nested-field-columns")
     );
