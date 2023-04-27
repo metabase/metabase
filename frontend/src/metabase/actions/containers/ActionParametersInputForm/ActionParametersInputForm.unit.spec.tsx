@@ -23,16 +23,26 @@ import ActionParametersInputModal, {
 
 const parameter1 = createMockActionParameter({
   id: "parameter_1",
+  name: "Parameter 1",
   type: "type/Text",
 });
 
 const parameter2 = createMockActionParameter({
   id: "parameter_2",
+  name: "Parameter 2",
   type: "type/Text",
 });
 
 const mockAction = createMockQueryAction({
   parameters: [parameter1, parameter2],
+  // TODO: remove this once we have a better way to mock this
+  visualization_settings: {
+    fields: {
+      parameter_1: {
+        id: "parameter_1",
+      },
+    },
+  },
 });
 
 const defaultProps: ActionParametersInputFormProps = {
