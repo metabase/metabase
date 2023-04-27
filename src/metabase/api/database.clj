@@ -1075,10 +1075,11 @@
                            (filter (partial can-read-schema? id) schemas)))]
     (->> (t2/select-fn-set :schema Table
                            :db_id id :active true
-                           {:order-by [[:%lower.schema :asc]]
-                            ;; a non-nil value means Table is hidden -- see [[metabase.models.table/visibility-types]]
-                            :where (when-not include_hidden
-                                     [:= :visibility_type nil])})
+                           (merge
+                            {:order-by [[:%lower.schema :asc]]}
+                            (when-not include_hidden
+                              ;; a non-nil value means Table is hidden -- see [[metabase.models.table/visibility-types]]
+                              {:where [:= :visibility_type nil]})))
          filter-schemas
          ;; for `nil` schemas return the empty string
          (map #(if (nil? %) "" %))
