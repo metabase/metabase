@@ -16,7 +16,10 @@ import {
 import { FieldSchema } from "metabase/schema";
 import { MetabaseApi } from "metabase/services";
 
-import { getMetadata } from "metabase/selectors/metadata";
+import {
+  getMetadata,
+  getMetadataUnfiltered,
+} from "metabase/selectors/metadata";
 import { UPDATE_TABLE_FIELD_ORDER } from "metabase/entities/tables";
 
 import {
@@ -25,10 +28,7 @@ import {
   has_field_values_options,
 } from "metabase/lib/core";
 import { TYPE } from "metabase-lib/types/constants";
-import {
-  getFieldValues,
-  getRemappings,
-} from "metabase-lib/queries/utils/field";
+import { getFieldValues } from "metabase-lib/queries/utils/field";
 
 // ADDITIONAL OBJECT ACTIONS
 
@@ -56,17 +56,8 @@ const Fields = createEntity({
 
     // getMetadata filters out sensitive fields by default.
     // This selector is used in the data model when we want to show them.
-    getObjectUnfiltered: (state, { entityId }) => {
-      const field = state.entities.fields[entityId];
-      return (
-        field && {
-          ...field,
-          values: getFieldValues(field),
-          remapping: new Map(getRemappings(field)),
-          target: state.entities.fields[field.fk_target_field_id],
-        }
-      );
-    },
+    getObjectUnfiltered: (state, { entityId }) =>
+      getMetadataUnfiltered(state).field(entityId),
     getFieldValues: (state, { entityId }) => {
       const field = state.entities.fields[entityId];
       return field ? getFieldValues(field) : [];
