@@ -381,3 +381,13 @@
       :dispatch-type/regex
       :dispatch-type/fn
       :dispatch-type/*)))
+
+(deftest ^:parallel assoc-dissoc-test
+  (testing `lib.options/with-option-value
+    (is (= {:foo "baz"}
+           (u/assoc-dissoc {:foo "bar"} :foo "baz")))
+    (is (= {}
+           (u/assoc-dissoc {:foo "bar"} :foo nil)))
+    (is (= {:foo false}
+           (u/assoc-dissoc {:foo "bar"} :foo false))
+        "false should be assoc'd")))
