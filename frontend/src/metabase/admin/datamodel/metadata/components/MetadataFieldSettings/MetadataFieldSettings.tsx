@@ -2,6 +2,7 @@ import React, { ChangeEvent, useCallback } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
+import * as MetabaseCore from "metabase/lib/core";
 import * as Urls from "metabase/lib/urls";
 import Databases from "metabase/entities/databases";
 import Schemas from "metabase/entities/schemas";
@@ -12,7 +13,7 @@ import Breadcrumbs from "metabase/components/Breadcrumbs";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import InputBlurChange from "metabase/components/InputBlurChange";
 import { LeftNavPane, LeftNavPaneItem } from "metabase/components/LeftNavPane";
-import { Schema } from "metabase-types/api";
+import { FieldValuesType, Schema } from "metabase-types/api";
 import { State } from "metabase-types/store";
 import Select, {
   SelectChangeEvent,
@@ -223,6 +224,7 @@ const FieldGeneralPane = ({
           onUpdateField={onUpdateField}
         />
       )}
+      <FieldValuesTypeSection field={field} onUpdateField={onUpdateField} />
     </div>
   );
 };
@@ -358,6 +360,38 @@ const FieldJsonUnfoldingSection = ({
         value={field.isJsonUnfolded()}
         onChange={handleChange}
         options={JSON_OPTIONS}
+      />
+    </MetadataSection>
+  );
+};
+
+interface FieldValuesTypeSectionProps {
+  field: Field;
+  onUpdateField: (field: Field, updates: Partial<Field>) => void;
+}
+
+const FieldValuesTypeSection = ({
+  field,
+  onUpdateField,
+}: FieldValuesTypeSectionProps) => {
+  const handleChangeFieldValuesType = useCallback(
+    (event: SelectChangeEvent<FieldValuesType>) => {
+      onUpdateField(field, { has_field_values: event.target.value });
+    },
+    [field, onUpdateField],
+  );
+
+  return (
+    <MetadataSection>
+      <MetadataSectionHeader
+        title={t`Filtering on this field`}
+        description={t`When this field is used in a filter, what should people use to enter the value they want to filter on?`}
+      />
+      <Select
+        className="inline-block"
+        value={field.has_field_values}
+        options={MetabaseCore.has_field_values_options}
+        onChange={handleChangeFieldValuesType}
       />
     </MetadataSection>
   );

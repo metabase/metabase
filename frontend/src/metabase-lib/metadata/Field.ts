@@ -11,6 +11,7 @@ import type {
   FieldId,
   FieldFormattingSettings,
   FieldVisibilityType,
+  FieldValuesType,
 } from "metabase-types/api";
 import type { Field as FieldRef } from "metabase-types/types/Query";
 import { TYPE } from "metabase-lib/types/constants";
@@ -73,7 +74,7 @@ class FieldInner extends Base {
   table?: Table;
   table_id?: Table["id"];
   target?: Field;
-  has_field_values?: "list" | "search" | "none";
+  has_field_values?: FieldValuesType;
   has_more_values?: boolean;
   values: any[];
   position: number;
