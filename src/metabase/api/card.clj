@@ -978,7 +978,8 @@ saved later when it is ready."
 
 (defn upload-csv!
   "Main entry point for CSV uploading. Coordinates detecting the schema, inserting it into an appropriate database,
-  syncing and scanning the new data, and creating an appropriate model. May throw validation or DB errors."
+  syncing and scanning the new data, and creating an appropriate model which is then returned. May throw validation or
+  DB errors."
   [collection-id filename csv-file]
   (when (not (public-settings/uploads-enabled))
     (throw (Exception. "Uploads are not enabled.")))
@@ -1012,12 +1013,13 @@ saved later when it is ready."
       :visualization_settings {}})))
 
 (api/defendpoint ^:multipart POST "/from-csv"
-  "Create a table and model populated with the values from the attached CSV."
+  "Create a table and model populated with the values from the attached CSV. Returns the model ID if successful."
   [:as {raw-params :params}]
   ;; parse-long returns nil with "root", which is what we want anyway
-  (upload-csv! (parse-long (get raw-params "collection_id"))
-               (get-in raw-params ["file" :filename])
-               (get-in raw-params ["file" :tempfile]))
-  {:status 200})
+  (let [model-id (:id (upload-csv! (parse-long (get raw-params "collection_id"))
+                                   (get-in raw-params ["file" :filename])
+                                   (get-in raw-params ["file" :tempfile])))]
+    {:status 200
+     :body   model-id}))
 
 (api/define-routes)
