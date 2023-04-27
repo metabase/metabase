@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import _ from "underscore";
 import { t } from "ttag";
 
@@ -19,6 +19,7 @@ import Toaster from "metabase/components/Toaster/Toaster";
 import { useToggle } from "metabase/hooks/use-toggle";
 
 export default function AutoApplyFilterToast() {
+  useMachine(MACHINE_CONFIG);
   const isAutoApplyFilters = useSelector(getIsAutoApplyFilters);
   const parameterValues = useSelector(getParameterValues);
   const isAllDashcardsLoaded = useSelector(getIsLoadingComplete);
@@ -103,4 +104,73 @@ function useHasShownSlowToaster() {
   }, [latestLoadingStartTime]);
 
   return hasShownSlowToaster;
+}
+
+const MACHINE_CONFIG = {
+  initialState: "never",
+  states: {
+    never: {
+      on: { READY: "ready" },
+    },
+    ready: {
+      on: {
+        NEVER: "never",
+        LOAD_CARDS: "loading",
+      },
+    },
+    loading: {
+      on: {
+        NEVER: "never",
+        TIME_OUT: "timedOut",
+        LOAD_CARDS: "loading",
+      },
+    },
+    timedOut: {
+      on: {
+        NEVER: "never",
+        LOAD_CARDS: "loading",
+        CARDS_LOADED: "shown",
+      },
+    },
+    shown: {
+      on: {
+        NEVER: "never",
+        DISMISS: "ready",
+      },
+    },
+  },
+} as const;
+
+type StateConfig<States> = {
+  on?: {
+    [A in Action<States>]?: keyof States;
+  };
+};
+type StatesConfig<States> = Record<keyof States, StateConfig<States>>;
+type MachineConfig<States> = {
+  initialState: keyof States;
+  states: StatesConfig<States>;
+};
+
+type ValueOf<T> = T[keyof T];
+type ActionMap<States> = {
+  [State in keyof States]: keyof States[State][keyof States[State]];
+};
+type Action<States> = ValueOf<ActionMap<States>>;
+type Send<States> = (action: Action<States>) => void;
+type UseMachineReturn<States> = [keyof States, Send<States>];
+
+function useMachine<Config extends MachineConfig<Config["states"]>>({
+  initialState,
+  states,
+}: Config): UseMachineReturn<Config["states"]> {
+  const statesRef = useRef(states);
+  const [state, setState] = useState(initialState);
+  const send = useCallback((action: Action<Config["states"]>) => {
+    setState(state => {
+      const nextState = statesRef.current[state].on?.[action];
+      return nextState ?? state;
+    });
+  }, []);
+  return [state, send];
 }
