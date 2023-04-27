@@ -17,28 +17,18 @@ export const saveDashboardPdf = async (
     return;
   }
 
-  const canvas = await html2canvas(node, {
+  const image = await html2canvas(node, {
     useCORS: true,
     onclone: (doc: Document, node: HTMLElement) => {
       node.classList.add(SAVING_DOM_IMAGE_CLASS);
-      node.style.paddingBottom = "20px";
-
-      //This needs to be done manually due to how html2canvas treats styles in SVGs
-      const textNodes = doc.querySelectorAll(
-        ".Card text, .Card tspan",
-      ) as NodeListOf<HTMLElement>;
-
-      textNodes.forEach(element => {
-        element.style.fontWeight = "600";
-      });
     },
   });
 
-  const canvasHeight = parseInt(canvas.getAttribute("height") ?? "0");
-  const canvasWidth = parseInt(canvas.getAttribute("width") ?? "0");
+  const imageHeight = parseInt(image.getAttribute("height") ?? "0");
+  const imageWidth = parseInt(image.getAttribute("width") ?? "0");
 
-  const pdfWidth = canvasWidth;
-  const pdfHeight = canvasHeight + 80;
+  const pdfWidth = imageWidth;
+  const pdfHeight = imageHeight + 80;
 
   const pdf = new jspdf({
     unit: "px",
@@ -47,12 +37,12 @@ export const saveDashboardPdf = async (
     orientation: pdfWidth > pdfHeight ? "l" : "p",
   });
 
-  pdf.addImage(canvas, "JPEG", 0, 60, canvasWidth, canvasHeight, "", "FAST", 0);
+  pdf.addImage(image, "JPEG", 0, 60, imageWidth, imageHeight, "", "FAST", 0);
   pdf.setFont("helvetica", "bold");
   pdf.setTextColor(color("text-dark"));
   pdf.text(dashboardName, 32, 40);
   pdf.setDrawColor(color("border"));
-  pdf.line(32, 52, canvasWidth - 32, 52, "S");
+  pdf.line(32, 52, imageWidth - 32, 52, "S");
 
   pdf.save(fileName);
 };

@@ -16,7 +16,7 @@ import {
 } from "metabase/nav/constants";
 
 import { SAVING_DOM_IMAGE_CLASS } from "metabase/visualizations/lib/save-chart-image";
-import { DashCardRoot } from "../DashCard/DashCard.styled";
+import Dashcard from "../DashCard";
 
 // Class names are added here because we still use traditional css,
 // see dashboard.css
@@ -142,8 +142,12 @@ export const CardsContainer = styled(FullWidthContainer)`
       margin-top: ${space(2)};
     `}
 
-  &.${SAVING_DOM_IMAGE_CLASS} ${DashCardRoot} {
-    box-shadow: none;
-    border: 1px solid ${color("border")};
+  &.${SAVING_DOM_IMAGE_CLASS} {
+    padding-bottom: 20px;
+
+    ${Dashcard.root} {
+      box-shadow: none;
+      border: 1px solid ${color("border")};
+    }
   }
 `;
