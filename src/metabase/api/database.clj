@@ -661,7 +661,7 @@
     (db-perm-check (t2/select-one Database :id id))
     (sort-by (comp u/lower-case-en :name :table)
              (filter field-perm-check (-> (database/pk-fields {:id id})
-                                          (hydrate :table))))))
+                                          (hydrate :table :has_field_values))))))
 
 
 ;;; ----------------------------------------------- POST /api/database -----------------------------------------------

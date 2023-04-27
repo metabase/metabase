@@ -12,7 +12,6 @@ import Icon from "metabase/components/Icon/Icon";
 import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings/column";
 import { FieldFormattingSettings, FieldId } from "metabase-types/api";
 import Field from "metabase-lib/metadata/Field";
-import { isCurrency, isTypeFK } from "metabase-lib/types/utils/isa";
 
 const TYPE_OPTIONS = [
   ...MetabaseCore.field_semantic_types,
@@ -58,17 +57,13 @@ const SemanticTypeAndTargetPicker = ({
 }: SemanticTypeAndTargetPickerProps) => {
   const hasIdFields = idFields.length > 0;
   const includeSchema = hasMultipleSchemas(idFields);
-  const showFKTargetSelect = isTypeFK(field.semantic_type);
-  const showCurrencyTypeSelect = isCurrency(field);
+  const showFKTargetSelect = field.isFK();
+  const showCurrencyTypeSelect = field.isCurrency();
 
   const handleChangeSemanticType = useCallback(
     ({ target: { value: semanticType } }: SelectChangeEvent<string>) => {
       // If we are changing the field from a FK to something else, we should delete any FKs present
-      if (
-        field.target &&
-        field.target.id != null &&
-        isTypeFK(field.semantic_type)
-      ) {
+      if (field.target && field.target.id != null && field.isFK()) {
         onUpdateField(field, {
           semantic_type: semanticType,
           fk_target_field_id: null,
@@ -138,7 +133,9 @@ const SemanticTypeAndTargetPicker = ({
           ))}
         </Select>
       )}
-      {showFKTargetSelect && hasSeparator}
+      {showFKTargetSelect && hasSeparator && (
+        <Icon name="chevronright" size={12} className="mx2 text-medium" />
+      )}
       {showFKTargetSelect && (
         <Select
           disabled={!hasIdFields}
@@ -193,7 +190,7 @@ const getFieldCurrency = (field: Field) => {
 const getFkFieldPlaceholder = (field: Field, idFields: Field[]) => {
   const hasIdFields = idFields?.length > 0;
   const isRestrictedFKTargetSelected =
-    isTypeFK(field.semantic_type) &&
+    field.isFK() &&
     field.fk_target_field_id != null &&
     !idFields?.some(idField => idField.id === field.fk_target_field_id);
 

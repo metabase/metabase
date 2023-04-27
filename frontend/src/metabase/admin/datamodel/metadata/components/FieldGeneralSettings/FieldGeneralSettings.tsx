@@ -98,11 +98,10 @@ const FieldHeaderSection = ({
         className="h2"
         value={field.displayName()}
         placeholder={field.name}
-        onChange={handleChangeName}
+        onBlurChange={handleChangeName}
       />
       <InputBlurChange
         name="description"
-        className="text-measure"
         value={field.description ?? ""}
         placeholder={t`No description for this field yet`}
         fullWidth

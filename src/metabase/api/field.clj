@@ -174,7 +174,7 @@
       (update-nested-fields-on-json-unfolding-change! field json_unfolding))
     ;; return updated field. note the fingerprint on this might be out of date if the task below would replace them
     ;; but that shouldn't matter for the datamodel page
-    (u/prog1 (hydrate (t2/select-one Field :id id) :dimensions)
+    (u/prog1 (hydrate (t2/select-one Field :id id) :dimensions :has_field_values)
       (when (not= effective-type (:effective_type field))
         (sync.concurrent/submit-task (fn [] (sync/refingerprint-field! <>)))))))
 
