@@ -6,6 +6,7 @@ import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import { withRouter } from "react-router";
 
+import { useBeforeUnload } from "history";
 import Button from "metabase/core/components/Button";
 import fitViewport from "metabase/hoc/FitViewPort";
 import Modal from "metabase/components/Modal";
@@ -79,6 +80,7 @@ function PermissionsPageLayout({
     onConfirm: navigateToLocation,
     isEnabled: isDirty,
   });
+  useBeforeUnload(isDirty);
 
   return (
     <PermissionPageRoot>
