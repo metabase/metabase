@@ -8,6 +8,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.normalize :as lib.normalize]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -18,6 +19,7 @@
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
    [metabase.shared.util.i18n :as i18n]
+   [metabase.util :as u]
    [metabase.util.humanization :as u.humanization]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
@@ -300,18 +302,12 @@
   (::binning metadata))
 
 (defmethod lib.binning/with-binning-method :field
-  [[_tag options id-or-name] binning]
-  [:field
-   (if binning
-     (assoc options :binning binning)
-     (dissoc options :binning))
-   id-or-name])
+  [field-clause binning]
+  (lib.options/update-options field-clause u/assoc-dissoc :binning binning))
 
 (defmethod lib.binning/with-binning-method :metadata/field
   [metadata binning]
-  (if binning
-    (assoc  metadata ::binning binning)
-    (dissoc metadata ::binning)))
+  (lib.options/update-options metadata u/assoc-dissoc ::binning binning))
 
 (defmethod lib.binning/available-binning-strategies-method :field
   [query stage-number field-ref]
