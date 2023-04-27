@@ -3,7 +3,6 @@ import _ from "underscore";
 import { t } from "ttag";
 
 import { useSelector, useDispatch } from "metabase/lib/redux";
-import { useToaster } from "metabase/components/Toaster";
 import {
   getDashboardId,
   getIsAutoApplyFilters,
@@ -17,9 +16,9 @@ import {
 } from "metabase/dashboard/actions";
 import { DASHBOARD_SLOW_TIMEOUT } from "metabase/dashboard/constants";
 import Toaster from "metabase/components/Toaster/Toaster";
+import { useToggle } from "metabase/hooks/use-toggle";
 
 export default function AutoApplyFilterToast() {
-  const [autoApplyFiltersToasterApi] = useToaster();
   const isAutoApplyFilters = useSelector(getIsAutoApplyFilters);
   const parameterValues = useSelector(getParameterValues);
   const isAllDashcardsLoaded = useSelector(getIsLoadingComplete);
@@ -40,11 +39,7 @@ export default function AutoApplyFilterToast() {
     hasShownSlowToaster &&
     haveEverShownSlowToasterWhenAutoApplyFilters.current;
 
-  const {
-    isShown: isToastShown,
-    hide: hideToast,
-    show: showToast,
-  } = autoApplyFiltersToasterApi;
+  const [isToastShown, { turnOff: hideToast, turnOn: showToast }] = useToggle();
 
   useEffect(() => {
     if (isShowingAutoApplyFiltersToast) {
@@ -62,7 +57,7 @@ export default function AutoApplyFilterToast() {
       }),
     );
     dispatch(saveDashboardAndCards(dashboardId));
-    autoApplyFiltersToasterApi.hide();
+    hideToast();
   };
 
   return (
