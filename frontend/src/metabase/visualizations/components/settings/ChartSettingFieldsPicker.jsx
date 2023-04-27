@@ -30,7 +30,7 @@ const ChartSettingFieldsPicker = ({
     );
   };
 
-  const isDragDisabled = Array.isArray(fields) && fields.length <= 1;
+  const isDragDisabled = fields?.length === 1;
 
   return (
     <div>
