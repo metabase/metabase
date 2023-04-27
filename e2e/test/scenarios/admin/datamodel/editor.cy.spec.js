@@ -95,8 +95,8 @@ describe("scenarios > admin > datamodel > editor", () => {
     it("should allow changing the field name", () => {
       visitOrdersTableEditor();
       getFieldSection("TAX").within(() => setInputValue("Tax", "New tax"));
-      cy.findByText("Updated New tax").should("be.visible");
       cy.wait("@updateField");
+      cy.findByText("Updated New tax").should("be.visible");
 
       openOrdersTable();
       cy.findByText("New tax").should("be.visible");
@@ -108,8 +108,8 @@ describe("scenarios > admin > datamodel > editor", () => {
       getFieldSection("TOTAL").within(() =>
         setInputValue("The total billed amount.", "New description"),
       );
-      cy.findByText("Updated Total").should("be.visible");
       cy.wait("@updateField");
+      cy.findByText("Updated Total").should("be.visible");
 
       cy.visit(
         `/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}/fields/${ORDERS.TOTAL}`,
@@ -123,8 +123,8 @@ describe("scenarios > admin > datamodel > editor", () => {
       getFieldSection("TOTAL").within(() =>
         clearInputValue("The total billed amount."),
       );
-      cy.findByText("Updated Total").should("be.visible");
       cy.wait("@updateField");
+      cy.findByText("Updated Total").should("be.visible");
 
       cy.visit(
         `/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}/fields/${ORDERS.TOTAL}`,
@@ -137,8 +137,8 @@ describe("scenarios > admin > datamodel > editor", () => {
       visitOrdersTableEditor();
       getFieldSection("TAX").findByText("Everywhere").click();
       setSelectValue("Do not include");
-      cy.findByText("Updated Tax").should("be.visible");
       cy.wait("@updateField");
+      cy.findByText("Updated Tax").should("be.visible");
 
       openOrdersTable();
       cy.findByText("Total").should("be.visible");
@@ -149,8 +149,8 @@ describe("scenarios > admin > datamodel > editor", () => {
       visitOrdersTableEditor();
       getFieldSection("TAX").findByText("No semantic type").click();
       searchAndSelectValue("Currency");
-      cy.findByText("Updated Tax").should("be.visible");
       cy.wait("@updateField");
+      cy.findByText("Updated Tax").should("be.visible");
 
       getFieldSection("TAX").findByText("US Dollar").click();
       searchAndSelectValue("Canadian Dollar");
@@ -164,8 +164,8 @@ describe("scenarios > admin > datamodel > editor", () => {
       visitOrdersTableEditor();
       getFieldSection("USER_ID").findByText("People → ID").click();
       setSelectValue("Products → ID");
-      cy.findByText("Updated User ID").should("be.visible");
       cy.wait("@updateField");
+      cy.findByText("Updated User ID").should("be.visible");
 
       startNewQuestion();
       popover().within(() => {
@@ -243,8 +243,8 @@ describe("scenarios > admin > datamodel > editor", () => {
       cy.signIn("none");
       visitOrdersTableEditor();
       getFieldSection("TAX").within(() => setInputValue("Tax", "New tax"));
-      cy.findByText("Updated New tax").should("be.visible");
       cy.wait("@updateField");
+      cy.findByText("Updated New tax").should("be.visible");
 
       cy.signInAsNormalUser();
       openOrdersTable();
