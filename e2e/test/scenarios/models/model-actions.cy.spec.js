@@ -48,7 +48,7 @@ const TEST_TEMPLATE_TAG = {
   id: TEST_PARAMETER.id,
   type: "number",
   name: TEST_PARAMETER.slug,
-  "display-name": TEST_PARAMETER["display-name"],
+  "display-name": TEST_PARAMETER.name,
   slug: TEST_PARAMETER.slug,
 };
 
@@ -336,7 +336,7 @@ describe(
       runActionFor(SAMPLE_QUERY_ACTION.name);
 
       modal().within(() => {
-        cy.findByLabelText(TEST_PARAMETER["display-name"]).type("1");
+        cy.findByLabelText(TEST_PARAMETER.name).type("1");
         cy.button(SAMPLE_QUERY_ACTION.name).click();
       });
 
@@ -383,7 +383,7 @@ describe(
 
       cy.get("@queryActionPublicUrl").then(url => {
         cy.visit(url);
-        cy.findByLabelText(TEST_PARAMETER["display-name"]).type("1");
+        cy.findByLabelText(TEST_PARAMETER.name).type("1");
         cy.button(SAMPLE_QUERY_ACTION.name).click();
         cy.findByText(
           `${SAMPLE_WRITABLE_QUERY_ACTION.name} ran successfully`,
