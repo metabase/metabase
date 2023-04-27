@@ -224,12 +224,12 @@
                                   second-card
                                   (get-in second-card [:visualization_settings :graph.dimensions]))
              new-metrics        (card-columns-from-names
-                                  second-card
-                                  (get-in second-card [:visualization_settings :graph.metrics]))]
+                                 second-card
+                                 (get-in second-card [:visualization_settings :graph.metrics]))]
          (cond
            ;; must have at least one dimension and one metric
            (or (zero? (count new-dimensions))
-               (zero? (count new-metrics)))
+             (zero? (count new-metrics)))
            false
 
            ;; all metrics must be numeric
@@ -266,14 +266,15 @@
 
 (defmethod series-are-compatible? :scalar
   [first-card second-card]
-  (and (= :scalar #p (:display second-card))
-       (= (count (:result_metadata first-card))
+  (and (= :scalar (:display second-card))
+       (= 1
+          (count (:result_metadata first-card))
           (count (:result_metadata second-card)))))
 
 (def ^:private supported-series-display-type (set (keys (methods series-are-compatible?))))
 
 (defn- fetch-compatible-series*
-  "Fetch a list of compatible series for the given card.
+  "Implementaiton of `fetch-compatible-series`.
 
   Provide `page-size` to limit the number of cards returned, it does not guaranteed to return exactly `page-size` cards.
   Use `fetch-compatible-series` for that."
@@ -295,8 +296,6 @@
                                      page-size
                                      (assoc :limit (+ 10 page-size))))
 
-        _ (def matching-cards matching-cards)
-        _ (def card card)
         compatible-cards (->> matching-cards
                               (filter mi/can-read?)
                               (filter #(or
@@ -310,12 +309,12 @@
       compatible-cards)))
 
 (defn- fetch-compatible-series
-  "Fetches a list of compatible series for `card`.
+  "Fetch a list of compatible series for `card`.
 
   - last-cursor: is the card's name of the last request
   - page-size: is nullable, it'll try to fetches exactly `page-size` cards if there are enough cards."
  ([card query last-cursor page-size]
-  (fetch-compatible-series card last-cursor query page-size []))
+  (fetch-compatible-series card query last-cursor page-size []))
 
  ([card query last-cursor page-size current-cards]
   (let [cards     (fetch-compatible-series* card query last-cursor page-size)

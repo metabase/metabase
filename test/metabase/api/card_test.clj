@@ -397,8 +397,7 @@
     (is (= "You don't have permissions to do that."
            (mt/user-http-request :rasta :get 403 (format "card/%d/series" card-id))))
 
-    (is (seq
-          (mt/user-http-request :crowberto :get 200 (format "card/%d/series" card-id))))))
+    (is (seq? (mt/user-http-request :crowberto :get 200 (format "card/%d/series" card-id))))))
 
 (deftest get-series-for-card-type-check-test
   (testing "400 if the card's display is not comptaible"
@@ -428,30 +427,180 @@
        :model/Card scalar  (merge (mt/card-with-source-metadata-for-query
                                     (mt/mbql-query venues {:aggregation [[:count]]}))
                                   {:name "A Scalar 1" :display :scalar})
-       :model/Card _       (merge (mt/card-with-source-metadata-for-query
+       :model/Card scalar-2(merge (mt/card-with-source-metadata-for-query
                                            (mt/mbql-query venues {:aggregation [[:count]]}))
                                   {:name "A Scalar 2" :display :scalar})
 
-       :model/Card _native (merge (mt/card-with-source-metadata-for-query (mt/native-query {:query "select sum(price) from venues;"}))
+       :model/Card native  (merge (mt/card-with-source-metadata-for-query (mt/native-query {:query "select sum(price) from venues;"}))
                                   {:name       "A Native query"
                                    :display    :scalar
                                    :query_type "native"})
+
+       ;; compatible but user doesn't have access so should not be readble
+       :model/Card _       (simple-mbql-chart-query {:name "A Line with no access"   :display :line})
        ;; incomptabile cards
-       :model/Card _pie    (simple-mbql-chart-query {:name "A pie" :display :pie})
-       :model/Card _table  (simple-mbql-chart-query {:name "A table" :display :table})
-       :model/Card _       (merge (mt/card-with-source-metadata-for-query (mt/native-query {:query "select sum(price) from venues;"}))
+       :model/Card pie     (simple-mbql-chart-query {:name "A pie" :display :pie})
+       :model/Card table   (simple-mbql-chart-query {:name "A table" :display :table})
+       :model/Card native-2(merge (mt/card-with-source-metadata-for-query (mt/native-query {:query "select sum(price) from venues;"}))
                                   {:name       "A Native query table"
                                    :display    :table
                                    :query_type "native"})]
-      (doseq [[card-id display-type expected]
-              [[(:id line)   :line   #{"A Native query" "An Area" "A Bar"}]
-               [(:id bar)    :bar    #{"A Native query" "An Area" "A Line"}]
-               [(:id area)   :area   #{"A Native query" "A Bar" "A Line"}]
-               [(:id scalar) :scalar #{"A Native query" "A Scalar 2"}]]]
-        (testing (format "Card with display-type=%s should have compatible cards correctly returned" display-type)
-          (let [returned-card-names (set (map :name (mt/user-http-request :crowberto :get 200 (format "/card/%d/series" card-id))))]
-            (is (set/subset? expected returned-card-names))
-            (is (not (contains? returned-card-names #{"A pie" "A table"})))))))))
+      (with-cards-in-readable-collection [line bar area scalar scalar-2 native pie table native-2]
+       (doseq [[card-id display-type expected]
+               [[(:id line)   :line   #{"A Native query" "An Area" "A Bar"}]
+                [(:id bar)    :bar    #{"A Native query" "An Area" "A Line"}]
+                [(:id area)   :area   #{"A Native query" "A Bar" "A Line"}]
+                [(:id scalar) :scalar #{"A Native query" "A Scalar 2"}]]]
+         (testing (format "Card with display-type=%s should have compatible cards correctly returned" display-type)
+           (let [returned-card-names (set (map :name (mt/user-http-request :rasta :get 200 (format "/card/%d/series" card-id))))]
+             (is (set/subset? expected returned-card-names))
+             (is (not (contains? returned-card-names #{"A pie" "A table" "A Line with no access"}))))))))))
+
+
+(deftest paging-and-filtering-works-for-series-card-test
+  (let [simple-mbql-chart-query (fn [attrs]
+                                  (merge (mt/card-with-source-metadata-for-query
+                                           (mt/mbql-query venues {:aggregation [[:sum $venues.price]]
+                                                                  :breakout    [$venues.category_id]}))
+                                         {:visualization_settings {:graph.metrics    ["sum"]
+                                                                   :graph.dimensions ["CATEGORY_ID"]}}
+                                         attrs))]
+    (t2.with-temp/with-temp
+      [:model/Card card (simple-mbql-chart-query {:name "Captain Toad 1"   :display :line})
+       :model/Card _    (simple-mbql-chart-query {:name "Captain Toad 2"   :display :line})
+       :model/Card _    (simple-mbql-chart-query {:name "Captain Toad 3"   :display :line})
+       :model/Card _    (simple-mbql-chart-query {:name "Captain Toad 4"   :display :line})
+       :model/Card _    (simple-mbql-chart-query {:name "Captain Toad 5"   :display :line})
+       :model/Card _    (simple-mbql-chart-query {:name "Captain Toad 6"   :display :line})
+       :model/Card _    (simple-mbql-chart-query {:name "Captain Toad 7"   :display :line})
+       :model/Card _    (simple-mbql-chart-query {:name "Captain Toad 8"   :display :line})
+       :model/Card _    (simple-mbql-chart-query {:name "Luigi 1"  :display :line})
+       :model/Card _    (simple-mbql-chart-query {:name "Luigi 2"  :display :line})
+       :model/Card _    (simple-mbql-chart-query {:name "Luigi 3"  :display :line})
+       :model/Card _    (simple-mbql-chart-query {:name "Luigi 4"  :display :line})
+       :model/Card _    (simple-mbql-chart-query {:name "Luigi 5"  :display :line})
+       :model/Card _    (simple-mbql-chart-query {:name "Luigi 6"  :display :line})
+       :model/Card _    (simple-mbql-chart-query {:name "Luigi 7"  :display :line})
+       :model/Card _    (simple-mbql-chart-query {:name "Luigi 8"  :display :line})]
+      (testing "filtering works"
+        (is (true? (every? #(str/includes? % "Toad")
+                           (->> (mt/user-http-request :crowberto :get 200 (format "/card/%d/series" (:id card)) :query "Toad")
+                                (map :name)))))
+
+        (testing "with limit"
+          (is (= ["Luigi 1" "Luigi 2" "Luigi 3" "Luigi 4"]
+                 (->> (mt/user-http-request :crowberto :get 200 (format "/card/%d/series" (:id card))
+                                            :query "Luigi" :limit 4)
+                      (map :name))))
+
+          (testing "and paging works too"
+            (is (= ["Luigi 5" "Luigi 6" "Luigi 7" "Luigi 8"]
+                   (->> (mt/user-http-request :crowberto :get 200 (format "/card/%d/series" (:id card))
+                                              :query "Luigi" :limit 4 :last_cursor "Luigi 4")
+                        (map :name))))))))))
+
+(def ^:private millisecond-card
+  {:name                   "Card with dimension is unixtimestmap"
+   :visualization_settings {:graph.dimensions ["timestamp"]
+                            :graph.metrics ["severity"]}
+
+   :display                :line
+   :result_metadata        [{:base_type :type/BigInteger
+                             :coercion_strategy :Coercion/UNIXMilliSeconds->DateTime
+                             :effective_type :type/DateTime
+                             :display_name "Timestamp"
+                             :name "timestamp"
+                             :unit "week"}
+                            {:base_type :type/Integer
+                             :display_name "count"
+                             :name "severity"
+                             :semantic_type :type/Number}]})
+
+(deftest sereies-are-compatible-test
+  (mt/dataset sample-dataset
+    (testing "area-line-bar charts"
+      (t2.with-temp/with-temp
+        [:model/Card datetime-card       (merge (mt/card-with-source-metadata-for-query
+                                                  (mt/mbql-query orders {:aggregation [[:sum $orders.total]]
+                                                                         :breakout    [!month.orders.created_at]}))
+                                                {:visualization_settings {:graph.metrics    ["sum"]
+                                                                          :graph.dimensions ["CREATED_AT"]}}
+                                                {:name    "datetime card"
+                                                 :display :line})
+         :model/Card number-card         (merge (mt/card-with-source-metadata-for-query
+                                                  (mt/mbql-query orders {:aggregation [:count]
+                                                                         :breakout    [$orders.quantity]}))
+                                                {:visualization_settings {:graph.metrics    ["count"]
+                                                                          :graph.dimensions ["QUANTITY"]}}
+                                                {:name    "number card"
+                                                 :display :line})
+         :model/Card without-metric-card (merge (mt/card-with-source-metadata-for-query
+                                                  (mt/mbql-query orders {:breakout    [!month.orders.created_at]}))
+                                                {:visualization_settings {:graph.dimensions ["CREATED_AT"]}}
+                                                {:name    "card has no metric"
+                                                 :display :line})
+         :model/Card combo-card          (merge (mt/card-with-source-metadata-for-query
+                                                  (mt/mbql-query orders {:aggregation [[:sum $orders.total]]
+                                                                         :breakout    [!month.orders.created_at]}))
+                                                {:visualization_settings {:graph.metrics    ["sum"]
+                                                                          :graph.dimensions ["CREATED_AT"]}}
+                                                {:name    "table card"
+                                                 :display :combo})]
+        (testing "2 datetime cards can be combined"
+          (is (true? (api.card/series-are-compatible? datetime-card datetime-card))))
+
+        (testing "2 number cards can be combined"
+          (is (true? (api.card/series-are-compatible? number-card number-card))))
+
+        (testing "number card can't be combined with datetime cards"
+          (is (false? (api.card/series-are-compatible? number-card datetime-card)))
+          (is (false? (api.card/series-are-compatible? datetime-card number-card))))
+
+        (testing "can combine series with UNIX millisecond timestamp and datetime"
+          (is (true? (api.card/series-are-compatible? millisecond-card datetime-card)))
+          (is (true? (api.card/series-are-compatible? datetime-card millisecond-card))))
+
+        (testing "can't combines series with UNIX milliseceond timestamp and number"
+          (is (false? (api.card/series-are-compatible? millisecond-card number-card)))
+          (is (false? (api.card/series-are-compatible? number-card millisecond-card))))
+
+        (testing "second card must has a metric"
+          (is (false? (api.card/series-are-compatible? datetime-card without-metric-card))))
+
+        (testing "can't combine card of any other types rather than line/bar/area"
+          (is (nil? (api.card/series-are-compatible? datetime-card combo-card)))))))
+
+ (testing "scalar test"
+   (t2.with-temp/with-temp
+     [:model/Card scalar-1       (merge (mt/card-with-source-metadata-for-query
+                                          (mt/mbql-query venues {:aggregation [[:count]]}))
+                                        {:name "A Scalar 1" :display :scalar})
+      :model/Card scalar-2       (merge (mt/card-with-source-metadata-for-query
+                                          (mt/mbql-query venues {:aggregation [[:count]]}))
+                                        {:name "A Scalar 2" :display :scalar})
+
+      :model/Card scalar-2-cols  (merge (mt/card-with-source-metadata-for-query
+                                          (mt/mbql-query venues {:aggregation [[:count]
+                                                                               [:sum $venues.price]]}))
+                                        {:name "A Scalar with 2 columns" :display :scalar})
+      :model/Card line-card       (merge (mt/card-with-source-metadata-for-query
+                                           (mt/mbql-query venues {:aggregation [[:sum $venues.price]]
+                                                                  :breakout    [$venues.category_id]}))
+                                         {:visualization_settings {:graph.metrics    ["sum"]
+                                                                   :graph.dimensions ["CATEGORY_ID"]}}
+                                         {:name "Line card" :display :line})]
+     (testing "2 scalars with 1 column can be combined"
+       (is (true? (api.card/series-are-compatible? scalar-1 scalar-2))))
+     (testing "can't be combined if either one of 2 cards has more than one column"
+       (is (false? (api.card/series-are-compatible? scalar-1 scalar-2-cols)))
+       (is (false? (api.card/series-are-compatible? scalar-2-cols scalar-2))))
+
+     (testing "can only be cominbed with scalar cards"
+       (is (false? (api.card/series-are-compatible? scalar-1 line-card)))))))
+
+
+
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        CREATING A CARD (POST /api/card)                                        |
