@@ -102,6 +102,9 @@ const setup = async ({ mockCard }: QBSpecSetupProps) => {
           // between the card and the lastRunCard, so they need to stay the
           // same from the start or the beforeunload hook will trigger when
           // we don't want it.
+          //
+          // possible solution - make sure we mock the removeEventListener
+          // as well so the beforeunload event isn't triggered
           card: {
             original_card_id: TEST_CARD_ID,
             dataset_query: TEST_CARD.dataset_query,
