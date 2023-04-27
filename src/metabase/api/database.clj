@@ -1060,7 +1060,10 @@
   (if-let [f (u/ignore-exceptions
               (classloader/require 'metabase-enterprise.advanced-permissions.common)
               (resolve 'metabase-enterprise.advanced-permissions.common/filter-schema-by-data-model-perms))]
-    (map :schema (f (map (fn [s] {:db_id database-id :schema s}) schemas)))
+    (->> schemas
+         (map (fn [s] {:db_id database-id :schema s}))
+         f
+         (map :schema))
     schemas))
 
 (api/defendpoint GET "/:id/schemas"
