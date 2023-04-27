@@ -33,6 +33,8 @@ const TABLE_QUERY = {
   ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
 };
 
+const FIELDS_QUERY = PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps;
+
 const METADATA_TAB_OPTIONS = [
   { name: t`Columns`, value: "columns" },
   { name: t`Original schema`, value: "original_schema" },
@@ -63,7 +65,7 @@ interface StateProps {
 
 interface DispatchProps {
   onFetchMetadata: (table: HasTableId, opts: HasRequestParams) => Promise<void>;
-  onFetchIdFields: (database: HasDatabaseId) => Promise<void>;
+  onFetchIdFields: (database: HasDatabaseId, params: unknown) => Promise<void>;
   onUpdateTable: (table: Table, name: string, value: unknown) => void;
 }
 
@@ -82,7 +84,7 @@ const mapStateToProps = (
 });
 
 const mapDispatchToProps: DispatchProps = {
-  onFetchMetadata: Tables.actions.fetchMetadataAndForeignTables,
+  onFetchMetadata: Tables.actions.fetchMetadata,
   onFetchIdFields: Databases.objectActions.fetchIdfields,
   onUpdateTable: Tables.actions.updateProperty,
 };
@@ -97,13 +99,10 @@ const MetadataTable = ({
   onFetchIdFields,
   onUpdateTable,
 }: MetadataTableProps) => {
-  const { loading, error } = useAsync(() => {
-    return onFetchMetadata({ id: selectedTableId }, { params: TABLE_QUERY });
-  }, [selectedTableId]);
-
-  useAsync(() => {
-    return onFetchIdFields({ id: selectedDatabaseId });
-  }, [selectedDatabaseId]);
+  const { loading, error } = useAsync(async () => {
+    await onFetchIdFields({ id: selectedDatabaseId }, FIELDS_QUERY);
+    await onFetchMetadata({ id: selectedTableId }, { params: TABLE_QUERY });
+  }, [selectedDatabaseId, selectedTableId]);
 
   if (table == null || loading || error != null) {
     return <LoadingAndErrorWrapper loading={loading} error={error} />;
