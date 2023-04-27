@@ -71,9 +71,9 @@
   (let [ee (get groups true)
         oss (get groups false)
         rlist (str
-                   "## Metabase Enterprise Edition releases\n\n" (str/join "\n" ee)
-                   "\n\n## Metabase Open Source Edition releases\n\n"
-                   (str/join "\n" oss))]
+               "## Metabase Enterprise Edition releases\n\n" (str/join "\n" ee)
+               "\n\n## Metabase Open Source Edition releases\n\n"
+               (str/join "\n" oss))]
     (str/replace release-page "{{content}}" rlist)))
 
 (def command
@@ -89,12 +89,12 @@
 (defn -main [& args]
   ;; Clear existing list of releases
   (let [target "../../docs/releases.md"]
-  (shell (str "rm -rf " target))
-  
+    (shell (str "rm -rf " target))
+
   ;; Publish releases
-  (spit target
-        (-> list-of-releases
-            prep-links
-            group-versions
-            prep-page))
-  (println "List of releases updated in `docs/releases.md`.")))
+    (spit target
+          (-> list-of-releases
+              prep-links
+              group-versions
+              prep-page))
+    (println "List of releases updated in `docs/releases.md`.")))

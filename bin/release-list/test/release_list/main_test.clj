@@ -44,4 +44,3 @@ Metabase® Enterprise Edition™ v1.45.3.1                                      
 (deftest test-prep-links
   (testing "Creates links to GitHub release pages, and sorts by release and edition. EE before OSS."
     (is (= (rl/prep-links releases) release-list))))
-
