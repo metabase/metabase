@@ -1,17 +1,19 @@
 import React, { useState } from "react";
-import PropTypes from "prop-types";
 import _ from "underscore";
 import { t } from "ttag";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
-import { withRouter } from "react-router";
+import { Route, Router, withRouter } from "react-router";
 
-import { useBeforeUnload } from "history";
+import { Location } from "history";
 import Button from "metabase/core/components/Button";
 import fitViewport from "metabase/hoc/FitViewPort";
 import Modal from "metabase/components/Modal";
 import ModalContent from "metabase/components/ModalContent";
 
+import { PermissionsGraph } from "metabase-types/api";
+import useBeforeUnload from "metabase/hooks/use-before-unload";
+import { State } from "metabase-types/store";
 import { useLeaveConfirmation } from "../../hooks/use-leave-confirmation";
 import { clearSaveError } from "../../permissions";
 import { ToolbarButton } from "../ToolbarButton";
@@ -27,34 +29,34 @@ import {
 } from "./PermissionsPageLayout.styled";
 import { PermissionsEditBar } from "./PermissionsEditBar";
 
+type PermissionsPageTab = "data" | "collections";
+type PermissionsPageLayoutProps = {
+  children: React.ReactNode;
+  tab: PermissionsPageTab;
+  confirmBar?: React.ReactNode;
+  diff?: PermissionsGraph;
+  isDirty: boolean;
+  onSave: () => void;
+  onLoad: () => void;
+  saveError?: string;
+  clearSaveError: () => void;
+  navigateToLocation: (location: string) => void;
+  router: typeof Router;
+  route: typeof Route;
+  navigateToTab: (tab: string) => void;
+  helpContent?: React.ReactNode;
+  toolbarRightContent?: React.ReactNode;
+};
 const mapDispatchToProps = {
-  navigateToTab: tab => push(`/admin/permissions/${tab}`),
-  navigateToLocation: location => push(location.pathname, location.state),
+  navigateToTab: (tab: PermissionsPageTab) => push(`/admin/permissions/${tab}`),
+  navigateToLocation: (location: Location) => push(location.pathname),
   clearSaveError,
 };
 
-const mapStateToProps = (state, _props) => {
+const mapStateToProps = (state: State, _props: PermissionsPageLayoutProps) => {
   return {
     saveError: state.admin.permissions.saveError,
   };
-};
-
-const propTypes = {
-  children: PropTypes.node.isRequired,
-  tab: PropTypes.oneOf(["data", "collections"]).isRequired,
-  confirmBar: PropTypes.node,
-  diff: PropTypes.object,
-  isDirty: PropTypes.bool,
-  onSave: PropTypes.func.isRequired,
-  onLoad: PropTypes.func.isRequired,
-  saveError: PropTypes.string,
-  clearSaveError: PropTypes.func.isRequired,
-  navigateToLocation: PropTypes.func.isRequired,
-  router: PropTypes.object,
-  route: PropTypes.object,
-  navigateToTab: PropTypes.func.isRequired,
-  helpContent: PropTypes.node,
-  toolbarRightContent: PropTypes.node,
 };
 
 function PermissionsPageLayout({
@@ -72,7 +74,7 @@ function PermissionsPageLayout({
   navigateToTab,
   toolbarRightContent,
   helpContent,
-}) {
+}: PermissionsPageLayoutProps) {
   const [shouldShowHelp, setShouldShowHelp] = useState(false);
   const beforeLeaveConfirmation = useLeaveConfirmation({
     router,
@@ -138,8 +140,6 @@ function PermissionsPageLayout({
     </PermissionPageRoot>
   );
 }
-
-PermissionsPageLayout.propTypes = propTypes;
 
 export default _.compose(
   connect(mapStateToProps, mapDispatchToProps),
