@@ -1,10 +1,11 @@
-#!/usr/bin/env bb
-(require '[babashka.process :refer [shell]]
-         '[clojure.string  :as str])
+;; #!/usr/bin/env bb
+(ns release-list.main
+  (:require [babashka.process :refer [shell]]
+            [clojure.string  :as str]))
 
 (def release-page
   "Template for docs page that will list releases."
-  (slurp "./bin/resources/releases.md"))
+  (slurp "./resources/releases.md"))
 
 (defn build-link
   "Given a version, builds a markdown link to the relevant release page."
@@ -51,7 +52,7 @@
              [(:major bv) (:point bv) (:hotfix bv)])))
 
 (defn prep-links
-  "Create links to GitHub release pages, and sort by edition, then release. EE before OSS."
+  "Creates links to GitHub release pages, and sorts by edition and release."
   [input]
   (-> input
       generate-links
@@ -68,20 +69,16 @@
   "Combine page template with list of EE and OSS releases."
   [groups]
   (let [ee (get groups true)
-        oss (get groups false)]
-    (str
-     release-page "\n\n"
-     "## Enterprise Edition\n\n" (str/join "\n" ee)
-     "\n\n## Open source edition\n\n"
-     (str/join "\n" oss))))
+        oss (get groups false)
+        rlist (str
+                   "## Metabase Enterprise Edition releases\n\n" (str/join "\n" ee)
+                   "\n\n## Metabase Open Source Edition releases\n\n"
+                   (str/join "\n" oss))]
+    (str/replace release-page "{{content}}" rlist)))
 
 (def command
   "GitHub CLI command to list all releases, exluding RCs"
-  "gh release list
-     --repo metabase/metabase
-     --limit 10000
-     --exclude-pre-releases
-     --exclude-drafts")
+  "gh release list --repo metabase/metabase --limit 10000 --exclude-pre-releases --exclude-drafts")
 
 (def list-of-releases
   "Run GitHub CLI command to retrieve list of Metabase releases."
@@ -89,11 +86,15 @@
    (shell {:out :string} command)
    :out))
 
-;; Publish releases
-(spit "./docs/releases.md"
-      (-> list-of-releases
-          prep-links
-          group-versions
-          prep-page))
-
-(println "List of releases updated in `docs/releases.md`.")
+(defn -main [& args]
+  ;; Clear existing list of releases
+  (let [target "../../docs/releases.md"]
+  (shell (str "rm -rf " target))
+  
+  ;; Publish releases
+  (spit target
+        (-> list-of-releases
+            prep-links
+            group-versions
+            prep-page))
+  (println "List of releases updated in `docs/releases.md`.")))

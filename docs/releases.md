@@ -4,8 +4,16 @@ title: Metabase versions
 
 # Metabase versions
 
+Below are lists of available Metabase versions for the 
 
-## Enterprise Edition
+- [Enterprise Edition](#metabase-enterprise-edition-releases) used in the [Pro](https://www.metabase.com/products/pro) and [Enterprise](https://www.metabase.com/products/enterprise) plans, and the 
+- [Open Source Edition](#metabase-open-source-edition-releases), used in the Metabase Cloud [Starter](https://www.metabase.com/pricing) plan. 
+
+All releases are also available for self-hosting.
+
+See docs on [upgrading Metabase](./installation-and-operation/upgrading-metabase).
+
+## Metabase Enterprise Edition releases
 
 - [v1.46.1](https://github.com/metabase/metabase/releases/tag/v1.46.1)
 - [v1.46.0](https://github.com/metabase/metabase/releases/tag/v1.46.0)
@@ -90,7 +98,7 @@ title: Metabase versions
 - [v1.37.1.2](https://github.com/metabase/metabase/releases/tag/v1.37.1.2)
 - [v1.37.0.2](https://github.com/metabase/metabase/releases/tag/v1.37.0.2)
 
-## Open source edition
+## Metabase Open Source Edition releases
 
 - [v0.46.1](https://github.com/metabase/metabase/releases/tag/v0.46.1)
 - [v0.46.0](https://github.com/metabase/metabase/releases/tag/v0.46.0)
@@ -289,3 +297,7 @@ title: Metabase versions
 - [v0.9.2](https://github.com/metabase/metabase/releases/tag/v0.9.2)
 - [v0.9.1](https://github.com/metabase/metabase/releases/tag/v0.9.1)
 - [v0.9-final](https://github.com/metabase/metabase/releases/tag/v0.9-final)
+
+## Further reading
+
+- [Upgrading Metabase](./installation-and-operation/upgrading-metabase).
