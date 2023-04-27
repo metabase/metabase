@@ -1,10 +1,11 @@
 import React, { AnchorHTMLAttributes, CSSProperties, ReactNode } from "react";
 import Tooltip from "metabase/core/components/Tooltip";
 import { TooltipProps } from "metabase/core/components/Tooltip/Tooltip";
-import { LinkRoot } from "./Link.styled";
+import { LinkRoot, variants } from "./Link.styled";
 
 export interface LinkProps extends AnchorHTMLAttributes<HTMLAnchorElement> {
   to: string;
+  variant?: "default" | "brand" | "brandBold";
   disabled?: boolean;
   className?: string;
   children?: ReactNode;
@@ -19,10 +20,13 @@ const Link = ({
   children,
   disabled,
   tooltip,
+  variant,
   ...props
 }: LinkProps): JSX.Element => {
+  const StyledLink = variant ? variants[variant] : LinkRoot;
+
   const link = (
-    <LinkRoot
+    <StyledLink
       {...props}
       to={to}
       disabled={disabled}
@@ -30,7 +34,7 @@ const Link = ({
       aria-disabled={disabled}
     >
       {children}
-    </LinkRoot>
+    </StyledLink>
   );
 
   const tooltipProps =
