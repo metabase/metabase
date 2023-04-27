@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { EntityDefinition } from "./types";
+import { EntityDefinition } from "metabase/common/types/entities";
 
 export interface UseEntityListQueryProps<TQuery> {
   query?: TQuery;
