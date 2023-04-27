@@ -24,11 +24,8 @@ describe("scalar utils", () => {
         value,
         width,
         formatOptions,
-      );
+      ) as { displayValue: string; fullScalarValue: string };
 
-      if (typeof fullScalarValue !== "string") {
-        throw Error("fullScalarValue is not a string");
-      }
       expect(fullScalarValue.length).toBeLessThanOrEqual(COMPACT_MIN_LENGTH);
 
       expect(displayValue).toBe(fullScalarValue);
@@ -43,11 +40,8 @@ describe("scalar utils", () => {
         value,
         width,
         formatOptions,
-      );
+      ) as { displayValue: string; fullScalarValue: string };
 
-      if (typeof fullScalarValue !== "string") {
-        throw Error("fullScalarValue is not a string");
-      }
       expect(fullScalarValue.length).toBeGreaterThan(COMPACT_MIN_LENGTH);
       expect(width).toBeLessThan(COMPACT_MAX_WIDTH);
 
@@ -63,11 +57,8 @@ describe("scalar utils", () => {
         value,
         width,
         formatOptions,
-      );
+      ) as { displayValue: string; fullScalarValue: string };
 
-      if (typeof fullScalarValue !== "string") {
-        throw Error("fullScalarValue is not a string");
-      }
       expect(fullScalarValue.length).toBeGreaterThan(COMPACT_MIN_LENGTH);
       expect(width).toBeGreaterThanOrEqual(COMPACT_MAX_WIDTH);
       expect(width).toBeLessThan(
@@ -86,11 +77,8 @@ describe("scalar utils", () => {
         value,
         width,
         formatOptions,
-      );
+      ) as { displayValue: string; fullScalarValue: string };
 
-      if (typeof fullScalarValue !== "string") {
-        throw Error("fullScalarValue is not a string");
-      }
       expect(fullScalarValue.length).toBeGreaterThan(COMPACT_MIN_LENGTH);
       expect(width).toBeGreaterThanOrEqual(COMPACT_MAX_WIDTH);
       expect(width).toBeGreaterThanOrEqual(
