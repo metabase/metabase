@@ -1,4 +1,4 @@
-import React, { ChangeEvent, useCallback } from "react";
+import React, { ChangeEvent, useCallback, useMemo } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
@@ -237,8 +237,14 @@ const FieldGeneralPane = ({
         idFields={idFields}
         onUpdateField={onUpdateField}
       />
-      {field.hasJsonUnfoldingSettings() && (
+      {field.canUnfoldJson() && (
         <FieldJsonUnfoldingSection
+          field={field}
+          onUpdateField={onUpdateField}
+        />
+      )}
+      {field.canCoerceType() && (
+        <FieldCoercionStrategySection
           field={field}
           onUpdateField={onUpdateField}
         />
@@ -384,6 +390,45 @@ const FieldJsonUnfoldingSection = ({
         value={field.isJsonUnfolded()}
         onChange={handleChange}
         options={JSON_OPTIONS}
+      />
+    </MetadataSection>
+  );
+};
+
+interface FieldCoercionStrategySectionProps {
+  field: Field;
+  onUpdateField: (field: Field, updates: Partial<Field>) => void;
+}
+
+const FieldCoercionStrategySection = ({
+  field,
+  onUpdateField,
+}: FieldCoercionStrategySectionProps) => {
+  const options = useMemo(
+    () => [
+      ...field.coercionStrategyOptions().map(value => ({ name: value, value })),
+      { name: t`Don't cast`, value: null },
+    ],
+    [field],
+  );
+
+  const handleChangeOption = useCallback(
+    (event: SelectChangeEvent<string>) => {
+      onUpdateField(field, { coercion_strategy: event.target.value });
+    },
+    [field, onUpdateField],
+  );
+
+  return (
+    <MetadataSection>
+      <MetadataSectionHeader title={t`Cast to a specific data type`} />
+      <Select
+        className="inline-block"
+        placeholder={t`Select a conversion`}
+        searchProp="name"
+        value={field.coercion_strategy}
+        options={options}
+        onChange={handleChangeOption}
       />
     </MetadataSection>
   );

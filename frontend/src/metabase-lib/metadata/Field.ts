@@ -2,6 +2,7 @@
 // @ts-nocheck
 import _ from "underscore";
 import moment from "moment-timezone";
+import { is_coerceable, coercions_for_type } from "cljs/metabase.types";
 
 import { formatField, stripId } from "metabase/lib/formatting";
 import type {
@@ -40,6 +41,7 @@ import {
   isString,
   isSummable,
   isTime,
+  isTypeFK,
   isZipCode,
 } from "metabase-lib/types/utils/isa";
 import { getFilterOperators } from "metabase-lib/operators/utils";
@@ -82,6 +84,7 @@ class FieldInner extends Base {
   source?: string;
   nfc_path?: string[];
   json_unfolding: boolean | null;
+  coercion_strategy: string | null;
   fk_target_field_id: FieldId | null;
   settings?: FieldFormattingSettings;
   visibility_type: FieldVisibilityType;
@@ -523,7 +526,7 @@ class FieldInner extends Base {
     return this.json_unfolding ?? database?.details["json-unfolding"] ?? true;
   }
 
-  hasJsonUnfoldingSettings() {
+  canUnfoldJson() {
     const database = this.table?.database;
 
     return (
@@ -531,6 +534,14 @@ class FieldInner extends Base {
       database != null &&
       database.hasFeature("nested-field-columns")
     );
+  }
+
+  canCoerceType() {
+    return !isTypeFK(this.semantic_type) && is_coerceable(this.base_type);
+  }
+
+  coercionStrategyOptions(): string[] {
+    return coercions_for_type(this.base_type);
   }
 
   /**

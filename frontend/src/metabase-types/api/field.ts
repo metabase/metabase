@@ -89,6 +89,7 @@ export interface ConcreteField {
 
   nfc_path: string[] | null;
   json_unfolding: boolean | null;
+  coercion_strategy: string | null;
   fingerprint: FieldFingerprint | null;
 
   last_analyzed: string;
