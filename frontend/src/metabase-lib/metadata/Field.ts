@@ -13,7 +13,9 @@ import type {
   FieldVisibilityType,
 } from "metabase-types/api";
 import type { Field as FieldRef } from "metabase-types/types/Query";
+import { TYPE } from "metabase-lib/types/constants";
 import {
+  isa,
   isAddress,
   isBoolean,
   isCategory,
@@ -78,6 +80,7 @@ class FieldInner extends Base {
   metadata?: Metadata;
   source?: string;
   nfc_path?: string[];
+  json_unfolding: boolean | null;
   fk_target_field_id: FieldId | null;
   settings?: FieldFormattingSettings;
   visibility_type: FieldVisibilityType;
@@ -512,6 +515,21 @@ class FieldInner extends Base {
 
   isVirtual() {
     return typeof this.id !== "number";
+  }
+
+  isJsonUnfolded() {
+    const database = this.table?.database;
+    return this.json_unfolding ?? database?.details["json-unfolding"] ?? true;
+  }
+
+  hasJsonUnfoldingSettings() {
+    const database = this.table?.database;
+
+    return (
+      isa(field.base_type, TYPE.JSON) &&
+      database != null &&
+      database.hasFeature("nested-field-columns")
+    );
   }
 
   /**

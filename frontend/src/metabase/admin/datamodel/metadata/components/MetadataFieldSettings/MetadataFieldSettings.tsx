@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
@@ -13,6 +13,9 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { LeftNavPane, LeftNavPaneItem } from "metabase/components/LeftNavPane";
 import { Schema } from "metabase-types/api";
 import { State } from "metabase-types/store";
+import Select, {
+  SelectChangeEvent,
+} from "metabase/core/components/Select/Select";
 import Database from "metabase-lib/metadata/Database";
 import Table from "metabase-lib/metadata/Table";
 import Field from "metabase-lib/metadata/Field";
@@ -211,6 +214,9 @@ const FieldGeneralPane = ({
         idFields={idFields}
         onUpdateField={onUpdateField}
       />
+      {field.hasJsonUnfoldingSettings() && (
+        <FieldJsonSection field={field} onUpdateField={onUpdateField} />
+      )}
     </div>
   );
 };
@@ -257,6 +263,40 @@ const FieldTypeSection = ({
         idFields={idFields}
         onUpdateField={onUpdateField}
         hasSeparator
+      />
+    </MetadataSection>
+  );
+};
+
+const JSON_OPTIONS = [
+  { name: t`Yes`, value: true },
+  { name: t`No`, value: false },
+];
+
+interface FieldJsonSectionProps {
+  field: Field;
+  onUpdateField: (field: Field, updates: Partial<Field>) => void;
+}
+
+const FieldJsonSection = ({ field, onUpdateField }: FieldJsonSectionProps) => {
+  const handleChange = useCallback(
+    (event: SelectChangeEvent<boolean>) => {
+      onUpdateField(field, { json_unfolding: event.target.value });
+    },
+    [field, onUpdateField],
+  );
+
+  return (
+    <MetadataSection>
+      <MetadataSectionHeader
+        title={t`Unfold JSON`}
+        description={t`Unfold JSON into component fields, where each JSON key becomes a column. You can turn this off if performance is slow.`}
+      />
+      <Select
+        className="inline-block"
+        value={field.isJsonUnfolded()}
+        onChange={handleChange}
+        options={JSON_OPTIONS}
       />
     </MetadataSection>
   );

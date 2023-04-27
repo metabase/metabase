@@ -26,6 +26,7 @@ export const createMockField = (opts?: Partial<Field>): Field => ({
   preview_display: true,
   position: 1,
   nfc_path: null,
+  json_unfolding: null,
   fingerprint: null,
 
   has_field_values: "list",
