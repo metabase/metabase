@@ -6,7 +6,6 @@ import type {
   PopoverClickAction,
 } from "metabase/modes/types";
 import { Card } from "metabase-types/api";
-import { isNotNull } from "metabase/core/utils/types";
 import { DimensionValue } from "metabase-types/types/Visualization";
 import {
   pivotByCategoryDrill,
@@ -23,6 +22,12 @@ import {
   StyledBreakoutPopover,
 } from "./PivotDrillPopover.styled";
 
+type PivotDrillTypesConfig = {
+  withCategory?: false;
+  withLocation?: false;
+  withTime?: false;
+};
+
 type PivotDrillTypeOption = {
   title: string;
   icon: "string" | "location" | "calendar";
@@ -31,99 +36,119 @@ type PivotDrillTypeOption = {
   breakoutOptions: DimensionOptions;
 };
 
-const PivotDrill = ({
-  question,
-  clicked,
-}: DrillOptions): PopoverClickAction[] => {
-  const categoryDrillOptions = pivotByCategoryDrill({ question, clicked });
-  const locationDrillOptions = pivotByLocationDrill({ question, clicked });
-  const timeDrillOptions = pivotByTimeDrill({ question, clicked });
+export const getPivotDrill =
+  (options: PivotDrillTypesConfig = {}) =>
+  ({ question, clicked }: DrillOptions): PopoverClickAction[] => {
+    const {
+      withCategory = true,
+      withLocation = true,
+      withTime = true,
+    } = options;
 
-  const drillOptions = [
-    timeDrillOptions && {
-      title: t`Time`,
-      icon: "calendar" as const,
-      ...timeDrillOptions,
-    },
-    locationDrillOptions && {
-      title: t`Location`,
-      icon: "location" as const,
-      ...locationDrillOptions,
-    },
-    categoryDrillOptions && {
-      title: t`Category`,
-      icon: "string" as const,
-      ...categoryDrillOptions,
-    },
-  ].filter(isNotNull);
+    const drillOptions: PivotDrillTypeOption[] = [];
 
-  if (drillOptions.length === 0) {
-    return [];
-  }
-
-  const Component = ({
-    onChangeCardAndRun,
-    onClose,
-  }: ClickActionPopoverProps) => {
-    const [activeDrillOption, setActiveDrillOption] =
-      useState<PivotDrillTypeOption | null>(
-        drillOptions.length === 1 ? drillOptions[0] : null,
-      );
-
-    if (activeDrillOption) {
-      const { query, dimensions, breakoutOptions } = activeDrillOption;
-
-      return (
-        <StyledBreakoutPopover
-          query={query}
-          breakoutOptions={breakoutOptions}
-          width={256}
-          alwaysExpanded
-          renderItemWrapper={content => (
-            <RowItemWrapper>{content}</RowItemWrapper>
-          )}
-          renderItemIcon={() => null}
-          onChangeBreakout={breakout => {
-            const nextCard = question.pivot([breakout], dimensions).card();
-
-            // Casting deprecated `metabase-types/Card` to `metabase-types/api/Card`
-            onChangeCardAndRun({ nextCard: nextCard as Card });
-          }}
-          onClose={onClose}
-        />
-      );
+    if (withCategory) {
+      const drillResults = pivotByCategoryDrill({ question, clicked });
+      if (drillResults) {
+        drillOptions.push({
+          title: t`Category`,
+          icon: "string",
+          ...drillResults,
+        });
+      }
     }
 
-    return (
-      <PivotDrillPopover>
-        {drillOptions.map(option => {
-          const { icon, title } = option;
+    if (withLocation) {
+      const drillResults = pivotByLocationDrill({ question, clicked });
+      if (drillResults) {
+        drillOptions.push({
+          title: t`Location`,
+          icon: "location",
+          ...drillResults,
+        });
+      }
+    }
 
-          return (
-            <ClickActionButton
-              key={icon}
-              icon={<ActionIcon name={icon} />}
-              small
-              onClick={() => setActiveDrillOption(option)}
-            >
-              {title}
-            </ClickActionButton>
-          );
-        })}
-      </PivotDrillPopover>
-    );
+    if (withTime) {
+      const drillResults = pivotByTimeDrill({ question, clicked });
+      if (drillResults) {
+        drillOptions.push({
+          title: t`Time`,
+          icon: "calendar",
+          ...drillResults,
+        });
+      }
+    }
+
+    if (drillOptions.length === 0) {
+      return [];
+    }
+
+    const Component = ({
+      onChangeCardAndRun,
+      onClose,
+    }: ClickActionPopoverProps) => {
+      const [activeDrillOption, setActiveDrillOption] =
+        useState<PivotDrillTypeOption | null>(
+          drillOptions.length === 1 ? drillOptions[0] : null,
+        );
+
+      if (activeDrillOption) {
+        const { query, dimensions, breakoutOptions } = activeDrillOption;
+
+        return (
+          <StyledBreakoutPopover
+            query={query}
+            breakoutOptions={breakoutOptions}
+            width={256}
+            alwaysExpanded
+            renderItemWrapper={content => (
+              <RowItemWrapper>{content}</RowItemWrapper>
+            )}
+            renderItemIcon={() => null}
+            onChangeBreakout={breakout => {
+              const nextCard = question.pivot([breakout], dimensions).card();
+
+              // Casting deprecated `metabase-types/Card` to `metabase-types/api/Card`
+              onChangeCardAndRun({ nextCard: nextCard as Card });
+            }}
+            onClose={onClose}
+          />
+        );
+      }
+
+      return (
+        <PivotDrillPopover>
+          {drillOptions.map(option => {
+            const { icon, title } = option;
+
+            return (
+              <ClickActionButton
+                key={icon}
+                icon={<ActionIcon name={icon} />}
+                small
+                onClick={() => setActiveDrillOption(option)}
+              >
+                {title}
+              </ClickActionButton>
+            );
+          })}
+        </PivotDrillPopover>
+      );
+    };
+
+    return [
+      {
+        name: "breakout-by",
+        title: t`Break out by…`,
+        section: "breakout",
+        icon: "arrow_split",
+        buttonType: "horizontal",
+        popover: Component,
+      },
+    ];
   };
 
-  return [
-    {
-      name: "breakout-by",
-      title: t`Break out by…`,
-      section: "breakout",
-      icon: "arrow_split",
-      buttonType: "horizontal",
-      popover: Component,
-    },
-  ];
-};
+const PivotDrill = getPivotDrill();
 
 export default PivotDrill;

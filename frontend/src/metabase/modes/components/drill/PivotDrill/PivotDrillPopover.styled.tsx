@@ -70,8 +70,6 @@ export const StyledBreakoutPopover = styled(BreakoutPopover)`
   }
 
   .List-item:not(.List-item--disabled):hover {
-    //color: ${color("brand")};
-
     color: ${color("text-white")};
     background: ${color("brand")};
     border: none;
@@ -85,11 +83,4 @@ export const StyledBreakoutPopover = styled(BreakoutPopover)`
 
 export const RowItemWrapper = styled.div`
   margin: 0 0.5rem;
-
-  // &:hover {
-  //   color: ${color("text-white")};
-  //   background: ${color("brand")};
-  //   border-radius: 8px;
-  //   cursor: pointer;
-  // }
 `;
