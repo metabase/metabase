@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React, { ChangeEvent, useCallback } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
@@ -10,6 +10,7 @@ import Fields from "metabase/entities/fields";
 import AdminLayout from "metabase/components/AdminLayout";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import InputBlurChange from "metabase/components/InputBlurChange";
 import { LeftNavPane, LeftNavPaneItem } from "metabase/components/LeftNavPane";
 import { Schema } from "metabase-types/api";
 import { State } from "metabase-types/store";
@@ -24,6 +25,7 @@ import MetadataBackButton from "../MetadataBackButton";
 import MetadataSection from "../MetadataSection";
 import MetadataSectionHeader from "../MetadataSectionHeader";
 import SemanticTypeAndTargetPicker from "../SemanticTypeAndTargetPicker";
+import { FieldNameInput } from "./MetadataFieldSettings.styled";
 
 interface RouterParams {
   databaseId: string;
@@ -208,6 +210,7 @@ const FieldGeneralPane = ({
 }: FieldGeneralPaneProps) => {
   return (
     <div>
+      <FieldHeaderSection field={field} onUpdateField={onUpdateField} />
       <FieldVisibilitySection field={field} onUpdateField={onUpdateField} />
       <FieldTypeSection
         field={field}
@@ -221,6 +224,58 @@ const FieldGeneralPane = ({
         />
       )}
     </div>
+  );
+};
+
+interface FieldHeaderSectionProps {
+  field: Field;
+  onUpdateField: (field: Field, updates: Partial<Field>) => void;
+}
+
+const FieldHeaderSection = ({
+  field,
+  onUpdateField,
+}: FieldHeaderSectionProps) => {
+  const handleChangeName = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
+      if (event.target.value) {
+        onUpdateField(field, { display_name: event.target.value });
+      } else {
+        event.target.value = field.displayName();
+      }
+    },
+    [field, onUpdateField],
+  );
+
+  const handleChangeDescription = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
+      if (event.target.value) {
+        onUpdateField(field, { description: event.target.value });
+      } else {
+        onUpdateField(field, { description: null });
+      }
+    },
+    [field, onUpdateField],
+  );
+
+  return (
+    <MetadataSection first>
+      <FieldNameInput
+        name="display_name"
+        className="h2"
+        value={field.displayName()}
+        placeholder={field.name}
+        onChange={handleChangeName}
+      />
+      <InputBlurChange
+        name="description"
+        className="text-measure"
+        value={field.description ?? ""}
+        placeholder={t`No description for this field yet`}
+        fullWidth
+        onBlurChange={handleChangeDescription}
+      />
+    </MetadataSection>
   );
 };
 
