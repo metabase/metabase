@@ -21,9 +21,9 @@ describe("scalar utils", () => {
       const width = 200;
 
       const { displayValue, fullScalarValue } = compactifyValue(
-        formatOptions,
         value,
         width,
+        formatOptions,
       );
 
       if (typeof fullScalarValue !== "string") {
@@ -40,9 +40,9 @@ describe("scalar utils", () => {
       const width = 200;
 
       const { displayValue, fullScalarValue } = compactifyValue(
-        formatOptions,
         value,
         width,
+        formatOptions,
       );
 
       if (typeof fullScalarValue !== "string") {
@@ -60,9 +60,9 @@ describe("scalar utils", () => {
       const width = 350;
 
       const { displayValue, fullScalarValue } = compactifyValue(
-        formatOptions,
         value,
         width,
+        formatOptions,
       );
 
       if (typeof fullScalarValue !== "string") {
@@ -83,9 +83,9 @@ describe("scalar utils", () => {
       const width = 350;
 
       const { displayValue, fullScalarValue } = compactifyValue(
-        formatOptions,
         value,
         width,
+        formatOptions,
       );
 
       if (typeof fullScalarValue !== "string") {

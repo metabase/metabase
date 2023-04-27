@@ -7,9 +7,9 @@ export const COMPACT_WIDTH_PER_DIGIT = 25;
 export const COMPACT_MIN_LENGTH = 6;
 
 export function compactifyValue(
-  formatOptions: OptionsType = {},
   value: number,
   width: number,
+  formatOptions: OptionsType = {},
 ) {
   const fullScalarValue = formatValue(value, formatOptions);
   const compactScalarValue = formatValue(value, {

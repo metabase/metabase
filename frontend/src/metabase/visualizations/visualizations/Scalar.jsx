@@ -187,9 +187,9 @@ export default class Scalar extends Component {
     };
 
     const { displayValue, fullScalarValue } = compactifyValue(
-      formatOptions,
       value,
       width,
+      formatOptions,
     );
 
     const clicked = {

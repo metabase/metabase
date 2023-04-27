@@ -122,9 +122,9 @@ export default class Smart extends React.Component {
     const formatOptions = settings.column(column);
 
     const { displayValue, fullScalarValue } = compactifyValue(
-      formatOptions,
       lastValue,
       width,
+      formatOptions,
     );
 
     const granularity = Lib.describeTemporalUnit(insight["unit"]).toLowerCase();
