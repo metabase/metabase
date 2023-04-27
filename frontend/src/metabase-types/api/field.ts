@@ -74,10 +74,11 @@ export interface ConcreteField {
   position: number;
 
   parent_id?: FieldId;
-  fk_target_field_id?: FieldId;
+  fk_target_field_id: FieldId | null;
   target?: Field;
   values?: FieldValue[];
   dimensions?: FieldDimension[];
+  settings?: FieldFormattingSettings;
 
   max_value?: number;
   min_value?: number;
@@ -103,3 +104,7 @@ export interface FieldValues {
 export type Field = Omit<ConcreteField, "id"> & {
   id?: FieldId;
 };
+
+export interface FieldFormattingSettings {
+  currency?: string;
+}

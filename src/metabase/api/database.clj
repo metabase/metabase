@@ -1062,7 +1062,6 @@
   {id                          ms/PositiveInt
    include_editable_data_model [:maybe ms/BooleanString]
    include_hidden              [:maybe ms/BooleanString]}
-  (api/read-check Database id)
   (let [include_editable_data_model (Boolean/parseBoolean include_editable_data_model)
         include_hidden              (Boolean/parseBoolean include_hidden)
         filter-schemas (fn [schemas]
@@ -1073,6 +1072,8 @@
                              (map :schema (f (map (fn [s] {:db_id id :schema s}) schemas)))
                              schemas)
                            (filter (partial can-read-schema? id) schemas)))]
+    (when-not include_editable_data_model
+      (api/read-check Database id))
     (->> (t2/select-fn-set :schema Table
                            :db_id id :active true
                            (merge
@@ -1116,8 +1117,8 @@
    (schema-tables-list db-id schema nil nil))
   ([db-id schema include_hidden include_editable_data_model]
    (when-not include_editable_data_model
-     (api/read-check Database db-id))
-   (api/check-403 (can-read-schema? db-id schema))
+     (api/read-check Database db-id)
+     (api/check-403 (can-read-schema? db-id schema)))
    (let [tables (if include_hidden
                   (t2/select Table
                              :db_id db-id

@@ -64,8 +64,8 @@
     :else
     (filter
      (fn [{db-id :db_id schema :schema}]
-       (perms/set-has-full-permissions? @api/*current-user-permissions-set*
-                                        (perms/feature-perms-path :data-model :all db-id schema)))
+       (perms/set-has-partial-permissions? @api/*current-user-permissions-set*
+                                           (perms/feature-perms-path :data-model :all db-id schema)))
      schema)))
 
 (defn filter-databases-by-data-model-perms
