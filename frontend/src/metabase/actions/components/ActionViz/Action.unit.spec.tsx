@@ -40,11 +40,13 @@ const ACTION = createMockQueryAction({
     createMockActionParameter({
       id: "parameter_1",
       type: "type/Text",
+      "display-name": "Parameter 1",
       target: ["variable", ["template-tag", "1"]],
     }),
     createMockActionParameter({
       id: "parameter_2",
       type: "type/Integer",
+      "display-name": "Parameter 2",
       target: ["variable", ["template-tag", "2"]],
     }),
   ],
