@@ -110,8 +110,8 @@
            (dont-bin)])))
 
 (defn coordinate-binning-strategies
-  "List of binning options for coordinate fields (ie. latitude and longitude). These split the data into N ranges each a
-  certain number of degrees wide."
+  "List of binning options for coordinate fields (ie. latitude and longitude). These split the data into as many
+  ranges as necessary, with each range being a certain number of degrees wide."
   []
   @*coordinate-binning-strategies)
 

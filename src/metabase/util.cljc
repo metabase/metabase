@@ -773,3 +773,14 @@
     (regexp? x)     :dispatch-type/regex
     ;; we should add more mappings here as needed
     :else           :dispatch-type/*))
+
+(defn assoc-dissoc
+  "Called like `(assoc m k v)`, this does [[assoc]] if `(some? v)`, and [[dissoc]] if not.
+
+  Put another way: `k` will either be set to `v`, or removed.
+
+  Note that if `v` is `false`, it will be handled with [[assoc]]; only `nil` causes a [[dissoc]]."
+  [m k v]
+  (if (some? v)
+    (assoc m k v)
+    (dissoc m k)))
