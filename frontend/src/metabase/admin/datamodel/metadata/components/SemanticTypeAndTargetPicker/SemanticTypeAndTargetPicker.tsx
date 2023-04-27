@@ -8,6 +8,7 @@ import Select, {
   Option,
   SelectChangeEvent,
 } from "metabase/core/components/Select";
+import Icon from "metabase/components/Icon/Icon";
 import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings/column";
 import { FieldFormattingSettings, FieldId } from "metabase-types/api";
 import Field from "metabase-lib/metadata/Field";
@@ -111,7 +112,9 @@ const SemanticTypeAndTargetPicker = ({
         placeholder={t`Select a semantic type`}
         searchProp="name"
       />
-      {showCurrencyTypeSelect && hasSeparator}
+      {showCurrencyTypeSelect && (
+        <Icon name="chevronright" size={12} className="mx2 text-medium" />
+      )}
       {showCurrencyTypeSelect && (
         <Select
           className={cx(
