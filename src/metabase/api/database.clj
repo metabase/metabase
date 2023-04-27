@@ -1062,11 +1062,12 @@
   {id                          ms/PositiveInt
    include_editable_data_model [:maybe ms/BooleanString]}
   (let [include_editable_data_model (Boolean/parseBoolean include_editable_data_model)
+        f                           (u/ignore-exceptions
+                                     (classloader/require 'metabase-enterprise.advanced-permissions.common)
+                                     (resolve 'metabase-enterprise.advanced-permissions.common/filter-schema-by-data-model-perms))
         filter-schemas              (fn [schemas]
                                       (if include_editable_data_model
-                                        (if-let [f (u/ignore-exceptions
-                                                    (classloader/require 'metabase-enterprise.advanced-permissions.common)
-                                                    (resolve 'metabase-enterprise.advanced-permissions.common/filter-schema-by-data-model-perms))]
+                                        (if f
                                           (map :schema (f (map (fn [s] {:db_id id :schema s}) schemas)))
                                           schemas)
                                         (filter (partial can-read-schema? id) schemas)))]
