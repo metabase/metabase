@@ -60,7 +60,11 @@ const MetadataTableColumn = ({
 
   const handleChangeDescription = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
-      onUpdateField(field, { description: event.target.value });
+      if (event.target.value) {
+        onUpdateField(field, { description: event.target.value });
+      } else {
+        onUpdateField(field, { description: null });
+      }
     },
     [field, onUpdateField],
   );

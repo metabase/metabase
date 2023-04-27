@@ -141,7 +141,7 @@ const MetadataTableView = ({
   );
 
   const handleChangeDescription = useCallback(
-    (description: string) => {
+    (description: string | null) => {
       onUpdateTable(table, "description", description);
     },
     [table, onUpdateTable],
@@ -183,7 +183,7 @@ interface TableTitleSectionProps {
   table: Table;
   tab: MetadataTabType;
   onChangeName: (name: string) => void;
-  onChangeDescription: (description: string) => void;
+  onChangeDescription: (description: string | null) => void;
 }
 
 const TableTitleSection = ({
@@ -205,7 +205,11 @@ const TableTitleSection = ({
 
   const handleDescriptionChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
-      onChangeDescription(event.target.value);
+      if (event.target.value) {
+        onChangeDescription(event.target.value);
+      } else {
+        onChangeDescription(null);
+      }
     },
     [onChangeDescription],
   );
