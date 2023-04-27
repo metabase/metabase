@@ -29,7 +29,6 @@ export const ToasterContainer = styled.div<ToasterContainerProps>`
 
 export const ToasterMessage = styled.p`
   color: ${color("white")};
-  width: 250px;
   line-height: 24px;
   font-size: 14px;
   margin: 0px;
