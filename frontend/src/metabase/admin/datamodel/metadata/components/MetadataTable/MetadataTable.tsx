@@ -28,13 +28,6 @@ import {
 
 type MetadataTabType = "columns" | "original_schema";
 
-const TABLE_QUERY = {
-  include_sensitive_fields: true,
-  ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
-};
-
-const FIELDS_QUERY = PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps;
-
 const METADATA_TAB_OPTIONS = [
   { name: t`Columns`, value: "columns" },
   { name: t`Original schema`, value: "original_schema" },
@@ -100,8 +93,8 @@ const MetadataTable = ({
   onUpdateTable,
 }: MetadataTableProps) => {
   const { loading, error } = useAsync(async () => {
-    await onFetchIdFields({ id: selectedDatabaseId }, FIELDS_QUERY);
-    await onFetchMetadata({ id: selectedTableId }, { params: TABLE_QUERY });
+    await onFetchIdFields({ id: selectedDatabaseId }, getFieldsQuery());
+    await onFetchMetadata({ id: selectedTableId }, { params: getTableQuery() });
   }, [selectedDatabaseId, selectedTableId]);
 
   if (table == null || loading || error != null) {
@@ -357,5 +350,13 @@ const TableTabSection = ({ tab, onChangeTab }: MetadataTabSectionProps) => {
     </div>
   );
 };
+
+const getTableQuery = () => ({
+  include_sensitive_fields: true,
+  ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
+});
+
+const getFieldsQuery = () =>
+  PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps;
 
 export default connect(mapStateToProps, mapDispatchToProps)(MetadataTable);
