@@ -12,9 +12,9 @@ import FieldVisibilityPicker from "../FieldVisibilityPicker";
 import MetadataSection from "../MetadataSection";
 import MetadataSectionHeader from "../MetadataSectionHeader";
 import SemanticTypeAndTargetPicker from "../SemanticTypeAndTargetPicker";
-import { FieldNameInput } from "./MetadataFieldGeneralSettings.styled";
+import { FieldNameInput } from "./FieldGeneralSettings.styled";
 
-interface MetadataFieldGeneralSettingsProps {
+interface FieldGeneralSettingsProps {
   field: Field;
   idFields: Field[];
   onUpdateField: (field: Field, updates: Partial<Field>) => void;
@@ -22,13 +22,13 @@ interface MetadataFieldGeneralSettingsProps {
   onDiscardFieldValues: (fieldId: FieldId) => void;
 }
 
-const MetadataFieldGeneralSettings = ({
+const FieldGeneralSettings = ({
   field,
   idFields,
   onUpdateField,
   onRescanFieldValues,
   onDiscardFieldValues,
-}: MetadataFieldGeneralSettingsProps) => {
+}: FieldGeneralSettingsProps) => {
   return (
     <div>
       <FieldHeaderSection field={field} onUpdateField={onUpdateField} />
@@ -314,4 +314,4 @@ const FieldCachedValuesSection = ({
   );
 };
 
-export default MetadataFieldGeneralSettings;
+export default FieldGeneralSettings;

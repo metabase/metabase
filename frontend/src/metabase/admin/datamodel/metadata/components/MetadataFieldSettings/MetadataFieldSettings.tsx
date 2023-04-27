@@ -20,7 +20,8 @@ import Table from "metabase-lib/metadata/Table";
 import Field from "metabase-lib/metadata/Field";
 import { discardFieldValues, rescanFieldValues } from "../../actions";
 import MetadataBackButton from "../MetadataBackButton";
-import MetadataFieldGeneralSettings from "../MetadataFieldGeneralSettings";
+import FieldGeneralSettings from "../FieldGeneralSettings";
+import FieldFormattingSettings from "../FieldFormattingSettings";
 
 interface HasDatabaseId {
   id: DatabaseId;
@@ -137,12 +138,18 @@ const MetadataFieldSettings = ({
           hasMultipleSchemas={schemas.length > 1}
         />
         {section === "general" && (
-          <MetadataFieldGeneralSettings
+          <FieldGeneralSettings
             field={field}
             idFields={idFields}
             onUpdateField={onUpdateField}
             onRescanFieldValues={onRescanFieldValues}
             onDiscardFieldValues={onDiscardFieldValues}
+          />
+        )}
+        {section === "formatting" && (
+          <FieldFormattingSettings
+            field={field}
+            onUpdateField={onUpdateField}
           />
         )}
       </div>

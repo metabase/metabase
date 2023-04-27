@@ -25,6 +25,7 @@ import {
   isComment,
   isCoordinate,
   isCountry,
+  isCurrency,
   isDate,
   isDateWithoutTime,
   isDescription,
@@ -182,6 +183,10 @@ class FieldInner extends Base {
 
   isNumeric() {
     return isNumeric(this);
+  }
+
+  isCurrency() {
+    return isCurrency(this);
   }
 
   isBoolean() {
