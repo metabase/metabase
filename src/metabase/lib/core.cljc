@@ -190,4 +190,5 @@
    describe-relative-datetime
    available-temporal-buckets
    temporal-bucket
+   temporal-bucket-option
    with-temporal-bucket])
