@@ -346,7 +346,7 @@ ViewTitleHeaderRightSide.propTypes = {
   onOpenQuestionInfo: PropTypes.func,
   onCloseQuestionInfo: PropTypes.func,
   isShowingQuestionInfoSidebar: PropTypes.bool,
-  onModelPersistenceChange: PropTypes.bool,
+  onModelPersistenceChange: PropTypes.func,
   onQueryChange: PropTypes.func,
 };
 
