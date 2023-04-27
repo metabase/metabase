@@ -17,6 +17,7 @@ interface EntityLoaderProps {
 
 interface StateProps {
   hasMetabot: boolean;
+  homepageDashboard: number | null;
 }
 
 const mapStateToProps = (
@@ -27,8 +28,13 @@ const mapStateToProps = (
   const hasSupportedDatabases = databases.some(canUseMetabotOnDatabase);
   const isMetabotEnabled = getSetting(state, "is-metabot-enabled");
 
+  const hasCustomHomepage = getSetting(state, "custom-homepage");
+
   return {
     hasMetabot: hasModels && hasSupportedDatabases && isMetabotEnabled,
+    homepageDashboard: hasCustomHomepage
+      ? getSetting(state, "custom-homepage-dashboard")
+      : null,
   };
 };
 
