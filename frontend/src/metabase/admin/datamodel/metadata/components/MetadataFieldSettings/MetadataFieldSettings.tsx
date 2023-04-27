@@ -1,4 +1,5 @@
 import React, { ChangeEvent, useCallback, useMemo } from "react";
+import { useAsync } from "react-use";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
@@ -15,7 +16,12 @@ import Breadcrumbs from "metabase/components/Breadcrumbs";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import InputBlurChange from "metabase/components/InputBlurChange";
 import { LeftNavPane, LeftNavPaneItem } from "metabase/components/LeftNavPane";
-import { FieldId, FieldValuesType, Schema } from "metabase-types/api";
+import {
+  DatabaseId,
+  FieldId,
+  FieldValuesType,
+  Schema,
+} from "metabase-types/api";
 import { State } from "metabase-types/store";
 import Select, {
   SelectChangeEvent,
@@ -30,6 +36,10 @@ import MetadataSection from "../MetadataSection";
 import MetadataSectionHeader from "../MetadataSectionHeader";
 import SemanticTypeAndTargetPicker from "../SemanticTypeAndTargetPicker";
 import { FieldNameInput } from "./MetadataFieldSettings.styled";
+
+interface HasDatabaseId {
+  id: DatabaseId;
+}
 
 interface RouterParams {
   databaseId: string;
@@ -66,6 +76,7 @@ interface StateProps {
 }
 
 interface DispatchProps {
+  onFetchIdFields: (database: HasDatabaseId, params: unknown) => void;
   onUpdateField: (field: Field, updates: Partial<Field>) => void;
   onRescanFieldValues: (fieldId: FieldId) => void;
   onDiscardFieldValues: (fieldId: FieldId) => void;
@@ -79,7 +90,17 @@ type MetadataFieldSettingsProps = RouterProps &
   StateProps &
   DispatchProps;
 
+const mapStateToProps = (
+  state: State,
+  { database }: DatabaseLoaderProps,
+): StateProps => ({
+  idFields: Databases.selectors.getIdfields(state, {
+    databaseId: database.id,
+  }),
+});
+
 const mapDispatchToProps: DispatchProps = {
+  onFetchIdFields: Databases.objectActions.fetchIdfields,
   onUpdateField: Fields.actions.update,
   onRescanFieldValues: rescanFieldValues,
   onDiscardFieldValues: discardFieldValues,
@@ -92,14 +113,23 @@ const MetadataFieldSettings = ({
   field,
   idFields = [],
   params: { schemaId, section },
+  onFetchIdFields,
   onUpdateField,
   onRescanFieldValues,
   onDiscardFieldValues,
 }: MetadataFieldSettingsProps) => {
+  const databaseId = database.id;
   const schema = schemas.find(schema => schema.id === schemaId);
 
-  if (!schema) {
-    return <LoadingAndErrorWrapper loading />;
+  const { loading, error } = useAsync(async () => {
+    await onFetchIdFields(
+      { id: databaseId },
+      PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
+    );
+  }, [databaseId]);
+
+  if (loading || error || !schema) {
+    return <LoadingAndErrorWrapper loading={loading} error={error} />;
   }
 
   return (
@@ -538,5 +568,5 @@ export default _.compose(
     query: PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
     selectorName: "getObjectUnfiltered",
   }),
-  connect(null, mapDispatchToProps),
+  connect(mapStateToProps, mapDispatchToProps),
 )(MetadataFieldSettings);
