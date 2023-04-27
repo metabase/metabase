@@ -40,6 +40,11 @@ const mockAction = createMockQueryAction({
     fields: {
       parameter_1: {
         id: "parameter_1",
+        placeholder: "Parameter 1 placeholder",
+      },
+      parameter_2: {
+        id: "parameter_1",
+        placeholder: "Parameter 2 placeholder",
       },
     },
   },
@@ -120,14 +125,16 @@ describe("Actions > ActionParametersInputForm", () => {
   });
 
   it("should generate field types from parameter types", async () => {
-    const action = createMockQueryAction({
+    const action = createMockImplicitQueryAction({
       parameters: [
         createMockActionParameter({
           id: "parameter_1",
+          "display-name": "Parameter 1",
           type: "type/Text",
         }),
         createMockActionParameter({
           id: "parameter_2",
+          "display-name": "Parameter 2",
           type: "type/Integer",
         }),
       ],
@@ -230,10 +237,9 @@ describe("Actions > ActionParametersInputForm", () => {
 
       expect(screen.getByText("My Test Modal")).toBeInTheDocument();
       expect(screen.getByTestId("action-form")).toBeInTheDocument();
-      expect(screen.getByPlaceholderText("Parameter 1")).toHaveAttribute(
-        "type",
-        "text",
-      );
+      expect(
+        screen.getByPlaceholderText("Parameter 1 placeholder"),
+      ).toHaveAttribute("type", "text");
     });
 
     it("should show a delete confirm message with the showConfirmMessage prop", async () => {

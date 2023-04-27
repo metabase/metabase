@@ -21,7 +21,6 @@ export const createMockActionParameter = ({
     name: "ID",
     type: "type/Integer",
     slug: "id",
-    "display-name": "ID",
     ...opts,
   });
   return { ...parameter, target };
