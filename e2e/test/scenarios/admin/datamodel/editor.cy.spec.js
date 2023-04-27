@@ -7,10 +7,9 @@ import {
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
-const { ORDERS_ID } = SAMPLE_DATABASE;
+const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
 const ORDERS_DESCRIPTION =
   "Confirmed Sample Company orders for a product, from a user.";
-
 describe("scenarios > admin > datamodel > editor", () => {
   beforeEach(() => {
     restore();
@@ -27,6 +26,7 @@ describe("scenarios > admin > datamodel > editor", () => {
     visitOrdersTableEditor();
     setInputValue("Orders", "New orders");
     cy.wait("@updateTable");
+    cy.findByText("Updated table display_name");
 
     startNewQuestion();
     popover().within(() => {
@@ -40,16 +40,29 @@ describe("scenarios > admin > datamodel > editor", () => {
     visitOrdersTableEditor();
     setInputValue(ORDERS_DESCRIPTION, "New description");
     cy.wait("@updateTable");
+    cy.findByText("Updated table description");
 
     cy.visit(`/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}`);
     cy.findByText("Orders").should("be.visible");
     cy.findByText("New description").should("be.visible");
   });
 
+  it("should allow clearing the table description", () => {
+    visitOrdersTableEditor();
+    clearInputValue(ORDERS_DESCRIPTION);
+    cy.wait("@updateTable");
+    cy.findByText("Updated table description");
+
+    cy.visit(`/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}`);
+    cy.findByText("Orders").should("be.visible");
+    cy.findByText("No description yet").should("be.visible");
+  });
+
   it("should allow changing the table visibility", () => {
     visitOrdersTableEditor();
     cy.findByText("Hidden").click();
     cy.wait("@updateTable");
+    cy.findByText("Updated table visibility_type");
     cy.findByText("5 Hidden Tables").should("be.visible");
 
     startNewQuestion();
@@ -72,10 +85,52 @@ describe("scenarios > admin > datamodel > editor", () => {
     });
   });
 
+  it("should allow changing the field name", () => {
+    visitOrdersTableEditor();
+    getFieldSection("TAX").within(() => setInputValue("Tax", "New tax"));
+    cy.findByText("Updated New tax").should("be.visible");
+    cy.wait("@updateField");
+
+    openOrdersTable();
+    cy.findByText("New tax").should("be.visible");
+    cy.findByText("Tax").should("not.exist");
+  });
+
+  it("should allow changing the field description", () => {
+    visitOrdersTableEditor();
+    getFieldSection("TOTAL").within(() =>
+      setInputValue("The total billed amount.", "New description"),
+    );
+    cy.findByText("Updated Total").should("be.visible");
+    cy.wait("@updateField");
+
+    cy.visit(
+      `/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}/fields/${ORDERS.TOTAL}`,
+    );
+    cy.findByText("Total").should("be.visible");
+    cy.findByText("New description").should("be.visible");
+  });
+
+  it("should allow clearing the field description", () => {
+    visitOrdersTableEditor();
+    getFieldSection("TOTAL").within(() =>
+      clearInputValue("The total billed amount."),
+    );
+    cy.findByText("Updated Total").should("be.visible");
+    cy.wait("@updateField");
+
+    cy.visit(
+      `/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}/fields/${ORDERS.TOTAL}`,
+    );
+    cy.findByText("Total").should("be.visible");
+    cy.findByText("No description yet").should("be.visible");
+  });
+
   it("should allow changing the field visibility", () => {
     visitOrdersTableEditor();
     getFieldSection("TAX").findByText("Everywhere").click();
     setSelectValue("Do not include");
+    cy.findByText("Updated Tax").should("be.visible");
     cy.wait("@updateField");
 
     openOrdersTable();
@@ -83,10 +138,11 @@ describe("scenarios > admin > datamodel > editor", () => {
     cy.findByText("Tax").should("not.exist");
   });
 
-  it("should allow changing the semantic type and currency", () => {
+  it("should allow changing the field semantic type and currency", () => {
     visitOrdersTableEditor();
     getFieldSection("TAX").findByText("No semantic type").click();
     searchAndSelectValue("Currency");
+    cy.findByText("Updated Tax").should("be.visible");
     cy.wait("@updateField");
 
     getFieldSection("TAX").findByText("US Dollar").click();
@@ -97,10 +153,11 @@ describe("scenarios > admin > datamodel > editor", () => {
     cy.findByText("Tax (CA$)").should("be.visible");
   });
 
-  it("should allow changing of foreign key target", () => {
+  it("should allow changing the field foreign key target", () => {
     visitOrdersTableEditor();
     getFieldSection("USER_ID").findByText("People → ID").click();
     setSelectValue("Products → ID");
+    cy.findByText("Updated User ID").should("be.visible");
     cy.wait("@updateField");
 
     startNewQuestion();
@@ -115,7 +172,7 @@ describe("scenarios > admin > datamodel > editor", () => {
     cy.findByText("User ID").should("be.visible");
   });
 
-  it("should allow sorting columns", () => {
+  it("should allow sorting fields", () => {
     visitOrdersTableEditor();
 
     cy.findByLabelText("Sort").click();
@@ -183,6 +240,10 @@ const visitOrdersTableEditor = (database = "Sample Database") => {
 
 const setInputValue = (oldValue, newValue) => {
   cy.findByDisplayValue(oldValue).clear().type(newValue).blur();
+};
+
+const clearInputValue = oldValue => {
+  cy.findByDisplayValue(oldValue).clear().blur();
 };
 
 const setSelectValue = newValue => {

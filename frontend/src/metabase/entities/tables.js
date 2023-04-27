@@ -80,7 +80,7 @@ const Tables = createEntity({
       return Tables.actions.update(
         entityObject,
         { [name]: value },
-        notify(opts, `Table ${name}`, t`updated`),
+        notify(opts, `table ${name}`, t`updated`),
       );
     },
     // loads `query_metadata` for a single table
