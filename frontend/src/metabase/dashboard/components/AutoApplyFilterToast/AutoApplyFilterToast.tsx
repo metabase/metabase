@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import _ from "underscore";
 import { t } from "ttag";
 
@@ -16,37 +16,50 @@ import {
 } from "metabase/dashboard/actions";
 import { DASHBOARD_SLOW_TIMEOUT } from "metabase/dashboard/constants";
 import Toaster from "metabase/components/Toaster/Toaster";
-import { useToggle } from "metabase/hooks/use-toggle";
+import { useMachine } from "metabase/hooks/use-machine";
 
 export default function AutoApplyFilterToast() {
-  useMachine(MACHINE_CONFIG);
   const isAutoApplyFilters = useSelector(getIsAutoApplyFilters);
   const parameterValues = useSelector(getParameterValues);
   const isAllDashcardsLoaded = useSelector(getIsLoadingComplete);
   const dashboardId = useSelector(getDashboardId);
-  const hasShownSlowToaster = useHasShownSlowToaster();
+  const latestLoadingStartTime = useLatestLoadingStartTime();
+
+  const isReadyForToast = isAutoApplyFilters && !_.isEmpty(parameterValues);
+
+  const [state, send] = useMachine({
+    ...MACHINE_CONFIG,
+    initialState: isReadyForToast ? "ready" : "never",
+  });
 
   const dispatch = useDispatch();
 
-  const haveEverShownSlowToasterWhenAutoApplyFilters = useRef(false);
-  if (hasShownSlowToaster && isAutoApplyFilters) {
-    haveEverShownSlowToasterWhenAutoApplyFilters.current = true;
-  }
-
-  const isShowingAutoApplyFiltersToast =
-    isAutoApplyFilters &&
-    !_.isEmpty(parameterValues) &&
-    isAllDashcardsLoaded &&
-    hasShownSlowToaster &&
-    haveEverShownSlowToasterWhenAutoApplyFilters.current;
-
-  const [isToastShown, { turnOff: hideToast, turnOn: showToast }] = useToggle();
+  useEffect(() => {
+    if (isReadyForToast) {
+      send("READY");
+    } else {
+      send("NEVER");
+    }
+  }, [isReadyForToast, send]);
 
   useEffect(() => {
-    if (isShowingAutoApplyFiltersToast) {
-      showToast();
+    if (latestLoadingStartTime > 0) {
+      send("LOAD_CARDS");
+      const timeoutId = setTimeout(() => {
+        send("TIME_OUT");
+      }, DASHBOARD_SLOW_TIMEOUT);
+
+      return () => {
+        clearTimeout(timeoutId);
+      };
     }
-  }, [isShowingAutoApplyFiltersToast, showToast]);
+  }, [latestLoadingStartTime, send]);
+
+  useEffect(() => {
+    if (isAllDashcardsLoaded) {
+      send("CARDS_LOADED");
+    }
+  }, [isAllDashcardsLoaded, send]);
 
   const onTurnOffAutoApplyFilters = () => {
     dispatch(
@@ -58,14 +71,16 @@ export default function AutoApplyFilterToast() {
       }),
     );
     dispatch(saveDashboardAndCards(dashboardId));
-    hideToast();
+    send("NEVER");
   };
 
   return (
     <Toaster
-      isShown={isToastShown}
+      isShown={state === "shown"}
       fixed
-      onDismiss={hideToast}
+      onDismiss={() => {
+        send("DISMISS_TOAST");
+      }}
       message={t`You can make this dashboard snappier by turning off auto-applying filters.`}
       confirmText={t`Turn off`}
       onConfirm={onTurnOffAutoApplyFilters}
@@ -73,41 +88,22 @@ export default function AutoApplyFilterToast() {
   );
 }
 
-function useHasShownSlowToaster() {
-  const [hasShownSlowToaster, setHasShownSlowToaster] = useState(false);
+function useLatestLoadingStartTime() {
   const loadingStartTime = useSelector(getLoadingStartTime);
+
   const [latestLoadingStartTime, setLatestLoadingStartTime] =
     useState(loadingStartTime);
-  const isAllDashcardsLoaded = useSelector(getIsLoadingComplete);
-  const isAllDashcardsLoadedRef = useRef(isAllDashcardsLoaded);
-  isAllDashcardsLoadedRef.current = isAllDashcardsLoaded;
 
   useEffect(() => {
     if (loadingStartTime > 0) {
       setLatestLoadingStartTime(loadingStartTime);
-      // // This ensure that the flag resets every time we refresh the dashboard via changing parameter values
     }
   }, [loadingStartTime]);
 
-  useEffect(() => {
-    if (latestLoadingStartTime) {
-      const timer = setTimeout(() => {
-        if (!isAllDashcardsLoadedRef.current) {
-          setHasShownSlowToaster(true);
-        }
-      }, DASHBOARD_SLOW_TIMEOUT);
-
-      return () => {
-        clearTimeout(timer);
-      };
-    }
-  }, [latestLoadingStartTime]);
-
-  return hasShownSlowToaster;
+  return latestLoadingStartTime;
 }
 
 const MACHINE_CONFIG = {
-  initialState: "never",
   states: {
     never: {
       on: { READY: "ready" },
@@ -123,6 +119,7 @@ const MACHINE_CONFIG = {
         NEVER: "never",
         TIME_OUT: "timedOut",
         LOAD_CARDS: "loading",
+        CARDS_LOADED: "ready",
       },
     },
     timedOut: {
@@ -135,42 +132,8 @@ const MACHINE_CONFIG = {
     shown: {
       on: {
         NEVER: "never",
-        DISMISS: "ready",
+        DISMISS_TOAST: "ready",
       },
     },
   },
 } as const;
-
-type StateConfig<States> = {
-  on?: {
-    [A in Action<States>]?: keyof States;
-  };
-};
-type StatesConfig<States> = Record<keyof States, StateConfig<States>>;
-type MachineConfig<States> = {
-  initialState: keyof States;
-  states: StatesConfig<States>;
-};
-
-type ValueOf<T> = T[keyof T];
-type ActionMap<States> = {
-  [State in keyof States]: keyof States[State][keyof States[State]];
-};
-type Action<States> = ValueOf<ActionMap<States>>;
-type Send<States> = (action: Action<States>) => void;
-type UseMachineReturn<States> = [keyof States, Send<States>];
-
-function useMachine<Config extends MachineConfig<Config["states"]>>({
-  initialState,
-  states,
-}: Config): UseMachineReturn<Config["states"]> {
-  const statesRef = useRef(states);
-  const [state, setState] = useState(initialState);
-  const send = useCallback((action: Action<Config["states"]>) => {
-    setState(state => {
-      const nextState = statesRef.current[state].on?.[action];
-      return nextState ?? state;
-    });
-  }, []);
-  return [state, send];
-}
