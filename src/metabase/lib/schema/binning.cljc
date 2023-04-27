@@ -15,9 +15,9 @@
   [:and
    [:map
     [:strategy  [:ref ::binning-strategies]]
-    [:bin-width {:optional true} number?]
+    [:bin-width {:optional true} pos?]
     [:num-bins  {:optional true} ::lib.schema.common/int-greater-than-zero]]
-   [:fn {:error/message ":bin-width or :num-bins must be provided, matching the :strategy"}
+   [:fn {:error/message "if :strategy is not :default, the matching key :bin-width or :num-bins must also be set"}
     #(when-let [strat (:strategy %)]
        (or (= strat :default)
            (contains? % strat)))]])
