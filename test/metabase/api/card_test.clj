@@ -48,7 +48,8 @@
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.hydrate :refer [hydrate]]
-   [toucan2.core :as t2])
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp])
   (:import
    (java.io ByteArrayInputStream)
    (java.util UUID)
@@ -387,6 +388,66 @@
         (is (= #{"Card 1" "Card 3" "Card 4"}
                (into #{} (map :name) (mt/user-http-request :rasta :get 200 "card"
                                                            :f :using_model :model_id model-id))))))))
+
+(deftest get-series-for-card-permission-test
+  (t2.with-temp/with-temp
+    [:model/Card {card-id :id} {:name          "Card"
+                                :display       "line"
+                                :collection_id (t2/select-one-pk Collection :personal_owner_id (mt/user->id :crowberto))}]
+    (is (= "You don't have permissions to do that."
+           (mt/user-http-request :rasta :get 403 (format "card/%d/series" card-id))))
+
+    (is (seq
+          (mt/user-http-request :crowberto :get 200 (format "card/%d/series" card-id))))))
+
+(deftest get-series-for-card-type-check-test
+  (testing "400 if the card's display is not comptaible"
+    (t2.with-temp/with-temp
+      [:model/Card {card-id :id} {:name    "Card"
+                                  :display "table"}]
+      (is (= "Card with type table is not compatible to have series"
+             (:message (mt/user-http-request :crowberto :get 400 (format "card/%d/series" card-id)))))))
+
+  (testing "404 if the card does not exsits"
+    (is (= "Not found."
+           (mt/user-http-request :crowberto :get 404 (format "card/%d/series" Integer/MAX_VALUE))))))
+
+(deftest get-series-check-compatibility-test
+  (let [simple-mbql-chart-query (fn [attrs]
+                                  (merge (mt/card-with-source-metadata-for-query
+                                           (mt/mbql-query venues {:aggregation [[:sum $venues.price]]
+                                                                  :breakout    [$venues.category_id]}))
+                                         {:visualization_settings {:graph.metrics    ["sum"]
+                                                                   :graph.dimensions ["CATEGORY_ID"]}}
+                                         attrs))]
+    (t2.with-temp/with-temp
+      [;; comptaible cards
+       :model/Card line    (simple-mbql-chart-query {:name "A Line"   :display :line})
+       :model/Card bar     (simple-mbql-chart-query {:name "A Bar"    :display :bar})
+       :model/Card area    (simple-mbql-chart-query {:name "An Area"  :display :area})
+       :model/Card scalar  (merge (mt/card-with-source-metadata-for-query
+                                    (mt/mbql-query venues {:aggregation [[:count]]}))
+                                  {:name "A Scalar" :display :scalar})
+       :model/Card _native (merge (mt/card-with-source-metadata-for-query (mt/native-query {:query "select sum(price) from venues;"}))
+                                  {:name       "A Native query"
+                                   :display    :scalar
+                                   :query_type "native"})
+       ;; incomptabile cards
+       :model/Card _pie    (simple-mbql-chart-query {:name "A pie" :display :pie})
+       :model/Card _table  (simple-mbql-chart-query {:name "A table" :display :table})
+       :model/Card _       (merge (mt/card-with-source-metadata-for-query (mt/native-query {:query "select sum(price) from venues;"}))
+                                  {:name       "A Native query table"
+                                   :display    :table
+                                   :query_type "native"})]
+      (doseq [[card-id display-type expected]
+              [[(:id line)   :line   #{"A Native query" "An Area" "A Bar"}
+                (:id bar)    :bar    #{"A Native query" "An Area" "A Line"}
+                (:id area)   :area   #{"A Native query" "A Bar" "A Line"}
+                (:id scalar) :scalar #{"A Native query" "An Area" "A Bar" "A Line"}]]]
+        (testing (format "Card with display-type=%s should have compatible cards correctly returned" display-type)
+          (let [returned-card-names (set (map :name (mt/user-http-request :crowberto :get 200 (format "/card/%d/series" card-id))))]
+            (is (set/subset? expected returned-card-names))
+            (is (not (contains? returned-card-names #{"A pie" "A table"})))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        CREATING A CARD (POST /api/card)                                        |

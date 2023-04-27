@@ -15,6 +15,7 @@
    [metabase.driver :as driver]
    [metabase.email.messages :as messages]
    [metabase.events :as events]
+   [metabase.lib.types.isa :as lib.types.isa]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.util :as mbql.u]
    [metabase.models
@@ -46,7 +47,6 @@
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
    [metabase.sync.analyze.query-results :as qr]
    [metabase.task.persist-refresh :as task.persist-refresh]
-   [metabase.lib.types.isa :as lib.types.isa]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [trs tru]]
@@ -183,104 +183,6 @@
                      card)))
             cards))))
 
-(defn- columns-from-names
-  [card names]
-  (when-let [names (set names)]
-   (filter #(names (:name %)) (:result_metadata card))))
-
-(defmulti series-are-compatible?
-  (fn [initial-serie _second-card]
-   (:display initial-serie)))
-
-(defn- area-bar-line-serie-are-compatible?
-  [first-card second-card]
-  (let [initial-dimensions (columns-from-names
-                             first-card
-                             (get-in first-card [:visualization_settings :graph.dimensions]))
-        new-dimensions     (columns-from-names
-                            second-card
-                            (get-in first-card [:visualization_settings :graph.dimensions]))
-        new-metrics        (columns-from-names
-                             second-card
-                             (get-in first-card [:visualization_settings :graph.metrics]))]
-    (cond
-      (or (zero? (count new-dimensions))
-        (zero? (count new-metrics)))
-      false
-
-      (not (every? lib.types.isa/numeric? new-metrics))
-      false
-
-      (not= (lib.types.isa/date? (first initial-dimensions))
-          (lib.types.isa/date? (first new-dimensions)))
-      false
-
-      (and (not= (lib.types.isa/numeric? (first initial-dimensions))
-                 (lib.types.isa/numeric? (first new-dimensions)))
-           (not (and
-                  (lib.types.isa/date? (first initial-dimensions))
-                  (lib.types.isa/date? (first new-dimensions)))))
-      false
-
-      :else true)))
-
-(defmethod series-are-compatible? :area
-  [initial-serie second-card]
-  (area-bar-line-serie-are-compatible? initial-serie second-card))
-
-(defmethod series-are-compatible? :line
-  [initial-serie second-card]
-  (area-bar-line-serie-are-compatible? initial-serie second-card))
-
-(defmethod series-are-compatible? :bar
-  [initial-serie second-card]
-  (area-bar-line-serie-are-compatible? initial-serie second-card))
-
-(defmethod series-are-compatible? :scala
-  [initial-card second-card]
-  (= (count (:result_metadata initial-card))
-     (count (:result_metadata second-card))))
-
-(defn- fetch-compatible-series*
-  [initial-card last-cursor page-size]
-  (let [cards (->> (t2/select Card
-                           :archived false
-                           :display [:in ["area" "bar" "line" "scalar"]]
-                           :id [:not= (:id initial-card)]
-                           (merge {:order-by [[:%lower.name :asc]]}
-                                  (when last-cursor
-                                    {:where [[:> :%lower.name last-cursor]]})
-                                  (when page-size
-                                    {:limit (+ 10 page-size)})))
-               (filter mi/can-read?)
-               (filter #(or (= (:query_type %) :native)
-                            (series-are-compatible? initial-card %))))]
-    (if page-size
-      (take page-size cards)
-      cards)))
-
-
-(defn- fetch-compatible-series
-  [initial-card last-cursor current-cards page-size]
- (let [cards     (fetch-compatible-series* initial-card last-cursor page-size)
-       new-cards (concat current-cards cards)]
-   (if (and (seq cards)
-            (some? page-size)
-            (< (count new-cards) page-size))
-     (fetch-compatible-series initial-card (:name (last cards)) new-cards (- page-size (count cards)))
-     new-cards)))
-
-(api/defendpoint GET "/series"
-  "Get a list of series."
-  [initial_card_id last_cursor]
-  {initial_card_id int?
-   last_cursor     [:maybe ms/NonBlankString]}
-  (fetch-compatible-series
-    (api/check-404 (t2/select-one :model/Card :id initial_card_id))
-    last_cursor
-    []
-    mw.offset-paging/*limit*))
-
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:id"
   "Get `Card` with ID."
@@ -301,6 +203,152 @@
     (u/prog1 card
       (when-not (Boolean/parseBoolean ignore_view)
         (events/publish-event! :card-read (assoc <> :actor_id api/*current-user-id*))))))
+
+(defn- card-columns-from-names
+  [card names]
+  (when-let [names (set names)]
+    (filter #(names (:name %)) (:result_metadata card))))
+
+(defmulti series-are-compatible?
+  "Check if the `second-card` is compatible to be used as series of `card`."
+  (fn [card _second-card]
+   (:display card)))
+
+(defn- area-bar-line-serie-are-compatible?
+  [first-card second-card]
+  (let [initial-dimensions (card-columns-from-names
+                             first-card
+                             (get-in first-card [:visualization_settings :graph.dimensions]))
+        new-dimensions     (card-columns-from-names
+                             second-card
+                             (get-in second-card [:visualization_settings :graph.dimensions]))
+        new-metrics        (card-columns-from-names
+                             second-card
+                             (get-in second-card [:visualization_settings :graph.metrics]))]
+    (cond
+      ;; must have at least one dimension and one metric
+      (or (zero? (count new-dimensions))
+          (zero? (count new-metrics)))
+      false
+
+      ;; all metrics must be numeric
+      (not (every? lib.types.isa/numeric? new-metrics))
+      false
+
+      ;; both or neither primary dimension must be dates
+      (not= (lib.types.isa/date? (first initial-dimensions))
+            (lib.types.isa/date? (first new-dimensions)))
+      false
+
+      ;; both or neither primary dimension must be numeric
+      ;; a timestamp field is both date and number so don't enforce the condition if both fields are dates; see #2811
+      (and (not= (lib.types.isa/numeric? (first initial-dimensions))
+                 (lib.types.isa/numeric? (first new-dimensions)))
+           (not (and
+                  (lib.types.isa/date? (first initial-dimensions))
+                  (lib.types.isa/date? (first new-dimensions)))))
+      false
+
+      :else true)))
+
+(defmethod series-are-compatible? :area
+  [first-card second-card]
+  (area-bar-line-serie-are-compatible? first-card second-card))
+
+(defmethod series-are-compatible? :line
+  [first-card second-card]
+  (area-bar-line-serie-are-compatible? first-card second-card))
+
+(defmethod series-are-compatible? :bar
+  [first-card second-card]
+  (area-bar-line-serie-are-compatible? first-card second-card))
+
+(defmethod series-are-compatible? :scalar
+  [first-card second-card]
+  (= (count (:result_metadata first-card))
+     (count (:result_metadata second-card))))
+
+(def ^:private supported-series-display-type (set (keys (methods series-are-compatible?))))
+
+(defn- fetch-compatible-series*
+  "Fetch a list of compatible series for the given card.
+
+  Provide `page-size` to limit the number of cards returned, it does not guaranteed to return exactly `page-size` cards.
+  Use `fetch-compatible-series` for that."
+  [card query last-cursor page-size]
+  (let [matching-cards  (t2/select Card
+                                   :archived false
+                                   :display [:in supported-series-display-type]
+                                   :id [:not= (:id card)]
+                                   (cond-> {:order-by [[:%lower.name :asc]]
+                                            :where    [:and]}
+                                     last-cursor
+                                     (update :where conj [:> :%lower.name (u/lower-case-en last-cursor)])
+
+                                     query
+                                     (update :where conj [:like :%lower.name (str "%" (u/lower-case-en query) "%")])
+                                     ;; add a little buffer to the page to account for cards that are not
+                                     ;; compatible + do not have permissions to read
+                                     ;; this is just a heuristic, but it should be good enough
+                                     page-size
+                                     (assoc :limit (+ 10 page-size))))
+
+        _ (def matching-cards matching-cards)
+        _ (def card card)
+        compatible-cards (->> matching-cards
+                              (filter mi/can-read?)
+                              (filter #(or
+                                         ;; columns name on native query are not match with the column name in viz-settings. why??
+                                         ;; so we can't use series-are-compatible? to filter out incompatible native cards.
+                                         ;; => we assume all native queries are compatible and FE will figure it out later
+                                         (= (:query_type %) :native)
+                                         (series-are-compatible? card %))))]
+    (if page-size
+      (take page-size compatible-cards)
+      compatible-cards)))
+
+(defn- fetch-compatible-series
+  "Fetches a list of compatible series for `card`.
+
+  - last-cursor: is the card's name of the last request
+  - page-size: is nullable, it'll try to fetches exactly `page-size` cards if there are enough cards."
+ ([card query last-cursor page-size]
+  (fetch-compatible-series card last-cursor query page-size []))
+
+ ([card query last-cursor page-size current-cards]
+  (let [cards     (fetch-compatible-series* card query last-cursor page-size)
+        new-cards (concat current-cards cards)]
+    ;; if the total card fetches is less than page-size and there are still more, continue fetching
+    (if (and (some? page-size)
+             (seq cards)
+             (< (count cards) page-size))
+      (fetch-compatible-series card (:name (last cards)) (- page-size (count cards)) new-cards)
+      new-cards))))
+
+(api/defendpoint GET "/:id/series"
+  "Fetches a list of comptatible series with the card with id `card_id`.
+
+  Provide `last_cursor` with value is the name of the last card to fetch the next page.
+  Provide `query` to search card by name."
+  [id last_cursor query]
+  {id          int?
+   last_cursor [:maybe ms/NonBlankString]
+   query       [:maybe ms/NonBlankString]}
+  (let [card         (-> (t2/select-one :model/Card :id id) api/check-404 api/read-check)
+        card-display (:display card)
+        _            (when-not (supported-series-display-type card-display)
+                       (throw (ex-info (tru "Card with type {0} is not compatible to have series" (name card-display))
+                                       {:display         card-display
+                                        :allowed-display (map name supported-series-display-type)
+                                        :status-code     400})))
+        series       (fetch-compatible-series
+                       card
+                       query
+                       last_cursor
+                       mw.offset-paging/*limit*)]
+    #_{:series      series
+       :last_cursor (:name (last series))}
+    series))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:id/timelines"
