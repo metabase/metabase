@@ -39,17 +39,30 @@ const ACTION = createMockQueryAction({
   parameters: [
     createMockActionParameter({
       id: "parameter_1",
-      type: "type/Text",
-      "display-name": "Parameter 1",
+      name: "Parameter 1",
+      type: "string/=",
       target: ["variable", ["template-tag", "1"]],
     }),
     createMockActionParameter({
       id: "parameter_2",
-      type: "type/Integer",
-      "display-name": "Parameter 2",
+      name: "Parameter 2",
+      type: "number/=",
       target: ["variable", ["template-tag", "2"]],
     }),
   ],
+  visualization_settings: {
+    fields: {
+      // TODO: mock these properly
+      parameter_1: {
+        fieldType: "string",
+        inputType: "string",
+      },
+      parameter_2: {
+        fieldType: "number",
+        inputType: "number",
+      },
+    },
+  },
 });
 
 function createMockActionDashboardCard(
