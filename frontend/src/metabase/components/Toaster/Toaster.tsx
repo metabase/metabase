@@ -15,7 +15,6 @@ export interface ToasterProps extends HTMLAttributes<HTMLDivElement> {
   isShown: boolean;
   fixed?: boolean;
   className?: string;
-  size?: "small" | "medium";
   onConfirm: () => void;
   onDismiss: () => void;
 }
@@ -26,7 +25,6 @@ const Toaster = ({
   isShown,
   fixed,
   className,
-  size = "small",
   onConfirm,
   onDismiss,
   ...props
@@ -52,7 +50,6 @@ const Toaster = ({
     <ToasterContainer
       show={open}
       fixed={fixed}
-      size={size}
       className={className}
       {...props}
     >

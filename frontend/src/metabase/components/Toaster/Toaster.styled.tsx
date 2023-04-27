@@ -4,14 +4,12 @@ import { alpha, color, lighten } from "metabase/lib/colors";
 interface ToasterContainerProps {
   show: boolean;
   fixed?: boolean;
-  size: "small" | "medium";
 }
 
 export const ToasterContainer = styled.div<ToasterContainerProps>`
   display: flex;
   flex-direction: row;
   overflow-x: hidden;
-  max-width: ${props => (props.size === "small" ? 388 : 500)}px;
   background-color: ${color("text-dark")};
   padding: 16px;
   border-radius: 6px;
