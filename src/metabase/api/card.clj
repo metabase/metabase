@@ -15,6 +15,7 @@
    [metabase.driver :as driver]
    [metabase.email.messages :as messages]
    [metabase.events :as events]
+   [metabase.lib.types.isa :as lib.types.isa]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.util :as mbql.u]
    [metabase.models
@@ -46,7 +47,6 @@
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
    [metabase.sync.analyze.query-results :as qr]
    [metabase.task.persist-refresh :as task.persist-refresh]
-   [metabase.lib.types.isa :as lib.types.isa]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [trs tru]]
@@ -199,20 +199,20 @@
                              (get-in first-card [:visualization_settings :graph.dimensions]))
         new-dimensions     (columns-from-names
                             second-card
-                            (get-in first-card [:visualization_settings :graph.dimensions]))
+                            (get-in second-card [:visualization_settings :graph.dimensions]))
         new-metrics        (columns-from-names
-                             second-card
-                             (get-in first-card [:visualization_settings :graph.metrics]))]
+                            second-card
+                            (get-in second-card [:visualization_settings :graph.metrics]))]
     (cond
       (or (zero? (count new-dimensions))
-        (zero? (count new-metrics)))
+          (zero? (count new-metrics)))
       false
 
       (not (every? lib.types.isa/numeric? new-metrics))
       false
 
       (not= (lib.types.isa/date? (first initial-dimensions))
-          (lib.types.isa/date? (first new-dimensions)))
+            (lib.types.isa/date? (first new-dimensions)))
       false
 
       (and (not= (lib.types.isa/numeric? (first initial-dimensions))
@@ -225,40 +225,39 @@
       :else true)))
 
 (defmethod series-are-compatible? :area
-  [initial-serie second-card]
-  (area-bar-line-serie-are-compatible? initial-serie second-card))
+  [first-card second-card]
+  (area-bar-line-serie-are-compatible? first-card second-card))
 
 (defmethod series-are-compatible? :line
-  [initial-serie second-card]
-  (area-bar-line-serie-are-compatible? initial-serie second-card))
+  [first-card second-card]
+  (area-bar-line-serie-are-compatible? first-card second-card))
 
 (defmethod series-are-compatible? :bar
-  [initial-serie second-card]
-  (area-bar-line-serie-are-compatible? initial-serie second-card))
+  [first-card second-card]
+  (area-bar-line-serie-are-compatible? first-card second-card))
 
 (defmethod series-are-compatible? :scala
-  [initial-card second-card]
-  (= (count (:result_metadata initial-card))
+  [first-card second-card]
+  (= (count (:result_metadata first-card))
      (count (:result_metadata second-card))))
 
 (defn- fetch-compatible-series*
-  [initial-card last-cursor page-size]
+  [first-card last-cursor page-size]
   (let [cards (->> (t2/select Card
-                           :archived false
-                           :display [:in ["area" "bar" "line" "scalar"]]
-                           :id [:not= (:id initial-card)]
-                           (merge {:order-by [[:%lower.name :asc]]}
-                                  (when last-cursor
-                                    {:where [[:> :%lower.name last-cursor]]})
-                                  (when page-size
-                                    {:limit (+ 10 page-size)})))
+                              :archived false
+                              :display [:in ["area" "bar" "line" "scalar"]]
+                              :id [:not= (:id first-card)]
+                              (merge {:order-by [[:%lower.name :asc]]}
+                                     (when last-cursor
+                                       {:where [[:> :%lower.name (u/lower-case-en last-cursor)]]})
+                                     (when page-size
+                                       {:limit (+ 10 page-size)})))
                (filter mi/can-read?)
                (filter #(or (= (:query_type %) :native)
-                            (series-are-compatible? initial-card %))))]
+                            (series-are-compatible? first-card %))))]
     (if page-size
       (take page-size cards)
       cards)))
-
 
 (defn- fetch-compatible-series
   [initial-card last-cursor current-cards page-size]
