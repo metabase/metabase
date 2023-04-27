@@ -6,7 +6,7 @@ import _ from "underscore";
 
 import * as Urls from "metabase/lib/urls";
 
-import Collections from "metabase/entities/collections";
+import Collections, { ROOT_COLLECTION } from "metabase/entities/collections";
 import SnippetCollections from "metabase/entities/snippet-collections";
 
 import { isPersonalCollectionChild } from "metabase/collections/utils";
@@ -46,9 +46,18 @@ const mapStateToProps = (state, props) => {
       namespace: props.namespace,
       params: { collectionId },
     }),
-    collection: getCollectionEntity(props).selectors.getObject(state, {
-      entityId: collectionId,
-    }),
+    collection: {
+      ...getCollectionEntity(props).selectors.getObject(state, {
+        entityId: collectionId,
+      }),
+      ...(collectionId === ROOT_COLLECTION.id
+        ? {
+            children: Collections.selectors.getList(state, {
+              entityQuery: collectionsQuery,
+            }),
+          }
+        : []),
+    },
     collectionsList: Collections.selectors.getList(state, {
       entityQuery: { tree: true },
     }),
