@@ -24,8 +24,9 @@ type Opts = {
 function useActionForm({ action, initialValues = {} }: Opts) {
   const fieldSettings = useMemo(
     () =>
-      action.visualization_settings?.fields ||
-      generateFieldSettingsFromParameters(action.parameters),
+      action.type === "implicit"
+        ? generateFieldSettingsFromParameters(action.parameters)
+        : action.visualization_settings?.fields,
     [action],
   );
 
