@@ -1,5 +1,5 @@
 import { ForeignKey } from "./foreign-key";
-import { Database, InitialSyncStatus } from "./database";
+import { Database, DatabaseId, InitialSyncStatus } from "./database";
 import { Field } from "./field";
 
 export type ConcreteTableId = number;
@@ -19,7 +19,7 @@ export type TableVisibilityType =
 
 export interface Table {
   id: TableId;
-  db_id: number;
+  db_id: DatabaseId;
   db?: Database;
   name: string;
   description: string | null;
@@ -35,4 +35,10 @@ export interface Table {
 export interface Schema {
   id: SchemaId;
   name: string;
+}
+
+export interface TableListQuery {
+  dbId?: DatabaseId;
+  schemaName?: string;
+  include_hidden?: boolean;
 }
