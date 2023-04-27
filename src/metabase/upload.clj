@@ -66,6 +66,33 @@
        (catch Exception _
          false)))
 
+(defn- regex
+  "Compile a regex out of the concatenated components"
+  [& elements]
+  (re-pattern (apply str elements)))
+
+(def ^:private currency "A supported currency sign"      "[$€£¥₹₪₩₿¢\\s]")
+(def ^:private digits "Digits, perhaps with a separator" "[\\d,]")
+(def ^:private sign "Optionally, a negative sign"        "-?")
+
+;; These are pulled out so that the regex is only compiled once, not for every invocation of value->type
+(def ^:private int-regex "Matches a positive or negative integer, including currency"
+  ;; currency signs can be all over: $2, -$2, $-2, 2€
+  (regex currency "?\\s*"
+         sign
+         currency "?"
+         digits "+"
+         "\\s*" currency "?"))
+
+(def ^:private float-regex "Matches a positive or negative decimal, including currency"
+  (regex currency "?\\s*"
+         sign
+         currency "?"
+         digits "*"
+         "\\."
+         digits "+"
+         "\\s*" currency "?"))
+
 (defn value->type
   "The most-specific possible type for a given value. Possibilities are:
     - ::boolean
@@ -82,8 +109,8 @@
   (cond
     (str/blank? value)                                      nil
     (re-matches #"(?i)true|t|yes|y|1|false|f|no|n|0" value) ::boolean
-    (re-matches #"-?[\d,]+"                          value) ::int
-    (re-matches #"-?[\d,]*\.\d+"                     value) ::float
+    (re-matches int-regex                            value) ::int
+    (re-matches float-regex                          value) ::float
     (datetime-string?                                value) ::datetime
     (date-string?                                    value) ::date
     (re-matches #".{1,255}"                          value) ::varchar_255
@@ -158,11 +185,20 @@
     (date-string? s) (t/local-date-time (t/local-date s) (t/local-time "00:00:00"))
     (datetime-string? s) (t/local-date-time s)))
 
+(let [currency-re (re-pattern currency)]
+  (defn- remove-currency-signs
+    [s]
+    (str/replace s currency-re "")))
+
+(defn- remove-separators
+  [s]
+  (str/replace s "," ""))
+
 (def ^:private upload-type->parser
   {::varchar_255 identity
    ::text        identity
-   ::int         #(Integer/parseInt (str/trim %))
-   ::float       #(parse-double (str/trim %))
+   ::int         #(Integer/parseInt (remove-currency-signs (remove-separators (str/trim %))))
+   ::float       #(parse-double (remove-currency-signs (remove-separators (str/trim %))))
    ::boolean     #(parse-bool (str/trim %))
    ::date        #(parse-date (str/trim %))
    ::datetime    #(parse-datetime (str/trim %))})
