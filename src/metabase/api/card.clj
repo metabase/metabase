@@ -216,40 +216,41 @@
 
 (defn- area-bar-line-serie-are-compatible?
   [first-card second-card]
-  (let [initial-dimensions (card-columns-from-names
-                             first-card
-                             (get-in first-card [:visualization_settings :graph.dimensions]))
-        new-dimensions     (card-columns-from-names
-                             second-card
-                             (get-in second-card [:visualization_settings :graph.dimensions]))
-        new-metrics        (card-columns-from-names
-                             second-card
-                             (get-in second-card [:visualization_settings :graph.metrics]))]
-    (cond
-      ;; must have at least one dimension and one metric
-      (or (zero? (count new-dimensions))
-          (zero? (count new-metrics)))
-      false
+  (and (#{:area :line :bar} (:display second-card))
+       (let [initial-dimensions (card-columns-from-names
+                                  first-card
+                                  (get-in first-card [:visualization_settings :graph.dimensions]))
+             new-dimensions     (card-columns-from-names
+                                  second-card
+                                  (get-in second-card [:visualization_settings :graph.dimensions]))
+             new-metrics        (card-columns-from-names
+                                  second-card
+                                  (get-in second-card [:visualization_settings :graph.metrics]))]
+         (cond
+           ;; must have at least one dimension and one metric
+           (or (zero? (count new-dimensions))
+               (zero? (count new-metrics)))
+           false
 
-      ;; all metrics must be numeric
-      (not (every? lib.types.isa/numeric? new-metrics))
-      false
+           ;; all metrics must be numeric
+           (not (every? lib.types.isa/numeric? new-metrics))
+           false
 
-      ;; both or neither primary dimension must be dates
-      (not= (lib.types.isa/date? (first initial-dimensions))
-            (lib.types.isa/date? (first new-dimensions)))
-      false
+           ;; both or neither primary dimension must be dates
+           (not= (lib.types.isa/date? (first initial-dimensions))
+                 (lib.types.isa/date? (first new-dimensions)))
+           false
 
-      ;; both or neither primary dimension must be numeric
-      ;; a timestamp field is both date and number so don't enforce the condition if both fields are dates; see #2811
-      (and (not= (lib.types.isa/numeric? (first initial-dimensions))
-                 (lib.types.isa/numeric? (first new-dimensions)))
-           (not (and
-                  (lib.types.isa/date? (first initial-dimensions))
-                  (lib.types.isa/date? (first new-dimensions)))))
-      false
+           ;; both or neither primary dimension must be numeric
+           ;; a timestamp field is both date and number so don't enforce the condition if both fields are dates; see #2811
+           (and (not= (lib.types.isa/numeric? (first initial-dimensions))
+                      (lib.types.isa/numeric? (first new-dimensions)))
+                (not (and
+                       (lib.types.isa/date? (first initial-dimensions))
+                       (lib.types.isa/date? (first new-dimensions)))))
+           false
 
-      :else true)))
+           :else true))))
 
 (defmethod series-are-compatible? :area
   [first-card second-card]
@@ -265,8 +266,9 @@
 
 (defmethod series-are-compatible? :scalar
   [first-card second-card]
-  (= (count (:result_metadata first-card))
-     (count (:result_metadata second-card))))
+  (and (= :scalar #p (:display second-card))
+       (= (count (:result_metadata first-card))
+          (count (:result_metadata second-card)))))
 
 (def ^:private supported-series-display-type (set (keys (methods series-are-compatible?))))
 

@@ -427,7 +427,11 @@
        :model/Card area    (simple-mbql-chart-query {:name "An Area"  :display :area})
        :model/Card scalar  (merge (mt/card-with-source-metadata-for-query
                                     (mt/mbql-query venues {:aggregation [[:count]]}))
-                                  {:name "A Scalar" :display :scalar})
+                                  {:name "A Scalar 1" :display :scalar})
+       :model/Card _       (merge (mt/card-with-source-metadata-for-query
+                                           (mt/mbql-query venues {:aggregation [[:count]]}))
+                                  {:name "A Scalar 2" :display :scalar})
+
        :model/Card _native (merge (mt/card-with-source-metadata-for-query (mt/native-query {:query "select sum(price) from venues;"}))
                                   {:name       "A Native query"
                                    :display    :scalar
@@ -440,10 +444,10 @@
                                    :display    :table
                                    :query_type "native"})]
       (doseq [[card-id display-type expected]
-              [[(:id line)   :line   #{"A Native query" "An Area" "A Bar"}
-                (:id bar)    :bar    #{"A Native query" "An Area" "A Line"}
-                (:id area)   :area   #{"A Native query" "A Bar" "A Line"}
-                (:id scalar) :scalar #{"A Native query" "An Area" "A Bar" "A Line"}]]]
+              [[(:id line)   :line   #{"A Native query" "An Area" "A Bar"}]
+               [(:id bar)    :bar    #{"A Native query" "An Area" "A Line"}]
+               [(:id area)   :area   #{"A Native query" "A Bar" "A Line"}]
+               [(:id scalar) :scalar #{"A Native query" "A Scalar 2"}]]]
         (testing (format "Card with display-type=%s should have compatible cards correctly returned" display-type)
           (let [returned-card-names (set (map :name (mt/user-http-request :crowberto :get 200 (format "/card/%d/series" card-id))))]
             (is (set/subset? expected returned-card-names))
