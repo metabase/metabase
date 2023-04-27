@@ -1,11 +1,11 @@
 import { restore } from "e2e/support/helpers";
 
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, SAMPLE_DB_SCHEMA_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { REVIEWS_ID } = SAMPLE_DATABASE;
 
-const reviewsDataModelPage = `/admin/datamodel/database/${SAMPLE_DB_ID}/table/${REVIEWS_ID}`;
+const reviewsDataModelPage = `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${REVIEWS_ID}`;
 
 describe("issue 21984", () => {
   beforeEach(() => {
