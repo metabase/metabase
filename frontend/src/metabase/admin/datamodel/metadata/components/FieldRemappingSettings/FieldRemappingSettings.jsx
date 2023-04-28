@@ -1,5 +1,6 @@
 /* eslint-disable react/prop-types */
 import React from "react";
+import { connect } from "react-redux";
 
 import { t } from "ttag";
 import _ from "underscore";
@@ -10,6 +11,8 @@ import ButtonWithStatus from "metabase/components/ButtonWithStatus";
 import Icon from "metabase/components/Icon/Icon";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
+import Fields from "metabase/entities/fields";
+import { getMetadataUnfiltered } from "metabase/selectors/metadata";
 
 import { isEntityName, isFK } from "metabase-lib/types/utils/isa";
 import {
@@ -461,4 +464,17 @@ const RemappingNamingTip = () => (
   </div>
 );
 
-export default FieldRemappingSettings;
+const mapStateToProps = state => ({
+  metadata: getMetadataUnfiltered(state),
+});
+
+const mapDispatchToProps = {
+  updateFieldValues: Fields.actions.updateFieldValues,
+  updateFieldDimension: Fields.actions.updateFieldDimension,
+  deleteFieldDimension: Fields.actions.deleteFieldDimension,
+};
+
+export default connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)(FieldRemappingSettings);
