@@ -28,4 +28,4 @@ bb test:bb
 
 ## Editing the page
 
-Edit the template: [./resources/releases.md](./resources/releases-template.md).
+Edit the template: [./resources/releases-template.md](./resources/releases-template.md).
