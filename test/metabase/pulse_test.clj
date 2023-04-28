@@ -51,20 +51,20 @@
   [{:keys [pulse pulse-card channel card]
     :or   {channel :email}}
    f]
-  (mt/with-temp* [Pulse         [{pulse-id :id, :as pulse}
-                                 (-> pulse
-                                     (merge {:name "Pulse Name"}))]
-                  PulseCard     [_ (merge {:pulse_id pulse-id
-                                           :card_id  (u/the-id card)}
+  (mt/with-temp* [Pulse        [{pulse-id :id, :as pulse}
+                                (-> pulse
+                                    (merge {:name "Pulse Name"}))]
+                  PulseCard    [_ (merge {:pulse_id pulse-id
+                                          :card_id  (u/the-id card)}
                                           pulse-card)]
-                  PulseChannel  [{pc-id :id} (case channel
-                                               :email
-                                               {:pulse_id pulse-id}
+                  PulseChannel [{pc-id :id} (case channel
+                                              :email
+                                              {:pulse_id pulse-id}
 
-                                               :slack
-                                               {:pulse_id     pulse-id
-                                                :channel_type "slack"
-                                                :details      {:channel "#general"}})]]
+                                              :slack
+                                              {:pulse_id     pulse-id
+                                               :channel_type "slack"
+                                               :details      {:channel "#general"}})]]
     (if (= channel :email)
       (mt/with-temp PulseChannelRecipient [_ {:user_id          (pulse.test-util/rasta-id)
                                               :pulse_channel_id pc-id}]
