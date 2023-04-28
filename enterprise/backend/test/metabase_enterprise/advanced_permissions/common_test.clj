@@ -246,12 +246,16 @@
       (testing "If a non-admin has data model perms, but no data perms"
         (with-all-users-data-perms {db-id {:data       {:schemas :block :native :none}
                                            :data-model {:schemas :all}}}
-          (testing "and if data permissions are revoked, it should be a 403"
+          (testing "if include_editable_data_model=nil, it should be a 403"
             (is (= "You don't have permissions to do that."
                    (mt/user-http-request :rasta :get 403 (format "database/%d/schemas" db-id)))))
           (testing "and if include_editable_data_model=true, it should return values"
             (is (= ["schema1" "schema2"]
                    (mt/user-http-request :rasta :get 200 (format "database/%d/schemas" db-id)
+                                         :include_editable_data_model true))))
+          (testing "and if the database doesn't exist, it should be a 404"
+            (is (= "Not found."
+                   (mt/user-http-request :rasta :get 404 (format "database/%d/schemas" Integer/MAX_VALUE)
                                          :include_editable_data_model true))))))
       (testing "If include_editable_data_model=true and a non-admin does not have data model perms, it should return []"
         (with-all-users-data-perms {db-id {:data       {:schemas :block :native :none}
