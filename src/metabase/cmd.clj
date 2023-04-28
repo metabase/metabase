@@ -35,6 +35,11 @@
   [return-code]
   (System/exit return-code))
 
+(defn- cmd->var
+  "Looks up a command var by name"
+  [command-name]
+  (ns-resolve 'metabase.cmd (symbol command-name)))
+
 (defn- call-enterprise
   "Resolves enterprise command by symbol and calls with args, or else throws error if not EE"
   [symb & args]
@@ -101,23 +106,26 @@
 
 (defn ^:command help
   "Show this help message listing valid Metabase commands."
-  []
-  (println "Valid commands are:")
-  (doseq [[symb varr] (sort (ns-interns 'metabase.cmd))
-          :let        [{:keys [arglists doc arg-spec]} (meta varr)]
-          :when       (:command (meta varr))]
-    (doseq [arglist arglists]
-      (apply println symb arglist))
-    (doseq [doc-line (str/split doc #"\n\s+")]
-      (println "\t" doc-line))
-    (when arg-spec
-      (println "\t" "Options:")
-      (doseq [opt-line (str/split (:summary (cli/parse-opts [] arg-spec)) #"\n")]
-        (println "\t" opt-line)))
-    (println))
-  (println "\nSome other commands you might find useful:\n")
-  (println "java -cp metabase.jar org.h2.tools.Shell -url jdbc:h2:/path/to/metabase.db")
-  (println "\tOpen an SQL shell for the Metabase H2 DB"))
+  ([command-name]
+   (let [{:keys [doc arg-spec arglists]} (meta (cmd->var command-name))]
+     (doseq [arglist arglists]
+       (apply println command-name arglist))
+     (when doc
+       (doseq [doc-line (str/split doc #"\n\s+")]
+         (println "\t" doc-line)))
+     (when arg-spec
+       (println "\t" "Options:")
+       (doseq [opt-line (str/split (:summary (cli/parse-opts [] arg-spec)) #"\n")]
+         (println "\t" opt-line)))))
+  ([]
+   (println "Valid commands are:")
+   (doseq [[symb varr] (sort (ns-interns 'metabase.cmd))
+           :when       (:command (meta varr))]
+     (help symb)
+     (println))
+   (println "\nSome other commands you might find useful:\n")
+   (println "java -cp metabase.jar org.h2.tools.Shell -url jdbc:h2:/path/to/metabase.db")
+   (println "\tOpen an SQL shell for the Metabase H2 DB")))
 
 (defn ^:command version
   "Print version information about Metabase and the current system."
@@ -235,9 +243,6 @@
 
 ;;; ------------------------------------------------ Validate Commands ----------------------------------------------
 
-(defn- cmd->var [command-name]
-  (ns-resolve 'metabase.cmd (symbol command-name)))
-
 (defn- arg-list-count-ok? [arg-list arg-count]
   (if (some #{'&} arg-list)
     ;; subtract 1 for the & and 1 for the symbol after &
@@ -257,42 +262,41 @@
 
 ;;; ------------------------------------------------ Running Commands ------------------------------------------------
 
-(defn- cmd->fn
+(defn- validate
   "Returns [error-message] if there is an error, otherwise [nil command-fn]"
   [command-name args]
-  (if (str/blank? command-name)
-    ["No command given."]
-    (let [varr (cmd->var command-name)
-          {:keys [command arg-spec]} (meta varr)
-          err  (arg-count-errors command-name args)]
-      (cond
-        (not command)
-        [(str "Unrecognized command: '" command-name "'")]
+  (let [varr (cmd->var command-name)
+        {:keys [command arg-spec]} (meta varr)
+        err  (arg-count-errors command-name args)]
+    (cond
+      (not command)
+      [(str "Unrecognized command: '" command-name "'")
+       (str "Valid commands: " (str/join ", " (map key (filter (comp :command meta val) (ns-interns 'metabase.cmd)))))]
 
-        err
-        [err]
+      err
+      [err]
 
-        arg-spec
-        (let [{:keys [errors]} (cli/parse-opts args arg-spec)]
-          (if errors
-            [(str/join "\n" errors)]
-            [nil @varr]))
+      arg-spec
+      (:errors (cli/parse-opts args arg-spec)))))
 
-        :else
-        [nil @varr]))))
+(defn- fail!
+  [& messages]
+  (doseq [msg messages]
+    (println (u/format-color 'red msg)))
+  (System/exit 1))
 
 (defn run-cmd
   "Run `cmd` with `args`. This is a function above. e.g. `clojure -M:run metabase migrate force` becomes
   `(migrate \"force\")`."
-  [cmd args]
-  (let [[error-msg command-fn] (cmd->fn cmd args)]
-    (if error-msg
-      (do
-        (println (u/format-color 'red error-msg))
-        (System/exit 1))
-      (try (apply command-fn args)
-           (catch Throwable e
-             (.printStackTrace e)
-             (println (u/format-color 'red "Command failed with exception: %s" (.getMessage e)))
-             (System/exit 1)))))
+  [command-name args]
+  (if-let [errors (validate command-name args)]
+    (do
+      (println "Usage:")
+      (help command-name)
+      (apply fail! errors))
+    (try
+      (apply @(cmd->var command-name) args)
+      (catch Throwable e
+        (.printStackTrace e)
+        (fail! (str "Command failed with exception: " (.getMessage e))))))
   (System/exit 0))
