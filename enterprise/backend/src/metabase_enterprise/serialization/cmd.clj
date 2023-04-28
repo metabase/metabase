@@ -179,15 +179,6 @@
   (dump/dump-dimensions path)
   (log/info (trs "END DUMP to {0} via user {1}" path user)))
 
-(defn- v2-extract
-  "Extract entities to store. Takes map of options.
-   :collections - optional seq of collection IDs"
-  [{:keys [collections] :as opts}]
-  (let [opts (cond-> opts
-               collections
-               (assoc :targets (for [c collections] ["Collection" c])))]
-    (v2.extract/extract opts)))
-
 (defn v2-dump
   "Exports Metabase app data to directory at path"
   [path opts]
@@ -195,7 +186,7 @@
   (mdb/setup-db!)
   (t2/select User) ;; TODO -- why??? [editor's note: this comment originally from Cam]
   (serdes/with-cache
-    (-> (v2-extract opts)
+    (-> (v2.extract/extract opts)
         (v2.storage/store! path)))
   (log/info (trs "Export to {0} complete!" path) (u/emoji "🚛💨 📦")))
 

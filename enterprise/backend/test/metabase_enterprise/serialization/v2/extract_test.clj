@@ -470,11 +470,11 @@
                      (map :name)))))
        (testing "unowned collections and the personal one with a user"
          (is (= #{coll-eid mark-coll-eid}
-                (->> {:collection-set (extract/collection-set-for-user mark-id)}
+                (->> {:collection-set (extract/collection-set-for-opts mark-id)}
                      (serdes/extract-all "Collection")
                      (by-model "Collection"))))
          (is (= #{coll-eid dave-coll-eid}
-                (->> {:collection-set (extract/collection-set-for-user dave-id)}
+                (->> {:collection-set (extract/collection-set-for-opts dave-id)}
                      (serdes/extract-all "Collection")
                      (by-model "Collection"))))))
 
@@ -485,12 +485,12 @@
                      (serdes/extract-all "Dashboard")
                      (by-model "Dashboard"))))
          (is (= #{dash-eid}
-                (->> {:collection-set (extract/collection-set-for-user mark-id)}
+                (->> {:collection-set (extract/collection-set-for-opts mark-id)}
                      (serdes/extract-all "Dashboard")
                      (by-model "Dashboard")))))
        (testing "dashboards in personal collections are returned for the :user"
          (is (= #{dash-eid other-dash param-dash}
-                (->> {:collection-set (extract/collection-set-for-user dave-id)}
+                (->> {:collection-set (extract/collection-set-for-opts dave-id)}
                      (serdes/extract-all "Dashboard")
                      (by-model "Dashboard")))))))))
 

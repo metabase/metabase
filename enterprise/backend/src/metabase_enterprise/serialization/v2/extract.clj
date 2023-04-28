@@ -18,24 +18,6 @@
 
 (set! *warn-on-reflection* true)
 
-(defn collection-set-for-user
-  "Given an optional user ID, find the transitive set of all Collection IDs which are either:
-  (a) global (ie. no one's personal collection);
-  (b) owned by this user (when user ID is non-nil); or
-  (c) descended from one of the above."
-  [user-or-nil]
-  (let [roots    (t2/select ['Collection :id :location :personal_owner_id] :location "/")
-        unowned  (remove :personal_owner_id roots)
-        owned    (when user-or-nil
-                   (filter #(= user-or-nil (:personal_owner_id %)) roots))
-        top-ids  (->> (concat owned unowned)
-                      (map :id)
-                      set)]
-    (->> (concat unowned owned)
-         (map collection/descendant-ids)
-         (reduce set/union top-ids)
-         (set/union #{nil}))))
-
 (defn- model-set
   "Returns a set of models to export based on export opts"
   [{:keys [include-field-values collections no-data-model]}]
@@ -53,22 +35,21 @@
     (into serdes.models/data-model)))
 
 (defn- extract-metabase
-  "Extracts the appdb into a reducible stream of serializable maps, with `:serdes/meta` keys.
-
-  This is the first step in serialization; see [[metabase-enterprise.serialization.v2.storage]] for actually writing to
-  files. Only the models listed in [[serdes.models/exported-models]] get exported.
-
-  Takes an options map which is passed on to [[serdes/extract-all]] for each model. The options are documented
-  there."
-  [opts]
+  "Returns reducible stream of serializable entity maps, with `:serdes/meta` keys.
+   Takes an options map which is passed on to [[serdes/extract-all]] for each model."
+  [{:keys [collections] :as opts}]
   (log/tracef "Extracting Metabase with options: %s" (pr-str opts))
-  (let [opts (assoc opts :collection-set (collection-set-for-user (:user opts)))]
+  (let [collection-ids (when-not collections
+                         (into #{nil}
+                               (mapcat collection/descendant-ids
+                                       (t2/select Collection :personal_owner_id nil))))
+        extract-opts   (assoc opts :collection-set collection-ids)]
     (eduction cat (for [model (model-set opts)]
-                    (serdes/extract-all model opts)))))
+                    (serdes/extract-all model extract-opts)))))
 
 ;; TODO Properly support "continue" - it should be contagious. Eg. a Dashboard with an illegal Card gets excluded too.
-(defn- descendants-closure [_opts targets]
-  (loop [to-chase (set targets)
+(defn- descendants-closure [collection-ids]
+  (loop [to-chase (set (for [id collection-ids] ["Collection" id]))
          chased   #{}]
     (let [[m i :as item] (first to-chase)
           desc           (serdes/descendants m i)
@@ -176,13 +157,13 @@
 Eg. if Dashboard B includes a Card A that is derived from a
   Card C that's in an alien collection, warnings will be emitted for C, A and B, and all three will be excluded from the
   serialized output."
-  [{:keys [targets] :as opts}]
+  [{:keys [collections] :as opts}]
   (log/tracef "Extracting subtrees with options: %s" (pr-str opts))
-  (if-let [analysis (escape-analysis (set (for [[model id] targets :when (= model "Collection")] id)))]
+  (if-let [analysis (escape-analysis collections)]
     ;; If that is non-nil, emit the report.
     (escape-report analysis)
     ;; If it's nil, there are no errors, and we can proceed to do the dump.
-    (let [closure  (descendants-closure opts targets)
+    (let [closure  (descendants-closure collections)
           ;; filter the selected models based on user options
           export?  (model-set opts)
           by-model (->> closure
@@ -195,8 +176,8 @@ Eg. if Dashboard B includes a Card A that is derived from a
 
 (defn extract
   "Returns a reducible stream of entities to serialize"
-  [opts]
+  [{:keys [collections] :as opts}]
   (serdes.backfill/backfill-ids)
-  (if (seq (:targets opts))
+  (if (seq collections)
     (extract-subtrees opts)
     (extract-metabase opts)))
