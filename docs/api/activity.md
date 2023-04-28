@@ -19,7 +19,7 @@ Get the list of 5 popular things for the current user. Query takes 8 and limits 
 
 ## `GET /api/activity/recent_views`
 
-Get the list of 5 things the current user has been viewing most recently.
+Get a list of 5 things the current user has been viewing most recently.
 
 ---
 

@@ -7,7 +7,7 @@ const questions = {
   2: "Orders, Count",
 };
 
-describe.skip("issue 24660", () => {
+describe("issue 24660", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();

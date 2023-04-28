@@ -40,7 +40,9 @@ describe("issue 29378", () => {
     cy.visit(`/model/${MODEL_ID}/detail`);
     cy.findByRole("tab", { name: "Actions" }).click();
     cy.findByText(ACTION_DETAILS.name).should("be.visible");
-    cy.findByText(ACTION_DETAILS.dataset_query.native.query).should("be.visible");
+    cy.findByText(ACTION_DETAILS.dataset_query.native.query).should(
+      "be.visible",
+    );
 
     cy.findByRole("tab", { name: "Used by" }).click();
     cy.findByPlaceholderText("Search…").type(ACTION_DETAILS.name);
@@ -48,6 +50,8 @@ describe("issue 29378", () => {
 
     cy.findByRole("tab", { name: "Actions" }).click();
     cy.findByText(ACTION_DETAILS.name).should("be.visible");
-    cy.findByText(ACTION_DETAILS.dataset_query.native.query).should("be.visible");
+    cy.findByText(ACTION_DETAILS.dataset_query.native.query).should(
+      "be.visible",
+    );
   });
 });

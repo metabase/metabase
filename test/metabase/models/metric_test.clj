@@ -125,12 +125,14 @@
                (serdes/raw-hash ["measurement" (serdes/identity-hash table) now])
                (serdes/identity-hash metric)))))))
 
-(deftest definition-descriptions-test
+(deftest definition-description-missing-definition-test
   (testing ":definition_description should hydrate to nil if :definition is missing"
     (t2.with-temp/with-temp [Metric metric {:name     "Metric A"
                                             :table_id (mt/id :users)}]
       (is (= nil
-             (:definition_description (t2/hydrate metric :definition_description))))))
+             (:definition_description (t2/hydrate metric :definition_description)))))))
+
+(deftest definition-description-test
   (t2.with-temp/with-temp [Segment {segment-id :id} {:name       "Checkins with ID = 1"
                                                      :table_id   (mt/id :checkins)
                                                      :definition (:query (mt/mbql-query checkins
@@ -142,5 +144,24 @@
                                                                  :filter      [:and
                                                                                [:= $price 4]
                                                                                [:segment segment-id]]}))}]
-    (is (= "Venues, Sum of Name, Filtered by Price equals 4 and Checkins with ID = 1"
+    (is (= "Venues, Sum of Categories → Name, Filtered by Price equals 4 and Checkins with ID = 1"
            (:definition_description (t2/hydrate metric :definition_description))))))
+
+(deftest definition-description-missing-source-table-test
+  (testing "Should work if `:definition` does not include `:source-table`"
+    (t2.with-temp/with-temp [Metric metric {:name       "Metric B"
+                                            :table_id   (mt/id :venues)
+                                            :definition (mt/$ids venues
+                                                          {:aggregation [[:sum $category_id->categories.name]]
+                                                           :filter      [:= $price 4]})}]
+      (is (= "Venues, Sum of Categories → Name, Filtered by Price equals 4"
+             (:definition_description (t2/hydrate metric :definition_description)))))))
+
+(deftest definition-description-invalid-query-test
+  (testing "Should return `nil` if query is invalid"
+    (t2.with-temp/with-temp [Metric metric {:name       "Metric B"
+                                            :table_id   (mt/id :venues)
+                                            :definition (mt/$ids venues
+                                                          {:aggregation [[:sum $category_id->categories.name]]
+                                                           :filter      [:= [:field Integer/MAX_VALUE nil] 4]})}]
+      (is (nil? (:definition_description (t2/hydrate metric :definition_description)))))))

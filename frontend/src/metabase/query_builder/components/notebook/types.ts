@@ -31,6 +31,7 @@ export interface NotebookStep {
   valid: boolean;
   active: boolean;
   visible: boolean;
+  testID: string;
   revert: NotebookStepFn<StructuredQuery | null> | null;
   clean: NotebookStepFn<StructuredQuery>;
   update: (datasetQuery: DatasetQuery) => StructuredQuery;

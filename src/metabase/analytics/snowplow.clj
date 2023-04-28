@@ -1,13 +1,13 @@
 (ns metabase.analytics.snowplow
   "Functions for sending Snowplow analytics events"
   (:require
+   [clojure.string :as str]
    [java-time :as t]
    [medley.core :as m]
    [metabase.config :as config]
    [metabase.models.setting :as setting :refer [defsetting Setting]]
    [metabase.models.user :refer [User]]
    [metabase.public-settings :as public-settings]
-   [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [deferred-tru trs]]
    [metabase.util.log :as log]
@@ -140,6 +140,7 @@
    ::dashboard "1-0-0"
    ::database  "1-0-0"
    ::instance  "1-1-0"
+   ::metabot   "1-0-0"
    ::timeline  "1-0-0"
    ::task      "1-0-0"
    ::action    "1-0-0"})
@@ -171,7 +172,7 @@
 
 (defn- normalize-kw
   [kw]
-  (-> kw u/snake-key name))
+  (-> kw name (str/replace #"-" "_")))
 
 (defn- payload
   "A SelfDescribingJson object containing the provided event data, which can be included as the payload for an
@@ -204,7 +205,8 @@
    ::action-created                 ::action
    ::action-updated                 ::action
    ::action-deleted                 ::action
-   ::action-executed                ::action})
+   ::action-executed                ::action
+   ::metabot-feedback-received      ::metabot})
 
 (defn track-event!
   "Send a single analytics event to the Snowplow collector, if tracking is enabled for this MB instance and a collector

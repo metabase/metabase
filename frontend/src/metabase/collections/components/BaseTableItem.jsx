@@ -28,6 +28,7 @@ import {
 } from "./BaseItemsTable.styled";
 
 BaseTableItem.propTypes = {
+  databases: PropTypes.arrayOf(PropTypes.object),
   bookmarks: PropTypes.arrayOf(PropTypes.object),
   createBookmark: PropTypes.func,
   deleteBookmark: PropTypes.func,
@@ -45,6 +46,7 @@ BaseTableItem.propTypes = {
 };
 
 export function BaseTableItem({
+  databases,
   bookmarks,
   createBookmark,
   deleteBookmark,
@@ -126,7 +128,11 @@ export function BaseTableItem({
               <DescriptionIcon
                 name="info"
                 size={16}
-                tooltip={<Markdown>{item.description}</Markdown>}
+                tooltip={
+                  <Markdown disallowHeading unstyleLinks>
+                    {item.description}
+                  </Markdown>
+                }
               />
             )}
           </ItemLink>
@@ -146,6 +152,7 @@ export function BaseTableItem({
             <ActionMenu
               item={item}
               collection={collection}
+              databases={databases}
               bookmarks={bookmarks}
               onCopy={onCopy}
               onMove={onMove}
@@ -158,6 +165,7 @@ export function BaseTableItem({
       </tr>
     );
   }, [
+    databases,
     bookmarks,
     createBookmark,
     deleteBookmark,

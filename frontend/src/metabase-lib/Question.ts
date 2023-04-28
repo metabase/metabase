@@ -21,6 +21,11 @@ import Field from "metabase-lib/metadata/Field";
 import { AggregationDimension, FieldDimension } from "metabase-lib/Dimension";
 import { isFK } from "metabase-lib/types/utils/isa";
 import { memoizeClass, sortObject } from "metabase-lib/utils";
+import {
+  CollectionId,
+  Parameter as ParameterObject,
+  ParameterId,
+} from "metabase-types/api";
 
 import * as AGGREGATION from "metabase-lib/queries/utils/aggregation";
 import * as FILTER from "metabase-lib/queries/utils/filter";
@@ -29,16 +34,10 @@ import * as QUERY from "metabase-lib/queries/utils/query";
 // TODO: remove these dependencies
 import * as Urls from "metabase/lib/urls";
 import { getCardUiParameters } from "metabase-lib/parameters/utils/cards";
-import {
-  CardApi,
-  DashboardApi,
-  maybeUsePivotEndpoint,
-  MetabaseApi,
-} from "metabase/services";
 import { ParameterValues } from "metabase-types/types/Parameter";
 import { Card as CardObject, DatasetQuery } from "metabase-types/types/Card";
 import { VisualizationSettings } from "metabase-types/api/card";
-import { Column, Dataset, Value } from "metabase-types/types/Dataset";
+import { Column, Value } from "metabase-types/types/Dataset";
 import { TableId } from "metabase-types/types/Table";
 import { DatabaseId } from "metabase-types/types/Database";
 import {
@@ -47,16 +46,8 @@ import {
 } from "metabase-types/types/Visualization";
 import { DependentMetadataItem } from "metabase-types/types/Query";
 import { utf8_to_b64url } from "metabase/lib/encoding";
-import {
-  CollectionId,
-  Parameter as ParameterObject,
-  ParameterId,
-} from "metabase-types/api";
 
-import {
-  getParameterValuesBySlug,
-  normalizeParameters,
-} from "metabase-lib/parameters/utils/parameter-values";
+import { getParameterValuesBySlug } from "metabase-lib/parameters/utils/parameter-values";
 import {
   getTemplateTagParametersFromCard,
   remapParameterValuesToTemplateTags,
@@ -209,6 +200,7 @@ class QuestionInner {
       }
     }
 
+    // `dataset_query` is null for questions on a dashboard the user don't have access to
     console.warn("Unknown query type: " + datasetQuery?.type);
   }
 
@@ -1147,67 +1139,6 @@ class QuestionInner {
     return true;
   }
 
-  /**
-   * Runs the query and returns an array containing results for each single query.
-   *
-   * If we have a saved and clean single-query question, we use `CardApi.query` instead of a ad-hoc dataset query.
-   * This way we benefit from caching and query optimizations done by Metabase backend.
-   */
-  async apiGetResults({
-    cancelDeferred,
-    isDirty = false,
-    ignoreCache = false,
-    collectionPreview = false,
-  } = {}): Promise<[Dataset]> {
-    // TODO Atte Keinänen 7/5/17: Should we clean this query with Query.cleanQuery(query) before executing it?
-    const canUseCardApiEndpoint = !isDirty && this.isSaved();
-    const parameters = normalizeParameters(this.parameters());
-
-    if (canUseCardApiEndpoint) {
-      const dashboardId = this._card.dashboardId;
-      const dashcardId = this._card.dashcardId;
-
-      const queryParams = {
-        cardId: this.id(),
-        dashboardId,
-        dashcardId,
-        ignore_cache: ignoreCache,
-        collection_preview: collectionPreview,
-        parameters,
-      };
-      return [
-        await maybeUsePivotEndpoint(
-          dashboardId ? DashboardApi.cardQuery : CardApi.query,
-          this.card(),
-          this.metadata(),
-        )(queryParams, {
-          cancelled: cancelDeferred.promise,
-        }),
-      ];
-    } else {
-      const getDatasetQueryResult = datasetQuery => {
-        const datasetQueryWithParameters = { ...datasetQuery, parameters };
-        return maybeUsePivotEndpoint(
-          MetabaseApi.dataset,
-          this.card(),
-          this.metadata(),
-        )(
-          datasetQueryWithParameters,
-          cancelDeferred
-            ? {
-                cancelled: cancelDeferred.promise,
-              }
-            : {},
-        );
-      };
-
-      const datasetQueries = this.atomicQueries().map(query =>
-        query.datasetQuery(),
-      );
-      return Promise.all(datasetQueries.map(getDatasetQueryResult));
-    }
-  }
-
   setParameter(id: ParameterId, parameter: ParameterObject) {
     const newParameters = this.parameters().map(oldParameter =>
       oldParameter.id === id ? parameter : oldParameter,
@@ -1377,7 +1308,7 @@ class QuestionInner {
     if (this.isStructured()) {
       const questionWithParameters = this.setParameters(parameters);
 
-      if (!this.query().readOnly()) {
+      if (this.query().isEditable()) {
         return questionWithParameters
           .setParameterValues(parameterValues)
           ._convertParametersToMbql()

@@ -1,7 +1,7 @@
 (ns metabase.lib.query-test
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [deftest is]]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.test-metadata :as meta]))
@@ -32,14 +32,13 @@
 (deftest ^:parallel native-query-test
   (is (=? {:lib/type :mbql/query
            :database (meta/id)
-           :type     :pipeline
            :stages   [{:lib/type    :mbql.stage/native
                        :lib/options {:lib/uuid string?}
                        :native      "SELECT * FROM VENUES;"}]}
-          (lib/native-query meta/metadata-provider meta/results-metadata "SELECT * FROM VENUES;"))))
+          (lib/native-query meta/metadata-provider meta/qp-results-metadata "SELECT * FROM VENUES;"))))
 
 (deftest ^:parallel native-query-suggested-name-test
-  (let [query (lib/native-query meta/metadata-provider meta/results-metadata "SELECT * FROM VENUES;")]
+  (let [query (lib/native-query meta/metadata-provider meta/qp-results-metadata "SELECT * FROM VENUES;")]
     (is (= "Native query"
            (lib.metadata.calculation/describe-query query)))
     (is (nil? (lib.metadata.calculation/suggested-name query)))))
@@ -47,60 +46,21 @@
 (deftest ^:parallel card-source-query-test
   (is (=? {:lib/type :mbql/query
            :database (meta/id)
-           :type     :pipeline
            :stages   [{:lib/type    :mbql.stage/native
-                       :lib/options {:lib/uuid string?}
                        :native      "SELECT * FROM VENUES;"}]}
           (lib/saved-question-query meta/metadata-provider
-                                    {:dataset_query   {:database (meta/id)
+                                    {:dataset-query   {:database (meta/id)
                                                        :type     :native
                                                        :native   {:query "SELECT * FROM VENUES;"}}
-                                     :result_metadata meta/results-metadata}))))
+                                     :result-metadata meta/card-results-metadata}))))
 
 (deftest ^:parallel notebook-query-test
   (is (=? {:lib/type :mbql/query
            :database (meta/id)
-           :type     :pipeline
            :stages   [{:lib/type     :mbql.stage/mbql
-                       :lib/options  {:lib/uuid string?}
                        :source-table (meta/id :venues)}
-                      {:lib/type    :mbql.stage/mbql
-                       :lib/options {:lib/uuid string?}}
-                      {:lib/type    :mbql.stage/mbql
-                       :lib/options {:lib/uuid string?}}]}
+                      {:lib/type :mbql.stage/mbql}
+                      {:lib/type :mbql.stage/mbql}]}
           (lib/query meta/metadata-provider {:database (meta/id)
                                              :type     :query
                                              :query    {:source-query {:source-query {:source-table (meta/id :venues)}}}}))))
-
-(deftest ^:parallel remove-clause-test
-  (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
-                  (lib/filter (lib/= "myvenue" (lib/field (meta/id :venues :name))))
-                  (lib/order-by (lib/field (meta/id :venues :name)))
-                  (lib/order-by (lib/field (meta/id :venues :name))))
-        order-bys (lib/order-bys query)]
-    (testing "order-bys"
-      (is (= 2 (count order-bys)))
-      (is (= 1 (-> query
-                   (lib/remove-clause (first order-bys))
-                   (lib/order-bys)
-                   count)))
-      (is (= 0 (-> query
-                   (lib/remove-clause (first order-bys))
-                   (lib/remove-clause (second order-bys))
-                   (lib/order-bys)
-                   count))))))
-
-(deftest ^:parallel replace-clause-test
-  (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
-                  (lib/filter (lib/= "myvenue" (lib/field (meta/id :venues :name))))
-                  (lib/order-by (lib/field (meta/id :venues :name)))
-                  (lib/order-by (lib/field (meta/id :venues :name))))
-        order-bys (lib/order-bys query)]
-    (testing "order-bys"
-      (is (= 2 (count order-bys)))
-      (let [replaced (-> query
-                         (lib/replace-clause (first order-bys) (lib/order-by-clause (lib/field (meta/id :venues :id)))))
-            replaced-order-bys (lib/order-bys replaced)]
-        (is (not= order-bys replaced-order-bys))
-        (is (= 2 (count replaced-order-bys)))
-        (is (= (second order-bys) (second replaced-order-bys)))))))

@@ -81,6 +81,10 @@ describe("CollectionHeader", () => {
 
       render(<CollectionHeader {...props} />);
 
+      // show input
+      const editableText = screen.getByText("Description");
+      userEvent.click(editableText);
+
       const input = screen.getByDisplayValue("Description");
       userEvent.clear(input);
       userEvent.type(input, "New description");
@@ -133,6 +137,10 @@ describe("CollectionHeader", () => {
       });
 
       render(<CollectionHeader {...props} />);
+
+      // show input
+      const editableText = screen.getByText("Description");
+      userEvent.click(editableText);
 
       const input = screen.getByDisplayValue("Description");
       expect(input).toBeInTheDocument();
@@ -301,9 +309,11 @@ const getProps = (
   collection: createMockCollection(),
   isAdmin: false,
   isBookmarked: false,
+  canUpload: false,
   isPersonalCollectionChild: false,
   onUpdateCollection: jest.fn(),
   onCreateBookmark: jest.fn(),
+  onUpload: jest.fn(),
   onDeleteBookmark: jest.fn(),
   location: {
     pathname: `/collection/1`,

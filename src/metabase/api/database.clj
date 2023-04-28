@@ -841,8 +841,7 @@
             schema           (ddl.i/schema-name database (public-settings/site-uuid))]
         (if success?
           ;; do secrets require special handling to not clobber them or mess up encryption?
-          (do (t2/update! Database id :options
-                          (assoc (:options database) :persist-models-enabled true))
+          (do (t2/update! Database id {:options (assoc (:options database) :persist-models-enabled true)})
               (task.persist-refresh/schedule-persistence-for-database!
                 database
                 (public-settings/persisted-model-refresh-cron-schedule))
@@ -859,8 +858,7 @@
   (api/let-404 [database (t2/select-one Database :id id)]
     (api/write-check database)
     (if (-> database :options :persist-models-enabled)
-      (do (t2/update! Database id :options
-                      (dissoc (:options database) :persist-models-enabled))
+      (do (t2/update! Database id {:options (dissoc (:options database) :persist-models-enabled)})
           (persisted-info/mark-for-pruning! {:database_id id})
           (task.persist-refresh/unschedule-persistence-for-database! database)
           api/generic-204-no-content)

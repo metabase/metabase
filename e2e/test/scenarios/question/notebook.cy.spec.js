@@ -552,16 +552,34 @@ describe("scenarios > question > notebook", () => {
     });
   });
 
-  it("should properly render previews (metabase#28726)", () => {
+  it("should properly render previews (metabase#28726), (metabase#29959)", () => {
     openOrdersTable({ mode: "notebook" });
     cy.findByTestId("step-data-0-0").within(() => {
       cy.icon("play").click();
+      assertTableRowCount(10);
       cy.findByTextEnsureVisible("Subtotal");
       cy.findByTextEnsureVisible("Tax");
       cy.findByTextEnsureVisible("Total");
+      cy.icon("close").click();
+    });
+
+    cy.button("Row limit").click();
+    cy.findByTestId("step-limit-0-0").within(() => {
+      cy.findByPlaceholderText("Enter a limit").type("5");
+
+      cy.icon("play").click();
+      assertTableRowCount(5);
+
+      cy.findByDisplayValue("5").type("{selectall}50");
+      cy.button("Refresh").click();
+      assertTableRowCount(10);
     });
   });
 });
+
+function assertTableRowCount(expectedCount) {
+  cy.get(".Table-ID:not(.Table-FK)").should("have.length", expectedCount);
+}
 
 function addSimpleCustomColumn(name) {
   enterCustomColumnDetails({ formula: "C" });

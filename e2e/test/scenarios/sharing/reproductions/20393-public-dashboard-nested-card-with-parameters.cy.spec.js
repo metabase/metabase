@@ -46,23 +46,15 @@ function createDashboardWithNestedCard() {
     native: { query: 'SELECT * FROM "ORDERS"', "template-tags": {} },
   }).then(({ body }) =>
     cy
-      .createQuestion({
-        name: "Q2",
-        query: { "source-table": `card__${body.id}` },
+      .createQuestionAndDashboard({
+        questionDetails: {
+          name: "Q2",
+          query: { "source-table": `card__${body.id}` },
+        },
+        dashboardDetails: {
+          name: "Q2 in a dashboard",
+        },
       })
-      .then(({ body: { id: cardId } }) =>
-        cy
-          .createDashboard("Q2 in a dashboard")
-          .then(({ body: { id: dashId } }) => {
-            cy.request("POST", `/api/dashboard/${dashId}/cards`, {
-              cardId,
-              row: 0,
-              col: 0,
-              size_x: 4,
-              size_y: 4,
-            });
-            visitDashboard(dashId);
-          }),
-      ),
+      .then(({ body: { dashboard_id } }) => visitDashboard(dashboard_id)),
   );
 }

@@ -17,6 +17,7 @@
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [toucan.models :as models]
@@ -55,9 +56,16 @@
   [metadata-provider :- lib.metadata/MetadataProvider
    {:keys [definition], table-id :table_id, :as _metric}]
   (when (seq definition)
-    (when-let [{database-id :db_id} (lib.metadata.protocols/table metadata-provider table-id)]
-      (let [query (lib.query/query-from-legacy-inner-query metadata-provider database-id definition)]
-        (lib/describe-query query)))))
+    (when-let [{database-id :db-id} (when table-id
+                                      (lib.metadata.protocols/table metadata-provider table-id))]
+      (try
+        (let [definition (merge {:source-table table-id}
+                                definition)
+              query      (lib.query/query-from-legacy-inner-query metadata-provider database-id definition)]
+          (lib/describe-query query))
+        (catch Throwable e
+          (log/error e (tru "Error calculating Metric description: {0}" (ex-message e)))
+          nil)))))
 
 (defn- warmed-metadata-provider [metrics]
   (let [metadata-provider (doto (lib.metadata.jvm/application-database-metadata-provider)

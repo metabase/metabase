@@ -905,7 +905,7 @@
                                  ;; TODO -- make 'insert-rows-using-statements?` a multimethod so we don't need to
                                  ;; hardcode the whitelist here.
                                  (not (#{:vertica :bigquery-cloud-sdk} driver/*driver*)))
-                          (binding [hx/*honey-sql-version* (sql.qp/honey-sql-version driver/*driver*)]
+                          (sql.qp/with-driver-honey-sql-version driver/*driver*
                             (sql.qp/compiled
                              (sql.qp/add-interval-honeysql-form driver/*driver*
                                                                 (sql.qp/current-datetime-honeysql-form driver/*driver*)
@@ -1264,7 +1264,7 @@
                             #t "2022-03-31T00:00:00"
                             #t "2022-03-31T00:00:00-00:00"]]
             (testing (format "%d %s ^%s %s" n unit (.getCanonicalName (class t)) (pr-str t))
-              (binding [hx/*honey-sql-version* (sql.qp/honey-sql-version driver/*driver*)]
+              (sql.qp/with-driver-honey-sql-version driver/*driver*
                 (let [march-31     (sql.qp/->honeysql driver/*driver* [:absolute-datetime t :day])
                       june-31      (sql.qp/add-interval-honeysql-form driver/*driver* march-31 n unit)
                       checkins     (mt/with-everything-store
@@ -1276,6 +1276,7 @@
                       query        (mt/native-query {:query sql, :params args})]
                   (mt/with-native-query-testing-context query
                     (is (re= (u.regex/rx #"^2022-"
+                                         >>>>>>> master
                                        ;; We don't really care if someone returns June 29th or 30th or July 1st here. I
                                        ;; guess you could make a case for either June 30th or July 1st. I don't really know
                                        ;; how you can get June 29th from this, but that's what Vertica returns. :shrug: The
@@ -1284,4 +1285,4 @@
                                        ;; We also don't really care if this is returned as a date or a timestamp with or
                                        ;; without time zone.
                                          [:? [:or "T" #"\s"] "00:00:00" [:? "Z"]])
-                             (first (mt/first-row (qp/process-query query)))))))))))))))
+                             (first (mt/first-row (qp/process-query query))))))))))))))))

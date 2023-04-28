@@ -27,6 +27,7 @@
    [metabase.models.secret :as secret]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.add-alias-info :as add]
+   [metabase.upload :as upload]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
@@ -46,23 +47,27 @@
 
 (driver/register! :postgres, :parent :sql-jdbc)
 
-(doseq [[feature supported?] {:datetime-diff true
+(doseq [[feature supported?] {:datetime-dff true
                               :persist-models true
                               :convert-timezone true
                               :now true}]
   (defmethod driver/database-supports? [:postgres feature] [_driver _feature _db] supported?))
 
-(defmethod driver/database-supports? [:postgres :nested-field-columns] [_ _ database]
-  (let [json-setting (get-in database [:details :json-unfolding])
-        ;; If not set at all, default to true, actually
-        setting-nil? (nil? json-setting)]
-    (or json-setting setting-nil?)))
+(defmethod driver/database-supports? [:postgres :nested-field-columns]
+  [_driver _feat db]
+  (driver.common/json-unfolding-default db))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                             metabase.driver impls                                              |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defmethod driver/display-name :postgres [_] "PostgreSQL")
 
 (defmethod driver/database-supports? [:postgres :persist-models-enabled]
   [_driver _feat db]
   (-> db :options :persist-models-enabled))
 
-(doseq [feature [:actions :actions/custom]]
+(doseq [feature [:actions :actions/custom :uploads]]
   (defmethod driver/database-supports? [:postgres feature]
     [driver _feat _db]
     ;; only supported for Postgres for right now. Not supported for child drivers like Redshift or whatever.
@@ -744,3 +749,21 @@
   [driver prepared-statement i t]
   (let [local-time (t/local-time (t/with-offset-same-instant t (t/zone-offset 0)))]
     (sql-jdbc.execute/set-parameter driver prepared-statement i local-time)))
+
+(defmethod driver/upload-type->database-type :postgres
+  [_driver upload-type]
+  (case upload-type
+    ::upload/varchar_255 "VARCHAR(255)"
+    ::upload/text        "TEXT"
+    ::upload/int         "INTEGER"
+    ::upload/float       "FLOAT"
+    ::upload/boolean     "BOOLEAN"
+    ::upload/date        "DATE"
+    ::upload/datetime    "TIMESTAMP"))
+
+(defmethod driver/table-name-length-limit :postgres
+  [_driver]
+  ;; https://www.postgresql.org/docs/current/sql-syntax-lexical.html#SQL-SYNTAX-IDENTIFIERS
+  ;; This could be incorrect if Postgres has been compiled with a value for NAMEDATALEN other than the default (64), but
+  ;; that seems unlikely and there's not an easy way to find out.
+  63)

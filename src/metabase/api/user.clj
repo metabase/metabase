@@ -8,6 +8,7 @@
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.api.ldap :as api.ldap]
+   [metabase.api.session :as api.session]
    [metabase.email.messages :as messages]
    [metabase.integrations.google :as google]
    [metabase.models.collection :as collection :refer [Collection]]
@@ -17,6 +18,8 @@
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
+   [metabase.server.middleware.session :as mw.session]
+   [metabase.server.request.util :as request.u]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.password :as u.password]
@@ -275,7 +278,7 @@
 
 (defn- valid-email-update?
   "This predicate tests whether or not the user is allowed to update the email address associated with this account."
-  [{:keys [google_auth ldap_auth email]} maybe-new-email]
+  [{:keys [sso_source email]} maybe-new-email]
   (or
    ;; Admin users can update
    api/*is-superuser?*
@@ -283,19 +286,16 @@
    (= email maybe-new-email)
    ;; We should not allow a regular user to change their email address if they are a google/ldap user
    (and
-    (not google_auth)
-    (not ldap_auth))))
+    (not (= :google sso_source))
+    (not (= :ldap sso_source)))))
 
 (defn- valid-name-update?
   "This predicate tests whether or not the user is allowed to update the first/last name associated with this account.
   If the user is an SSO user, no name edits are allowed, but we accept if the new names are equal to the existing names."
-  [{:keys [google_auth ldap_auth sso_source] :as user} name-key new-name]
+  [{:keys [sso_source] :as user} name-key new-name]
   (or
    (= (get user name-key) new-name)
-   (and
-    (not sso_source)
-    (not google_auth)
-    (not ldap_auth))))
+   (not sso_source)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema PUT "/:id"
@@ -356,12 +356,12 @@
   (t2/update! User (u/the-id existing-user)
               {:is_active     true
                :is_superuser  false
-               ;; if the user orignally logged in via Google Auth and it's no longer enabled, convert them into a regular user
+               ;; if the user orignally logged in via Google Auth/LDAP and it's no longer enabled, convert them into a regular user
                ;; (see metabase#3323)
-               :google_auth   (boolean (and (:google_auth existing-user)
-                                            (google/google-auth-enabled)))
-               :ldap_auth     (boolean (and (:ldap_auth existing-user)
-                                            (api.ldap/ldap-enabled)))})
+               :sso_source   (case (:sso_source existing-user)
+                               :google (when (google/google-auth-enabled) :google)
+                               :ldap   (when (api.ldap/ldap-enabled) :ldap)
+                               (:sso_source existing-user))})
   ;; now return the existing user whether they were originally active or not
   (fetch-user :id (u/the-id existing-user)))
 
@@ -370,7 +370,7 @@
   "Reactivate user at `:id`"
   [id]
   (api/check-superuser)
-  (let [user (t2/select-one [User :id :is_active :google_auth :ldap_auth] :id id)]
+  (let [user (t2/select-one [User :id :is_active :sso_source] :id id)]
     (api/check-404 user)
     ;; Can only reactivate inactive users
     (api/check (not (:is_active user))
@@ -385,20 +385,23 @@
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema PUT "/:id/password"
   "Update a user's password."
-  [id :as {{:keys [password old_password]} :body}]
+  [id :as {{:keys [password old_password]} :body, :as request}]
   {password su/ValidPassword}
   (check-self-or-superuser id)
-  (api/let-404 [user (t2/select-one [User :password_salt :password], :id id, :is_active true)]
+  (api/let-404 [user (t2/select-one [User :id :last_login :password_salt :password], :id id, :is_active true)]
     ;; admins are allowed to reset anyone's password (in the admin people list) so no need to check the value of
     ;; `old_password` for them regular users have to know their password, however
     (when-not api/*is-superuser?*
       (api/checkp (u.password/bcrypt-verify (str (:password_salt user) old_password) (:password user))
-        "old_password"
-        (tru "Invalid password"))))
-  (user/set-password! id password)
-  ;; return the updated User
-  (fetch-user :id id))
-
+                  "old_password"
+                  (tru "Invalid password")))
+    (user/set-password! id password)
+    ;; after a successful password update go ahead and offer the client a new session that they can use
+    (when (= id api/*current-user-id*)
+      (let [{session-uuid :id, :as session} (api.session/create-session! :password user (request.u/device-info request))
+            response                        {:success    true
+                                             :session_id (str session-uuid)}]
+        (mw.session/set-session-cookies request response session (t/zoned-date-time (t/zone-id "GMT")))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                             Deleting (Deactivating) a User -- DELETE /api/user/:id                             |

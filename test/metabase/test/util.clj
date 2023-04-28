@@ -60,9 +60,9 @@
    [metabase.util :as u]
    [metabase.util.files :as u.files]
    [methodical.core :as methodical]
-   [toucan.models :as models]
    [toucan.util.test :as tt]
    [toucan2.core :as t2]
+   [toucan2.model :as t2.model]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
    (java.io File FileInputStream)
@@ -474,7 +474,7 @@
   (hawk.parallel/assert-test-is-not-parallel "with-temp-vals-in-db")
   ;; use low-level `query` and `execute` functions here, because Toucan `select` and `update` functions tend to do
   ;; things like add columns like `common_name` that don't actually exist, causing subsequent update to fail
-  (let [model                    (mdb.u/resolve-model model)
+  (let [model                    (t2.model/resolve-model model)
         [original-column->value] (mdb.query/query {:select (keys column->temp-value)
                                                    :from   [(t2/table-name model)]
                                                    :where  [:= :id (u/the-id object-or-id)]})]
@@ -617,7 +617,7 @@
                                          @(requiring-resolve 'metabase.test.data.users/usernames)))]])
 
 (defn do-with-model-cleanup [models f]
-  {:pre [(sequential? models) (every? models/model? models)]}
+  {:pre [(sequential? models) (every? mdb.u/toucan-model? models)]}
   (hawk.parallel/assert-test-is-not-parallel "with-model-cleanup")
   (initialize/initialize-if-needed! :db)
   (let [model->old-max-id (into {} (for [model models]
@@ -818,16 +818,6 @@
 
     :else
     x))
-
-(defmacro exception-and-message
-  "Invokes `body`, catches the exception and returns a map with the exception class, message and data"
-  [& body]
-  `(try
-     ~@body
-     (catch Exception e#
-       {:ex-class (class e#)
-        :msg      (.getMessage e#)
-        :data     (ex-data e#)})))
 
 (defn call-with-locale
   "Sets the default locale temporarily to `locale-tag`, then invokes `f` and reverts the locale change"

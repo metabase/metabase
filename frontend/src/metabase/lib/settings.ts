@@ -162,6 +162,10 @@ class MetabaseSettings {
     return this.get("anon-tracking-enabled") || false;
   }
 
+  uploadsEnabled() {
+    return !!(this.get("uploads-enabled") && this.get("uploads-database-id"));
+  }
+
   googleAnalyticsEnabled() {
     return this.get("ga-enabled") || false;
   }
@@ -285,6 +289,10 @@ class MetabaseSettings {
 
   isPaidPlan() {
     return this.isHosted() || this.isEnterprise();
+  }
+
+  isMetabotEnabled() {
+    return this.get("is-metabot-enabled");
   }
 
   passwordComplexityRequirements(): PasswordComplexity {

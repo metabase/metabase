@@ -14,5 +14,5 @@
 (mu/defn ref :- ::lib.schema.ref/ref
   "Create a fresh ref that can be added to a query, e.g. a `:field`, `:aggregation`, or `:expression` reference. Will
   create a new UUID every time this is called."
-  ([x]
-   (ref-method x)))
+  [x :- some?]
+  (ref-method x))

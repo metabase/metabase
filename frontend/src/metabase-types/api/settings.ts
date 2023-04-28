@@ -161,6 +161,11 @@ export interface SettingDefinition {
   value?: unknown;
 }
 
+export interface OpenAiModel {
+  id: string;
+  owned_by: string;
+}
+
 export interface Settings {
   "active-users-count"?: number;
   "admin-email": string;
@@ -191,11 +196,16 @@ export interface Settings {
   "has-user-setup": boolean;
   "hide-embed-branding?": boolean;
   "is-hosted?": boolean;
+  "is-metabot-enabled": boolean;
   "jwt-enabled"?: boolean;
   "jwt-configured"?: boolean;
   "ldap-configured?": boolean;
   "ldap-enabled": boolean;
   "loading-message": LoadingMessage;
+  "openai-api-key": string | null;
+  "openai-organization": string | null;
+  "openai-model": string | null;
+  "openai-available-models"?: OpenAiModel[];
   "other-sso-enabled?": boolean | null;
   "password-complexity": PasswordComplexity;
   "persisted-models-enabled": boolean;
@@ -230,6 +240,10 @@ export interface Settings {
   version: Version;
   "version-info": VersionInfo | null;
   "version-info-last-checked": string | null;
+  "uploads-enabled": boolean;
+  "uploads-database-id": number | null;
+  "uploads-schema-name": string | null;
+  "uploads-table-prefix": string | null;
 }
 
 export type SettingKey = keyof Settings;

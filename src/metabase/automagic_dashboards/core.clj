@@ -1079,12 +1079,13 @@
                     (-> context :filters u/pprint-to-str)))
     (-> dashboard
         (populate/create-dashboard show)
-        (assoc :related           (related context rule)
-               :more              (when (and (not= show :all)
-                                             (-> dashboard :cards count (> show)))
-                                    (format "%s#show=all" (:url root)))
-               :transient_filters (:query-filter context)
-               :param_fields      (->> context :query-filter (filter-referenced-fields root))))))
+        (assoc :related            (related context rule)
+               :more               (when (and (not= show :all)
+                                              (-> dashboard :cards count (> show)))
+                                     (format "%s#show=all" (:url root)))
+               :transient_filters  (:query-filter context)
+               :param_fields       (->> context :query-filter (filter-referenced-fields root))
+               :auto_apply_filters true))))
 
 
 (defmulti automagic-analysis
