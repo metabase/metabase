@@ -10,6 +10,8 @@ export interface TabButtonProps {
 }
 
 export const TabButtonInput = styled.input<TabButtonProps & { value: string }>`
+  /* box-sizing: border-box; */
+
   width: ${props => `${props.value.length}ch`};
   padding: 0;
 
@@ -26,6 +28,16 @@ export const TabButtonInput = styled.input<TabButtonProps & { value: string }>`
     css`
       pointer-events: none;
     `}
+
+  &:hover,
+  :focus {
+    ${props =>
+      (props.isSelected || !props.disabled) &&
+      css`
+        background-color: ${color("bg-medium")};
+        /* border: 1px solid ${color("brand")}; */
+      `}
+  }
 `;
 
 export const TabButtonRoot = styled.div<TabButtonProps>`

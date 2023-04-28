@@ -40,6 +40,7 @@ export function DashboardTabs({ isEditing }: DashboardTabsProps) {
               value={tab.id}
               label={tab.name}
               onRename={name => renameTab(tab.id, name)}
+              canEdit={isEditing}
               showMenu={isEditing}
               menuItems={[
                 {
