@@ -8,10 +8,10 @@ import Select, {
   Option,
   SelectChangeEvent,
 } from "metabase/core/components/Select";
-import Icon from "metabase/components/Icon/Icon";
 import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings/column";
 import { FieldFormattingSettings, FieldId } from "metabase-types/api";
 import Field from "metabase-lib/metadata/Field";
+import FieldSeparator from "../FieldSeparator";
 
 const TYPE_OPTIONS = [
   ...MetabaseCore.field_semantic_types,
@@ -107,9 +107,7 @@ const SemanticTypeAndTargetPicker = ({
         placeholder={t`Select a semantic type`}
         searchProp="name"
       />
-      {showCurrencyTypeSelect && (
-        <Icon name="chevronright" size={12} className="mx2 text-medium" />
-      )}
+      {showCurrencyTypeSelect && hasSeparator && <FieldSeparator />}
       {showCurrencyTypeSelect && (
         <Select
           className={cx(
@@ -133,9 +131,7 @@ const SemanticTypeAndTargetPicker = ({
           ))}
         </Select>
       )}
-      {showFKTargetSelect && hasSeparator && (
-        <Icon name="chevronright" size={12} className="mx2 text-medium" />
-      )}
+      {showFKTargetSelect && hasSeparator && <FieldSeparator />}
       {showFKTargetSelect && (
         <Select
           disabled={!hasIdFields}

@@ -8,7 +8,6 @@ import _ from "underscore";
 import Select from "metabase/core/components/Select";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import ButtonWithStatus from "metabase/components/ButtonWithStatus";
-import Icon from "metabase/components/Icon/Icon";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import Fields from "metabase/entities/fields";
@@ -19,6 +18,7 @@ import {
   hasSourceField,
   getFieldTargetId,
 } from "metabase-lib/queries/utils/field-ref";
+import FieldSeparator from "../FieldSeparator";
 import {
   FieldMappingContainer,
   FieldMappingRoot,
@@ -248,7 +248,7 @@ class FieldRemappingSettings extends React.Component {
           />
           {mappingType === MAP_OPTIONS.foreign && (
             <>
-              <Icon className="mx2 text-medium" name="chevronright" size={12} />
+              <FieldSeparator />
               <PopoverWithTrigger
                 key="foreignKeyName"
                 ref={this.fkPopover}
