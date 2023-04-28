@@ -12,7 +12,13 @@ export const TabList = styled(BaseTabList)`
 
   ${BaseTabList.Content} {
     display: flex;
-    overflow: hidden;
+    overflow-x: scroll;
+    /* Chrome */
+    ::-webkit-scrollbar {
+      display: none;
+    }
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
   }
 
   ${TabLink.Root}:not(:last-child) {
