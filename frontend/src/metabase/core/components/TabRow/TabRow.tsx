@@ -5,12 +5,9 @@ import ExplicitSize from "metabase/components/ExplicitSize";
 import { TabListProps } from "../TabList/TabList";
 import { ScrollButton, TabList } from "./TabRow.styled";
 
-const UNDERSCROLL_PIXELS = 32;
-
 interface TabRowInnerProps<T> extends TabListProps<T> {
   width: number | null;
 }
-
 function TabRowInner<T>({
   width,
   onChange,
@@ -23,36 +20,28 @@ function TabRowInner<T>({
   const showScrollLeft = scrollPosition > 0;
 
   useEffect(() => {
-    if (!tabListRef.current || !width) {
+    if (!width || !tabListRef.current) {
       return;
     }
 
-    const hideScrollArrows = width === tabListRef.current.scrollWidth;
-    if (hideScrollArrows) {
-      setScrollPosition(0);
-      setShowScrollRight(false);
-      return;
-    }
-
-    setShowScrollRight(scrollPosition + width < tabListRef.current.scrollWidth);
-  }, [width, scrollPosition]);
+    setShowScrollRight(
+      scrollPosition + width < tabListRef.current?.scrollWidth,
+    );
+  }, [children, scrollPosition, width]);
 
   const scroll = (direction: "left" | "right") => {
     if (!tabListRef.current || !width) {
       return;
     }
 
-    const scrollDistance =
-      (width - UNDERSCROLL_PIXELS) * (direction === "left" ? -1 : 1);
+    const scrollDistance = width * (direction === "left" ? -1 : 1);
     tabListRef.current.scrollBy(scrollDistance, 0);
-    setScrollPosition(
-      Math.max(0, tabListRef.current.scrollLeft + scrollDistance),
-    );
   };
 
   return (
     <TabList
       onChange={onChange as (value: unknown) => void}
+      onScroll={event => setScrollPosition(event.currentTarget.scrollLeft)}
       ref={tabListRef}
       {...props}
     >
