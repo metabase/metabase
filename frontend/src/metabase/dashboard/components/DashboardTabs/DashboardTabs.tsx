@@ -50,15 +50,15 @@ export function DashboardTabs({ isEditing }: DashboardTabsProps) {
             />
           ))
         )}
+        {isEditing && (
+          <CreateTabButton
+            icon="add"
+            iconSize={12}
+            onClick={createNewTab}
+            aria-label={t`Create new tab`}
+          />
+        )}
       </TabRow>
-      {isEditing && (
-        <CreateTabButton
-          icon="add"
-          iconSize={12}
-          onClick={createNewTab}
-          aria-label={t`Create new tab`}
-        />
-      )}
     </Container>
   );
 }
