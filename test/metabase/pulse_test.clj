@@ -51,16 +51,11 @@
   [{:keys [pulse pulse-card channel card]
     :or   {channel :email}}
    f]
-  (mt/with-temp* [Dashboard     [{dashboard-id :id} {:description "# dashboard description"}]
-                  DashboardCard [{dashboard-card-id :id} {:dashboard_id dashboard-id
-                                                          :card_id (u/the-id card)}]
-                  Pulse         [{pulse-id :id, :as pulse}
+  (mt/with-temp* [Pulse         [{pulse-id :id, :as pulse}
                                  (-> pulse
-                                     (merge {:name "Pulse Name"
-                                             :dashboard_id dashboard-id}))]
+                                     (merge {:name "Pulse Name"}))]
                   PulseCard     [_ (merge {:pulse_id pulse-id
-                                           :card_id  (u/the-id card)
-                                           :dashboard_card_id dashboard-card-id}
+                                           :card_id  (u/the-id card)}
                                           pulse-card)]
                   PulseChannel  [{pc-id :id} (case channel
                                                :email
