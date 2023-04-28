@@ -80,7 +80,7 @@ const SortableColumnList = SortableContainer(function SortableColumnList<
   onAdd,
   onColorChange,
 }: SortableColumnListProps<T>) {
-  const isDragDisabled = items?.length === 1;
+  const isDragDisabled = items.length === 1;
 
   return (
     <div>

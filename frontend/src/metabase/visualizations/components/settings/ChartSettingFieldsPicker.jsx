@@ -30,11 +30,11 @@ const ChartSettingFieldsPicker = ({
     );
   };
 
-  const isDragDisabled = fields?.length === 1;
+  const isDragDisabled = fields?.length <= 1;
 
   return (
     <div>
-      {Array.isArray(fields) ? (
+      {fields?.length >= 0 ? (
         <DragDropContext onDragEnd={handleDragEnd}>
           <Droppable droppableId="droppable">
             {provided => (
