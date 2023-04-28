@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import _ from "underscore";
 import { useAsync } from "react-use";
-import { useSelector, useDispatch } from "react-redux";
 
+import { useSelector, useDispatch } from "metabase/lib/redux";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { getMetadata } from "metabase/selectors/metadata";
 

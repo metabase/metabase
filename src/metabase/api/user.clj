@@ -286,8 +286,8 @@
    (= email maybe-new-email)
    ;; We should not allow a regular user to change their email address if they are a google/ldap user
    (and
-    (not (= "google" sso_source))
-    (not (= "ldap" sso_source)))))
+    (not (= :google sso_source))
+    (not (= :ldap sso_source)))))
 
 (defn- valid-name-update?
   "This predicate tests whether or not the user is allowed to update the first/last name associated with this account.
@@ -359,8 +359,8 @@
                ;; if the user orignally logged in via Google Auth/LDAP and it's no longer enabled, convert them into a regular user
                ;; (see metabase#3323)
                :sso_source   (case (:sso_source existing-user)
-                               "google" (when (google/google-auth-enabled) "google")
-                               "ldap"   (when (api.ldap/ldap-enabled) "ldap")
+                               :google (when (google/google-auth-enabled) :google)
+                               :ldap   (when (api.ldap/ldap-enabled) :ldap)
                                (:sso_source existing-user))})
   ;; now return the existing user whether they were originally active or not
   (fetch-user :id (u/the-id existing-user)))
