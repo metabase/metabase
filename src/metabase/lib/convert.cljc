@@ -298,10 +298,13 @@
                      [k (->legacy-MBQL v)])))
         m))
 
-(defmethod ->legacy-MBQL :aggregation [[_ opts agg-uuid]]
-  (let [opts (not-empty (disqualify opts))]
-    (cond-> [:aggregation (get *pMBQL-uuid->legacy-index* agg-uuid)]
-      opts (conj opts))))
+(defmethod ->legacy-MBQL :aggregation [[_ opts agg-uuid :as ag]]
+  (if (map? opts)
+    (let [opts (not-empty (disqualify opts))]
+      (cond-> [:aggregation (get *pMBQL-uuid->legacy-index* agg-uuid)]
+        opts (conj opts)))
+    ;; Something in source_metadata that shouldn't be touched
+    ag))
 
 (defmethod ->legacy-MBQL :dispatch-type/sequential [xs]
   (mapv ->legacy-MBQL xs))
