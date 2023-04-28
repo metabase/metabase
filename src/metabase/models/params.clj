@@ -276,7 +276,7 @@
   (set (mbql.u/match (seq (card->template-tag-field-clauses card))
          [:field (id :guard integer?) _]
          id)))
-(defmethod param-values :metabase.models.card/Card [card]
+(defmethod param-values :model/Card [card]
   (-> card card->template-tag-field-ids field-ids->param-field-values))
 
 (defmethod param-fields :model/Card [card]
