@@ -49,6 +49,7 @@ export interface TabButtonProps<T> extends HTMLAttributes<HTMLDivElement> {
   onEdit?: ChangeEventHandler<HTMLInputElement>;
   onFinishEditing?: () => void;
   isEditing?: boolean;
+  canEdit?: boolean;
   disabled?: boolean;
 }
 
@@ -62,6 +63,7 @@ const TabButton = forwardRef(function TabButton<T>(
     onFinishEditing,
     disabled = false,
     isEditing = false,
+    canEdit = true,
     showMenu: showMenuProp = true,
     ...props
   }: TabButtonProps<T>,
@@ -122,7 +124,7 @@ const TabButton = forwardRef(function TabButton<T>(
           type="text"
           value={label}
           isSelected={isSelected}
-          disabled={!isEditing}
+          disabled={!canEdit || (!isEditing && !isSelected)}
           onChange={onEdit}
           onKeyPress={handleInputKeyPress}
           onFocus={e => e.currentTarget.select()}
