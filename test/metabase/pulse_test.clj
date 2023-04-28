@@ -57,7 +57,7 @@
                   PulseCard    [_ (merge {:pulse_id pulse-id
                                           :card_id  (u/the-id card)
                                           :position 0}
-                                          pulse-card)]
+                                         pulse-card)]
                   PulseChannel [{pc-id :id} (case channel
                                               :email
                                               {:pulse_id pulse-id}
