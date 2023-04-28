@@ -7,7 +7,7 @@ Builds a page that lists all Metabase releases for docs: `docs/releases.md`.
 This script requires:
 
 - [Babashka](https://github.com/babashka/babashka)
-- [GitHub's CLI (gh)](https://cli.github.com/)
+- [GitHub's CLI (gh)](https://cli.github.com)
 
 ## Generate the list of releases
 
@@ -28,4 +28,4 @@ bb test:bb
 
 ## Editing the page
 
-Edit the file: [./resources/releases.md](./resources/releases.md).
+Edit the template: [./resources/releases.md](./resources/releases-template.md).
