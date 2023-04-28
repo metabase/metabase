@@ -139,7 +139,7 @@ export default class SaveQuestionModal extends Component {
         >
           {({ values, isValid }) => (
             <Form>
-              {!!showSaveType && (
+              {showSaveType && (
                 <FormRadio
                   name="saveType"
                   title={t`Replace or save as new?`}
