@@ -18,11 +18,8 @@
   (into [:enum {:error/message "Valid date extraction unit"}] date-extraction-units))
 
 (def date-truncation-units
-  "Units that you can TRUNCATE a date or datetime to. In temporal bucketing expressions these return a `:type/Date`.
-
-  Note: `:year` could work as either an extract or a truncation unit, but I think we're mostly using it as extract for
-  the time being. So it is is not included here."
-  #{:day :week :month :quarter})
+  "Units that you can TRUNCATE a date or datetime to. In temporal bucketing expressions these return a `:type/Date`."
+  #{:day :week :month :quarter :year})
 
 (mr/def ::unit.date.truncate
   (into [:enum {:error/message "Valid date truncation unit"}] date-truncation-units))
