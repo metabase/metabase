@@ -61,6 +61,8 @@ export default class FieldList extends Component {
         maxHeight={this.props.maxHeight}
         width={this.props.width}
         alwaysExpanded={this.props.alwaysExpanded}
+        renderItemIcon={this.props.renderItemIcon}
+        renderItemWrapper={this.props.renderItemWrapper}
         // forward DimensionList props
         useOriginalDimension={this.props.useOriginalDimension}
         enableSubDimensions={this.props.enableSubDimensions}

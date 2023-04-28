@@ -53,4 +53,36 @@ export const ClickActionButton = styled(Button)`
 
 export const StyledBreakoutPopover = styled(BreakoutPopover)`
   color: ${color("brand")};
+
+  .List-section-header-dimension {
+    margin: 0 1.5rem 0.5rem;
+    padding-top: 1.5rem;
+
+    font-weight: 700;
+    font-size: 0.75rem;
+    line-height: 1rem;
+    color: ${color("text-light")};
+
+    text-transform: none;
+    letter-spacing: normal;
+  }
+
+  .List-item {
+    line-height: 1.065rem;
+  }
+
+  .List-item:not(.List-item--disabled):hover {
+    color: ${color("text-white")};
+    background: ${color("brand")};
+    border: none;
+    border-radius: 8px;
+  }
+
+  .List-item--last {
+    margin-bottom: 1rem;
+  }
+`;
+
+export const RowItemWrapper = styled.div`
+  margin: 0 0.5rem;
 `;

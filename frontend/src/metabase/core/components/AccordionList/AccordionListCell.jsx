@@ -45,7 +45,7 @@ export const AccordionListCell = ({
     if (alwaysExpanded) {
       content = (
         <div
-          className="pt2 mb1 mx2 h5 text-uppercase text-bold"
+          className="List-section-header-dimension pt2 mb1 mx2 h5 text-uppercase text-bold"
           style={{ color: color }}
         >
           {section.name}
@@ -130,6 +130,7 @@ export const AccordionListCell = ({
             "List-item--selected": isSelected,
             "List-item--disabled": !isClickable,
             "List-item--cursor": hasCursor,
+            "List-item--last": isLastItem,
             mb1: isLastItem,
           },
           getItemClassName(item, itemIndex),
@@ -149,7 +150,15 @@ export const AccordionListCell = ({
             </span>
           )}
           <div>
-            {name && <h4 className="List-item-title ml1 text-wrap">{name}</h4>}
+            {name && (
+              <h4
+                className={cx("List-item-title text-wrap", {
+                  ml1: !!icon,
+                })}
+              >
+                {name}
+              </h4>
+            )}
             {description && (
               <p className="List-item-description ml1 text-wrap">
                 {description}

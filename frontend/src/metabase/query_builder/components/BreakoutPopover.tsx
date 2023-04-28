@@ -15,6 +15,11 @@ interface BreakoutPopoverProps {
   width?: number;
   maxHeight?: number;
   alwaysExpanded?: boolean;
+  renderItemIcon?: (item: DimensionOptions) => React.ReactNode;
+  renderItemWrapper?: (
+    content: React.ReactNode,
+    item: DimensionOptions,
+  ) => JSX.Element;
   onChangeBreakout: (breakout: ConcreteField) => void;
   onClose?: () => void;
 }
@@ -28,6 +33,8 @@ const BreakoutPopover = ({
   onClose,
   maxHeight,
   alwaysExpanded,
+  renderItemIcon,
+  renderItemWrapper,
   width = 400,
 }: BreakoutPopoverProps) => {
   const fieldOptions = breakoutOptions || query.breakoutOptions(breakout);
@@ -49,6 +56,8 @@ const BreakoutPopover = ({
       maxHeight={maxHeight}
       width={width}
       alwaysExpanded={alwaysExpanded}
+      renderItemIcon={renderItemIcon}
+      renderItemWrapper={renderItemWrapper}
       // forward DimensionList props
       enableSubDimensions
     />
