@@ -44,12 +44,12 @@ const SAVE_QUESTION_SCHEMA = Yup.object({
 
 interface SaveQuestionModalProps {
   question: Question;
-  originalQuestion: Question;
+  originalQuestion: Question | null;
   onCreate: (question: Question) => void;
   onSave: (question: Question) => Promise<void>;
   onClose: () => void;
   multiStep?: boolean;
-  initialCollectionId: number;
+  initialCollectionId?: number;
 }
 
 interface FormValues {
@@ -59,25 +59,34 @@ interface FormValues {
   description: string;
 }
 
+const isOriginalQuestionNotNullable = (
+  question: Question | null,
+  saveType: string,
+): question is Question => {
+  return saveType === "overwrite";
+};
+
 export default class SaveQuestionModal extends Component<SaveQuestionModalProps> {
   handleSubmit = async (details: FormValues) => {
     const { question, originalQuestion, onCreate, onSave } = this.props;
 
     const collectionId = canonicalCollectionId(
-      details.saveType === "overwrite"
+      isOriginalQuestionNotNullable(originalQuestion, details.saveType)
         ? originalQuestion.collectionId()
         : details.collection_id,
     );
-    const displayName =
-      details.saveType === "overwrite"
-        ? originalQuestion.displayName()
-        : details.name.trim();
-    const description =
-      details.saveType === "overwrite"
-        ? originalQuestion.description()
-        : details.description
-        ? details.description.trim()
-        : null;
+    const displayName = isOriginalQuestionNotNullable(
+      originalQuestion,
+      details.saveType,
+    )
+      ? originalQuestion.displayName()
+      : details.name.trim();
+    const description = isOriginalQuestionNotNullable(
+      originalQuestion,
+      details.saveType,
+    )
+      ? originalQuestion.description()
+      : details.description?.trim() ?? null;
 
     const newQuestion = question
       .setDisplayName(displayName)
@@ -86,7 +95,9 @@ export default class SaveQuestionModal extends Component<SaveQuestionModalProps>
 
     if (details.saveType === "create") {
       await onCreate(newQuestion);
-    } else if (details.saveType === "overwrite") {
+    } else if (
+      isOriginalQuestionNotNullable(originalQuestion, details.saveType)
+    ) {
       await onSave(newQuestion.setId(originalQuestion.id()));
     }
   };
