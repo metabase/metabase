@@ -87,7 +87,7 @@ const mapStateToProps = (
 
 const mapDispatchToProps: DispatchProps = {
   onFetchIdFields: Databases.objectActions.fetchIdfields,
-  onUpdateField: Fields.actions.update,
+  onUpdateField: Fields.actions.updateField,
   onRescanFieldValues: rescanFieldValues,
   onDiscardFieldValues: discardFieldValues,
 };

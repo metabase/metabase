@@ -86,12 +86,12 @@ const Fields = createEntity({
       return { id, values, has_more_values };
     }),
 
-    updateField(field, opts) {
+    updateField(field, values, opts) {
       return async dispatch => {
         const result = await dispatch(
           Fields.actions.update(
             { id: field.id },
-            field,
+            values,
             notify(opts, field.display_name, t`updated`),
           ),
         );
