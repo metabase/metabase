@@ -38,11 +38,19 @@
 
 (defn- model-set
   "Returns a set of models to export based on export opts"
-  [{:keys [include-field-values no-collections no-data-model]}]
+  [{:keys [include-field-values collections no-data-model]}]
   (cond-> #{}
-    include-field-values  (conj "FieldValues")
-    (not no-collections)  (into serdes.models/content)
-    (not no-data-model)   (into serdes.models/data-model)))
+    include-field-values
+    (conj "FieldValues")
+
+    (or (nil? collections) (seq collections))
+    (into serdes.models/content)
+
+    (empty? collections)
+    (conj "Setting")
+
+    (not no-data-model)
+    (into serdes.models/data-model)))
 
 (defn- extract-metabase
   "Extracts the appdb into a reducible stream of serializable maps, with `:serdes/meta` keys.
@@ -189,6 +197,6 @@ Eg. if Dashboard B includes a Card A that is derived from a
   "Returns a reducible stream of entities to serialize"
   [opts]
   (serdes.backfill/backfill-ids)
-  (if (:targets opts)
+  (if (seq (:targets opts))
     (extract-subtrees opts)
     (extract-metabase opts)))

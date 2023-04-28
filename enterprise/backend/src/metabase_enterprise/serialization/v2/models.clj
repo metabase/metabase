@@ -1,6 +1,7 @@
 (ns metabase-enterprise.serialization.v2.models)
 
 (def data-model
+  "Schema model types"
   ["Database"
    "Field"
    "Metric"
@@ -8,6 +9,7 @@
    "Table"])
 
 (def content
+  "Content model types"
   ["Action"
    "Card"
    "Collection"
