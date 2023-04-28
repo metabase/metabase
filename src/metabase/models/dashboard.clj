@@ -464,6 +464,10 @@
       (update :parameter_mappings     serdes/export-parameter-mappings)
       (update :visualization_settings serdes/export-visualization-settings)))
 
+(defn- extract-dashtab
+  [dashtab]
+  (dissoc dashtab :id :dashboard_id :updated_at))
+
 (defmethod serdes/extract-one "Dashboard"
   [_model-name _opts dash]
   (let [dash (cond-> dash
@@ -473,7 +477,7 @@
                (hydrate :ordered_tabs))]
     (-> (serdes/extract-one-basics "Dashboard" dash)
         (update :ordered_cards     #(mapv extract-dashcard %))
-        (update :ordered_tabs      #(mapv (fn [tab] (dissoc tab :id :dashboard_id :updated_at)) %))
+        (update :ordered_tabs      #(mapv extract-dashtab %))
         (update :parameters        serdes/export-parameters)
         (update :collection_id     serdes/*export-fk* Collection)
         (update :creator_id        serdes/*export-user*)
@@ -492,20 +496,17 @@
 (defn- dashcard-for [dashcard dashboard]
   (assoc dashcard
          :dashboard_id (:entity_id dashboard)
-         :serdes/meta (remove nil?
-                              [{:model "Dashboard"     :id (:entity_id dashboard)}
-                               (when (:dashboard_tab_id dashcard)
-                                 {:model "DashboardTab" :id (:entity_id dashcard)})
-                               {:model "DashboardCard" :id (:entity_id dashcard)}])))
+         :serdes/meta  (remove nil?
+                               [{:model "Dashboard"     :id (:entity_id dashboard)}
+                                (when-let [dashtab-eeid (last (:dashboard_tab_id dashcard))]
+                                  {:model "DashboardTab" :id dashtab-eeid})
+                                {:model "DashboardCard" :id (:entity_id dashcard)}])))
 
 (defn- dashtab-for [tab dashboard]
   (assoc tab
          :dashboard_id (:entity_id dashboard)
-         ;; should this call to generate-path?
-         :serdes/meta (remove nil?
-                              [{:model "Dashboard"    :id (:entity_id dashboard)}
-                               {:model "DashboardTab" :id (:entity_id tab)}])))
-
+         :serdes/meta  [{:model "Dashboard"    :id (:entity_id dashboard)}
+                        {:model "DashboardTab" :id (:entity_id tab)}]))
 
 ;; Call the default load-one! for the Dashboard, then for each DashboardCard.
 (defmethod serdes/load-one! "Dashboard" [ingested maybe-local]

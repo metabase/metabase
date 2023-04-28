@@ -357,7 +357,7 @@
 
 ;;; ----------------------------------------------- SERIALIZATION ----------------------------------------------------
 ;; DashboardCards are not serialized as their own, separate entities. They are inlined onto their parent Dashboards.
-;; And if the parent dashboard has tabs, it'll be inlined inside DashboardTab.
+;; If the parent dashboard has tabs, the dashcards are inlined under each DashboardTab, which are inlined on the Dashboard.
 ;; However, we can reuse some of the serdes machinery (especially load-one!) by implementing a few serdes methods.
 (defmethod serdes/generate-path "DashboardCard" [_ dashcard]
   (remove nil?

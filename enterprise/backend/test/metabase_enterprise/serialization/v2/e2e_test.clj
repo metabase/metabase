@@ -629,6 +629,7 @@
                            (-> (t2/select-one Dashboard :name dashboard-name)
                                (t2/hydrate :ordered_cards)
                                dashboard->link-cards)))))))))))))
+
 (deftest dashboard-with-tabs-test
   (testing "Dashboard with tabs must be deserialized correctly"
     (ts/with-random-dump-dir [dump-dir "serdesv2-"]
@@ -647,8 +648,8 @@
             :model/DashboardTab {tab-id-2 :id
                                  tab-eid-2 :entity_id}     {:name "Tab 2" :position 1 :dashboard_id dashboard-id}
             DashboardCard       _                          {:dashboard_id     dashboard-id
-                                                                             :card_id          card-id-1
-                                                                             :dashboard_tab_id tab-id-1}
+                                                            :card_id          card-id-1
+                                                            :dashboard_tab_id tab-id-1}
             DashboardCard       _                          {:dashboard_id     dashboard-id
                                                             :card_id          card-id-2
                                                             :dashboard_tab_id tab-id-1}

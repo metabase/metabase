@@ -430,7 +430,9 @@
 (defn log-path-str
   "Returns a string for logging from a serdes path sequence (i.e. in :serdes/meta)"
   [elements]
-  (->> elements (map #(str (:model %) " " (:id %))) (str/join " > ")))
+  (->> elements
+       (map #(str (:model %) " " (:id %)))
+       (str/join " > ")))
 
 
 ;; utils
