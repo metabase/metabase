@@ -15,7 +15,7 @@ describe("issue 21984", () => {
     cy.signInAsAdmin();
 
     cy.visit(reviewsDataModelPage);
-    cy.wait(["@tableMetadata", "@tableMetadata"]);
+    cy.wait("@tableMetadata");
 
     cy.findByDisplayValue("ID");
   });

@@ -28,11 +28,6 @@ import {
 
 type MetadataTabType = "columns" | "original_schema";
 
-const TABLE_QUERY = {
-  include_sensitive_fields: true,
-  ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
-};
-
 const METADATA_TAB_OPTIONS = [
   { name: t`Columns`, value: "columns" },
   { name: t`Original schema`, value: "original_schema" },
@@ -63,7 +58,7 @@ interface StateProps {
 
 interface DispatchProps {
   onFetchMetadata: (table: HasTableId, opts: HasRequestParams) => Promise<void>;
-  onFetchIdFields: (database: HasDatabaseId) => Promise<void>;
+  onFetchIdFields: (database: HasDatabaseId, params: unknown) => Promise<void>;
   onUpdateTable: (table: Table, name: string, value: unknown) => void;
 }
 
@@ -82,7 +77,7 @@ const mapStateToProps = (
 });
 
 const mapDispatchToProps: DispatchProps = {
-  onFetchMetadata: Tables.actions.fetchMetadataAndForeignTables,
+  onFetchMetadata: Tables.actions.fetchMetadata,
   onFetchIdFields: Databases.objectActions.fetchIdfields,
   onUpdateTable: Tables.actions.updateProperty,
 };
@@ -97,13 +92,10 @@ const MetadataTable = ({
   onFetchIdFields,
   onUpdateTable,
 }: MetadataTableProps) => {
-  const { loading, error } = useAsync(() => {
-    return onFetchMetadata({ id: selectedTableId }, { params: TABLE_QUERY });
-  }, [selectedTableId]);
-
-  useAsync(() => {
-    return onFetchIdFields({ id: selectedDatabaseId });
-  }, [selectedDatabaseId]);
+  const { loading, error } = useAsync(async () => {
+    await onFetchIdFields({ id: selectedDatabaseId }, getFieldsQuery());
+    await onFetchMetadata({ id: selectedTableId }, { params: getTableQuery() });
+  }, [selectedDatabaseId, selectedTableId]);
 
   if (table == null || loading || error != null) {
     return <LoadingAndErrorWrapper loading={loading} error={error} />;
@@ -142,7 +134,7 @@ const MetadataTableView = ({
   );
 
   const handleChangeDescription = useCallback(
-    (description: string) => {
+    (description: string | null) => {
       onUpdateTable(table, "description", description);
     },
     [table, onUpdateTable],
@@ -184,7 +176,7 @@ interface TableTitleSectionProps {
   table: Table;
   tab: MetadataTabType;
   onChangeName: (name: string) => void;
-  onChangeDescription: (description: string) => void;
+  onChangeDescription: (description: string | null) => void;
 }
 
 const TableTitleSection = ({
@@ -206,7 +198,11 @@ const TableTitleSection = ({
 
   const handleDescriptionChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
-      onChangeDescription(event.target.value);
+      if (event.target.value) {
+        onChangeDescription(event.target.value);
+      } else {
+        onChangeDescription(null);
+      }
     },
     [onChangeDescription],
   );
@@ -354,5 +350,13 @@ const TableTabSection = ({ tab, onChangeTab }: MetadataTabSectionProps) => {
     </div>
   );
 };
+
+const getTableQuery = () => ({
+  include_sensitive_fields: true,
+  ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
+});
+
+const getFieldsQuery = () =>
+  PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps;
 
 export default connect(mapStateToProps, mapDispatchToProps)(MetadataTable);

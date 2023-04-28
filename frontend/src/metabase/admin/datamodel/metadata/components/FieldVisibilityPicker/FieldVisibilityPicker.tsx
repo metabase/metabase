@@ -11,7 +11,7 @@ import Field from "metabase-lib/metadata/Field";
 interface FieldVisibilityPickerProps {
   className?: string;
   field: Field;
-  onUpdateField: (updates: Partial<Field>) => void;
+  onUpdateField: (field: Field, updates: Partial<Field>) => void;
 }
 
 const FieldVisibilityPicker = ({
@@ -21,7 +21,7 @@ const FieldVisibilityPicker = ({
 }: FieldVisibilityPickerProps) => {
   const handleChange = useCallback(
     (event: SelectChangeEvent<FieldVisibilityType>) => {
-      onUpdateField({ id: field.id, visibility_type: event.target.value });
+      onUpdateField(field, { visibility_type: event.target.value });
     },
     [field, onUpdateField],
   );
