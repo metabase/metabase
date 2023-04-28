@@ -51,8 +51,6 @@ export const CloseSidebarButton = styled(Icon)`
   }
 `;
 
-CloseSidebarButton.defaultProps = { name: "close" };
-
 export const ToolbarButtonsContainer = styled.div`
   display: flex;
   flex-direction: row;
