@@ -64,8 +64,8 @@ import JoinWrapper from "./structured/Join";
 
 import { getStructuredQueryTable } from "./utils/structured-query-table";
 
-type DimensionFilter = (dimension: Dimension) => boolean;
-type FieldFilter = (filter: Field) => boolean;
+type DimensionFilterFn = (dimension: Dimension) => boolean;
+export type FieldFilterFn = (filter: Field) => boolean;
 
 export const STRUCTURED_QUERY_TEMPLATE = {
   database: null,
@@ -792,7 +792,10 @@ class StructuredQueryInner extends AtomicQuery {
    * @param fieldFilter An option @type {Field} predicate to filter out options
    * @returns @type {DimensionOptions} that can be used as breakouts, excluding used breakouts, unless @param {breakout} is provided.
    */
-  breakoutOptions(includedBreakout?: any, fieldFilter = () => true) {
+  breakoutOptions(
+    includedBreakout?: any,
+    fieldFilter: FieldFilterFn = () => true,
+  ): DimensionOptions {
     // the collection of field dimensions
     const breakoutDimensions =
       includedBreakout === true
@@ -1190,7 +1193,7 @@ class StructuredQueryInner extends AtomicQuery {
    * Returns dimension options that can appear in the `fields` clause
    */
   fieldsOptions(
-    dimensionFilter: DimensionFilter = dimension => true,
+    dimensionFilter: DimensionFilterFn = dimension => true,
   ): DimensionOptions {
     if (this.isBareRows() && !this.hasBreakouts()) {
       return this.dimensionOptions(dimensionFilter);
@@ -1235,7 +1238,7 @@ class StructuredQueryInner extends AtomicQuery {
   // TODO Atte Keinänen 6/18/17: Refactor to dimensionOptions which takes a dimensionFilter
   // See aggregationFieldOptions for an explanation why that covers more use cases
   dimensionOptions(
-    dimensionFilter: DimensionFilter = dimension => true,
+    dimensionFilter: DimensionFilterFn = dimension => true,
   ): DimensionOptions {
     const dimensionOptions = {
       count: 0,
@@ -1247,8 +1250,10 @@ class StructuredQueryInner extends AtomicQuery {
     for (const join of joins) {
       const joinedDimensionOptions =
         join.joinedDimensionOptions(dimensionFilter);
-      dimensionOptions.count += joinedDimensionOptions.count;
-      dimensionOptions.fks.push(joinedDimensionOptions);
+      if (joinedDimensionOptions.count > 0) {
+        dimensionOptions.count += joinedDimensionOptions.count;
+        dimensionOptions.fks.push(joinedDimensionOptions);
+      }
     }
 
     const table = this.table();
@@ -1302,7 +1307,7 @@ class StructuredQueryInner extends AtomicQuery {
   }
 
   // FIELD OPTIONS
-  fieldOptions(fieldFilter: FieldFilter = field => true): DimensionOptions {
+  fieldOptions(fieldFilter: FieldFilterFn = field => true): DimensionOptions {
     const dimensionFilter = dimension => {
       const field = dimension.field && dimension.field();
       return !field || (field.isDimension() && fieldFilter(field));

@@ -30,6 +30,43 @@ describe("ZoomDrill", () => {
     expect(question.display()).toEqual("line");
   });
 
+  it("should return correct new breakout value for state -> map", () => {
+    const actions = ZoomDrill(setupCategoryFieldQuery());
+
+    expect(actions).toHaveLength(1);
+
+    const action = actions[0];
+    const question = action.question();
+    expect((question.datasetQuery() as StructuredDatasetQuery).query).toEqual({
+      "source-table": PEOPLE.id,
+      aggregation: [["count"]],
+      filter: ["=", ["field", PEOPLE.STATE.id, null], "TX"],
+      breakout: [
+        [
+          "field",
+          PEOPLE.LATITUDE.id,
+          {
+            binning: {
+              "bin-width": 1,
+              strategy: "bin-width",
+            },
+          },
+        ],
+        [
+          "field",
+          PEOPLE.LONGITUDE.id,
+          {
+            binning: {
+              "bin-width": 1,
+              strategy: "bin-width",
+            },
+          },
+        ],
+      ],
+    });
+    expect(question.display()).toEqual("map");
+  });
+
   describe("title", () => {
     it.each<[DatetimeUnit, DatetimeUnit]>([
       ["year", "quarter"],
@@ -93,7 +130,7 @@ function setupDateFieldQuery(temporalUnit: DatetimeUnit | string): {
 function setupCategoryFieldQuery() {
   const query = PEOPLE.query()
     .aggregate(["count"])
-    .breakout(["field", PEOPLE.STATE.id]);
+    .breakout(["field", PEOPLE.STATE.id, null]);
 
   const question = query.question();
 

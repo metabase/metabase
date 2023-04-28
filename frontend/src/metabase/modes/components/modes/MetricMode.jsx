@@ -1,16 +1,9 @@
-import PivotByCategoryDrill from "../drill/PivotByCategoryDrill";
-import PivotByLocationDrill from "../drill/PivotByLocationDrill";
-import PivotByTimeDrill from "../drill/PivotByTimeDrill";
+import PivotDrill from "../drill/PivotDrill";
 import DefaultMode from "./DefaultMode";
 
 const MetricMode = {
   name: "metric",
-  drills: [
-    ...DefaultMode.drills,
-    PivotByCategoryDrill,
-    PivotByLocationDrill,
-    PivotByTimeDrill,
-  ],
+  drills: [...DefaultMode.drills, PivotDrill],
 };
 
 export default MetricMode;
