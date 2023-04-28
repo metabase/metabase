@@ -15,11 +15,11 @@ import Button from "metabase/core/components/Button";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import FormRadio from "metabase/core/components/FormRadio";
 import { canonicalCollectionId } from "metabase/collections/utils";
+import { CollectionId } from "metabase-types/api";
 import * as Errors from "metabase/core/utils/errors";
+import Question from "metabase-lib/Question";
 
 import "./SaveQuestionModal.css";
-import { CollectionId } from "metabase-types/api";
-import Question from "metabase-lib/Question";
 
 const getSingleStepTitle = (questionType: string, showSaveType: boolean) => {
   if (questionType === "model") {
