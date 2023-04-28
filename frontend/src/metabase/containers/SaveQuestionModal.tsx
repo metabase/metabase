@@ -1,5 +1,4 @@
 import React, { Component } from "react";
-import PropTypes from "prop-types";
 import { CSSTransition, TransitionGroup } from "react-transition-group";
 import { t } from "ttag";
 import * as Yup from "yup";
@@ -61,16 +60,6 @@ interface FormValues {
 }
 
 export default class SaveQuestionModal extends Component<SaveQuestionModalProps> {
-  static propTypes = {
-    question: PropTypes.object.isRequired,
-    originalQuestion: PropTypes.object,
-    onCreate: PropTypes.func.isRequired,
-    onSave: PropTypes.func.isRequired,
-    onClose: PropTypes.func.isRequired,
-    multiStep: PropTypes.bool,
-    initialCollectionId: PropTypes.number,
-  };
-
   handleSubmit = async (details: FormValues) => {
     const { question, originalQuestion, onCreate, onSave } = this.props;
 
