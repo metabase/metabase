@@ -19,15 +19,17 @@ import { canonicalCollectionId } from "metabase/collections/utils";
 import * as Errors from "metabase/core/utils/errors";
 
 import "./SaveQuestionModal.css";
+import { CollectionId } from "metabase-types/api";
+import Question from "metabase-lib/Question";
 
-const getSingleStepTitle = (questionType, showSaveType) => {
+const getSingleStepTitle = (questionType: string, showSaveType: boolean) => {
   if (questionType === "model") {
     return t`Save model`;
   } else if (showSaveType) {
     return t`Save question`;
-  } else {
-    return t`Save new question`;
   }
+
+  return t`Save new question`;
 };
 
 const SAVE_QUESTION_SCHEMA = Yup.object({
@@ -35,13 +37,30 @@ const SAVE_QUESTION_SCHEMA = Yup.object({
   name: Yup.string().when("saveType", {
     // We don't care if the form is valid when overwrite mode is enabled,
     // as original question's data will be submitted instead of the form values
-    is: value => value !== "overwrite",
+    is: (value: string) => value !== "overwrite",
     then: Yup.string().required(Errors.required),
     otherwise: Yup.string().nullable(true),
   }),
 });
 
-export default class SaveQuestionModal extends Component {
+interface SaveQuestionModalProps {
+  question: Question;
+  originalQuestion: Question;
+  onCreate: (question: Question) => void;
+  onSave: (question: Question) => Promise<void>;
+  onClose: () => void;
+  multiStep?: boolean;
+  initialCollectionId: number;
+}
+
+interface FormValues {
+  saveType: string;
+  collection_id: CollectionId | null | undefined;
+  name: string;
+  description: string;
+}
+
+export default class SaveQuestionModal extends Component<SaveQuestionModalProps> {
   static propTypes = {
     question: PropTypes.object.isRequired,
     originalQuestion: PropTypes.object,
@@ -52,7 +71,7 @@ export default class SaveQuestionModal extends Component {
     initialCollectionId: PropTypes.number,
   };
 
-  handleSubmit = async details => {
+  handleSubmit = async (details: FormValues) => {
     const { question, originalQuestion, onCreate, onSave } = this.props;
 
     const collectionId = canonicalCollectionId(
@@ -88,7 +107,7 @@ export default class SaveQuestionModal extends Component {
 
     const isReadonly = originalQuestion != null && !originalQuestion.canWrite();
 
-    const initialValues = {
+    const initialValues: FormValues = {
       name: question.generateQueryDescription(),
       description: question.description() || "",
       collection_id:
