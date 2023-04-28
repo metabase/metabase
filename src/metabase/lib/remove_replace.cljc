@@ -1,6 +1,5 @@
 (ns metabase.lib.remove-replace
   (:require
-   [medley.core :as m]
    [metabase.lib.common :as lib.common]
    [metabase.lib.join :as lib.join]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
