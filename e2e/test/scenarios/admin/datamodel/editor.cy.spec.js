@@ -33,7 +33,7 @@ describe("scenarios > admin > datamodel > editor", () => {
       visitOrdersTableEditor();
       setValueAndBlurInput("Orders", "New orders");
       cy.wait("@updateTable");
-      cy.findByText("Updated table display_name");
+      cy.findByText("Updated Table display_name");
 
       startNewQuestion();
       popover().within(() => {
@@ -47,7 +47,7 @@ describe("scenarios > admin > datamodel > editor", () => {
       visitOrdersTableEditor();
       setValueAndBlurInput(ORDERS_DESCRIPTION, "New description");
       cy.wait("@updateTable");
-      cy.findByText("Updated table description");
+      cy.findByText("Updated Table description");
 
       cy.visit(`/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}`);
       cy.findByText("Orders").should("be.visible");
@@ -58,7 +58,7 @@ describe("scenarios > admin > datamodel > editor", () => {
       visitOrdersTableEditor();
       clearAndBlurInput(ORDERS_DESCRIPTION);
       cy.wait("@updateTable");
-      cy.findByText("Updated table description");
+      cy.findByText("Updated Table description");
 
       cy.visit(`/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}`);
       cy.findByText("Orders").should("be.visible");
@@ -69,7 +69,7 @@ describe("scenarios > admin > datamodel > editor", () => {
       visitOrdersTableEditor();
       cy.findByText("Hidden").click();
       cy.wait("@updateTable");
-      cy.findByText("Updated table visibility_type");
+      cy.findByText("Updated Table visibility_type");
       cy.findByText("5 Hidden Tables").should("be.visible");
 
       startNewQuestion();
@@ -229,7 +229,7 @@ describe("scenarios > admin > datamodel > editor", () => {
       visitOrdersTableEditor();
       setValueAndBlurInput("Orders", "New orders");
       cy.wait("@updateTable");
-      cy.findByText("Updated table display_name");
+      cy.findByText("Updated Table display_name");
       cy.signOut();
 
       cy.signInAsNormalUser();
