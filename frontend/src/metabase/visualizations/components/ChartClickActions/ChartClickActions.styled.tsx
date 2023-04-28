@@ -12,7 +12,7 @@ interface ClickActionButtonProps {
 }
 
 export const Container = styled.div`
-  padding: 1rem;
+  padding: 1rem 1rem 1.5rem;
 
   font-weight: 700;
 `;
@@ -21,13 +21,13 @@ export const Section = styled.div<{
   type: SectionType;
   hasOnlyOneSection: boolean;
 }>`
-  padding-bottom: 1rem;
+  &:not(:last-child):not(:first-child) {
+    padding-bottom: 1rem;
+  }
 
   ${({ type, hasOnlyOneSection }) =>
     type === "records" &&
     css`
-      padding-bottom: 0;
-
       &:after {
         ${!hasOnlyOneSection ? `content: "";` : ""};
         height: 1px;
@@ -40,6 +40,8 @@ export const Section = styled.div<{
 
 export const ActionIcon = styled(Icon)`
   margin-right: 0.75rem;
+
+  color: ${color("brand")};
 `;
 
 // TODO [#26836]: refactor this to be a button
@@ -74,6 +76,8 @@ export const ClickActionButton = styled.div<ClickActionButtonProps>`
       flex: auto;
       align-items: center;
       padding: 0.5rem;
+      border-radius: 8px;
+
       color: ${color("text-dark")};
 
       font-weight: 700;
@@ -82,6 +86,10 @@ export const ClickActionButton = styled.div<ClickActionButtonProps>`
       &:hover {
         color: ${color("white")};
         background-color: ${color("brand")};
+
+        ${ActionIcon} {
+          color: ${color("white")};
+        }
       }
     `}
 
@@ -122,4 +130,8 @@ export const ClickActionButton = styled.div<ClickActionButtonProps>`
 
 export const FlexTippyPopover = styled(TippyPopover)`
   display: flex;
+
+  &.tippy-box {
+    border: none;
+  }
 `;

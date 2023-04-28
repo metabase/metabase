@@ -30,18 +30,10 @@ const BreakoutPopover = ({
   alwaysExpanded,
   width = 400,
 }: BreakoutPopoverProps) => {
-  const table = query.table();
-  // FieldList requires table
-  if (!table) {
-    return null;
-  }
-
   const fieldOptions = breakoutOptions || query.breakoutOptions(breakout);
 
   return (
     <BreakoutFieldList
-      className={className}
-      width={width}
       field={breakout}
       query={query}
       metadata={query.metadata()}
@@ -52,11 +44,13 @@ const BreakoutPopover = ({
           onClose();
         }
       }}
-      table={table}
-      enableSubDimensions
+      // forward AccordionList props
+      className={className}
       maxHeight={maxHeight}
+      width={width}
       alwaysExpanded={alwaysExpanded}
-      searchable={false}
+      // forward DimensionList props
+      enableSubDimensions
     />
   );
 };

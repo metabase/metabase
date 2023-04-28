@@ -39,26 +39,19 @@ const ChartClickActionsView = ({
           key={key}
           type={key}
           hasOnlyOneSection={hasOnlyOneSection}
-          className={cx(
-            { pb2: SECTIONS[key].icon === "bolt" },
-            {
-              ml1:
-                SECTIONS[key].icon === "bolt" ||
-                SECTIONS[key].icon === "sum" ||
-                SECTIONS[key].icon === "breakout" ||
-                (SECTIONS[key].icon === "funnel_outline" && !hasOnlyOneSection),
-            },
-          )}
+          className={cx({
+            ml1:
+              SECTIONS[key].icon === "bolt" ||
+              SECTIONS[key].icon === "sum" ||
+              (SECTIONS[key].icon === "funnel_outline" && !hasOnlyOneSection),
+          })}
           data-testid="drill-through-section"
         >
           {SECTIONS[key].icon === "sum" && (
             <p className="mt0 text-medium text-small">{t`Summarize`}</p>
           )}
-          {SECTIONS[key].icon === "breakout" && (
-            <p className="my1 text-medium text-small">{t`Break out by a…`}</p>
-          )}
           {SECTIONS[key].icon === "bolt" && (
-            <p className="mt2 text-medium text-small">
+            <p className="mt1 text-medium text-small">
               {t`Automatic explorations`}
             </p>
           )}
@@ -66,7 +59,7 @@ const ChartClickActionsView = ({
             <p
               className={cx(
                 "text-small",
-                hasOnlyOneSection ? "mt0" : "mt2",
+                "mt1",
                 hasOnlyOneSection ? "text-dark" : "text-medium",
               )}
             >
@@ -91,7 +84,6 @@ const ChartClickActionsView = ({
                 "cursor-pointer": action.buttonType !== "info",
                 sort: action.buttonType === "sort",
                 "formatting-button": action.buttonType === "formatting",
-                "horizontal-button": action.buttonType === "horizontal",
               });
               const key = action.name;
               const isLastItem = index === actions.length - 1;
@@ -159,7 +151,6 @@ const ChartClickActionsView = ({
                   >
                     {action.icon && (
                       <ActionIcon
-                        className="text-brand text-white-hover"
                         size={action.buttonType === "horizontal" ? 14 : 12}
                         name={action.icon}
                       />
