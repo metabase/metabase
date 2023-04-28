@@ -244,6 +244,10 @@ We tweet stuff.
 
 Follow us on GitHub.
 
+### [List of releases](./releases.md)
+
+A list of all Metabase releases, including both the Enterprise Edition and the Open Source Edition.
+
 ### [Developers guide](./developers-guide/start.md)
 
 Contribute to the Metabase open source project!
