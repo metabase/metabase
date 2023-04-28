@@ -22,7 +22,7 @@ import {
   FieldSelectButton,
   ForeignKeyList,
   FieldValueMappingInput,
-} from "./FieldRemapping.styled";
+} from "./FieldRemappingSettings.styled";
 
 const MAP_OPTIONS = {
   original: { type: "original", name: t`Use original value` },
@@ -30,7 +30,7 @@ const MAP_OPTIONS = {
   custom: { type: "custom", name: t`Custom mapping` },
 };
 
-class FieldRemapping extends React.Component {
+class FieldRemappingSettings extends React.Component {
   state = {
     isChoosingInitialFkTarget: false,
     dismissedInitialFkTargetPopover: false,
@@ -229,7 +229,7 @@ class FieldRemapping extends React.Component {
   };
 
   render() {
-    const { field, table, fields, fieldsError } = this.props;
+    const { field, table, metadata, fieldsError } = this.props;
     const {
       isChoosingInitialFkTarget,
       hasChanged,
@@ -244,7 +244,7 @@ class FieldRemapping extends React.Component {
       isFKMapping && field.dimensions?.[0]?.human_readable_field_id !== null;
     const fkMappingField =
       hasFKMappingValue &&
-      fields[field.dimensions?.[0]?.human_readable_field_id];
+      metadata.field(field.dimensions?.[0]?.human_readable_field_id);
 
     return (
       <div>
@@ -461,4 +461,4 @@ const RemappingNamingTip = () => (
   </div>
 );
 
-export default FieldRemapping;
+export default FieldRemappingSettings;

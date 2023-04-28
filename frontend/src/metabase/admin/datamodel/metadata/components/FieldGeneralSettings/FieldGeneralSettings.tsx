@@ -8,7 +8,8 @@ import Select, {
   SelectChangeEvent,
 } from "metabase/core/components/Select/Select";
 import Field from "metabase-lib/metadata/Field";
-import FieldRemapping from "../FieldRemapping";
+import Table from "metabase-lib/metadata/Table";
+import FieldRemappingSettings from "../FieldRemappingSettings";
 import FieldVisibilityPicker from "../FieldVisibilityPicker";
 import MetadataSection from "../MetadataSection";
 import MetadataSectionHeader from "../MetadataSectionHeader";
@@ -18,6 +19,7 @@ import { FieldNameInput } from "./FieldGeneralSettings.styled";
 interface FieldGeneralSettingsProps {
   field: Field;
   idFields: Field[];
+  table: Table;
   onUpdateField: (field: Field, updates: Partial<Field>) => void;
   onRescanFieldValues: (fieldId: FieldId) => void;
   onDiscardFieldValues: (fieldId: FieldId) => void;
@@ -26,6 +28,7 @@ interface FieldGeneralSettingsProps {
 const FieldGeneralSettings = ({
   field,
   idFields,
+  table,
   onUpdateField,
   onRescanFieldValues,
   onDiscardFieldValues,
@@ -52,7 +55,7 @@ const FieldGeneralSettings = ({
         />
       )}
       <FieldValuesTypeSection field={field} onUpdateField={onUpdateField} />
-      <FieldRemappingSection field={field} onUpdateField={onUpdateField} />
+      <FieldRemappingSection field={field} table={table} />
       <FieldCachedValuesSection
         field={field}
         onRescanFieldValues={onRescanFieldValues}
@@ -270,12 +273,12 @@ const FieldValuesTypeSection = ({
 
 interface FieldRemappingSectionProps {
   field: Field;
-  onUpdateField: (field: Field, updates: Partial<Field>) => void;
+  table: Table;
 }
 
 const FieldRemappingSection = ({
   field,
-  onUpdateField,
+  table,
 }: FieldRemappingSectionProps) => {
   return (
     <MetadataSection>
@@ -283,7 +286,11 @@ const FieldRemappingSection = ({
         title={t`Display values`}
         description={t`Choose to show the original value from the database, or have this field display associated or custom information.`}
       />
-      <FieldRemapping field={field} />
+      <FieldRemappingSettings
+        field={field}
+        table={table}
+        metadata={table.metadata}
+      />
     </MetadataSection>
   );
 };

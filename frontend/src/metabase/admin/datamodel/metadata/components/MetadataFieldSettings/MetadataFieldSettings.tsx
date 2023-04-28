@@ -141,6 +141,7 @@ const MetadataFieldSettings = ({
           <FieldGeneralSettings
             field={field}
             idFields={idFields}
+            table={table}
             onUpdateField={onUpdateField}
             onRescanFieldValues={onRescanFieldValues}
             onDiscardFieldValues={onDiscardFieldValues}
