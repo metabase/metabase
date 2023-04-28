@@ -34,9 +34,7 @@ export default function DatePickerShortcuts({
   let title = "";
   if (dimension) {
     const field = dimension.field();
-    title =
-      (field.table ? field.table.displayName() + " – " : "") +
-      field.displayName();
+    title = field.displayName({ includeTable: true });
   }
 
   const { DAY_OPTIONS, MONTH_OPTIONS, MISC_OPTIONS } = useMemo(
