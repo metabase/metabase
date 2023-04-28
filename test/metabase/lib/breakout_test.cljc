@@ -247,10 +247,8 @@
                   (for [col columns]
                     (lib/display-info query col)))))))))
 
-(defn- breakout-column-excluded? [query column query']
-  (let [breakoutable-columns  (lib/breakoutable-columns query)
-        breakoutable-columns' (lib/breakoutable-columns query')]
-    (= (disj (set breakoutable-columns) column) (set breakoutable-columns'))))
+(defn- assert-breakout-column-excluded [query column]
+  (is (not (contains? (set (lib/breakoutable-columns query)) column))))
 
 (deftest ^:parallel breakoutable-columns-e2e-test
   (testing "Use the metadata returned by `breakoutable-columns` to add a new breakout to a query."
@@ -274,7 +272,7 @@
                   query'))
           (is (=? [[:field {:lib/uuid string? :base-type :type/Text} (meta/id :venues :name)]]
                   (lib/breakouts query')))
-          (is (true? (breakout-column-excluded? query col query'))))))))
+          (assert-breakout-column-excluded query' col))))))
 
 (deftest ^:parallel breakoutable-columns-own-and-implicitly-joinable-columns-e2e-test
   (testing "An implicitly joinable column can be broken out by."
@@ -322,7 +320,7 @@
             (is (= ["User ID"]
                    (for [breakout (lib/breakouts query')]
                      (lib/display-name query' breakout))))
-          (is (true? (breakout-column-excluded? query name-col query')))))))))
+          (assert-breakout-column-excluded query' name-col)))))))
 
 (deftest ^:parallel breakoutable-columns-expression-e2e-test
   (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
@@ -349,13 +347,13 @@
         (testing "description"
           (is (= "Venues, Grouped by expr"
                  (lib/describe-query query'))))
-        (is (true? (breakout-column-excluded? query expr query')))))))
+        (assert-breakout-column-excluded query' expr)))))
 
 (deftest ^:parallel breakoutable-columns-new-stage-e2e-test
   (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
                   (lib/expression "expr" (lib/absolute-datetime "2020" :month))
                   (lib/with-fields [(lib/field "VENUES" "ID")
-                                    (lib.dev/expression-ref "expr")])
+                                    (lib.dev/ref-lookup :expression "expr")])
                   (lib/append-stage))]
     (is (=? [{:id (meta/id :venues :id), :name "ID", :display_name "ID", :lib/source :source/previous-stage}
              {:name "expr", :display_name "expr", :lib/source :source/previous-stage}]
@@ -372,4 +370,4 @@
         (testing "description"
           (is (= "Grouped by Expr"
                  (lib/describe-query query'))))
-        (is (true? (breakout-column-excluded? query expr query')))))))
+        (assert-breakout-column-excluded query' expr)))))

@@ -2,6 +2,7 @@
   "Logic for determining whether two pMBQL queries are equal."
   (:refer-clojure :exclude [=])
   (:require
+   [medley.core :as m]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]))
 
@@ -50,6 +51,32 @@
          (and (= x y)
               (or (empty? more-x)
                   (recur more-x more-y))))))
+
+(def ^:private ^:dynamic *side->uuid->index* nil)
+
+(defn- aggregation-uuid->index
+  [stage]
+  (into {}
+        (map-indexed (fn [idx [_tag {ag-uuid :lib/uuid}]]
+                       [ag-uuid idx]))
+        (:aggregation stage)))
+
+(defmethod = :mbql.stage/mbql
+  [x y]
+  (binding [*side->uuid->index* {:left (aggregation-uuid->index x)
+                                 :right (aggregation-uuid->index y)}]
+    ((get-method = :dispatch-type/map) x y)))
+
+(defmethod = :aggregation
+  [x y]
+  (and (clojure.core/= 3 (count x) (count y))
+       (clojure.core/= (first x) (first y))
+       (= (second x) (second y))
+       ;; If nil, it means we aren't comparing a stage, so just compare the uuid directly
+       (if *side->uuid->index*
+         (clojure.core/= (get-in *side->uuid->index* [:left (last x)] ::no-left)
+                         (get-in *side->uuid->index* [:right (last y)] ::no-right))
+         (clojure.core/= (last x) (last y)))))
 
 ;;; if we've gotten here we at least know the dispatch values for `x` and `y` are the same, which means the types will
 ;;; be the same.
