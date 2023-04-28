@@ -1,20 +1,35 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
-import StatusListing from "./StatusListing";
+import { renderWithProviders, screen } from "__support__/ui";
+import { setupCollectionsEndpoints } from "__support__/server-mocks";
+import { createMockCollection } from "metabase-types/api/mocks";
+
+import {
+  StatusListingView as StatusListing,
+  StatusListingProps,
+} from "./StatusListing";
 
 const DatabaseStatusMock = () => <div>DatabaseStatus</div>;
 
 jest.mock("../../containers/DatabaseStatus", () => DatabaseStatusMock);
 
+const setup = (options?: Partial<StatusListingProps>) => {
+  setupCollectionsEndpoints([createMockCollection()]);
+
+  return renderWithProviders(<StatusListing isAdmin isLoggedIn {...options} />);
+};
+
 describe("StatusListing", () => {
   it("should render database statuses for admins", () => {
-    render(<StatusListing isAdmin={true} />);
+    setup({
+      isAdmin: true,
+      isLoggedIn: true,
+    });
 
     expect(screen.getByText("DatabaseStatus")).toBeInTheDocument();
   });
 
   it("should not render database statuses for non-admins", () => {
-    render(<StatusListing isAdmin={false} />);
+    renderWithProviders(<StatusListing isAdmin={false} isLoggedIn />);
 
     expect(screen.queryByText("DatabaseStatus")).not.toBeInTheDocument();
   });

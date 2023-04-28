@@ -6,6 +6,7 @@ import * as Urls from "metabase/lib/urls";
 import Fields from "metabase/entities/fields";
 import Button from "metabase/core/components/Button/Button";
 import { DatabaseId, SchemaId, TableId } from "metabase-types/api";
+import { Dispatch } from "metabase-types/store";
 import Field from "metabase-lib/metadata/Field";
 import FieldVisibilityPicker from "../FieldVisibilityPicker";
 import SemanticTypeAndTargetPicker from "../SemanticTypeAndTargetPicker";
@@ -26,9 +27,16 @@ interface DispatchProps {
 
 type MetadataTableColumnProps = OwnProps & DispatchProps;
 
-const mapDispatchToProps: DispatchProps = {
-  onUpdateField: Fields.actions.updateField,
-};
+const mapDispatchToProps = (dispatch: Dispatch): DispatchProps => ({
+  onUpdateField: (field, updates) =>
+    dispatch(
+      Fields.actions.updateField({
+        id: field.id,
+        display_name: field.displayName(),
+        ...updates,
+      }),
+    ),
+});
 
 const MetadataTableColumn = ({
   field,

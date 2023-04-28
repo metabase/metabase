@@ -661,7 +661,7 @@
     (db-perm-check (t2/select-one Database :id id))
     (sort-by (comp u/lower-case-en :name :table)
              (filter field-perm-check (-> (database/pk-fields {:id id})
-                                          (hydrate :table :has_field_values))))))
+                                          (hydrate :table))))))
 
 
 ;;; ----------------------------------------------- POST /api/database -----------------------------------------------
@@ -1072,7 +1072,8 @@
                              (map :schema (f (map (fn [s] {:db_id id :schema s}) schemas)))
                              schemas)
                            (filter (partial can-read-schema? id) schemas)))]
-    (when-not include_editable_data_model
+    (if include_editable_data_model
+      (api/check-404 (t2/select-one Database id))
       (api/read-check Database id))
     (->> (t2/select-fn-set :schema Table
                            :db_id id :active true

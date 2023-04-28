@@ -31,9 +31,9 @@ describe("scenarios > admin > datamodel > editor", () => {
 
     it("should allow changing the table name", () => {
       visitOrdersTableEditor();
-      setInputValue("Orders", "New orders");
+      setValueAndBlurInput("Orders", "New orders");
       cy.wait("@updateTable");
-      cy.findByText("Updated table display_name");
+      cy.findByText("Updated Table display_name");
 
       startNewQuestion();
       popover().within(() => {
@@ -45,9 +45,9 @@ describe("scenarios > admin > datamodel > editor", () => {
 
     it("should allow changing the table description", () => {
       visitOrdersTableEditor();
-      setInputValue(ORDERS_DESCRIPTION, "New description");
+      setValueAndBlurInput(ORDERS_DESCRIPTION, "New description");
       cy.wait("@updateTable");
-      cy.findByText("Updated table description");
+      cy.findByText("Updated Table description");
 
       cy.visit(`/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}`);
       cy.findByText("Orders").should("be.visible");
@@ -56,9 +56,9 @@ describe("scenarios > admin > datamodel > editor", () => {
 
     it("should allow clearing the table description", () => {
       visitOrdersTableEditor();
-      clearInputValue(ORDERS_DESCRIPTION);
+      clearAndBlurInput(ORDERS_DESCRIPTION);
       cy.wait("@updateTable");
-      cy.findByText("Updated table description");
+      cy.findByText("Updated Table description");
 
       cy.visit(`/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}`);
       cy.findByText("Orders").should("be.visible");
@@ -69,7 +69,7 @@ describe("scenarios > admin > datamodel > editor", () => {
       visitOrdersTableEditor();
       cy.findByText("Hidden").click();
       cy.wait("@updateTable");
-      cy.findByText("Updated table visibility_type");
+      cy.findByText("Updated Table visibility_type");
       cy.findByText("5 Hidden Tables").should("be.visible");
 
       startNewQuestion();
@@ -94,7 +94,9 @@ describe("scenarios > admin > datamodel > editor", () => {
 
     it("should allow changing the field name", () => {
       visitOrdersTableEditor();
-      getFieldSection("TAX").within(() => setInputValue("Tax", "New tax"));
+      getFieldSection("TAX").within(() =>
+        setValueAndBlurInput("Tax", "New tax"),
+      );
       cy.wait("@updateField");
       cy.findByText("Updated New tax").should("be.visible");
 
@@ -106,7 +108,7 @@ describe("scenarios > admin > datamodel > editor", () => {
     it("should allow changing the field description", () => {
       visitOrdersTableEditor();
       getFieldSection("TOTAL").within(() =>
-        setInputValue("The total billed amount.", "New description"),
+        setValueAndBlurInput("The total billed amount.", "New description"),
       );
       cy.wait("@updateField");
       cy.findByText("Updated Total").should("be.visible");
@@ -121,7 +123,7 @@ describe("scenarios > admin > datamodel > editor", () => {
     it("should allow clearing the field description", () => {
       visitOrdersTableEditor();
       getFieldSection("TOTAL").within(() =>
-        clearInputValue("The total billed amount."),
+        clearAndBlurInput("The total billed amount."),
       );
       cy.wait("@updateField");
       cy.findByText("Updated Total").should("be.visible");
@@ -225,9 +227,9 @@ describe("scenarios > admin > datamodel > editor", () => {
     it("should allow changing the table name with data model permissions only", () => {
       cy.signIn("none");
       visitOrdersTableEditor();
-      setInputValue("Orders", "New orders");
+      setValueAndBlurInput("Orders", "New orders");
       cy.wait("@updateTable");
-      cy.findByText("Updated table display_name");
+      cy.findByText("Updated Table display_name");
       cy.signOut();
 
       cy.signInAsNormalUser();
@@ -242,7 +244,9 @@ describe("scenarios > admin > datamodel > editor", () => {
     it("should allow changing the field name with data model permissions only", () => {
       cy.signIn("none");
       visitOrdersTableEditor();
-      getFieldSection("TAX").within(() => setInputValue("Tax", "New tax"));
+      getFieldSection("TAX").within(() =>
+        setValueAndBlurInput("Tax", "New tax"),
+      );
       cy.wait("@updateField");
       cy.findByText("Updated New tax").should("be.visible");
 
@@ -261,7 +265,7 @@ describe("scenarios > admin > datamodel > editor", () => {
 
     it("should be able to select and update a table in a database without schemas", () => {
       visitOrdersTableEditor("QA MySQL8");
-      setInputValue("Orders", "New orders");
+      setValueAndBlurInput("Orders", "New orders");
       cy.wait("@updateTable");
     });
 
@@ -283,11 +287,11 @@ const visitOrdersTableEditor = (database = "Sample Database") => {
   cy.wait("@fetchMetadata");
 };
 
-const setInputValue = (oldValue, newValue) => {
+const setValueAndBlurInput = (oldValue, newValue) => {
   cy.findByDisplayValue(oldValue).clear().type(newValue).blur();
 };
 
-const clearInputValue = oldValue => {
+const clearAndBlurInput = oldValue => {
   cy.findByDisplayValue(oldValue).clear().blur();
 };
 
