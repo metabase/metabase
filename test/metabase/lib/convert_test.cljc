@@ -140,7 +140,7 @@
                  :stages   [{:lib/type     :mbql.stage/mbql
                              :source-table 1
                              :aggregation  [[:sum {:lib/uuid ag-uuid}
-                                             [:field {:lib/uuid (str (random-uuid))} 1]]]
+                                             [:field {:lib/uuid string?} 1]]]
                              :breakout     [[:aggregation
                                              {:display-name   "Revenue"
                                               :effective_type :type/Integer}
@@ -261,6 +261,59 @@
                    :type :category,
                    :value [:param-value]}],
      :type :native}))
+
+(deftest ^:parallel round-trip-options-test
+  (testing "Round-tripping (p)MBQL caluses with options (#30280)"
+    (testing "starting with pMBQL"
+      (is (=? [:does-not-contain {:lib/uuid string?
+                                  :case-sensitive false}
+               [:field {:lib/uuid string?} 23]
+               "invite"]
+              (-> [:does-not-contain {:lib/uuid "b6a2ab24-bfb2-4b90-bd71-f96b1e025a5e"
+                                      :case-sensitive false}
+                   [:field {:lib/uuid "5d01e669-783f-40e0-9ae0-2b8098448390"} 23]
+                   "invite"]
+                  lib.convert/->legacy-MBQL lib.convert/->pMBQL))))
+    (testing "starting with MBQL"
+      (let [mbql-filter [:does-not-contain [:field 23 nil] "invite" {:case-sensitive false}]]
+        (is (= mbql-filter
+               (-> mbql-filter lib.convert/->pMBQL lib.convert/->legacy-MBQL)))))))
+
+(deftest ^:parallel case-expression-with-default-value-round-trip-test
+  (testing "Round trip of case expression with default value (#30280)"
+    (let [aggregation-options-clause
+          [:aggregation-options
+           [:distinct [:case [[[:> [:field 11 nil] 0] [:field 14 nil]]]
+                       {:default [:field 13 nil]}]]
+           {:name "CE"
+            :display-name "CE"}]
+          expected-pmbql-aggregation-options-clause
+          [:distinct {:name "CE"
+                      :display-name "CE"
+                      :lib/uuid string?}
+           [:case
+            {:lib/uuid string?}
+            [[[:> {:lib/uuid string?}
+               [:field {:lib/uuid string?} 11] 0]
+              [:field {:lib/uuid string?} 14]]]
+            [:field {:lib/uuid string?} 13]]]
+          mbql-query
+          {:database 1
+           :type :query
+           :query {:expressions {"CC" [:+ 1 1]}
+                   :limit 10
+                   :source-query {:source-table 2
+                                  :aggregation [aggregation-options-clause]
+                                  :breakout [[:field 15 {:temporal-unit :month}]]}}
+           :parameters []}
+          pmbql-aggregation-options-clause
+          (lib.convert/->pMBQL aggregation-options-clause)]
+      (is (=? expected-pmbql-aggregation-options-clause
+              pmbql-aggregation-options-clause))
+      (is (=? aggregation-options-clause
+              (lib.convert/->legacy-MBQL pmbql-aggregation-options-clause)))
+      (is (= (dissoc mbql-query :parameters [])
+             (-> mbql-query lib.convert/->pMBQL lib.convert/->legacy-MBQL))))))
 
 (deftest ^:parallel round-trip-preserve-metadata-test
   (testing "Round-tripping should not affect embedded metadata"

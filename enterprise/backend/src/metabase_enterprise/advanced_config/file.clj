@@ -91,14 +91,14 @@
   {{env user-dir}}
   ```"
   (:require
-   [camel-snake-kebab.core :as csk]
    [clojure.edn :as edn]
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
    [clojure.walk :as walk]
    [environ.core :as env]
    [metabase-enterprise.advanced-config.file.databases]
-   [metabase-enterprise.advanced-config.file.interface :as advanced-config.file.i]
+   [metabase-enterprise.advanced-config.file.interface
+    :as advanced-config.file.i]
    [metabase-enterprise.advanced-config.file.settings]
    [metabase-enterprise.advanced-config.file.users]
    [metabase.driver.common.parameters]
@@ -183,7 +183,7 @@
 
 (defmethod expand-parsed-template-form 'env
   [[_template-type env-var-name]]
-  (get *env* (csk/->kebab-case-keyword env-var-name)))
+  (get *env* (keyword (u/->kebab-case-en env-var-name))))
 
 (defmulti ^:private expand-template-str-part
   {:arglists '([part])}

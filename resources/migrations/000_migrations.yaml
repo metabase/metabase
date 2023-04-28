@@ -14433,6 +14433,28 @@ databaseChangeLog:
             sql: UPDATE core_user SET google_auth = true, sso_source = NULL WHERE sso_source = 'google';
 
   - changeSet:
+      id: v47.00-010
+      author: tsmacdonald
+      comment: Added 0.47.0 - Make metabase_table.name long enough for H2 names
+      changes:
+        - modifyDataType:
+            tableName: metabase_table
+            columnName: name
+            newDataType: varchar(256)
+      rollback: # no rollback needed, varchar(256) is backwards compatible
+
+  - changeSet:
+      id: v47.00-011
+      author: tsmacdonald
+      comment: Added 0.47.0 - Make metabase_table.display_name long enough for H2 names
+      changes:
+        - modifyDataType:
+            tableName: metabase_table
+            columnName: display_name
+            newDataType: varchar(256)
+      rollback: # no rollback needed, varchar(256) is backwards compatible
+
+  - changeSet:
       id: v47.00-012
       author: qwef
       comment: Added 0.47.0 - Replace user google_auth and ldap_auth columns with sso_source values

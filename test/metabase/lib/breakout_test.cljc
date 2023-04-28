@@ -70,65 +70,65 @@
     (testing (lib.util/format "Query =\n%s" (u/pprint-to-str query))
       (is (=? [{:lib/type                 :metadata/field
                 :name                     "ID"
-                :display_name             "ID"
+                :display-name             "ID"
                 :id                       (meta/id :venues :id)
-                :table_id                 (meta/id :venues)
-                :base_type                :type/BigInteger
+                :table-id                 (meta/id :venues)
+                :base-type                :type/BigInteger
                 :lib/source-column-alias  "ID"
                 :lib/desired-column-alias "ID"}
                {:lib/type                 :metadata/field
                 :name                     "NAME"
-                :display_name             "Name"
+                :display-name             "Name"
                 :id                       (meta/id :venues :name)
-                :table_id                 (meta/id :venues)
-                :base_type                :type/Text
+                :table-id                 (meta/id :venues)
+                :base-type                :type/Text
                 :lib/source-column-alias  "NAME"
                 :lib/desired-column-alias "NAME"}
                {:lib/type                 :metadata/field
                 :name                     "CATEGORY_ID"
-                :display_name             "Category ID"
+                :display-name             "Category ID"
                 :id                       (meta/id :venues :category-id)
-                :table_id                 (meta/id :venues)
+                :table-id                 (meta/id :venues)
                 :lib/source-column-alias  "CATEGORY_ID"
                 :lib/desired-column-alias "CATEGORY_ID"}
                {:lib/type                 :metadata/field
                 :name                     "LATITUDE"
-                :display_name             "Latitude"
+                :display-name             "Latitude"
                 :id                       (meta/id :venues :latitude)
-                :table_id                 (meta/id :venues)
-                :base_type                :type/Float
+                :table-id                 (meta/id :venues)
+                :base-type                :type/Float
                 :lib/source-column-alias  "LATITUDE"
                 :lib/desired-column-alias "LATITUDE"}
                {:lib/type                 :metadata/field
                 :name                     "LONGITUDE"
-                :display_name             "Longitude"
+                :display-name             "Longitude"
                 :id                       (meta/id :venues :longitude)
-                :table_id                 (meta/id :venues)
-                :base_type                :type/Float
+                :table-id                 (meta/id :venues)
+                :base-type                :type/Float
                 :lib/source-column-alias  "LONGITUDE"
                 :lib/desired-column-alias "LONGITUDE"}
                {:lib/type                 :metadata/field
                 :name                     "PRICE"
-                :display_name             "Price"
+                :display-name             "Price"
                 :id                       (meta/id :venues :price)
-                :table_id                 (meta/id :venues)
-                :base_type                :type/Integer
+                :table-id                 (meta/id :venues)
+                :base-type                :type/Integer
                 :lib/source-column-alias  "PRICE"
                 :lib/desired-column-alias "PRICE"}
                {:lib/type                 :metadata/field
                 :name                     "ID"
-                :display_name             "ID"
+                :display-name             "ID"
                 :id                       (meta/id :categories :id)
-                :table_id                 (meta/id :categories)
-                :base_type                :type/BigInteger
+                :table-id                 (meta/id :categories)
+                :base-type                :type/BigInteger
                 :lib/source-column-alias  "ID"
                 :lib/desired-column-alias "CATEGORIES__via__CATEGORY_ID__ID"}
                {:lib/type                 :metadata/field
                 :name                     "NAME"
-                :display_name             "Name"
+                :display-name             "Name"
                 :id                       (meta/id :categories :name)
-                :table_id                 (meta/id :categories)
-                :base_type                :type/Text
+                :table-id                 (meta/id :categories)
+                :base-type                :type/Text
                 :lib/source-column-alias  "NAME"
                 :lib/desired-column-alias "CATEGORIES__via__CATEGORY_ID__NAME"}]
               (lib/breakoutable-columns query))))))
@@ -145,9 +145,9 @@
                  {:id (meta/id :venues :longitude) :name "LONGITUDE"}
                  {:id (meta/id :venues :price) :name "PRICE"}
                  {:lib/type     :metadata/field
-                  :base_type    :type/Integer
+                  :base-type    :type/Integer
                   :name         "Category ID + 1"
-                  :display_name "Category ID + 1"
+                  :display-name "Category ID + 1"
                   :lib/source   :source/expressions}
                  {:id (meta/id :categories :id) :name "ID"}
                  {:id (meta/id :categories :name) :name "NAME"}]
@@ -172,18 +172,18 @@
                  {:id (meta/id :venues :price) :name "PRICE"}
                  {:lib/type     :metadata/field
                   :name         "ID"
-                  :display_name "ID"
+                  :display-name "ID"
                   :source_alias "Cat"
                   :id           (meta/id :categories :id)
-                  :table_id     (meta/id :categories)
-                  :base_type    :type/BigInteger}
+                  :table-id     (meta/id :categories)
+                  :base-type    :type/BigInteger}
                  {:lib/type     :metadata/field
                   :name         "NAME"
-                  :display_name "Name"
+                  :display-name "Name"
                   :source_alias "Cat"
                   :id           (meta/id :categories :name)
-                  :table_id     (meta/id :categories)
-                  :base_type    :type/Text}]
+                  :table-id     (meta/id :categories)
+                  :base-type    :type/Text}]
                 (lib/breakoutable-columns query)))))))
 
 (deftest ^:parallel breakoutable-columns-source-card-test
@@ -193,57 +193,57 @@
     (testing (str (pr-str varr) \newline (lib.util/format "Query =\n%s" (u/pprint-to-str query)))
       (let [columns (lib/breakoutable-columns query)]
         (is (=? [{:name                     "USER_ID"
-                  :display_name             "User ID"
-                  :base_type                :type/Integer
+                  :display-name             "User ID"
+                  :base-type                :type/Integer
                   :lib/source               :source/card
                   :lib/desired-column-alias "USER_ID"}
                  {:name                     "count"
-                  :display_name             "Count"
-                  :base_type                :type/Integer
+                  :display-name             "Count"
+                  :base-type                :type/Integer
                   :lib/source               :source/card
                   :lib/desired-column-alias "count"}
                  {:name                     "ID"
-                  :display_name             "ID"
-                  :base_type                :type/BigInteger
+                  :display-name             "ID"
+                  :base-type                :type/BigInteger
                   :lib/source               :source/implicitly-joinable
                   :lib/desired-column-alias "USERS__via__USER_ID__ID"}
                  {:name                     "NAME"
-                  :display_name             "Name"
-                  :base_type                :type/Text
+                  :display-name             "Name"
+                  :base-type                :type/Text
                   :lib/source               :source/implicitly-joinable
                   :lib/desired-column-alias "USERS__via__USER_ID__NAME"}
                  {:name                     "LAST_LOGIN"
-                  :display_name             "Last Login"
-                  :base_type                :type/DateTime
+                  :display-name             "Last Login"
+                  :base-type                :type/DateTime
                   :lib/source               :source/implicitly-joinable
                   :lib/desired-column-alias "USERS__via__USER_ID__LAST_LOGIN"}]
                 columns))
         (testing `lib/display-info
           (is (=? [{:name                   "USER_ID"
-                    :display_name           "User ID"
-                    :table                  {:name "My Card", :display_name "My Card"}
-                    :is_from_previous_stage false
-                    :is_implicitly_joinable false}
+                    :display-name           "User ID"
+                    :table                  {:name "My Card", :display-name "My Card"}
+                    :is-from-previous-stage false
+                    :is-implicitly-joinable false}
                    {:name                   "count"
-                    :display_name           "Count"
-                    :table                  {:name "My Card", :display_name "My Card"}
-                    :is_from_previous_stage false
-                    :is_implicitly_joinable false}
+                    :display-name           "Count"
+                    :table                  {:name "My Card", :display-name "My Card"}
+                    :is-from-previous-stage false
+                    :is-implicitly-joinable false}
                    {:name                   "ID"
-                    :display_name           "ID"
-                    :table                  {:name "USERS", :display_name "Users"}
-                    :is_from_previous_stage false
-                    :is_implicitly_joinable true}
+                    :display-name           "ID"
+                    :table                  {:name "USERS", :display-name "Users"}
+                    :is-from-previous-stage false
+                    :is-implicitly-joinable true}
                    {:name                   "NAME"
-                    :display_name           "Name"
-                    :table                  {:name "USERS", :display_name "Users"}
-                    :is_from_previous_stage false
-                    :is_implicitly_joinable true}
+                    :display-name           "Name"
+                    :table                  {:name "USERS", :display-name "Users"}
+                    :is-from-previous-stage false
+                    :is-implicitly-joinable true}
                    {:name                   "LAST_LOGIN"
-                    :display_name           "Last Login"
-                    :table                  {:name "USERS", :display_name "Users"}
-                    :is_from_previous_stage false
-                    :is_implicitly_joinable true}]
+                    :display-name           "Last Login"
+                    :table                  {:name "USERS", :display-name "Users"}
+                    :is-from-previous-stage false
+                    :is-implicitly-joinable true}]
                   (for [col columns]
                     (lib/display-info query col)))))))))
 
@@ -256,8 +256,7 @@
       (is (=? {:lib/type :mbql/query
                :database (meta/id)
                :stages   [{:lib/type     :mbql.stage/mbql
-                           :source-table (meta/id :venues)
-                           :lib/options  {:lib/uuid string?}}]}
+                           :source-table (meta/id :venues)}]}
               query))
       (testing (lib.util/format "Query =\n%s" (u/pprint-to-str query))
         (let [breakoutable-columns (lib/breakoutable-columns query)
@@ -267,7 +266,6 @@
                    :database (meta/id)
                    :stages   [{:lib/type     :mbql.stage/mbql
                                :source-table (meta/id :venues)
-                               :lib/options  {:lib/uuid string?}
                                :breakout     [[:field {:lib/uuid string? :base-type :type/Text} (meta/id :venues :name)]]}]}
                   query'))
           (is (=? [[:field {:lib/uuid string? :base-type :type/Text} (meta/id :venues :name)]]
@@ -293,12 +291,12 @@
               query'))
       (is (= "Venues, Grouped by Categories → Name and Price"
              (lib/describe-query query')))
-      (is (=? [{:display_name "ID",          :lib/source :source/table-defaults}
-               {:display_name "Name",        :lib/source :source/table-defaults}
-               {:display_name "Category ID", :lib/source :source/table-defaults}
-               {:display_name "Latitude",    :lib/source :source/table-defaults}
-               {:display_name "Longitude",   :lib/source :source/table-defaults}
-               {:display_name "ID",          :lib/source :source/implicitly-joinable}]
+      (is (=? [{:display-name "ID",          :lib/source :source/table-defaults}
+               {:display-name "Name",        :lib/source :source/table-defaults}
+               {:display-name "Category ID", :lib/source :source/table-defaults}
+               {:display-name "Latitude",    :lib/source :source/table-defaults}
+               {:display-name "Longitude",   :lib/source :source/table-defaults}
+               {:display-name "ID",          :lib/source :source/implicitly-joinable}]
               (lib/breakoutable-columns query'))))))
 
 (deftest ^:parallel breakoutable-columns-with-source-card-e2e-test
@@ -308,7 +306,7 @@
         (let [name-col (m/find-first #(= (:name %) "USER_ID")
                                      (lib/breakoutable-columns query))]
           (is (=? {:name      "USER_ID"
-                   :base_type :type/Integer}
+                   :base-type :type/Integer}
                   name-col))
           (let [query' (lib/breakout query name-col)]
             (is (=? {:stages
@@ -326,15 +324,15 @@
   (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
                   (lib/expression "expr" (lib/absolute-datetime "2020" :month))
                   (lib/with-fields [(lib/field "VENUES" "ID")]))]
-    (is (=? [{:id (meta/id :venues :id),          :name "ID",          :display_name "ID",          :lib/source :source/table-defaults}
-             {:id (meta/id :venues :name),        :name "NAME",        :display_name "Name",        :lib/source :source/table-defaults}
-             {:id (meta/id :venues :category-id), :name "CATEGORY_ID", :display_name "Category ID", :lib/source :source/table-defaults}
-             {:id (meta/id :venues :latitude),    :name "LATITUDE",    :display_name "Latitude",    :lib/source :source/table-defaults}
-             {:id (meta/id :venues :longitude),   :name "LONGITUDE",   :display_name "Longitude",   :lib/source :source/table-defaults}
-             {:id (meta/id :venues :price),       :name "PRICE",       :display_name "Price",       :lib/source :source/table-defaults}
-             {:name "expr", :display_name "expr", :lib/source :source/expressions}
-             {:id (meta/id :categories :id),   :name "ID",   :display_name "ID",   :lib/source :source/implicitly-joinable}
-             {:id (meta/id :categories :name), :name "NAME", :display_name "Name", :lib/source :source/implicitly-joinable}]
+    (is (=? [{:id (meta/id :venues :id),          :name "ID",          :display-name "ID",          :lib/source :source/table-defaults}
+             {:id (meta/id :venues :name),        :name "NAME",        :display-name "Name",        :lib/source :source/table-defaults}
+             {:id (meta/id :venues :category-id), :name "CATEGORY_ID", :display-name "Category ID", :lib/source :source/table-defaults}
+             {:id (meta/id :venues :latitude),    :name "LATITUDE",    :display-name "Latitude",    :lib/source :source/table-defaults}
+             {:id (meta/id :venues :longitude),   :name "LONGITUDE",   :display-name "Longitude",   :lib/source :source/table-defaults}
+             {:id (meta/id :venues :price),       :name "PRICE",       :display-name "Price",       :lib/source :source/table-defaults}
+             {:name "expr", :display-name "expr", :lib/source :source/expressions}
+             {:id (meta/id :categories :id),   :name "ID",   :display-name "ID",   :lib/source :source/implicitly-joinable}
+             {:id (meta/id :categories :name), :name "NAME", :display-name "Name", :lib/source :source/implicitly-joinable}]
             (lib/breakoutable-columns query)))
     (let [expr (m/find-first #(= (:name %) "expr") (lib/breakoutable-columns query))]
       (is (=? {:lib/type   :metadata/field
@@ -355,8 +353,8 @@
                   (lib/with-fields [(lib/field "VENUES" "ID")
                                     (lib.dev/ref-lookup :expression "expr")])
                   (lib/append-stage))]
-    (is (=? [{:id (meta/id :venues :id), :name "ID", :display_name "ID", :lib/source :source/previous-stage}
-             {:name "expr", :display_name "expr", :lib/source :source/previous-stage}]
+    (is (=? [{:id (meta/id :venues :id), :name "ID", :display-name "ID", :lib/source :source/previous-stage}
+             {:name "expr", :display-name "expr", :lib/source :source/previous-stage}]
             (lib/breakoutable-columns query)))
     (let [expr (m/find-first #(= (:name %) "expr") (lib/breakoutable-columns query))]
       (is (=? {:lib/type   :metadata/field
