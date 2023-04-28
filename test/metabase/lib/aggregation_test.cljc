@@ -4,7 +4,6 @@
    [clojure.test :refer [are deftest is testing]]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
-   [metabase.lib.dev :as lib.dev]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.query :as lib.query]

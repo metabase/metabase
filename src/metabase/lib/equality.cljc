@@ -2,7 +2,6 @@
   "Logic for determining whether two pMBQL queries are equal."
   (:refer-clojure :exclude [=])
   (:require
-   [medley.core :as m]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]))
 
