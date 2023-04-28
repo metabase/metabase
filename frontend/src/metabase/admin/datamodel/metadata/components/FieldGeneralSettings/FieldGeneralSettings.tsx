@@ -51,6 +51,7 @@ const FieldGeneralSettings = ({
         />
       )}
       <FieldValuesTypeSection field={field} onUpdateField={onUpdateField} />
+      <FieldRemappingSection field={field} onUpdateField={onUpdateField} />
       <FieldCachedValuesSection
         field={field}
         onRescanFieldValues={onRescanFieldValues}
@@ -261,6 +262,25 @@ const FieldValuesTypeSection = ({
         value={field.has_field_values}
         options={MetabaseCore.has_field_values_options}
         onChange={handleChangeFieldValuesType}
+      />
+    </MetadataSection>
+  );
+};
+
+interface FieldRemappingSectionProps {
+  field: Field;
+  onUpdateField: (field: Field, updates: Partial<Field>) => void;
+}
+
+const FieldRemappingSection = ({
+  field,
+  onUpdateField,
+}: FieldRemappingSectionProps) => {
+  return (
+    <MetadataSection>
+      <MetadataSectionHeader
+        title={t`Display values`}
+        description={t`Choose to show the original value from the database, or have this field display associated or custom information.`}
       />
     </MetadataSection>
   );
