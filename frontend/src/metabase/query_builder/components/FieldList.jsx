@@ -49,6 +49,7 @@ export default class FieldList extends Component {
       (query
         ? query.parseFieldReference(field)
         : Dimension.parseMBQL(field, metadata));
+
     return (
       <DimensionList
         sections={this.state.sections}

@@ -409,7 +409,9 @@ function nextBreakouts(dimensionMaps, metadata) {
   const nextStepNumber = currentStepNumber + 1;
 
   const table = metadata && firstDimension.field().table;
-  const tableDimensions = columnsToFieldDimensions(table.fields, metadata);
+  const tableDimensions = table
+    ? columnsToFieldDimensions(table.fields, metadata)
+    : [];
 
   const allDimensions = [...dimensions, ...tableDimensions];
 

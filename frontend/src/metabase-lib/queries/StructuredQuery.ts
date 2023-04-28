@@ -794,7 +794,10 @@ class StructuredQueryInner extends AtomicQuery {
    * @param fieldFilter An option @type {Field} predicate to filter out options
    * @returns @type {DimensionOptions} that can be used as breakouts, excluding used breakouts, unless @param {breakout} is provided.
    */
-  breakoutOptions(includedBreakout?: any, fieldFilter = () => true) {
+  breakoutOptions(
+    includedBreakout?: any,
+    fieldFilter: FieldFilter = () => true,
+  ): DimensionOptions {
     // the collection of field dimensions
     const breakoutDimensions =
       includedBreakout === true
@@ -1249,8 +1252,10 @@ class StructuredQueryInner extends AtomicQuery {
     for (const join of joins) {
       const joinedDimensionOptions =
         join.joinedDimensionOptions(dimensionFilter);
-      dimensionOptions.count += joinedDimensionOptions.count;
-      dimensionOptions.fks.push(joinedDimensionOptions);
+      if (joinedDimensionOptions.count > 0) {
+        dimensionOptions.count += joinedDimensionOptions.count;
+        dimensionOptions.fks.push(joinedDimensionOptions);
+      }
     }
 
     const table = this.table();
