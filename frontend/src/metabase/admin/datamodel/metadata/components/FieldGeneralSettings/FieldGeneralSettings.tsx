@@ -1,6 +1,8 @@
 import React, { ChangeEvent, useCallback, useMemo } from "react";
+import { connect } from "react-redux";
 import { t } from "ttag";
 import * as MetabaseCore from "metabase/lib/core";
+import Fields from "metabase/entities/fields";
 import ActionButton from "metabase/components/ActionButton";
 import InputBlurChange from "metabase/components/InputBlurChange";
 import { FieldId, FieldValuesType } from "metabase-types/api";
@@ -9,6 +11,7 @@ import Select, {
 } from "metabase/core/components/Select/Select";
 import Field from "metabase-lib/metadata/Field";
 import Table from "metabase-lib/metadata/Table";
+import { discardFieldValues, rescanFieldValues } from "../../actions";
 import FieldRemappingSettings from "../FieldRemappingSettings";
 import FieldVisibilityPicker from "../FieldVisibilityPicker";
 import MetadataSection from "../MetadataSection";
@@ -16,14 +19,25 @@ import MetadataSectionHeader from "../MetadataSectionHeader";
 import SemanticTypeAndTargetPicker from "../SemanticTypeAndTargetPicker";
 import { FieldNameInput } from "./FieldGeneralSettings.styled";
 
-interface FieldGeneralSettingsProps {
+interface OwnProps {
   field: Field;
   idFields: Field[];
   table: Table;
+}
+
+interface DispatchProps {
   onUpdateField: (field: Field, updates: Partial<Field>) => void;
   onRescanFieldValues: (fieldId: FieldId) => void;
   onDiscardFieldValues: (fieldId: FieldId) => void;
 }
+
+type FieldGeneralSettingsProps = OwnProps & DispatchProps;
+
+const mapDispatchToProps: DispatchProps = {
+  onUpdateField: Fields.actions.updateField,
+  onRescanFieldValues: rescanFieldValues,
+  onDiscardFieldValues: discardFieldValues,
+};
 
 const FieldGeneralSettings = ({
   field,
@@ -286,11 +300,7 @@ const FieldRemappingSection = ({
         title={t`Display values`}
         description={t`Choose to show the original value from the database, or have this field display associated or custom information.`}
       />
-      <FieldRemappingSettings
-        field={field}
-        table={table}
-        metadata={table.metadata}
-      />
+      <FieldRemappingSettings field={field} table={table} />
     </MetadataSection>
   );
 };
@@ -342,4 +352,4 @@ const FieldCachedValuesSection = ({
   );
 };
 
-export default FieldGeneralSettings;
+export default connect(null, mapDispatchToProps)(FieldGeneralSettings);

@@ -1,14 +1,25 @@
 import React, { useCallback, useMemo } from "react";
+import { connect } from "react-redux";
+import Fields from "metabase/entities/fields";
 import ColumnSettings from "metabase/visualizations/components/ColumnSettings";
 import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings/column";
 import { FieldFormattingSettings as FieldSettings } from "metabase-types/api";
 import Field from "metabase-lib/metadata/Field";
 import MetadataSection from "../MetadataSection";
 
-interface FieldFormattingSettingsProps {
+interface OwnProps {
   field: Field;
+}
+
+interface DispatchProps {
   onUpdateField: (field: Field, updates: Partial<Field>) => void;
 }
+
+type FieldFormattingSettingsProps = OwnProps & DispatchProps;
+
+const mapDispatchToProps: DispatchProps = {
+  onUpdateField: Fields.updateField,
+};
 
 const FieldFormattingSettings = ({
   field,
@@ -45,4 +56,4 @@ const FieldFormattingSettings = ({
   );
 };
 
-export default FieldFormattingSettings;
+export default connect(null, mapDispatchToProps)(FieldFormattingSettings);

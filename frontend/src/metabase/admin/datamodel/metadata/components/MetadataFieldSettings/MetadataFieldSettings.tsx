@@ -13,12 +13,11 @@ import AdminLayout from "metabase/components/AdminLayout";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { LeftNavPane, LeftNavPaneItem } from "metabase/components/LeftNavPane";
-import { DatabaseId, FieldId, Schema } from "metabase-types/api";
+import { DatabaseId, Schema } from "metabase-types/api";
 import { State } from "metabase-types/store";
 import Database from "metabase-lib/metadata/Database";
 import Table from "metabase-lib/metadata/Table";
 import Field from "metabase-lib/metadata/Field";
-import { discardFieldValues, rescanFieldValues } from "../../actions";
 import MetadataBackButton from "../MetadataBackButton";
 import FieldGeneralSettings from "../FieldGeneralSettings";
 import FieldFormattingSettings from "../FieldFormattingSettings";
@@ -63,9 +62,6 @@ interface StateProps {
 
 interface DispatchProps {
   onFetchIdFields: (database: HasDatabaseId, params: unknown) => void;
-  onUpdateField: (field: Field, updates: Partial<Field>) => void;
-  onRescanFieldValues: (fieldId: FieldId) => void;
-  onDiscardFieldValues: (fieldId: FieldId) => void;
 }
 
 type MetadataFieldSettingsProps = RouterProps &
@@ -87,9 +83,6 @@ const mapStateToProps = (
 
 const mapDispatchToProps: DispatchProps = {
   onFetchIdFields: Databases.objectActions.fetchIdfields,
-  onUpdateField: Fields.actions.updateField,
-  onRescanFieldValues: rescanFieldValues,
-  onDiscardFieldValues: discardFieldValues,
 };
 
 const MetadataFieldSettings = ({
@@ -100,9 +93,6 @@ const MetadataFieldSettings = ({
   idFields = [],
   params: { schemaId, section },
   onFetchIdFields,
-  onUpdateField,
-  onRescanFieldValues,
-  onDiscardFieldValues,
 }: MetadataFieldSettingsProps) => {
   const databaseId = database.id;
   const schema = schemas.find(schema => schema.id === schemaId);
@@ -142,17 +132,9 @@ const MetadataFieldSettings = ({
             field={field}
             idFields={idFields}
             table={table}
-            onUpdateField={onUpdateField}
-            onRescanFieldValues={onRescanFieldValues}
-            onDiscardFieldValues={onDiscardFieldValues}
           />
         )}
-        {section === "formatting" && (
-          <FieldFormattingSettings
-            field={field}
-            onUpdateField={onUpdateField}
-          />
-        )}
+        {section === "formatting" && <FieldFormattingSettings field={field} />}
       </div>
     </AdminLayout>
   );
