@@ -43,7 +43,6 @@ const DatabaseForm = ({
   onSubmit,
   onCancel,
   onEngineChange,
-  // oisin: I don't like drilling this through this component, all input welcome
   onFormDirty,
 }: DatabaseFormProps): JSX.Element => {
   const initialEngineKey = getEngineKey(engines, initialData, isAdvanced);

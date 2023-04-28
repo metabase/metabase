@@ -14,6 +14,7 @@ import { mockSettings } from "__support__/settings";
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
 
 import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/hooks/use-before-unload";
+import { callMockEvent } from "__support__/events";
 import DatabaseEditApp from "./DatabaseEditApp";
 
 const ENGINES_MOCK = {
@@ -33,17 +34,6 @@ const ENGINES_MOCK = {
     "driver-name": "SQLite",
     "superseded-by": null,
   },
-};
-
-const callMockEvent = (mockEventListener, eventName) => {
-  const mockEvent = {
-    preventDefault: jest.fn(),
-  };
-
-  mockEventListener.mock.calls
-    .filter(([event]) => eventName === event)
-    .forEach(([_, callback]) => callback(mockEvent));
-  return mockEvent;
 };
 
 const ComponentMock = () => <div />;
