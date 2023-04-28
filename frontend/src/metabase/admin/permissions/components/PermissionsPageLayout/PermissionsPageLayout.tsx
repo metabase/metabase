@@ -13,10 +13,6 @@ import ModalContent from "metabase/components/ModalContent";
 import { PermissionsGraph } from "metabase-types/api";
 import useBeforeUnload from "metabase/hooks/use-before-unload";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { useLeaveConfirmation } from "../../hooks/use-leave-confirmation";
-import { clearSaveError as clearPermissionsSaveError } from "../../permissions";
-import { ToolbarButton } from "../ToolbarButton";
-import { PermissionsTabs } from "./PermissionsTabs";
 import {
   FullHeightContainer,
   TabsContainer,
@@ -25,7 +21,12 @@ import {
   PermissionPageSidebar,
   CloseSidebarButton,
   ToolbarButtonsContainer,
-} from "./PermissionsPageLayout.styled";
+} from "metabase/admin/permissions/components/PermissionsPageLayout/PermissionsPageLayout.styled";
+import { useLeaveConfirmation } from "../../hooks/use-leave-confirmation";
+import { clearSaveError as clearPermissionsSaveError } from "../../permissions";
+import { ToolbarButton } from "../ToolbarButton";
+import { PermissionsTabs } from "./PermissionsTabs";
+
 import { PermissionsEditBar } from "./PermissionsEditBar";
 
 type PermissionsPageTab = "data" | "collections";
@@ -46,6 +47,14 @@ type PermissionsPageLayoutProps = {
   helpContent?: React.ReactNode;
   toolbarRightContent?: React.ReactNode;
 };
+
+const CloseSidebarButtonWithDefault = ({
+  name = "close",
+  ...props
+}: {
+  name?: string;
+  [key: string]: unknown;
+}) => <CloseSidebarButton name={name} {...props} />;
 
 function PermissionsPageLayout({
   children,
@@ -125,8 +134,7 @@ function PermissionsPageLayout({
 
       {shouldShowHelp && (
         <PermissionPageSidebar>
-          <CloseSidebarButton
-            name="close"
+          <CloseSidebarButtonWithDefault
             size={20}
             onClick={() => setShouldShowHelp(prev => !prev)}
           />
