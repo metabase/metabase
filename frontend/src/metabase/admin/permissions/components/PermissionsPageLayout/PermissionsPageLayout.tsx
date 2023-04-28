@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import _ from "underscore";
 import { t } from "ttag";
-import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import { Route, Router, withRouter } from "react-router";
 
@@ -13,9 +12,9 @@ import ModalContent from "metabase/components/ModalContent";
 
 import { PermissionsGraph } from "metabase-types/api";
 import useBeforeUnload from "metabase/hooks/use-before-unload";
-import { State } from "metabase-types/store";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { useLeaveConfirmation } from "../../hooks/use-leave-confirmation";
-import { clearSaveError } from "../../permissions";
+import { clearSaveError as clearPermissionsSaveError } from "../../permissions";
 import { ToolbarButton } from "../ToolbarButton";
 import { PermissionsTabs } from "./PermissionsTabs";
 import {
@@ -47,17 +46,6 @@ type PermissionsPageLayoutProps = {
   helpContent?: React.ReactNode;
   toolbarRightContent?: React.ReactNode;
 };
-const mapDispatchToProps = {
-  navigateToTab: (tab: PermissionsPageTab) => push(`/admin/permissions/${tab}`),
-  navigateToLocation: (location: Location) => push(location.pathname),
-  clearSaveError,
-};
-
-const mapStateToProps = (state: State, _props: PermissionsPageLayoutProps) => {
-  return {
-    saveError: state.admin.permissions.saveError,
-  };
-};
 
 function PermissionsPageLayout({
   children,
@@ -66,16 +54,23 @@ function PermissionsPageLayout({
   isDirty,
   onSave,
   onLoad,
-  saveError,
-  clearSaveError,
   router,
   route,
-  navigateToLocation,
-  navigateToTab,
   toolbarRightContent,
   helpContent,
 }: PermissionsPageLayoutProps) {
+  const saveError = useSelector(state => state.admin.permissions.saveError);
+
+  const dispatch = useDispatch();
+
+  const navigateToTab = (tab: PermissionsPageTab) =>
+    dispatch(push(`/admin/permissions/${tab}`));
+  const navigateToLocation = (location: Location) =>
+    dispatch(push(location.pathname));
+  const clearSaveError = () => dispatch(clearPermissionsSaveError());
+
   const [shouldShowHelp, setShouldShowHelp] = useState(false);
+
   const beforeLeaveConfirmation = useLeaveConfirmation({
     router,
     route,
@@ -141,8 +136,4 @@ function PermissionsPageLayout({
   );
 }
 
-export default _.compose(
-  connect(mapStateToProps, mapDispatchToProps),
-  fitViewport,
-  withRouter,
-)(PermissionsPageLayout);
+export default _.compose(fitViewport, withRouter)(PermissionsPageLayout);
