@@ -30,11 +30,8 @@
             :point 3
             :hotfix 0}))))
 
-(def releases "
-Metabase v0.46.1                                                                                      Latest  v0.46.1     about 21 days ago
-Metabase® Enterprise Edition™ v1.46.1                                                                         v1.46.1     about 21 days ago
-Metabase v0.45.3.1                                                                                            v0.45.3.1   about 29 days ago
-Metabase® Enterprise Edition™ v1.45.3.1                                                                       v1.45.3.1   about 29 days ago")
+
+(def releases "Metabase v0.46.1 Latest  v0.46.1 about 21 days ago\nMetabase® Enterprise Edition™ v1.46.1 v1.46.1 about 21 days ago\nMetabase v0.45.3.1 v0.45.3.1 about 29 days ago\nMetabase® Enterprise Edition™ v1.45.3.1 v1.45.3.1 about 29 days ago")
 
 (def release-list '("- [v1.46.1](https://github.com/metabase/metabase/releases/tag/v1.46.1)"
                     "- [v0.46.1](https://github.com/metabase/metabase/releases/tag/v0.46.1)"
