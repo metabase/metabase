@@ -1,20 +1,26 @@
 (ns metabase-enterprise.serialization.v2.models)
 
-(def exported-models
-  "The list of models which are exported by serialization. Used for production code and by tests."
+(def data-model
+  ["Database"
+   "Field"
+   "Metric"
+   "Segment"
+   "Table"])
+
+(def content
   ["Action"
    "Card"
    "Collection"
    "Dashboard"
-   "Database"
-   "Field"
-   "FieldValues"
-   "Metric"
    "NativeQuerySnippet"
-   "Segment"
    "Setting"
-   "Table"
    "Timeline"])
+
+(def exported-models
+  "The list of all models exported by serialization by default. Used for production code and by tests."
+  (concat data-model
+          content
+          ["FieldValues"]))
 
 (def inlined-models
   "An additional list of models which are inlined into parent entities for serialization.

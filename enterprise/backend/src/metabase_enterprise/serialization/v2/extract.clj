@@ -36,7 +36,15 @@
          (reduce set/union top-ids)
          (set/union #{nil}))))
 
-(defn extract-metabase
+(defn- model-set
+  "Returns a set of models to export based on export opts"
+  [{:keys [include-field-values no-collections no-data-model]}]
+  (cond-> #{}
+    include-field-values  (conj "FieldValues")
+    (not no-collections)  (into serdes.models/content)
+    (not no-data-model)   (into serdes.models/data-model)))
+
+(defn- extract-metabase
   "Extracts the appdb into a reducible stream of serializable maps, with `:serdes/meta` keys.
 
   This is the first step in serialization; see [[metabase-enterprise.serialization.v2.storage]] for actually writing to
@@ -46,21 +54,8 @@
   there."
   [opts]
   (log/tracef "Extracting Metabase with options: %s" (pr-str opts))
-  (serdes.backfill/backfill-ids)
-  ;; TODO document and test data-model-only if we want to keep this feature...
-  (let [model-pred (cond
-                     (:data-model-only opts)
-                     #{"Database" "Dimension" "Field" "FieldValues" "Metric" "Segment" "Table"}
-
-                     (:include-field-values opts)
-                     (constantly true)
-
-                     :else
-                     (complement #{"FieldValues"}))
-        ;; This set of unowned top-level collections is used in several `extract-query` implementations.
-        opts       (assoc opts :collection-set (collection-set-for-user (:user opts)))]
-    (eduction cat (for [model serdes.models/exported-models
-                        :when (model-pred model)]
+  (let [opts (assoc opts :collection-set (collection-set-for-user (:user opts)))]
+    (eduction cat (for [model (model-set opts)]
                     (serdes/extract-all model opts)))))
 
 ;; TODO Properly support "continue" - it should be contagious. Eg. a Dashboard with an illegal Card gets excluded too.
@@ -162,7 +157,7 @@
                  curated-id (:name curated-card) (collection-label (:collection_id curated-card))
                  alien-id   (:name alien-card)   (collection-label (:collection_id alien-card))))))
 
-(defn extract-subtrees
+(defn- extract-subtrees
   "Extracts the targeted entities and all their descendants into a reducible stream of extracted maps.
 
   The targeted entities are specified as a list of `[\"SomeModel\" database-id]` pairs.
@@ -175,15 +170,25 @@ Eg. if Dashboard B includes a Card A that is derived from a
   serialized output."
   [{:keys [targets] :as opts}]
   (log/tracef "Extracting subtrees with options: %s" (pr-str opts))
-  (serdes.backfill/backfill-ids)
   (if-let [analysis (escape-analysis (set (for [[model id] targets :when (= model "Collection")] id)))]
-      ;; If that is non-nil, emit the report.
+    ;; If that is non-nil, emit the report.
     (escape-report analysis)
-      ;; If it's nil, there are no errors, and we can proceed to do the dump.
+    ;; If it's nil, there are no errors, and we can proceed to do the dump.
     (let [closure  (descendants-closure opts targets)
+          ;; filter the selected models based on user options
+          export?  (model-set opts)
           by-model (->> closure
+                        (filter #(export? (first %)))
                         (group-by first)
                         (m/map-vals #(set (map second %))))]
       (eduction cat (for [[model ids] by-model]
                       (eduction (map #(serdes/extract-one model opts %))
                                 (db/select-reducible (symbol model) :id [:in ids])))))))
+
+(defn extract
+  "Returns a reducible stream of entities to serialize"
+  [opts]
+  (serdes.backfill/backfill-ids)
+  (if (:targets opts)
+    (extract-subtrees opts)
+    (extract-metabase opts)))

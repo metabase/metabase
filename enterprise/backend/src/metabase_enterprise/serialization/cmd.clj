@@ -186,11 +186,7 @@
   (let [opts (cond-> opts
                collections
                (assoc :targets (for [c collections] ["Collection" c])))]
-    ;; if we have `:targets` (either because we created them from `:collections`, or because they were specified
-    ;; elsewhere) use [[v2.extract/extract-subtrees]]
-    (if (:targets opts)
-      (v2.extract/extract-subtrees opts)
-      (v2.extract/extract-metabase opts))))
+    (v2.extract/extract opts)))
 
 (defn v2-dump
   "Exports Metabase app data to directory at path"
