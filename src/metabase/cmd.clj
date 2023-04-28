@@ -291,8 +291,9 @@
   [command-name args]
   (if-let [errors (validate command-name args)]
     (do
-      (println "Usage:")
-      (help command-name)
+      (when (cmd->var command-name)
+        (println "Usage:")
+        (help command-name))
       (apply fail! errors))
     (try
       (apply @(cmd->var command-name) args)
