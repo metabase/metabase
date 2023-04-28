@@ -52,15 +52,14 @@ const ACTION = createMockQueryAction({
   ],
   visualization_settings: {
     fields: {
-      // TODO: mock these properly
-      parameter_1: {
+      parameter_1: createMockFieldSettings({
         fieldType: "string",
         inputType: "string",
-      },
-      parameter_2: {
+      }),
+      parameter_2: createMockFieldSettings({
         fieldType: "number",
         inputType: "number",
-      },
+      }),
     },
   },
 });

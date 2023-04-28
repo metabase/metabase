@@ -9,6 +9,7 @@ import { render, screen } from "__support__/ui";
 import {
   createMockActionDashboardCard,
   createMockActionParameter,
+  createMockFieldSettings,
   createMockQueryAction,
   createMockImplicitQueryAction,
   createMockDashboard,
@@ -35,17 +36,16 @@ const parameter2 = createMockActionParameter({
 
 const mockAction = createMockQueryAction({
   parameters: [parameter1, parameter2],
-  // TODO: remove this once we have a better way to mock this
   visualization_settings: {
     fields: {
-      parameter_1: {
+      parameter_1: createMockFieldSettings({
         id: "parameter_1",
         placeholder: "Parameter 1 placeholder",
-      },
-      parameter_2: {
+      }),
+      parameter_2: createMockFieldSettings({
         id: "parameter_1",
         placeholder: "Parameter 2 placeholder",
-      },
+      }),
     },
   },
 });
