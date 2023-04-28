@@ -188,12 +188,10 @@
   [path & options]
   (call-enterprise 'metabase-enterprise.serialization.cmd/v2-load path (get-parsed-options #'import options)))
 
-(def ^:private user-arg-spec ["-u" "--user EMAIL" "Export only collections owned by this user"])
-
 (defn ^:command dump
   {:doc "Note: this command is deprecated. Use `export` instead.
          Serializes Metabase instance into directory `path`."
-   :arg-spec [user-arg-spec
+   :arg-spec [["-u" "--user EMAIL" "Export only collections owned by this user"]
               ["-s" "--state (active|all)" "When set to `active`, do not dump archived entities. Default behavior is `all`."
                :default      :all
                :default-desc "all"
@@ -205,8 +203,7 @@
 
 (defn ^:command export
   {:doc "Serialize Metabase instance into directory at `path`."
-   :arg-spec [user-arg-spec
-              ["-c" "--collection ID"            "Export only specified ID; may occur multiple times."
+   :arg-spec [["-c" "--collection ID"            "Export only specified ID; may occur multiple times."
                :id        :collections
                :multi     true
                :parse-fn  #(Integer/parseInt %)
