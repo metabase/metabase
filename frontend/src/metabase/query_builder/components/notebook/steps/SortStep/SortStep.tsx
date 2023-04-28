@@ -103,7 +103,7 @@ function SortDisplayName({
       }}
     >
       <Icon name={icon} />
-      <span>{displayInfo.display_name}</span>
+      <span>{displayInfo.displayName}</span>
     </SortDirectionButton>
   );
 }

@@ -1,11 +1,12 @@
 import _ from "underscore";
 import moment from "moment-timezone";
 import { assoc } from "icepick";
-import inflection from "inflection";
 import { t, ngettext, msgid } from "ttag";
 
 import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 import { parseTimestamp } from "metabase/lib/time";
+
+import * as Lib from "metabase-lib";
 
 import { FieldDimension } from "metabase-lib/Dimension";
 
@@ -121,10 +122,10 @@ export function generateTimeFilterValuesDescriptions(filter) {
 
   if (operator === "time-interval") {
     const [n, unit] = values;
-    return generateTimeIntervalDescription(n, unit);
+    return [Lib.describeTemporalInterval(n, unit)];
   } else if (isStartingFrom(filter)) {
     const [interval, unit] = getRelativeDatetimeInterval(filter);
-    const [prefix] = generateTimeIntervalDescription(interval, unit);
+    const prefix = Lib.describeTemporalInterval(interval, unit);
     const startingFrom = getStartingFrom(filter);
     if (!startingFrom) {
       return [prefix];
@@ -136,46 +137,6 @@ export function generateTimeFilterValuesDescriptions(filter) {
     return values.map(value =>
       generateTimeValueDescription(value, bucketing, operator === "!="),
     );
-  }
-}
-
-function generateTimeIntervalDescription(n, unit) {
-  if (unit === "day") {
-    switch (n) {
-      case "current":
-      case 0:
-        return [t`Today`];
-      case "next":
-      case 1:
-        return [t`Tomorrow`];
-      case "last":
-      case -1:
-        return [t`Yesterday`];
-    }
-  }
-
-  if (!unit && n === 0) {
-    return t`Today`;
-  } // ['relative-datetime', 'current'] is a legal MBQL form but has no unit
-
-  switch (n) {
-    case "current":
-    case 0:
-      return [t`This ${formatBucketing(unit)}`];
-    case "next":
-    case 1:
-      return [t`Next ${formatBucketing(unit)}`];
-    case "last":
-    case -1:
-      return [t`Previous ${formatBucketing(unit)}`];
-  }
-
-  if (n < 0) {
-    return [t`Previous ${-n} ${formatBucketing(unit, -n)}`];
-  } else if (n > 0) {
-    return [t`Next ${n} ${formatBucketing(unit, n)}`];
-  } else {
-    return [t`This ${formatBucketing(unit)}`];
   }
 }
 
@@ -192,82 +153,20 @@ function generateTimeValueDescription(value, bucketing, isExclude) {
       return m.format("MMMM D, YYYY");
     }
   } else if (isRelativeDatetime(value)) {
-    let n = value[1];
-    let unit = value[2];
+    let [n, unit] = value;
 
     if (n === "current") {
       n = 0;
       unit = bucketing;
     }
 
-    if (bucketing === unit) {
-      return generateTimeIntervalDescription(n, unit);
-    } else {
-      // FIXME: what to do if the bucketing and unit don't match?
-      if (n === 0) {
-        return t`Now`;
-      } else {
-        return n < 0
-          ? t`${-n} ${formatBucketing(unit, -n).toLowerCase()} ago`
-          : t`${n} ${formatBucketing(unit, n).toLowerCase()} from now`;
-      }
-    }
+    return bucketing === unit
+      ? Lib.describeTemporalInterval(n, unit)
+      : Lib.describeRelativeDatetime(n, unit);
   } else {
     console.warn("Unknown datetime format", value);
     return `[${t`Unknown`}]`;
   }
-}
-
-export function formatBucketing(bucketing = "", n = 1) {
-  if (!bucketing) {
-    return "";
-  }
-
-  // ngettext requires all plural messages to have an argument
-  const arg = "";
-
-  switch (bucketing) {
-    case "default":
-      return ngettext(msgid`Default period${arg}`, `Default periods${arg}`, n);
-    case "minute":
-      return ngettext(msgid`Minute${arg}`, `Minutes${arg}`, n);
-    case "hour":
-      return ngettext(msgid`Hour${arg}`, `Hours${arg}`, n);
-    case "day":
-      return ngettext(msgid`Day${arg}`, `Days${arg}`, n);
-    case "week":
-      return ngettext(msgid`Week${arg}`, `Weeks${arg}`, n);
-    case "month":
-      return ngettext(msgid`Month${arg}`, `Months${arg}`, n);
-    case "quarter":
-      return ngettext(msgid`Quarter${arg}`, `Quarters${arg}`, n);
-    case "year":
-      return ngettext(msgid`Year${arg}`, `Years${arg}`, n);
-    case "minute-of-hour":
-      return ngettext(msgid`Minute of hour${arg}`, `Minutes of hour${arg}`, n);
-    case "hour-of-day":
-      return ngettext(msgid`Hour of day${arg}`, `Hours of day${arg}`, n);
-    case "day-of-week":
-      return ngettext(msgid`Day of week${arg}`, `Days of week${arg}`, n);
-    case "day-of-month":
-      return ngettext(msgid`Day of month${arg}`, `Days of month${arg}`, n);
-    case "day-of-year":
-      return ngettext(msgid`Day of year${arg}`, `Days of year${arg}`, n);
-    case "week-of-year":
-      return ngettext(msgid`Week of year${arg}`, `Weeks of year${arg}`, n);
-    case "month-of-year":
-      return ngettext(msgid`Month of year${arg}`, `Months of year${arg}`, n);
-    case "quarter-of-year":
-      return ngettext(
-        msgid`Quarter of year${arg}`,
-        `Quarters of year${arg}`,
-        n,
-      );
-  }
-
-  const words = bucketing.split("-");
-  words[0] = inflection.capitalize(words[0]);
-  return words.join(" ");
 }
 
 export function absolute(date) {
