@@ -79,7 +79,7 @@ If you get an error message that says something like "permission denied to \<you
 2. Get the credentials that Metabase uses to connect to your database. If you're not sure what those credentials are, ask your database admin.
 3. Using a different application (like your CLI or database IDE), connect to your database using the same credentials your Metabase uses to connect to that database, and run the query from step 1.
 4. If you cannot access the table or schema in both step 1 and 3, ask your database admin to:
-    - [Grant database privileges](../databases/connecting.md#database-roles-users-and-privileges) to the role that Metabase is using to connect, or
+    - [Grant database privileges](../databases/users-roles-privileges.md) to the role that Metabase is using to connect, or
     - Provide a set of database credentials with the correct permissions.
 5. [Check if the access problem is fixed](#checking-someones-access-to-a-table-or-schema).
 
