@@ -8,6 +8,7 @@ import Select, {
   SelectChangeEvent,
 } from "metabase/core/components/Select/Select";
 import Field from "metabase-lib/metadata/Field";
+import FieldRemapping from "../FieldRemapping";
 import FieldVisibilityPicker from "../FieldVisibilityPicker";
 import MetadataSection from "../MetadataSection";
 import MetadataSectionHeader from "../MetadataSectionHeader";
@@ -282,6 +283,7 @@ const FieldRemappingSection = ({
         title={t`Display values`}
         description={t`Choose to show the original value from the database, or have this field display associated or custom information.`}
       />
+      <FieldRemapping field={field} />
     </MetadataSection>
   );
 };

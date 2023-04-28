@@ -7,6 +7,7 @@ import _ from "underscore";
 import Select from "metabase/core/components/Select";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import ButtonWithStatus from "metabase/components/ButtonWithStatus";
+import Icon from "metabase/components/Icon/Icon";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 
@@ -15,7 +16,6 @@ import {
   hasSourceField,
   getFieldTargetId,
 } from "metabase-lib/queries/utils/field-ref";
-import SelectSeparator from "../components/SelectSeparator";
 import {
   FieldMappingContainer,
   FieldMappingRoot,
@@ -30,7 +30,7 @@ const MAP_OPTIONS = {
   custom: { type: "custom", name: t`Custom mapping` },
 };
 
-export default class FieldRemapping extends React.Component {
+class FieldRemapping extends React.Component {
   state = {
     isChoosingInitialFkTarget: false,
     dismissedInitialFkTargetPopover: false,
@@ -258,7 +258,7 @@ export default class FieldRemapping extends React.Component {
           />
           {mappingType === MAP_OPTIONS.foreign && (
             <>
-              <SelectSeparator classname="flex" key="foreignKeySeparator" />
+              <Icon className="mx2 text-medium" name="chevronright" size={12} />
               <PopoverWithTrigger
                 key="foreignKeyName"
                 ref={this.fkPopover}
@@ -316,7 +316,7 @@ export default class FieldRemapping extends React.Component {
 }
 
 // consider renaming this component to something more descriptive
-export class ValueRemappings extends React.Component {
+class ValueRemappings extends React.Component {
   state = {
     editingRemappings: new Map(),
   };
@@ -433,7 +433,7 @@ export class ValueRemappings extends React.Component {
   }
 }
 
-export class FieldValueMapping extends React.Component {
+class FieldValueMapping extends React.Component {
   onInputChange = e => {
     this.props.setMapping(e.target.value);
   };
@@ -454,9 +454,11 @@ export class FieldValueMapping extends React.Component {
   }
 }
 
-export const RemappingNamingTip = () => (
+const RemappingNamingTip = () => (
   <div className="bordered rounded p1 mt1 mb2 border-brand">
     <span className="text-brand text-bold">{t`Tip: `}</span>
     {t`You might want to update the field name to make sure it still makes sense based on your remapping choices.`}
   </div>
 );
+
+export default FieldRemapping;
