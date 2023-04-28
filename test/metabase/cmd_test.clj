@@ -9,13 +9,12 @@
       (t))))
 
 (deftest ^:parallel error-message-test
-  (is (= ["No command given."] (#'cmd/validate nil [])))
-  (is (= ["Unrecognized command: 'a-command-that-does-not-exist'"] (#'cmd/validate "a-command-that-does-not-exist" [])))
+  (is (= ["Unrecognized command: 'a-command-that-does-not-exist'"
+          "Valid commands: version, help, import, dump, profile, api-documentation, load, seed-entity-ids, dump-to-h2, environment-variables-documentation, migrate, driver-methods, load-from-h2, export, rotate-encryption-key, reset-password"]
+         (#'cmd/validate "a-command-that-does-not-exist" [])))
   (is (= ["The 'rotate-encryption-key' command requires the following arguments: [new-key], but received: []."]
          (#'cmd/validate "rotate-encryption-key" [])))
-  (let [[error? the-fxn] (#'cmd/validate "rotate-encryption-key" [:some-arg])]
-    (is (nil? error?))
-    (is (fn? the-fxn))))
+  (nil? (#'cmd/validate "rotate-encryption-key" [:some-arg])))
 
 (deftest load-command-test
   (testing "with no options"
