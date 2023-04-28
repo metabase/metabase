@@ -118,8 +118,7 @@ class FieldRemappingSettings extends React.Component {
   };
 
   handleChangeMappingType = async ({ target: { value: mappingType } }) => {
-    const { field, fetchField, updateFieldDimension, deleteFieldDimension } =
-      this.props;
+    const { field, updateFieldDimension, deleteFieldDimension } = this.props;
 
     this.clearEditingStates();
 
@@ -174,14 +173,10 @@ class FieldRemappingSettings extends React.Component {
     } else {
       throw new Error(t`Unrecognized mapping type`);
     }
-
-    // TODO Atte Keinänen 7/11/17: It's a pretty heavy approach to reload the whole table after a single field
-    // has been updated; would be nicer to just fetch a single field. MetabaseApi.field_get seems to exist for that
-    await fetchField({ id: field.id }, { reload: true });
   };
 
   onForeignKeyFieldChange = async foreignKeyClause => {
-    const { field, fetchField, updateFieldDimension } = this.props;
+    const { field, updateFieldDimension } = this.props;
 
     this.clearEditingStates();
 
@@ -199,9 +194,7 @@ class FieldRemappingSettings extends React.Component {
         },
       );
 
-      await fetchField({ id: field.id }, { reload: true });
-
-      this.fkPopover.current.close();
+      this.fkPopover.current?.close();
     } else {
       throw new Error(t`The selected field isn't a foreign key`);
     }
@@ -463,7 +456,6 @@ const mapStateToProps = state => ({
 });
 
 const mapDispatchToProps = {
-  fetchField: Fields.actions.fetch,
   updateFieldValues: Fields.actions.updateFieldValues,
   updateFieldDimension: Fields.actions.updateFieldDimension,
   deleteFieldDimension: Fields.actions.deleteFieldDimension,

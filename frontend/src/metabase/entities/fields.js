@@ -146,7 +146,10 @@ const Fields = createEntity({
             getState,
             requestStatePath: ["entities", "fields", id, "dimension"],
             existingStatePath: ["entities", "fields", id],
-            putData: () => MetabaseApi.field_dimension_delete({ fieldId: id }),
+            putData: async () => {
+              await MetabaseApi.field_dimension_delete({ fieldId: id });
+              return { id };
+            },
           }),
     ),
 
@@ -190,6 +193,10 @@ const Fields = createEntity({
 
         return state;
       },
+      [UPDATE_FIELD_DIMENSION]: (state, { payload: dimension }) =>
+        assocIn(state, [dimension.field_id, "dimensions"], [dimension]),
+      [DELETE_FIELD_DIMENSION]: (state, { payload: { id } }) =>
+        assocIn(state, [id, "dimensions"], []),
     },
     {},
   ),
