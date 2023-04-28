@@ -34,25 +34,25 @@
 (def type-hierarchies
   "A front-end specific type hierarchy used by [[metabase.lib.types.isa/field-type?]].
   It is not meant to be used directly."
-  {::temporal    {:effective_type [:type/Temporal]
-                  :semantic_type  [:type/Temporal]}
-   ::number      {:effective_type [:type/Number]
-                  :semantic_type  [:type/Number]}
-   ::string      {:effective_type [:type/Text]
-                  :semantic_type  [:type/Text :type/Category]}
-   ::string_like {:effective_type [:type/TextLike]}
-   ::boolean     {:effective_type [:type/Boolean]}
-   ::coordinate  {:semantic_type [:type/Coordinate]}
-   ::location    {:semantic_type [:type/Address]}
-   ::entity      {:semantic_type [:type/FK :type/PK :type/Name]}
-   ::foreign_key {:semantic_type [:type/FK]}
-   ::primary_key {:semantic_type [:type/PK]}
+  {::temporal    {:effective-type [:type/Temporal]
+                  :semantic-type  [:type/Temporal]}
+   ::number      {:effective-type [:type/Number]
+                  :semantic-type  [:type/Number]}
+   ::string      {:effective-type [:type/Text]
+                  :semantic-type  [:type/Text :type/Category]}
+   ::string_like {:effective-type [:type/TextLike]}
+   ::boolean     {:effective-type [:type/Boolean]}
+   ::coordinate  {:semantic-type [:type/Coordinate]}
+   ::location    {:semantic-type [:type/Address]}
+   ::entity      {:semantic-type [:type/FK :type/PK :type/Name]}
+   ::foreign_key {:semantic-type [:type/FK]}
+   ::primary_key {:semantic-type [:type/PK]}
    ::summable    {:include [::number]
                   :exclude [::entity ::location ::temporal]}
    ::scope       {:include [::number ::temporal ::category ::entity ::string]
                   :exclude [::location]}
-   ::category    {:effective_type [:type/Boolean]
-                  :semantic_type  [:type/Category]
+   ::category    {:effective-type [:type/Boolean]
+                  :semantic-type  [:type/Category]
                   :include        [::location]}
    ;; NOTE: this is defunct right now.  see definition of metabase.lib.types.isa/dimension?.
    ::dimension   {:include [::temporal ::category ::entity]}})

@@ -9,6 +9,7 @@ export const StatusRoot = styled.div`
   background-color: ${color("white")};
   box-shadow: 0 1px 12px ${color("shadow")};
   overflow: hidden;
+  margin-top: 1rem;
 `;
 
 export const StatusHeader = styled.div`
@@ -87,6 +88,7 @@ interface StatusCardIconContainerProps {
 }
 
 export const StatusCardIconContainer = styled.div<StatusCardIconContainerProps>`
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   justify-content: center;
