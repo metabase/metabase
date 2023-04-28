@@ -24,7 +24,7 @@ type Status = {
 
 type StatusItem = {
   id?: number;
-  title: string;
+  title: string | JSX.Element;
   icon: string;
   description?: string | JSX.Element;
   isInProgress: boolean;

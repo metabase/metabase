@@ -10,13 +10,13 @@ import {
 
 const now = Date.now();
 
+const NOTIFICATION_DELAY = 9000;
+
 const mockUploadCSV = (valid = true) => {
   fetchMock.post(
     "path:/api/card/from-csv",
     valid
-      ? {
-          model_id: 3,
-        }
+      ? "3"
       : {
           throws: { data: { message: "It's dead Jim" } },
         },
@@ -47,7 +47,7 @@ describe("csv uploads", () => {
       mockUploadCSV();
 
       await uploadFile(file, "root")(dispatch);
-      jest.advanceTimersByTime(6000);
+      jest.advanceTimersByTime(NOTIFICATION_DELAY);
 
       expect(dispatch).toHaveBeenCalledWith({
         type: UPLOAD_FILE_TO_COLLECTION_START,
@@ -78,7 +78,7 @@ describe("csv uploads", () => {
       mockUploadCSV(false);
 
       await uploadFile(file, "root")(dispatch);
-      jest.advanceTimersByTime(6000);
+      jest.advanceTimersByTime(NOTIFICATION_DELAY);
 
       expect(dispatch).toHaveBeenCalledWith({
         type: UPLOAD_FILE_TO_COLLECTION_START,
@@ -109,7 +109,7 @@ describe("csv uploads", () => {
       const bigFile = new File([""], "test.csv");
       Object.defineProperty(bigFile, "size", { value: 200 * 1024 * 1024 + 1 });
       await uploadFile(bigFile, "root")(dispatch);
-      jest.advanceTimersByTime(6000);
+      jest.advanceTimersByTime(NOTIFICATION_DELAY);
 
       expect(dispatch).toHaveBeenCalledWith({
         type: UPLOAD_FILE_TO_COLLECTION_START,

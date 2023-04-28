@@ -70,7 +70,7 @@ describe("FileUploadStatus", () => {
   });
 
   it("Should show a start exploring link on completion", async () => {
-    fetchMock.post("path:/api/card/from-csv", { model_id: 3 }, { delay: 1000 });
+    fetchMock.post("path:/api/card/from-csv", "3", { delay: 1000 });
 
     renderWithProviders(
       <Route
