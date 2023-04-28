@@ -93,11 +93,11 @@
 
         (testing "valid user specified"
           (is (= #{coll-eid child-eid pc-eid}
-                 (by-model "Collection" (extract/extract {:user mark-id})))))
+                 (by-model "Collection" (extract/extract {:user-id mark-id})))))
 
         (testing "invalid user specified"
           (is (= #{coll-eid child-eid}
-                 (by-model "Collection" (extract/extract {:user 218921})))))))))
+                 (by-model "Collection" (extract/extract {:user-id 218921})))))))))
 
 (deftest database-test
   (mt/with-empty-h2-app-db
@@ -470,11 +470,11 @@
                      (map :name)))))
        (testing "unowned collections and the personal one with a user"
          (is (= #{coll-eid mark-coll-eid}
-                (->> {:collection-set (extract/collection-set-for-opts mark-id)}
+                (->> {:collection-set (#'extract/collection-set-for-user mark-id)}
                      (serdes/extract-all "Collection")
                      (by-model "Collection"))))
          (is (= #{coll-eid dave-coll-eid}
-                (->> {:collection-set (extract/collection-set-for-opts dave-id)}
+                (->> {:collection-set (#'extract/collection-set-for-user dave-id)}
                      (serdes/extract-all "Collection")
                      (by-model "Collection"))))))
 
@@ -485,12 +485,12 @@
                      (serdes/extract-all "Dashboard")
                      (by-model "Dashboard"))))
          (is (= #{dash-eid}
-                (->> {:collection-set (extract/collection-set-for-opts mark-id)}
+                (->> {:collection-set (#'extract/collection-set-for-user mark-id)}
                      (serdes/extract-all "Dashboard")
                      (by-model "Dashboard")))))
        (testing "dashboards in personal collections are returned for the :user"
          (is (= #{dash-eid other-dash param-dash}
-                (->> {:collection-set (extract/collection-set-for-opts dave-id)}
+                (->> {:collection-set (#'extract/collection-set-for-user dave-id)}
                      (serdes/extract-all "Dashboard")
                      (by-model "Dashboard")))))))))
 

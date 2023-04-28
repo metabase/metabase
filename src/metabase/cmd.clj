@@ -173,7 +173,7 @@
                :default-desc "skip"
                :parse-fn     mbql.u/normalize-token
                :validate     [#{:skip :update} "Must be 'skip' or 'update'"]]
-              ["-e" "--on-error (continue|abort)"  "Abort or continue (default) on error."
+              ["-e" "--on-error (continue|abort)"  "Abort or continue on error."
                :default      :continue
                :default-desc "continue"
                :parse-fn     mbql.u/normalize-token
@@ -191,7 +191,7 @@
 (defn ^:command dump
   {:doc "Note: this command is deprecated. Use `export` instead.
          Serializes Metabase instance into directory `path`."
-   :arg-spec [["-u" "--user EMAIL" "Export only collections owned by this user"]
+   :arg-spec [["-u" "--user EMAIL"         "Export collections owned by the specified user"]
               ["-s" "--state (active|all)" "When set to `active`, do not dump archived entities. Default behavior is `all`."
                :default      :all
                :default-desc "all"
@@ -203,7 +203,9 @@
 
 (defn ^:command export
   {:doc "Serialize Metabase instance into directory at `path`."
-   :arg-spec [["-c" "--collection ID"            "Export only specified ID; may occur multiple times."
+   :arg-spec [["-u" "--user EMAIL"               "Include collections owned by the specified user"
+               :id :user-email]
+              ["-c" "--collection ID"            "Export only specified ID; may occur multiple times."
                :id        :collections
                :multi     true
                :parse-fn  #(Integer/parseInt %)

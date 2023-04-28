@@ -8,7 +8,7 @@
    [medley.core :as m]
    [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
    [metabase-enterprise.serialization.v2.models :as serdes.models]
-   [metabase.models :refer [Card Collection Dashboard DashboardCard]]
+   [metabase.models :refer [Card Collection Dashboard DashboardCard User]]
    [metabase.models.collection :as collection]
    [metabase.models.serialization :as serdes]
    [metabase.util.log :as log]
@@ -20,36 +20,54 @@
 
 (defn- model-set
   "Returns a set of models to export based on export opts"
-  [{:keys [include-field-values collections no-data-model]}]
+  [{:keys [include-field-values targets no-data-model]}]
   (cond-> #{}
     include-field-values
     (conj "FieldValues")
 
-    (or (nil? collections) (seq collections))
+    (or (nil? targets) (seq targets))
     (into serdes.models/content)
 
-    (empty? collections)
-    (conj "Setting")
+    (empty? targets)
+    (into (map first targets))
 
     (not no-data-model)
     (into serdes.models/data-model)))
 
+(defn targets-of-type
+  "Returns target seq filtered on given model name"
+  [targets model-name]
+  (filter #(= model-name (first %)) targets))
+
+(defn make-targets-of-type
+  "Returns a targets seq with model type and given ids"
+  [model-name ids]
+  (for [id ids] [model-name id]))
+
+(defn- collection-set-for-user
+  "Returns a set of collection IDs to export for the provided user, if any.
+   If user-id is nil, do not include any personally-owned collections."
+  [user-id]
+  (let [roots (t2/select Collection {:where [:and [:= :location "/"]
+                                                  [:or [:= :personal_owner_id nil]
+                                                       [:= :personal_owner_id user-id]]]})]
+    ;; start with the special "nil" root collection ID
+    (-> #{nil}
+        (into (map :id roots))
+        (into (mapcat collection/descendant-ids roots)))))
+
 (defn- extract-metabase
   "Returns reducible stream of serializable entity maps, with `:serdes/meta` keys.
    Takes an options map which is passed on to [[serdes/extract-all]] for each model."
-  [{:keys [collections] :as opts}]
+  [{:keys [user-id] :as opts}]
   (log/tracef "Extracting Metabase with options: %s" (pr-str opts))
-  (let [collection-ids (when-not collections
-                         (into #{nil}
-                               (mapcat collection/descendant-ids
-                                       (t2/select Collection :personal_owner_id nil))))
-        extract-opts   (assoc opts :collection-set collection-ids)]
+  (let [extract-opts (assoc opts :collection-set (collection-set-for-user user-id))]
     (eduction cat (for [model (model-set opts)]
                     (serdes/extract-all model extract-opts)))))
 
 ;; TODO Properly support "continue" - it should be contagious. Eg. a Dashboard with an illegal Card gets excluded too.
-(defn- descendants-closure [collection-ids]
-  (loop [to-chase (set (for [id collection-ids] ["Collection" id]))
+(defn- descendants-closure [targets]
+  (loop [to-chase (set targets)
          chased   #{}]
     (let [[m i :as item] (first to-chase)
           desc           (serdes/descendants m i)
@@ -60,14 +78,15 @@
         (recur to-chase chased)))))
 
 (defn- escape-analysis
-  "Given a seq of collection IDs, explore the contents of these collections looking for \"leaks\". For example, a
+  "Given a target seq, explore the contents of any collections looking for \"leaks\". For example, a
   Dashboard that contains Cards which are not (transitively) in the given set of collections, or a Card that depends on
   a Card as a model, which is not in the given collections.
 
   Returns a data structure detailing the gaps. Use [[escape-report]] to output this data in a human-friendly format.
   Returns nil if there are no escaped values, which is useful for a test."
-  [collection-ids]
-  (let [collection-set (->> (t2/select Collection :id [:in (set collection-ids)])
+  [targets]
+  (let [collection-ids (set (map second (targets-of-type targets "Collection")))
+        collection-set (->> (t2/select Collection :id [:in collection-ids])
                             (mapcat metabase.models.collection/descendant-ids)
                             set
                             (set/union (set collection-ids)))
@@ -157,13 +176,13 @@
 Eg. if Dashboard B includes a Card A that is derived from a
   Card C that's in an alien collection, warnings will be emitted for C, A and B, and all three will be excluded from the
   serialized output."
-  [{:keys [collections] :as opts}]
+  [{:keys [targets] :as opts}]
   (log/tracef "Extracting subtrees with options: %s" (pr-str opts))
-  (if-let [analysis (escape-analysis collections)]
+  (if-let [analysis (escape-analysis targets)]
     ;; If that is non-nil, emit the report.
     (escape-report analysis)
     ;; If it's nil, there are no errors, and we can proceed to do the dump.
-    (let [closure  (descendants-closure collections)
+    (let [closure  (descendants-closure targets)
           ;; filter the selected models based on user options
           export?  (model-set opts)
           by-model (->> closure
@@ -176,8 +195,8 @@ Eg. if Dashboard B includes a Card A that is derived from a
 
 (defn extract
   "Returns a reducible stream of entities to serialize"
-  [{:keys [collections] :as opts}]
+  [{:keys [targets] :as opts}]
   (serdes.backfill/backfill-ids)
-  (if (seq collections)
+  (if (seq targets)
     (extract-subtrees opts)
     (extract-metabase opts)))
