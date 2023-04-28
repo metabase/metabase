@@ -140,7 +140,7 @@ const MODEL_NAME = "Test Action Model";
           clickHelper("Create");
 
           modal().within(() => {
-            cy.findByPlaceholderText("Team name").type("Zany Zebras");
+            cy.findByPlaceholderText("Team Name").type("Zany Zebras");
             cy.findByPlaceholderText("Score").type("44");
 
             cy.button("Save").click();
@@ -181,7 +181,7 @@ const MODEL_NAME = "Test Action Model";
           cy.wait("@executePrefetch");
           // let's check that the existing values are pre-filled correctly
           modal().within(() => {
-            cy.findByPlaceholderText("Team name")
+            cy.findByPlaceholderText("Team Name")
               .should("have.value", "Energetic Elephants")
               .clear()
               .type("Emotional Elephants");
