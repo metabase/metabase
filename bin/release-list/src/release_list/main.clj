@@ -5,7 +5,7 @@
 
 (def release-page
   "Template for docs page that will list releases."
-  (slurp "./resources/releases.md"))
+  (slurp "./resources/releases-template.md"))
 
 (defn build-link
   "Given a version, builds a markdown link to the relevant release page."

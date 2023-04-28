@@ -11,10 +11,11 @@ Below are lists of available Metabase versions for the
 
 All releases are also available for self-hosting.
 
-See docs on [upgrading Metabase](./installation-and-operation/upgrading-metabase).
+See docs on [upgrading Metabase](./installation-and-operation/upgrading-metabase.md).
 
 ## Metabase Enterprise Edition releases
 
+- [v1.46.2](https://github.com/metabase/metabase/releases/tag/v1.46.2)
 - [v1.46.1](https://github.com/metabase/metabase/releases/tag/v1.46.1)
 - [v1.46.0](https://github.com/metabase/metabase/releases/tag/v1.46.0)
 - [v1.45.3.1](https://github.com/metabase/metabase/releases/tag/v1.45.3.1)
@@ -100,6 +101,7 @@ See docs on [upgrading Metabase](./installation-and-operation/upgrading-metabase
 
 ## Metabase Open Source Edition releases
 
+- [v0.46.2](https://github.com/metabase/metabase/releases/tag/v0.46.2)
 - [v0.46.1](https://github.com/metabase/metabase/releases/tag/v0.46.1)
 - [v0.46.0](https://github.com/metabase/metabase/releases/tag/v0.46.0)
 - [v0.45.3.1](https://github.com/metabase/metabase/releases/tag/v0.45.3.1)
@@ -300,7 +302,7 @@ See docs on [upgrading Metabase](./installation-and-operation/upgrading-metabase
 
 ## Further reading
 
-- [Upgrading Metabase](./installation-and-operation/upgrading-metabase).
+- [Upgrading Metabase](./installation-and-operation/upgrading-metabase.md).
 - [Metabase Pro](https://www.metabase.com/product/pro)
 - [Migrate to Metabase Cloud](https://www.metabase.com/docs/latest/cloud/migrate/guide)
-- [Migrate to a production application database](./installation-and-operation/migrating-from-h2)
+- [Migrate to a production application database](./installation-and-operation/migrating-from-h2.md)

@@ -11,13 +11,13 @@ Below are lists of available Metabase versions for the
 
 All releases are also available for self-hosting.
 
-See docs on [upgrading Metabase](./installation-and-operation/upgrading-metabase).
+See docs on [upgrading Metabase](./installation-and-operation/upgrading-metabase.md).
 
 {{content}}
 
 ## Further reading
 
-- [Upgrading Metabase](./installation-and-operation/upgrading-metabase).
+- [Upgrading Metabase](./installation-and-operation/upgrading-metabase.md).
 - [Metabase Pro](https://www.metabase.com/product/pro)
 - [Migrate to Metabase Cloud](https://www.metabase.com/docs/latest/cloud/migrate/guide)
-- [Migrate to a production application database](./installation-and-operation/migrating-from-h2)
+- [Migrate to a production application database](./installation-and-operation/migrating-from-h2.md)
