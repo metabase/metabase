@@ -8,7 +8,7 @@
    [medley.core :as m]
    [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
    [metabase-enterprise.serialization.v2.models :as serdes.models]
-   [metabase.models :refer [Card Collection Dashboard DashboardCard User]]
+   [metabase.models :refer [Card Collection Dashboard DashboardCard]]
    [metabase.models.collection :as collection]
    [metabase.models.serialization :as serdes]
    [metabase.util.log :as log]
