@@ -55,7 +55,8 @@
                                 (-> pulse
                                     (merge {:name "Pulse Name"}))]
                   PulseCard    [_ (merge {:pulse_id pulse-id
-                                          :card_id  (u/the-id card)}
+                                          :card_id  (u/the-id card)
+                                          :position 0}
                                           pulse-card)]
                   PulseChannel [{pc-id :id} (case channel
                                               :email
@@ -698,7 +699,7 @@
         (pulse.test-util/email-test-setup
          (metabase.pulse/send-pulse! (pulse/retrieve-notification pulse-id))
          (is (= (mt/email-to :rasta {:subject "Pulse Name"
-                                     :body    {"<h1>dashboard description</h1>"          true}})
+                                     :body    {"<h1>dashboard description</h1>" true}})
                 (mt/regex-email-bodies #"<h1>dashboard description</h1>")))))))
 
 (deftest basic-slack-test-2
