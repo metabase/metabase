@@ -41,7 +41,6 @@ const ChartClickActionsView = ({
           hasOnlyOneSection={hasOnlyOneSection}
           className={cx({
             ml1:
-              SECTIONS[key].icon === "bolt" ||
               SECTIONS[key].icon === "sum" ||
               (SECTIONS[key].icon === "funnel_outline" && !hasOnlyOneSection),
           })}
@@ -49,11 +48,6 @@ const ChartClickActionsView = ({
         >
           {SECTIONS[key].icon === "sum" && (
             <p className="mt0 text-medium text-small">{t`Summarize`}</p>
-          )}
-          {SECTIONS[key].icon === "bolt" && (
-            <p className="mt1 text-medium text-small">
-              {t`Automatic explorations`}
-            </p>
           )}
           {SECTIONS[key].icon === "funnel_outline" && (
             <p

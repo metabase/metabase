@@ -14,12 +14,12 @@ import {
 } from "metabase-lib/queries/drills/pivot-drill";
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import DimensionOptions from "metabase-lib/DimensionOptions";
-import PivotDrillPopover from "./PivotDrillPopover";
+import DrillActionsListPopover from "../common/DrillActionsListPopover";
 import {
   ActionIcon,
   ClickActionButton,
   StyledBreakoutPopover,
-} from "./PivotDrillPopover.styled";
+} from "../common/DrillActionsListPopover.styled";
 
 type PivotDrillTypesConfig = {
   withCategory?: false;
@@ -113,7 +113,7 @@ export const getPivotDrill =
       }
 
       return (
-        <PivotDrillPopover>
+        <DrillActionsListPopover title={t`Break out by…`}>
           {drillOptions.map(option => {
             const { icon, title } = option;
 
@@ -128,7 +128,7 @@ export const getPivotDrill =
               </ClickActionButton>
             );
           })}
-        </PivotDrillPopover>
+        </DrillActionsListPopover>
       );
     };
 
