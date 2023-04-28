@@ -32,7 +32,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- rasta-pulse-email [& [email]]
-  (mt/email-to :rasta (merge {:subject "Pulse: Pulse Name",
+  (mt/email-to :rasta (merge {:subject "Pulse Name",
                               :body  [{"Pulse Name" true}
                                       pulse.test-util/png-attachment
                                       pulse.test-util/png-attachment]}
@@ -191,7 +191,7 @@
      (fn [{:keys [card-id]} [pulse-results]]
        (is (= {:channel-id "#general"
                :attachments
-               [{:blocks [{:type "header", :text {:type "plain_text", :text "Pulse: Pulse Name", :emoji true}}
+               [{:blocks [{:type "header", :text {:type "plain_text", :text "Pulse Name", :emoji true}}
                           {:type "section", :fields [{:type "mrkdwn", :text "Sent by Rasta Toucan"}]}]}
                 {:title           pulse.test-util/card-name
                  :rendered-info   {:attachments false
@@ -233,7 +233,7 @@
             (is (= {:channel-id "#general"
                     :attachments
                     [{:blocks
-                       [{:type "header", :text {:type "plain_text", :text "Pulse: Pulse Name", :emoji true}}
+                       [{:type "header", :text {:type "plain_text", :text "Pulse Name", :emoji true}}
                         {:type "section", :fields [{:type "mrkdwn", :text "Sent by Rasta Toucan"}]}]}
                      {:title           pulse.test-util/card-name
                       :rendered-info   {:attachments false
@@ -274,7 +274,7 @@
      :assert
      {:email
       (fn [_ _]
-        (is (= (rasta-alert-email "Pulse: Pulse Name"
+        (is (= (rasta-alert-email "Pulse Name"
                                   [test-card-result
                                    pulse.test-util/png-attachment
                                    pulse.test-util/png-attachment
@@ -384,7 +384,7 @@
       {:email
        (fn [_ _]
          (is (= (into {} (map (fn [user-kwd]
-                                (mt/email-to user-kwd {:subject "Pulse: Pulse Name",
+                                (mt/email-to user-kwd {:subject "Pulse Name",
                                                        :to      #{"rasta@metabase.com" "crowberto@metabase.com"}
                                                        :body    [{"Pulse Name" true}
                                                                  pulse.test-util/png-attachment
@@ -708,7 +708,7 @@
          (is (= {:channel-id "#general",
                  :attachments
                  [{:blocks
-                   [{:type "header", :text {:type "plain_text", :text "Pulse: Pulse Name", :emoji true}}
+                   [{:type "header", :text {:type "plain_text", :text "Pulse Name", :emoji true}}
                     {:type "section", :fields [{:type "mrkdwn", :text "Sent by Rasta Toucan"}]}]}
                   {:title           pulse.test-util/card-name,
                    :rendered-info   {:attachments false
@@ -784,7 +784,7 @@
                  email-data (m/find-first #(contains? % :subject) pulse-data)]
              (is (= {:channel-id  "#general"
                      :attachments [{:blocks
-                                    [{:type "header", :text {:type "plain_text", :text "Pulse: Pulse Name", :emoji true}}
+                                    [{:type "header", :text {:type "plain_text", :text "Pulse Name", :emoji true}}
                                      {:type "section", :fields [{:type "mrkdwn", :text "Sent by Rasta Toucan"}]}]}
                                    {:title           pulse.test-util/card-name
                                     :title_link      (str "https://metabase.com/testmb/question/" card-id)
@@ -796,7 +796,7 @@
                     (pulse.test-util/thunk->boolean slack-data)))
              (is (= [true]
                     (map (comp some? :content :rendered-info) (rest (:attachments slack-data)))))
-             (is (= {:subject "Pulse: Pulse Name", :recipients ["rasta@metabase.com"], :message-type :attachments}
+             (is (= {:subject "Pulse Name", :recipients ["rasta@metabase.com"], :message-type :attachments}
                     (select-keys email-data [:subject :recipients :message-type])))
              (is (= 3
                     (count (:message email-data))))
