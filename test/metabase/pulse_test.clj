@@ -683,17 +683,17 @@
 
 (deftest dashboard-description-markdown-test
   (testing "Dashboard description renders markdown"
-    (mt/with-temp* [Card [{card-id :id} {:name "Test card"}]
-                    Dashboard     [{dashboard-id :id} {:description "# dashboard description"}]
-                    DashboardCard [{dashboard-card-id :id} {:dashboard_id dashboard-id
-                                                            :card_id card-id}]
-                    Pulse         [{pulse-id :id} {:name "Pulse Name"
-                                                   :dashboard_id dashboard-id}]
-                    PulseCard     [_ {:pulse_id pulse-id
-                                      :card_id  card-id
-                                      :dashboard_card_id dashboard-card-id}]
-                    PulseChannel  [{pc-id :id} {:pulse_id pulse-id}]
-                    PulseChannelRecipient [_ {:user_id          (pulse.test-util/rasta-id)
+    (mt/with-temp* [Card                  [{card-id :id} {:name "Test card"}]
+                    Dashboard             [{dashboard-id :id} {:description "# dashboard description"}]
+                    DashboardCard         [{dashboard-card-id :id} {:dashboard_id dashboard-id
+                                                                    :card_id card-id}]
+                    Pulse                 [{pulse-id :id} {:name "Pulse Name"
+                                                           :dashboard_id dashboard-id}]
+                    PulseCard             [_ {:pulse_id pulse-id
+                                              :card_id  card-id
+                                              :dashboard_card_id dashboard-card-id}]
+                    PulseChannel          [{pc-id :id} {:pulse_id pulse-id}]
+                    PulseChannelRecipient [_ {:user_id (pulse.test-util/rasta-id)
                                               :pulse_channel_id pc-id}]]
         (pulse.test-util/email-test-setup
          (metabase.pulse/send-pulse! (pulse/retrieve-notification pulse-id))
