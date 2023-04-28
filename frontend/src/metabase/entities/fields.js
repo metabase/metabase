@@ -124,33 +124,20 @@ const Fields = createEntity({
     updateFieldDimension: createThunkAction(
       UPDATE_FIELD_DIMENSION,
       ({ id }, dimension) =>
-        (dispatch, getState) =>
-          updateData({
-            dispatch,
-            getState,
-            requestStatePath: ["entities", "fields", id, "dimension"],
-            existingStatePath: ["entities", "fields", id],
-            putData: () =>
-              MetabaseApi.field_dimension_update({
-                fieldId: id,
-                ...dimension,
-              }),
-          }),
+        () => {
+          return MetabaseApi.field_dimension_update({
+            fieldId: id,
+            ...dimension,
+          });
+        },
     ),
     deleteFieldDimension: createThunkAction(
       DELETE_FIELD_DIMENSION,
       ({ id }) =>
-        (dispatch, getState) =>
-          updateData({
-            dispatch,
-            getState,
-            requestStatePath: ["entities", "fields", id, "dimension"],
-            existingStatePath: ["entities", "fields", id],
-            putData: async () => {
-              await MetabaseApi.field_dimension_delete({ fieldId: id });
-              return { id };
-            },
-          }),
+        async () => {
+          await MetabaseApi.field_dimension_delete({ fieldId: id });
+          return { id };
+        },
     ),
 
     addRemappings: createAction(ADD_REMAPPINGS, ({ id }, remappings) => ({
