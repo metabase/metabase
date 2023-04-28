@@ -46,10 +46,10 @@
               (recur next-stage-number))))))))
 
 (defn- remove-replace* [query stage-number target-clause remove-replace-fn]
-  (let [indexed-joins (m/indexed (lib.join/joins query stage-number))
-        join-condition-paths (for [[idx _] indexed-joins]
+  (let [join-indices (range (count (lib.join/joins query stage-number)))
+        join-condition-paths (for [idx join-indices]
                                [:joins idx :conditions])
-        join-field-paths (for [[idx _] indexed-joins]
+        join-field-paths (for [idx join-indices]
                            [:joins idx :fields])]
     (reduce
       (fn [query location]
@@ -58,17 +58,17 @@
                                                   remove-replace-fn location target-clause)]
           (when (not= query result)
             (mbql.match/match location
-              [:breakout]        (check-subsequent-stages-for-invalid-target! query result stage-number (lib.ref/ref target-clause))
-              [:fields]          (check-subsequent-stages-for-invalid-target! query result stage-number (lib.ref/ref target-clause))
-              [:joins _ :fields] (check-subsequent-stages-for-invalid-target! query result stage-number (lib.ref/ref target-clause))
-              nil)
+              (:or
+                [:breakout]
+                [:fields]
+                [:joins _ :fields]) (check-subsequent-stages-for-invalid-target! query result stage-number (lib.ref/ref target-clause)))
             (reduced result))
           result))
       query
       ;; TODO only these top level clauses are supported at this moment
-      (-> [[:order-by] [:breakout] [:filters] [:fields]]
-          (into join-field-paths)
-          (into join-condition-paths)))))
+      (concat [[:order-by] [:breakout] [:filters] [:fields]]
+              join-field-paths
+              join-condition-paths))))
 
 (mu/defn remove-clause :- :metabase.lib.schema/query
   "Removes the `target-clause` in the filter of the `query`."

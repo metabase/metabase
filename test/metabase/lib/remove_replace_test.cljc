@@ -31,11 +31,10 @@
                  (lib/remove-clause (first filters))
                  (lib/filters)
                  count)))
-    (is (= 0 (-> query
-                 (lib/remove-clause (first filters))
-                 (lib/remove-clause (second filters))
-                 (lib/filters)
-                 count)))))
+    (is (nil? (-> query
+                  (lib/remove-clause (first filters))
+                  (lib/remove-clause (second filters))
+                  (lib/filters))))))
 
 (deftest ^:parallel remove-clause-join-conditions-test
   (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
@@ -44,22 +43,18 @@
                              (lib/= (lib/field "VENUES" "NAME") "x")]))
         conditions (lib/join-conditions (first (lib/joins query)))]
     (is (= 2 (count conditions)))
-    (is (= 1 (-> query
-                 (lib/remove-clause (first conditions))
-                 lib/joins
-                 first
-                 lib/join-conditions
-                 count)))
+    (is (= [(second conditions)]
+           (-> query
+               (lib/remove-clause (first conditions))
+               lib/joins
+               first
+               lib/join-conditions)))
     (is (thrown-with-msg?
           #?(:clj Exception :cljs js/Error)
           #"Cannot remove the final join condition"
           (-> query
-                (lib/remove-clause (first conditions))
-                (lib/remove-clause (second conditions))
-                lib/joins
-                first
-                lib/join-conditions
-                count)))))
+              (lib/remove-clause (first conditions))
+              (lib/remove-clause (second conditions)))))))
 
 (deftest ^:parallel remove-clause-breakout-test
   (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
@@ -154,19 +149,18 @@
                                                        (lib/field "VENUES" "ID")]))))
         fields (lib/join-fields (first (lib/joins query)))]
     (is (= 2 (count fields)))
-    (is (= 1 (-> query
-                 (lib/remove-clause (first fields))
-                 lib/joins
-                 first
-                 lib/join-fields
-                 count)))
-    (is (= 0 (-> query
-                 (lib/remove-clause (first fields))
-                 (lib/remove-clause (second fields))
-                 lib/joins
-                 first
-                 lib/join-fields
-                 count)))
+    (is (= [(second fields)]
+           (-> query
+               (lib/remove-clause (first fields))
+               lib/joins
+               first
+               lib/join-fields)))
+    (is (nil? (-> query
+                  (lib/remove-clause (first fields))
+                  (lib/remove-clause (second fields))
+                  lib/joins
+                  first
+                  lib/join-fields)))
     (testing "removing field with dependent should not be allowed"
       (is (thrown-with-msg?
             #?(:clj Exception :cljs js/Error)
@@ -248,8 +242,8 @@
       (is (not= fields replaced-fields))
       (is (=? [:field {} (meta/id :categories :name)]
               (first replaced-fields)))
-      (is (= 1 (count replaced-fields)))
-      (is (= (second fields) (second replaced-fields))))))
+      (is (= 1 (count fields)))
+      (is (= 1 (count replaced-fields))))))
 
 (deftest ^:parallel replace-clause-breakout-by-test
   (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")

@@ -79,7 +79,7 @@
           (case [(first location) (last location)]
             [:joins :conditions] (throw (ex-info (i18n/tru "Cannot remove the final join condition")
                                                  {:conditions (get-in stage location)}))
-            [:joins :fields] (update-in stage (butlast location) dissoc (last location))))))
+            [:joins :fields] (update-in stage (pop location) dissoc (peek location))))))
             stage))
 
 ;;; TODO -- all of this `->pipeline` stuff should probably be merged into [[metabase.lib.convert]] at some point in
