@@ -477,19 +477,25 @@
        :model/Card _    (simple-mbql-chart-query {:name "Luigi 8"  :display :line})]
       (testing "filtering works"
         (is (true? (every? #(str/includes? % "Toad")
-                           (->> (mt/user-http-request :crowberto :get 200 (format "/card/%d/series" (:id card)) :query "Toad")
+                           (->> (mt/user-http-request :crowberto :get 200 (format "/card/%d/series" (:id card)) :query "toad")
                                 (map :name)))))
 
         (testing "with limit"
           (is (= ["Luigi 1" "Luigi 2" "Luigi 3" "Luigi 4"]
                  (->> (mt/user-http-request :crowberto :get 200 (format "/card/%d/series" (:id card))
-                                            :query "Luigi" :limit 4)
+                                            :query "luigi" :limit 4)
                       (map :name))))
 
           (testing "and paging works too"
             (is (= ["Luigi 5" "Luigi 6" "Luigi 7" "Luigi 8"]
                    (->> (mt/user-http-request :crowberto :get 200 (format "/card/%d/series" (:id card))
-                                              :query "Luigi" :limit 4 :last_cursor "Luigi 4")
+                                              :query "luigi" :limit 4 :last_cursor "Luigi 4")
+                        (map :name)))))
+
+          (testing "And returning empty list if reaches there are nothing..."
+            (is (= []
+                   (->> (mt/user-http-request :crowberto :get 200 (format "/card/%d/series" (:id card))
+                                              :query "luigi" :limit 4 :last_cursor "luigi 8")
                         (map :name))))))))))
 
 (def ^:private millisecond-card
@@ -590,6 +596,7 @@
 
       (testing "can only be cominbed with scalar cards"
         (is (false? (api.card/series-are-compatible? scalar-1 line-card)))))))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        CREATING A CARD (POST /api/card)                                        |
 ;;; +----------------------------------------------------------------------------------------------------------------+
