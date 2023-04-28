@@ -67,7 +67,7 @@ export default function (state = [], { type, payload, error }) {
         subject: previous.subject === undo.subject ? undo.subject : "item",
 
         // merge items
-        actions: [...previous.actions, ...payload.actions],
+        actions: [...previous.actions, ...(payload.actions ?? [])],
 
         _domId: previous._domId, // use original _domId so we don't get funky animations swapping for the new one
       });
