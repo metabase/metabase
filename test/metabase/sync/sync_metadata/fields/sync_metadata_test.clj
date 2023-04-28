@@ -6,17 +6,20 @@
    [toucan.util.test :as tt]
    [toucan2.core :as t2]))
 
-(defn- updates-that-will-be-performed [new-metadata-from-sync metadata-in-application-db]
-  (tt/with-temp Table [table]
-    (let [update-operations (atom [])]
-      (with-redefs [t2/update! (fn [model id updates]
-                                 (swap! update-operations conj [(name model) id updates])
-                                 (count updates))]
-        (#'sync-metadata/update-field-metadata-if-needed!
-         table
-         new-metadata-from-sync
-         metadata-in-application-db)
-        @update-operations))))
+(defn- updates-that-will-be-performed
+  ([new-metadata-from-sync metadata-in-application-db]
+   (updates-that-will-be-performed new-metadata-from-sync metadata-in-application-db {}))
+  ([new-metadata-from-sync metadata-in-application-db table]
+   (tt/with-temp Table [table table]
+     (let [update-operations (atom [])]
+       (with-redefs [t2/update! (fn [model id updates]
+                                  (swap! update-operations conj [(name model) id updates])
+                                  (count updates))]
+         (#'sync-metadata/update-field-metadata-if-needed!
+          table
+          new-metadata-from-sync
+          metadata-in-application-db)
+         @update-operations)))))
 
 (deftest database-type-changed-test
   (testing "test that if database-type changes we will update it in the DB"
@@ -35,6 +38,29 @@
              :database-position          0
              :database-required          false
              :database-is-auto-increment false})))))
+
+(def ^:private default-metadata
+  {:name                       "My Field"
+   :database-type              "Integer"
+   :base-type                  :type/Integer
+   :database-position          0
+   :database-required          false
+   :database-is-auto-increment false})
+
+(deftest database-position-changed-test
+  (testing "test that if database-position changes and table.field_order=database we will update the position too"
+    (is (= [["Field" 1 {:database_position 1
+                        :position          1}]]
+           (updates-that-will-be-performed
+            (assoc default-metadata :database-position 1)
+            (assoc default-metadata :database-position 0 :id 1)
+            {:field_order :database})))
+    (testing "but not if the table's fields should be sorted otherwise"
+      (is (= [["Field" 1 {:database_position 1}]]
+             (updates-that-will-be-performed
+              (assoc default-metadata :database-position 1)
+              (assoc default-metadata :database-position 0 :id 1)
+              {:field_order :alphabetical}))))))
 
 (deftest database-required-changed-test
   (testing "test that if database-required changes we will update it in the DB"
