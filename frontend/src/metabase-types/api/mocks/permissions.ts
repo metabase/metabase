@@ -26,10 +26,6 @@ export const createMockPermissionsGraph = ({
             native: "full",
             schemas: "full",
           },
-          // "data-model": {
-          //   schemas: "all",
-          // },
-          // details: "yes",
         },
       };
     }

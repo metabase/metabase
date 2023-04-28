@@ -22,10 +22,7 @@ import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/hooks/use-before-unload"
 
 const TEST_DATABASE = createSampleDatabase();
 
-const TEST_GROUPS = [
-  // createMockGroup({ id: 2, name: "Administrators" }),
-  createMockGroup({ name: "All Users" }),
-];
+const TEST_GROUPS = [createMockGroup()];
 
 const TEST_PERMISSIONS_GRAPH = createMockPermissionsGraph({
   groups: TEST_GROUPS,
