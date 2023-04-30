@@ -1222,16 +1222,11 @@
   (t2/hydrate (t2/select-one DashboardCard :id id) :series))
 
 (defn- current-cards
-  "Retursn the current ordered cards of a dashboard."
+  "Returns the current ordered cards of a dashboard."
   [dashboard-id]
   (-> dashboard-id
       dashboard/ordered-cards
       (t2/hydrate :series)))
-
-(defn- current-tabs
-  "Retursn the current ordered tabs of a dashboard."
-  [dashboard-id]
-  (dashboard/ordered-tabs dashboard-id))
 
 (defn do-with-update-cards-parameter-mapping-permissions-fixtures [f]
   (do-with-add-card-parameter-mapping-permissions-fixtures
@@ -1297,25 +1292,19 @@
          [Dashboard               {dashboard-id :id}  {}
           Card                    {card-id-1 :id}     {}
           Card                    {card-id-2 :id}     {}
-          :model/DashboardTab     {dashtab-id-1 :id}  {:name         "Tab 1"
-                                                       :dashboard_id dashboard-id
-                                                       :position     0}
-          :model/DashboardTab     {dashtab-id-2 :id}  {:name         "Tab 2"
-                                                       :dashboard_id dashboard-id
-                                                       :position 1}
-          :model/DashboardTab     {dashtab-id-3 :id}  {:name         "Tab 3"
-                                                       :dashboard_id dashboard-id
-                                                       :position 1}
+          :model/DashboardTab     {dashtab-id-1 :id}  {:name "Tab 1" :dashboard_id dashboard-id :position 0}
+          :model/DashboardTab     {dashtab-id-2 :id}  {:name "Tab 2" :dashboard_id dashboard-id :position 1}
+          :model/DashboardTab     {dashtab-id-3 :id}  {:name "Tab 3" :dashboard_id dashboard-id :position 2}
           DashboardCard           {dashcard-id-1 :id} {:dashboard_id dashboard-id, :card_id card-id-1, :dashboard_tab_id dashtab-id-1}
           DashboardCard           {dashcard-id-2 :id} {:dashboard_id dashboard-id, :card_id card-id-1, :dashboard_tab_id dashtab-id-2}
           DashboardCard           {dashcard-id-3 :id} {:dashboard_id dashboard-id, :card_id card-id-1, :dashboard_tab_id dashtab-id-2}]
         (let [resp (mt/user-http-request :rasta :put 200 (format "dashboard/%d/cards" dashboard-id)
-                                                         {:ordered_tabs  [{:id       dashtab-id-1
-                                                                           :name     "Tab 1 edited"}
-                                                                          {:id       dashtab-id-2
-                                                                           :name     "Tab 2"}
-                                                                          {:id       -1
-                                                                           :name     "New tab"}]
+                                                         {:ordered_tabs  [{:id   dashtab-id-1
+                                                                           :name "Tab 1 edited"}
+                                                                          {:id   dashtab-id-2
+                                                                           :name "Tab 2"}
+                                                                          {:id   -1
+                                                                           :name "New tab"}]
                                                           :cards [{:id     dashcard-id-1
                                                                    :size_x 4
                                                                    :size_y 4
@@ -1461,7 +1450,8 @@
                                                         {:ordered_tabs [{:name     "Tab new"
                                                                          :id       -1}
                                                                         {:name     "Tab 1 moved to second position"
-                                                                         :id       dashtab-id-1}]}))]
+                                                                         :id       dashtab-id-1}]
+                                                         :cards        []}))]
 
           (is (=? [{:dashboard_id dashboard-id
                     :name         "Tab new"
@@ -1877,7 +1867,7 @@
                 (mt/user-http-request :rasta :put 200
                                       (format "dashboard/%d/cards" dashboard-id)
                                       {:ordered_tabs [(t2/select-one :model/DashboardTab :id dashtab-id-1)]
-                                       :cards (current-cards dashboard-id)})))
+                                       :cards (remove #(= (:dashboard_tab_id %) dashtab-id-2) (current-cards dashboard-id))})))
         (testing "deteted 1 tab, we should have"
           (testing "1 card left"
             (is (= 1
@@ -1897,7 +1887,7 @@
                 (mt/user-http-request :rasta :put 200
                                       (format "dashboard/%d/cards" dashboard-id)
                                       {:ordered_tabs []
-                                       :cards (current-cards dashboard-id)})))
+                                       :cards (remove #(= (:dashboard_tab_id %) dashtab-id-2) (current-cards dashboard-id))})))
         (testing "dashboard should be empty"
           (testing "0 card left"
             (is (= 0

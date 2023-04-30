@@ -655,22 +655,19 @@
 (defn- update-dashboard-with-tabs!
   [dashboard new-tabs new-cards]
   (let [{:keys [temp->real-tab-ids
-                deleted-tab-ids]}  (do-update-tabs! dashboard (:ordered_tabs dashboard) new-tabs)
-        current-cards              (if (seq deleted-tab-ids)
-                                       (remove (fn [card]
-                                                 (contains? deleted-tab-ids (:dashboard_tab_id card)))
-                                               (:ordered_cards dashboard))
-                                       (:ordered_cards dashboard))
-        new-cards                  (cond->> new-cards
-                                     ;; fixup the temporary tab ids with the real ones
-                                     (seq temp->real-tab-ids)
-                                     (map (fn [card]
-                                            (if-let [real-tab-id (get temp->real-tab-ids (:dashboard_tab_id card))]
-                                              (assoc card :dashboard_tab_id real-tab-id)
-                                              card)))
-                                     ;; if there are deleted tabs, we need to remove the dashcards from those tabs
-                                     (seq deleted-tab-ids)
-                                     (remove #(contains? deleted-tab-ids (:dashboard_tab_id %))))]
+                deleted-tab-ids]} (do-update-tabs! dashboard (:ordered_tabs dashboard) new-tabs)
+        current-cards             (if (seq deleted-tab-ids)
+                                    (remove (fn [card]
+                                              (contains? deleted-tab-ids (:dashboard_tab_id card)))
+                                            (:ordered_cards dashboard))
+                                    (:ordered_cards dashboard))
+        new-cards                 (cond->> new-cards
+                                    ;; fixup the temporary tab ids with the real ones
+                                    (seq temp->real-tab-ids)
+                                    (map (fn [card]
+                                           (if-let [real-tab-id (get temp->real-tab-ids (:dashboard_tab_id card))]
+                                             (assoc card :dashboard_tab_id real-tab-id)
+                                             card))))]
     (do-update-dashcards! dashboard current-cards new-cards)))
 
 (api/defendpoint PUT "/:id/cards"
@@ -688,14 +685,14 @@
      :ordered_tabs [{:id       ... ; DashboardTab ID
                      :name     ...}]}"
   [id :as {{:keys [cards ordered_tabs]} :body}]
-  {id    ms/PositiveInt
-   cards [:maybe (ms/maps-with-unique-key [:sequential UpdatedDashboardCard] :id)]
-   ordered_tabs  [:maybe (ms/maps-with-unique-key [:sequential UpdatedDashboardTab] :id)]}
-  (let [dashboard     (-> (api/write-check Dashboard id)
-                          api/check-not-archived
-                          (t2/hydrate [:ordered_cards :series :card] :ordered_tabs))
-        ordered-tabs  (when-not (nil? ordered_tabs)
-                        (map-indexed (fn [idx tab] (assoc tab :position idx)) ordered_tabs))]
+  {id           ms/PositiveInt
+   cards        (ms/maps-with-unique-key [:sequential UpdatedDashboardCard] :id)
+   ordered_tabs [:maybe (ms/maps-with-unique-key [:sequential UpdatedDashboardTab] :id)]}
+  (let [dashboard    (-> (api/write-check Dashboard id)
+                         api/check-not-archived
+                         (t2/hydrate [:ordered_cards :series :card] :ordered_tabs))
+        ordered-tabs (when-not (nil? ordered_tabs)
+                       (map-indexed (fn [idx tab] (assoc tab :position idx)) ordered_tabs))]
     (api/check-500
       (t2/with-transaction [_conn]
         (if-not (nil? ordered-tabs)
