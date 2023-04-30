@@ -86,7 +86,9 @@ export default class SaveQuestionModal extends Component<SaveQuestionModalProps>
       details.saveType,
     )
       ? originalQuestion.description()
-      : details.description?.trim() ?? null;
+      : details.description
+      ? details.description.trim()
+      : null;
 
     const newQuestion = question
       .setDisplayName(displayName)
