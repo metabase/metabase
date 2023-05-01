@@ -14,7 +14,7 @@
          (#'cmd/validate "a-command-that-does-not-exist" [])))
   (is (= ["The 'rotate-encryption-key' command requires the following arguments: [new-key], but received: []."]
          (#'cmd/validate "rotate-encryption-key" [])))
-  (nil? (#'cmd/validate "rotate-encryption-key" [:some-arg])))
+  (is (nil? (#'cmd/validate "rotate-encryption-key" [:some-arg]))))
 
 (deftest load-command-test
   (testing "with no options"
