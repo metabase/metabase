@@ -278,7 +278,7 @@
 
 (defn- valid-email-update?
   "This predicate tests whether or not the user is allowed to update the email address associated with this account."
-  [{:keys [google_auth ldap_auth email]} maybe-new-email]
+  [{:keys [sso_source email]} maybe-new-email]
   (or
    ;; Admin users can update
    api/*is-superuser?*
@@ -286,19 +286,16 @@
    (= email maybe-new-email)
    ;; We should not allow a regular user to change their email address if they are a google/ldap user
    (and
-    (not google_auth)
-    (not ldap_auth))))
+    (not (= :google sso_source))
+    (not (= :ldap sso_source)))))
 
 (defn- valid-name-update?
   "This predicate tests whether or not the user is allowed to update the first/last name associated with this account.
   If the user is an SSO user, no name edits are allowed, but we accept if the new names are equal to the existing names."
-  [{:keys [google_auth ldap_auth sso_source] :as user} name-key new-name]
+  [{:keys [sso_source] :as user} name-key new-name]
   (or
    (= (get user name-key) new-name)
-   (and
-    (not sso_source)
-    (not google_auth)
-    (not ldap_auth))))
+   (not sso_source)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema PUT "/:id"
@@ -359,12 +356,12 @@
   (t2/update! User (u/the-id existing-user)
               {:is_active     true
                :is_superuser  false
-               ;; if the user orignally logged in via Google Auth and it's no longer enabled, convert them into a regular user
+               ;; if the user orignally logged in via Google Auth/LDAP and it's no longer enabled, convert them into a regular user
                ;; (see metabase#3323)
-               :google_auth   (boolean (and (:google_auth existing-user)
-                                            (google/google-auth-enabled)))
-               :ldap_auth     (boolean (and (:ldap_auth existing-user)
-                                            (api.ldap/ldap-enabled)))})
+               :sso_source   (case (:sso_source existing-user)
+                               :google (when (google/google-auth-enabled) :google)
+                               :ldap   (when (api.ldap/ldap-enabled) :ldap)
+                               (:sso_source existing-user))})
   ;; now return the existing user whether they were originally active or not
   (fetch-user :id (u/the-id existing-user)))
 
@@ -373,7 +370,7 @@
   "Reactivate user at `:id`"
   [id]
   (api/check-superuser)
-  (let [user (t2/select-one [User :id :is_active :google_auth :ldap_auth] :id id)]
+  (let [user (t2/select-one [User :id :is_active :sso_source] :id id)]
     (api/check-404 user)
     ;; Can only reactivate inactive users
     (api/check (not (:is_active user))

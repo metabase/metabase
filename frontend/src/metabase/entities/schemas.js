@@ -24,11 +24,11 @@ export default createEntity({
   name: "schemas",
   schema: SchemaSchema,
   api: {
-    list: async ({ dbId }) => {
+    list: async ({ dbId, ...args }) => {
       if (!dbId) {
         throw new Error("Schemas can only be listed for a particular dbId");
       }
-      const schemaNames = await listDatabaseSchemas({ dbId });
+      const schemaNames = await listDatabaseSchemas({ dbId, ...args });
       return schemaNames.map(schemaName => ({
         // NOTE: needs unique IDs for entities to work correctly
         id: generateSchemaId(dbId, schemaName),
@@ -36,14 +36,14 @@ export default createEntity({
         database: { id: dbId },
       }));
     },
-    get: async ({ id }) => {
+    get: async ({ id, ...args }) => {
       const [dbId, schemaName, opts] = parseSchemaId(id);
       if (!dbId || schemaName === undefined) {
         throw new Error("Schemas ID is of the form dbId:schemaName");
       }
       const tables = opts?.isDatasets
-        ? await getVirtualDatasetTables({ dbId, schemaName })
-        : await getSchemaTables({ dbId, schemaName });
+        ? await getVirtualDatasetTables({ dbId, schemaName, ...args })
+        : await getSchemaTables({ dbId, schemaName, ...args });
       return {
         id,
         name: schemaName,

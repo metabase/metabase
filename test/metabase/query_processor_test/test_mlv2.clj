@@ -45,9 +45,6 @@
      (mbql.u/match-one joins
        {:fields (join-fields :guard (partial not= :none))}
        "#29904"))
-   ;; #29908: native queries do not round trip correctly
-   (when (:native legacy-query)
-     "#29908")
    ;; #29909: these clauses are not implemented yet.
    (mbql.u/match-one legacy-query
      #{:get-year :get-quarter :get-month :get-day :get-day-of-week :get-hour :get-minute :get-second}

@@ -309,9 +309,11 @@ const getProps = (
   collection: createMockCollection(),
   isAdmin: false,
   isBookmarked: false,
+  canUpload: false,
   isPersonalCollectionChild: false,
   onUpdateCollection: jest.fn(),
   onCreateBookmark: jest.fn(),
+  onUpload: jest.fn(),
   onDeleteBookmark: jest.fn(),
   location: {
     pathname: `/collection/1`,

@@ -8,6 +8,9 @@ import type {
   DatasetColumn,
   Field as IField,
   FieldFingerprint,
+  FieldId,
+  FieldFormattingSettings,
+  FieldVisibilityType,
 } from "metabase-types/api";
 import type { Field as FieldRef } from "metabase-types/types/Query";
 import {
@@ -60,6 +63,7 @@ const LONG_TEXT_MIN = 80;
 class FieldInner extends Base {
   id: number | FieldRef;
   name: string;
+  display_name: string;
   description: string | null;
   semantic_type: string | null;
   fingerprint?: FieldFingerprint;
@@ -70,8 +74,13 @@ class FieldInner extends Base {
   has_field_values?: "list" | "search" | "none";
   has_more_values?: boolean;
   values: any[];
+  position: number;
   metadata?: Metadata;
   source?: string;
+  nfc_path?: string[];
+  fk_target_field_id: FieldId | null;
+  settings?: FieldFormattingSettings;
+  visibility_type: FieldVisibilityType;
 
   // added when creating "virtual fields" that are associated with a given query
   query?: StructuredQuery | NativeQuery;
