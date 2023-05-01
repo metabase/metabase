@@ -67,10 +67,6 @@
        (mbql.u/match-one &match
          :field
          "#29946")))
-   ;; #29948: `:substring` is broken
-   (mbql.u/match-one legacy-query
-     :substring
-     "#29948")
    ;; #29949: missing schema
    (mbql.u/match-one legacy-query
      :regex-match-first
