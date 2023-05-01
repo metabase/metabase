@@ -31,8 +31,10 @@ import PreviewQueryModal from "metabase/query_builder/components/view/PreviewQue
 import ConvertQueryModal from "metabase/query_builder/components/view/ConvertQueryModal";
 import QuestionMoveToast from "metabase/questions/components/QuestionMoveToast";
 import { Card, Collection, User } from "metabase-types/api";
+import { QueryBuilderMode } from "metabase-types/store";
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import Question from "metabase-lib/Question";
+import { UpdateQuestionOpts } from "../actions/core/updateQuestion";
 
 const mapDispatchToProps = {
   setQuestionCollection: Questions.actions.setCollection,
@@ -47,9 +49,9 @@ interface QueryModalsProps {
   modalContext: number;
   question: Question;
   initialCollectionId: number;
-  updateQuestion: (question: Question, config?: object) => void;
-  setQueryBuilderMode: (mode: string) => void;
-  originalQuestion: Question;
+  updateQuestion: (question: Question, config?: UpdateQuestionOpts) => void;
+  setQueryBuilderMode: (mode: QueryBuilderMode) => void;
+  originalQuestion: Question | null;
   card: Card;
   onCreate: (question: Question, flag?: boolean) => void;
   onSave: (question: Question, flag?: boolean) => void;
@@ -57,7 +59,7 @@ interface QueryModalsProps {
   onOpenModal: (modal: ModalType) => void;
   onChangeLocation: (location: string) => void;
   setQuestionCollection: (
-    { id }: Partial<Collection>,
+    { id }: Pick<Card, "id">,
     collection: Collection,
     opts: Record<string, unknown>,
   ) => void;

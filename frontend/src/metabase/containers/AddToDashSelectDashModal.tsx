@@ -27,7 +27,7 @@ interface AddToDashSelectDashModalProps {
   card: Card;
   onChangeLocation: (location: string) => void;
   onClose: () => void;
-  dashboards: Record<Dashboard["id"], Dashboard>;
+  dashboards: Record<number, Dashboard>;
 }
 
 type DashboardPickerProps = ComponentPropsWithoutRef<typeof DashboardPicker>;
@@ -53,8 +53,10 @@ class AddToDashSelectDashModal extends Component<
     };
 
   onDashboardSelected: DashboardPickerProps["onChange"] = dashboardId => {
-    const dashboard = this.props.dashboards[dashboardId as Dashboard["id"]];
-    this.navigateToDashboard(dashboard);
+    if (dashboardId) {
+      const dashboard = this.props.dashboards[dashboardId];
+      this.navigateToDashboard(dashboard);
+    }
   };
 
   render() {
