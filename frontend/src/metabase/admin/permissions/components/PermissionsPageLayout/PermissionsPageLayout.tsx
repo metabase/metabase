@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { ReactNode, useState } from "react";
 import _ from "underscore";
 import { t } from "ttag";
 import { push } from "react-router-redux";
@@ -31,9 +31,9 @@ import { PermissionsEditBar } from "./PermissionsEditBar";
 
 type PermissionsPageTab = "data" | "collections";
 type PermissionsPageLayoutProps = {
-  children: React.ReactNode;
+  children: ReactNode;
   tab: PermissionsPageTab;
-  confirmBar?: React.ReactNode;
+  confirmBar?: ReactNode;
   diff?: PermissionsGraph;
   isDirty: boolean;
   onSave: () => void;
@@ -44,8 +44,8 @@ type PermissionsPageLayoutProps = {
   router: typeof Router;
   route: typeof Route;
   navigateToTab: (tab: string) => void;
-  helpContent?: React.ReactNode;
-  toolbarRightContent?: React.ReactNode;
+  helpContent?: ReactNode;
+  toolbarRightContent?: ReactNode;
 };
 
 const CloseSidebarButtonWithDefault = ({
