@@ -8,7 +8,12 @@
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [methodical.core :as m]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.query-processor :as qp]
+   [metabase.util.log :as log]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.models.card :refer [Card]]))
 
 (m/defmethod t2/table-name :m/audit-log
   [_model]
@@ -22,6 +27,20 @@
 (defmethod model-details :default
   [_entity _event-type]
   {})
+
+(defmethod model-details Card
+  [_model {query :dataset_query, dataset? :dataset :as card} _event-type]
+  (let [query (when (seq query)
+                (try (qp/preprocess query)
+                     (catch Throwable e
+                       (log/error e (tru "Error preprocessing query:")))))
+        database-id (some-> query :database u/the-id)
+        table-id    (mbql.u/query->source-table-id query)]
+    (merge (select-keys card [:name :description])
+           {:database_id database-id
+            :table_id    table-id
+            ;; Use `model` instead of `dataset` to mirror in-product terminology
+            :model dataset?})))
 
 (defn record-event!
   "Record an event in the Audit Log."

@@ -7,8 +7,6 @@
    [medley.core :as m]
    [metabase.db.query :as mdb.query]
    [metabase.mbql.normalize :as mbql.normalize]
-   [metabase.mbql.util :as mbql.u]
-   [metabase.models.audit-log :as audit-log]
    [metabase.models.collection :as collection]
    [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
@@ -26,7 +24,6 @@
    [metabase.public-settings.premium-features
     :as premium-features
     :refer [defenterprise]]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.util :as qp.util]
    [metabase.server.middleware.session :as mw.session]
    [metabase.util :as u]
@@ -548,20 +545,3 @@
       (when (seq snippets)
         (set (for [snippet-id snippets]
                ["NativeQuerySnippet" snippet-id]))))))
-
-
-;;; -------------------------------------------------- Audit Log -------------------------------------------------------
-
-(defmethod audit-log/model-details Card
-  [{query :dataset_query, dataset? :dataset :as card} _event-type]
-  (let [query (when (seq query)
-                (try (qp/preprocess query)
-                     (catch Throwable e
-                       (log/error e (tru "Error preprocessing query:")))))
-        database-id (some-> query :database u/the-id)
-        table-id    (mbql.u/query->source-table-id query)]
-    (merge (select-keys card [:name :description])
-           {:database_id database-id
-            :table_id    table-id
-            ;; Use `model` instead of `dataset` to mirror in-product terminology
-            :model dataset?})))
