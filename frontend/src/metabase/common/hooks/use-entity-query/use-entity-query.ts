@@ -55,9 +55,10 @@ export const useEntityQuery = <TId, TItem, TQuery>(
     requestType,
   }: UseEntityOwnProps<TId, TItem>,
 ): UseEntityQueryResult<TItem> => {
-  const data = useSelector(state => getObject(state, { entityId }));
-  const isLoading = useSelector(state => getLoading(state, { entityId }));
-  const error = useSelector(state => getError(state, { entityId }));
+  const options = { entityId, requestType };
+  const data = useSelector(state => getObject(state, options));
+  const isLoading = useSelector(state => getLoading(state, options));
+  const error = useSelector(state => getError(state, options));
 
   const dispatch = useDispatch();
   useEffect(() => {

@@ -84,3 +84,7 @@ export interface DatabaseListQuery {
   include_editable_data_model?: boolean;
   exclude_uneditable_details?: boolean;
 }
+
+export interface DatabaseIdFieldListQuery {
+  include_editable_data_model?: boolean;
+}

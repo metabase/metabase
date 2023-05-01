@@ -41,7 +41,6 @@ export interface Schema {
 }
 
 export interface TableQuery {
-  id: TableId;
   include_editable_data_model?: boolean;
 }
 
