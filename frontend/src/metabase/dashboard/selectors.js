@@ -14,7 +14,6 @@ import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
 import Question from "metabase-lib/Question";
 
 import { isVirtualDashCard } from "./utils";
-import { getSelectedTabId } from "./components/DashboardTabs";
 
 export const getDashboardId = state => state.dashboard.dashboardId;
 export const getIsEditing = state => !!state.dashboard.isEditing;
@@ -93,19 +92,13 @@ export const getDashCardTable = (state, dashcardId) => {
 };
 
 export const getDashboardComplete = createSelector(
-  [getDashboard, getDashcards, getSelectedTabId],
-  (dashboard, dashcards, selectedTabId) =>
+  [getDashboard, getDashcards],
+  (dashboard, dashcards) =>
     dashboard && {
       ...dashboard,
       ordered_cards: dashboard.ordered_cards
         .map(id => dashcards[id])
-        .filter(
-          dc =>
-            !dc.isRemoved &&
-            (!selectedTabId ||
-              dc.dashboard_tab_id === selectedTabId ||
-              dc.dashboard_tab_id === null),
-        ),
+        .filter(dc => !dc.isRemoved),
     },
 );
 
