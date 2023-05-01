@@ -14,10 +14,13 @@
    [metabase.automagic-dashboards.populate :as populate]
    [metabase.events :as events]
    [metabase.mbql.util :as mbql.u]
+   [metabase.models.audit-log :as audit-log]
    [metabase.models.card :refer [Card]]
    [metabase.models.collection :as collection]
    [metabase.models.dashboard :as dashboard :refer [Dashboard]]
-   [metabase.models.dashboard-card :as dashboard-card :refer [DashboardCard]]
+   [metabase.models.dashboard-card
+    :as dashboard-card
+    :refer [DashboardCard]]
    [metabase.models.field :refer [Field]]
    [metabase.models.interface :as mi]
    [metabase.models.params :as params]
@@ -101,7 +104,7 @@
                         (api/maybe-reconcile-collection-position! dashboard-data)
                         ;; Ok, now save the Dashboard
                         (first (t2/insert-returning-instances! Dashboard dashboard-data)))]
-    (events/publish-event! :dashboard-create dash)
+    (audit-log/record-event! :dashboard-create dash)
     (snowplow/track-event! ::snowplow/dashboard-created api/*current-user-id* {:dashboard-id (u/the-id dash)})
     (assoc dash :last-edit-info (last-edit/edit-information-for-user @api/*current-user*))))
 
@@ -433,7 +436,7 @@
                  "`archived` value via PUT /api/dashboard/:id."))
   (let [dashboard (api/write-check Dashboard id)]
     (t2/delete! Dashboard :id id)
-    (events/publish-event! :dashboard-delete (assoc dashboard :actor_id api/*current-user-id*)))
+    (audit-log/record-event! :dashboard-delete dashboard))
   api/generic-204-no-content)
 
 (defn- param-target->field-id [target query]
@@ -545,7 +548,7 @@
                                              mapping parameter_mappings]
                                         (assoc mapping :card-id card_id)))
   (u/prog1 (api/check-500 (dashboard/add-dashcards! dashboard (map #(assoc % :creator_id @api/*current-user*) dashcards)))
-    (events/publish-event! :dashboard-add-cards {:id (:id dashboard) :actor_id api/*current-user-id* :dashcards <>})
+    (audit-log/record-event! :dashboard-add-cards (assoc dashboard :dashcards <>))
     (for [{:keys [card_id]} <>
           :when             (pos-int? card_id)]
       (snowplow/track-event! ::snowplow/question-added-to-dashboard
@@ -560,12 +563,11 @@
   ;; TODO this is potentially misleading, we don't know for sure here that the dashcards are repositioned
   (events/publish-event! :dashboard-reposition-cards {:id (:id dashboard) :actor_id api/*current-user-id* :dashcards dashcards}))
 
-(defn- delete-dashcards! [{dashboard-id :id :as _dashboard} dashcard-ids]
+(defn- delete-dashcards! [dashboard dashcard-ids]
   (when (seq dashcard-ids)
-    (dashboard-card/delete-dashboard-cards!
-      (t2/select DashboardCard :id [:in dashcard-ids])
-      dashboard-id
-      api/*current-user-id*)))
+    (let [dashcards (t2/select DashboardCard :id [:in dashcard-ids])]
+      (dashboard-card/delete-dashboard-cards! dashcards)
+      (audit-log/record-event! :dashboard-remove-cards (assoc dashboard :dashcards dashcards)))))
 
 (def ^:private UpdatedDashboardCard
   [:map

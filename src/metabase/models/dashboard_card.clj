@@ -228,14 +228,12 @@
 
 (defn delete-dashboard-cards!
   "Delete DashboardCards of a Dasbhoard."
-  [dashboard-cards dashboard-id actor-id]
-  {:pre [(coll? dashboard-cards)
-         (integer? actor-id)]}
+  [dashboard-cards]
+  {:pre [(coll? dashboard-cards)]}
   (let [dashcard-ids (map :id dashboard-cards)]
     (t2/with-transaction [_conn]
       (t2/delete! PulseCard :dashboard_card_id [:in dashcard-ids])
-      (t2/delete! DashboardCard :id [:in dashcard-ids]))
-    (events/publish-event! :dashboard-remove-cards {:id dashboard-id :actor_id actor-id :dashcards dashboard-cards})))
+      (t2/delete! DashboardCard :id [:in dashcard-ids]))))
 
 ;;; ----------------------------------------------- Link cards ----------------------------------------------------
 

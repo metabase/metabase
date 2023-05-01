@@ -1,6 +1,5 @@
 (ns metabase.models.database
-  (:require
-   [medley.core :as m]
+  (:require [medley.core :as m]
    [metabase.db.util :as mdb.u]
    [metabase.driver :as driver]
    [metabase.driver.impl :as driver.impl]
@@ -304,6 +303,7 @@
                                                                          (setting/current-user-readable-visibilities))))
                                     settings)))))
    json-generator))
+
 
 ;;; ------------------------------------------------ Serialization ----------------------------------------------------
 
