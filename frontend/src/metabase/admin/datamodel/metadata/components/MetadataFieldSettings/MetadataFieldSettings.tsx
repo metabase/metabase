@@ -110,17 +110,16 @@ const MetadataFieldSettings = ({
   const schema = schemas.find(schema => schema.id === schemaId);
 
   const { loading, error } = useAsync(async () => {
-    const params = PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps;
-    await onFetchIdFields({ id: databaseId }, params);
+    await onFetchIdFields({ id: databaseId }, getFieldsQuery());
 
     if (tableId != null) {
-      await onFetchMetadata({ id: tableId }, { params });
+      await onFetchMetadata({ id: tableId }, getTableQuery());
     }
 
     if (foreignKeyTableId != null) {
-      await onFetchMetadata({ id: foreignKeyTableId }, { params });
+      await onFetchMetadata({ id: foreignKeyTableId }, getTableQuery());
     }
-  }, [databaseId]);
+  }, [databaseId, tableId, foreignKeyTableId]);
 
   if (loading || error || !schema || !table) {
     return <LoadingAndErrorWrapper loading={loading} error={error} />;
@@ -236,18 +235,30 @@ const FieldBreadcrumbs = ({
   );
 };
 
+const getTableQuery = () => ({
+  params: {
+    include_sensitive_fields: true,
+    ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
+  },
+});
+
+const getFieldsQuery = () =>
+  PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps;
+
 export default _.compose(
   Databases.load({
     id: (_: State, { params }: RouterProps) =>
       Urls.extractEntityId(params.databaseId),
     query: PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
+    loadingAndErrorWrapper: false,
   }),
   Schemas.loadList({
-    query: (_: State, { database }: DatabaseLoaderProps) => ({
-      dbId: database.id,
+    query: (_: State, { params }: RouterProps) => ({
+      dbId: Urls.extractEntityId(params.databaseId),
       include_hidden: true,
       ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
     }),
+    loadingAndErrorWrapper: false,
   }),
   Fields.load({
     id: (_: State, { params }: RouterProps) =>

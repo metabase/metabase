@@ -94,7 +94,7 @@ const MetadataTable = ({
 }: MetadataTableProps) => {
   const { loading, error } = useAsync(async () => {
     await onFetchIdFields({ id: selectedDatabaseId }, getFieldsQuery());
-    await onFetchMetadata({ id: selectedTableId }, { params: getTableQuery() });
+    await onFetchMetadata({ id: selectedTableId }, getTableQuery());
   }, [selectedDatabaseId, selectedTableId]);
 
   if (table == null || loading || error != null) {
@@ -352,8 +352,10 @@ const TableTabSection = ({ tab, onChangeTab }: MetadataTabSectionProps) => {
 };
 
 const getTableQuery = () => ({
-  include_sensitive_fields: true,
-  ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
+  params: {
+    include_sensitive_fields: true,
+    ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
+  },
 });
 
 const getFieldsQuery = () =>

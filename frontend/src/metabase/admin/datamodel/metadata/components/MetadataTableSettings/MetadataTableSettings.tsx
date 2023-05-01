@@ -131,6 +131,7 @@ export default _.compose(
     id: (_: State, { params }: RouterProps) =>
       Urls.extractEntityId(params.databaseId),
     query: PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
+    loadingAndErrorWrapper: false,
   }),
   Schemas.loadList({
     query: (_: State, { database }: DatabaseLoaderProps) => ({
@@ -138,6 +139,7 @@ export default _.compose(
       include_hidden: true,
       ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
     }),
+    loadingAndErrorWrapper: false,
   }),
   Tables.load({
     id: (_: State, { params }: RouterProps) =>
