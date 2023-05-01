@@ -8,11 +8,15 @@ import {
   setParameterName as setParamName,
 } from "metabase/parameters/utils/dashboards";
 import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-values";
-import { SIDEBAR_NAME } from "metabase/dashboard/constants";
+import {
+  DASHBOARD_SLOW_TIMEOUT,
+  SIDEBAR_NAME,
+} from "metabase/dashboard/constants";
 
 import { getMetadata } from "metabase/selectors/metadata";
 import { isActionDashCard } from "metabase/actions/utils";
 import {
+  getAutoApplyFiltersToastTimeoutId,
   getDashboard,
   getDraftParameterValues,
   getIsAutoApplyFilters,
@@ -200,6 +204,41 @@ export const applyDraftParameterValues = createThunkAction(
     dispatch(setParameterValues(draftParameterValues));
   },
 );
+
+// XXX: Fix name
+export const SET_READY = "SET_READY";
+export const setReady = createAction(SET_READY);
+
+// XXX: Fix name
+export const SET_NEVER = "SET_NEVER";
+export const setNever = createAction(SET_NEVER);
+
+// XXX: Fix name
+export const DISMISS_TOAST = "DISMISS_TOAST";
+export const dismissToast = createAction(DISMISS_TOAST);
+
+export const START_FETCH_DASHBOARD_CARD_DATA_TIMEOUT =
+  "metabase/dashboard/START_FETCH_DASHBOARD_CARD_DATA_TIMEOUT";
+export const startFetchDashboardCardDataTimeout = createThunkAction(
+  START_FETCH_DASHBOARD_CARD_DATA_TIMEOUT,
+  () => (dispatch, getState) => {
+    const timeoutIdFromState = getAutoApplyFiltersToastTimeoutId(getState());
+    clearTimeout(timeoutIdFromState);
+
+    const timeoutId = setTimeout(() => {
+      dispatch(timeOutFetchDashboardCardData());
+    }, DASHBOARD_SLOW_TIMEOUT);
+
+    return { timeoutId };
+  },
+);
+
+export const TIME_OUT_FETCH_DASHBOARD_CARD_DATA =
+  "metabase/dashboard/TIME_OUT_FETCH_DASHBOARD_CARD_DATA";
+const timeOutFetchDashboardCardData = createAction(
+  TIME_OUT_FETCH_DASHBOARD_CARD_DATA,
+);
+// End auto-apply filters
 
 export const SET_PARAMETER_DEFAULT_VALUE =
   "metabase/dashboard/SET_PARAMETER_DEFAULT_VALUE";
