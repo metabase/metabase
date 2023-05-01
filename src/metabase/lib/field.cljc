@@ -182,7 +182,7 @@
                        join-alias         :source_alias
                        fk-field-id        :fk-field-id
                        table-id           :table-id
-                       :as                _field-metadata} style]
+                       :as                field-metadata} style]
   (let [field-display-name (or field-display-name
                                (u.humanization/name->human-readable-name :simple field-name))
         join-display-name  (when (= style :long)
@@ -294,8 +294,8 @@
 
 ;;; ---------------------------------------- Binning ---------------------------------------------
 (defmethod lib.binning/binning-method :field
-  [[_tag opts _id-or-name]]
-  (:binning opts))
+  [field-clause]
+  (-> field-clause lib.options/options :binning))
 
 (defmethod lib.binning/binning-method :metadata/field
   [metadata]
@@ -307,25 +307,25 @@
 
 (defmethod lib.binning/with-binning-method :metadata/field
   [metadata binning]
-  (lib.options/update-options metadata u/assoc-dissoc ::binning binning))
+  (u/assoc-dissoc metadata ::binning binning))
 
 (defmethod lib.binning/available-binning-strategies-method :field
   [query stage-number field-ref]
   (lib.binning/available-binning-strategies query stage-number (resolve-field-metadata query stage-number field-ref)))
 
 (defmethod lib.binning/available-binning-strategies-method :metadata/field
-  [query _stage-number {:keys [effective_type fingerprint semantic_type] :as _field-metadata}]
+  [query _stage-number {:keys [effective-type fingerprint semantic-type] :as _field-metadata}]
   (let [binning?        (some-> query lib.metadata/database :features (contains? :binning))
         {min-value :min max-value :max} (get-in fingerprint [:type :type/Number])]
     (cond
       ;; TODO: Include the time and date binning strategies too; see metabase.api.table/assoc-field-dimension-options.
       (and binning? min-value max-value
-           (isa? semantic_type :type/Coordinate))
+           (isa? semantic-type :type/Coordinate))
       (lib.binning/coordinate-binning-strategies)
 
       (and binning? min-value max-value
-           (isa? effective_type :type/Number)
-           (not (isa? semantic_type :Relation/*)))
+           (isa? effective-type :type/Number)
+           (not (isa? semantic-type :Relation/*)))
       (lib.binning/numeric-binning-strategies))))
 
 ;;; -------------------------------------- Join Alias --------------------------------------------
