@@ -138,9 +138,10 @@
              {:lib/type :mbql/query
               :stages   [{:lib/type     :mbql.stage/mbql
                           :source-table 1
-                          :aggregation  [[:sum {:lib/uuid string?} [:field {:lib/uuid string?} 1]]]
+                          :aggregation  [[:sum {:lib/uuid string?} [:field {:lib/uuid string?
+                                                                            :effective-type :type/Integer} 1]]]
                           :breakout     [[:aggregation 0 {:display-name   "Revenue"
-                                                          :effective_type :type/Integer}]]}]})))))
+                                                          :effective-type :type/Integer}]]}]})))))
 
 (deftest ^:parallel round-trip-test
   ;; Miscellaneous queries that have caused test failures in the past, captured here for quick feedback.
