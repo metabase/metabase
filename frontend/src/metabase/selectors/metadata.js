@@ -152,7 +152,6 @@ export const getMetadata = createSelector(
           table.db_id === database.id,
       );
     });
-    hydrateList(meta.databases, "idFields", meta.fields);
     // schema
     hydrate(meta.schemas, "database", s => meta.database(s.database));
     // table
