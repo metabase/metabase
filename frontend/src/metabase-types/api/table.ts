@@ -40,6 +40,11 @@ export interface Schema {
   name: string;
 }
 
+export interface TableQuery {
+  id: TableId;
+  include_editable_data_model?: boolean;
+}
+
 export interface TableListQuery {
   dbId?: DatabaseId;
   schemaName?: string;

@@ -1,1 +1,1 @@
-export { default } from "./use-table-list-query";
+export * from "./use-table-list-query";

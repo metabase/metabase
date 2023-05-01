@@ -7,7 +7,7 @@ import {
   screen,
   waitForElementToBeRemoved,
 } from "__support__/ui";
-import useDatabaseListQuery from "./use-database-list-query";
+import { useDatabaseListQuery } from "./use-database-list-query";
 
 const TEST_DB = createMockDatabase();
 

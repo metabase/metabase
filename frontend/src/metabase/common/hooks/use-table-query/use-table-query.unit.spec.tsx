@@ -7,24 +7,18 @@ import {
   screen,
   waitForElementToBeRemoved,
 } from "__support__/ui";
-import { useTableListQuery } from "./use-table-list-query";
+import { useTableQuery } from "./use-table-query";
 
 const TEST_TABLE = createMockTable();
 
 const TestComponent = () => {
-  const { data = [], isLoading, error } = useTableListQuery();
+  const { data: table, isLoading, error } = useTableQuery();
 
-  if (isLoading || error) {
+  if (isLoading || error || !table) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
-  return (
-    <div>
-      {data.map(table => (
-        <div key={table.id}>{table.name}</div>
-      ))}
-    </div>
-  );
+  return <div>{table.name}</div>;
 };
 
 const setup = () => {
@@ -32,7 +26,7 @@ const setup = () => {
   renderWithProviders(<TestComponent />);
 };
 
-describe("useTableListQuery", () => {
+describe("useTableQuery", () => {
   it("should be initially loading", () => {
     setup();
     expect(screen.getByText("Loading...")).toBeInTheDocument();

@@ -5,58 +5,61 @@ import { State } from "metabase-types/store";
 
 export interface EntityFetchOptions {
   reload?: boolean;
+  requestType?: string;
 }
 
 export interface EntityQueryOptions<TQuery> {
   entityQuery?: TQuery;
 }
 
-export interface UseEntityListOwnProps<TItem, TQuery> {
-  fetchList: (query?: TQuery, options?: EntityFetchOptions) => Action;
-  getList: (
+export interface UseEntityOwnProps<TItem, TQuery> {
+  fetch: (query?: TQuery, options?: EntityFetchOptions) => Action;
+  getObject: (
     state: State,
     options: EntityQueryOptions<TQuery>,
-  ) => TItem[] | undefined;
+  ) => TItem | undefined;
   getLoading: (state: State, options: EntityQueryOptions<TQuery>) => boolean;
   getError: (state: State, options: EntityQueryOptions<TQuery>) => unknown;
+  requestType?: string;
 }
 
-export interface UseEntityListQueryProps<TQuery> {
+export interface UseEntityQueryProps<TQuery> {
   query?: TQuery;
   reload?: boolean;
   enabled?: boolean;
 }
 
-export interface UseEntityListQueryResult<TItem> {
-  data?: TItem[];
+export interface UseEntityQueryResult<TItem> {
+  data?: TItem;
   isLoading: boolean;
   error: unknown;
 }
 
-export const useEntityListQuery = <TItem, TQuery>(
+export const useEntityQuery = <TItem, TQuery>(
   {
     query: entityQuery,
     reload = false,
     enabled = true,
-  }: UseEntityListQueryProps<TQuery>,
+  }: UseEntityQueryProps<TQuery>,
   {
-    fetchList,
-    getList,
+    fetch,
+    getObject,
     getLoading,
     getError,
-  }: UseEntityListOwnProps<TItem, TQuery>,
-): UseEntityListQueryResult<TItem> => {
-  const options = { entityQuery };
-  const data = useSelector(state => getList(state, options));
+    requestType,
+  }: UseEntityOwnProps<TItem, TQuery>,
+): UseEntityQueryResult<TItem> => {
+  const options = { entityQuery, requestType };
+  const data = useSelector(state => getObject(state, options));
   const isLoading = useSelector(state => getLoading(state, options));
   const error = useSelector(state => getError(state, options));
 
   const dispatch = useDispatch();
   useEffect(() => {
     if (enabled) {
-      dispatch(fetchList(entityQuery, { reload }));
+      dispatch(fetch(entityQuery, { reload, requestType }));
     }
-  }, [dispatch, fetchList, entityQuery, reload, enabled]);
+  }, [dispatch, fetch, entityQuery, enabled, reload, requestType]);
 
   return { data, isLoading, error };
 };
