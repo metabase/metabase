@@ -6,7 +6,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.schema.expression :as lib.schema.expression]
-   [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
+   [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.util :as u]
@@ -139,8 +139,9 @@
         (is (= :year
                (lib/temporal-bucket (lib.metadata.calculation/metadata query -1 field)))))
       (testing "(lib/temporal-bucket <field-ref>)"
-        (is (= :year
-               (lib/temporal-bucket field))))
+        (is (= {:lib/type :type/temporal-bucketing-option
+                :unit :year}
+               (lib/temporal-bucket-option field))))
       (is (= "Date (year)"
              (lib.metadata.calculation/display-name query -1 field))))))
 
@@ -195,6 +196,7 @@
       (testing "remove the temporal unit"
         (let [x'' (lib/with-temporal-bucket x' nil)]
           (is (nil? (lib/temporal-bucket x'')))
+          (is (nil? (lib/temporal-bucket-option x'')))
           (is (= x
                  x''))))
       (testing "change the temporal unit, THEN remove it"
@@ -205,19 +207,24 @@
                  x''')))))))
 
 (deftest ^:parallel available-temporal-buckets-test
-  (doseq [{:keys [metadata expected-units]} [{:metadata       (get-in temporal-bucketing-mock-metadata [:fields :date])
-                                              :expected-units lib.schema.temporal-bucketing/date-bucketing-units}
-                                             {:metadata       (get-in temporal-bucketing-mock-metadata [:fields :datetime])
-                                              :expected-units lib.schema.temporal-bucketing/datetime-bucketing-units}
-                                             {:metadata       (get-in temporal-bucketing-mock-metadata [:fields :time])
-                                              :expected-units lib.schema.temporal-bucketing/time-bucketing-units}]]
+  (doseq [{:keys [metadata expected-options]}
+          [{:metadata         (get-in temporal-bucketing-mock-metadata [:fields :date])
+            :expected-options lib.temporal-bucket/date-bucket-options}
+           {:metadata         (get-in temporal-bucketing-mock-metadata [:fields :datetime])
+            :expected-options lib.temporal-bucket/datetime-bucket-options}
+           {:metadata         (get-in temporal-bucketing-mock-metadata [:fields :time])
+            :expected-options lib.temporal-bucket/time-bucket-options}]]
     (testing (str (:base-type metadata) " Field")
       (doseq [[what x] {"column metadata" metadata, "field ref" (lib/ref metadata)}]
         (testing (str what "\n\n" (u/pprint-to-str x))
-          (is (= expected-units
+          (is (= expected-options
                  (lib/available-temporal-buckets (:query temporal-bucketing-mock-metadata) x)))
+          (testing "Bucketing with any of the options should work"
+            (doseq [expected-option expected-options]
+              (is (= (:unit expected-option)
+                     (lib/temporal-bucket (lib/with-temporal-bucket x expected-option))))))
           (testing "Bucket it, should still return the same available units"
-            (is (= expected-units
+            (is (= expected-options
                    (lib/available-temporal-buckets (:query temporal-bucketing-mock-metadata)
                                                    (lib/with-temporal-bucket x :month-of-year))))))))))
 
