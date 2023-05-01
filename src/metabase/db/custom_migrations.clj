@@ -8,17 +8,20 @@
 
    If you need to use code from elsewhere, consider copying it into this namespace to minimize risk of the code changing behaviour."
   (:require
+   [clojure.core.match :refer [match]]
    [cheshire.core :as json]
    [clojure.set :as set]
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.scheduler :as qs]
    [clojurewerkz.quartzite.triggers :as triggers]
+   [medley.core :as m]
    [metabase.db.connection :as mdb.connection]
    [metabase.plugins.classloader :as classloader]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [toucan2.core :as t2]
-   [toucan2.execute :as t2.execute])
+   [toucan2.execute :as t2.execute]
+   [clojure.test :refer :all])
   (:import
    (liquibase.change.custom CustomTaskChange CustomTaskRollback)
    (liquibase.exception ValidationErrors)))
@@ -170,3 +173,38 @@
       (t2/query-one {:update :metabase_field
                      :set    {:json_unfolding true}
                      :where  [:in :metabase_field.id field-ids-to-update]}))))
+
+(defn update-legacy-field-refs [viz-settings]
+  (let [old-to-new (fn [old]
+                     (match old
+                       ["ref" ref] ["ref" (match ref
+                                            ["field-id" x] ["field" x nil]
+                                            ["field-literal" x y] ["field" x {"base-type" y}]
+                                            ["fk->" x y] (let [x (match x
+                                                                   [_x0 x1] x1
+                                                                   x x)
+                                                               y (match y
+                                                                   [_y0 y1] y1
+                                                                   y y)]
+                                                           ["field" y {:source-field x}])
+                                            ref ref)]
+                       k k))]
+    (-> viz-settings
+        (json/parse-string)
+        (m/update-existing "column_settings" update-keys
+                           (fn [k]
+                             (-> k
+                                 (json/parse-string)
+                                 (vec)
+                                 (old-to-new)
+                                 (json/generate-string))))
+        (json/generate-string))))
+
+(define-migration UpdateLegacyColumnSettingsFieldRefs
+  (let [id+visualization_settings (->> (t2/query {:select [:id :visualization_settings]
+                                                  :from   [:report_card]})
+                                       (map #(update % :visualization_settings update-legacy-field-refs)))]
+    (doseq [{:keys [id visualization_settings]} id+visualization_settings]
+      (t2/query-one {:update :report_card
+                     :set    {:visualization_settings visualization_settings}
+                     :where  [:= :id id]}))))
