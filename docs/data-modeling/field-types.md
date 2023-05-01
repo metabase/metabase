@@ -100,3 +100,4 @@ While data types themselves can't be edited in Metabase, admins can manually [ca
 - [Exploring data with Metabase's data browser](https://www.metabase.com/learn/getting-started/data-browser.html).
 - [The Data Model page: editing metadata](./metadata-editing.md).
 - [Field Filters: create smart filter widgets for SQL questions](https://www.metabase.com/learn/sql-questions/field-filters.html).
+- [Native/SQL editor parameters](https://www.metabase.com/docs/latest/questions/native-editor/sql-parameters)
