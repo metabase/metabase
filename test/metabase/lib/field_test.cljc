@@ -290,7 +290,7 @@
            {:query            (lib/query-for-table-name meta/metadata-provider "PEOPLE")
             :field-metadata   (lib.metadata/field meta/metadata-provider "PUBLIC" "PEOPLE" "LATITUDE")
             :expected-options (lib.binning/coordinate-binning-strategies)}]]
-    (testing (str (:semantic_type field-metadata) " Field")
+    (testing (str (:semantic-type field-metadata) " Field")
       (doseq [[what x] {"column metadata" field-metadata, "field ref" (lib/ref field-metadata)}]
         (testing (str what "\n\n" (u/pprint-to-str x))
           (is (= expected-options
