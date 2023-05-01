@@ -276,10 +276,10 @@
   [_query _stage-number field-metadata]
   (let [effective-type ((some-fn :effective-type :base-type) field-metadata)]
     (cond
-      (isa? effective-type :type/DateTime) lib.schema.temporal-bucketing/datetime-bucketing-units
-      (isa? effective-type :type/Date)     lib.schema.temporal-bucketing/date-bucketing-units
-      (isa? effective-type :type/Time)     lib.schema.temporal-bucketing/time-bucketing-units
-      :else                                #{})))
+      (isa? effective-type :type/DateTime) lib.temporal-bucket/datetime-bucket-options
+      (isa? effective-type :type/Date)     lib.temporal-bucket/date-bucket-options
+      (isa? effective-type :type/Time)     lib.temporal-bucket/time-bucket-options
+      :else                                [])))
 
 (defmethod lib.join/current-join-alias-method :field
   [[_tag opts]]
