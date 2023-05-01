@@ -8,6 +8,7 @@
    [metabase.automagic-dashboards.populate :as populate]
    [metabase.db.query :as mdb.query]
    [metabase.events :as events]
+   [metabase.models.audit-log :as audit-log]
    [metabase.models.card :as card :refer [Card]]
    [metabase.models.collection :as collection :refer [Collection]]
    [metabase.models.dashboard-card
@@ -610,3 +611,20 @@
       ;; parameter with values_source_type = "card" will depend on a card
      (set (for [card-id (some->> dashboard :parameters (keep (comp :card_id :values_source_config)))]
             ["Card" card-id])))))
+
+
+;;; ------------------------------------------------ Audit Log --------------------------------------------------------
+
+(defmethod audit-log/model-details Dashboard
+  [dashboard event-type]
+  (case event-type
+    (:dashboard-create :dashboard-delete)
+    (select-keys dashboard [:description :name])
+
+    (:dashboard-add-cards :dashboard-remove-cards)
+    (-> (select-keys dashboard [:description :name :parameters :dashcards])
+        (update :dashcards (fn [dashcards]
+                             (for [{:keys [id card_id]} dashcards]
+                                  (-> (t2/select-one [Card :name :description], :id card_id)
+                                      (assoc :id id)
+                                      (assoc :card_id card_id))))))))

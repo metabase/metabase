@@ -14,6 +14,7 @@
    [metabase.automagic-dashboards.populate :as populate]
    [metabase.events :as events]
    [metabase.mbql.util :as mbql.u]
+   [metabase.models.audit-log :as audit-log]
    [metabase.models.card :refer [Card]]
    [metabase.models.collection :as collection]
    [metabase.models.collection.root :as collection.root]
@@ -102,7 +103,7 @@
                         (api/maybe-reconcile-collection-position! dashboard-data)
                         ;; Ok, now save the Dashboard
                         (first (t2/insert-returning-instances! :model/Dashboard dashboard-data)))]
-    (events/publish-event! :dashboard-create dash)
+    (audit-log/record-event! :dashboard-create dash)
     (snowplow/track-event! ::snowplow/dashboard-created api/*current-user-id* {:dashboard-id (u/the-id dash)})
     (assoc dash :last-edit-info (last-edit/edit-information-for-user @api/*current-user*))))
 
@@ -463,7 +464,7 @@
                  "`archived` value via PUT /api/dashboard/:id."))
   (let [dashboard (api/write-check :model/Dashboard id)]
     (t2/delete! :model/Dashboard :id id)
-    (events/publish-event! :dashboard-delete (assoc dashboard :actor_id api/*current-user-id*)))
+    (audit-log/record-event! :dashboard-delete dashboard))
   api/generic-204-no-content)
 
 (defn- param-target->field-id [target query]
@@ -551,7 +552,14 @@
   (check-parameter-mapping-permissions (for [{:keys [card_id parameter_mappings]} dashcards
                                              mapping parameter_mappings]
                                         (assoc mapping :card-id card_id)))
-  (api/check-500 (dashboard/add-dashcards! dashboard dashcards)))
+  ;(api/check-500 (dashboard/add-dashcards! dashboard dashcards))
+  (u/prog1 (api/check-500 (dashboard/add-dashcards! dashboard (map #(assoc % :creator_id @api/*current-user*) dashcards)))
+    (audit-log/record-event! :dashboard-add-cards (assoc dashboard :dashcards <>))
+    (for [{:keys [card_id]} <>
+          :when             (pos-int? card_id)]
+      (snowplow/track-event! ::snowplow/question-added-to-dashboard
+                             api/*current-user-id*
+                             {:dashboard-id (:id dashboard) :question-id card_id}))))
 
 (defn- update-dashcards! [dashboard dashcards]
   (check-updated-parameter-mapping-permissions (:id dashboard) dashcards)
@@ -560,16 +568,17 @@
   (dashboard/update-dashcards! dashboard (map dashboard-card/from-parsed-json dashcards))
   dashcards)
 
-(defn- delete-dashcards! [dashcard-ids]
-  (let [dashboard-cards (t2/select DashboardCard :id [:in dashcard-ids])]
-    (dashboard-card/delete-dashboard-cards! dashcard-ids)
-    dashboard-cards))
+(defn- delete-dashcards! [dashboard dashcard-ids]
+  (when (seq dashcard-ids)
+    (let [dashcards (t2/select DashboardCard :id [:in dashcard-ids])]
+      (dashboard-card/delete-dashboard-cards! dashcards)
+      (audit-log/record-event! :dashboard-remove-cards (assoc dashboard :dashcards dashcards)))))
 
 (defn- do-update-dashcards!
   [dashboard current-cards new-cards]
   (let [{:keys [to-create to-update to-delete]} (u/classify-changes current-cards new-cards)]
     {:deleted-dashcards (when (seq to-delete)
-                          (delete-dashcards! (map :id to-delete)))
+                          (delete-dashcards! dashboard (map :id to-delete)))
      :created-dashcards (when (seq to-create)
                           (create-dashcards! dashboard to-create))
      :updated-dashcards (when (seq to-update)

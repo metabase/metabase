@@ -29,6 +29,8 @@
   [_entity _event-type]
   {})
 
+;; This is in this namespace instead of `metabase.models.card` to avoid circular dependencies with
+;; `metabase.query-processor`
 (defmethod model-details Card
   [{query :dataset_query, dataset? :dataset :as card} _event-type]
   (let [query (when (seq query)
@@ -40,7 +42,7 @@
     (merge (select-keys card [:name :description])
            {:database_id database-id
             :table_id    table-id
-            ;; Use `model` instead of `dataset` to mirror in-product terminology
+            ;; Use `model` instead of `dataset` to mirror product terminology
             :model dataset?})))
 
 (defn record-event!
