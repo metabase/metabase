@@ -115,11 +115,13 @@ const MetadataFieldSettings = ({
     if (tableId != null) {
       await onFetchMetadata({ id: tableId }, getTableQuery());
     }
+  }, [databaseId, tableId]);
 
+  useAsync(async () => {
     if (foreignKeyTableId != null) {
       await onFetchMetadata({ id: foreignKeyTableId }, getTableQuery());
     }
-  }, [databaseId, tableId, foreignKeyTableId]);
+  }, [foreignKeyTableId]);
 
   if (loading || error || !schema || !table) {
     return <LoadingAndErrorWrapper loading={loading} error={error} />;
