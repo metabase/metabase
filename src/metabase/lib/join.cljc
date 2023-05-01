@@ -284,3 +284,13 @@
   [table-name           :- ::lib.schema.common/non-blank-string
    source-field-id-name :- ::lib.schema.common/non-blank-string]
   (lib.util/format "%s__via__%s" table-name source-field-id-name))
+
+(mu/defn join-conditions :- ::lib.schema.join/conditions
+  "Get all join conditions for the given join"
+  [j :- ::lib.schema.join/join]
+  (:conditions j))
+
+(mu/defn join-fields :- [:maybe ::lib.schema/fields]
+  "Get all join conditions for the given join"
+  [j :- ::lib.schema.join/join]
+  (:fields j))
