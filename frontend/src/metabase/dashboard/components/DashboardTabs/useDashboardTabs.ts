@@ -20,7 +20,9 @@ export function useDashboardTabs() {
   const dashboardId = useSelector(getDashboardId);
   const tabs = useSelector(state =>
     dashboardId
-      ? state.dashboard.dashboards[dashboardId].ordered_tabs ?? []
+      ? state.dashboard.dashboards[dashboardId].ordered_tabs?.filter(
+          tab => !tab.isRemoved,
+        ) ?? []
       : [],
   );
   const selectedTabId = useSelector(getSelectedTabId);
@@ -31,7 +33,7 @@ export function useDashboardTabs() {
     tabs,
     selectedTabId,
     createNewTab: () => dispatch(createNewTabAction()),
-    deleteTab: (tabId: SelectedTabId) => dispatch(deleteTabAction({ tabId })),
+    deleteTab: (tabId: SelectedTabId) => dispatch(deleteTabAction(tabId)),
     renameTab: (tabId: SelectedTabId, name: string) =>
       dispatch(renameTabAction({ tabId, name })),
     selectTab: (tabId: SelectedTabId) => dispatch(selectTabAction({ tabId })),

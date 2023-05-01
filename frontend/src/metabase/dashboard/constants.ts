@@ -29,4 +29,5 @@ export const INITIAL_DASHBOARD_STATE: DashboardState = {
   slowCards: {},
   sidebar: { props: {} },
   missingActionParameters: null,
+  tabDeletions: {},
 };

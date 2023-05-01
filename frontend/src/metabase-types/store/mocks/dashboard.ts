@@ -23,5 +23,6 @@ export const createMockDashboardState = (
   },
   selectedTabId: null,
   missingActionParameters: null,
+  tabDeletions: {},
   ...opts,
 });
