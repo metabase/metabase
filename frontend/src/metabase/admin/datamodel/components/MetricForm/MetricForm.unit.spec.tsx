@@ -21,7 +21,11 @@ const setup = () => {
 };
 
 describe("MetricForm", () => {
-  it("should render", async () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it("should have beforeunload event when user makes edits to a metric", async () => {
     const { mockEventListener } = setup();
 
     const descriptionInput = screen.getByPlaceholderText(
@@ -29,15 +33,19 @@ describe("MetricForm", () => {
     );
     userEvent.type(descriptionInput, "01189998819991197253");
 
-    await waitFor(() => {
-      screen.debug(undefined, 1000000);
+    const mockEvent = await waitFor(() => {
+      return callMockEvent(mockEventListener, "beforeunload");
     });
+    expect(mockEvent.preventDefault).toHaveBeenCalled();
+    expect(mockEvent.returnValue).toBe(BEFORE_UNLOAD_UNSAVED_MESSAGE);
+  });
+
+  it("should not have an beforeunload event when metric is unedited", async () => {
+    const { mockEventListener } = setup();
 
     const mockEvent = callMockEvent(mockEventListener, "beforeunload");
 
-    expect(mockEvent.preventDefault).toHaveBeenCalled();
-    expect(mockEvent.returnValue).toBe(BEFORE_UNLOAD_UNSAVED_MESSAGE);
-
-    expect(true).toBe(true);
+    expect(mockEvent.preventDefault).not.toHaveBeenCalled();
+    expect(mockEvent.returnValue).toBe(undefined);
   });
 });
