@@ -54,7 +54,7 @@ export type ColumnDisplayInfo = {
 
 export type BreakoutClauseDisplayInfo = Pick<
   ColumnDisplayInfo,
-  "name" | "display_name" | "effective_type" | "semantic_type" | "table"
+  "name" | "displayName" | "effectiveType" | "semanticType" | "table"
 >;
 
 export type OrderByClauseDisplayInfo = Pick<
