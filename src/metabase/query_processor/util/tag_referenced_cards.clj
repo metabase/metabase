@@ -1,5 +1,6 @@
 (ns metabase.query-processor.util.tag-referenced-cards
   (:require
+   [metabase.models.card :refer [Card]]
    [metabase.util.i18n :refer [tru]]
    [toucan2.core :as t2]))
 
@@ -17,7 +18,7 @@
   [query]
   (mapv
    (fn [card-id]
-     (if-let [card (t2/select-one 'Card :id card-id)]
+     (if-let [card (t2/select-one Card :id card-id)]
        card
        (throw (ex-info (tru "Referenced question #{0} could not be found" (str card-id))
                        {:card-id card-id}))))
