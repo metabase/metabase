@@ -13,7 +13,7 @@ const TEST_TABLE = createMockTable();
 
 const TestComponent = () => {
   const { data, isLoading, error } = useTableQuery({
-    query: { id: TEST_TABLE.id },
+    id: TEST_TABLE.id,
   });
 
   if (isLoading || error || !data) {

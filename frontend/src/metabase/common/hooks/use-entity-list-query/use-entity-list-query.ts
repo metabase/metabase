@@ -46,10 +46,9 @@ export const useEntityListQuery = <TItem, TQuery>(
     getError,
   }: UseEntityListOwnProps<TItem, TQuery>,
 ): UseEntityListQueryResult<TItem> => {
-  const options = { entityQuery };
-  const data = useSelector(state => getList(state, options));
-  const isLoading = useSelector(state => getLoading(state, options));
-  const error = useSelector(state => getError(state, options));
+  const data = useSelector(state => getList(state, { entityQuery }));
+  const isLoading = useSelector(state => getLoading(state, { entityQuery }));
+  const error = useSelector(state => getError(state, { entityQuery }));
 
   const dispatch = useDispatch();
   useEffect(() => {

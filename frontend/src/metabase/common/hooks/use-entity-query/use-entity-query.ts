@@ -3,28 +3,33 @@ import type { Action } from "@reduxjs/toolkit";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { State } from "metabase-types/store";
 
+export interface EntityQuery<TId> {
+  id: TId;
+}
+
 export interface EntityFetchOptions {
   reload?: boolean;
   requestType?: string;
 }
 
-export interface EntityQueryOptions<TQuery> {
-  entityQuery?: TQuery;
+export interface EntityQueryOptions<TId> {
+  entityId?: TId;
 }
 
-export interface UseEntityOwnProps<TItem, TQuery> {
-  fetch: (query?: TQuery, options?: EntityFetchOptions) => Action;
+export interface UseEntityOwnProps<TId, TItem> {
+  fetch: (query: EntityQuery<TId>, options?: EntityFetchOptions) => Action;
   getObject: (
     state: State,
-    options: EntityQueryOptions<TQuery>,
+    options: EntityQueryOptions<TId>,
   ) => TItem | undefined;
-  getLoading: (state: State, options: EntityQueryOptions<TQuery>) => boolean;
-  getError: (state: State, options: EntityQueryOptions<TQuery>) => unknown;
+  getLoading: (state: State, options: EntityQueryOptions<TId>) => boolean;
+  getError: (state: State, options: EntityQueryOptions<TId>) => unknown;
   requestType?: string;
 }
 
-export interface UseEntityQueryProps<TQuery> {
-  query: TQuery;
+export interface UseEntityQueryProps<TId, TQuery> {
+  id?: TId;
+  query?: TQuery;
   reload?: boolean;
   enabled?: boolean;
 }
@@ -35,31 +40,32 @@ export interface UseEntityQueryResult<TItem> {
   error: unknown;
 }
 
-export const useEntityQuery = <TItem, TQuery>(
+export const useEntityQuery = <TId, TItem, TQuery>(
   {
+    id: entityId,
     query: entityQuery,
     reload = false,
     enabled = true,
-  }: UseEntityQueryProps<TQuery>,
+  }: UseEntityQueryProps<TId, TQuery>,
   {
     fetch,
     getObject,
     getLoading,
     getError,
     requestType,
-  }: UseEntityOwnProps<TItem, TQuery>,
+  }: UseEntityOwnProps<TId, TItem>,
 ): UseEntityQueryResult<TItem> => {
-  const options = { entityQuery, requestType };
-  const data = useSelector(state => getObject(state, options));
-  const isLoading = useSelector(state => getLoading(state, options));
-  const error = useSelector(state => getError(state, options));
+  const data = useSelector(state => getObject(state, { entityId }));
+  const isLoading = useSelector(state => getLoading(state, { entityId }));
+  const error = useSelector(state => getError(state, { entityId }));
 
   const dispatch = useDispatch();
   useEffect(() => {
-    if (enabled) {
-      dispatch(fetch(entityQuery, { reload, requestType }));
+    if (entityId != null && enabled) {
+      const query = { ...entityQuery, id: entityId };
+      dispatch(fetch(query, { reload, requestType }));
     }
-  }, [dispatch, fetch, entityQuery, enabled, reload, requestType]);
+  }, [dispatch, fetch, entityId, entityQuery, enabled, reload, requestType]);
 
   return { data, isLoading, error };
 };

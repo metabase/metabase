@@ -4,11 +4,11 @@ import {
   UseEntityQueryProps,
   UseEntityQueryResult,
 } from "metabase/common/hooks/use-entity-query";
-import { TableQuery } from "metabase-types/api";
+import { TableId, TableQuery } from "metabase-types/api";
 import Table from "metabase-lib/metadata/Table";
 
 export const useTableQuery = (
-  props: UseEntityQueryProps<TableQuery>,
+  props: UseEntityQueryProps<TableId, TableQuery>,
 ): UseEntityQueryResult<Table> => {
   return useEntityQuery(props, {
     fetch: Tables.actions.fetch,
