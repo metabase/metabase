@@ -5,11 +5,17 @@ import { createSelector } from "reselect";
 import { createEntity } from "metabase/lib/entities";
 import * as Urls from "metabase/lib/urls";
 import { color } from "metabase/lib/colors";
-import { fetchData, createThunkAction } from "metabase/lib/redux";
+import {
+  fetchData,
+  createThunkAction,
+  compose,
+  withAction,
+  withCachedDataAndRequestState,
+  withNormalize,
+} from "metabase/lib/redux";
 
 import { MetabaseApi } from "metabase/services";
 import { DatabaseSchema } from "metabase/schema";
-import Fields from "metabase/entities/fields";
 import Schemas from "metabase/entities/schemas";
 
 import { getMetadata, getFields } from "metabase/selectors/metadata";
@@ -53,14 +59,18 @@ const Databases = createEntity({
           }),
     ),
 
-    fetchIdfields: createThunkAction(
-      FETCH_DATABASE_IDFIELDS,
-      ({ id }, params = {}) =>
-        async () =>
-          normalize(await MetabaseApi.db_idfields({ dbId: id, ...params }), [
-            Fields.schema,
-          ]),
-    ),
+    fetchIdFields: compose(
+      withAction(FETCH_DATABASE_IDFIELDS),
+      withCachedDataAndRequestState(
+        ({ id }) => [...Databases.getObjectStatePath(id)],
+        ({ id }) => [...Databases.getObjectStatePath(id), "idFields"],
+        entityQuery => Databases.getQueryKey(entityQuery),
+      ),
+      withNormalize(DatabaseSchema),
+    )(({ id, ...params }) => async dispatch => {
+      const idFields = await MetabaseApi.db_idfields({ dbId: id, ...params });
+      return { id, idFields };
+    }),
 
     fetchSchemas: ({ id }) => Schemas.actions.fetchList({ dbId: id }),
   },

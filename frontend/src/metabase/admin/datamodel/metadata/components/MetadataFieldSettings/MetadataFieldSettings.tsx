@@ -1,5 +1,4 @@
 import React from "react";
-import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
@@ -12,7 +11,7 @@ import AdminLayout from "metabase/components/AdminLayout";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { LeftNavPane, LeftNavPaneItem } from "metabase/components/LeftNavPane";
-import { DatabaseId, FieldId, Schema, TableId } from "metabase-types/api";
+import { Schema } from "metabase-types/api";
 import { State } from "metabase-types/store";
 import Database from "metabase-lib/metadata/Database";
 import Table from "metabase-lib/metadata/Table";
@@ -20,22 +19,6 @@ import Field from "metabase-lib/metadata/Field";
 import MetadataBackButton from "../MetadataBackButton";
 import FieldGeneralSettings from "../FieldGeneralSettings";
 import FieldFormattingSettings from "../FieldFormattingSettings";
-
-interface HasDatabaseId {
-  id: DatabaseId;
-}
-
-interface HasTableId {
-  id: TableId;
-}
-
-interface HasFieldId {
-  id: FieldId;
-}
-
-interface HasRequestParams {
-  params: unknown;
-}
 
 interface RouterParams {
   databaseId: string;
@@ -67,39 +50,17 @@ interface FieldLoaderProps {
   field: Field;
 }
 
-interface StateProps {
-  idFields: Field[] | undefined;
-}
-
-interface DispatchProps {
-  onFetchMetadata: (table: HasTableId, opts: HasRequestParams) => void;
-  onFetchFieldValues: (field: HasFieldId, params: unknown) => void;
-  onFetchIdFields: (database: HasDatabaseId, params: unknown) => void;
-}
-
 type MetadataFieldSettingsProps = RouterProps &
   DatabaseLoaderProps &
   SchemaLoaderProps &
   TableLoaderProps &
-  FieldLoaderProps &
-  StateProps &
-  DispatchProps;
-
-const mapStateToProps = (
-  state: State,
-  { params: { databaseId } }: RouterProps,
-): StateProps => ({
-  idFields: Databases.selectors.getIdfields(state, {
-    databaseId: Urls.extractEntityId(databaseId),
-  }),
-});
+  FieldLoaderProps;
 
 const MetadataFieldSettings = ({
   database,
   schemas,
   table,
   field,
-  idFields = [],
   params: { schemaId, section },
 }: MetadataFieldSettingsProps) => {
   const schema = schemas.find(schema => schema.id === schemaId);
@@ -129,7 +90,7 @@ const MetadataFieldSettings = ({
         {section === "general" && (
           <FieldGeneralSettings
             field={field}
-            idFields={idFields}
+            idFields={database.idFields ?? []}
             table={table}
           />
         )}
@@ -224,6 +185,14 @@ export default _.compose(
     query: PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
     loadingAndErrorWrapper: false,
   }),
+  Databases.load({
+    id: (_: State, { params }: RouterProps) =>
+      Urls.extractEntityId(params.databaseId),
+    query: PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
+    fetchType: "fetchIdFields",
+    requestType: "idFields",
+    loadingAndErrorWrapper: false,
+  }),
   Schemas.loadList({
     query: (_: State, { params }: RouterProps) => ({
       dbId: Urls.extractEntityId(params.databaseId),
@@ -235,6 +204,10 @@ export default _.compose(
   Tables.load({
     id: (state: State, { params }: RouterProps) =>
       Urls.extractEntityId(params.tableId),
+    query: {
+      include_sensitive_fields: true,
+      ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
+    },
     fetchType: "fetchMetadata",
     requestType: "fetchMetadata",
     selectorName: "getObjectUnfiltered",
@@ -248,5 +221,16 @@ export default _.compose(
     requestType: "values",
     selectorName: "getObjectUnfiltered",
   }),
-  connect(mapStateToProps),
+  Tables.load({
+    id: (state: State, { field }: FieldLoaderProps) => field.target?.table_id,
+    query: {
+      include_sensitive_fields: true,
+      ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
+    },
+    fetchType: "fetchMetadata",
+    requestType: "fetchMetadata",
+    selectorName: "getObjectUnfiltered",
+    entityAlias: "foreignKeyTable",
+    loadingAndErrorWrapper: false,
+  }),
 )(MetadataFieldSettings);

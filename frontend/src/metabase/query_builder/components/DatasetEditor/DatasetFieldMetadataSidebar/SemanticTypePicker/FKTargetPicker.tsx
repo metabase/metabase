@@ -64,7 +64,7 @@ function mapStateToProps(
 }
 
 const mapDispatchToProps = {
-  fetchDatabaseIDFields: Databases.objectActions.fetchIdfields,
+  fetchDatabaseIDFields: Databases.objectActions.fetchIdFields,
 };
 
 function FKTargetPicker({

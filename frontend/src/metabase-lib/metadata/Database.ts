@@ -14,6 +14,7 @@ import Base from "./Base";
 import Table from "./Table";
 import Schema from "./Schema";
 import Metadata from "./Metadata";
+import Field from "./Field";
 /**
  * @typedef { import("./Metadata").SchemaName } SchemaName
  */
@@ -37,6 +38,7 @@ class DatabaseInner extends Base {
   details: Record<string, unknown>;
   settings?: DatabaseSettings;
   native_permissions: NativePermissions;
+  idFields?: Field[];
 
   // Only appears in  GET /api/database/:id
   "can-manage"?: boolean;
