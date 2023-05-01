@@ -7,6 +7,7 @@
   (:require
    [medley.core :as m]
    [metabase.mbql.normalize :as mbql.normalize]
+   [metabase.models.card :refer [Card]]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms :refer [Permissions]]
    [metabase.models.table :as table]
@@ -92,7 +93,7 @@
    ;; not all GTAPs have Cards
    (when card-id
      ;; not all Cards have saved result metadata
-     (when-let [result-metadata (t2/select-one-fn :result_metadata 'Card :id card-id)]
+     (when-let [result-metadata (t2/select-one-fn :result_metadata Card :id card-id)]
        (check-columns-match-table table-id result-metadata))))
 
   ([table-id :- su/IntGreaterThanZero result-metadata-columns]
@@ -110,9 +111,9 @@
   [{new-result-metadata :result_metadata, card-id :id}]
   (when new-result-metadata
     (when-let [gtaps-using-this-card (not-empty (t2/select [GroupTableAccessPolicy :id :table_id] :card_id card-id))]
-      (let [original-result-metadata (t2/select-one-fn :result_metadata 'Card :id card-id)]
-        (when-not (= original-result-metadata new-result-metadata)
-          (doseq [{table-id :table_id} gtaps-using-this-card]
+      (let [original-result-metadata (t2/select-one-fn :result_metadata Card :id card-id)]
+        (when-not (= original-result-metadata new-result-metadata))))))
+a         (doseq [{table-id :table_id} gtaps-using-this-card]
             (try
               (check-columns-match-table table-id new-result-metadata)
               (catch clojure.lang.ExceptionInfo e
@@ -120,7 +121,7 @@
                                      " "
                                      (.getMessage e))
                                 (ex-data e)
-                                e))))))))))
+                                e)))))
 
 (defenterprise upsert-sandboxes!
   "Create new `sandboxes` or update existing ones. If a sandbox has an `:id` it will be updated, otherwise it will be
