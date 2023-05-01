@@ -46,7 +46,10 @@ import {
   isZipCode,
 } from "metabase-lib/types/utils/isa";
 import { getFilterOperators } from "metabase-lib/operators/utils";
-import { getFieldValues } from "metabase-lib/queries/utils/field";
+import {
+  getFieldValues,
+  getRemappings,
+} from "metabase-lib/queries/utils/field";
 import { createLookupByProperty, memoizeClass } from "metabase-lib/utils";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import type NativeQuery from "metabase-lib/queries/NativeQuery";
@@ -295,6 +298,10 @@ class FieldInner extends Base {
 
   hasFieldValues() {
     return !_.isEmpty(this.fieldValues());
+  }
+
+  remappedValues() {
+    return getRemappings(this);
   }
 
   icon() {

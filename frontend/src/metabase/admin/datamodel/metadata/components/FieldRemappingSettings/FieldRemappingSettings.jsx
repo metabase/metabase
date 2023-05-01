@@ -15,10 +15,6 @@ import { getMetadataUnfiltered } from "metabase/selectors/metadata";
 
 import { isEntityName, isFK } from "metabase-lib/types/utils/isa";
 import {
-  getFieldValues,
-  getRemappingsMap,
-} from "metabase-lib/queries/utils/field";
-import {
   hasSourceField,
   getFieldTargetId,
 } from "metabase-lib/queries/utils/field-ref";
@@ -72,7 +68,8 @@ class FieldRemappingSettings extends React.Component {
   };
 
   hasMappableNumeralValues = () => {
-    const { remapping } = this.props;
+    const { field } = this.props;
+    const remapping = new Map(field.remappedValues());
 
     // Only show the "custom" option if we have some values that can be mapped to user-defined custom values
     // (for a field without user-defined remappings, every key of `field.remappings` has value `undefined`)
@@ -223,13 +220,14 @@ class FieldRemappingSettings extends React.Component {
   };
 
   render() {
-    const { field, table, remapping, metadata, fieldsError } = this.props;
+    const { field, table, metadata, fieldsError } = this.props;
     const {
       isChoosingInitialFkTarget,
       hasChanged,
       dismissedInitialFkTargetPopover,
     } = this.state;
 
+    const remapping = new Map(field.remappedValues());
     const isFieldsAccessRestricted = fieldsError?.status === 403;
 
     const mappingType = this.getMappingTypeForField(field);
@@ -456,8 +454,6 @@ const RemappingNamingTip = () => (
 );
 
 const mapStateToProps = (state, { field }) => ({
-  values: getFieldValues(field),
-  remapping: getRemappingsMap(field),
   metadata: getMetadataUnfiltered(state),
 });
 

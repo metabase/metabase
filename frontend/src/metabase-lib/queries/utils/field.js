@@ -65,7 +65,3 @@ export function getRemappings(field) {
   const fieldValues = getFieldValues(field);
   return [...fieldValues, ...remappings];
 }
-
-export function getRemappingsMap(field) {
-  return new Map(getRemappings(field));
-}
