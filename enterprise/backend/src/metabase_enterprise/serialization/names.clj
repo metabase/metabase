@@ -339,7 +339,7 @@
 
 (defn name-for-logging
   "Return a string representation of entity suitable for logs"
-  ([entity] (name-for-logging (or (t2.protocols/model entity) (name entity)) entity))
+  ([entity] (name-for-logging (t2.protocols/model entity) entity))
   ([model {:keys [name id]}]
    (cond
      (and name id) (format "%s \"%s\" (ID %s)" model name id)

@@ -99,5 +99,8 @@
 
 (deftest name-for-logging-test
   (testing "with Toucan 2 records (#29322)"
-    (mt/with-temp* [Collection [{} {:name "Some Collection"}]]
-      (is (= ":metabase.models.collection/Collection \"Some Collection\" (ID 1)" (names/name-for-logging (t2/select-one 'Collection)))))))
+    (mt/with-temp* [Collection [{collection-id :id} {:name         "A Collection"}]
+                    Card       [_                   {:name         "A Card"
+                                                     :collection_id collection-id}]]
+      (is (= ":metabase.models.collection/Collection \"A Collection\" (ID 1)" (names/name-for-logging (t2/select-one 'Collection))))
+      (is (= ":model/Card \"A Card\" (ID 1)" (names/name-for-logging (t2/select-one 'Card)))))))
