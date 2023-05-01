@@ -1,5 +1,6 @@
 import {
   restore,
+  getCollectionIdFromSlug,
   assertPermissionTable,
   modifyPermission,
   modal,
@@ -9,16 +10,13 @@ import {
 } from "e2e/support/helpers";
 
 const COLLECTION_ACCESS_PERMISSION_INDEX = 0;
-const NEW_COLLECTION = "New collection";
+const FIRST_COLLECTION = "First collection";
+const FIRST_COLLECTION_SLUG = "first_collection";
 
 describe("issue 20911", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    cy.createCollection({
-      name: NEW_COLLECTION,
-    });
-
     cy.intercept("GET", "/api/collection/graph").as("getGraph");
   });
 
@@ -50,7 +48,7 @@ describe("issue 20911", () => {
     });
 
     navigationSidebar().within(() => {
-      cy.findByText(NEW_COLLECTION).click();
+      cy.findByText(FIRST_COLLECTION).click();
     });
     getCollectionActions().within(() => {
       cy.icon("ellipsis").click();
@@ -67,10 +65,13 @@ describe("issue 20911", () => {
       ["readonly", "View"],
     ]);
 
-    cy.signInAsNormalUser();
-    cy.visit("/collection/root");
-    cy.findByText("You don't have permissions to do that.");
-    cy.visit("/collection/1-new-collection");
-    cy.findByText("Sorry, you don’t have permission to see that.");
+    getCollectionIdFromSlug(FIRST_COLLECTION_SLUG, id => {
+      cy.signInAsNormalUser();
+      cy.visit("/collection/root");
+      cy.findByText("You don't have permissions to do that.");
+
+      cy.visit(`/collection/${id}`);
+      cy.findByText("Sorry, you don’t have permission to see that.");
+    });
   });
 });
