@@ -174,7 +174,7 @@
                      :set    {:json_unfolding true}
                      :where  [:in :metabase_field.id field-ids-to-update]}))))
 
-(defn update-legacy-field-refs [viz-settings]
+(defn- update-legacy-field-refs [viz-settings]
   (let [old-to-new (fn [old]
                      (match old
                        ["ref" ref] ["ref" (match ref
