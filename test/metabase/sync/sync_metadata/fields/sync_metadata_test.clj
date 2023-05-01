@@ -8,7 +8,8 @@
 
 (defn- updates-that-will-be-performed
   ([new-metadata-from-sync metadata-in-application-db]
-   (updates-that-will-be-performed new-metadata-from-sync metadata-in-application-db {}))
+   ;; use alphabetical field_order by default because the default, database, will update the position
+   (updates-that-will-be-performed new-metadata-from-sync metadata-in-application-db {:field_order :alphabetical}))
   ([new-metadata-from-sync metadata-in-application-db table]
    (tt/with-temp Table [table table]
      (let [update-operations (atom [])]
@@ -52,14 +53,18 @@
     (is (= [["Field" 1 {:database_position 1
                         :position          1}]]
            (updates-that-will-be-performed
-            (assoc default-metadata :database-position 1)
-            (assoc default-metadata :database-position 0 :id 1)
+            (merge default-metadata {:database-position 1})
+            (merge default-metadata {:database-position 0
+                                     :position          0
+                                     :id                1})
             {:field_order :database})))
-    (testing "but not if the table's fields should be sorted otherwise"
+    (testing "but not if the table's fields should not be sorted according to the database"
       (is (= [["Field" 1 {:database_position 1}]]
              (updates-that-will-be-performed
-              (assoc default-metadata :database-position 1)
-              (assoc default-metadata :database-position 0 :id 1)
+              (merge default-metadata {:database-position 1})
+              (merge default-metadata {:database-position 0
+                                       :position          0
+                                       :id                1})
               {:field_order :alphabetical}))))))
 
 (deftest database-required-changed-test
@@ -76,6 +81,7 @@
              :database-type              "Integer"
              :base-type                  :type/Integer
              :id                         1
+             :position                   0
              :database-position          0
              :database-required          true
              :database-is-auto-increment false})))))
