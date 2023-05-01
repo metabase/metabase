@@ -199,8 +199,9 @@ const saveError = handleActions(
 );
 
 function getDecendentCollections(collection) {
-  const subCollections =
-    collection.children?.filter(collection => !collection.is_personal) || [];
+  const subCollections = collection.children.filter(
+    collection => !collection.is_personal,
+  );
   return subCollections.concat(...subCollections.map(getDecendentCollections));
 }
 
