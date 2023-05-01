@@ -26,6 +26,9 @@ export type ColumnMetadata = unknown & { _opaque: typeof ColumnMetadata };
 declare const ColumnGroup: unique symbol;
 export type ColumnGroup = unknown & { _opaque: typeof ColumnGroup };
 
+declare const TemporalBucket: unique symbol;
+export type TemporalBucket = unknown & { _opaque: typeof TemporalBucket };
+
 export type TableDisplayInfo = {
   name: string;
   displayName: string;
@@ -56,6 +59,12 @@ export type BreakoutClauseDisplayInfo = Pick<
   ColumnDisplayInfo,
   "name" | "displayName" | "effectiveType" | "semanticType" | "table"
 >;
+
+export type TemporalBucketDisplayInfo = {
+  displayName: string;
+  default: boolean | null;
+  table?: TableInlineDisplayInfo;
+};
 
 export type OrderByClauseDisplayInfo = Pick<
   ColumnDisplayInfo,
