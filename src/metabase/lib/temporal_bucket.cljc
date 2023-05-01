@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
+   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.temporal-bucketing
@@ -127,8 +128,11 @@
     [:field 1 {:temporal-unit :day}]
 
   Pass a `nil` `unit` to remove the temporal bucket."
-  [x unit :- [:maybe ::lib.schema.temporal-bucketing/unit]]
-  (with-temporal-bucket-method x unit))
+  [x option-or-unit :- [:maybe [:or
+                                ::lib.schema.temporal-bucketing/option
+                                ::lib.schema.temporal-bucketing/unit]]]
+  (with-temporal-bucket-method x (cond-> option-or-unit
+                                   (not (keyword? option-or-unit)) :unit)))
 
 (defmulti temporal-bucket-method
   "Implementation of [[temporal-bucket]]. Return the current temporal bucketing unit associated with `x`."
@@ -145,6 +149,46 @@
   [x]
   (temporal-bucket-method x))
 
+(mu/defn temporal-bucket-option :- [:maybe ::lib.schema.temporal-bucketing/option]
+  "Get the current temporal bucketing option associated with something, if any."
+  [x]
+  (when-let [unit (temporal-bucket x)]
+    {:lib/type :type/temporal-bucketing-option
+     :unit unit}))
+
+(def time-bucket-options
+  "The temporal bucketing options for time type expressions."
+  (mapv (fn [unit]
+          (cond-> {:lib/type :type/temporal-bucketing-option
+                   :unit unit}
+            (= unit :hour) (assoc :default true)))
+        lib.schema.temporal-bucketing/ordered-time-bucketing-units))
+
+(def date-bucket-options
+  "The temporal bucketing options for date type expressions."
+  (mapv (fn [unit]
+          (cond-> {:lib/type :type/temporal-bucketing-option
+                   :unit unit}
+            (= unit :day) (assoc :default true)))
+        lib.schema.temporal-bucketing/ordered-date-bucketing-units))
+
+(def datetime-bucket-options
+  "The temporal bucketing options for datetime type expressions."
+  (mapv (fn [unit]
+          (cond-> {:lib/type :type/temporal-bucketing-option
+                   :unit unit}
+            (= unit :day) (assoc :default true)))
+        lib.schema.temporal-bucketing/ordered-datetime-bucketing-units))
+
+(defmethod lib.metadata.calculation/display-name-method :type/temporal-bucketing-option
+  [_query _stage-number {:keys [unit]}]
+  (describe-temporal-unit unit))
+
+(defmethod lib.metadata.calculation/display-info-method :type/temporal-bucketing-option
+  [query stage-number {:keys [default] :as option}]
+  {:display-name (lib.metadata.calculation/display-name query stage-number option)
+   :default default})
+
 (defmulti available-temporal-buckets-method
   "Implementation for [[available-temporal-buckets]]. Return a set of units from
   `:metabase.lib.schema.temporal-bucketing/unit` that are allowed to be used with `x`."
@@ -157,7 +201,7 @@
   [_query _stage-number _x]
   #{})
 
-(mu/defn available-temporal-buckets :- [:set [:ref ::lib.schema.temporal-bucketing/unit]]
+(mu/defn available-temporal-buckets :- [:sequential [:ref ::lib.schema.temporal-bucketing/option]]
   "Get a set of available temporal bucketing units for `x`. Returns nil if no units are available."
   ([query x]
    (available-temporal-buckets query -1 x))
