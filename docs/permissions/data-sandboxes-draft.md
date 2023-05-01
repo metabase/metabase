@@ -10,19 +10,17 @@ Data sandboxes let you give granular permissions to rows and columns for differe
 
 You can think of a data sandbox as a permissions "container" that includes:
 
-- An edited version of a table in your database (for example, with some rows or columns removed).
-- A [group](../people-and-groups/managing.md#groups) of people who should see the edited version of the table instead of the original table, everywhere that the table is used in Metabase.\*
+- The edited version of a table in your database (for example, with some rows or columns removed).
+- The [group](../people-and-groups/managing.md#groups) of people who should see the edited version of the table instead of the original table, everywhere that the table is used in Metabase.\*
 
 You can define one data sandbox (that is, one permission set) for each table and group pairing in your Metabase.
-
-\* SQL questions are the main exception. See [Preventing data sandboxing permissions conflicts](#preventing-data-sandboxing-permissions-conflicts).
 
 ## Types of data sandboxes
 
 For each group and table pairing, you can choose between:
 
-- A [row-limiting data sandbox](#row-limiting-data-sandboxes) to hide rows from a table based on a user attribute.
-- An [advanced data sandbox](#advanced-data-sandboxes) to display a custom query result in place of a table (user attribute-based filter is optional).
+- A [row-limiting data sandbox](#row-limiting-data-sandboxes), to hide rows from a table based on a user attribute.
+- An [advanced data sandbox](#advanced-data-sandboxes), to display a custom query result in place of a table (the attribute-based filter is optional).
 
 ### Row-limiting data sandboxes
 
@@ -32,7 +30,7 @@ For example, you can create a row-limiting sandbox to filter the Accounts table 
 
 A data sandbox will dynamically set the filter value to "Basic" or "Premium" to hide different rows for each person based on their [user attributes](../people-and-groups/managing.md#adding-user-attributes).
 
-## Advanced data sandboxes
+### Advanced data sandboxes
 
 An advanced sandbox displays the results of a saved question in place of a table, anywhere that table is used in Metabase. This type of sandbox must be used if you want to **restrict the columns** in a table.
 
@@ -126,7 +124,6 @@ If you want an advanced data sandbox to display different rows to each person de
 10. Set the **User attribute** to the **key** of the [user attribute](../people-and-groups/managing.md#adding-a-user-attribute) to be filtered on.
 11. Click **Save**.
 
-
 ### Example of an advanced data sandbox
 
 1. Create a new SQL question with a subset of columns from the Accounts table:
@@ -203,7 +200,7 @@ Sandboxed groups will be restricted from seeing the Email column and values when
 
 Sandboxed groups will only be able to see a name and description for the Email column (but not the column values) from the [data reference](../exploration-and-organization/data-model-reference.md) for the Accounts table.
 
-## Public links
+### Public links
 
 Sandboxed groups can view the Email column values from a public link, if the public link includes the Email column. See [Preventing permissions conflicts](#preventing-data-sandboxing-permissions-conflicts).
 
@@ -211,7 +208,7 @@ Sandboxed groups can view the Email column values from a public link, if the pub
 
 When creating a new question with the Accounts table in the query builder, sandboxed groups will be restricted from seeing the Email column and values.
 
-## Recieving subscriptions or alerts
+### Recieving subscriptions or alerts
 
 People in sandboxed groups can view the Email column in a dashboard subscription or alert if:
 
@@ -232,7 +229,7 @@ Sandboxed groups will be able to see the Email column in a saved SQL question if
 
 See [Preventing permissions conflicts](#preventing-data-sandboxing-permissions-conflicts).
 
-## Sending subscriptions or alerts
+### Sending subscriptions or alerts
 
 People in sandboxed groups can only see and add their own account to an alert or dashboard subscription.
 
@@ -271,7 +268,7 @@ When you have conflicting data sandboxes for a person in multiple groups:
 - Remove the person from all but one of the groups.
 - Remove all but one of the data sandboxes for that table (change the table's data access to **No self-service**).
 
-## Native query editing permissions
+### Native query editing permissions
 
 People with **native query editing** permissions will always be able to write SQL queries using the original tables in a database, even if you add them to a data sandbox.
 
