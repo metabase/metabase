@@ -1,7 +1,8 @@
 import React from "react";
 import { t } from "ttag";
-import { useSelector } from "react-redux";
 import { useBeforeUnload } from "react-use";
+
+import { useSelector } from "metabase/lib/redux";
 
 import { getUserIsAdmin, getUser } from "metabase/selectors/user";
 import { hasActiveUploads } from "metabase/redux/uploads";
