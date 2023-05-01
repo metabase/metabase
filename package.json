@@ -314,7 +314,7 @@
     "build": "yarn build:cljs && yarn build:js",
     "build-watch": "yarn concurrently -n 'cljs,js' 'yarn build-watch:cljs' 'yarn build-watch:js'",
     "build-hot": "yarn concurrently -n 'cljs,js' 'yarn build-hot:cljs' 'yarn build-hot:js'",
-    "build-release": "yarn build-release:cljs && yarn build-release:js",
+    "build-release": "NODE_OPTIONS=--max-old-space-size=4096 yarn build-release:cljs && yarn build-release:js",
     "build-stats": "yarn && webpack --json > stats.json",
     "build-shared": "yarn && webpack --config webpack.shared.config.js",
     "build-static-viz": "yarn && yarn build-release:cljs && webpack --config webpack.static-viz.config.js",
