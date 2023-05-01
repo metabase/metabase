@@ -1,5 +1,4 @@
 import React from "react";
-import { useAsync } from "react-use";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
@@ -56,6 +55,10 @@ interface DatabaseLoaderProps {
   database: Database;
 }
 
+interface TableLoaderProps {
+  table: Table;
+}
+
 interface SchemaLoaderProps {
   schemas: Schema[];
 }
@@ -65,7 +68,6 @@ interface FieldLoaderProps {
 }
 
 interface StateProps {
-  table: Table | undefined;
   idFields: Field[] | undefined;
 }
 
@@ -78,27 +80,19 @@ interface DispatchProps {
 type MetadataFieldSettingsProps = RouterProps &
   DatabaseLoaderProps &
   SchemaLoaderProps &
+  TableLoaderProps &
   FieldLoaderProps &
   StateProps &
   DispatchProps;
 
 const mapStateToProps = (
   state: State,
-  { params: { databaseId, tableId } }: RouterProps,
+  { params: { databaseId } }: RouterProps,
 ): StateProps => ({
-  table: Tables.selectors.getObjectUnfiltered(state, {
-    entityId: Urls.extractEntityId(tableId),
-  }),
   idFields: Databases.selectors.getIdfields(state, {
     databaseId: Urls.extractEntityId(databaseId),
   }),
 });
-
-const mapDispatchToProps: DispatchProps = {
-  onFetchMetadata: Tables.actions.fetchMetadata,
-  onFetchFieldValues: Fields.actions.fetchFieldValues,
-  onFetchIdFields: Databases.objectActions.fetchIdfields,
-};
 
 const MetadataFieldSettings = ({
   database,
@@ -107,33 +101,10 @@ const MetadataFieldSettings = ({
   field,
   idFields = [],
   params: { schemaId, section },
-  onFetchMetadata,
-  onFetchFieldValues,
-  onFetchIdFields,
 }: MetadataFieldSettingsProps) => {
-  const databaseId = database.id;
-  const tableId = field.table_id;
-  const fieldId = Number(field.id);
-  const foreignKeyTableId = field.target?.table_id;
   const schema = schemas.find(schema => schema.id === schemaId);
-
-  const { loading, error } = useAsync(async () => {
-    await onFetchIdFields({ id: databaseId }, getFieldsQuery());
-    await onFetchFieldValues({ id: fieldId }, getFieldsQuery());
-
-    if (tableId != null) {
-      await onFetchMetadata({ id: tableId }, getTableQuery());
-    }
-  }, [databaseId, tableId, fieldId]);
-
-  useAsync(async () => {
-    if (foreignKeyTableId != null) {
-      await onFetchMetadata({ id: foreignKeyTableId }, getTableQuery());
-    }
-  }, [foreignKeyTableId]);
-
-  if (loading || error || !schema || !table) {
-    return <LoadingAndErrorWrapper loading={loading} error={error} />;
+  if (!schema) {
+    return <LoadingAndErrorWrapper loading />;
   }
 
   return (
@@ -246,16 +217,6 @@ const FieldBreadcrumbs = ({
   );
 };
 
-const getTableQuery = () => ({
-  params: {
-    include_sensitive_fields: true,
-    ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
-  },
-});
-
-const getFieldsQuery = () =>
-  PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps;
-
 export default _.compose(
   Databases.load({
     id: (_: State, { params }: RouterProps) =>
@@ -271,11 +232,21 @@ export default _.compose(
     }),
     loadingAndErrorWrapper: false,
   }),
+  Tables.load({
+    id: (state: State, { params }: RouterProps) =>
+      Urls.extractEntityId(params.tableId),
+    fetchType: "fetchMetadata",
+    requestType: "fetchMetadata",
+    selectorName: "getObjectUnfiltered",
+    loadingAndErrorWrapper: false,
+  }),
   Fields.load({
     id: (_: State, { params }: RouterProps) =>
       Urls.extractEntityId(params.fieldId),
     query: PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
+    fetchType: "fetchFieldValues",
+    requestType: "values",
     selectorName: "getObjectUnfiltered",
   }),
-  connect(mapStateToProps, mapDispatchToProps),
+  connect(mapStateToProps),
 )(MetadataFieldSettings);
