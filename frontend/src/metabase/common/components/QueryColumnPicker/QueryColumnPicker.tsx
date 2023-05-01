@@ -7,6 +7,8 @@ import { singularize } from "metabase/lib/formatting";
 
 import * as Lib from "metabase-lib";
 
+import ColumnPrecisionPickerPopover from "./ColumnPrecisionPickerPopover";
+
 const DEFAULT_MAX_HEIGHT = 610;
 
 interface QueryColumnPickerProps {
@@ -68,6 +70,28 @@ function QueryColumnPicker({
     [onSelect, onClose],
   );
 
+  const renderItemExtra = useCallback(
+    item => {
+      const temporalBuckets = Lib.availableTemporalBuckets(query, item.column);
+
+      if (temporalBuckets.length === 0) {
+        return null;
+      }
+
+      return (
+        <ColumnPrecisionPickerPopover
+          selectedItem={Lib.temporalBucket(query, item.column)}
+          query={query}
+          items={temporalBuckets}
+          onSelect={nextBucket =>
+            onSelect(Lib.withTemporalBucket(item.column, nextBucket))
+          }
+        />
+      );
+    },
+    [query, onSelect],
+  );
+
   return (
     <AccordionList
       className={className}
@@ -78,6 +102,7 @@ function QueryColumnPicker({
       renderItemName={renderItemName}
       renderItemDescription={omitItemDescription}
       renderItemIcon={renderItemIcon}
+      renderItemExtra={renderItemExtra}
     />
   );
 }
