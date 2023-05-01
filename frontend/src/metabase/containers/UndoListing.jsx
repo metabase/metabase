@@ -1,9 +1,9 @@
 import React from "react";
 import PropTypes from "prop-types";
-import { useSelector, useDispatch } from "react-redux";
 import { Motion, spring } from "react-motion";
 import { t } from "ttag";
 
+import { useSelector, useDispatch } from "metabase/lib/redux";
 import { capitalize, inflect } from "metabase/lib/formatting";
 import { dismissUndo, performUndo } from "metabase/redux/undo";
 

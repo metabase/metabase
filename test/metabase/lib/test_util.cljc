@@ -33,7 +33,7 @@
    (field-clause table field nil))
   ([table field options]
    [:field
-    (merge {:base-type (:base_type (meta/field-metadata table field))
+    (merge {:base-type (:base-type (meta/field-metadata table field))
             :lib/uuid  (str (random-uuid))}
            options)
     (meta/id table field)]))
@@ -97,15 +97,15 @@
 (deftest ^:parallel composed-metadata-provider-test
   (testing "Return things preferentially from earlier metadata providers"
     (let [time-field        (assoc (meta/field-metadata :people :birth-date)
-                                   :base_type      :type/Time
-                                   :effective_type :type/Time)
+                                   :base-type      :type/Time
+                                   :effective-type :type/Time)
           metadata-provider (composed-metadata-provider
                              (mock-metadata-provider
                               {:fields [time-field]})
                              meta/metadata-provider)]
       (is (=? {:name           "BIRTH_DATE"
-               :base_type      :type/Time
-               :effective_type :type/Time}
+               :base-type      :type/Time
+               :effective-type :type/Time}
               (lib.metadata/field
                metadata-provider
                (meta/id :people :birth-date)))))))
@@ -117,7 +117,7 @@
    (mock-metadata-provider
     {:cards [{:name          "My Card"
               :id            1
-              :dataset_query {:database (meta/id)
+              :dataset-query {:database (meta/id)
                               :type     :query
                               :query    {:source-table (meta/id :checkins)
                                          :aggregation  [[:count]]
@@ -140,13 +140,15 @@
    (mock-metadata-provider
     {:cards [{:name            "My Card"
               :id              1
-              :dataset_query   {:database (meta/id)
+              ;; THIS IS A LEGACY STYLE QUERY!
+              :dataset-query   {:database (meta/id)
                                 :type     :query
                                 :query    {:source-table (meta/id :checkins)
                                            :aggregation  [[:count]]
                                            :breakout     [[:field (meta/id :checkins :user-id) nil]]}}
-              ;; this is copied directly from a QP response
-              :result_metadata [{:description       nil
+              ;; this is copied directly from a QP response. NOT CONVERTED TO KEBAB-CASE YET, BECAUSE THIS IS HOW IT
+              ;; LOOKS IN LEGACY QUERIES!
+              :result-metadata [{:description       nil
                                  :semantic_type     :type/FK
                                  :table_id          (meta/id :checkins)
                                  :coercion_strategy nil
@@ -208,12 +210,12 @@
                    :lib/stage-metadata {:lib/type :metadata/results
                                         :columns  [{:lib/type      :metadata/field
                                                     :name          "abc"
-                                                    :display_name  "another Field"
-                                                    :base_type     :type/Integer
-                                                    :semantic_type :type/FK}
+                                                    :display-name  "another Field"
+                                                    :base-type     :type/Integer
+                                                    :semantic-type :type/FK}
                                                    {:lib/type      :metadata/field
                                                     :name          "sum"
-                                                    :display_name  "sum of User ID"
-                                                    :base_type     :type/Integer
-                                                    :semantic_type :type/FK}]}
+                                                    :display-name  "sum of User ID"
+                                                    :base-type     :type/Integer
+                                                    :semantic-type :type/FK}]}
                    :native             "SELECT whatever"}]})

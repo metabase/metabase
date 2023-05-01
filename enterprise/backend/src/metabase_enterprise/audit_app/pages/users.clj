@@ -195,8 +195,14 @@
                                                :id
                                                :date_joined
                                                [[:case
-                                                 [:= true :u.google_auth]
+                                                 [:= "google" :u.sso_source]
                                                  (h2x/literal "Google Sign-In")
+                                                 [:= "saml" :u.sso_source]
+                                                 (h2x/literal "SAML")
+                                                 [:= "jwt" :u.sso_source]
+                                                 (h2x/literal "JWT")
+                                                 [:= "ldap" :u.sso_source]
+                                                 (h2x/literal "LDAP")
                                                  [:= nil :u.sso_source]
                                                  (h2x/literal "Email")
                                                  :else
