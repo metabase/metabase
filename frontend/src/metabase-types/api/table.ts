@@ -44,4 +44,5 @@ export interface TableListQuery {
   dbId?: DatabaseId;
   schemaName?: string;
   include_hidden?: boolean;
+  include_editable_data_model?: boolean;
 }

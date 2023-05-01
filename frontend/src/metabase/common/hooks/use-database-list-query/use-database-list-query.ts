@@ -1,15 +1,19 @@
 import Databases from "metabase/entities/databases";
-import useEntityListQuery, {
+import {
+  useEntityListQuery,
   UseEntityListQueryProps,
   UseEntityListQueryResult,
 } from "metabase/common/hooks/use-entity-list-query";
 import { DatabaseListQuery } from "metabase-types/api";
 import Database from "metabase-lib/metadata/Database";
 
-const useDatabaseListQuery = (
+export const useDatabaseListQuery = (
   props: UseEntityListQueryProps<DatabaseListQuery> = {},
 ): UseEntityListQueryResult<Database> => {
-  return useEntityListQuery(Databases, props);
+  return useEntityListQuery(props, {
+    fetchList: Databases.actions.fetchList,
+    getList: Databases.selectors.getList,
+    getLoading: Databases.selectors.getLoading,
+    getError: Databases.selectors.getError,
+  });
 };
-
-export default useDatabaseListQuery;
