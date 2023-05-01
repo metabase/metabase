@@ -12,12 +12,12 @@ import { setupEnterpriseTest } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 
 import SaveQuestionModal from "metabase/containers/SaveQuestionModal";
-
+import { CollectionId } from "metabase-types/api";
 import Question from "metabase-lib/Question";
 
 const setup = async (
-  question,
-  originalQuestion,
+  question: Question,
+  originalQuestion: Question | null = null,
   { isCachingEnabled = false } = {},
 ) => {
   const onCreateMock = jest.fn(() => Promise.resolve());
@@ -53,8 +53,14 @@ function getQuestion({
   description = "Example",
   collection_id = null,
   can_write = true,
+}: {
+  isSaved?: boolean;
+  name?: string;
+  description?: string;
+  collection_id?: CollectionId | null;
+  can_write?: boolean;
 } = {}) {
-  const extraCardParams = {};
+  const extraCardParams: Record<string, any> = {};
 
   if (isSaved) {
     extraCardParams.id = 1; // if a card has an id, it means it's saved
@@ -84,15 +90,24 @@ function getQuestion({
 
 const EXPECTED_DIRTY_SUGGESTED_NAME = "Orders, Count, Grouped by Total";
 
-function getDirtyQuestion(originalQuestion) {
-  return originalQuestion
-    .query()
-    .breakout(["field", ORDERS.TOTAL.id, null])
-    .question()
-    .markDirty();
+function getDirtyQuestion(originalQuestion: Question) {
+  return (
+    originalQuestion
+      .query()
+      // @ts-expect-error breakout after query() raises type error
+      .breakout(["field", ORDERS.TOTAL.id, null])
+      .question()
+      .markDirty()
+  );
 }
 
-function fillForm({ name, description }) {
+function fillForm({
+  name,
+  description,
+}: {
+  name?: string;
+  description?: string;
+}) {
   if (name) {
     const input = screen.getByLabelText("Name");
     userEvent.clear(input);
@@ -182,7 +197,7 @@ describe("SaveQuestionModal", () => {
         expect(onCreateMock).toHaveBeenCalledTimes(1);
       });
 
-      const call = onCreateMock.mock.calls[0];
+      const call: Question[] = onCreateMock.mock.calls[0];
       expect(call.length).toBe(1);
 
       const newQuestion = call[0];
@@ -206,7 +221,7 @@ describe("SaveQuestionModal", () => {
         expect(onCreateMock).toHaveBeenCalledTimes(1);
       });
 
-      const call = onCreateMock.mock.calls[0];
+      const call: Question[] = onCreateMock.mock.calls[0];
       expect(call.length).toBe(1);
 
       const newQuestion = call[0];
@@ -230,7 +245,7 @@ describe("SaveQuestionModal", () => {
         expect(onCreateMock).toHaveBeenCalledTimes(1);
       });
 
-      const call = onCreateMock.mock.calls[0];
+      const call: Question[] = onCreateMock.mock.calls[0];
       expect(call.length).toBe(1);
 
       const newQuestion = call[0];
@@ -253,7 +268,7 @@ describe("SaveQuestionModal", () => {
         expect(onCreateMock).toHaveBeenCalledTimes(1);
       });
 
-      const call = onCreateMock.mock.calls[0];
+      const call: Question[] = onCreateMock.mock.calls[0];
       expect(call.length).toBe(1);
 
       const newQuestion = call[0];
@@ -327,7 +342,7 @@ describe("SaveQuestionModal", () => {
         expect(onCreateMock).toHaveBeenCalledTimes(1);
       });
 
-      const call = onCreateMock.mock.calls[0];
+      const call: Question[] = onCreateMock.mock.calls[0];
       expect(call.length).toBe(1);
 
       const newQuestion = call[0];
@@ -350,7 +365,7 @@ describe("SaveQuestionModal", () => {
         expect(onCreateMock).toHaveBeenCalledTimes(1);
       });
 
-      const call = onCreateMock.mock.calls[0];
+      const call: Question[] = onCreateMock.mock.calls[0];
       expect(call.length).toBe(1);
 
       const newQuestion = call[0];
@@ -399,7 +414,7 @@ describe("SaveQuestionModal", () => {
         expect(onSaveMock).toHaveBeenCalledTimes(1);
       });
 
-      const call = onSaveMock.mock.calls[0];
+      const call: Question[] = onSaveMock.mock.calls[0];
       expect(call.length).toBe(1);
 
       const newQuestion = call[0];
@@ -422,7 +437,7 @@ describe("SaveQuestionModal", () => {
         expect(onSaveMock).toHaveBeenCalledTimes(1);
       });
 
-      const call = onSaveMock.mock.calls[0];
+      const call: Question[] = onSaveMock.mock.calls[0];
       expect(call.length).toBe(1);
 
       const newQuestion = call[0];
@@ -446,7 +461,7 @@ describe("SaveQuestionModal", () => {
         expect(onSaveMock).toHaveBeenCalledTimes(1);
       });
 
-      const call = onSaveMock.mock.calls[0];
+      const call: Question[] = onSaveMock.mock.calls[0];
       expect(call.length).toBe(1);
 
       const newQuestion = call[0];
@@ -549,6 +564,7 @@ describe("SaveQuestionModal", () => {
       metadata,
     })
       .query()
+      // @ts-expect-error aggregate after query() throws a type error
       .aggregate(["count"])
       .question();
 
