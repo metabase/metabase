@@ -30,7 +30,7 @@ import MoveEventModal from "metabase/timelines/questions/containers/MoveEventMod
 import PreviewQueryModal from "metabase/query_builder/components/view/PreviewQueryModal";
 import ConvertQueryModal from "metabase/query_builder/components/view/ConvertQueryModal";
 import QuestionMoveToast from "metabase/questions/components/QuestionMoveToast";
-import { Card, Collection, User } from "metabase-types/api";
+import { Alert, Card, Collection, User } from "metabase-types/api";
 import { QueryBuilderMode } from "metabase-types/store";
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import Question from "metabase-lib/Question";
@@ -43,7 +43,7 @@ const mapDispatchToProps = {
 type ModalType = typeof MODAL_TYPES[keyof typeof MODAL_TYPES];
 
 interface QueryModalsProps {
-  questionAlerts: any;
+  questionAlerts: Alert[];
   user: User;
   modal: ModalType;
   modalContext: number;
