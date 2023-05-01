@@ -1,30 +1,13 @@
 import React from "react";
 import { renderWithProviders, screen } from "__support__/ui";
 import { setupCollectionsEndpoints } from "__support__/server-mocks";
+import { callMockEvent } from "__support__/events";
 import { createMockCollection, createMockUser } from "metabase-types/api/mocks";
 
 import { createMockState, createMockUpload } from "metabase-types/store/mocks";
 import { FileUploadState } from "metabase-types/store/upload";
 import StatusListing from "./StatusListing";
 
-// calls event handler in the mockEventListener that matches the eventName
-// and uses the mockEvent to hold the callback's return value
-const callMockEvent = (
-  mockEventListener: jest.SpyInstance,
-  eventName: string,
-): {
-  preventDefault: jest.Mock;
-  returnValue?: string;
-} => {
-  const mockEvent = {
-    preventDefault: jest.fn(),
-  };
-
-  mockEventListener.mock.calls
-    .filter(([event]) => eventName === event)
-    .forEach(([_, callback]) => callback(mockEvent));
-  return mockEvent;
-};
 const DatabaseStatusMock = () => <div>DatabaseStatus</div>;
 
 jest.mock("../../containers/DatabaseStatus", () => DatabaseStatusMock);
@@ -48,6 +31,10 @@ const setup = ({ isAdmin = false, upload = {} }: setupProps = {}) => {
 };
 
 describe("StatusListing", () => {
+  afterEach(() => {
+    jest.resetAllMocks();
+  });
+
   it("should render database statuses for admins", () => {
     setup({ isAdmin: true });
     expect(screen.getByText("DatabaseStatus")).toBeInTheDocument();
@@ -75,5 +62,14 @@ describe("StatusListing", () => {
       "CSV Upload in progress. Are you sure you want to leave?",
     );
     expect(mockEvent.preventDefault).toHaveBeenCalled();
+  });
+
+  it("should not give an alert if a user navigates away from the page while no uploads are in progress", () => {
+    const mockEventListener = jest.spyOn(window, "addEventListener");
+
+    setup({ isAdmin: true });
+
+    const mockEvent = callMockEvent(mockEventListener, "beforeunload");
+    expect(mockEvent.returnValue).toBeUndefined();
   });
 });
