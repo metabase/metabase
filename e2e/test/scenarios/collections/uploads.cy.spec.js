@@ -67,6 +67,13 @@ describe("CSV Uploading", { tags: ["@external", "@actions"] }, () => {
             cy.findByText(testFile.tableName); // TODO: we should humanize model names
           });
 
+          cy.findByRole("status").within(() => {
+            cy.findByText("Start exploring").click();
+          });
+
+          cy.url().should("include", `/model/4`);
+          cy.findByTestId("TableInteractive-root");
+
           const tableQuery = `SELECT * FROM information_schema.tables WHERE table_name LIKE 'upload_${testFile.tableName}_%' ORDER BY table_name DESC LIMIT 1;`;
 
           queryWritableDB(tableQuery, dialect).then(result => {
