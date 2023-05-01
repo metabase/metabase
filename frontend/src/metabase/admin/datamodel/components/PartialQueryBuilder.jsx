@@ -21,7 +21,7 @@ import withTableMetadataLoaded from "../hoc/withTableMetadataLoaded";
 class PartialQueryBuilder extends Component {
   static propTypes = {
     onChange: PropTypes.func.isRequired,
-    table: PropTypes.object.isRequired,
+    table: PropTypes.object,
     updatePreviewSummary: PropTypes.func.isRequired,
     previewSummary: PropTypes.string,
   };
