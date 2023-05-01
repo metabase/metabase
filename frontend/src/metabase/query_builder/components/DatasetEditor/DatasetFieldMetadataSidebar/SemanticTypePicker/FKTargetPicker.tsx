@@ -59,7 +59,7 @@ function mapStateToProps(
 ) {
   const { databaseId } = formField;
   return {
-    IDFields: Databases.selectors.getIdfields(state, { databaseId }),
+    IDFields: Databases.selectors.getIdFields(state, { databaseId }),
   };
 }
 

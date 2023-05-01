@@ -87,7 +87,7 @@ const Databases = createEntity({
 
     getHasSampleDatabase: (state, props) =>
       _.any(Databases.selectors.getList(state, props), db => db.is_sample),
-    getIdfields: createSelector(
+    getIdFields: createSelector(
       // we wrap getFields to handle a circular dep issue
       [state => getFields(state), (state, props) => props.databaseId],
       (fields, databaseId) =>

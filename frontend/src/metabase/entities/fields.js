@@ -21,7 +21,6 @@ import {
   getMetadataUnfiltered,
 } from "metabase/selectors/metadata";
 
-import Databases from "metabase/entities/databases";
 import { UPDATE_TABLE_FIELD_ORDER } from "metabase/entities/tables";
 
 import {
@@ -102,20 +101,6 @@ const Fields = createEntity({
         await dispatch(
           Fields.actions.fetchFieldValues({ id: field.id }, { reload: true }),
         );
-
-        // keep the list of database primary keys up-to-date
-        const databaseId = field.table?.db_id;
-        const newField = Fields.selectors.getObjectUnfiltered(getState(), {
-          entityId: field.id,
-        });
-        if (databaseId != null && field.isPK() !== newField.isPK()) {
-          await dispatch(
-            Databases.actions.fetchIdFields(
-              { id: databaseId },
-              { reload: true },
-            ),
-          );
-        }
 
         return result;
       };

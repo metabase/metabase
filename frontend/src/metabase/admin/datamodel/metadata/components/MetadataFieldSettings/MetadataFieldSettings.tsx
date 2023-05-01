@@ -1,4 +1,5 @@
 import React from "react";
+import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
@@ -50,17 +51,27 @@ interface FieldLoaderProps {
   field: Field;
 }
 
+interface StateProps {
+  idFields: Field[];
+}
+
 type MetadataFieldSettingsProps = RouterProps &
   DatabaseLoaderProps &
   SchemaLoaderProps &
   TableLoaderProps &
-  FieldLoaderProps;
+  FieldLoaderProps &
+  StateProps;
+
+const mapStateToProps = (state: State): StateProps => ({
+  idFields: Databases.selectors.getIdFields(state),
+});
 
 const MetadataFieldSettings = ({
   database,
   schemas,
   table,
   field,
+  idFields,
   params: { schemaId, section },
 }: MetadataFieldSettingsProps) => {
   const schema = schemas.find(schema => schema.id === schemaId);
@@ -90,7 +101,7 @@ const MetadataFieldSettings = ({
         {section === "general" && (
           <FieldGeneralSettings
             field={field}
-            idFields={database.idFields ?? []}
+            idFields={idFields}
             table={table}
           />
         )}
@@ -233,4 +244,5 @@ export default _.compose(
     entityAlias: "foreignKeyTable",
     loadingAndErrorWrapper: false,
   }),
+  connect(mapStateToProps),
 )(MetadataFieldSettings);

@@ -13,7 +13,7 @@ import {
   TableVisibilityType,
 } from "metabase-types/api";
 import { State } from "metabase-types/store";
-import Database from "metabase-lib/metadata/Database";
+import Field from "metabase-lib/metadata/Field";
 import Table from "metabase-lib/metadata/Table";
 import MetadataTableSchema from "../MetadataTableSchema";
 import MetadataTableColumnList from "../MetadataTableColumnList";
@@ -38,12 +38,12 @@ interface OwnProps {
   selectedTableId: TableId;
 }
 
-interface DatabaseLoaderProps {
-  database: Database;
-}
-
 interface TableLoaderProps {
   table: Table;
+}
+
+interface StateProps {
+  idFields: Field[];
 }
 
 interface DispatchProps {
@@ -51,17 +51,21 @@ interface DispatchProps {
 }
 
 type MetadataTableProps = OwnProps &
-  DatabaseLoaderProps &
   TableLoaderProps &
+  StateProps &
   DispatchProps;
+
+const mapStateToProps = (state: State): StateProps => ({
+  idFields: Databases.selectors.getIdFields(state),
+});
 
 const mapDispatchToProps: DispatchProps = {
   onUpdateTable: Tables.actions.updateProperty,
 };
 
 const MetadataTable = ({
-  database,
   table,
+  idFields,
   selectedSchemaId,
   onUpdateTable,
 }: MetadataTableProps) => {
@@ -105,7 +109,7 @@ const MetadataTable = ({
       {tab === "columns" && (
         <MetadataTableColumnList
           table={table}
-          idFields={database.idFields ?? []}
+          idFields={idFields}
           selectedSchemaId={selectedSchemaId}
         />
       )}
@@ -310,5 +314,5 @@ export default _.compose(
     requestType: "fetchMetadata",
     selectorName: "getObjectUnfiltered",
   }),
-  connect(null, mapDispatchToProps),
+  connect(mapStateToProps, mapDispatchToProps),
 )(MetadataTable);
