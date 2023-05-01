@@ -13,6 +13,8 @@ import type {
   OrderByClause,
   OrderByClauseDisplayInfo,
   TableDisplayInfo,
+  TemporalBucket,
+  TemporalBucketDisplayInfo,
   Query,
 } from "./types";
 
@@ -41,8 +43,12 @@ declare function DisplayInfoFn(
 ): OrderByClauseDisplayInfo;
 declare function DisplayInfoFn(
   query: Query,
-  orderByClause: BreakoutClause,
+  breakoutClause: BreakoutClause,
 ): BreakoutClauseDisplayInfo;
+declare function DisplayInfoFn(
+  query: Query,
+  temporalBucket: TemporalBucket,
+): TemporalBucketDisplayInfo;
 
 // x can be any sort of opaque object, e.g. a clause or metadata map. Values returned depend on what you pass in, but it
 // should always have display_name... see :metabase.lib.metadata.calculation/display-info schema
