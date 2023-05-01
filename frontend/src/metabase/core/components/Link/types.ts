@@ -1,3 +1,6 @@
+import type { AnchorHTMLAttributes, CSSProperties, ReactNode } from "react";
+import { TooltipProps } from "metabase/core/components/Tooltip/Tooltip";
+
 export interface LinkProps extends AnchorHTMLAttributes<HTMLAnchorElement> {
   to: string;
   variant?: "default" | "brand" | "brandBold";
