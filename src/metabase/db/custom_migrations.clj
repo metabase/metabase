@@ -8,8 +8,8 @@
 
    If you need to use code from elsewhere, consider copying it into this namespace to minimize risk of the code changing behaviour."
   (:require
-   [clojure.core.match :refer [match]]
    [cheshire.core :as json]
+   [clojure.core.match :refer [match]]
    [clojure.set :as set]
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.scheduler :as qs]
@@ -20,8 +20,7 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [toucan2.core :as t2]
-   [toucan2.execute :as t2.execute]
-   [clojure.test :refer :all])
+   [toucan2.execute :as t2.execute])
   (:import
    (liquibase.change.custom CustomTaskChange CustomTaskRollback)
    (liquibase.exception ValidationErrors)))
