@@ -6,7 +6,7 @@ import {
   renderWithProviders,
   screen,
   waitForElementToBeRemoved,
-  act,
+  waitFor,
 } from "__support__/ui";
 import { setupEnterpriseTest } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
@@ -72,18 +72,13 @@ describe("DatabaseEditApp", () => {
     it("should trigger beforeunload event when database connection is edited", async () => {
       const { mockEventListener } = await setup();
 
-      const databaseForm = await screen.findByTestId("database-name-field");
+      const databaseForm = await screen.findByLabelText("Display name");
 
-      // Workaround for a known bug in Formik when testing with react-testing-library
-      // https://github.com/jaredpalmer/formik/issues/1543#issuecomment-547501926
-      // eslint-disable-next-line testing-library/no-unnecessary-act
-      await act(async () => {
-        await userEvent.type(databaseForm, "Test database");
-      });
-
+      userEvent.type(databaseForm, "Test database");
       const mockEvent = callMockEvent(mockEventListener, "beforeunload");
-
-      expect(mockEvent.preventDefault).toHaveBeenCalled();
+      await waitFor(() => {
+        expect(mockEvent.preventDefault).toHaveBeenCalled();
+      });
       expect(mockEvent.returnValue).toBe(BEFORE_UNLOAD_UNSAVED_MESSAGE);
     });
 

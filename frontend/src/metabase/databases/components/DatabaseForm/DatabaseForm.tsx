@@ -9,6 +9,8 @@ import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 import { PLUGIN_CACHING } from "metabase/plugins";
 import { DatabaseData, Engine } from "metabase-types/api";
+import { useDispatch } from "metabase/lib/redux";
+import { setIsDirty } from "metabase/admin/databases/database";
 import { getDefaultEngineKey } from "../../utils/engine";
 import {
   getSubmitValues,
@@ -31,7 +33,6 @@ export interface DatabaseFormProps {
   onEngineChange?: (engineKey: string | undefined) => void;
   onCancel?: () => void;
   onUpdate?: (values: DatabaseData) => void;
-  onFormDirty?: (isDirty: boolean) => void;
 }
 
 const DatabaseForm = ({
@@ -43,7 +44,6 @@ const DatabaseForm = ({
   onSubmit,
   onCancel,
   onEngineChange,
-  onFormDirty,
 }: DatabaseFormProps): JSX.Element => {
   const initialEngineKey = getEngineKey(engines, initialData, isAdvanced);
   const [engineKey, setEngineKey] = useState(initialEngineKey);
@@ -91,7 +91,6 @@ const DatabaseForm = ({
         isCachingEnabled={isCachingEnabled}
         onEngineChange={handleEngineChange}
         onCancel={onCancel}
-        onFormDirty={onFormDirty}
       />
     </FormProvider>
   );
@@ -106,7 +105,6 @@ interface DatabaseFormBodyProps {
   isCachingEnabled: boolean;
   onEngineChange: (engineKey: string | undefined) => void;
   onCancel?: () => void;
-  onFormDirty?: (isDirty: boolean) => void;
 }
 
 const DatabaseFormBody = ({
@@ -118,20 +116,21 @@ const DatabaseFormBody = ({
   isCachingEnabled,
   onEngineChange,
   onCancel,
-  onFormDirty,
 }: DatabaseFormBodyProps): JSX.Element => {
   const { values, dirty } = useFormikContext<DatabaseData>();
 
+  const dispatch = useDispatch();
+
   useEffect(() => {
-    onFormDirty?.(dirty);
-  }, [dirty, onFormDirty]);
+    dispatch(setIsDirty(dirty));
+  }, [dispatch, dirty]);
 
   const fields = useMemo(() => {
     return engine ? getVisibleFields(engine, values, isAdvanced) : [];
   }, [engine, values, isAdvanced]);
 
   return (
-    <Form data-testid="database-edit-form">
+    <Form>
       <DatabaseEngineField
         engineKey={engineKey}
         engines={engines}

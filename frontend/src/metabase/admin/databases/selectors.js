@@ -18,3 +18,6 @@ export const getInitializeError = state =>
 
 export const isDeprecationNoticeEnabled = state =>
   state.admin.databases.isDeprecationNoticeEnabled;
+
+export const getIsDatabaseFormDirty = state =>
+  state.admin.databases.databaseFormAttributes.isDirty;

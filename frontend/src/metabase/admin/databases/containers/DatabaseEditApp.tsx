@@ -1,5 +1,4 @@
-/* eslint-disable react/prop-types */
-import React, { ComponentType, useState } from "react";
+import React, { ComponentType } from "react";
 import { connect } from "react-redux";
 
 import { t } from "ttag";
@@ -7,6 +6,7 @@ import _ from "underscore";
 import { updateIn } from "icepick";
 
 import { useMount } from "react-use";
+import type { Location } from "history";
 import title from "metabase/hoc/Title";
 
 import Breadcrumbs from "metabase/components/Breadcrumbs";
@@ -28,7 +28,11 @@ import { State } from "metabase-types/store";
 import useBeforeUnload from "metabase/hooks/use-before-unload";
 import Database from "metabase-lib/metadata/Database";
 
-import { getEditingDatabase, getInitializeError } from "../selectors";
+import {
+  getEditingDatabase,
+  getInitializeError,
+  getIsDatabaseFormDirty,
+} from "../selectors";
 
 import {
   reset,
@@ -68,10 +72,11 @@ interface DatabaseEditAppProps {
     database: { id: DatabaseId } & Partial<DatabaseType>,
   ) => Promise<void>;
   selectEngine: (engine: string) => void;
-  location: { pathname: string };
+  location: Location;
   isAdmin: boolean;
   isModelPersistenceEnabled: boolean;
   initializeError?: DatabaseEditErrorType;
+  isDirty: boolean;
 }
 
 const mapStateToProps = (state: State) => {
@@ -82,6 +87,7 @@ const mapStateToProps = (state: State) => {
     initializeError: getInitializeError(state),
     isAdmin: getUserIsAdmin(state),
     isModelPersistenceEnabled: getSetting(state, "persisted-models-enabled"),
+    isDirty: getIsDatabaseFormDirty(state),
   };
 };
 
@@ -123,12 +129,11 @@ function DatabaseEditApp(props: DatabaseEditAppProps) {
     initializeDatabase,
     params,
     saveDatabase,
+    isDirty,
   } = props;
 
   const editingExistingDatabase = database?.id != null;
   const addingNewDatabase = !editingExistingDatabase;
-
-  const [isDirty, setIsDirty] = useState(false);
 
   useBeforeUnload(isDirty);
 
@@ -166,7 +171,6 @@ function DatabaseEditApp(props: DatabaseEditAppProps) {
                     <DatabaseForm
                       initialValues={database}
                       isAdvanced
-                      onFormDirty={setIsDirty}
                       onSubmit={handleSubmit}
                     />
                   </DatabaseEditForm>

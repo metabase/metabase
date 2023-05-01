@@ -12,7 +12,6 @@ const DatabaseNameField = ({ engine }: DatabaseNameFieldProps): JSX.Element => {
 
   return (
     <FormInput
-      data-testid="database-name-field"
       name="name"
       title={t`Display name`}
       placeholder={t`Our ${name}`}
