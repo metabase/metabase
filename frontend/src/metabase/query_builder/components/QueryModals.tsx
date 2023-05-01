@@ -53,8 +53,8 @@ interface QueryModalsProps {
   setQueryBuilderMode: (mode: QueryBuilderMode) => void;
   originalQuestion: Question | null;
   card: Card;
-  onCreate: (question: Question, flag?: boolean) => void;
-  onSave: (question: Question, flag?: boolean) => void;
+  onCreate: (question: Question) => void;
+  onSave: (question: Question, config?: { rerunQuery: boolean }) => void;
   onCloseModal: () => void;
   onOpenModal: (modal: ModalType) => void;
   onChangeLocation: (location: string) => void;
@@ -184,11 +184,11 @@ class QueryModals extends React.Component<QueryModalsProps> {
               question={this.props.question}
               originalQuestion={this.props.originalQuestion}
               onSave={async question => {
-                await this.props.onSave(question, false);
+                await this.props.onSave(question);
                 this.showAlertsAfterQuestionSaved();
               }}
               onCreate={async question => {
-                await this.props.onCreate(question, false);
+                await this.props.onCreate(question);
                 this.showAlertsAfterQuestionSaved();
               }}
               onClose={onCloseModal}
@@ -204,11 +204,11 @@ class QueryModals extends React.Component<QueryModalsProps> {
               question={this.props.question}
               originalQuestion={this.props.originalQuestion}
               onSave={async question => {
-                await this.props.onSave(question, false);
+                await this.props.onSave(question);
                 onOpenModal(MODAL_TYPES.EMBED);
               }}
               onCreate={async question => {
-                await this.props.onCreate(question, false);
+                await this.props.onCreate(question);
                 onOpenModal(MODAL_TYPES.EMBED);
               }}
               onClose={onCloseModal}
