@@ -53,7 +53,7 @@ When adding a user attribute for sandboxing, make sure that the **value** of the
 
 ## Creating a row-limiting data sandbox
 
-> Make sure to do the [prerequisites](#prerequisites) first.
+> Make sure to do the [prerequisites](#prerequisites-for-row-limiting-data-sandboxes) first.
 
 1. Go to **Admin settings** > **Permissions**.
 2. Select the database and table that you want to sandbox.
@@ -80,7 +80,7 @@ To display different filtered versions of the saved question for each person in 
 
 ## Creating an advanced sandbox
 
-> Make sure to do the [prerequisites](#prerequisites) first.
+> Make sure to do the [prerequisites](#prerequisites-for-advanced-data-sandboxes) first.
 
 1. Go to **Admin settings** > **Permissions**.
 2. Select the database and table that you want to sandbox.
@@ -101,7 +101,7 @@ If you want an advanced data sandbox to display different rows to each person de
 
 1. Make sure you've done all the [prerequisites for advanced data sandboxes](#prerequisites-for-advanced-data-sandboxes).
 2. Go to the SQL question that will be displayed to the people in the advanced sandbox.
-3. Add a [parameterized](../questions/native-editor/sql-parameters.md) `WHERE` clause to your SQL query, such as `[[ WHERE Plan = {{Plan}} ]]`.
+3. Add a [parameterized](../questions/native-editor/sql-parameters.md) `WHERE` clause to your SQL query, such as `{%raw%}[[ WHERE Plan = {{Plan}} ]]{%endraw%}`.
 4. Save the SQL question.
 5. Go to **Admin settings** > **Permissions**.
 6. Find the group and table for your advanced sandbox.
