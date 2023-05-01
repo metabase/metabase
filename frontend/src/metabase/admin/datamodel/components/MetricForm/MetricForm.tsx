@@ -7,6 +7,7 @@ import { formatValue } from "metabase/lib/formatting";
 import Button from "metabase/core/components/Button";
 import FieldSet from "metabase/components/FieldSet";
 import { Metric, StructuredQuery } from "metabase-types/api";
+import useBeforeUnload from "metabase/hooks/use-before-unload";
 import * as Q from "metabase-lib/queries/utils/query";
 import FormInput from "../FormInput";
 import FormLabel from "../FormLabel";
@@ -42,12 +43,15 @@ const MetricForm = ({
 }: MetricFormProps): JSX.Element => {
   const isNew = metric == null;
 
-  const { isValid, getFieldProps, getFieldMeta, handleSubmit } = useFormik({
-    initialValues: metric ?? {},
-    isInitialValid: false,
-    validate: getFormErrors,
-    onSubmit,
-  });
+  const { isValid, getFieldProps, getFieldMeta, handleSubmit, dirty } =
+    useFormik({
+      initialValues: metric ?? {},
+      isInitialValid: false,
+      validate: getFormErrors,
+      onSubmit,
+    });
+
+  useBeforeUnload(dirty);
 
   return (
     <FormRoot onSubmit={handleSubmit}>
