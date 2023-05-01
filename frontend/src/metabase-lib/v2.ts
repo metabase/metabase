@@ -9,4 +9,5 @@ export * from "./fields";
 export * from "./limit";
 export * from "./order_by";
 export * from "./query";
+export * from "./temporal_bucket";
 export * from "./types";
