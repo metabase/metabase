@@ -36,6 +36,12 @@ import {
   RESET,
   SET_PARAMETER_VALUES,
   UNDO_REMOVE_CARD_FROM_DASH,
+  SET_LOADING_DASHCARDS_COMPLETE,
+  TIME_OUT_FETCH_DASHBOARD_CARD_DATA,
+  SET_READY,
+  SET_NEVER,
+  DISMISS_TOAST,
+  START_FETCH_DASHBOARD_CARD_DATA_TIMEOUT,
 } from "./actions";
 
 import { isVirtualDashCard, syncParametersAndEmbeddingParams } from "./utils";
@@ -340,6 +346,72 @@ const draftParameterValues = handleActions(
   {},
 );
 
+const autoApplyFiltersToast = handleActions(
+  {
+    [SET_READY]: {
+      next: state => {
+        if (state.stateName === "never") {
+          return assoc(state, "stateName", "ready");
+        }
+
+        return state;
+      },
+    },
+    [SET_NEVER]: {
+      next: state => assoc(state, "stateName", "never"),
+    },
+    [START_FETCH_DASHBOARD_CARD_DATA_TIMEOUT]: {
+      next: (state, { payload }) => {
+        if (["ready", "loading", "timedOut"].includes(state.stateName)) {
+          return {
+            stateName: "loading",
+            timeoutId: payload.timeoutId,
+          };
+        }
+
+        return state;
+      },
+    },
+    [TIME_OUT_FETCH_DASHBOARD_CARD_DATA]: {
+      next: state => {
+        if (state.stateName === "loading") {
+          return assoc(state, "stateName", "timedOut");
+        }
+
+        return state;
+      },
+    },
+    [SET_LOADING_DASHCARDS_COMPLETE]: {
+      next: state => {
+        const nextStateMap = {
+          loading: "ready",
+          timedOut: "shown",
+        };
+
+        const nextState = nextStateMap[state.stateName];
+        if (nextState) {
+          return assoc(state, "stateName", nextState);
+        }
+
+        return state;
+      },
+    },
+    [DISMISS_TOAST]: {
+      next: state => {
+        if (state.stateName === "shown") {
+          return assoc(state, "stateName", "ready");
+        }
+
+        return state;
+      },
+    },
+  },
+  {
+    stateName: "never",
+    timeoutId: null,
+  },
+);
+
 const loadingDashCards = handleActions(
   {
     [INITIALIZE]: {
@@ -460,6 +532,7 @@ export default combineReducers({
   slowCards,
   parameterValues,
   draftParameterValues,
+  autoApplyFiltersToast,
   loadingDashCards,
   isAddParameterPopoverOpen,
   sidebar,

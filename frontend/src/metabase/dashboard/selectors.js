@@ -116,6 +116,21 @@ export const getHasUnappliedParameterValues = createSelector(
   },
 );
 
+const getAutoApplyFiltersToast = state => state.dashboard.autoApplyFiltersToast;
+export const getAutoApplyFiltersToastTimeoutId = createSelector(
+  [getAutoApplyFiltersToast],
+  autoApplyFiltersToast => {
+    return autoApplyFiltersToast.timeoutId;
+  },
+);
+export const getAutoApplyFiltersToastStateName = createSelector(
+  [getAutoApplyFiltersToast],
+  autoApplyFiltersToast => {
+    return autoApplyFiltersToast.stateName;
+  },
+);
+// End auto-apply filters
+
 export const getDocumentTitle = state =>
   state.dashboard.loadingControls.documentTitle;
 

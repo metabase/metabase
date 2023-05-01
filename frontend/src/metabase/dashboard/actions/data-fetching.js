@@ -42,6 +42,7 @@ import {
 } from "../utils";
 import { DASHBOARD_SLOW_TIMEOUT } from "../constants";
 import { loadMetadataForDashboard } from "./metadata";
+import { startFetchDashboardCardDataTimeout } from "./parameters";
 
 // normalizr schemas
 const dashcard = new schema.Entity("dashcard");
@@ -374,6 +375,7 @@ export const fetchCardData = createThunkAction(
 export const fetchDashboardCardData = createThunkAction(
   FETCH_DASHBOARD_CARD_DATA,
   options => (dispatch, getState) => {
+    dispatch(startFetchDashboardCardDataTimeout());
     const dashboard = getDashboardComplete(getState());
 
     const promises = getAllDashboardCards(dashboard)
@@ -388,6 +390,8 @@ export const fetchDashboardCardData = createThunkAction(
 
     dispatch(setDocumentTitle(t`0/${promises.length} loaded`));
 
+    // XXX: There is a race condition here, when refreshing a dashboard before
+    // the previous API calls finished.
     Promise.all(promises).then(() => {
       dispatch(loadingComplete());
     });

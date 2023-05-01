@@ -1,65 +1,50 @@
-import React, { useEffect, useState } from "react";
-import _ from "underscore";
+import React, { useEffect, useMemo } from "react";
 import { t } from "ttag";
 
 import { useSelector, useDispatch } from "metabase/lib/redux";
 import {
+  getAutoApplyFiltersToastStateName,
   getDashboardId,
   getIsAutoApplyFilters,
-  getIsLoadingComplete,
   getParameterValues,
-  getLoadingStartTime,
 } from "metabase/dashboard/selectors";
 import {
+  dismissToast,
   saveDashboardAndCards,
   setDashboardAttributes,
+  setNever,
+  setReady,
 } from "metabase/dashboard/actions";
-import { DASHBOARD_SLOW_TIMEOUT } from "metabase/dashboard/constants";
 import Toaster from "metabase/components/Toaster/Toaster";
-import { useMachine } from "metabase/hooks/use-machine";
 
 export default function AutoApplyFilterToast() {
   const isAutoApplyFilters = useSelector(getIsAutoApplyFilters);
   const parameterValues = useSelector(getParameterValues);
-  const isAllDashcardsLoaded = useSelector(getIsLoadingComplete);
+  const autoApplyFiltersToastStateName = useSelector(
+    getAutoApplyFiltersToastStateName,
+  );
   const dashboardId = useSelector(getDashboardId);
-  const latestLoadingStartTime = useLatestLoadingStartTime();
 
-  const isReadyForToast = isAutoApplyFilters && !_.isEmpty(parameterValues);
-
-  const [state, send] = useMachine({
-    ...MACHINE_CONFIG,
-    initialState: isReadyForToast ? "ready" : "never",
-  });
+  const hasParameterValues = useMemo(
+    () =>
+      Object.values(parameterValues).some(parameterValue =>
+        Array.isArray(parameterValue)
+          ? parameterValue.length > 0
+          : parameterValue != null,
+      ),
+    [parameterValues],
+  );
+  const isReadyForToast = isAutoApplyFilters && hasParameterValues;
 
   const dispatch = useDispatch();
 
   useEffect(() => {
     if (isReadyForToast) {
-      send("READY");
+      dispatch(setReady());
     } else {
-      send("NEVER");
+      dispatch(setNever());
     }
-  }, [isReadyForToast, send]);
-
-  useEffect(() => {
-    if (latestLoadingStartTime > 0) {
-      send("LOAD_CARDS");
-      const timeoutId = setTimeout(() => {
-        send("TIME_OUT");
-      }, DASHBOARD_SLOW_TIMEOUT);
-
-      return () => {
-        clearTimeout(timeoutId);
-      };
-    }
-  }, [latestLoadingStartTime, send]);
-
-  useEffect(() => {
-    if (isAllDashcardsLoaded) {
-      send("CARDS_LOADED");
-    }
-  }, [isAllDashcardsLoaded, send]);
+  }, [dispatch, isReadyForToast]);
 
   const onTurnOffAutoApplyFilters = () => {
     dispatch(
@@ -70,16 +55,16 @@ export default function AutoApplyFilterToast() {
         },
       }),
     );
-    dispatch(saveDashboardAndCards(dashboardId));
-    send("NEVER");
+    dispatch(saveDashboardAndCards());
+    dispatch(dismissToast());
   };
 
   return (
     <Toaster
-      isShown={state === "shown"}
+      isShown={autoApplyFiltersToastStateName === "shown"}
       fixed
       onDismiss={() => {
-        send("DISMISS_TOAST");
+        dispatch(dismissToast());
       }}
       message={t`You can make this dashboard snappier by turning off auto-applying filters.`}
       confirmText={t`Turn off`}
@@ -87,53 +72,3 @@ export default function AutoApplyFilterToast() {
     />
   );
 }
-
-function useLatestLoadingStartTime() {
-  const loadingStartTime = useSelector(getLoadingStartTime);
-
-  const [latestLoadingStartTime, setLatestLoadingStartTime] =
-    useState(loadingStartTime);
-
-  useEffect(() => {
-    if (loadingStartTime > 0) {
-      setLatestLoadingStartTime(loadingStartTime);
-    }
-  }, [loadingStartTime]);
-
-  return latestLoadingStartTime;
-}
-
-const MACHINE_CONFIG = {
-  states: {
-    never: {
-      on: { READY: "ready" },
-    },
-    ready: {
-      on: {
-        NEVER: "never",
-        LOAD_CARDS: "loading",
-      },
-    },
-    loading: {
-      on: {
-        NEVER: "never",
-        TIME_OUT: "timedOut",
-        LOAD_CARDS: "loading",
-        CARDS_LOADED: "ready",
-      },
-    },
-    timedOut: {
-      on: {
-        NEVER: "never",
-        LOAD_CARDS: "loading",
-        CARDS_LOADED: "shown",
-      },
-    },
-    shown: {
-      on: {
-        NEVER: "never",
-        DISMISS_TOAST: "ready",
-      },
-    },
-  },
-} as const;
