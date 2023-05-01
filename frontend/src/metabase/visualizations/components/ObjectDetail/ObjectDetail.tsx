@@ -50,6 +50,7 @@ import {
   getDisplayId,
   getIdValue,
   getSingleResultsRow,
+  getSinglePKIndex,
 } from "./utils";
 import { DetailsTable } from "./ObjectDetailsTable";
 import { Relationships } from "./ObjectRelationships";
@@ -150,13 +151,11 @@ export function ObjectDetailView({
   const prevTableForeignKeys = usePrevious(tableForeignKeys);
   const [data, setData] = useState<DatasetData>(passedData);
 
-  const pkIndex = useMemo(() => {
-    const pkCount = passedData?.cols?.filter(isPK)?.length;
-    if (pkCount !== 1) {
-      return undefined;
-    }
-    return passedData?.cols?.findIndex(isPK);
-  }, [passedData]);
+  const pkIndex = useMemo(
+    () => getSinglePKIndex(passedData?.cols),
+    [passedData],
+  );
+
   const zoomedRow = useMemo(
     () =>
       passedZoomedRow ||
@@ -195,9 +194,9 @@ export function ObjectDetailView({
   });
 
   useEffect(() => {
-    if (maybeLoading) {
+    if (maybeLoading && pkIndex !== undefined) {
       // if we don't have the row in the current data, try to fetch this single row
-      const pkField = passedData.cols.find(isPK);
+      const pkField = passedData.cols[pkIndex];
       const filteredQuestion = question?.filter("=", pkField, zoomedRowID);
       MetabaseApi.dataset(filteredQuestion?._card.dataset_query)
         .then(result => {
@@ -210,11 +209,14 @@ export function ObjectDetailView({
             setHasNotFoundError(false);
           }
         })
+        .catch(() => {
+          setHasNotFoundError(true);
+        })
         .finally(() => {
           setMaybeLoading(false);
         });
     }
-  }, [maybeLoading, passedData, question, zoomedRowID]);
+  }, [maybeLoading, passedData, question, zoomedRowID, pkIndex]);
 
   useEffect(() => {
     if (tableForeignKeys && prevZoomedRowId !== zoomedRowID) {
