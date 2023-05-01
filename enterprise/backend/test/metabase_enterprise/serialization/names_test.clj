@@ -96,3 +96,8 @@
                              "/databases/Fingerprint test-data copy/schemas/public/tables/users/fields/id"} fq-name))
             (is (map? ctx))
             (is (some? (:table ctx)))))))))
+
+(deftest name-for-logging-test
+  (testing "with Toucan 2 records (#29322)"
+    (mt/with-temp* [Collection [{} {:name "Some Collection"}]]
+      (is (= ":metabase.models.collection/Collection \"Some Collection\" (ID 1)" (names/name-for-logging (t2/select-one 'Collection)))))))
