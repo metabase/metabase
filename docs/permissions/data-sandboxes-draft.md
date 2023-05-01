@@ -90,7 +90,7 @@ To display different filtered versions of the saved question for each person in 
 6. Select "Sandboxed".
 7. Select "Use a saved question to create a custom view for this table".
 8. Select your saved question.
-9. Optional: [add an attribute-based filter](#adding-a-filter-to-an-advanced-sandbox) to the saved question.
+9. Optional: [add a dynamic filter](#adding-a-dynamic-filter-to-an-advanced-sandbox) to the saved question.
 10. Go to **Collections** and set the permissions to **View** for any collections containing SQL questions that use the sandboxed data.
 
 For an example, see [Advanced data sandboxing: limiting access to columns](https://www.metabase.com/learn/permissions/data-sandboxing-column-permissions).
@@ -118,7 +118,7 @@ Data sandboxes require some additional group permissions to work properly. You c
 - [Native query permissions](../permissions/data.md) must be **disabled** for any groups that will be added to a data sandbox.
 - [Collection permissions](../permissions/collections.md) must be set to **No access** for any collections containing [SQL questions](../questions/native-editor/writing-sql.md) that use sandboxed data (for a given group).
 
-For more info, see [Preventing data sandboxing permissions conflicts](#preventing-permissions-conflicts).
+For more info, see [Preventing data sandboxing permissions conflicts](#preventing-data-sandboxing-permissions-conflicts).
 
 ## How sandboxing permissions interact with other permissions
 
@@ -183,9 +183,9 @@ Sandboxed groups with permission to create SQL questions will be able to query t
 
 Some Metabase permissions can conflict with data sandboxing to give more permissive or more restrictive data access than you intended. It's a good idea to review your permissions for each of these scenarios:
 
-- [Multiple data sandboxing permissions](#multiple-data-sandboxes)
+- [Multiple data sandboxing permissions](#multiple-data-sandboxing-permissions)
 - [Native query editing permissions](#native-query-editing-permissions)
-- [Collections permissions](#collection-permissions)
+- [Saved SQL questions](#saved-sql-questions)
 - [Public sharing](#public-sharing)
 
 ### Multiple data sandboxing permissions
@@ -245,6 +245,6 @@ Data sandboxing is unavailable for non-SQL databases such as Google Analytics, A
 
 ## Further reading
 
-- [Data sandboxing: setting row-level permissions](https://www.metabase.com/learn/permissions/data-sandboxing-row-permissions)
-- [Advanced data sandboxing: limiting access to columns](https://www.metabase.com/learn/permissions/data-sandboxing-column-permissions)
-- [SSO](../people-and-groups/start.md#authentication)
+- [Permissions strategies](https://www.metabase.com/learn/permissions/strategy)
+- [Configuring permissions for different customer schemas](https://www.metabase.com/learn/permissions/multi-tenant-permissions)
+- [Securing embedded Metabase](https://www.metabase.com/learn/customer-facing-analytics/securing-embeds)
