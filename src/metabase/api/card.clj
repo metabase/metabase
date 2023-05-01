@@ -603,9 +603,9 @@ saved later when it is ready."
     (validation/check-embedding-enabled)
     (api/check-superuser)))
 
-(defn- publish-card-update!
-  "Publish an event appropriate for the update(s) done to this CARD (`:card-update`, or archiving/unarchiving
-  events)."
+(defn- record-card-update!
+  "Record an event to the audit log appropriate for the update(s) done to this CARD (`:card-update`, or
+  archiving/unarchiving events)."
   [card archived?]
   (let [event (cond
                 ;; card was archived
@@ -615,7 +615,7 @@ saved later when it is ready."
                 (and (false? archived?)
                      (:archived card))       :card-unarchive
                 :else                        :card-update)]
-    (events/publish-event! event (assoc card :actor_id api/*current-user-id*))))
+    (audit-log/record-event! event card)))
 
 (defn- card-archived? [old-card new-card]
   (and (not (:archived old-card))
@@ -766,7 +766,7 @@ saved later when it is ready."
 
   (let [card (t2/select-one Card :id id)]
     (delete-alerts-if-needed! card-before-update card)
-    (publish-card-update! card archived)
+    (record-card-update! card archived)
     ;; include same information returned by GET /api/card/:id since frontend replaces the Card it currently
     ;; has with returned one -- See #4142
     (-> card
@@ -843,7 +843,7 @@ saved later when it is ready."
   (log/warn (tru "DELETE /api/card/:id is deprecated. Instead, change its `archived` value via PUT /api/card/:id."))
   (let [card (api/write-check Card id)]
     (t2/delete! Card :id id)
-    (events/publish-event! :card-delete (assoc card :actor_id api/*current-user-id*)))
+    (audit-log/record-event! :card-delete card))
   api/generic-204-no-content)
 
 ;;; -------------------------------------------- Bulk Collections Update ---------------------------------------------
