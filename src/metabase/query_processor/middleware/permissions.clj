@@ -4,6 +4,7 @@
    [clojure.set :as set]
    [metabase.api.common
     :refer [*current-user-id* *current-user-permissions-set*]]
+   [metabase.models.card :refer [Card]]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.models.query.permissions :as query-perms]
@@ -58,7 +59,7 @@
 (s/defn ^:private check-card-read-perms
   "Check that the current user has permissions to read Card with `card-id`, or throw an Exception. "
   [card-id :- su/IntGreaterThanZero]
-  (let [card (or (t2/select-one ['Card :collection_id] :id card-id)
+  (let [card (or (t2/select-one [Card :collection_id] :id card-id)
                  (throw (ex-info (tru "Card {0} does not exist." card-id)
                                  {:type    qp.error-type/invalid-query
                                   :card-id card-id})))]
