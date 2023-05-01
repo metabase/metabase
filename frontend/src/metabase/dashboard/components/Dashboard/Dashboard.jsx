@@ -138,8 +138,7 @@ class Dashboard extends Component {
       this.throttleParameterWidgetStickiness();
     } else if (
       !_.isEqual(prevProps.parameterValues, this.props.parameterValues) ||
-      (!prevProps.dashboard && this.props.dashboard) ||
-      prevProps.selectedTabId !== this.props.selectedTabId
+      (!prevProps.dashboard && this.props.dashboard)
     ) {
       this.props.fetchDashboardCardData({ reload: false, clear: true });
     }
@@ -190,6 +189,22 @@ class Dashboard extends Component {
     }
   }
 
+  getDashboardWithFilteredCards = () => {
+    if (!this.props.dashboard) {
+      return;
+    }
+
+    return {
+      ...this.props.dashboard,
+      ordered_cards: this.props.dashboard.ordered_cards.filter(
+        dc =>
+          !this.props.selectedTabId ||
+          dc.dashboard_tab_id === this.props.selectedTabId ||
+          dc.dashboard_tab_id === null,
+      ),
+    };
+  };
+
   setEditing = isEditing => {
     this.props.onRefreshPeriodChange(null);
     this.props.setEditingDashboard(isEditing);
@@ -239,7 +254,8 @@ class Dashboard extends Component {
     const { error, isParametersWidgetSticky } = this.state;
 
     const shouldRenderAsNightMode = isNightMode && isFullscreen;
-    const dashboardHasCards = dashboard => dashboard.ordered_cards.length > 0;
+    const dashboardHasCards =
+      this.getDashboardWithFilteredCards()?.ordered_cards.length > 0 ?? false;
     const visibleParameters = getVisibleParameters(parameters);
 
     const parametersWidget = (
@@ -321,9 +337,10 @@ class Dashboard extends Component {
                 <CardsContainer
                   addMarginTop={cardsContainerShouldHaveMarginTop}
                 >
-                  {dashboardHasCards(dashboard) ? (
+                  {dashboardHasCards ? (
                     <DashboardGrid
                       {...this.props}
+                      dashboard={this.getDashboardWithFilteredCards()}
                       isNightMode={shouldRenderAsNightMode}
                       onEditingChange={this.setEditing}
                     />
