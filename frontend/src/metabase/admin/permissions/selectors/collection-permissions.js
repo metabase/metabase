@@ -2,7 +2,6 @@ import { createSelector } from "reselect";
 import { t } from "ttag";
 import { getIn } from "icepick";
 import _ from "underscore";
-import * as Urls from "metabase/lib/urls";
 
 import Group from "metabase/entities/groups";
 import Collections, {
@@ -32,9 +31,7 @@ export const getIsDirty = createSelector(
 
 export const getCurrentCollectionId = (_state, props) => {
   if (props.params.collectionId == null) {
-    return props.params.slug
-      ? Urls.extractCollectionId(props.params.slug)
-      : null;
+    return null;
   }
 
   return props.params.collectionId === ROOT_COLLECTION.id

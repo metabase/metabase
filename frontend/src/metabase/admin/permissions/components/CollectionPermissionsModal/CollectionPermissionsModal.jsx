@@ -43,7 +43,7 @@ const mapStateToProps = (state, props) => {
       namespace: props.namespace,
       params: { collectionId },
     }),
-    collection: getCollectionEntity(state, props),
+    collection: getCollectionEntity(state, { params: { collectionId } }),
     collectionsList: Collections.selectors.getList(state, {
       entityQuery: { tree: true },
     }),
