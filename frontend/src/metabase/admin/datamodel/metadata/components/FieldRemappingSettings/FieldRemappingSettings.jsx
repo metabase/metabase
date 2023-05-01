@@ -15,6 +15,10 @@ import { getMetadataUnfiltered } from "metabase/selectors/metadata";
 
 import { isEntityName, isFK } from "metabase-lib/types/utils/isa";
 import {
+  getFieldValues,
+  getRemappingsMap,
+} from "metabase-lib/queries/utils/field";
+import {
   hasSourceField,
   getFieldTargetId,
 } from "metabase-lib/queries/utils/field-ref";
@@ -68,13 +72,13 @@ class FieldRemappingSettings extends React.Component {
   };
 
   hasMappableNumeralValues = () => {
-    const { field } = this.props;
+    const { remapping } = this.props;
 
     // Only show the "custom" option if we have some values that can be mapped to user-defined custom values
     // (for a field without user-defined remappings, every key of `field.remappings` has value `undefined`)
     return (
-      field.remapping.size > 0 &&
-      [...field.remapping.keys()].every(
+      remapping.size > 0 &&
+      [...remapping.keys()].every(
         key => typeof key === "number" || key === null,
       )
     );
@@ -219,7 +223,7 @@ class FieldRemappingSettings extends React.Component {
   };
 
   render() {
-    const { field, table, metadata, fieldsError } = this.props;
+    const { field, table, remapping, metadata, fieldsError } = this.props;
     const {
       isChoosingInitialFkTarget,
       hasChanged,
@@ -295,7 +299,7 @@ class FieldRemappingSettings extends React.Component {
             <div className="mt3">
               {hasChanged && <RemappingNamingTip />}
               <ValueRemappings
-                remappings={field && field.remapping}
+                remappings={remapping}
                 updateRemappings={this.onUpdateRemappings}
               />
             </div>
@@ -451,7 +455,9 @@ const RemappingNamingTip = () => (
   </div>
 );
 
-const mapStateToProps = state => ({
+const mapStateToProps = (state, { field }) => ({
+  values: getFieldValues(field),
+  remapping: getRemappingsMap(field),
   metadata: getMetadataUnfiltered(state),
 });
 

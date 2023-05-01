@@ -13,7 +13,7 @@ import AdminLayout from "metabase/components/AdminLayout";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { LeftNavPane, LeftNavPaneItem } from "metabase/components/LeftNavPane";
-import { DatabaseId, Schema, TableId } from "metabase-types/api";
+import { DatabaseId, FieldId, Schema, TableId } from "metabase-types/api";
 import { State } from "metabase-types/store";
 import Database from "metabase-lib/metadata/Database";
 import Table from "metabase-lib/metadata/Table";
@@ -28,6 +28,10 @@ interface HasDatabaseId {
 
 interface HasTableId {
   id: TableId;
+}
+
+interface HasFieldId {
+  id: FieldId;
 }
 
 interface HasRequestParams {
@@ -66,7 +70,8 @@ interface StateProps {
 }
 
 interface DispatchProps {
-  onFetchMetadata: (table: HasTableId, opts: HasRequestParams) => Promise<void>;
+  onFetchMetadata: (table: HasTableId, opts: HasRequestParams) => void;
+  onFetchFieldValues: (field: HasFieldId, params: unknown) => void;
   onFetchIdFields: (database: HasDatabaseId, params: unknown) => void;
 }
 
@@ -91,6 +96,7 @@ const mapStateToProps = (
 
 const mapDispatchToProps: DispatchProps = {
   onFetchMetadata: Tables.actions.fetchMetadata,
+  onFetchFieldValues: Fields.actions.fetchFieldValues,
   onFetchIdFields: Databases.objectActions.fetchIdfields,
 };
 
@@ -102,20 +108,23 @@ const MetadataFieldSettings = ({
   idFields = [],
   params: { schemaId, section },
   onFetchMetadata,
+  onFetchFieldValues,
   onFetchIdFields,
 }: MetadataFieldSettingsProps) => {
   const databaseId = database.id;
   const tableId = field.table_id;
+  const fieldId = Number(field.id);
   const foreignKeyTableId = field.target?.table_id;
   const schema = schemas.find(schema => schema.id === schemaId);
 
   const { loading, error } = useAsync(async () => {
     await onFetchIdFields({ id: databaseId }, getFieldsQuery());
+    await onFetchFieldValues({ id: fieldId }, getFieldsQuery());
 
     if (tableId != null) {
       await onFetchMetadata({ id: tableId }, getTableQuery());
     }
-  }, [databaseId, tableId]);
+  }, [databaseId, tableId, fieldId]);
 
   useAsync(async () => {
     if (foreignKeyTableId != null) {
