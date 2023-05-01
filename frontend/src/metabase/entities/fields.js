@@ -86,18 +86,18 @@ const Fields = createEntity({
       return { id, values, has_more_values };
     }),
 
-    updateField(field, values, opts) {
+    updateField({ id, display_name }, values, opts) {
       return async dispatch => {
         const result = await dispatch(
           Fields.actions.update(
-            { id: field.id },
+            { id: id },
             values,
-            notify(opts, field.display_name, t`updated`),
+            notify(opts, display_name, t`updated`),
           ),
         );
         // Field values needs to be fetched again once the field is updated metabase#16322
         await dispatch(
-          Fields.actions.fetchFieldValues(field, { reload: true }),
+          Fields.actions.fetchFieldValues({ id }, { reload: true }),
         );
         return result;
       };

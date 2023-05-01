@@ -57,7 +57,7 @@
   "Get `Field` with ID."
   [id]
   (let [field (-> (api/check-404 (t2/select-one Field :id id))
-                  (hydrate [:table :db] :has_field_values :dimensions :name_field))]
+                  (hydrate [:table :db] :has_field_values :target :dimensions :name_field))]
     ;; Normal read perms = normal access.
     ;;
     ;; There's also a special case where we allow you to fetch a Field even if you don't have full read permissions for

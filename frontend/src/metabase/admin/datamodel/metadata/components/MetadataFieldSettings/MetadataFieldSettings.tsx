@@ -13,7 +13,7 @@ import AdminLayout from "metabase/components/AdminLayout";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { LeftNavPane, LeftNavPaneItem } from "metabase/components/LeftNavPane";
-import { DatabaseId, Schema } from "metabase-types/api";
+import { DatabaseId, Schema, TableId } from "metabase-types/api";
 import { State } from "metabase-types/store";
 import Database from "metabase-lib/metadata/Database";
 import Table from "metabase-lib/metadata/Table";
@@ -24,6 +24,14 @@ import FieldFormattingSettings from "../FieldFormattingSettings";
 
 interface HasDatabaseId {
   id: DatabaseId;
+}
+
+interface HasTableId {
+  id: TableId;
+}
+
+interface HasRequestParams {
+  params: unknown;
 }
 
 interface RouterParams {
@@ -48,40 +56,41 @@ interface SchemaLoaderProps {
   schemas: Schema[];
 }
 
-interface TableLoaderProps {
-  table: Table;
-}
-
 interface FieldLoaderProps {
   field: Field;
 }
 
 interface StateProps {
+  table: Table | undefined;
   idFields: Field[] | undefined;
 }
 
 interface DispatchProps {
+  onFetchMetadata: (table: HasTableId, opts: HasRequestParams) => Promise<void>;
   onFetchIdFields: (database: HasDatabaseId, params: unknown) => void;
 }
 
 type MetadataFieldSettingsProps = RouterProps &
   DatabaseLoaderProps &
   SchemaLoaderProps &
-  TableLoaderProps &
   FieldLoaderProps &
   StateProps &
   DispatchProps;
 
 const mapStateToProps = (
   state: State,
-  { database }: DatabaseLoaderProps,
+  { params: { databaseId, tableId } }: RouterProps,
 ): StateProps => ({
+  table: Tables.selectors.getObjectUnfiltered(state, {
+    entityId: Urls.extractEntityId(tableId),
+  }),
   idFields: Databases.selectors.getIdfields(state, {
-    databaseId: database.id,
+    databaseId: Urls.extractEntityId(databaseId),
   }),
 });
 
 const mapDispatchToProps: DispatchProps = {
+  onFetchMetadata: Tables.actions.fetchMetadata,
   onFetchIdFields: Databases.objectActions.fetchIdfields,
 };
 
@@ -92,19 +101,28 @@ const MetadataFieldSettings = ({
   field,
   idFields = [],
   params: { schemaId, section },
+  onFetchMetadata,
   onFetchIdFields,
 }: MetadataFieldSettingsProps) => {
   const databaseId = database.id;
+  const tableId = field.table_id;
+  const foreignKeyTableId = field.target?.table_id;
   const schema = schemas.find(schema => schema.id === schemaId);
 
   const { loading, error } = useAsync(async () => {
-    await onFetchIdFields(
-      { id: databaseId },
-      PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
-    );
+    const params = PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps;
+    await onFetchIdFields({ id: databaseId }, params);
+
+    if (tableId != null) {
+      await onFetchMetadata({ id: tableId }, { params });
+    }
+
+    if (foreignKeyTableId != null) {
+      await onFetchMetadata({ id: foreignKeyTableId }, { params });
+    }
   }, [databaseId]);
 
-  if (loading || error || !schema) {
+  if (loading || error || !schema || !table) {
     return <LoadingAndErrorWrapper loading={loading} error={error} />;
   }
 
@@ -230,12 +248,6 @@ export default _.compose(
       include_hidden: true,
       ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
     }),
-  }),
-  Tables.load({
-    id: (_: State, { params }: RouterProps) =>
-      Urls.extractEntityId(params.tableId),
-    query: PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
-    selectorName: "getObjectUnfiltered",
   }),
   Fields.load({
     id: (_: State, { params }: RouterProps) =>
