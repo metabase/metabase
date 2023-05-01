@@ -15,6 +15,6 @@ export const useDatabaseIdFieldListQuery = (
     getObject: Databases.selectors.getIdfields,
     getLoading: Databases.selectors.getLoading,
     getError: Databases.selectors.getError,
-    requestType: "values",
+    requestType: "idfields",
   });
 };
