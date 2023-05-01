@@ -20,6 +20,8 @@ import {
   getMetadata,
   getMetadataUnfiltered,
 } from "metabase/selectors/metadata";
+
+import Databases from "metabase/entities/databases";
 import { UPDATE_TABLE_FIELD_ORDER } from "metabase/entities/tables";
 
 import {
@@ -86,19 +88,35 @@ const Fields = createEntity({
       return { id, values, has_more_values };
     }),
 
-    updateField({ id, display_name }, values, opts) {
-      return async dispatch => {
+    updateField(field, values, opts) {
+      return async (dispatch, getState) => {
         const result = await dispatch(
           Fields.actions.update(
-            { id: id },
+            { id: field.id },
             values,
-            notify(opts, display_name, t`updated`),
+            notify(opts, field.displayName(), t`updated`),
           ),
         );
-        // Field values needs to be fetched again once the field is updated metabase#16322
+
+        // field values needs to be fetched again once the field is updated metabase#16322
         await dispatch(
-          Fields.actions.fetchFieldValues({ id }, { reload: true }),
+          Fields.actions.fetchFieldValues({ id: field.id }, { reload: true }),
         );
+
+        // keep the list of database primary keys up-to-date
+        const databaseId = field.table?.db_id;
+        const newField = Fields.selectors.getObjectUnfiltered(getState(), {
+          entityId: field.id,
+        });
+        if (databaseId != null && field.isPK() !== newField.isPK()) {
+          await dispatch(
+            Databases.actions.fetchIdFields(
+              { id: databaseId },
+              { reload: true },
+            ),
+          );
+        }
+
         return result;
       };
     },
