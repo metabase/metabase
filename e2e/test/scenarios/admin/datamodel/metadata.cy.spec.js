@@ -5,7 +5,7 @@ import {
   popover,
   summarize,
 } from "e2e/support/helpers";
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, SAMPLE_DB_SCHEMA_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID, REVIEWS, REVIEWS_ID } = SAMPLE_DATABASE;
@@ -120,7 +120,7 @@ describe("scenarios > admin > datamodel > metadata", () => {
 
   it("display value 'custom mapping' should be available regardless of the chosen filtering type (metabase#16322)", () => {
     cy.visit(
-      `/admin/datamodel/database/${SAMPLE_DB_ID}/table/${REVIEWS_ID}/${REVIEWS.RATING}/general`,
+      `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${REVIEWS_ID}/field/${REVIEWS.RATING}/general`,
     );
 
     openOptionsForSection("Filtering on this field");

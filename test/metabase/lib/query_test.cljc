@@ -35,10 +35,10 @@
            :stages   [{:lib/type    :mbql.stage/native
                        :lib/options {:lib/uuid string?}
                        :native      "SELECT * FROM VENUES;"}]}
-          (lib/native-query meta/metadata-provider meta/results-metadata "SELECT * FROM VENUES;"))))
+          (lib/native-query meta/metadata-provider meta/qp-results-metadata "SELECT * FROM VENUES;"))))
 
 (deftest ^:parallel native-query-suggested-name-test
-  (let [query (lib/native-query meta/metadata-provider meta/results-metadata "SELECT * FROM VENUES;")]
+  (let [query (lib/native-query meta/metadata-provider meta/qp-results-metadata "SELECT * FROM VENUES;")]
     (is (= "Native query"
            (lib.metadata.calculation/describe-query query)))
     (is (nil? (lib.metadata.calculation/suggested-name query)))))
@@ -49,21 +49,18 @@
            :stages   [{:lib/type    :mbql.stage/native
                        :native      "SELECT * FROM VENUES;"}]}
           (lib/saved-question-query meta/metadata-provider
-                                    {:dataset_query   {:database (meta/id)
+                                    {:dataset-query   {:database (meta/id)
                                                        :type     :native
                                                        :native   {:query "SELECT * FROM VENUES;"}}
-                                     :result_metadata meta/results-metadata}))))
+                                     :result-metadata meta/card-results-metadata}))))
 
 (deftest ^:parallel notebook-query-test
   (is (=? {:lib/type :mbql/query
            :database (meta/id)
            :stages   [{:lib/type     :mbql.stage/mbql
-                       :lib/options  {:lib/uuid string?}
                        :source-table (meta/id :venues)}
-                      {:lib/type    :mbql.stage/mbql
-                       :lib/options {:lib/uuid string?}}
-                      {:lib/type    :mbql.stage/mbql
-                       :lib/options {:lib/uuid string?}}]}
+                      {:lib/type :mbql.stage/mbql}
+                      {:lib/type :mbql.stage/mbql}]}
           (lib/query meta/metadata-provider {:database (meta/id)
                                              :type     :query
                                              :query    {:source-query {:source-query {:source-table (meta/id :venues)}}}}))))

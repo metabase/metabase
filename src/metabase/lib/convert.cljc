@@ -70,8 +70,14 @@
   :hierarchy lib.hierarchy/hierarchy)
 
 (defn- default-MBQL-clause->pMBQL [mbql-clause]
-  (let [[clause-type options & args] (lib.options/ensure-uuid mbql-clause)]
-    (into [clause-type options] (map ->pMBQL) args)))
+  (let [last-elem (peek mbql-clause)
+        last-elem-option? (map? last-elem)
+        [clause-type & args] (cond-> mbql-clause
+                               last-elem-option? pop)
+        options (if last-elem-option?
+                  last-elem
+                  {})]
+    (lib.options/ensure-uuid (into [clause-type options] (map ->pMBQL) args))))
 
 (defmethod ->pMBQL :default
   [x]
@@ -140,6 +146,13 @@
                                              :type/*))]
     (lib.options/ensure-uuid [:value opts value])))
 
+(defmethod ->pMBQL :case
+  [[_tag pred-expr-pairs options]]
+  (let [default (:default options)]
+    (cond-> [:case (dissoc options :default) (mapv ->pMBQL pred-expr-pairs)]
+      :always lib.options/ensure-uuid
+      default (conj (->pMBQL default)))))
+
 (doseq [tag [:aggregation :expression]]
   (lib.hierarchy/derive tag ::aggregation-or-expression-ref))
 
@@ -191,7 +204,12 @@
          m)))
 
 (defn- aggregation->legacy-MBQL [[tag options & args]]
-  (let [inner (into [tag] (map ->legacy-MBQL args))]
+  (let [inner (into [tag] (map ->legacy-MBQL) args)
+        ;; the default value of the :case expression is in the options
+        ;; in legacy MBQL
+        inner (if (and (= tag :case) (next args))
+                (conj (pop inner) {:default (peek inner)})
+                inner)]
     (if-let [aggregation-opts (not-empty (options->legacy-MBQL options))]
       [:aggregation-options inner aggregation-opts]
       inner)))
@@ -236,6 +254,12 @@
   [input]
   (aggregation->legacy-MBQL input))
 
+(defn- stage-metadata->legacy-metadata [stage-metadata]
+  (into []
+        (comp (map #(update-keys % u/->snake_case_en))
+              (map ->legacy-MBQL))
+        (:columns stage-metadata)))
+
 (defn- chain-stages [{:keys [stages]}]
   ;; :source-metadata aka :lib/stage-metadata is handled differently in the two formats.
   ;; In legacy, an inner query might have both :source-query, and :source-metadata giving the metadata for that nested
@@ -243,14 +267,17 @@
   ;; In pMBQL, the :lib/stage-metadata is attached to the same stage it applies to.
   ;; So when chaining pMBQL stages back into legacy form, if stage n has :lib/stage-metadata, stage n+1 needs
   ;; :source-metadata attached.
-  (first (reduce (fn [[inner stage-metadata] stage]
-                   [(cond-> (->legacy-MBQL stage)
-                      inner          (assoc :source-query inner)
-                      stage-metadata (assoc :source-metadata (mapv ->legacy-MBQL (:columns stage-metadata))))
-                    ;; Get the :lib/stage-metadata off the original pMBQL stage, not the converted one.
-                    (:lib/stage-metadata stage)])
-                 nil
-                 stages)))
+  (let [inner-query (first (reduce (fn [[inner stage-metadata] stage]
+                                     [(cond-> (->legacy-MBQL stage)
+                                        inner          (assoc :source-query inner)
+                                        stage-metadata (assoc :source-metadata (stage-metadata->legacy-metadata stage-metadata)))
+                                      ;; Get the :lib/stage-metadata off the original pMBQL stage, not the converted one.
+                                      (:lib/stage-metadata stage)])
+                                   nil
+                                   stages))]
+    (cond-> inner-query
+      ;; If this is a native query, inner query will be used like: `{:type :native :native #_inner-query {:query ...}}`
+      (:native inner-query) (set/rename-keys {:native :query}))))
 
 (defmethod ->legacy-MBQL :dispatch-type/map [m]
   (into {}
@@ -316,12 +343,13 @@
 
 (defmethod ->legacy-MBQL :mbql/query [query]
   (let [base        (disqualify query)
+        parameters  (:parameters base)
         inner-query (chain-stages base)
         query-type  (if (-> query :stages last :lib/type (= :mbql.stage/native))
                       :native
                       :query)]
     (merge (-> base
-               (dissoc :stages)
+               (dissoc :stages :parameters)
                (update-vals ->legacy-MBQL))
-           {:type      query-type
-            query-type inner-query})))
+           (cond-> {:type query-type query-type inner-query}
+             (seq parameters) (assoc :parameters parameters)))))

@@ -3,6 +3,13 @@ import type { Clause, ColumnMetadata, Query } from "./types";
 
 const DEFAULT_STAGE_INDEX = -1;
 
+export function breakoutableColumns(
+  query: Query,
+  stageIndex = DEFAULT_STAGE_INDEX,
+): ColumnMetadata[] {
+  return ML.breakoutable_columns(query, stageIndex);
+}
+
 export function breakouts(
   query: Query,
   stageIndex = DEFAULT_STAGE_INDEX,

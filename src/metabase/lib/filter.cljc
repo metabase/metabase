@@ -3,6 +3,7 @@
    :exclude
    [filter and or not = < <= > ->> >= not-empty case])
   (:require
+   [clojure.string :as str]
    [metabase.lib.common :as lib.common]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
@@ -115,7 +116,11 @@
   [query stage-number [_tag _opts expr n unit] style]
   (i18n/tru "{0} is within {1}"
             (lib.metadata.calculation/display-name query stage-number expr style)
-            (lib.temporal-bucket/interval->i18n n unit)))
+            ;; this should legitimately be lowercasing in the user locale. I know system locale isn't necessarily the
+            ;; same thing, but it might be. This will have to do until we have some sort of user-locale lower-case
+            ;; functionality
+            #_ {:clj-kondo/ignore [:discouraged-var]}
+            (str/lower-case (lib.temporal-bucket/describe-temporal-interval n unit))))
 
 (lib.common/defop and [x y & more])
 (lib.common/defop or [x y & more])
