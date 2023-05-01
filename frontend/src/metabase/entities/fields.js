@@ -17,6 +17,7 @@ import { FieldSchema } from "metabase/schema";
 import { MetabaseApi } from "metabase/services";
 
 import { getMetadata } from "metabase/selectors/metadata";
+import { UPDATE_TABLE_FIELD_ORDER } from "metabase/entities/tables";
 
 import {
   field_visibility_types,
@@ -191,6 +192,13 @@ const Fields = createEntity({
         updateIn(state, [fieldId, "remappings"], (existing = []) =>
           Array.from(new Map(existing.concat(remappings))),
         ),
+      [UPDATE_TABLE_FIELD_ORDER]: (state, { payload: { fieldOrder } }) => {
+        fieldOrder.forEach((fieldId, index) => {
+          state = assocIn(state, [fieldId, "position"], index);
+        });
+
+        return state;
+      },
     },
     {},
   ),

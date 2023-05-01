@@ -2,12 +2,14 @@
   "Shared code for drivers for SQL databases using their respective JDBC drivers under the hood."
   (:require
    [clojure.java.jdbc :as jdbc]
+   [honey.sql :as sql]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.query-processor.writeback :as qp.writeback]
    [metabase.util.honeysql-extensions :as hx]))
 
 (comment sql-jdbc.actions/keep-me)
@@ -97,3 +99,42 @@
 (defmethod sql.qp/cast-temporal-string [:sql-jdbc :Coercion/YYYYMMDDHHMMSSString->Temporal]
   [_driver _semantic_type expr]
   (hx/->timestamp expr))
+
+(defn- create-table-sql
+  [driver table-name col->type]
+  (first (sql/format {:create-table (keyword table-name)
+                      :with-columns (map (fn [kv] (map keyword kv)) col->type)}
+                     :quoted true
+                     :dialect (sql.qp/quote-style driver))))
+
+(defmethod driver/create-table :sql-jdbc
+  [driver db-id table-name col->type]
+  (let [sql (create-table-sql driver table-name col->type)]
+    (qp.writeback/execute-write-sql! db-id sql)))
+
+(defmethod driver/drop-table :sql-jdbc
+  [driver db-id table-name]
+  (let [sql (first (sql/format {:drop-table [:if-exists (keyword table-name)]}
+                               :quoted true
+                               :dialect (sql.qp/quote-style driver)))]
+    (qp.writeback/execute-write-sql! db-id sql)))
+
+(defmethod driver/insert-into :sql-jdbc
+  [driver db-id table-name column-names values]
+  (let [table-name (keyword table-name)
+        columns    (map keyword column-names)
+        sqls       (map #(sql/format {:insert-into table-name
+                                      :columns     columns
+                                      :values      %}
+                                     :quoted true
+                                     :dialect (sql.qp/quote-style driver))
+                        (partition-all 100 values))]
+    ;; We need to partition the insert into multiple statements for both performance and correctness.
+    ;;
+    ;; On Postgres with a large file, 100 (3.76m) was significantly faster than 50 (4.03m) and 25 (4.27m). 1,000 was a
+    ;; little faster but not by much (3.63m), and 10,000 threw an error:
+    ;;     PreparedStatement can have at most 65,535 parameters
+    ;; One imagines that `(long (/ 65535 (count columns)))` might be best, but I don't trust the 65K limit to apply
+    ;; across all drivers. With that in mind, 100 seems like a safe compromise.
+    (doseq [sql sqls]
+      (qp.writeback/execute-write-sql! db-id sql))))

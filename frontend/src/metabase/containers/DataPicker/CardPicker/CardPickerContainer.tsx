@@ -38,7 +38,7 @@ interface CardPickerStateProps {
 interface CollectionsLoaderProps {
   collectionTree: Collection[];
   collections: Collection[];
-  rootCollection: Collection;
+  rootCollection?: Collection;
   allLoading: boolean;
 }
 

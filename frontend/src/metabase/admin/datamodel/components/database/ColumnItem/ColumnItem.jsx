@@ -1,13 +1,10 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
-import PropTypes from "prop-types";
-import { Link, withRouter } from "react-router";
 import { t } from "ttag";
 
 import _ from "underscore";
 import cx from "classnames";
 import Select, { Option } from "metabase/core/components/Select";
-import Button from "metabase/core/components/Button";
 import * as MetabaseCore from "metabase/lib/core";
 import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings/column";
 
@@ -15,101 +12,6 @@ import { currency } from "cljs/metabase.shared.util.currency";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { isTypeFK, isCurrency } from "metabase-lib/types/utils/isa";
-import { getFieldRawName } from "../../../utils";
-import { ColumnItemInput } from "./ColumnItem.styled";
-
-class Column extends Component {
-  static propTypes = {
-    field: PropTypes.object,
-    idfields: PropTypes.array.isRequired,
-    updateField: PropTypes.func.isRequired,
-    dragHandle: PropTypes.node,
-  };
-
-  updateField = properties => {
-    this.props.updateField({ ...this.props.field, ...properties });
-  };
-
-  handleChangeName = ({ target: { value: display_name } }) => {
-    if (!_.isEmpty(display_name)) {
-      this.updateField({ display_name });
-    } else {
-      // if the user set this to empty then simply reset it because that's not allowed!
-      this.updateField({ display_name: this.props.field.display_name });
-    }
-  };
-
-  handleChangeDescription = ({ target: { value: description } }) => {
-    this.updateField({ description });
-  };
-
-  render() {
-    const { field, idfields, dragHandle } = this.props;
-    return (
-      <div
-        className="py2 pl2 pr1 mt1 mb3 flex bordered rounded"
-        data-testid={`column-${field.name}`}
-      >
-        <div className="flex flex-column flex-auto">
-          <div className="text-monospace mb1" style={{ fontSize: "12px" }}>
-            {getFieldRawName(field)}
-          </div>
-          <div className="flex flex-column">
-            <div>
-              <ColumnItemInput
-                variant="primary"
-                style={{ minWidth: 420 }}
-                className="float-left inline-block"
-                type="text"
-                value={this.props.field.display_name || ""}
-                onBlurChange={this.handleChangeName}
-              />
-              <div className="clearfix">
-                <div className="flex flex-auto">
-                  <div className="pl1 flex-auto">
-                    <FieldVisibilityPicker
-                      className="block"
-                      field={field}
-                      updateField={this.updateField}
-                    />
-                  </div>
-                  <div className="flex-auto px1">
-                    <SemanticTypeAndTargetPicker
-                      className="block"
-                      field={field}
-                      updateField={this.updateField}
-                      idfields={idfields}
-                    />
-                  </div>
-                  <Link
-                    to={`${this.props.location.pathname}/${this.props.field.id}`}
-                    className="text-brand-hover mr1"
-                  >
-                    <Button icon="gear" style={{ padding: 10 }} />
-                  </Link>
-                </div>
-              </div>
-            </div>
-            <div className="MetadataTable-title flex flex-column flex-full mt1 mr1">
-              <ColumnItemInput
-                variant="secondary"
-                className="TableEditor-field-description rounded"
-                type="text"
-                value={this.props.field.description || ""}
-                onBlurChange={this.handleChangeDescription}
-                placeholder={t`No column description yet`}
-                fullWidth
-              />
-            </div>
-          </div>
-        </div>
-        {dragHandle}
-      </div>
-    );
-  }
-}
-
-export default withRouter(Column);
 
 const getFkFieldPlaceholder = (field, idfields) => {
   const hasIdFields = idfields?.length > 0;

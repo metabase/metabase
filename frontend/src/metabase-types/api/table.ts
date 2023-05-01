@@ -17,6 +17,8 @@ export type TableVisibilityType =
   | "technical"
   | "cruft";
 
+export type TableFieldOrder = "database" | "alphabetical" | "custom" | "smart";
+
 export interface Table {
   id: TableId;
   db_id: number;
@@ -29,6 +31,7 @@ export interface Table {
   schema_name?: string;
   visibility_type: TableVisibilityType;
   fields?: Field[];
+  field_order: TableFieldOrder;
   initial_sync_status: InitialSyncStatus;
 }
 
