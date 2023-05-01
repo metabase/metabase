@@ -6,8 +6,7 @@ import _ from "underscore";
 
 import * as Urls from "metabase/lib/urls";
 
-import Collections, { ROOT_COLLECTION } from "metabase/entities/collections";
-import SnippetCollections from "metabase/entities/snippet-collections";
+import Collections from "metabase/entities/collections";
 
 import { isPersonalCollectionChild } from "metabase/collections/utils";
 
@@ -22,6 +21,7 @@ import {
   getIsDirty,
   getCollectionsPermissionEditor,
   collectionsQuery,
+  getCollectionEntity,
 } from "../../selectors/collection-permissions";
 import {
   initializeCollectionPermissions,
@@ -36,9 +36,6 @@ const getDefaultTitle = namespace =>
     ? t`Permissions for this folder`
     : t`Permissions for this collection`;
 
-const getCollectionEntity = props =>
-  props.namespace === "snippets" ? SnippetCollections : Collections;
-
 const mapStateToProps = (state, props) => {
   const collectionId = Urls.extractCollectionId(props.params.slug);
   return {
@@ -46,18 +43,7 @@ const mapStateToProps = (state, props) => {
       namespace: props.namespace,
       params: { collectionId },
     }),
-    collection: {
-      ...getCollectionEntity(props).selectors.getObject(state, {
-        entityId: collectionId,
-      }),
-      ...(collectionId === ROOT_COLLECTION.id
-        ? {
-            children: Collections.selectors.getList(state, {
-              entityQuery: collectionsQuery,
-            }),
-          }
-        : []),
-    },
+    collection: getCollectionEntity(state, props),
     collectionsList: Collections.selectors.getList(state, {
       entityQuery: { tree: true },
     }),

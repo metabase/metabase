@@ -34,17 +34,17 @@ export function modifyPermission(
 
 function getPermissionRowPermissions(item) {
   return cy
-    .get("[data-testid=permission-table] > tbody > tr")
+    .findByTestId("permission-table")
+    .find("tbody > tr")
     .contains(item)
     .closest("tr")
     .findAllByTestId("permissions-select");
 }
 
 export function assertPermissionTable(rows) {
-  cy.get("[data-testid=permission-table] > tbody > tr").should(
-    "have.length",
-    rows.length,
-  );
+  cy.findByTestId("permission-table")
+    .find("tbody > tr")
+    .should("have.length", rows.length);
 
   rows.forEach(row => {
     const [item, ...permissions] = row;

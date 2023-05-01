@@ -2,6 +2,7 @@ import { createSelector } from "reselect";
 import { t } from "ttag";
 import { getIn } from "icepick";
 import _ from "underscore";
+import * as Urls from "metabase/lib/urls";
 
 import Group from "metabase/entities/groups";
 import Collections, {
@@ -16,7 +17,11 @@ import { COLLECTION_OPTIONS } from "../constants/collections-permissions";
 import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "../constants/messages";
 import { getPermissionWarningModal } from "./confirmations";
 
-export const collectionsQuery = { tree: true, "exclude-archived": true };
+export const collectionsQuery = {
+  tree: true,
+  "exclude-other-user-collections": true,
+  "exclude-archived": true,
+};
 
 export const getIsDirty = createSelector(
   state => state.admin.permissions.collectionPermissions,
@@ -27,7 +32,9 @@ export const getIsDirty = createSelector(
 
 export const getCurrentCollectionId = (_state, props) => {
   if (props.params.collectionId == null) {
-    return null;
+    return props.params.slug
+      ? Urls.extractCollectionId(props.params.slug)
+      : null;
   }
 
   return props.params.collectionId === ROOT_COLLECTION.id

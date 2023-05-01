@@ -9,22 +9,20 @@ import {
 } from "e2e/support/helpers";
 
 const COLLECTION_ACCESS_PERMISSION_INDEX = 0;
+const NEW_COLLECTION = "New collection";
 
 describe("issue 20911", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    cy.createCollection({
+      name: NEW_COLLECTION,
+    });
 
     cy.intercept("GET", "/api/collection/graph").as("getGraph");
   });
 
   it("should allow to change sub-collections permissions after access change (metabase#20911)", () => {
-    cy.request("POST", "/api/collection", {
-      name: `Collection 1`,
-      color: "#509EE3",
-      parent_id: null,
-    });
-
     cy.visit("/collection/root/permissions");
     cy.wait("@getGraph");
     assertPermissionTable([
@@ -36,13 +34,13 @@ describe("issue 20911", () => {
       ["readonly", "View"],
     ]);
     modifyPermission(
-      "All Users",
+      "collection",
       COLLECTION_ACCESS_PERMISSION_INDEX,
-      "View",
+      "No access",
       false,
     );
     modifyPermission(
-      "All Users",
+      "collection",
       COLLECTION_ACCESS_PERMISSION_INDEX,
       null,
       true,
@@ -52,7 +50,7 @@ describe("issue 20911", () => {
     });
 
     navigationSidebar().within(() => {
-      cy.findByText("Collection 1").click();
+      cy.findByText(NEW_COLLECTION).click();
     });
     getCollectionActions().within(() => {
       cy.icon("ellipsis").click();
@@ -62,11 +60,17 @@ describe("issue 20911", () => {
     });
     assertPermissionTable([
       ["Administrators", "Curate"],
-      ["All Users", "View"],
-      ["collection", "Curate"],
+      ["All Users", "No access"],
+      ["collection", "No access"],
       ["data", "No access"],
       ["nosql", "No access"],
       ["readonly", "View"],
     ]);
+
+    cy.signInAsNormalUser();
+    cy.visit("/collection/root");
+    cy.findByText("You don't have permissions to do that.");
+    cy.visit("/collection/1-new-collection");
+    cy.findByText("Sorry, you don’t have permission to see that.");
   });
 });
