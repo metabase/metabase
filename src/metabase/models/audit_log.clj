@@ -4,16 +4,17 @@
   app. This is a distinct from the Activity and View Log models, which predate this namespace, and which power specific
   API endpoints used for in-app functionality, such as the recently-viewed items displayed on the homepage."
   (:require
+   [metabase.api.common :as api]
    [metabase.events :as events]
-   [metabase.models.interface :as mi]
-   [metabase.util :as u]
-   [methodical.core :as m]
-   [toucan2.core :as t2]
-   [metabase.util.i18n :refer [tru]]
-   [metabase.query-processor :as qp]
-   [metabase.util.log :as log]
    [metabase.mbql.util :as mbql.u]
-   [metabase.models.card :refer [Card]]))
+   [metabase.models.card :refer [Card]]
+   [metabase.models.interface :as mi]
+   [metabase.query-processor :as qp]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
+   [methodical.core :as m]
+   [toucan2.core :as t2]))
 
 (m/defmethod t2/table-name :m/audit-log
   [_model]
@@ -29,7 +30,7 @@
   {})
 
 (defmethod model-details Card
-  [_model {query :dataset_query, dataset? :dataset :as card} _event-type]
+  [{query :dataset_query, dataset? :dataset :as card} _event-type]
   (let [query (when (seq query)
                 (try (qp/preprocess query)
                      (catch Throwable e
@@ -46,7 +47,7 @@
   "Record an event in the Audit Log."
   [topic object]
   ;; Push an event to the event queue so that activity table is still populated
-  (events/publish-event! topic object)
+  (events/publish-event! topic (assoc object :actor_id api/*current-user-id*))
   (let [details (model-details object topic)]
     (t2/insert! :m/audit-log
                 {:topic    topic
@@ -56,7 +57,8 @@
 
 (defn- pre-insert [activity]
   (let [defaults {:timestamp :%now
-                  :details   {}}]
+                  :details   {}
+                  :user_id   api/*current-user-id*}]
     (merge defaults activity)))
 
 (mi/define-methods
