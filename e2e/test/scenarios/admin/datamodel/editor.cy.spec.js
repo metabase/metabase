@@ -98,7 +98,7 @@ describe("scenarios > admin > datamodel > editor", () => {
         setValueAndBlurInput("Tax", "New tax"),
       );
       cy.wait("@updateField");
-      cy.findByText("Updated New tax").should("be.visible");
+      cy.findByText("Updated Tax").should("be.visible");
 
       openOrdersTable();
       cy.findByText("New tax").should("be.visible");
