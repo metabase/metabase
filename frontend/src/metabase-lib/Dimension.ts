@@ -13,12 +13,10 @@ import {
 } from "metabase-types/types/Query";
 import { VariableTarget } from "metabase-types/types/Parameter";
 import { IconName } from "metabase-types/types";
+import * as Lib from "metabase-lib";
 import { infer, MONOTYPE } from "metabase-lib/expressions/typeinferencer";
 import { TYPE } from "metabase-lib/types/constants";
-import {
-  DATETIME_UNITS,
-  formatBucketing,
-} from "metabase-lib/queries/utils/query-time";
+import { DATETIME_UNITS } from "metabase-lib/queries/utils/query-time";
 import TemplateTagVariable from "metabase-lib/variables/TemplateTagVariable";
 import Field from "metabase-lib/metadata/Field";
 import {
@@ -563,7 +561,7 @@ export default class Dimension {
     }
 
     if (this.temporalUnit()) {
-      return formatBucketing(this.temporalUnit());
+      return Lib.describeTemporalUnit(this.temporalUnit());
     }
 
     if (this.binningStrategy()) {
@@ -595,7 +593,9 @@ export default class Dimension {
 
     // temporal bucketed field
     if (this.temporalUnit()) {
-      return t`by ${formatBucketing(this.temporalUnit()).toLowerCase()}`;
+      return t`by ${Lib.describeTemporalUnit(
+        this.temporalUnit(),
+      ).toLowerCase()}`;
     }
 
     // if the field is a binnable number, we should return 'Unbinned' here
@@ -1051,7 +1051,9 @@ export class FieldDimension extends Dimension {
     }
 
     if (this.temporalUnit()) {
-      displayName = `${displayName}: ${formatBucketing(this.temporalUnit())}`;
+      displayName = `${displayName}: ${Lib.describeTemporalUnit(
+        this.temporalUnit(),
+      )}`;
     }
 
     if (this.binningOptions()) {
@@ -1354,7 +1356,9 @@ export class ExpressionDimension extends Dimension {
     let displayName = this.displayName();
 
     if (this.temporalUnit()) {
-      displayName = `${displayName}: ${formatBucketing(this.temporalUnit())}`;
+      displayName = `${displayName}: ${Lib.describeTemporalUnit(
+        this.temporalUnit(),
+      )}`;
     }
 
     if (this.binningOptions()) {

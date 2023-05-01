@@ -2,6 +2,7 @@
   (:require
    [clojure.set :as set]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    #?@(:clj ([pretty.core :as pretty]))))
 
@@ -14,6 +15,18 @@
   (let [value (if (some? value) value ::nil)]
     (swap! cache assoc-in ks value)
     value))
+
+(defn- store-database! [cache database-metadata]
+  (let [database-metadata (-> database-metadata
+                              (update-keys u/->kebab-case-en)
+                              (assoc :lib/type :metadata/database))]
+    (store-in-cache! cache [:metadata/database] database-metadata)))
+
+(defn- store-metadata! [cache metadata-type id metadata]
+  (let [metadata (-> metadata
+                     (update-keys u/->kebab-case-en)
+                     (assoc :lib/type metadata-type))]
+    (store-in-cache! cache [metadata-type id] metadata)))
 
 (defn- get-in-cache-or-fetch [cache ks fetch-thunk]
   (if-some [cached-value (get-in @cache ks)]
@@ -49,8 +62,8 @@
   lib.metadata.protocols/CachedMetadataProvider
   (cached-database [_this]                           (get-in-cache    cache [:metadata/database]))
   (cached-metadata [_this metadata-type id]          (get-in-cache    cache [metadata-type id]))
-  (store-database! [_this database-metadata]         (store-in-cache! cache [:metadata/database] (assoc database-metadata :lib/type :metadata/database)))
-  (store-metadata! [_this metadata-type id metadata] (store-in-cache! cache [metadata-type id]   (assoc metadata :lib/type metadata-type)))
+  (store-database! [_this database-metadata]         (store-database! cache database-metadata))
+  (store-metadata! [_this metadata-type id metadata] (store-metadata! cache metadata-type id metadata))
 
   ;; these only work if the underlying metadata provider is also a [[BulkMetadataProvider]].
   lib.metadata.protocols/BulkMetadataProvider
