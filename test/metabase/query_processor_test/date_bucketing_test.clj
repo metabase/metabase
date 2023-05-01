@@ -1276,7 +1276,6 @@
                       query        (mt/native-query {:query sql, :params args})]
                   (mt/with-native-query-testing-context query
                     (is (re= (u.regex/rx #"^2022-"
-                                         >>>>>>> master
                                        ;; We don't really care if someone returns June 29th or 30th or July 1st here. I
                                        ;; guess you could make a case for either June 30th or July 1st. I don't really know
                                        ;; how you can get June 29th from this, but that's what Vertica returns. :shrug: The
@@ -1285,4 +1284,4 @@
                                        ;; We also don't really care if this is returned as a date or a timestamp with or
                                        ;; without time zone.
                                          [:? [:or "T" #"\s"] "00:00:00" [:? "Z"]])
-                             (first (mt/first-row (qp/process-query query))))))))))))))))
+                             (first (mt/first-row (qp/process-query query)))))))))))))))
