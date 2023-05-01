@@ -8,7 +8,7 @@ import { TableQuery } from "metabase-types/api";
 import Table from "metabase-lib/metadata/Table";
 
 export const useTableQuery = (
-  props: UseEntityQueryProps<TableQuery> = {},
+  props: UseEntityQueryProps<TableQuery>,
 ): UseEntityQueryResult<Table> => {
   return useEntityQuery(props, {
     fetch: Tables.actions.fetch,

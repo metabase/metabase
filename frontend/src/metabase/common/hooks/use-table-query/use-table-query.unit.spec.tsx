@@ -12,13 +12,15 @@ import { useTableQuery } from "./use-table-query";
 const TEST_TABLE = createMockTable();
 
 const TestComponent = () => {
-  const { data: table, isLoading, error } = useTableQuery();
+  const { data, isLoading, error } = useTableQuery({
+    query: { id: TEST_TABLE.id },
+  });
 
-  if (isLoading || error || !table) {
+  if (isLoading || error || !data) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
-  return <div>{table.name}</div>;
+  return <div>{data.name}</div>;
 };
 
 const setup = () => {

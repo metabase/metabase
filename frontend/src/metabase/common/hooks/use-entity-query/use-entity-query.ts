@@ -24,7 +24,7 @@ export interface UseEntityOwnProps<TItem, TQuery> {
 }
 
 export interface UseEntityQueryProps<TQuery> {
-  query?: TQuery;
+  query: TQuery;
   reload?: boolean;
   enabled?: boolean;
 }
