@@ -33,7 +33,7 @@
 (mbql-clause/define-tuple-mbql-clause :datetime-diff :- :type/Integer
   #_:datetime1 [:schema [:ref ::expression/temporal]]
   #_:datetime2 [:schema [:ref ::expression/temporal]]
-  #_:unit [:enum "year" "month" "day" "hour" "second" "millisecond" "quarter"])
+  #_:unit [:ref ::temporal-bucketing/unit.date-time.truncate])
 
 (mbql-clause/define-tuple-mbql-clause :get-week :- :type/Integer
   #_:datetime [:schema [:ref ::expression/temporal]]
