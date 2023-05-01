@@ -13,6 +13,7 @@ import { mockSettings } from "__support__/settings";
 
 import SaveQuestionModal from "metabase/containers/SaveQuestionModal";
 import { CollectionId } from "metabase-types/api";
+import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import Question from "metabase-lib/Question";
 
 const setup = async (
@@ -91,14 +92,11 @@ function getQuestion({
 const EXPECTED_DIRTY_SUGGESTED_NAME = "Orders, Count, Grouped by Total";
 
 function getDirtyQuestion(originalQuestion: Question) {
-  return (
-    originalQuestion
-      .query()
-      // @ts-expect-error breakout after query() raises type error
-      .breakout(["field", ORDERS.TOTAL.id, null])
-      .question()
-      .markDirty()
-  );
+  const query = originalQuestion.query() as StructuredQuery;
+  return query
+    .breakout(["field", ORDERS.TOTAL.id, null])
+    .question()
+    .markDirty();
 }
 
 function fillForm({
@@ -558,15 +556,13 @@ describe("SaveQuestionModal", () => {
   });
 
   describe("Cache TTL field", () => {
-    const question = Question.create({
+    const query = Question.create({
       databaseId: SAMPLE_DATABASE.id,
       tableId: ORDERS.id,
       metadata,
-    })
-      .query()
-      // @ts-expect-error aggregate after query() throws a type error
-      .aggregate(["count"])
-      .question();
+    }).query() as StructuredQuery;
+
+    const question = query.aggregate(["count"]).question();
 
     describe("OSS", () => {
       it("is not shown", async () => {

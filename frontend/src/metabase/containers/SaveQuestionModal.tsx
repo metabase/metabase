@@ -59,7 +59,7 @@ interface FormValues {
   description: string;
 }
 
-const isOriginalQuestionNotNullable = (
+const isOverwriteMode = (
   question: Question | null,
   saveType: string,
 ): question is Question => {
@@ -68,41 +68,48 @@ const isOriginalQuestionNotNullable = (
 
 export default class SaveQuestionModal extends Component<SaveQuestionModalProps> {
   handleSubmit = async (details: FormValues) => {
-    const { question, originalQuestion, onCreate, onSave } = this.props;
+    const { originalQuestion } = this.props;
 
-    const collectionId = canonicalCollectionId(
-      isOriginalQuestionNotNullable(originalQuestion, details.saveType)
-        ? originalQuestion.collectionId()
-        : details.collection_id,
-    );
-    const displayName = isOriginalQuestionNotNullable(
-      originalQuestion,
-      details.saveType,
-    )
-      ? originalQuestion.displayName()
-      : details.name.trim();
-    const description = isOriginalQuestionNotNullable(
-      originalQuestion,
-      details.saveType,
-    )
-      ? originalQuestion.description()
-      : details.description
-      ? details.description.trim()
-      : null;
+    if (isOverwriteMode(originalQuestion, details.saveType)) {
+      await this.handleOverwrite(originalQuestion, details);
+    } else {
+      await this.handleCreate(details);
+    }
+  };
+
+  async handleOverwrite(originalQuestion: Question, details: FormValues) {
+    const { question, onSave } = this.props;
+
+    const collectionId = canonicalCollectionId(originalQuestion.collectionId());
+    const displayName = originalQuestion.displayName();
+    const description = originalQuestion.description();
 
     const newQuestion = question
       .setDisplayName(displayName)
       .setDescription(description)
       .setCollectionId(collectionId);
 
-    if (details.saveType === "create") {
-      await onCreate(newQuestion);
-    } else if (
-      isOriginalQuestionNotNullable(originalQuestion, details.saveType)
-    ) {
-      await onSave(newQuestion.setId(originalQuestion.id()));
+    await onSave(newQuestion.setId(originalQuestion.id()));
+  }
+
+  async handleCreate(details: FormValues) {
+    if (details.saveType !== "create") {
+      return;
     }
-  };
+
+    const { question, onCreate } = this.props;
+
+    const collectionId = canonicalCollectionId(details.collection_id);
+    const displayName = details.name.trim();
+    const description = details.description ? details.description.trim() : null;
+
+    const newQuestion = question
+      .setDisplayName(displayName)
+      .setDescription(description)
+      .setCollectionId(collectionId);
+
+    await onCreate(newQuestion);
+  }
 
   render() {
     const { question, originalQuestion, initialCollectionId } = this.props;
