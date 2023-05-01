@@ -137,7 +137,7 @@ export default class SaveQuestionModal extends Component {
           validationSchema={SAVE_QUESTION_SCHEMA}
           enableReinitialize
         >
-          {({ values, isValid }) => (
+          {({ values }) => (
             <Form>
               {showSaveType && (
                 <FormRadio
@@ -188,7 +188,7 @@ export default class SaveQuestionModal extends Component {
                   type="button"
                   onClick={this.props.onClose}
                 >{t`Cancel`}</Button>
-                <FormSubmitButton title={t`Save`} disabled={!isValid} primary />
+                <FormSubmitButton title={t`Save`} primary />
               </FormFooter>
             </Form>
           )}
