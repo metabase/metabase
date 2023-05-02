@@ -399,22 +399,23 @@
 (deftest update-display-name-dimension-test
   (testing "Updating a field's display_name should update the dimension's name"
     (mt/with-temp* [Database  [db    {:name "field-db" :engine :h2}]
-                    Table     [table {:schema "PUBLIC" :name "widget" :db_id (:id db)}]
-                    Field     [field {:name          "sku"
-                                      :display_name  "SKU"
-                                      :base_type     :type/Integer
-                                      :table_id      (:id table)
-                                      :semantic_type :type/Category}]
-                    Field     [human-readable-field {:name "human" :table_id (:id table)}]
+                    Table     [table1 {:schema "PUBLIC" :name "widget" :db_id (:id db)}]
+                    Table     [table2 {:schema "PUBLIC" :name "orders" :db_id (:id db)}]
+                    Field     [field {:name          "WIDGET_ID"
+                                      :display_name  "Widget ID"
+                                      :table_id      (:id table2)
+                                      :semantic_type :type/FK}]
+                    Field     [human-readable-field {:name "Name" :table_id (:id table1)}]
                     Dimension [_dim  {:field_id                (:id field)
                                       :name                    (:display_name field)
+                                      :type                    :external
                                       :human_readable_field_id (:id human-readable-field)}]]
       (testing "before update"
-        (is (= "SKU"
+        (is (= "Widget ID"
                (:name (dimension-for-field (:id field))))))
-      (mt/user-http-request :crowberto :put 200 (format "field/%d" (:id field)) (assoc field :display_name "Stock Keeping Unit"))
+      (mt/user-http-request :crowberto :put 200 (format "field/%d" (:id field)) (assoc field :display_name "SKU"))
       (testing "after update"
-        (is (= "Stock Keeping Unit"
+        (is (= "SKU"
                (:name (dimension-for-field (:id field)))))))))
 
 (deftest create-update-dimension-test
