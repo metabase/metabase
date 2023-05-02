@@ -1,4 +1,5 @@
 import {
+  Alert,
   Card,
   Collection,
   Dashboard,
@@ -15,6 +16,7 @@ import {
 
 export interface EntitiesState {
   actions: Record<string, WritebackAction>;
+  alerts: Record<string, Alert>;
   collections: Record<string, Collection>;
   dashboards: Record<string, Dashboard>;
   databases: Record<string, Database>;
