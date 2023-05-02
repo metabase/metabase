@@ -55,8 +55,11 @@ type MetadataTableProps = OwnProps &
   StateProps &
   DispatchProps;
 
-const mapStateToProps = (state: State): StateProps => ({
-  idFields: Databases.selectors.getIdFields(state),
+const mapStateToProps = (
+  state: State,
+  { table }: TableLoaderProps,
+): StateProps => ({
+  idFields: Databases.selectors.getIdFields(state, { databaseId: table.db_id }),
 });
 
 const mapDispatchToProps: DispatchProps = {

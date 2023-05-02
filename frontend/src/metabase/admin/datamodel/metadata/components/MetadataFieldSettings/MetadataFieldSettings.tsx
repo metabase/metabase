@@ -62,8 +62,13 @@ type MetadataFieldSettingsProps = RouterProps &
   FieldLoaderProps &
   StateProps;
 
-const mapStateToProps = (state: State): StateProps => ({
-  idFields: Databases.selectors.getIdFields(state),
+const mapStateToProps = (
+  state: State,
+  { database }: DatabaseLoaderProps,
+): StateProps => ({
+  idFields: Databases.selectors.getIdFields(state, {
+    databaseId: database.id,
+  }),
 });
 
 const MetadataFieldSettings = ({
