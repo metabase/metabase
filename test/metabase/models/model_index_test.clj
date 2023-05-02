@@ -10,6 +10,7 @@
             [metabase.query-processor.async :as qp.async]
             [metabase.task :as task]
             [metabase.task.index-values :as task.index-values]
+            [metabase.task.sync-databases :as task.sync-databases]
             [metabase.test :as mt]
             [metabase.test.util :as tu]
             [toucan2.core :as t2]))
@@ -26,6 +27,10 @@
      (with-redefs [task/scheduler (constantly scheduler#)]
        (qs/standby scheduler#)
        (#'task.index-values/job-init!)
+       ;; with-temp creates new dbs which schedules the refresh tasks. without this, if this is the first time the db
+       ;; is added you get a gnarly stacktrace about missing keys for sync and refresh. It doesn't ultimately matter
+       ;; but let's keep it clean
+       (#'task.sync-databases/job-init)
        (qs/start scheduler#)
        (try
          ~@body
