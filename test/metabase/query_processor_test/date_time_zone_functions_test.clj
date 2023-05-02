@@ -1043,13 +1043,13 @@
                                {:database (mt/id)
                                 :type     :query
                                 :query    {:filter [:and
-                                                    [:= a-str [:field "a_dt_tz_text" {:base-type :type/Text}]]
-                                                    [:= b-str [:field "b_dt_tz_text" {:base-type :type/Text}]]]
+                                                    [:= a-str [:field "a_dt_tz_text" {:base-type :type/DateTime}]]
+                                                    [:= b-str [:field "b_dt_tz_text" {:base-type :type/DateTime}]]]
                                            :expressions  (into {}
                                                                (for [unit units]
                                                                  [(name unit) [:datetime-diff
-                                                                               [:field "a_dt_tz" {:base-type :type/Text}]
-                                                                               [:field "b_dt_tz" {:base-type :type/Text}]
+                                                                               [:field "a_dt_tz" {:base-type :type/DateTime}]
+                                                                               [:field "b_dt_tz" {:base-type :type/DateTime}]
                                                                                unit]]))
                                            :fields       (into [] (for [unit units]
                                                                     [:expression (name unit)]))

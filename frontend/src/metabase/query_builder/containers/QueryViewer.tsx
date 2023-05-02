@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo } from "react";
 import _ from "underscore";
-import { useSelector, useDispatch } from "react-redux";
 
+import { useSelector, useDispatch } from "metabase/lib/redux";
 import NativeQueryEditor from "metabase/query_builder/components/NativeQueryEditor";
 import ReadOnlyNotebook from "metabase/query_builder/components/notebook/ReadOnlyNotebook";
 

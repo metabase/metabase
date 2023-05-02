@@ -33,6 +33,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 
 // LIB
 import { has_field_values_options } from "metabase/lib/core";
+import * as Urls from "metabase/lib/urls";
 import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings/column";
 
 import Databases from "metabase/entities/databases";
@@ -54,9 +55,11 @@ import { BackButtonLink, FieldNameInput } from "./FieldApp.styled";
 
 const mapStateToProps = (state, props) => {
   const databaseId = parseInt(props.params.databaseId);
+  const schemaId = props.params.schemaId;
   const fieldId = parseInt(props.params.fieldId);
   return {
     databaseId,
+    schemaId,
     fieldId,
     field: Fields.selectors.getObjectUnfiltered(state, { entityId: fieldId }),
     fieldsError: Fields.selectors.getError(state, {
@@ -164,12 +167,12 @@ class FieldApp extends React.Component {
       field,
       fieldsError,
       databaseId,
+      schemaId,
       tableId,
       idfields,
       rescanFieldValues,
       discardFieldValues,
       fetchTableMetadata,
-      location,
       params: { section },
     } = this.props;
 
@@ -185,17 +188,31 @@ class FieldApp extends React.Component {
             sidebar={
               <div>
                 <div className="flex align-center mb2">
-                  <BackButton databaseId={databaseId} tableId={tableId} />
+                  <BackButton
+                    databaseId={databaseId}
+                    schemaId={schemaId}
+                    tableId={tableId}
+                  />
                 </div>
                 <LeftNavPane>
                   <LeftNavPaneItem
                     name={t`General`}
-                    path={location.pathname.replace(/[^/]+$/, "general")}
+                    path={Urls.dataModelField(
+                      databaseId,
+                      schemaId,
+                      table.id,
+                      field.id,
+                    )}
                     index
                   />
                   <LeftNavPaneItem
                     name={t`Formatting`}
-                    path={location.pathname.replace(/[^/]+$/, "formatting")}
+                    path={Urls.dataModelFieldFormatting(
+                      databaseId,
+                      schemaId,
+                      table.id,
+                      field.id,
+                    )}
                   />
                 </LeftNavPane>
               </div>
@@ -206,10 +223,10 @@ class FieldApp extends React.Component {
                 <div className="mb4 pt2 ml-auto mr-auto">
                   <Breadcrumbs
                     crumbs={[
-                      [db.name, `/admin/datamodel/database/${db.id}`],
+                      [db.name, Urls.dataModelDatabase(db.id)],
                       [
                         table.display_name,
-                        `/admin/datamodel/database/${db.id}/table/${table.id}`,
+                        Urls.dataModelTable(db.id, schemaId, table.id),
                       ],
                       t`${field.display_name} – Field Settings`,
                     ]}
@@ -423,10 +440,8 @@ const FieldSettingsPane = ({ field, onUpdateFieldSettings }) => (
 
 // TODO: Should this invoke goBack() instead?
 // not sure if it's possible to do that neatly with Link component
-export const BackButton = ({ databaseId, tableId }) => (
-  <BackButtonLink
-    to={`/admin/datamodel/database/${databaseId}/table/${tableId}`}
-  >
+export const BackButton = ({ databaseId, schemaId, tableId }) => (
+  <BackButtonLink to={Urls.dataModelTable(databaseId, schemaId, tableId)}>
     <Icon name="arrow_left" />
   </BackButtonLink>
 );

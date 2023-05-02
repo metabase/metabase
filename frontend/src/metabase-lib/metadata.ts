@@ -51,3 +51,26 @@ export function getColumnsFromColumnGroup(
 ): ColumnMetadata[] {
   return ML.columns_group_columns(group);
 }
+
+export function describeTemporalUnit(
+  unit: string | null = null,
+  n: number = 1,
+): string {
+  return ML.describe_temporal_unit(n, unit);
+}
+
+type IntervalAmount = number | "current" | "next" | "last";
+
+export function describeTemporalInterval(
+  n: IntervalAmount,
+  unit?: string,
+): string {
+  return ML.describe_temporal_interval(n, unit);
+}
+
+export function describeRelativeDatetime(
+  n: IntervalAmount,
+  unit?: string,
+): string {
+  return ML.describe_relative_datetime(n, unit);
+}

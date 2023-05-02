@@ -97,7 +97,10 @@ class DashboardHeader extends Component {
     onChangeLocation: PropTypes.func.isRequired,
 
     toggleSidebar: PropTypes.func.isRequired,
-    sidebar: PropTypes.string.isRequired,
+    sidebar: PropTypes.shape({
+      name: PropTypes.string,
+      props: PropTypes.object,
+    }).isRequired,
     setSidebar: PropTypes.func.isRequired,
     closeSidebar: PropTypes.func.isRequired,
     addActionToDashboard: PropTypes.func.isRequired,
