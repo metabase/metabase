@@ -392,9 +392,8 @@ describe("scenarios > admin > datamodel > editor", () => {
       });
     });
 
-    it("should allow changing the field name with data model permissions only", () => {
+    it("should allow changing the field name with data model permissions only in table settings", () => {
       cy.signIn("none");
-
       visitTableMetadata();
       getFieldSection("TAX").within(() =>
         setValueAndBlurInput("Tax", "New tax"),
@@ -403,6 +402,14 @@ describe("scenarios > admin > datamodel > editor", () => {
       getFieldSection("TAX").findByDisplayValue("New tax").should("be.visible");
       cy.findByText("Updated Tax").should("be.visible");
 
+      cy.signInAsNormalUser();
+      openOrdersTable();
+      cy.findByText("New tax").should("be.visible");
+      cy.findByText("Tax").should("not.exist");
+    });
+
+    it("should allow changing the field name with data model permissions only in field settings", () => {
+      cy.signIn("none");
       visitFieldMetadata({ fieldId: ORDERS.TOTAL });
       setValueAndBlurInput("Total", "New total");
       cy.wait("@updateField");
@@ -411,9 +418,7 @@ describe("scenarios > admin > datamodel > editor", () => {
 
       cy.signInAsNormalUser();
       openOrdersTable();
-      cy.findByText("New tax").should("be.visible");
       cy.findByText("New total").should("be.visible");
-      cy.findByText("Tax").should("not.exist");
       cy.findByText("Total").should("not.exist");
     });
   });

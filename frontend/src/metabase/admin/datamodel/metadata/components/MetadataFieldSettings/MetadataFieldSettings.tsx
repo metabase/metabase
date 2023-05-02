@@ -49,6 +49,9 @@ interface SchemaLoaderProps {
 
 interface FieldLoaderProps {
   field: Field;
+}
+
+interface FieldValuesLoaderProps {
   loading: boolean;
 }
 
@@ -61,6 +64,7 @@ type MetadataFieldSettingsProps = RouterProps &
   SchemaLoaderProps &
   TableLoaderProps &
   FieldLoaderProps &
+  FieldValuesLoaderProps &
   StateProps;
 
 const mapStateToProps = (
@@ -227,12 +231,15 @@ export default _.compose(
     requestType: "fetchMetadata",
     selectorName: "getObjectUnfiltered",
   }),
+  Fields.load({
+    id: (_: State, { params }: RouterProps) =>
+      Urls.extractEntityId(params.fieldId),
+    query: PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
+    selectorName: "getObjectUnfiltered",
+    loadingAndErrorWrapper: false,
+  }),
   Tables.load({
-    id: (state: State, { params }: RouterProps) => {
-      const props = { entityId: Urls.extractEntityId(params.fieldId) };
-      const field = Fields.selectors.getObjectUnfiltered(state, props);
-      return field?.target?.table_id;
-    },
+    id: (state: State, { field }: FieldLoaderProps) => field?.target?.table_id,
     query: {
       include_sensitive_fields: true,
       ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
