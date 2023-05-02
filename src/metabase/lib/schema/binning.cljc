@@ -25,6 +25,6 @@
 (mr/def ::binning-option
   [:map
    [:lib/type [:= :metabase.lib.binning/binning-option]]
-   [:display_name :string]
-   [:mbql [:maybe [:map [:binning ::binning]]]]
+   [:display-name :string]
+   [:mbql [:maybe ::binning]]
    [:default {:optional true} :boolean]])

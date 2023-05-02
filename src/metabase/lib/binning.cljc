@@ -77,7 +77,7 @@
 (defn- default-auto-bin []
   {:display-name (i18n/tru "Auto bin")
    :default      true
-   :mbql         {:binning {:strategy :default}}})
+   :mbql         {:strategy :default}})
 
 (defn- dont-bin []
   {:display-name (i18n/tru "Don''t bin")
@@ -89,9 +89,9 @@
 (def ^:private *numeric-binning-strategies
   (delay (mapv with-binning-option-type
                [(default-auto-bin)
-                {:display-name (i18n/tru "10 bins")  :mbql {:binning {:strategy :num-bins :num-bins 10}}}
-                {:display-name (i18n/tru "50 bins")  :mbql {:binning {:strategy :num-bins :num-bins 50}}}
-                {:display-name (i18n/tru "100 bins") :mbql {:binning {:strategy :num-bins :num-bins 100}}}
+                {:display-name (i18n/tru "10 bins")  :mbql {:strategy :num-bins :num-bins 10}}
+                {:display-name (i18n/tru "50 bins")  :mbql {:strategy :num-bins :num-bins 50}}
+                {:display-name (i18n/tru "100 bins") :mbql {:strategy :num-bins :num-bins 100}}
                 (dont-bin)])))
 
 (defn numeric-binning-strategies
@@ -103,10 +103,10 @@
   (delay
     (mapv with-binning-option-type
           [(default-auto-bin)
-           {:display-name (i18n/tru "Bin every 0.1 degrees") :mbql {:binning {:strategy :bin-width :bin-width 0.1}}}
-           {:display-name (i18n/tru "Bin every 1 degree")    :mbql {:binning {:strategy :bin-width :bin-width 1.0}}}
-           {:display-name (i18n/tru "Bin every 10 degrees")  :mbql {:binning {:strategy :bin-width :bin-width 10.0}}}
-           {:display-name (i18n/tru "Bin every 20 degrees")  :mbql {:binning {:strategy :bin-width :bin-width 20.0}}}
+           {:display-name (i18n/tru "Bin every 0.1 degrees") :mbql {:strategy :bin-width :bin-width 0.1}}
+           {:display-name (i18n/tru "Bin every 1 degree")    :mbql {:strategy :bin-width :bin-width 1.0}}
+           {:display-name (i18n/tru "Bin every 10 degrees")  :mbql {:strategy :bin-width :bin-width 10.0}}
+           {:display-name (i18n/tru "Bin every 20 degrees")  :mbql {:strategy :bin-width :bin-width 20.0}}
            (dont-bin)])))
 
 (defn coordinate-binning-strategies
