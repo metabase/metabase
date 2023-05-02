@@ -1,5 +1,5 @@
-import { createSelector } from "reselect";
-import type { Selector } from "reselect";
+import { createSelector } from "@reduxjs/toolkit";
+import type { Selector } from "@reduxjs/toolkit";
 import _ from "underscore";
 
 import { diffDataPermissions } from "metabase/admin/permissions/utils/graph";

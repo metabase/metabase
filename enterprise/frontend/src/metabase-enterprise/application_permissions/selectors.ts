@@ -1,6 +1,6 @@
 import _ from "underscore";
 import { t } from "ttag";
-import { createSelector } from "reselect";
+import { createSelector } from "@reduxjs/toolkit";
 import { getIn } from "icepick";
 import { Group } from "metabase-types/api";
 import { isAdminGroup } from "metabase/lib/groups";
