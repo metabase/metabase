@@ -335,7 +335,7 @@
     (if (and (some? page-size)
              (seq cards)
              (< (count cards) page-size))
-      (fetch-compatible-series card (:name (last cards)) (- page-size (count cards)) new-cards)
+      (fetch-compatible-series card query (:name (last cards)) (- page-size (count cards)) new-cards)
       new-cards))))
 
 (api/defendpoint GET "/:id/series"
