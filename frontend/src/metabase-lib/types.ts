@@ -29,6 +29,9 @@ export type ColumnGroup = unknown & { _opaque: typeof ColumnGroup };
 declare const TemporalBucket: unique symbol;
 export type TemporalBucket = unknown & { _opaque: typeof TemporalBucket };
 
+declare const BinningStrategy: unique symbol;
+export type BinningStrategy = unknown & { _opaque: typeof BinningStrategy };
+
 export type TableDisplayInfo = {
   name: string;
   displayName: string;
@@ -59,6 +62,12 @@ export type BreakoutClauseDisplayInfo = Pick<
   ColumnDisplayInfo,
   "name" | "displayName" | "effectiveType" | "semanticType" | "table"
 >;
+
+export type BinningStrategyDisplayInfo = {
+  displayName: string;
+  default?: boolean;
+  table?: TableInlineDisplayInfo;
+};
 
 export type TemporalBucketDisplayInfo = {
   displayName: string;
