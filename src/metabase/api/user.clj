@@ -12,10 +12,13 @@
    [metabase.email.messages :as messages]
    [metabase.integrations.google :as google]
    [metabase.models.collection :as collection :refer [Collection]]
+   [metabase.models.dashboard :refer [Dashboard]]
+   [metabase.models.interface :as mi]
    [metabase.models.login-history :refer [LoginHistory]]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.user :as user :refer [User]]
    [metabase.plugins.classloader :as classloader]
+   [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
    [metabase.server.middleware.session :as mw.session]
@@ -220,6 +223,16 @@
             (t/offset-date-time))]
     (assoc user :first_login ts)))
 
+(defn add-custom-homepage-info
+  "Adds custom homepage dashboard information to the current user."
+  [user]
+  (let [enabled? (public-settings/custom-homepage)
+        id       (public-settings/custom-homepage-dashboard)
+        can-read? (when (and enabled? id)
+                    (mi/can-read? Dashboard id))]
+    (assoc user :custom_homepage (when can-read?
+                                   {:dashboard_id id}))))
+
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/current"
   "Fetch the current `User`."
@@ -229,7 +242,8 @@
       add-has-question-and-dashboard
       add-first-login
       maybe-add-advanced-permissions
-      maybe-add-sso-source))
+      maybe-add-sso-source
+      add-custom-homepage-info))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:id"
