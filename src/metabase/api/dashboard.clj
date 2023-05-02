@@ -673,8 +673,7 @@
   (let [dashboard (-> (api/write-check Dashboard id)
                       api/check-not-archived
                       (t2/hydrate [:ordered_cards :series :card] :ordered_tabs))
-        new-tabs  (when-not (nil? ordered_tabs)
-                    (map-indexed (fn [idx tab] (assoc tab :position idx)) ordered_tabs))]
+        new-tabs  (map-indexed (fn [idx tab] (assoc tab :position idx)) ordered_tabs)]
     (when (and (seq (:ordered_tabs dashboard))
                (not (every? #(some? (:dashboard_tab_id %)) cards)))
       (throw (ex-info (tru "This dashboard has tab, makes sure every card has a tab")
