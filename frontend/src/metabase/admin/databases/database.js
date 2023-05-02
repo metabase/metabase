@@ -69,15 +69,10 @@ export const CLEAR_INITIALIZE_DATABASE_ERROR =
 export const CLOSE_SYNCING_MODAL =
   "metabase/admin/databases/CLOSE_SYNCING_MODAL";
 
-export const SET_DATABASE_FORM_DIRTY =
-  "metabase/admin/databases/SET_DATABASE_FORM_DIRTY";
-
 export const reset = createAction(RESET);
 
 // selectEngine (uiControl)
 export const selectEngine = createAction(SELECT_ENGINE);
-
-export const setIsDirty = createAction(SET_DATABASE_FORM_DIRTY);
 
 // Migrates old "Enable in-depth database analysis" option to new "Choose when syncs and scans happen" option
 // Migration is run as a separate action because that makes it easy to track in tests
@@ -389,19 +384,8 @@ const sampleDatabase = handleActions(
   { error: undefined, loading: false },
 );
 
-const databaseFormAttributes = handleActions(
-  {
-    [SET_DATABASE_FORM_DIRTY]: (state, { payload }) => ({
-      ...state,
-      isDirty: payload,
-    }),
-  },
-  { isDirty: false },
-);
-
 export default combineReducers({
   editingDatabase,
-  databaseFormAttributes,
   initializeError,
   deletionError,
   deletes,

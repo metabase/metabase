@@ -9,8 +9,6 @@ import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 import { PLUGIN_CACHING } from "metabase/plugins";
 import { DatabaseData, Engine } from "metabase-types/api";
-import { useDispatch } from "metabase/lib/redux";
-import { setIsDirty } from "metabase/admin/databases/database";
 import { getDefaultEngineKey } from "../../utils/engine";
 import {
   getSubmitValues,
@@ -33,6 +31,7 @@ export interface DatabaseFormProps {
   onEngineChange?: (engineKey: string | undefined) => void;
   onCancel?: () => void;
   onUpdate?: (values: DatabaseData) => void;
+  setIsDirty?: (isDirty: boolean) => void;
 }
 
 const DatabaseForm = ({
@@ -44,6 +43,7 @@ const DatabaseForm = ({
   onSubmit,
   onCancel,
   onEngineChange,
+  setIsDirty,
 }: DatabaseFormProps): JSX.Element => {
   const initialEngineKey = getEngineKey(engines, initialData, isAdvanced);
   const [engineKey, setEngineKey] = useState(initialEngineKey);
@@ -91,6 +91,7 @@ const DatabaseForm = ({
         isCachingEnabled={isCachingEnabled}
         onEngineChange={handleEngineChange}
         onCancel={onCancel}
+        setIsDirty={setIsDirty}
       />
     </FormProvider>
   );
@@ -105,6 +106,7 @@ interface DatabaseFormBodyProps {
   isCachingEnabled: boolean;
   onEngineChange: (engineKey: string | undefined) => void;
   onCancel?: () => void;
+  setIsDirty?: (isDirty: boolean) => void;
 }
 
 const DatabaseFormBody = ({
@@ -116,14 +118,13 @@ const DatabaseFormBody = ({
   isCachingEnabled,
   onEngineChange,
   onCancel,
+  setIsDirty,
 }: DatabaseFormBodyProps): JSX.Element => {
   const { values, dirty } = useFormikContext<DatabaseData>();
 
-  const dispatch = useDispatch();
-
   useEffect(() => {
-    dispatch(setIsDirty(dirty));
-  }, [dispatch, dirty]);
+    setIsDirty?.(dirty);
+  }, [dirty, setIsDirty]);
 
   const fields = useMemo(() => {
     return engine ? getVisibleFields(engine, values, isAdvanced) : [];

@@ -1,4 +1,4 @@
-import React, { ComponentType } from "react";
+import React, { ComponentType, useState } from "react";
 import { connect } from "react-redux";
 
 import { t } from "ttag";
@@ -28,11 +28,7 @@ import { State } from "metabase-types/store";
 import useBeforeUnload from "metabase/hooks/use-before-unload";
 import Database from "metabase-lib/metadata/Database";
 
-import {
-  getEditingDatabase,
-  getInitializeError,
-  getIsDatabaseFormDirty,
-} from "../selectors";
+import { getEditingDatabase, getInitializeError } from "../selectors";
 
 import {
   reset,
@@ -76,7 +72,6 @@ interface DatabaseEditAppProps {
   isAdmin: boolean;
   isModelPersistenceEnabled: boolean;
   initializeError?: DatabaseEditErrorType;
-  isDirty: boolean;
 }
 
 const mapStateToProps = (state: State) => {
@@ -87,7 +82,6 @@ const mapStateToProps = (state: State) => {
     initializeError: getInitializeError(state),
     isAdmin: getUserIsAdmin(state),
     isModelPersistenceEnabled: getSetting(state, "persisted-models-enabled"),
-    isDirty: getIsDatabaseFormDirty(state),
   };
 };
 
@@ -129,11 +123,12 @@ function DatabaseEditApp(props: DatabaseEditAppProps) {
     initializeDatabase,
     params,
     saveDatabase,
-    isDirty,
   } = props;
 
   const editingExistingDatabase = database?.id != null;
   const addingNewDatabase = !editingExistingDatabase;
+
+  const [isDirty, setIsDirty] = useState(false);
 
   useBeforeUnload(isDirty);
 
@@ -172,6 +167,7 @@ function DatabaseEditApp(props: DatabaseEditAppProps) {
                       initialValues={database}
                       isAdvanced
                       onSubmit={handleSubmit}
+                      setIsDirty={setIsDirty}
                     />
                   </DatabaseEditForm>
                   <div>{addingNewDatabase && <DatabaseEditHelp />}</div>
