@@ -124,28 +124,6 @@ const DashboardApp = props => {
 
   const dispatch = useDispatch();
 
-  const onTimeout = useCallback(() => {
-    if ("Notification" in window && Notification.permission === "default") {
-      dispatch(
-        addUndo({
-          message: (
-            <>
-              {t`Would you like to be notified when this dashboard is done loading?`}
-              <StyledToasterButton onClick={onConfirmToast}>
-                {t`Turn on`}
-              </StyledToasterButton>
-            </>
-          ),
-        }),
-      );
-    }
-  }, [dispatch, onConfirmToast]);
-
-  useLoadingTimer(isRunning, {
-    timer: DASHBOARD_SLOW_TIMEOUT,
-    onTimeout,
-  });
-
   const [requestPermission, showNotification] = useWebNotification();
 
   useUnmount(props.reset);
@@ -168,6 +146,28 @@ const DashboardApp = props => {
   const onConfirmToast = useCallback(async () => {
     await requestPermission();
   }, [requestPermission]);
+
+  const onTimeout = useCallback(() => {
+    if ("Notification" in window && Notification.permission === "default") {
+      dispatch(
+        addUndo({
+          message: (
+            <>
+              {t`Would you like to be notified when this dashboard is done loading?`}
+              <StyledToasterButton onClick={onConfirmToast}>
+                {t`Turn on`}
+              </StyledToasterButton>
+            </>
+          ),
+        }),
+      );
+    }
+  }, [dispatch, onConfirmToast]);
+
+  useLoadingTimer(isRunning, {
+    timer: DASHBOARD_SLOW_TIMEOUT,
+    onTimeout,
+  });
 
   return (
     <div className="shrink-below-content-size full-height">
