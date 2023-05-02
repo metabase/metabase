@@ -7,6 +7,7 @@ import { singularize } from "metabase/lib/formatting";
 
 import * as Lib from "metabase-lib";
 
+import BinningStrategyPickerPopover from "./BinningStrategyPickerPopover";
 import ColumnPrecisionPickerPopover from "./ColumnPrecisionPickerPopover";
 
 const DEFAULT_MAX_HEIGHT = 610;
@@ -70,22 +71,40 @@ function QueryColumnPicker({
 
   const renderItemExtra = useCallback(
     item => {
-      const temporalBuckets = Lib.availableTemporalBuckets(query, item.column);
+      const binningStrategies = Lib.availableBinningStrategies(
+        query,
+        item.column,
+      );
 
-      if (temporalBuckets.length === 0) {
-        return null;
+      if (binningStrategies.length > 0) {
+        return (
+          <BinningStrategyPickerPopover
+            selectedItem={Lib.binning(query, item.column)}
+            query={query}
+            items={binningStrategies}
+            onSelect={nextStrategy =>
+              onSelect(Lib.withBinning(item.column, nextStrategy))
+            }
+          />
+        );
       }
 
-      return (
-        <ColumnPrecisionPickerPopover
-          selectedItem={Lib.temporalBucket(query, item.column)}
-          query={query}
-          items={temporalBuckets}
-          onSelect={nextBucket =>
-            onSelect(Lib.withTemporalBucket(item.column, nextBucket))
-          }
-        />
-      );
+      const temporalBuckets = Lib.availableTemporalBuckets(query, item.column);
+
+      if (temporalBuckets.length > 0) {
+        return (
+          <ColumnPrecisionPickerPopover
+            selectedItem={Lib.temporalBucket(query, item.column)}
+            query={query}
+            items={temporalBuckets}
+            onSelect={nextBucket =>
+              onSelect(Lib.withTemporalBucket(item.column, nextBucket))
+            }
+          />
+        );
+      }
+
+      return null;
     },
     [query, onSelect],
   );
