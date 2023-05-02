@@ -90,7 +90,7 @@ describe("QueryBuilder", () => {
 
   it("renders a structured question in the notebook mode", async () => {
     await setup({
-      initialRoute: `/question/${TEST_CARD.id}`,
+      initialRoute: `/question/${TEST_CARD.id}/notebook`,
     });
 
     expect(screen.getByDisplayValue(TEST_CARD.name)).toBeInTheDocument();
