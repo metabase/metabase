@@ -346,6 +346,23 @@
             (mt/user-http-request :rasta :post 200 (format "field/%d/discard_values" (mt/id :venues :price))))
           (is (= nil (t2/select-one-fn :values FieldValues, :field_id (mt/id :venues :price)))))))))
 
+(deftest get-field-with-advanced-perms-test
+  (testing "GET /api/field/:id?include_editable_data_model=true"
+    (testing "A non-admin can fetch a field when they have data model perms if include_editable_data_model=true"
+      (with-all-users-data-perms {(mt/id) {:data       {:schemas :block :native :none}
+                                           :data-model {:schemas :all}}}
+        (is (partial= {:id (mt/id :users :name)}
+                      (mt/user-http-request :rasta :get 200 (format "field/%d?include_editable_data_model=true" (mt/id :users :name)))))))
+    (with-all-users-data-perms {(mt/id) {:data       {:schemas :all :native :write}
+                                         :data-model {:schemas {"PUBLIC" {(mt/id :categories) :all
+                                                                          (mt/id :users)      :none}}}}}
+      (testing "A non-admin can fetch a field for which they have data model perms if include_editable_data_model=true"
+        (is (partial= {:id (mt/id :categories :name)}
+                      (mt/user-http-request :rasta :get 200 (format "field/%d?include_editable_data_model=true" (mt/id :categories :name))))))
+      (testing "A non-admin cannot fetch a field for which they do not have data model perms if include_editable_data_model=true"
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :get 403 (format "field/%d?include_editable_data_model=true" (mt/id :users :name)))))))))
+
 (deftest update-table-test
   (mt/with-temp Table [{table-id :id} {:db_id (mt/id) :schema "PUBLIC"}]
     (testing "PUT /api/table/:id"
