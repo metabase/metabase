@@ -177,8 +177,8 @@
                                                   :from   [:report_card]})
                                        (keep (fn [{:keys [id visualization_settings]}]
                                                (let [updated (-> visualization_settings
-                                                                 (:out mi/transform-visualization-settings)
-                                                                 (:in mi/transform-visualization-settings))]
+                                                                 ((:out mi/transform-visualization-settings))
+                                                                 ((:in mi/transform-visualization-settings)))]
                                                  (when (not= visualization_settings updated)
                                                    {:id                     id
                                                     :visualization_settings updated})))))]
