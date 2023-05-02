@@ -7,7 +7,7 @@
    [metabase.driver :as driver]
    [metabase.driver.mysql-test :as mysql-test]
    [metabase.driver.util :as driver.u]
-   [metabase.models :refer [Database Field FieldValues Table]]
+   [metabase.models :refer [Database Dimension Field FieldValues Table]]
    [metabase.sync :as sync]
    [metabase.sync.concurrent :as sync.concurrent]
    [metabase.test :as mt]
@@ -217,6 +217,17 @@
                    (update :visibility_type u/qualified-name))
                (:target (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id) {:fk_target_field_id (:id fk-field-2)}))))))))
 
+(deftest get-field-hydrated-has-field-values-test
+  (testing "PUT /api/field/:id"
+    (testing "has_field_values should be hydrated"
+      (mt/with-temp* [Field [fk-field-1]
+                      Field [fk-field-2]
+                      Field [{field-id :id} {:semantic_type :type/FK, :fk_target_field_id (:id fk-field-1)}]]
+        (is (= (-> fk-field-2
+                   (update :base_type u/qualified-name)
+                   (update :visibility_type u/qualified-name))
+               (:target (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id) {:fk_target_field_id (:id fk-field-2)}))))))))
+
 (deftest remove-fk-semantic-type-test
   (testing "PUT /api/field/:id"
     (testing "when we set the semantic-type from `:type/FK` to something else, make sure `:fk_target_field_id` is set to nil"
@@ -384,6 +395,27 @@
   [field-id map-to-post & {:keys [expected-status-code]
                            :or   {expected-status-code 200}}]
   (mt/user-http-request :crowberto :post expected-status-code (format "field/%d/dimension" field-id) map-to-post))
+
+(deftest update-display-name-dimension-test
+  (testing "Updating a field's display_name should update the dimension's name"
+    (mt/with-temp* [Database  [db    {:name "field-db" :engine :h2}]
+                    Table     [table {:schema "PUBLIC" :name "widget" :db_id (:id db)}]
+                    Field     [field {:name          "sku"
+                                      :display_name  "SKU"
+                                      :base_type     :type/Integer
+                                      :table_id      (:id table)
+                                      :semantic_type :type/Category}]
+                    Field     [human-readable-field {:name "human" :table_id (:id table)}]
+                    Dimension [_dim  {:field_id                (:id field)
+                                      :name                    (:display_name field)
+                                      :human_readable_field_id (:id human-readable-field)}]]
+      (testing "before update"
+        (is (= "SKU"
+               (:name (dimension-for-field (:id field))))))
+      (mt/user-http-request :crowberto :put 200 (format "field/%d" (:id field)) (assoc field :display_name "Stock Keeping Unit"))
+      (testing "after update"
+        (is (= "Stock Keeping Unit"
+               (:name (dimension-for-field (:id field)))))))))
 
 (deftest create-update-dimension-test
   (mt/with-temp* [Field [{field-id :id} {:name "Field Test"}]]
