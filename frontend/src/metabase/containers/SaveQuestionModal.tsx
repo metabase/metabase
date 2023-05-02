@@ -1,5 +1,4 @@
 import React, { Component } from "react";
-import PropTypes from "prop-types";
 import { CSSTransition, TransitionGroup } from "react-transition-group";
 import { t } from "ttag";
 import * as Yup from "yup";
@@ -16,18 +15,20 @@ import Button from "metabase/core/components/Button";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import FormRadio from "metabase/core/components/FormRadio";
 import { canonicalCollectionId } from "metabase/collections/utils";
+import { CollectionId } from "metabase-types/api";
 import * as Errors from "metabase/core/utils/errors";
+import Question from "metabase-lib/Question";
 
 import "./SaveQuestionModal.css";
 
-const getSingleStepTitle = (questionType, showSaveType) => {
+const getSingleStepTitle = (questionType: string, showSaveType: boolean) => {
   if (questionType === "model") {
     return t`Save model`;
   } else if (showSaveType) {
     return t`Save question`;
-  } else {
-    return t`Save new question`;
   }
+
+  return t`Save new question`;
 };
 
 const SAVE_QUESTION_SCHEMA = Yup.object({
@@ -35,60 +36,87 @@ const SAVE_QUESTION_SCHEMA = Yup.object({
   name: Yup.string().when("saveType", {
     // We don't care if the form is valid when overwrite mode is enabled,
     // as original question's data will be submitted instead of the form values
-    is: value => value !== "overwrite",
+    is: (value: string) => value !== "overwrite",
     then: Yup.string().required(Errors.required),
     otherwise: Yup.string().nullable(true),
   }),
 });
 
-export default class SaveQuestionModal extends Component {
-  static propTypes = {
-    question: PropTypes.object.isRequired,
-    originalQuestion: PropTypes.object,
-    onCreate: PropTypes.func.isRequired,
-    onSave: PropTypes.func.isRequired,
-    onClose: PropTypes.func.isRequired,
-    multiStep: PropTypes.bool,
-    initialCollectionId: PropTypes.number,
+interface SaveQuestionModalProps {
+  question: Question;
+  originalQuestion: Question | null;
+  onCreate: (question: Question) => void;
+  onSave: (question: Question) => Promise<void>;
+  onClose: () => void;
+  multiStep?: boolean;
+  initialCollectionId?: number;
+}
+
+interface FormValues {
+  saveType: string;
+  collection_id: CollectionId | null | undefined;
+  name: string;
+  description: string;
+}
+
+const isOverwriteMode = (
+  question: Question | null,
+  saveType: string,
+): question is Question => {
+  return saveType === "overwrite";
+};
+
+export default class SaveQuestionModal extends Component<SaveQuestionModalProps> {
+  handleSubmit = async (details: FormValues) => {
+    const { originalQuestion } = this.props;
+
+    if (isOverwriteMode(originalQuestion, details.saveType)) {
+      await this.handleOverwrite(originalQuestion, details);
+    } else {
+      await this.handleCreate(details);
+    }
   };
 
-  handleSubmit = async details => {
-    const { question, originalQuestion, onCreate, onSave } = this.props;
+  async handleOverwrite(originalQuestion: Question, details: FormValues) {
+    const { question, onSave } = this.props;
 
-    const collectionId = canonicalCollectionId(
-      details.saveType === "overwrite"
-        ? originalQuestion.collectionId()
-        : details.collection_id,
-    );
-    const displayName =
-      details.saveType === "overwrite"
-        ? originalQuestion.displayName()
-        : details.name.trim();
-    const description =
-      details.saveType === "overwrite"
-        ? originalQuestion.description()
-        : details.description
-        ? details.description.trim()
-        : null;
+    const collectionId = canonicalCollectionId(originalQuestion.collectionId());
+    const displayName = originalQuestion.displayName();
+    const description = originalQuestion.description();
 
     const newQuestion = question
       .setDisplayName(displayName)
       .setDescription(description)
       .setCollectionId(collectionId);
 
-    if (details.saveType === "create") {
-      await onCreate(newQuestion);
-    } else if (details.saveType === "overwrite") {
-      await onSave(newQuestion.setId(originalQuestion.id()));
+    await onSave(newQuestion.setId(originalQuestion.id()));
+  }
+
+  async handleCreate(details: FormValues) {
+    if (details.saveType !== "create") {
+      return;
     }
-  };
+
+    const { question, onCreate } = this.props;
+
+    const collectionId = canonicalCollectionId(details.collection_id);
+    const displayName = details.name.trim();
+    const description = details.description ? details.description.trim() : null;
+
+    const newQuestion = question
+      .setDisplayName(displayName)
+      .setDescription(description)
+      .setCollectionId(collectionId);
+
+    await onCreate(newQuestion);
+  }
 
   render() {
     const { question, originalQuestion, initialCollectionId } = this.props;
 
     const isReadonly = originalQuestion != null && !originalQuestion.canWrite();
 
-    const initialValues = {
+    const initialValues: FormValues = {
       name: question.generateQueryDescription(),
       description: question.description() || "",
       collection_id:
