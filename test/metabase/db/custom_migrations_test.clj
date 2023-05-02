@@ -89,9 +89,18 @@
                                                         :collection_id          nil})]
         (migrate!)
         (is (= expected
-               (-> (t2/query {:select [:visualization_settings]
-                              :from   [:report_card]
-                              :where  [:= :id card-id]})
-                   first
+               (-> (t2/query-one {:select [:visualization_settings]
+                                  :from   [:report_card]
+                                  :where  [:= :id card-id]})
                    :visualization_settings
-                   mi/json-out-without-keywordization)))))))
+                   (mi/json-out-without-keywordization))))
+        (is (= (-> expected
+                   (mi/normalize-visualization-settings)
+                   (#'mi/migrate-viz-settings))
+               (-> (t2/query-one {:select [:visualization_settings]
+                                  :from   [:report_card]
+                                  :where  [:= :id card-id]})
+                   :visualization_settings
+                   (mi/json-out-without-keywordization)
+                   (mi/normalize-visualization-settings)
+                   (#'mi/migrate-viz-settings))))))))
