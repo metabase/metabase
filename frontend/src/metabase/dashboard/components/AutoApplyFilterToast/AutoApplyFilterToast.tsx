@@ -70,7 +70,6 @@ export default function AutoApplyFilterToast() {
               <ToasterButton
                 className="ml2"
                 onClick={onTurnOffAutoApplyFilters}
-                aria-label="Confirm"
               >
                 {t`Turn off`}
               </ToasterButton>
