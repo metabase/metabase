@@ -301,7 +301,7 @@
     "build:js": "yarn && webpack --bail",
     "build-watch:js": "yarn && webpack --watch",
     "build-hot:js": "yarn && NODE_OPTIONS=--max-old-space-size=8096 WEBPACK_BUNDLE=hot webpack serve --host 0.0.0.0",
-    "build-release:js": "yarn && WEBPACK_BUNDLE=production NODE_OPTIONS=--max-old-space-size=4096 webpack --bail",
+    "build-release:js": "yarn && WEBPACK_BUNDLE=production webpack --bail",
     "build-release:cljs": "yarn && rm -rf frontend/src/cljs_release/* && shadow-cljs release app",
     "build:cljs": "yarn && rm -rf frontend/src/cljs/* && shadow-cljs compile app",
     "build-watch:cljs": "yarn && shadow-cljs watch app",
