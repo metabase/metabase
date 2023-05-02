@@ -14577,59 +14577,11 @@ databaseChangeLog:
                     nullable: false
   - changeSet:
       id: v47.00-016
-      author: noahmoss
-      comment: Added 0.47.0 - Add new audit_log table
+      author: calherres
+      comment: Added 0.47.0 - Migrate the report_card.visualization_settings.column_settings field refs from legacy format
       changes:
-        - createTable:
-            tableName: audit_log
-            columns:
-              - column:
-                  name: id
-                  type: int
-                  autoIncrement: true
-                  constraints:
-                    primaryKey: true
-                    nullable: false
-              - column:
-                  name: topic
-                  type: varchar(32)
-                  constraints:
-                    nullable: false
-              - column:
-                  name: timestamp
-                  type: DATETIME
-                  constraints:
-                    nullable: false
-              - column:
-                  name: end_timestamp
-                  type: DATETIME
-                  constraints:
-                    nullable: true
-              - column:
-                  name: user_id
-                  type: int
-                  constraints:
-                    nullable: true
-                    referencedTableName: core_user
-                    referencedColumnNames: id
-                    foreignKeyName: fk_activity_log_ref_user_id
-                    deferrable: false
-                    initiallyDeferred: false
-              - column:
-                  name: model
-                  type: varchar(16)
-                  constraints:
-                    nullable: true
-              - column:
-                  name: model_id
-                  type: int
-                  constraints:
-                    nullable: true
-              - column:
-                  name: details
-                  type: ${text.type}
-                  constraints:
-                    nullable: false
+        - customChange:
+            class: "metabase.db.custom_migrations.MigrateLegacyColumnSettingsFieldRefs"
 
   - changeSet:
       id: v47.00-015
@@ -14773,6 +14725,62 @@ databaseChangeLog:
         - dropUniqueConstraint:
             tableName: model_index_value
             constraintName: unique_model_index_value_model_index_id_model_pk
+
+  - changeSet:
+      id: v47.00-021
+      author: noahmoss
+      comment: Added 0.47.0 - Add new audit_log table
+      changes:
+        - createTable:
+            tableName: audit_log
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: topic
+                  type: varchar(32)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: timestamp
+                  type: DATETIME
+                  constraints:
+                    nullable: false
+              - column:
+                  name: end_timestamp
+                  type: DATETIME
+                  constraints:
+                    nullable: true
+              - column:
+                  name: user_id
+                  type: int
+                  constraints:
+                    nullable: true
+                    referencedTableName: core_user
+                    referencedColumnNames: id
+                    foreignKeyName: fk_activity_log_ref_user_id
+                    deferrable: false
+                    initiallyDeferred: false
+              - column:
+                  name: model
+                  type: varchar(16)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: model_id
+                  type: int
+                  constraints:
+                    nullable: true
+              - column:
+                  name: details
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
 
   - changeSet:
       id: v47.00-023
