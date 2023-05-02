@@ -30,7 +30,6 @@ export interface DatabaseFormProps {
   onSubmit?: (values: DatabaseData) => void;
   onEngineChange?: (engineKey: string | undefined) => void;
   onCancel?: () => void;
-  onUpdate?: (values: DatabaseData) => void;
   setIsDirty?: (isDirty: boolean) => void;
 }
 
