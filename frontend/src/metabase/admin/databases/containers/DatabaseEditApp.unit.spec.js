@@ -75,10 +75,10 @@ describe("DatabaseEditApp", () => {
       const databaseForm = await screen.findByLabelText("Display name");
 
       userEvent.type(databaseForm, "Test database");
-      const mockEvent = callMockEvent(mockEventListener, "beforeunload");
-      await waitFor(() => {
-        expect(mockEvent.preventDefault).toHaveBeenCalled();
+      const mockEvent = await waitFor(() => {
+        return callMockEvent(mockEventListener, "beforeunload");
       });
+      expect(mockEvent.preventDefault).toHaveBeenCalled();
       expect(mockEvent.returnValue).toBe(BEFORE_UNLOAD_UNSAVED_MESSAGE);
     });
 
