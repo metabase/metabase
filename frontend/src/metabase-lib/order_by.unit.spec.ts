@@ -1,13 +1,13 @@
 import { createMetadata } from "__support__/sample_database_fixture";
 import { createMockTable } from "metabase-types/api/mocks";
 import { createProductsTitleField } from "metabase-types/api/mocks/presets";
-import { createQuery, findColumn } from "./test-helpers";
+import { createQuery, columnFinder } from "./test-helpers";
 import * as ML from "./v2";
 
 describe("order by", () => {
   describe("orderableColumns", () => {
     const query = createQuery();
-    const findOrderableColumn = findColumn(query, ML.orderableColumns(query));
+    const findOrderableColumn = columnFinder(query, ML.orderableColumns(query));
 
     it("returns metadata for columns in the source table", () => {
       const ordersID = findOrderableColumn("ORDERS", "ID");
@@ -101,7 +101,7 @@ describe("order by", () => {
 
   describe("add order by", () => {
     const query = createQuery();
-    const findOrderableColumn = findColumn(query, ML.orderableColumns(query));
+    const findOrderableColumn = columnFinder(query, ML.orderableColumns(query));
 
     it("should handle no order by clauses", () => {
       expect(ML.orderBys(query)).toHaveLength(0);
@@ -119,7 +119,7 @@ describe("order by", () => {
 
   describe("replace order by", () => {
     const query = createQuery();
-    const findOrderableColumn = findColumn(query, ML.orderableColumns(query));
+    const findOrderableColumn = columnFinder(query, ML.orderableColumns(query));
 
     it("should update the query", () => {
       const productTitle = findOrderableColumn("PRODUCTS", "TITLE");
@@ -144,7 +144,7 @@ describe("order by", () => {
 
   describe("remove order by", () => {
     const query = createQuery();
-    const findOrderableColumn = findColumn(query, ML.orderableColumns(query));
+    const findOrderableColumn = columnFinder(query, ML.orderableColumns(query));
 
     it("should update the query", () => {
       const productTitle = findOrderableColumn("PRODUCTS", "TITLE");

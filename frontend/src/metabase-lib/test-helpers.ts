@@ -43,7 +43,7 @@ export function createQuery({
   return ML.fromLegacyQuery(databaseId, metadataProvider, query);
 }
 
-export const findColumn =
+export const columnFinder =
   (query: ML.Query, columns: ML.ColumnMetadata[]) =>
   (tableName: string, columnName: string): ML.ColumnMetadata => {
     const column = columns.find(column => {

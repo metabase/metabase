@@ -1,10 +1,10 @@
-import { createQuery, findColumn } from "./test-helpers";
+import { createQuery, columnFinder } from "./test-helpers";
 import * as ML from "./v2";
 
 describe("breakout", () => {
   describe("add breakout", () => {
     const query = createQuery();
-    const findBreakoutableColumn = findColumn(
+    const findBreakoutableColumn = columnFinder(
       query,
       ML.breakoutableColumns(query),
     );
@@ -25,7 +25,7 @@ describe("breakout", () => {
 
   describe("replace breakout", () => {
     const query = createQuery();
-    const findBreakoutableColumn = findColumn(
+    const findBreakoutableColumn = columnFinder(
       query,
       ML.breakoutableColumns(query),
     );
@@ -51,7 +51,7 @@ describe("breakout", () => {
 
   describe("remove breakout", () => {
     const query = createQuery();
-    const findBreakoutableColumn = findColumn(
+    const findBreakoutableColumn = columnFinder(
       query,
       ML.breakoutableColumns(query),
     );
