@@ -10,14 +10,14 @@ import {
 } from "./ColumnPrecisionPickerPopover.styled";
 
 interface TemporalBucketPickerPopoverProps {
-  selectedItem?: Lib.TemporalBucket | null;
+  selectedItem?: Lib.Bucket | null;
   query: Lib.Query;
-  items: Lib.TemporalBucket[];
-  onSelect: (item: Lib.TemporalBucket) => void;
+  items: Lib.Bucket[];
+  onSelect: (item: Lib.Bucket) => void;
 }
 
-type TemporalBucketListItem = Lib.TemporalBucketDisplayInfo & {
-  temporalBucket: Lib.TemporalBucket;
+type TemporalBucketListItem = Lib.BucketDisplayInfo & {
+  temporalBucket: Lib.Bucket;
 };
 
 function TemporalBucketPickerPopover({
