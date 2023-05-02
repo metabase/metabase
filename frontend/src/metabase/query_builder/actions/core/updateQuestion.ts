@@ -97,7 +97,7 @@ function shouldTemplateTagEditorBeVisible({
   }
 }
 
-type UpdateQuestionOpts = {
+export type UpdateQuestionOpts = {
   run?: boolean | "auto";
   shouldUpdateUrl?: boolean;
   shouldStartAdHocQuestion?: boolean;
