@@ -10,6 +10,12 @@ type TableSelectorOpts =
     }
   | undefined;
 
+type FieldSelectorOpts =
+  | {
+      includeSensitiveFields?: boolean;
+    }
+  | undefined;
+
 export const getNormalizedDatabases = (state: State) =>
   state.entities.databases;
 export const getNormalizedSchemas = (state: State) => state.entities.schemas;
@@ -26,12 +32,6 @@ const getNormalizedTables = createSelector(
       ? tables
       : filterValues(tables, (table: Table) => table.visibility_type == null),
 );
-
-type FieldSelectorOpts =
-  | {
-      includeSensitiveFields?: boolean;
-    }
-  | undefined;
 
 const getNormalizedFieldsUnfiltered = (state: State) => state.entities.fields;
 const getIncludeSensitiveFields = (_state: State, props: FieldSelectorOpts) =>
