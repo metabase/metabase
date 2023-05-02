@@ -52,6 +52,12 @@
                                                    :value_ref value_ref})
                 by-key      (fn [k xs]
                               (some (fn [x] (when (= (:key x) k) x)) xs))]
+            (testing "We can get the model index"
+              (is (=? {:generation 1
+                       :state      "indexed"
+                       :model_id   (:id model)
+                       :error      nil}
+                      (mt/user-http-request :rasta :get 200 (str "/model-index/" (:id model))))))
             (testing "There's a task to sync the values"
               (let [index-trigger (->> (task/scheduler-info)
                                        :jobs
