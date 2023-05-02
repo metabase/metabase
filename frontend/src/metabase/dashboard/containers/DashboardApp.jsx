@@ -57,8 +57,8 @@ import {
   getIsLoadingComplete,
   getIsHeaderVisible,
   getIsAdditionalInfoVisible,
+  getSelectedTabId,
 } from "../selectors";
-import { getSelectedTabId } from "../components/DashboardTabs";
 
 function getDashboardId({ dashboardId, params }) {
   if (dashboardId) {

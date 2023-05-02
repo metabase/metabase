@@ -13,9 +13,9 @@ import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
 
 import Question from "metabase-lib/Question";
 
-import { isVirtualDashCard } from "./utils";
+import { isVirtualDashCard } from "../utils";
+import { getDashboardId } from "./selectors_typed";
 
-export const getDashboardId = state => state.dashboard.dashboardId;
 export const getIsEditing = state => !!state.dashboard.isEditing;
 export const getDashboardBeforeEditing = state => state.dashboard.isEditing;
 export const getClickBehaviorSidebarDashcard = state => {
