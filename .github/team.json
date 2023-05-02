@@ -1,0 +1,48 @@
+{
+  "teams": [
+    {
+      "name": "App Viz",
+      "label": ".Team/Viz 📊",
+      "members": [
+        "alxnddr",
+        "iethree",
+        "npfitz",
+        "EmmadUsmani",
+        "JesseSDevaney"
+      ]
+    },
+    {
+      "name": "Query Builder",
+      "label": ".Team/QueryBuilder 🧮",
+      "members": [
+        "ranquild",
+        "WiNloSt",
+        "deniskaber",
+        "oisincoveney",
+        "uladzimirdev"
+      ]
+    },
+    {
+      "name": "App BE",
+      "label": ".Team/Backend 🥞",
+      "members": ["dpsutton", "tsmacdonald", "qnkhuat", "calherries"]
+    },
+    {
+      "name": "Query Processor",
+      "label": ".Team/QueryProcessor 🛠️",
+      "members": [
+        "camsaul",
+        "kulyk",
+        "snoe",
+        "bshepherdson",
+        "john-metabase",
+        "metamben"
+      ]
+    },
+    {
+      "name": "Fun Police",
+      "label": ".Team/FunPolice 👮",
+      "members": ["noahmoss", "escherize", "adam-james-v"]
+    }
+  ]
+}
