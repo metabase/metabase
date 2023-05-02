@@ -26,11 +26,8 @@ export type ColumnMetadata = unknown & { _opaque: typeof ColumnMetadata };
 declare const ColumnGroup: unique symbol;
 export type ColumnGroup = unknown & { _opaque: typeof ColumnGroup };
 
-declare const TemporalBucket: unique symbol;
-export type TemporalBucket = unknown & { _opaque: typeof TemporalBucket };
-
-declare const BinningStrategy: unique symbol;
-export type BinningStrategy = unknown & { _opaque: typeof BinningStrategy };
+declare const Bucket: unique symbol;
+export type Bucket = unknown & { _opaque: typeof Bucket };
 
 export type TableDisplayInfo = {
   name: string;
@@ -63,16 +60,9 @@ export type BreakoutClauseDisplayInfo = Pick<
   "name" | "displayName" | "table"
 >;
 
-export type BinningStrategyDisplayInfo = {
+export type BucketDisplayInfo = {
   displayName: string;
   default?: boolean;
-  table?: TableInlineDisplayInfo;
-};
-
-export type TemporalBucketDisplayInfo = {
-  displayName: string;
-  default: boolean | null;
-  table?: TableInlineDisplayInfo;
 };
 
 export type OrderByClauseDisplayInfo = Pick<
