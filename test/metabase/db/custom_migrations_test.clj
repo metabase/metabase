@@ -8,10 +8,10 @@
    [clojurewerkz.quartzite.scheduler :as qs]
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.db.schema-migrations-test.impl :as impl]
-   [metabase.models.interface :as mi]
    [metabase.models :refer [User
                             Database
                             Card]]
+   [metabase.models.interface :as mi]
    [metabase.task :as task]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
@@ -74,10 +74,10 @@
                                                         :password    "superstrong"
                                                         :date_joined :%now})
             database-id (t2/insert-returning-pks! Database {:name       "DB"
-                                                     :engine     "h2"
-                                                     :created_at :%now
-                                                     :updated_at :%now
-                                                     :details    "{}"})
+                                                            :engine     "h2"
+                                                            :created_at :%now
+                                                            :updated_at :%now
+                                                            :details    "{}"})
             card-id     (t2/insert-returning-pks! Card {:name                   "My Saved Question"
                                                         :created_at             :%now
                                                         :updated_at             :%now
