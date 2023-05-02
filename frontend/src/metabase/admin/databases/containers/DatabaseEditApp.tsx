@@ -55,7 +55,7 @@ import {
 } from "./DatabaseEditApp.styled";
 
 interface DatabaseEditAppProps {
-  database: Database & DatabaseData;
+  database: Database;
   params: { databaseId: DatabaseId };
   reset: () => void;
   initializeDatabase: (databaseId: DatabaseId) => void;
