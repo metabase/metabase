@@ -101,5 +101,5 @@ export function addTextBox(string, options = {}) {
 }
 
 export function openQuestionsSidebar() {
-  cy.get(".QueryBuilder-section .Icon-add").click();
+  cy.findByLabelText("add questions").click();
 }
