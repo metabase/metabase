@@ -40,6 +40,6 @@
                     (lib/aggregate [:metric {:lib/uuid (str (random-uuid))} "ga:totalEvents"]))]
       (is (=? [{:lib/type     :metadata/field
                 :name         "metric"
-                :display_name "[Unknown Metric]"
-                :base_type    :type/*}]
+                :display-name "[Unknown Metric]"
+                :base-type    :type/*}]
               (lib.metadata.calculation/metadata query -1 query))))))

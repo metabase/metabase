@@ -9,6 +9,7 @@ import { QueryBuilderState } from "./qb";
 import { ParametersState } from "./parameters";
 import { SettingsState } from "./settings";
 import { SetupState } from "./setup";
+import { FileUploadState } from "./upload";
 
 export interface State {
   admin: AdminState;
@@ -22,6 +23,7 @@ export interface State {
   parameters: ParametersState;
   settings: SettingsState;
   setup: SetupState;
+  upload: FileUploadState;
 }
 
 export type Dispatch<T = any> = (action: T) => void;

@@ -35,10 +35,6 @@
   [legacy-query]
   (or
    *skip-conversion-tests*
-   ;; #29897: `:datetime-diff` is not handled correctly.
-   (mbql.u/match-one legacy-query
-     :datetime-diff
-     "#29897")
    ;; #29904: `:fields` in `:joins` are supposed to be returned even if `:fields` is specified.
    (mbql.u/match-one legacy-query
      {:fields fields, :joins joins}
@@ -79,10 +75,6 @@
    (mbql.u/match-one legacy-query
      {:case-sensitive _case-sensitive?}
      "#29950")
-   ;; #29953: `:aggregation` and `:expression` refs with `nil` options
-   (mbql.u/match-one legacy-query
-     [:aggregation _index nil] "#29953"
-     [:expression _name nil]   "#29953")
    ;; #29958: `:convert-timezone` with 2 args is broken
    (mbql.u/match-one legacy-query
      [:convert-timezone _expr _source-timezone]
