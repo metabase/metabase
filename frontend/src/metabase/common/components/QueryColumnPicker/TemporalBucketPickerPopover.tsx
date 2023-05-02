@@ -9,7 +9,7 @@ import {
   SelectListItem,
 } from "./ColumnPrecisionPickerPopover.styled";
 
-interface ColumnPrecisionPickerPopoverProps {
+interface TemporalBucketPickerPopoverProps {
   selectedItem?: Lib.TemporalBucket | null;
   query: Lib.Query;
   items: Lib.TemporalBucket[];
@@ -20,12 +20,12 @@ type TemporalBucketListItem = Lib.TemporalBucketDisplayInfo & {
   temporalBucket: Lib.TemporalBucket;
 };
 
-function ColumnPrecisionPickerPopover({
+function TemporalBucketPickerPopover({
   selectedItem,
   query,
   items,
   onSelect,
-}: ColumnPrecisionPickerPopoverProps) {
+}: TemporalBucketPickerPopoverProps) {
   const displayableItems: TemporalBucketListItem[] = useMemo(
     () =>
       items.map(temporalBucket => ({
@@ -70,4 +70,4 @@ function ColumnPrecisionPickerPopover({
   );
 }
 
-export default ColumnPrecisionPickerPopover;
+export default TemporalBucketPickerPopover;
