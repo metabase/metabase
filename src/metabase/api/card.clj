@@ -219,22 +219,29 @@
   (fn [card _second-card]
    (:display card)))
 
+(defn- cols->kebab-case
+  [cols]
+  (map #(update-keys % u/->kebab-case-en) cols))
+
 (defn- area-bar-line-serie-are-compatible?
   [first-card second-card]
   (and (#{:area :line :bar} (:display second-card))
-       (let [initial-dimensions (card-columns-from-names
-                                  first-card
-                                  (get-in first-card [:visualization_settings :graph.dimensions]))
-             new-dimensions     (card-columns-from-names
-                                  second-card
-                                  (get-in second-card [:visualization_settings :graph.dimensions]))
-             new-metrics        (card-columns-from-names
-                                 second-card
-                                 (get-in second-card [:visualization_settings :graph.metrics]))]
+       (let [initial-dimensions (cols->kebab-case
+                                  (card-columns-from-names
+                                         first-card
+                                         (get-in first-card [:visualization_settings :graph.dimensions])))
+             new-dimensions     (cols->kebab-case
+                                  (card-columns-from-names
+                                         second-card
+                                         (get-in second-card [:visualization_settings :graph.dimensions])))
+             new-metrics        (cols->kebab-case
+                                  (card-columns-from-names
+                                         second-card
+                                         (get-in second-card [:visualization_settings :graph.metrics])))]
          (cond
            ;; must have at least one dimension and one metric
            (or (zero? (count new-dimensions))
-             (zero? (count new-metrics)))
+               (zero? (count new-metrics)))
            false
 
            ;; all metrics must be numeric
