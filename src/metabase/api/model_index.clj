@@ -5,16 +5,10 @@
    [metabase.api.common :as api]
    [metabase.models.card :refer [Card]]
    [metabase.models.model-index :as model-index :refer [ModelIndex]]
-   [metabase.sync.schedules :as sync.schedules]
-   [metabase.util.cron :as u.cron]
+   [metabase.task.index-values :as task.index-values]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
-
-(defn default-schedule
-  "Default sync schedule for indexed values. Defaults to randomly once a day."
-  []
-  (u.cron/schedule-map->cron-string (sync.schedules/randomly-once-a-day)))
 
 (api/defendpoint POST "/"
   [:as {{:keys [model_id pk_ref value_ref] :as _model-index} :body}]
@@ -29,18 +23,18 @@
                       {:missing missing
                        :present field_refs})))
     ;; todo: do we care if there's already an index on that model?
-    (t2/insert! ModelIndex {:model_id   model_id
-                            ;; todo: sanitize these?
-                            :pk_ref     pk_ref
-                            :value_ref  value_ref
-                            :generation 0
-                            :schedule   (default-schedule)
-                            :state      "initial"
-                            :creator_id api/*current-user-id*})))
+    (let [model-index (model-index/create {:model-id   model_id
+                                           :pk-ref     pk_ref
+                                           :value-ref  value_ref
+                                           :creator-id api/*current-user-id*})]
+      (task.index-values/add-indexing-job model-index)
+      (model-index/add-values! model-index)
+      (t2/select-one ModelIndex :id (:id model-index)))))
 
 (api/defendpoint DELETE "/:id"
   [id]
-  (let [model-index (api/read-check ModelIndex id)]
+  {id ms/PositiveInt}
+  (api/let-404 [model-index (t2/select-one ModelIndex :id id)]
     (api/read-check Card (:model_id model-index))
     (t2/delete! ModelIndex id)))
 
