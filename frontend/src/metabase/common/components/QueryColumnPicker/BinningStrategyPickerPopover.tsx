@@ -9,14 +9,14 @@ import {
 } from "./ColumnPrecisionPickerPopover.styled";
 
 interface BinningStrategyPickerPopoverProps {
-  selectedItem?: Lib.BinningStrategy | null;
+  selectedItem?: Lib.Bucket | null;
   query: Lib.Query;
-  items: Lib.BinningStrategy[];
-  onSelect: (item: Lib.BinningStrategy) => void;
+  items: Lib.Bucket[];
+  onSelect: (item: Lib.Bucket) => void;
 }
 
-type BinningStrategyListItem = Lib.BinningStrategyDisplayInfo & {
-  binningStrategy: Lib.BinningStrategy;
+type BinningStrategyListItem = Lib.BucketDisplayInfo & {
+  binningStrategy: Lib.Bucket;
 };
 
 function BinningStrategyPickerPopover({

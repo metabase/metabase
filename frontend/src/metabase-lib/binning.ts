@@ -1,24 +1,18 @@
 import { to_array } from "cljs/cljs.core";
 import * as ML from "cljs/metabase.lib.core";
-import type { BinningStrategy, ColumnMetadata, Query } from "./types";
+import type { Bucket, ColumnMetadata, Query } from "./types";
 
-export function binning(
-  query: Query,
-  column: ColumnMetadata,
-): BinningStrategy | null {
+export function binning(query: Query, column: ColumnMetadata): Bucket | null {
   return ML.binning(query, column);
 }
 
 export function availableBinningStrategies(
   query: Query,
   column: ColumnMetadata,
-): BinningStrategy[] {
+): Bucket[] {
   return to_array(ML.available_binning_strategies(query, column));
 }
 
-export function withBinning(
-  column: ColumnMetadata,
-  binningStrategy: BinningStrategy,
-) {
+export function withBinning(column: ColumnMetadata, binningStrategy: Bucket) {
   return ML.with_binning(column, binningStrategy);
 }
