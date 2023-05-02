@@ -38,9 +38,9 @@ import {
   UNDO_REMOVE_CARD_FROM_DASH,
   SET_LOADING_DASHCARDS_COMPLETE,
   TIME_OUT_FETCH_DASHBOARD_CARD_DATA,
-  SET_READY,
-  SET_NEVER,
-  DISMISS_TOAST,
+  SET_READY_FOR_AUTO_APPLY_FILTERS_TOAST,
+  SET_NEVER_SHOW_AUTO_APPLY_FILTERS_TOAST,
+  DISMISS_AUTO_APPLY_FILTERS_TOAST,
   START_FETCH_DASHBOARD_CARD_DATA_TIMEOUT,
 } from "./actions";
 
@@ -348,7 +348,7 @@ const draftParameterValues = handleActions(
 
 const autoApplyFiltersToast = handleActions(
   {
-    [SET_READY]: {
+    [SET_READY_FOR_AUTO_APPLY_FILTERS_TOAST]: {
       next: state => {
         if (state.stateName === "never") {
           return assoc(state, "stateName", "ready");
@@ -357,7 +357,7 @@ const autoApplyFiltersToast = handleActions(
         return state;
       },
     },
-    [SET_NEVER]: {
+    [SET_NEVER_SHOW_AUTO_APPLY_FILTERS_TOAST]: {
       next: state => assoc(state, "stateName", "never"),
     },
     [START_FETCH_DASHBOARD_CARD_DATA_TIMEOUT]: {
@@ -396,7 +396,7 @@ const autoApplyFiltersToast = handleActions(
         return state;
       },
     },
-    [DISMISS_TOAST]: {
+    [DISMISS_AUTO_APPLY_FILTERS_TOAST]: {
       next: state => {
         if (state.stateName === "shown") {
           return assoc(state, "stateName", "ready");
