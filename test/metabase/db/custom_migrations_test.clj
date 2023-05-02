@@ -95,25 +95,25 @@
                                     :from   [:report_card]
                                     :where  [:= :id card-id]})
                      :visualization_settings
-                     (mi/json-out-without-keywordization)))))
+                     json/parse-string))))
         (testing "legacy column_settings are updated to the current format"
           (is (= (-> visualization-settings
-                     (mi/normalize-visualization-settings)
+                     mi/normalize-visualization-settings
                      (#'mi/migrate-viz-settings)
-                     (walk/stringify-keys))
+                     walk/stringify-keys)
                  (-> (t2/query-one {:select [:visualization_settings]
                                     :from   [:report_card]
                                     :where  [:= :id card-id]})
                      :visualization_settings
-                     (mi/json-out-without-keywordization)))))
+                     json/parse-string))))
         (testing "visualization_settings are equivalent before and after migration"
           (is (= (-> visualization-settings
-                     (mi/normalize-visualization-settings)
+                     mi/normalize-visualization-settings
                      (#'mi/migrate-viz-settings))
                  (-> (t2/query-one {:select [:visualization_settings]
                                     :from   [:report_card]
                                     :where  [:= :id card-id]})
                      :visualization_settings
-                     (mi/json-out-without-keywordization)
-                     (mi/normalize-visualization-settings)
+                     json/parse-string
+                     mi/normalize-visualization-settings
                      (#'mi/migrate-viz-settings)))))))))
