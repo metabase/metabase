@@ -60,7 +60,7 @@ export type ColumnDisplayInfo = {
 
 export type BreakoutClauseDisplayInfo = Pick<
   ColumnDisplayInfo,
-  "name" | "displayName" | "effectiveType" | "semanticType" | "table"
+  "name" | "displayName" | "table"
 >;
 
 export type BinningStrategyDisplayInfo = {
