@@ -8,6 +8,7 @@ import Icon from "metabase/components/Icon";
 import Button from "metabase/core/components/Button";
 
 import { cancelable } from "metabase/lib/promise";
+import { SmallSpinner } from "./ActionButton.styled";
 
 export default class ActionButton extends Component {
   constructor(props) {
@@ -96,6 +97,7 @@ export default class ActionButton extends Component {
       activeText,
       failedText,
       successText,
+      useLoadingSpinner = false,
       // eslint-disable-next-line no-unused-vars
       actionFn,
       className,
@@ -125,7 +127,11 @@ export default class ActionButton extends Component {
       >
         {active ? (
           // TODO: loading spinner
-          activeText
+          useLoadingSpinner ? (
+            <SmallSpinner />
+          ) : (
+            activeText
+          )
         ) : result === "success" ? (
           <span>
             {forceActiveStyle ? null : <Icon name="check" size={12} />}
