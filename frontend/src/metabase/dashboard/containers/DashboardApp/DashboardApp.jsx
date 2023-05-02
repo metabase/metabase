@@ -34,8 +34,7 @@ import Dashboards from "metabase/entities/dashboards";
 
 import { useDispatch } from "metabase/lib/redux";
 import { addUndo } from "metabase/redux/undo";
-import { ToasterButton } from "metabase/components/Toaster/Toaster.styled";
-import * as dashboardActions from "../actions";
+import * as dashboardActions from "../../actions";
 import {
   getIsEditing,
   getIsSharing,
@@ -59,9 +58,10 @@ import {
   getIsLoadingComplete,
   getIsHeaderVisible,
   getIsAdditionalInfoVisible,
-} from "../selectors";
-import { DASHBOARD_SLOW_TIMEOUT } from "../constants";
-import AutoApplyFilterToast from "../components/AutoApplyFilterToast/AutoApplyFilterToast";
+} from "../../selectors";
+import { DASHBOARD_SLOW_TIMEOUT } from "../../constants";
+import AutoApplyFilterToast from "../../components/AutoApplyFilterToast/AutoApplyFilterToast";
+import { StyledToasterButton } from "./DashboardApp.styled";
 
 function getDashboardId({ dashboardId, params }) {
   if (dashboardId) {
@@ -130,9 +130,9 @@ const DashboardApp = props => {
           message: (
             <>
               {t`Would you like to be notified when this dashboard is done loading?`}
-              <ToasterButton className="ml2" onClick={onConfirmToast}>
+              <StyledToasterButton onClick={onConfirmToast}>
                 {t`Turn on`}
-              </ToasterButton>
+              </StyledToasterButton>
             </>
           ),
         }),
