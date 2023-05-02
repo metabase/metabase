@@ -28,20 +28,23 @@ export function modifyPermission(
           }
         });
     }
-    cy.findByText(value).click();
+    value && cy.findByText(value).click();
   });
 }
 
 function getPermissionRowPermissions(item) {
   return cy
-    .get("tbody > tr")
+    .findByTestId("permission-table")
+    .find("tbody > tr")
     .contains(item)
     .closest("tr")
     .findAllByTestId("permissions-select");
 }
 
 export function assertPermissionTable(rows) {
-  cy.get("tbody > tr").should("have.length", rows.length);
+  cy.findByTestId("permission-table")
+    .find("tbody > tr")
+    .should("have.length", rows.length);
 
   rows.forEach(row => {
     const [item, ...permissions] = row;

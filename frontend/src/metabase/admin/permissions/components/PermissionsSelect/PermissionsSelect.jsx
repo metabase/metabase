@@ -131,7 +131,14 @@ export const PermissionsSelect = memo(function PermissionsSelect({
           {toggleLabel && (
             <ToggleContainer>
               <ToggleLabel>{toggleLabel}</ToggleLabel>
-              <Toggle small value={toggleState} onChange={setToggleState} />
+              <Toggle
+                small
+                value={toggleState}
+                onChange={value => {
+                  setToggleState(value);
+                  onChange(selectedOption.value, value);
+                }}
+              />
             </ToggleContainer>
           )}
         </React.Fragment>
