@@ -36,7 +36,7 @@ describe("scenarios > admin > datamodel > editor", () => {
     });
 
     it("should allow changing the table name", () => {
-      visitTable();
+      visitTableMetadata();
       setValueAndBlurInput("Orders", "New orders");
       cy.wait("@updateTable");
       cy.findByText("Updated Table display_name");
@@ -50,7 +50,7 @@ describe("scenarios > admin > datamodel > editor", () => {
     });
 
     it("should allow changing the table description", () => {
-      visitTable();
+      visitTableMetadata();
       setValueAndBlurInput(ORDERS_DESCRIPTION, "New description");
       cy.wait("@updateTable");
       cy.findByText("Updated Table description");
@@ -61,7 +61,7 @@ describe("scenarios > admin > datamodel > editor", () => {
     });
 
     it("should allow clearing the table description", () => {
-      visitTable();
+      visitTableMetadata();
       clearAndBlurInput(ORDERS_DESCRIPTION);
       cy.wait("@updateTable");
       cy.findByText("Updated Table description");
@@ -72,7 +72,7 @@ describe("scenarios > admin > datamodel > editor", () => {
     });
 
     it("should allow changing the table visibility", () => {
-      visitTable();
+      visitTableMetadata();
       cy.findByText("Hidden").click();
       cy.wait("@updateTable");
       cy.findByText("Updated Table visibility_type");
@@ -85,7 +85,7 @@ describe("scenarios > admin > datamodel > editor", () => {
         cy.findByText("Orders").should("not.exist");
       });
 
-      visitTable();
+      visitTableMetadata();
       cy.findByText("Queryable").click();
       cy.wait("@updateTable");
       cy.findByText("4 Hidden Tables").should("be.visible");
@@ -99,7 +99,7 @@ describe("scenarios > admin > datamodel > editor", () => {
     });
 
     it("should allow changing the field name", () => {
-      visitTable();
+      visitTableMetadata();
       getFieldSection("TAX").within(() =>
         setValueAndBlurInput("Tax", "New tax"),
       );
@@ -112,7 +112,7 @@ describe("scenarios > admin > datamodel > editor", () => {
     });
 
     it("should allow changing the field description", () => {
-      visitTable();
+      visitTableMetadata();
       getFieldSection("TOTAL").within(() =>
         setValueAndBlurInput("The total billed amount.", "New description"),
       );
@@ -127,7 +127,7 @@ describe("scenarios > admin > datamodel > editor", () => {
     });
 
     it("should allow clearing the field description", () => {
-      visitTable();
+      visitTableMetadata();
       getFieldSection("TOTAL").within(() =>
         clearAndBlurInput("The total billed amount."),
       );
@@ -142,7 +142,7 @@ describe("scenarios > admin > datamodel > editor", () => {
     });
 
     it("should allow changing the field visibility", () => {
-      visitTable();
+      visitTableMetadata();
       getFieldSection("TAX").findByText("Everywhere").click();
       setSelectValue("Do not include");
       cy.wait("@updateField");
@@ -154,7 +154,7 @@ describe("scenarios > admin > datamodel > editor", () => {
     });
 
     it("should allow changing the field semantic type and currency", () => {
-      visitTable();
+      visitTableMetadata();
       getFieldSection("TAX").findByText("No semantic type").click();
       searchAndSelectValue("Currency");
       cy.wait("@updateField");
@@ -169,7 +169,7 @@ describe("scenarios > admin > datamodel > editor", () => {
     });
 
     it("should allow changing the field foreign key target", () => {
-      visitTable();
+      visitTableMetadata();
       getFieldSection("USER_ID").findByText("People → ID").click();
       setSelectValue("Products → ID");
       cy.wait("@updateField");
@@ -188,7 +188,7 @@ describe("scenarios > admin > datamodel > editor", () => {
     });
 
     it("should allow sorting fields", () => {
-      visitTable();
+      visitTableMetadata();
 
       cy.findByLabelText("Sort").click();
       popover().findByText("Alphabetical").click();
@@ -204,12 +204,12 @@ describe("scenarios > admin > datamodel > editor", () => {
     });
 
     it("should allow hiding and restoring all tables in a schema", () => {
-      visitTable();
+      visitTableMetadata();
       cy.findByText("4 Queryable Tables").should("be.visible");
       cy.findByLabelText("Hide all").click();
       cy.wait("@updateTables");
 
-      visitTable();
+      visitTableMetadata();
       cy.findByText("8 Hidden Tables").should("be.visible");
       cy.findByLabelText("Unhide all").click();
       cy.wait("@updateTables");
@@ -224,7 +224,7 @@ describe("scenarios > admin > datamodel > editor", () => {
     });
 
     it("should allow changing the field name", () => {
-      visitField({ fieldId: ORDERS.TAX });
+      visitFieldMetadata({ fieldId: ORDERS.TAX });
       setValueAndBlurInput("Tax", "New tax"), cy.wait("@updateField");
       cy.findByText("Updated Tax").should("be.visible");
 
@@ -234,7 +234,7 @@ describe("scenarios > admin > datamodel > editor", () => {
     });
 
     it("should allow changing the field description", () => {
-      visitField({ fieldId: ORDERS.TOTAL });
+      visitFieldMetadata({ fieldId: ORDERS.TOTAL });
       setValueAndBlurInput("The total billed amount.", "New description");
       cy.wait("@updateField");
       cy.findByText("Updated Total").should("be.visible");
@@ -247,7 +247,7 @@ describe("scenarios > admin > datamodel > editor", () => {
     });
 
     it("should allow changing the field visibility", () => {
-      visitField({ fieldId: ORDERS.TAX });
+      visitFieldMetadata({ fieldId: ORDERS.TAX });
       cy.findByText("Everywhere").click();
       setSelectValue("Do not include");
       cy.wait("@updateField");
@@ -259,7 +259,7 @@ describe("scenarios > admin > datamodel > editor", () => {
     });
 
     it("should allow changing the field semantic type and currency", () => {
-      visitField({ fieldId: ORDERS.TAX });
+      visitFieldMetadata({ fieldId: ORDERS.TAX });
       cy.findByText("No semantic type").click();
       searchAndSelectValue("Currency");
       cy.wait("@updateField");
@@ -274,7 +274,7 @@ describe("scenarios > admin > datamodel > editor", () => {
     });
 
     it("should allow changing the field foreign key target", () => {
-      visitField({ fieldId: ORDERS.USER_ID });
+      visitFieldMetadata({ fieldId: ORDERS.USER_ID });
       cy.findByText("People → ID").click();
       setSelectValue("Products → ID");
       cy.wait("@updateField");
@@ -308,7 +308,7 @@ describe("scenarios > admin > datamodel > editor", () => {
 
     it("should allow changing the table name with data model permissions only", () => {
       cy.signIn("none");
-      visitTable();
+      visitTableMetadata();
       setValueAndBlurInput("Orders", "New orders");
       cy.wait("@updateTable");
       cy.findByText("Updated Table display_name");
@@ -326,14 +326,14 @@ describe("scenarios > admin > datamodel > editor", () => {
     it("should allow changing the field name with data model permissions only", () => {
       cy.signIn("none");
 
-      visitTable();
+      visitTableMetadata();
       getFieldSection("TAX").within(() =>
         setValueAndBlurInput("Tax", "New tax"),
       );
       cy.wait("@updateField");
       cy.findByText("Updated Tax").should("be.visible");
 
-      visitField({ fieldId: ORDERS.TOTAL });
+      visitFieldMetadata({ fieldId: ORDERS.TOTAL });
       setValueAndBlurInput("Total", "New total");
       cy.wait("@updateField");
       cy.findByText("Updated Total").should("be.visible");
@@ -354,7 +354,7 @@ describe("scenarios > admin > datamodel > editor", () => {
     });
 
     it("should be able to select and update a table in a database without schemas", () => {
-      visitTable({
+      visitTableMetadata({
         databaseId: MYSQL_DB_SCHEMA_ID,
         schemaId: MYSQL_DB_SCHEMA_ID,
       });
@@ -363,7 +363,7 @@ describe("scenarios > admin > datamodel > editor", () => {
     });
 
     it("should be able to select and update a field in a database without schemas", () => {
-      visitTable({
+      visitTableMetadata({
         databaseId: MYSQL_DB_SCHEMA_ID,
         schemaId: MYSQL_DB_SCHEMA_ID,
       });
@@ -374,7 +374,7 @@ describe("scenarios > admin > datamodel > editor", () => {
   });
 });
 
-const visitTable = ({
+const visitTableMetadata = ({
   databaseId = SAMPLE_DB_ID,
   schemaId = SAMPLE_DB_SCHEMA_ID,
   tableId = ORDERS_ID,
@@ -385,14 +385,14 @@ const visitTable = ({
   cy.wait("@fetchMetadata");
 };
 
-const visitField = ({
+const visitFieldMetadata = ({
   databaseId = SAMPLE_DB_ID,
   schemaId = SAMPLE_DB_SCHEMA_ID,
   tableId = ORDERS_ID,
   fieldId,
 }) => {
   cy.visit(
-    `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/field/${fieldId}`,
+    `/admin/datamodel/database/${databaseId}/schema/${schemaId}/table/${tableId}/field/${fieldId}`,
   );
   cy.wait("@fetchMetadata");
 };
