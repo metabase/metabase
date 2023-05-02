@@ -9,11 +9,11 @@ import {
   getParameterValues,
 } from "metabase/dashboard/selectors";
 import {
-  dismissToast,
+  dismissAutoApplyFiltersToast,
   saveDashboardAndCards,
   setDashboardAttributes,
-  setNever,
-  setReady,
+  setNeverShowAutoApplyFiltersToast,
+  setReadyForAutoApplyFiltersToast,
 } from "metabase/dashboard/actions";
 import { addUndo } from "metabase/redux/undo";
 import { ToasterButton } from "metabase/components/Toaster/Toaster.styled";
@@ -41,15 +41,15 @@ export default function AutoApplyFilterToast() {
 
   useEffect(() => {
     if (isReadyForToast) {
-      dispatch(setReady());
+      dispatch(setReadyForAutoApplyFiltersToast());
     } else {
-      dispatch(setNever());
+      dispatch(setNeverShowAutoApplyFiltersToast());
     }
   }, [dispatch, isReadyForToast]);
 
   useEffect(() => {
     if (autoApplyFiltersToastStateName === "shown") {
-      dispatch(dismissToast());
+      dispatch(dismissAutoApplyFiltersToast());
       const onTurnOffAutoApplyFilters = () => {
         dispatch(
           setDashboardAttributes({

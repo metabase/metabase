@@ -205,17 +205,23 @@ export const applyDraftParameterValues = createThunkAction(
   },
 );
 
-// XXX: Fix name
-export const SET_READY = "SET_READY";
-export const setReady = createAction(SET_READY);
+export const SET_READY_FOR_AUTO_APPLY_FILTERS_TOAST =
+  "SET_READY_FOR_AUTO_APPLY_FILTERS_TOAST";
+export const setReadyForAutoApplyFiltersToast = createAction(
+  SET_READY_FOR_AUTO_APPLY_FILTERS_TOAST,
+);
 
-// XXX: Fix name
-export const SET_NEVER = "SET_NEVER";
-export const setNever = createAction(SET_NEVER);
+export const SET_NEVER_SHOW_AUTO_APPLY_FILTERS_TOAST =
+  "SET_NEVER_SHOW_AUTO_APPLY_FILTERS_TOAST";
+export const setNeverShowAutoApplyFiltersToast = createAction(
+  SET_NEVER_SHOW_AUTO_APPLY_FILTERS_TOAST,
+);
 
-// XXX: Fix name
-export const DISMISS_TOAST = "DISMISS_TOAST";
-export const dismissToast = createAction(DISMISS_TOAST);
+export const DISMISS_AUTO_APPLY_FILTERS_TOAST =
+  "DISMISS_AUTO_APPLY_FILTERS_TOAST";
+export const dismissAutoApplyFiltersToast = createAction(
+  DISMISS_AUTO_APPLY_FILTERS_TOAST,
+);
 
 export const START_FETCH_DASHBOARD_CARD_DATA_TIMEOUT =
   "metabase/dashboard/START_FETCH_DASHBOARD_CARD_DATA_TIMEOUT";
