@@ -36,21 +36,21 @@ const AutomaticInsightsDrill = ({
   clicked,
 }: DrillOptions): PopoverClickAction[] => {
   const drillOptions: AutoInsightsDrillOption[] = [];
-
   const enableXrays = MetabaseSettings.get("enable-xrays");
-  if (compareToRestDrill({ question, clicked, enableXrays })) {
-    drillOptions.push({
-      title: t`Compare to the rest`,
-      icon: "segment",
-      url: () => compareToRestDrillUrl({ question, clicked }),
-    });
-  }
 
   if (automaticDashboardDrill({ question, clicked, enableXrays })) {
     drillOptions.push({
       title: t`X-ray`,
       icon: "bolt",
       url: () => automaticDashboardDrillUrl({ question, clicked }),
+    });
+  }
+
+  if (compareToRestDrill({ question, clicked, enableXrays })) {
+    drillOptions.push({
+      title: t`Compare to the rest`,
+      icon: "segment",
+      url: () => compareToRestDrillUrl({ question, clicked }),
     });
   }
 

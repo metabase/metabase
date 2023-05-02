@@ -12,6 +12,8 @@ interface ClickActionButtonProps {
 }
 
 export const Container = styled.div`
+  min-width: 256px;
+
   padding: 1rem 1rem 1.5rem;
 
   font-weight: 700;
