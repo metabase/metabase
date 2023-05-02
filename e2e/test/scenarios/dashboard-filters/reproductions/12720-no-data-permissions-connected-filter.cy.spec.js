@@ -1,4 +1,9 @@
-import { restore, visitDashboard, filterWidget } from "e2e/support/helpers";
+import {
+  restore,
+  visitDashboard,
+  filterWidget,
+  updateDashboardCards,
+} from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS } = SAMPLE_DATABASE;
@@ -36,57 +41,46 @@ describe("issue 12720", () => {
     cy.signInAsAdmin();
 
     // In this test we're using already present question ("Orders") and the dashboard with that question ("Orders in a dashboard")
-    cy.addFilterToDashboard({ filter: dashboardFilter, dashboard_id: 1 });
+    cy.request("PUT", "/api/dashboard/1", {
+      parameters: [dashboardFilter],
+    });
 
     cy.createNativeQuestion(questionDetails).then(
       ({ body: { id: SQL_ID } }) => {
-        cy.request("POST", "/api/dashboard/1/cards", {
-          cardId: SQL_ID,
-          row: 0,
-          col: 6, // making sure it doesn't overlap the existing card
-          size_x: 5,
-          size_y: 5,
-        }).then(({ body: { id: SQL_DASH_CARD_ID } }) => {
-          cy.log(
-            "Edit both cards (adjust their size and connect them to the filter)",
-          );
-
-          cy.request("PUT", "/api/dashboard/1/cards", {
-            cards: [
-              {
-                id: 1,
-                card_id: 1,
-                row: 0,
-                col: 0,
-                size_x: 5,
-                size_y: 5,
-                parameter_mappings: [
-                  {
-                    parameter_id: dashboardFilter.id,
-                    card_id: 1,
-                    target: ["dimension", ["field", ORDERS.CREATED_AT, null]],
-                  },
-                ],
-                visualization_settings: {},
-              },
-              {
-                id: SQL_DASH_CARD_ID,
-                card_id: SQL_ID,
-                row: 0,
-                col: 6,
-                size_x: 5,
-                size_y: 5,
-                parameter_mappings: [
-                  {
-                    parameter_id: dashboardFilter.id,
-                    card_id: SQL_ID,
-                    target: ["dimension", ["template-tag", "filter"]],
-                  },
-                ],
-                visualization_settings: {},
-              },
-            ],
-          });
+        updateDashboardCards({
+          dashboard_id: 1,
+          cards: [
+            {
+              card_id: SQL_ID,
+              row: 0,
+              col: 6, // making sure it doesn't overlap the existing card
+              size_x: 5,
+              size_y: 5,
+              parameter_mappings: [
+                {
+                  parameter_id: dashboardFilter.id,
+                  card_id: SQL_ID,
+                  target: ["dimension", ["template-tag", "filter"]],
+                },
+              ],
+            },
+            // add filter to existing card
+            {
+              id: 1,
+              card_id: 1,
+              row: 0,
+              col: 0,
+              size_x: 5,
+              size_y: 5,
+              parameter_mappings: [
+                {
+                  parameter_id: dashboardFilter.id,
+                  card_id: 1,
+                  target: ["dimension", ["field", ORDERS.CREATED_AT, null]],
+                },
+              ],
+            },
+          ],
         });
       },
     );

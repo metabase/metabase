@@ -26,7 +26,9 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-trs trs]]
    [metabase.util.log :as log]
-   [toucan.db :as db]))
+   [toucan2.core :as t2])
+  (:import
+   (java.lang.management ManagementFactory)))
 
 (set! *warn-on-reflection* true)
 
@@ -116,7 +118,7 @@
   (init-status/set-progress! 0.7)
   ;; run a very quick check to see if we are doing a first time installation
   ;; the test we are using is if there is at least 1 User in the database
-  (let [new-install? (not (db/exists? User))]
+  (let [new-install? (not (t2/exists? User))]
     (when new-install?
       (log/info (trs "Looks like this is a new installation ... preparing setup wizard"))
       ;; create setup token
@@ -134,7 +136,9 @@
   ;; start scheduler at end of init!
   (task/start-scheduler!)
   (init-status/set-complete!)
-  (log/info (trs "Metabase Initialization COMPLETE")))
+  (let [start-time (.getStartTime (ManagementFactory/getRuntimeMXBean))
+        duration   (- (System/currentTimeMillis) start-time)]
+    (log/info (trs "Metabase Initialization COMPLETE in {0}" (u/format-milliseconds duration)))))
 
 (defn init!
   "General application initialization function which should be run once at application startup. Calls `[[init!*]] and

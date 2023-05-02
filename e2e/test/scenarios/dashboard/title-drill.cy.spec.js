@@ -101,35 +101,36 @@ describe("scenarios > dashboard > title drill", () => {
         display: "scalar",
       };
 
-      cy.createNativeQuestionAndDashboard({ questionDetails }).then(
-        ({ body: { id, card_id, dashboard_id } }) => {
-          cy.addFilterToDashboard({ filter, dashboard_id });
+      const dashboardDetails = { parameters: [filter] };
 
-          // Connect filter to the card
-          cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
-            cards: [
-              {
-                id,
-                card_id,
-                row: 0,
-                col: 0,
-                size_x: 8,
-                size_y: 6,
-                parameter_mappings: [
-                  {
-                    parameter_id: filter.id,
-                    card_id,
-                    target: ["dimension", ["template-tag", "filter"]],
-                  },
-                ],
-              },
-            ],
-          });
+      cy.createNativeQuestionAndDashboard({
+        questionDetails,
+        dashboardDetails,
+      }).then(({ body: { id, card_id, dashboard_id } }) => {
+        // Connect filter to the card
+        cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
+          cards: [
+            {
+              id,
+              card_id,
+              row: 0,
+              col: 0,
+              size_x: 8,
+              size_y: 6,
+              parameter_mappings: [
+                {
+                  parameter_id: filter.id,
+                  card_id,
+                  target: ["dimension", ["template-tag", "filter"]],
+                },
+              ],
+            },
+          ],
+        });
 
-          visitDashboard(dashboard_id);
-          checkScalarResult("200");
-        },
-      );
+        visitDashboard(dashboard_id);
+        checkScalarResult("200");
+      });
     });
 
     describe("as a user with access to underlying data", () => {

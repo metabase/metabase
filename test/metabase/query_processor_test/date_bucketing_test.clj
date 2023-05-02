@@ -35,7 +35,7 @@
    [metabase.util.regex :as u.regex]
    [potemkin.types :as p.types]
    [pretty.core :as pretty]
-   [toucan.db :as db])
+   [toucan2.core :as t2])
   (:import [java.time LocalDate LocalDateTime]))
 
 (set! *warn-on-reflection* true)
@@ -905,7 +905,7 @@
                                  ;; TODO -- make 'insert-rows-using-statements?` a multimethod so we don't need to
                                  ;; hardcode the whitelist here.
                                  (not (#{:vertica :bigquery-cloud-sdk} driver/*driver*)))
-                          (binding [hx/*honey-sql-version* (sql.qp/honey-sql-version driver/*driver*)]
+                          (sql.qp/with-driver-honey-sql-version driver/*driver*
                             (sql.qp/compiled
                              (sql.qp/add-interval-honeysql-form driver/*driver*
                                                                 (sql.qp/current-datetime-honeysql-form driver/*driver*)
@@ -951,7 +951,7 @@
     (if (and (checkins-db-is-old? (* (.intervalSeconds dataset) 5)) *recreate-db-if-stale?*)
       (binding [*recreate-db-if-stale?* false]
         (log/infof "DB for %s is stale! Deleteing and running test again\n" dataset)
-        (db/delete! Database :id (mt/id))
+        (t2/delete! Database :id (mt/id))
         (apply count-of-grouping dataset field-grouping relative-datetime-args))
       (let [results (mt/run-mbql-query checkins
                       {:aggregation [[:count]]
@@ -1263,11 +1263,11 @@
                           #t "2022-03-31T00:00:00"
                           #t "2022-03-31T00:00:00-00:00"]]
           (testing (format "%d %s ^%s %s" n unit (.getCanonicalName (class t)) (pr-str t))
-            (binding [hx/*honey-sql-version* (sql.qp/honey-sql-version driver/*driver*)]
+            (sql.qp/with-driver-honey-sql-version driver/*driver*
               (let [march-31     (sql.qp/->honeysql driver/*driver* [:absolute-datetime t :day])
                     june-31      (sql.qp/add-interval-honeysql-form driver/*driver* march-31 n unit)
                     checkins     (mt/with-everything-store
-                                   (sql.qp/->honeysql driver/*driver* (db/select-one Table :id (mt/id :checkins))))
+                                   (sql.qp/->honeysql driver/*driver* (t2/select-one Table :id (mt/id :checkins))))
                     honeysql     {:select [[june-31 :june_31]]
                                   :from   [(sql.qp/maybe-wrap-unaliased-expr checkins)]}
                     honeysql     (sql.qp/apply-top-level-clause driver/*driver* :limit honeysql {:limit 1})

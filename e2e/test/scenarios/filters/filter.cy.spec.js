@@ -15,7 +15,7 @@ import {
   setupBooleanQuery,
 } from "e2e/support/helpers";
 
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, SAMPLE_DB_SCHEMA_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, REVIEWS, REVIEWS_ID } =
@@ -367,6 +367,7 @@ describe("scenarios > question > filter", () => {
     cy.findByText("Custom Expression").click();
 
     enterCustomColumnDetails({ formula: "NOT IsNull([Rating])" });
+    cy.get("@formula").blur();
 
     cy.button("Done").should("not.be.disabled").click();
 
@@ -374,10 +375,8 @@ describe("scenarios > question > filter", () => {
 
     cy.findByText("Custom Expression").click();
 
-    cy.get("@formula")
-      .click({ force: true })
-      .clear()
-      .type("NOT IsEmpty([Reviewer])");
+    enterCustomColumnDetails({ formula: "NOT IsEmpty([Reviewer])" });
+    cy.get("@formula").blur();
 
     cy.button("Done").should("not.be.disabled").click();
 
@@ -452,7 +451,7 @@ describe("scenarios > question > filter", () => {
     cy.findByText("Title does not contain Wallet").click();
     cy.get(".Icon-chevronleft").click();
     cy.findByText("Custom Expression").click();
-    cy.contains('NOT contains([Title], "Wallet", "case-insensitive")');
+    cy.contains('doesNotContain([Title], "Wallet", "case-insensitive")');
   });
 
   it.skip("shuld convert negative filter to custom expression (metabase#14880)", () => {
@@ -555,7 +554,9 @@ describe("scenarios > question > filter", () => {
     cy.findByText("Custom Expression").click();
 
     enterCustomColumnDetails({ formula: "3.14159" });
-    cy.button("Done").should("not.be.disabled").click();
+    cy.get("@formula").blur();
+
+    cy.button("Done").should("be.disabled");
     cy.findByText("Expecting boolean but found 3.14159");
   });
 
@@ -565,7 +566,9 @@ describe("scenarios > question > filter", () => {
     cy.findByText("Custom Expression").click();
 
     enterCustomColumnDetails({ formula: '"TheAnswer"' });
-    cy.button("Done").should("not.be.disabled").click();
+    cy.get("@formula").blur();
+
+    cy.button("Done").should("be.disabled");
     cy.findByText('Expecting boolean but found "TheAnswer"');
   });
 
@@ -597,6 +600,7 @@ describe("scenarios > question > filter", () => {
     cy.findByText("Custom Expression").click();
 
     enterCustomColumnDetails({ formula: "[Total] < [Subtotal]" });
+    cy.get("@formula").blur();
 
     cy.button("Done").click();
     cy.findByText("Total < Subtotal");
@@ -759,7 +763,9 @@ describe("scenarios > question > filter", () => {
   describe("currency filters", () => {
     beforeEach(() => {
       // set the currency on the Orders/Discount column to Euro
-      cy.visit(`/admin/datamodel/database/${SAMPLE_DB_ID}/table/${ORDERS_ID}`);
+      cy.visit(
+        `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}`,
+      );
       // this value isn't actually selected, it's just the default
       cy.findByText("US Dollar").click();
       cy.findByText("Euro").click();
@@ -899,6 +905,8 @@ describe("scenarios > question > filter", () => {
         popover().contains("Custom Expression").click();
         popover().within(() => {
           enterCustomColumnDetails({ formula: `boolean = ${condition}` });
+          cy.get("@formula").blur();
+
           cy.button("Done").click();
         });
 
@@ -934,6 +942,7 @@ describe("scenarios > question > filter", () => {
         formula: "Case(boolean, 45, -10)",
         name: "Test",
       });
+
       cy.button("Done").click();
 
       filter({ mode: "notebook" });
@@ -941,6 +950,8 @@ describe("scenarios > question > filter", () => {
       popover().contains("Custom Expression").click();
       popover().within(() => {
         enterCustomColumnDetails({ formula: `boolean = true` });
+        cy.get("@formula").blur();
+
         cy.button("Done").click();
       });
 
@@ -956,7 +967,7 @@ describe("scenarios > question > filter", () => {
       popover().contains("Custom Expression").click();
       popover().within(() => {
         enterCustomColumnDetails({ formula: "CountIf(boolean)" });
-        cy.findByPlaceholderText("Name (required)").type(
+        cy.findByPlaceholderText("Something nice and descriptive").type(
           "count if boolean is true",
         );
         cy.findByText("Done").click();

@@ -25,7 +25,7 @@
    [metabase.util.schema :as su]
    [schema.core :as s]
    [throttle.core :as throttle]
-   [toucan.db :as db])
+   [toucan2.core :as t2])
   (:import
    (com.unboundid.util LDAPSDKException)
    (java.util UUID)))
@@ -34,7 +34,7 @@
 
 (s/defn ^:private record-login-history!
   [session-id :- UUID user-id :- su/IntGreaterThanZero device-info :- request.u/DeviceInfo]
-  (db/insert! LoginHistory (merge {:user_id    user-id
+  (t2/insert! LoginHistory (merge {:user_id    user-id
                                    :session_id (str session-id)}
                                   device-info)))
 
@@ -53,9 +53,9 @@
 (s/defmethod create-session! :sso :- {:id UUID, :type (s/enum :normal :full-app-embed) s/Keyword s/Any}
   [_ user :- CreateSessionUserInfo device-info :- request.u/DeviceInfo]
   (let [session-uuid (UUID/randomUUID)
-        session      (db/insert! Session
-                                 :id      (str session-uuid)
-                                 :user_id (u/the-id user))]
+        session      (first (t2/insert-returning-instances! Session
+                                                            :id      (str session-uuid)
+                                                            :user_id (u/the-id user)))]
     (assert (map? session))
     (events/publish-event! :user-login
       {:user_id (u/the-id user), :session_id (str session-uuid), :first_login (nil? (:last_login user))})
@@ -115,7 +115,7 @@
 (s/defn ^:private email-login :- (s/maybe {:id UUID, s/Keyword s/Any})
   "Find a matching `User` if one exists and return a new Session for them, or `nil` if they couldn't be authenticated."
   [username password device-info :- request.u/DeviceInfo]
-  (if-let [user (db/select-one [User :id :password_salt :password :last_login :is_active], :%lower.email (u/lower-case-en username))]
+  (if-let [user (t2/select-one [User :id :password_salt :password :last_login :is_active], :%lower.email (u/lower-case-en username))]
     (when (u.password/verify-password password (:password_salt user) (:password user))
       (if (:is_active user)
         (create-session! :password user device-info)
@@ -185,7 +185,7 @@
   "Logout."
   [:as {:keys [metabase-session-id]}]
   (api/check-exists? Session metabase-session-id)
-  (db/delete! Session :id metabase-session-id)
+  (t2/delete! Session :id metabase-session-id)
   (mw.session/clear-session-cookie api/generic-204-no-content))
 
 ;; Reset tokens: We need some way to match a plaintext token with the a user since the token stored in the DB is
@@ -203,20 +203,18 @@
   [email]
   (future
     (when-let [{user-id      :id
-                google-auth? :google_auth
-                ldap-auth?   :ldap_auth
                 sso-source   :sso_source
                 is-active?   :is_active}
-               (db/select-one [User :id :google_auth :ldap_auth :sso_source :is_active]
+               (t2/select-one [User :id :sso_source :is_active]
                               :%lower.email
                               (u/lower-case-en email))]
-      (if (or google-auth? ldap-auth? sso-source)
+      (if (some? sso-source)
         ;; If user uses any SSO method to log in, no need to generate a reset token
-        (messages/send-password-reset-email! email google-auth? (boolean (or ldap-auth? sso-source)) nil is-active?)
+        (messages/send-password-reset-email! email sso-source nil is-active?)
         (let [reset-token        (user/set-password-reset-token! user-id)
               password-reset-url (str (public-settings/site-url) "/auth/reset_password/" reset-token)]
           (log/info password-reset-url)
-          (messages/send-password-reset-email! email false false password-reset-url is-active?))))))
+          (messages/send-password-reset-email! email nil password-reset-url is-active?))))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/forgot_password"
@@ -239,7 +237,7 @@
   [^String token]
   (when-let [[_ user-id] (re-matches #"(^\d+)_.+$" token)]
     (let [user-id (Integer/parseInt user-id)]
-      (when-let [{:keys [reset_token reset_triggered], :as user} (db/select-one [User :id :last_login :reset_triggered
+      (when-let [{:keys [reset_token reset_triggered], :as user} (t2/select-one [User :id :last_login :reset_triggered
                                                                                  :reset_token]
                                                                    :id user-id, :is_active true)]
         ;; Make sure the plaintext token matches up with the hashed one for this user
@@ -261,7 +259,7 @@
         ;; if this is the first time the user has logged in it means that they're just accepted their Metabase invite.
         ;; Send all the active admins an email :D
         (when-not (:last_login user)
-          (messages/send-user-joined-admin-notification-email! (db/select-one User :id user-id)))
+          (messages/send-user-joined-admin-notification-email! (t2/select-one User :id user-id)))
         ;; after a successful password update go ahead and offer the client a new session that they can use
         (let [{session-uuid :id, :as session} (create-session! :password user (request.u/device-info request))
               response                        {:success    true
@@ -297,7 +295,7 @@
        (let [user (google/do-google-auth request)
              {session-uuid :id, :as session} (create-session! :sso user (request.u/device-info request))
              response {:id (str session-uuid)}
-             user (db/select-one [User :id :is_active], :email (:email user))]
+             user (t2/select-one [User :id :is_active], :email (:email user))]
          (if (and user (:is_active user))
            (mw.session/set-session-cookies request
                                            response

@@ -284,9 +284,7 @@ describe("scenarios > visualizations > waterfall", () => {
       cy.get(".Visualization .value-label").should("not.exist");
 
       cy.contains("Show values on data points").next().click();
-      cy.get(".Visualization .value-label").within(() => {
-        cy.findByText("(4.56)"); // negative in parentheses
-      });
+      cy.get(".Visualization .value-label").contains(4.56).should("be.visible");
     });
   });
 });

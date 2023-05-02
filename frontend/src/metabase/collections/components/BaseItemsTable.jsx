@@ -64,6 +64,7 @@ function SortableColumnHeader({
 BaseItemsTable.Item = BaseTableItem;
 
 BaseItemsTable.propTypes = {
+  databases: PropTypes.arrayOf(PropTypes.object),
   bookmarks: PropTypes.arrayOf(PropTypes.object),
   createBookmark: PropTypes.func,
   deleteBookmark: PropTypes.func,
@@ -94,6 +95,7 @@ function defaultItemRenderer({ item, ...props }) {
 }
 
 function BaseItemsTable({
+  databases,
   bookmarks,
   createBookmark,
   deleteBookmark,
@@ -117,6 +119,7 @@ function BaseItemsTable({
 }) {
   const itemRenderer = item =>
     renderItem({
+      databases,
       bookmarks,
       createBookmark,
       deleteBookmark,

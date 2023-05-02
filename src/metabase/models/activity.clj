@@ -8,8 +8,8 @@
    [metabase.models.metric :refer [Metric]]
    [metabase.models.pulse :refer [Pulse]]
    [metabase.models.segment :refer [Segment]]
-   [toucan.db :as db]
-   [toucan.models :as models]))
+   [toucan.models :as models]
+   [toucan2.core :as t2]))
 
 ;;; ------------------------------------------------- Perms Checking -------------------------------------------------
 
@@ -98,14 +98,14 @@
   [& {:keys [topic object details-fn database-id table-id user-id model model-id]}]
   {:pre [(keyword? topic)]}
   (let [object (or object {})]
-    (db/insert! Activity
-      :topic       topic
-      :user_id     (or user-id (events/object->user-id object))
-      :model       (or model (events/topic->model topic))
-      :model_id    (or model-id (events/object->model-id topic object))
-      :database_id database-id
-      :table_id    table-id
-      :custom_id   (:custom_id object)
-      :details     (if (fn? details-fn)
-                     (details-fn object)
-                     object))))
+    (first (t2/insert-returning-instances! Activity
+                                           :topic       topic
+                                           :user_id     (or user-id (events/object->user-id object))
+                                           :model       (or model (events/topic->model topic))
+                                           :model_id    (or model-id (events/object->model-id topic object))
+                                           :database_id database-id
+                                           :table_id    table-id
+                                           :custom_id   (:custom_id object)
+                                           :details     (if (fn? details-fn)
+                                                          (details-fn object)
+                                                          object)))))

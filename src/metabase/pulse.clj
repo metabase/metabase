@@ -33,7 +33,6 @@
    [metabase.util.ui-logic :as ui-logic]
    [metabase.util.urls :as urls]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)))
@@ -60,7 +59,7 @@
   (assert api/*current-user-id* "Makes sure you wrapped this with a `with-current-user`.")
   (try
     (let [card-id (u/the-id card-or-id)
-          card    (db/select-one Card :id card-id)
+          card    (t2/select-one Card :id card-id)
           result  (qp.dashboard/run-query-for-dashcard-async
                    :dashboard-id  (u/the-id dashboard)
                    :card-id       card-id
@@ -170,7 +169,7 @@
   The gerenerated contents will follow the pulse's creator permissions."
   [{pulse-creator-id :creator_id, :as pulse} dashboard & {:as _options}]
   (let [dashboard-id      (u/the-id dashboard)
-        dashcards         (db/select DashboardCard :dashboard_id dashboard-id)
+        dashcards         (t2/select DashboardCard :dashboard_id dashboard-id)
         ordered-dashcards (sort dashcard-comparator dashcards)]
     (mw.session/with-current-user pulse-creator-id
       (doall (for [dashcard ordered-dashcards
@@ -185,7 +184,7 @@
 (s/defn defaulted-timezone :- s/Str
   "Returns the timezone ID for the given `card`. Either the report timezone (if applicable) or the JVM timezone."
   [card :- (mi/InstanceOf Card)]
-  (or (some->> card database-id (db/select-one Database :id) qp.timezone/results-timezone-id)
+  (or (some->> card database-id (t2/select-one Database :id) qp.timezone/results-timezone-id)
       (qp.timezone/system-timezone-id)))
 
 (defn- first-question-name [pulse]
@@ -384,7 +383,7 @@
   (let [email-recipients (filterv u/email? (map :email recipients))
         query-results    (filter :card results)
         timezone         (-> query-results first :card defaulted-timezone)
-        dashboard        (db/select-one Dashboard :id dashboard-id)]
+        dashboard        (update (t2/select-one Dashboard :id dashboard-id) :description markdown/process-markdown :html)]
     {:subject      (subject pulse)
      :recipients   email-recipients
      :message-type :attachments
@@ -396,7 +395,7 @@
    {{channel-id :channel} :details}]
   (log/debug (u/format-color 'cyan (trs "Sending Pulse ({0}: {1}) with {2} Cards via Slack"
                                         pulse-id (pr-str pulse-name) (count results))))
-  (let [dashboard (db/select-one Dashboard :id dashboard-id)]
+  (let [dashboard (t2/select-one Dashboard :id dashboard-id)]
     {:channel-id  channel-id
      :attachments (remove nil?
                           (flatten [(slack-dashboard-header pulse dashboard)
@@ -436,7 +435,7 @@
   (let [channel-ids (or channel-ids (mapv :id channels))]
     (when (should-send-notification? pulse results)
       (when (:alert_first_only pulse)
-        (db/delete! Pulse :id pulse-id))
+        (t2/delete! Pulse :id pulse-id))
       ;; `channel-ids` is the set of channels to send to now, so only send to those. Note the whole set of channels
       (for [channel channels
             :when   (contains? (set channel-ids) (:id channel))]
@@ -580,7 +579,7 @@
        (send-pulse! pulse :channel-ids [312])    Send only to Channel with :id = 312"
   [{:keys [dashboard_id], :as pulse} & {:keys [channel-ids]}]
   {:pre [(map? pulse) (integer? (:creator_id pulse))]}
-  (let [dashboard (db/select-one Dashboard :id dashboard_id)
+  (let [dashboard (t2/select-one Dashboard :id dashboard_id)
         pulse     (-> (mi/instance Pulse pulse)
                       ;; This is usually already done by this step, in the `send-pulses` task which uses `retrieve-pulse`
                       ;; to fetch the Pulse.

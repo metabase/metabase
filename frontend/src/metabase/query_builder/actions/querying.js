@@ -6,6 +6,7 @@ import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { startTimer } from "metabase/lib/performance";
 import { defer } from "metabase/lib/promise";
 import { createThunkAction } from "metabase/lib/redux";
+import { runQuestionQuery as apiRunQuestionQuery } from "metabase/services";
 
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSensibleDisplays } from "metabase/visualizations";
@@ -124,12 +125,11 @@ export const runQuestionQuery = ({
 
     const queryTimer = startTimer();
 
-    question
-      .apiGetResults({
-        cancelDeferred: cancelQueryDeferred,
-        ignoreCache: ignoreCache,
-        isDirty: cardIsDirty,
-      })
+    apiRunQuestionQuery(question, {
+      cancelDeferred: cancelQueryDeferred,
+      ignoreCache: ignoreCache,
+      isDirty: cardIsDirty,
+    })
       .then(queryResults => {
         queryTimer(duration =>
           MetabaseAnalytics.trackStructEvent(
@@ -143,7 +143,7 @@ export const runQuestionQuery = ({
       })
       .catch(error => dispatch(queryErrored(startTime, error)));
 
-    dispatch.action(RUN_QUERY, { cancelQueryDeferred });
+    dispatch({ type: RUN_QUERY, payload: { cancelQueryDeferred } });
   };
 };
 
@@ -208,10 +208,13 @@ export const queryCompleted = (question, queryResults) => {
       ? preserveModelMetadata(queryResults, originalQuestion)
       : undefined;
 
-    dispatch.action(QUERY_COMPLETED, {
-      card,
-      queryResults,
-      modelMetadata,
+    dispatch({
+      type: QUERY_COMPLETED,
+      payload: {
+        card,
+        queryResults,
+        modelMetadata,
+      },
     });
     dispatch(loadCompleteUIControls());
   };

@@ -2,11 +2,11 @@
   (:require
    [build-drivers.common :as c]
    [build-drivers.lint-manifest-file :as lint-manifest-file]
+   [clj-yaml.core :as yaml]
    [clojure.spec.alpha :as s]
    [colorize.core :as colorize]
    [expound.alpha :as expound]
-   [metabuild-common.core :as u]
-   [yaml.core :as yaml])
+   [metabuild-common.core :as u])
   (:import
    (java.util.zip ZipEntry ZipFile)))
 

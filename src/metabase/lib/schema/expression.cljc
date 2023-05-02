@@ -1,14 +1,17 @@
 (ns metabase.lib.schema.expression
   (:require
    [metabase.lib.dispatch :as lib.dispatch]
+   [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.schema.common :as common]
    [metabase.shared.util.i18n :as i18n]
    [metabase.types]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr])
+  #?(:cljs (:require-macros [metabase.lib.schema.expression])))
 
 (comment metabase.types/keep-me)
 
+;;; TODO -- rename to `type-of-method`
 (defmulti type-of*
   "Impl for [[type-of]]. Use [[type-of]], but implement [[type-of*]].
 
@@ -24,14 +27,10 @@
     ;; can implement support for some platform-specific classes like `BigDecimal` or `java.time.OffsetDateTime`, for
     ;; use inside QP code or whatever. In the future maybe we can add support for JS-specific stuff too.
     (let [dispatch-value (lib.dispatch/dispatch-value x)]
-      (if (= dispatch-value :type/*)
+      (if (= dispatch-value :dispatch-type/*)
         (type x)
-        dispatch-value))))
-
-(defmethod type-of* :default
-  [expr]
-  (throw (ex-info (i18n/tru "Don''t know how to determine the base type of {0}" (pr-str expr))
-                  {:expr expr})))
+        dispatch-value)))
+  :hierarchy lib.hierarchy/hierarchy)
 
 (defn- mbql-clause? [expr]
   (and (vector? expr)
@@ -49,12 +48,24 @@
   possible types."
   [expr]
   (or
-   ;; for MBQL clauses with `:base-type` in their options: ignore their dumb [[type-of*]] methods and return that type
-   ;; directly. Ignore everything else! Life hack!
+   ;; for MBQL clauses with `:effective-type` or `:base-type` in their options: ignore their dumb [[type-of*]] methods
+   ;; and return that type directly. Ignore everything else! Life hack!
    (and (mbql-clause? expr)
         (map? (second expr))
-        (:base-type (second expr)))
+        (or (:effective-type (second expr))
+            (:base-type (second expr))))
    (type-of* expr)))
+
+(defmethod type-of* :default
+  [expr]
+  (throw (ex-info (i18n/tru "Don''t know how to determine the type of {0}" (pr-str expr))
+                  {:expr expr})))
+
+;;; for MBQL clauses whose type is the same as the type of the first arg. Also used
+;;; for [[metabase.lib.metadata.calculation/type-of-method]].
+(defmethod type-of* :lib.type-of/type-is-type-of-first-arg
+  [[_tag _opts expr]]
+  (type-of expr))
 
 (defn- is-type? [x y]
   (cond
@@ -84,7 +95,9 @@
   [:and
    [:or
     [:fn
-     {:error/message "This is shaped like an MBQL clause"}
+     {:error/message "valid MBQL clause"
+      :error/fn      (fn [{:keys [value]} _]
+                       (str "invalid MBQL clause: " (pr-str value)))}
      (complement mbql-clause?)]
     [:ref :metabase.lib.schema.mbql-clause/clause]]
    [:fn
@@ -118,8 +131,12 @@
 (mr/def ::temporal
   (expression-schema :type/Temporal "expression returning a date, time, or date time"))
 
+(def orderable-types
+  "Set of base types that are orderable."
+  #{:type/Text :type/Number :type/Temporal})
+
 (mr/def ::orderable
-  (expression-schema #{:type/Text :type/Number :type/Temporal}
+  (expression-schema orderable-types
                      "an expression that can be compared with :> or :<"))
 
 (mr/def ::equality-comparable

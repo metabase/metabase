@@ -8,7 +8,7 @@
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [ring.util.codec :as codec]
-   [toucan.db :as db])
+   [toucan2.core :as t2])
   (:import
    (com.google.api.client.googleapis.auth.oauth2 GoogleAuthorizationCodeFlow GoogleAuthorizationCodeFlow$Builder
                                                  GoogleCredential GoogleCredential$Builder GoogleTokenResponse)
@@ -108,7 +108,7 @@
           details (-> (merge details {:project-id (.getServiceAccountProjectId creds)})
                       (dissoc :auth-code))]
       (when id
-        (db/update! Database id, :details details))
+        (t2/update! Database id {:details details}))
       (.createScoped creds scopes))
 
     (if-not (and (seq access-token)
@@ -117,7 +117,7 @@
       (let [details (-> (merge details (fetch-access-and-refresh-tokens scopes client-id client-secret auth-code))
                         (dissoc :auth-code))]
         (when id
-          (db/update! Database id, :details details))
+          (t2/update! Database id {:details details}))
         (recur scopes (assoc db :details details)))
       ;; Otherwise return credential as normal
       (doto (.build (doto (GoogleCredential$Builder.)
@@ -133,5 +133,5 @@
   (database->credential*
    scopes
    (if (integer? database-or-id)
-     (db/select-one [Database :id :details], :id database-or-id)
+     (t2/select-one [Database :id :details], :id database-or-id)
      database-or-id)))

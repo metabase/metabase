@@ -8,8 +8,8 @@
    [metabase.test :as mt]
    [metabase.test.mock.toucanery :as toucanery]
    [metabase.util :as u]
-   [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]]))
+   [toucan.hydrate :refer [hydrate]]
+   [toucan2.core :as t2]))
 
 (defn- remove-nonsense
   "Remove fields that aren't really relevant in the output for `tables` and their `fields`. Done for the sake of making
@@ -22,10 +22,17 @@
                            (for [field fields]
                              (u/select-non-nil-keys
                               field
-                              [:table_id :name :fk_target_field_id :parent_id :base_type :database_type :database_is_auto_increment]))))))))
+                              [:table_id
+                               :name
+                               :fk_target_field_id
+                               :parent_id
+                               :base_type
+                               :database_type
+                               :database_is_auto_increment
+                               :json-unfolding]))))))))
 
 (defn- get-tables [database-or-id]
-  (->> (hydrate (db/select Table, :db_id (u/the-id database-or-id), {:order-by [:id]}) :fields)
+  (->> (hydrate (t2/select Table, :db_id (u/the-id database-or-id), {:order-by [:id]}) :fields)
        (mapv mt/boolean-ids-and-timestamps)))
 
 (deftest sync-nested-fields-test

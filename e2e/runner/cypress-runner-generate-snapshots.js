@@ -1,5 +1,7 @@
 const cypress = require("cypress");
 
+const { parseArguments, args } = require("./cypress-runner-utils");
+
 const getConfig = baseUrl => {
   return {
     browser: "chrome",
@@ -11,7 +13,14 @@ const getConfig = baseUrl => {
 };
 
 const generateSnapshots = async (baseUrl, exitFunction) => {
-  const snapshotConfig = getConfig(baseUrl);
+  // We only ever care about a broswer out of all possible user arguments,
+  // when it comes to the snapshot generation.
+  // Anything else could result either in a failure or in a wrong database snapshot!
+  const { browser } = await parseArguments(args);
+  const customBrowser = browser ? { browser } : null;
+
+  const baseConfig = getConfig(baseUrl);
+  const snapshotConfig = Object.assign({}, baseConfig, customBrowser);
 
   try {
     const { status, message, totalFailed, failures } = await cypress.run(

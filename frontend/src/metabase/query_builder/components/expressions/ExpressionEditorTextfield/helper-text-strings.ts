@@ -1,10 +1,16 @@
 import { t } from "ttag";
 import moment from "moment-timezone";
-
-import type { Database } from "metabase-types/api/database";
 import { HelpText, HelpTextConfig } from "metabase-lib/expressions/types";
+import type Database from "metabase-lib/metadata/Database";
+import {
+  formatIdentifier,
+  formatStringLiteral,
+} from "metabase-lib/expressions";
 
-const getDescriptionForNow = (database: Database, reportTimezone: string) => {
+const getDescriptionForNow: HelpTextConfig["description"] = (
+  database,
+  reportTimezone,
+) => {
   const hasTimezoneFeatureFlag = database.features.includes("set-timezone");
   const timezone = hasTimezoneFeatureFlag ? reportTimezone : "UTC";
   const nowAtTimezone = getNowAtTimezone(timezone, reportTimezone);
@@ -21,683 +27,797 @@ const getDescriptionForNow = (database: Database, reportTimezone: string) => {
   }
 };
 
-const helperTextStrings: HelpTextConfig[] = [
+const getNowAtTimezone = (
+  timezone: string | undefined,
+  reportTimezone: string | undefined,
+) =>
+  timezone && reportTimezone
+    ? moment().tz(reportTimezone).format("LT")
+    : moment().format("LT");
+
+const HELPER_TEXT_STRINGS: HelpTextConfig[] = [
   {
     name: "count",
     structure: "Count",
     description: () => t`Returns the count of rows in the selected data.`,
-    example: "Count",
-    args: [],
   },
   {
     name: "cum-count",
     structure: "CumulativeCount",
     description: () => t`The additive total of rows across a breakout.`,
-    example: "CumulativeCount",
-    args: [],
   },
   {
     name: "sum",
-    structure: "Sum(" + t`column` + ")",
+    structure: "Sum",
     description: () => t`Adds up all the values of the column.`,
-    example: "Sum([" + t`Subtotal` + "])",
-    args: [{ name: t`column`, description: t`The column or number to sum.` }],
+    args: [
+      {
+        name: t`column`,
+        description: t`The column or number to sum.`,
+        example: formatIdentifier(t`Subtotal`),
+      },
+    ],
   },
   {
     name: "cum-sum",
-    structure: "CumulativeSum(" + t`column` + ")",
+    structure: "CumulativeSum",
     description: () => t`The rolling sum of a column across a breakout.`,
-    example: "CumulativeSum([" + t`Subtotal` + "])",
-    args: [{ name: t`column`, description: t`The column or number to sum.` }],
+    args: [
+      {
+        name: t`column`,
+        description: t`The column or number to sum.`,
+        example: formatIdentifier(t`Subtotal`),
+      },
+    ],
   },
   {
     name: "distinct",
-    structure: "Distinct(" + t`column` + ")",
+    structure: "Distinct",
     description: () => t`The number of distinct values in this column.`,
-    example: "Distinct([" + t`Last Name` + "])",
     args: [
       {
         name: t`column`,
         description: t`The column whose distinct values to count.`,
+        example: formatIdentifier(t`Last Name`),
       },
     ],
   },
   {
     name: "stddev",
-    structure: "StandardDeviation(" + t`column` + ")",
+    structure: "StandardDeviation",
     description: () => t`Calculates the standard deviation of the column.`,
-    example: "StandardDeviation([" + t`Population` + "])",
     args: [
       {
         name: t`column`,
         description: t`The numeric column to get standard deviation of.`,
+        example: formatIdentifier(t`Population`),
       },
     ],
   },
   {
     name: "avg",
-    structure: "Average(" + t`column` + ")",
+    structure: "Average",
     description: () => t`Returns the average of the values in the column.`,
-    example: "Average([" + t`Quantity` + "])",
     args: [
       {
         name: t`column`,
         description: t`The numeric column whose values to average.`,
+        example: formatIdentifier(t`Quantity`),
       },
     ],
   },
   {
     name: "median",
-    structure: "Median(" + t`column` + ")",
+    structure: "Median",
     description: () => t`Returns the median of all the values of a column.`,
-    example: "Median([" + t`Quantity` + "])",
     args: [
       {
         name: t`column`,
         description: t`The numeric column whose values to average.`,
+        example: formatIdentifier(t`Quantity`),
       },
     ],
   },
   {
     name: "min",
-    structure: "Min(" + t`column` + ")",
+    structure: "Min",
     description: () => t`Returns the smallest value found in the column`,
-    example: "Min([" + t`Salary` + "])",
     args: [
       {
         name: t`column`,
         description: t`The numeric column whose minimum you want to find.`,
+        example: formatIdentifier(t`Salary`),
       },
     ],
   },
   {
     name: "max",
-    structure: "Max(" + t`column` + ")",
+    structure: "Max",
     description: () => t`Returns the largest value found in the column.`,
-    example: "Max([" + t`Age` + "])",
     args: [
       {
         name: t`column`,
         description: t`The numeric column whose maximum you want to find.`,
+        example: formatIdentifier(t`Age`),
       },
     ],
   },
   {
     name: "share",
-    structure: "Share(" + t`condition` + ")",
+    structure: "Share",
     description: () =>
       t`Returns the percent of rows in the data that match the condition, as a decimal.`,
-    example: "Share([" + t`Source` + '] = "' + t`Google` + '")',
     args: [
       {
         name: t`condition`,
         description: t`Something that should evaluate to true or false.`,
+        example: `${formatIdentifier(t`Source`)} = ${formatStringLiteral(
+          t`Google`,
+        )}`,
       },
     ],
   },
   {
     name: "count-where",
-    structure: "CountIf(" + t`condition` + ")",
+    structure: "CountIf",
     description: () => t`Only counts rows where the condition is true.`,
-    example: "CountIf([" + t`Subtotal` + "] > 100)",
     args: [
       {
         name: t`condition`,
         description: t`Something that should evaluate to true or false.`,
+        example: `${formatIdentifier(t`Subtotal`)} > 100`,
       },
     ],
   },
   {
     name: "sum-where",
-    structure: "SumIf(" + t`column` + ", " + t`condition` + ")",
+    structure: "SumIf",
     description: () =>
       t`Sums up the specified column only for rows where the condition is true.`,
-    example:
-      "SumIf([" +
-      t`Subtotal` +
-      "], [" +
-      t`Order Status` +
-      '] = "' +
-      t`Valid` +
-      '")',
     args: [
-      { name: t`column`, description: t`The numeric column to sum.` },
+      {
+        name: t`column`,
+        description: t`The numeric column to sum.`,
+        example: formatIdentifier(t`Subtotal`),
+      },
       {
         name: t`condition`,
         description: t`Something that should evaluate to true or false.`,
+        example: `${formatIdentifier(t`Order Status`)} = ${formatStringLiteral(
+          t`Valid`,
+        )}`,
       },
     ],
   },
   {
     name: "var",
-    structure: "Variance(" + t`column` + ")",
+    structure: "Variance",
     description: () => t`Returns the numeric variance for a given column.`,
-    example: "Variance([" + t`Temperature` + "])",
     args: [
       {
         name: t`column`,
         description: t`The column or number to get the variance of.`,
+        example: formatIdentifier(t`Temperature`),
       },
     ],
   },
   {
     name: "median",
-    structure: "Median(" + t`column` + ")",
+    structure: "Median",
     description: () => t`Returns the median value of the specified column.`,
-    example: "Median([" + t`Age` + "])",
     args: [
       {
         name: t`column`,
         description: t`The column or number to get the median of.`,
+        example: formatIdentifier(t`Age`),
       },
     ],
   },
   {
     name: "percentile",
-    structure: "Percentile(" + t`column` + ", " + t`percentile-value` + ")",
+    structure: "Percentile",
     description: () =>
       t`Returns the value of the column at the percentile value.`,
-    example: "Percentile([" + t`Score` + "], 0.9)",
     args: [
       {
         name: t`column`,
         description: t`The column or number to get the percentile of.`,
+        example: formatIdentifier(t`Score`),
       },
       {
         name: t`percentile-value`,
         description: t`The value of the percentile.`,
+        example: "0.9",
       },
     ],
   },
   {
     name: "lower",
-    structure: "lower(" + t`text` + ")",
+    structure: "lower",
     description: () => t`Returns the string of text in all lower case.`,
-    example: "lower([" + t`Status` + "])",
     args: [
       {
         name: t`text`,
         description: t`The column with values to convert to lower case.`,
+        example: formatIdentifier(t`Status`),
       },
     ],
   },
   {
     name: "upper",
-    structure: "upper(" + t`text` + ")",
+    structure: "upper",
     description: () => t`Returns the text in all upper case.`,
-    example: "upper([" + t`Status` + "])",
     args: [
       {
         name: t`text`,
         description: t`The column with values to convert to upper case.`,
+        example: formatIdentifier(t`Status`),
       },
     ],
   },
   {
     name: "substring",
-    structure:
-      "substring(" + t`text` + ", " + t`position` + ", " + t`length` + ")",
+    structure: "substring",
     description: () => t`Returns a portion of the supplied text.`,
-    example: "substring([" + t`Title` + "], 1, 10)",
     args: [
       {
         name: t`text`,
         description: t`The column or text to return a portion of.`,
+        example: formatIdentifier(t`Title`),
       },
       {
         name: t`position`,
         description: t`The position to start copying characters. Index starts at position 1.`,
+        example: "1",
       },
-      { name: t`length`, description: t`The number of characters to return.` },
+      {
+        name: t`length`,
+        description: t`The number of characters to return.`,
+        example: "10",
+      },
     ],
     docsPage: "substring",
   },
   {
     name: "regex-match-first",
-    structure: "regexextract(" + t`text` + ", " + t`regular_expression` + ")",
+    structure: "regexextract",
     description: () =>
       t`Extracts matching substrings according to a regular expression.`,
-    example: "regexextract([" + t`Address` + '], "[0-9]+")',
     args: [
-      { name: t`text`, description: t`The column or text to search through.` },
+      {
+        name: t`text`,
+        description: t`The column or text to search through.`,
+        example: formatIdentifier(t`Address`),
+      },
       {
         name: t`regular_expression`,
         description: t`The regular expression to match.`,
+        example: formatStringLiteral("[0-9]+"),
       },
     ],
     docsPage: "regexextract",
   },
   {
     name: "concat",
-    structure: "concat(" + t`value1` + ", " + t`value2` + ", …)",
+    structure: "concat",
     description: () => t`Combine two or more strings of text together.`,
-    example: "concat([" + t`Last Name` + '], ", ", [' + t`First Name` + "])",
     args: [
-      { name: t`value1`, description: t`The column or text to begin with.` },
+      {
+        name: t`value1`,
+        description: t`The column or text to begin with.`,
+        example: formatIdentifier(t`Last Name`),
+      },
       {
         name: t`value2`,
-        description: t`This will be added to the end of value1, and so on.`,
+        description: t`This will be added to the end of value1.`,
+        example: formatStringLiteral(", "),
+      },
+      {
+        name: "…",
+        description: t`This will be added to the end of value2, and so on.`,
+        example: formatIdentifier(t`First Name`),
       },
     ],
     docsPage: "concat",
   },
   {
     name: "replace",
-    structure: "replace(" + t`text` + ", " + t`find` + ", " + t`replace` + ")",
+    structure: "replace",
     description: () => t`Replaces a part of the input text with new text.`,
-    example:
-      "replace([" +
-      t`Title` +
-      '], "' +
-      t`Enormous` +
-      '", "' +
-      t`Gigantic` +
-      '")',
     args: [
-      { name: t`text`, description: t`The column or text to search through.` },
-      { name: t`find`, description: t`The text to find.` },
-      { name: t`replace`, description: t`The text to use as the replacement.` },
+      {
+        name: t`text`,
+        description: t`The column or text to search through.`,
+        example: formatIdentifier(t`Title`),
+      },
+      {
+        name: t`find`,
+        description: t`The text to find.`,
+        example: formatStringLiteral(t`Enormous`),
+      },
+      {
+        name: t`replace`,
+        description: t`The text to use as the replacement.`,
+        example: formatStringLiteral(t`Gigantic`),
+      },
     ],
   },
   {
     name: "length",
-    structure: "length(" + t`text` + ")",
+    structure: "length",
     description: () => t`Returns the number of characters in text.`,
-    example: "length([" + t`Comment` + "])",
     args: [
       {
         name: t`text`,
         description: t`The column or text you want to get the length of.`,
+        example: formatIdentifier(t`Comment`),
       },
     ],
   },
   {
     name: "trim",
-    structure: "trim(" + t`text` + ")",
+    structure: "trim",
     description: () =>
       t`Removes leading and trailing whitespace from a string of text.`,
-    example: "trim([" + t`Comment` + "])",
     args: [
-      { name: t`text`, description: t`The column or text you want to trim.` },
+      {
+        name: t`text`,
+        description: t`The column or text you want to trim.`,
+        example: formatIdentifier(t`Comment`),
+      },
     ],
   },
   {
     name: "rtrim",
-    structure: "rtrim(" + t`text` + ")",
+    structure: "rtrim",
     description: () => t`Removes trailing whitespace from a string of text.`,
-    example: "rtrim([" + t`Comment` + "])",
     args: [
-      { name: t`text`, description: t`The column or text you want to trim.` },
+      {
+        name: t`text`,
+        description: t`The column or text you want to trim.`,
+        example: formatIdentifier(t`Comment`),
+      },
     ],
   },
   {
     name: "ltrim",
-    structure: "ltrim(" + t`text` + ")",
+    structure: "ltrim",
     description: () => t`Removes leading whitespace from a string of text.`,
-    example: "ltrim([" + t`Comment` + "])",
     args: [
-      { name: t`text`, description: t`The column or text you want to trim.` },
+      {
+        name: t`text`,
+        description: t`The column or text you want to trim.`,
+        example: formatIdentifier(t`Comment`),
+      },
     ],
   },
   {
     name: "abs",
-    structure: "abs(" + t`column` + ")",
+    structure: "abs",
     description: () =>
       t`Returns the absolute (positive) value of the specified column.`,
-    example: "abs([" + t`Debt` + "])",
     args: [
       {
         name: t`column`,
         description: t`The column or number to return absolute (positive) value of.`,
+        example: formatIdentifier(t`Debt`),
       },
     ],
   },
   {
     name: "floor",
-    structure: "floor(" + t`column` + ")",
+    structure: "floor",
     description: () => t`Rounds a decimal number down.`,
-    example: "floor([" + t`Price` + "])",
     args: [
-      { name: t`column`, description: t`The column or number to round down.` },
+      {
+        name: t`column`,
+        description: t`The column or number to round down.`,
+        example: formatIdentifier(t`Price`),
+      },
     ],
   },
   {
     name: "ceil",
-    structure: "ceil(" + t`column` + ")",
+    structure: "ceil",
     description: () => t`Rounds a decimal number up.`,
-    example: "ceil([" + t`Price` + "])",
     args: [
-      { name: t`column`, description: t`The column or number to round up.` },
+      {
+        name: t`column`,
+        description: t`The column or number to round up.`,
+        example: formatIdentifier(t`Price`),
+      },
     ],
   },
   {
     name: "round",
-    structure: "round(" + t`column` + ")",
+    structure: "round",
     description: () =>
       t`Rounds a decimal number either up or down to the nearest integer value.`,
-    example: "round([" + t`Temperature` + "])",
     args: [
       {
         name: t`column`,
         description: t`The column or number to round to nearest integer.`,
+        example: formatIdentifier(t`Temperature`),
       },
     ],
   },
   {
     name: "sqrt",
-    structure: "sqrt(" + t`column` + ")",
+    structure: "sqrt",
     description: () => t`Returns the square root.`,
-    example: "sqrt([" + t`Hypotenuse` + "])",
     args: [
       {
         name: t`column`,
         description: t`The column or number to return square root value of.`,
+        example: formatIdentifier(t`Hypotenuse`),
       },
     ],
   },
   {
     name: "power",
-    structure: "power(" + t`column` + ", " + t`exponent` + ")",
+    structure: "power",
     description: () => t`Raises a number to the power of the exponent value.`,
-    example: "power([" + t`Length` + "], 2)",
     args: [
       {
         name: t`column`,
         description: t`The column or number raised to the exponent.`,
+        example: formatIdentifier(t`Length`),
       },
-      { name: t`exponent`, description: t`The value of the exponent.` },
+      {
+        name: t`exponent`,
+        description: t`The value of the exponent.`,
+        example: "2",
+      },
     ],
   },
   {
     name: "log",
-    structure: "log(" + t`column` + ")",
+    structure: "log",
     description: () => t`Returns the base 10 log of the number.`,
-    example: "log([" + t`Value` + "])",
     args: [
       {
         name: t`column`,
         description: t`The column or number to return the natural logarithm value of.`,
+        example: formatIdentifier(t`Value`),
       },
     ],
   },
   {
     name: "datetime-diff",
-    structure:
-      "datetimeDiff(" +
-      t`datetime1` +
-      ", " +
-      t`datetime2` +
-      ", " +
-      t`unit` +
-      ")",
+    structure: "datetimeDiff",
     description: () =>
       t`Get the difference between two datetime values (datetime2 minus datetime1) using the specified unit of time.`,
-    example:
-      "datetimeDiff([" +
-      t`created_at` +
-      "], [" +
-      t`shipped_at` +
-      "], " +
-      t`"month"` +
-      ")",
     args: [
       {
-        name: t`datetime1, datetime2`,
-        description: t`The columns or expressions with your datetime values.`,
+        name: t`datetime1`,
+        description: t`The column or expression with your datetime value.`,
+        example: formatIdentifier(t`Created At`),
+      },
+      {
+        name: t`datetime2`,
+        description: t`The column or expression with your datetime value.`,
+        example: formatIdentifier(t`Shipped At`),
       },
       {
         name: t`unit`,
-        description: t`Choose from: "year", "month", "week", "day", "hour", "minute", or "second".`,
+        description: t`Choose from: ${"year"}, ${"quarter"}, ${"month"}, ${"week"}, ${"day"}, ${"hour"}, ${"minute"}, ${"second"}, or ${"millisecond"}.`,
+        example: formatStringLiteral("month"),
       },
     ],
     docsPage: "datetimediff",
   },
   {
     name: "exp",
-    structure: "exp(" + t`column` + ")",
+    structure: "exp",
     description: () =>
       t`Returns Euler's number, e, raised to the power of the supplied number.`,
-    example: "exp([" + t`Interest Months` + "])",
     args: [
       {
         name: t`column`,
         description: t`The column or number to return the exponential value of.`,
+        example: formatIdentifier(t`Interest Months`),
       },
     ],
   },
   {
     name: "contains",
-    structure: "contains(" + t`string1` + ", " + t`string2` + ")",
+    structure: "contains",
     description: () => t`Checks to see if string1 contains string2 within it.`,
-    example: "contains([" + t`Status` + '], "' + t`Pass` + '")',
     args: [
-      { name: t`string1`, description: t`The column or text to check.` },
-      { name: t`string2`, description: t`The string of text to look for.` },
+      {
+        name: t`string1`,
+        description: t`The column or text to check.`,
+        example: formatIdentifier(t`Status`),
+      },
+      {
+        name: t`string2`,
+        description: t`The string of text to look for.`,
+        example: formatStringLiteral(t`Pass`),
+      },
+    ],
+  },
+  {
+    name: "does-not-contain",
+    structure: "doesNotContain",
+    description: () =>
+      t`Checks to see if string1 does not contain string2 within it.`,
+    args: [
+      {
+        name: t`string1`,
+        description: t`The column or text to check.`,
+        example: formatIdentifier(t`Status`),
+      },
+      {
+        name: t`string2`,
+        description: t`The string of text to look for.`,
+        example: formatStringLiteral(t`Pass`),
+      },
     ],
   },
   {
     name: "starts-with",
-    structure: "startsWith(" + t`text` + ", " + t`comparison` + ")",
+    structure: "startsWith",
     description: () =>
       t`Returns true if the beginning of the text matches the comparison text.`,
-    example:
-      "startsWith([" + t`Course Name` + '], "' + t`Computer Science` + '")',
     args: [
-      { name: t`text`, description: t`The column or text to check.` },
+      {
+        name: t`text`,
+        description: t`The column or text to check.`,
+        example: formatIdentifier(t`Course Name`),
+      },
       {
         name: t`comparison`,
         description: t`The string of text that the original text should start with.`,
+        example: formatStringLiteral(t`Computer Science`),
       },
     ],
   },
   {
     name: "ends-with",
-    structure: "endsWith(" + t`text` + ", " + t`comparison` + ")",
+    structure: "endsWith",
     description: () =>
       t`Returns true if the end of the text matches the comparison text.`,
-    example: "endsWith([" + t`Appetite` + '], "' + t`hungry` + '")',
     args: [
-      { name: t`text`, description: t`The column or text to check.` },
+      {
+        name: t`text`,
+        description: t`The column or text to check.`,
+        example: formatIdentifier(t`Appetite`),
+      },
       {
         name: t`comparison`,
         description: t`The string of text that the original text should end with.`,
+        example: formatStringLiteral(t`hungry`),
       },
     ],
   },
   {
     name: "between",
-    structure: "between(" + t`column` + ", " + t`start` + ", " + t`end` + ")",
+    structure: "between",
     description: () =>
       t`Checks a date or number column's values to see if they're within the specified range.`,
-    example: "between([" + t`Created At` + '], "2019-01-01", "2020-12-31")',
     args: [
       {
         name: t`column`,
         description: t`The date or numeric column that should be within the start and end values.`,
+        example: formatIdentifier(t`Created At`),
       },
-      { name: t`start`, description: t`The beginning of the range.` },
-      { name: t`end`, description: t`The end of the range.` },
+      {
+        name: t`start`,
+        description: t`The beginning of the range.`,
+        example: formatStringLiteral("2019-01-01"),
+      },
+      {
+        name: t`end`,
+        description: t`The end of the range.`,
+        example: formatStringLiteral("2022-12-31"),
+      },
     ],
   },
   {
     name: "interval",
-    structure: "timeSpan(" + t`number` + ", " + t`text` + ")",
+    structure: "timeSpan",
     description: () => t`Gets a time interval of specified length`,
-    example: 'timeSpan(7, "day")',
     args: [
       {
         name: t`number`,
         description: t`Period of interval, where negative values are back in time.`,
+        example: "7",
       },
       {
         name: t`text`,
-        description: t`Type of interval like "day", "month", "year".`,
+        description: t`Type of interval like ${"day"}, ${"month"}, ${"year"}.`,
+        example: formatStringLiteral("day"),
       },
     ],
   },
   {
     name: "time-interval",
-    structure:
-      "interval(" + t`column` + ", " + t`number` + ", " + t`text` + ")",
+    structure: "interval",
     description: () =>
       t`Checks a date column's values to see if they're within the relative range.`,
-    example: "interval([" + t`Created At` + '], -1, "month")',
     args: [
       {
         name: t`column`,
         description: t`The date column to return interval of.`,
+        example: formatIdentifier(t`Created At`),
       },
       {
         name: t`number`,
         description: t`Period of interval, where negative values are back in time.`,
+        example: "-1",
       },
       {
         name: t`text`,
-        description: t`Type of interval like "day", "month", "year".`,
+        description: t`Type of interval like ${"day"}, ${"month"}, ${"year"}.`,
+        example: formatStringLiteral("month"),
       },
     ],
   },
   {
     name: "relative-datetime",
-    structure: "relativeDateTime(" + t`number` + ", " + t`text` + ")",
+    structure: "relativeDateTime",
     description: () => t`Gets a timestamp relative to the current time`,
-    example: 'relativeDateTime(-30, "day")',
     args: [
       {
         name: t`number`,
         description: t`Period of interval, where negative values are back in time.`,
+        example: "-30",
       },
       {
         name: t`text`,
-        description: t`Type of interval like "day", "month", "year".`,
+        description: t`Type of interval like ${"day"}, ${"month"}, ${"year"}.`,
+        example: formatStringLiteral("day"),
       },
     ],
   },
   {
     name: "is-null",
-    structure: "isnull(" + t`column` + ")",
+    structure: "isnull",
     description: () => t`Checks if a column is null`,
-    example: "isnull([" + t`Discount` + "])",
     args: [
       {
         name: t`column`,
         description: t`The column to check.`,
+        example: formatIdentifier(t`Discount`),
       },
     ],
     docsPage: "isnull",
   },
   {
-    name: "is-empty",
-    structure: "isempty(" + t`column` + ")",
-    description: () => t`Checks if a column is empty`,
-    example: "isempty([" + t`Name` + "])",
+    name: "not-null",
+    structure: "notnull",
+    description: () => t`Checks if a column is not null`,
     args: [
       {
         name: t`column`,
         description: t`The column to check.`,
+        example: formatIdentifier(t`Discount`),
+      },
+    ],
+  },
+  {
+    name: "is-empty",
+    structure: "isempty",
+    description: () => t`Checks if a column is empty`,
+    args: [
+      {
+        name: t`column`,
+        description: t`The column to check.`,
+        example: formatIdentifier(t`Name`),
       },
     ],
     docsPage: "isempty",
   },
   {
+    name: "not-empty",
+    structure: "notempty",
+    description: () => t`Checks if a column is not empty`,
+    args: [
+      {
+        name: t`column`,
+        description: t`The column to check.`,
+        example: formatIdentifier(t`Name`),
+      },
+    ],
+  },
+  {
     name: "coalesce",
-    structure: "coalesce(" + t`value1` + ", " + t`value2` + ", …)",
+    structure: "coalesce",
     description: () =>
       t`Looks at the values in each argument in order and returns the first non-null value for each row.`,
-    example:
-      "coalesce([" +
-      t`Comments` +
-      "], [" +
-      t`Notes` +
-      '], "' +
-      t`No comments` +
-      '")',
     args: [
-      { name: t`value1`, description: t`The column or value to return.` },
+      {
+        name: t`value1`,
+        description: t`The column or value to return.`,
+        example: formatIdentifier(t`Comments`),
+      },
       {
         name: t`value2`,
-        description: t`If value1 is empty, value2 gets returned if its not empty, and so on.`,
+        description: t`If value1 is empty, value2 gets returned if its not empty.`,
+        example: formatIdentifier(t`Notes`),
+      },
+      {
+        name: "…",
+        description: t`If value1 is empty, and value2 is empty, the next non-empty one will be returned.`,
+        example: formatStringLiteral(t`No comments`),
       },
     ],
     docsPage: "coalesce",
   },
   {
     name: "case",
-    structure: "case(" + t`condition` + ", " + t`output` + ", …)",
+    structure: "case",
     description: () =>
       t`Tests an expression against a list of cases and returns the corresponding value of the first matching case, with an optional default value if nothing else is met.`,
-    example:
-      "case([" +
-      t`Weight` +
-      '] > 200, "' +
-      t`Large` +
-      '", [' +
-      t`Weight` +
-      '] > 150, "' +
-      t`Medium` +
-      '", "' +
-      t`Small` +
-      '")',
     args: [
       {
         name: t`condition`,
         description: t`Something that should evaluate to true or false.`,
+        example: `${formatIdentifier(t`Weight`)} > 200`,
       },
       {
         name: t`output`,
-        description: t`The value that will be returned if the preceding condition is true, and so on.`,
+        description: t`The value that will be returned if the preceding condition is true.`,
+        example: formatStringLiteral(t`Large`),
+      },
+      {
+        name: "…",
+        description: t`You can add more conditions to test.`,
+        example: `${formatIdentifier(t`Weight`)} > 150, ${formatStringLiteral(
+          t`Medium`,
+        )}, ${formatStringLiteral(t`Small`)}`,
       },
     ],
     docsPage: "case",
   },
   {
     name: "get-year",
-    structure: "year(" + t`column` + ")",
+    structure: "year",
     description: () =>
       t`Takes a datetime and returns an integer with the number of the year.`,
-    example: "year([" + t`Created At` + "])",
     args: [
       {
         name: t`column`,
         description: t`The datetime column.`,
+        example: formatIdentifier(t`Created At`),
       },
     ],
   },
   {
     name: "get-quarter",
-    structure: "quarter(" + t`column` + ")",
+    structure: "quarter",
     description: () =>
       t`Takes a datetime and returns an integer (1-4) with the number of the quarter in the year.`,
-    example: "quarter([" + t`Created At` + "])",
     args: [
       {
         name: t`column`,
         description: t`The datetime column.`,
+        example: formatIdentifier(t`Created At`),
       },
     ],
   },
   {
     name: "get-month",
-    structure: "month(" + t`column` + ")",
+    structure: "month",
     description: () =>
       t`Takes a datetime and returns an integer (1-12) with the number of the month in the year.`,
-    example: "month([" + t`Created At` + "])",
     args: [
       {
         name: t`column`,
         description: t`The datetime column.`,
+        example: formatIdentifier(t`Created At`),
       },
     ],
   },
   {
     name: "get-week",
-    structure: "week(" + t`column` + ", " + t`mode` + ")",
+    structure: "week",
     description: () => t`Extracts the week of the year as an integer.`,
-    example: "week([" + t`Created At` + '], "iso")',
     args: [
       {
         name: t`column`,
         description: t`The name of the column with your date or datetime value.`,
+        example: formatIdentifier(t`Created At`),
       },
       {
         name: t`mode`,
@@ -706,115 +826,118 @@ const helperTextStrings: HelpTextConfig[] = [
 - US: Week 1 starts on Jan 1. All other weeks start on Sunday.
 - Instance: Week 1 starts on Jan 1. All other weeks start on the day defined in your Metabase localization settings.
 `,
+        example: formatStringLiteral("iso"),
       },
     ],
   },
   {
     name: "get-day",
-    structure: "day(" + t`column` + ")",
+    structure: "day",
     description: () =>
       t`Takes a datetime and returns an integer (1-31) with the number of the day of the month.`,
-    example: "day([" + t`Created At` + "])",
     args: [
       {
         name: t`column`,
         description: t`The datetime column.`,
+        example: formatIdentifier(t`Created At`),
       },
     ],
   },
   {
     name: "get-day-of-week",
-    structure: "weekday(" + t`column` + ")",
+    structure: "weekday",
     description: () =>
       t`Takes a datetime and returns an integer (1-7) with the number of the day of the week.`,
-    example: "weekday([" + t`Created At` + "])",
     args: [
       {
         name: t`column`,
         description: t`The datetime column.`,
+        example: formatIdentifier(t`Created At`),
       },
     ],
   },
   {
     name: "get-hour",
-    structure: "hour(" + t`column` + ")",
+    structure: "hour",
     description: () =>
       t`Takes a datetime and returns an integer (0-23) with the number of the hour. No AM/PM.`,
-    example: "hour([" + t`Created At` + "])",
     args: [
       {
         name: t`column`,
         description: t`The datetime column.`,
+        example: formatIdentifier(t`Created At`),
       },
     ],
   },
   {
     name: "get-minute",
-    structure: "minute(" + t`column` + ")",
+    structure: "minute",
     description: () =>
       t`Takes a datetime and returns an integer (0-59) with the number of the minute in the hour.`,
-    example: "minute([" + t`Created At` + "])",
     args: [
       {
         name: t`column`,
         description: t`The datetime column.`,
+        example: formatIdentifier(t`Created At`),
       },
     ],
   },
   {
     name: "get-second",
-    structure: "second(" + t`column` + ")",
+    structure: "second",
     description: () =>
       t`Takes a datetime and returns an integer (0-59) with the number of the seconds in the minute.`,
-    example: "second([" + t`Created At` + "])",
     args: [
       {
         name: t`column`,
         description: t`The datetime column.`,
+        example: formatIdentifier(t`Created At`),
       },
     ],
   },
   {
     name: "datetime-add",
-    structure:
-      "datetimeAdd(" + t`column` + ", " + t`amount` + ", " + t`unit` + ")",
+    structure: "datetimeAdd",
     description: () => t`Adds some units of time to a date or timestamp value.`,
-    example: "datetimeAdd([" + t`Created At` + '], 1, "' + t`month` + '")',
     args: [
       {
         name: t`column`,
         description: t`The column with your date or timestamp values.`,
+        example: formatIdentifier(t`Created At`),
       },
       {
         name: t`amount`,
         description: t`The number of units to be added.`,
+        example: "1",
       },
       {
         name: t`unit`,
-        description: t`"year", "month", "quarter", "day", "hour", "minute", "second" or "millisecond".`,
+        description: t`Choose from: ${"year"}, ${"quarter"}, ${"month"}, ${"week"}, ${"day"}, ${"hour"}, ${"minute"}, ${"second"}, or ${"millisecond"}.`,
+        example: formatStringLiteral("month"),
       },
     ],
     docsPage: "datetimeadd",
   },
   {
     name: "datetime-subtract",
-    structure:
-      "datetimeSubtract(" + t`column` + ", " + t`amount` + ", " + t`unit` + ")",
+    structure: "datetimeSubtract",
     description: () =>
       t`Subtracts some units of time to a date or timestamp value.`,
-    example: "datetimeSubtract([" + t`Created At` + '], 1, "' + t`month` + '")',
     args: [
       {
         name: t`column`,
         description: t`The column with your date or timestamp values.`,
+        example: formatIdentifier(t`Created At`),
       },
       {
         name: t`amount`,
         description: t`The number of units to be subtracted.`,
+        example: "1",
       },
       {
         name: t`unit`,
-        description: t`"year", "month", "quarter", "day", "hour", "minute", "second" or "millisecond".`,
+        description: t`Choose from: ${"year"}, ${"quarter"}, ${"month"}, ${"week"}, ${"day"}, ${"hour"}, ${"minute"}, ${"second"}, or ${"millisecond"}.`,
+        example: formatStringLiteral("month"),
       },
     ],
     docsPage: "datetimesubtract",
@@ -823,36 +946,28 @@ const helperTextStrings: HelpTextConfig[] = [
     name: "now",
     structure: "now",
     description: getDescriptionForNow,
-    example: "now",
-    args: [],
   },
   {
     name: "convert-timezone",
-    structure:
-      "convertTimezone(" +
-      t`column` +
-      ", " +
-      t`target` +
-      ", [" +
-      t`source` +
-      "])",
+    structure: "convertTimezone",
     description: () => t`Convert timezone of a date or timestamp column.
 We support tz database time zone names.
 See the full list here: https://w.wiki/4Jx`,
-    example:
-      "convertTimezone([" + t`Created At` + '], "Asia/Ho_Chi_Minh", "UTC")',
     args: [
       {
         name: t`column`,
         description: t`The column with your date or timestamp values.`,
+        example: formatIdentifier(t`Created At`),
       },
       {
         name: t`target`,
         description: t`The timezone you want to assign to your column.`,
+        example: formatStringLiteral("Asia/Ho_Chi_Minh"),
       },
       {
         name: t`source`,
         description: t`The current time zone. Only required for timestamps with no time zone.`,
+        example: formatStringLiteral("UTC"),
       },
     ],
     docsPage: "converttimezone",
@@ -862,20 +977,29 @@ See the full list here: https://w.wiki/4Jx`,
 export const getHelpText = (
   name: string,
   database: Database,
-  reportTimezone: string,
+  reportTimezone?: string,
 ): HelpText | undefined => {
-  const helperTextConfig = helperTextStrings.find(h => h.name === name);
+  const helperTextConfig = HELPER_TEXT_STRINGS.find(h => h.name === name);
 
-  return (
-    helperTextConfig && {
-      ...helperTextConfig,
-      description: helperTextConfig.description(database, reportTimezone),
-    }
-  );
+  if (!helperTextConfig) {
+    return;
+  }
+
+  const { description } = helperTextConfig;
+
+  return {
+    ...helperTextConfig,
+    example: getHelpExample(helperTextConfig),
+    description: description(database, reportTimezone),
+  };
 };
 
-const getNowAtTimezone = (timezone: string, reportTimezone: string) =>
-  timezone ? moment().tz(reportTimezone).format("LT") : moment().format("LT");
+const getHelpExample = ({ structure, args }: HelpTextConfig): string => {
+  const exampleParameters =
+    args?.length && args.map(({ example }) => example).join(", ");
+
+  return `${structure}${exampleParameters ? `(${exampleParameters})` : ""}`;
+};
 
 export const getHelpDocsUrl = ({ docsPage }: HelpText): string => {
   return docsPage

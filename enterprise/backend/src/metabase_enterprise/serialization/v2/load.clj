@@ -94,7 +94,7 @@
                   :errors    []}
         result   (reduce (if abort-on-error load-one try-load-one) ctx contents)]
     (when-let [errors (seq (:errors result))]
-      (log/error (trs "Errors were encountered during import. Individual errors:"))
+      (log/error (trs "Errors were encountered during import."))
       (doseq [e errors]
-        (log/error e)))
+        (log/error e "Import error details:")))
     result))

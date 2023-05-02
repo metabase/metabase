@@ -272,7 +272,6 @@ export class UnconnectedDataSelector extends Component {
     hasTableSearch: PropTypes.bool,
     canChangeDatabase: PropTypes.bool,
     containerClassName: PropTypes.string,
-    requireWriteback: PropTypes.bool,
 
     // from search entity list loader
     allError: PropTypes.bool,
@@ -566,7 +565,13 @@ export class UnconnectedDataSelector extends Component {
   // for steps where there's a single option sometimes we want to automatically select it
   // if `useOnlyAvailable*` prop is provided
   skipSteps() {
+    const { readOnly } = this.props;
     const { activeStep } = this.state;
+
+    if (readOnly) {
+      return;
+    }
+
     if (
       activeStep === DATABASE_STEP &&
       this.props.useOnlyAvailableDatabase &&
@@ -895,7 +900,6 @@ export class UnconnectedDataSelector extends Component {
       onChangeField: this.onChangeField,
 
       // misc
-      requireWriteback: this.props.requireWriteback,
       isLoading: this.state.isLoading,
       hasNextStep: !!this.getNextStep(),
       onBack: this.getPreviousStep() ? this.previousStep : null,
@@ -944,9 +948,10 @@ export class UnconnectedDataSelector extends Component {
 
   isSavedQuestionSelected = () => isVirtualCardId(this.props.selectedTableId);
 
-  handleSavedQuestionSelect = async table => {
+  handleSavedQuestionSelect = async tableOrModelId => {
+    await this.props.fetchFields(tableOrModelId);
     if (this.props.setSourceTableFn) {
-      this.props.setSourceTableFn(table.id);
+      this.props.setSourceTableFn(tableOrModelId);
     }
     this.popover.current.toggle();
     this.handleClose();
@@ -1125,7 +1130,7 @@ export class UnconnectedDataSelector extends Component {
           id="DataPopover"
           autoWidth
           ref={this.popover}
-          isInitiallyOpen={this.props.isInitiallyOpen}
+          isInitiallyOpen={this.props.isInitiallyOpen && !this.props.readOnly}
           containerClassName={this.props.containerClassName}
           triggerElement={this.getTriggerElement}
           triggerClasses={this.getTriggerClasses()}

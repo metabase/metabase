@@ -595,40 +595,106 @@ describe("data_grid", () => {
     });
 
     describe("row collapsing", () => {
-      const cols = [D1, D2, M];
-      const primaryGroup = 0;
-      const subtotalOne = 2;
-      const rows = [
-        ["a", "x", 1, primaryGroup],
-        ["a", "y", 2, primaryGroup],
-        ["b", "x", 3, primaryGroup],
-        ["b", "y", 4, primaryGroup],
-        ["a", null, 3, subtotalOne],
-        ["b", null, 7, subtotalOne],
-      ];
-      const data = {
-        rows,
-        cols: [...cols, { name: "pivot-grouping", base_type: TYPE.Text }],
-      };
-      it("hides single collapsed rows", () => {
-        const { getRowSection, leftHeaderItems, rowCount } =
-          multiLevelPivotForIndexes(data, [], [0, 1], [2], {
-            collapsedRows: ['["a"]'],
-          });
-        expect(rowCount).toEqual(5);
-        expect(leftHeaderItems[0].value).toEqual("Totals for a"); // a is collapsed
-        expect(getRowSection(0, 0)).toEqual([{ isSubtotal: true, value: "3" }]);
+      describe("single level pivot", () => {
+        const cols = [D1, D2, M];
+        const primaryGroup = 0;
+        const subtotalOne = 2;
+        const rows = [
+          ["a", "x", 1, primaryGroup],
+          ["a", "y", 2, primaryGroup],
+          ["b", "x", 3, primaryGroup],
+          ["b", "y", 4, primaryGroup],
+          ["a", null, 3, subtotalOne],
+          ["b", null, 7, subtotalOne],
+        ];
+        const data = {
+          rows,
+          cols: [...cols, { name: "pivot-grouping", base_type: TYPE.Text }],
+        };
+        it("hides single collapsed rows", () => {
+          const { getRowSection, leftHeaderItems, rowCount } =
+            multiLevelPivotForIndexes(data, [], [0, 1], [2], {
+              collapsedRows: ['["a"]'],
+            });
+          expect(rowCount).toEqual(5);
+          expect(leftHeaderItems[0].value).toEqual("Totals for a"); // a is collapsed
+          expect(getRowSection(0, 0)).toEqual([
+            { isSubtotal: true, value: "3" },
+          ]);
+        });
+        it("hides collapsed columns", () => {
+          const { getRowSection, leftHeaderItems, rowCount } =
+            multiLevelPivotForIndexes(data, [], [0, 1], [2], {
+              collapsedRows: ["1"],
+            });
+          expect(rowCount).toEqual(3);
+          expect(leftHeaderItems[0].value).toEqual("Totals for a"); // a is collapsed
+          expect(leftHeaderItems[1].value).toEqual("Totals for b"); // b is also collapsed
+          expect(getRowSection(0, 0)).toEqual([
+            { isSubtotal: true, value: "3" },
+          ]);
+          expect(getRowSection(0, 1)).toEqual([
+            { isSubtotal: true, value: "7" },
+          ]);
+        });
       });
-      it("hides collapsed columns", () => {
-        const { getRowSection, leftHeaderItems, rowCount } =
-          multiLevelPivotForIndexes(data, [], [0, 1], [2], {
-            collapsedRows: ["1"],
+
+      describe("multi level pivot", () => {
+        const cols = [D1, D2, D3];
+        const rows = [
+          ["May", "Affiliate", "Gizmo", 0, 1],
+          ["May", "Facebook", "Gizmo", 0, 1],
+          ["May", "Google", "Doohickey", 0, 2],
+          ["May", "Google", "Gadget", 0, 1],
+          ["May", "Google", "Gizmo", 0, 2],
+          ["May", "Google", "Widget", 0, 1],
+          ["May", "Organic", "Doohickey", 0, 1],
+          ["May", "Organic", "Gadget", 0, 1],
+          ["May", "Organic", "Gizmo", 0, 1],
+          ["May", "Organic", "Widget", 0, 1],
+          ["May", "Twitter", "Doohickey", 0, 2],
+          ["May", "Twitter", "Gadget", 0, 2],
+          ["May", "Twitter", "Widget", 0, 2],
+          ["May", "Affiliate", null, 4, 1],
+          ["May", "Facebook", null, 4, 1],
+          ["May", "Google", null, 4, 6],
+          ["May", "Organic", null, 4, 4],
+          ["May", "Twitter", null, 4, 6],
+          ["May", null, null, 6, 18],
+          [null, null, null, 7, 18],
+        ];
+        const data = {
+          rows,
+          cols: [...cols, { name: "pivot-grouping", base_type: TYPE.Text }, M],
+        };
+
+        it("should convert single rows to subtotal rows when collapsed", () => {
+          // Collapsing the "source" column
+          const { getRowSection, leftHeaderItems, rowCount } =
+            multiLevelPivotForIndexes(data, [3], [0, 1, 2], [4], {
+              collapsedRows: ["2"],
+            });
+          expect(rowCount).toEqual(6);
+          expect(leftHeaderItems[1]).toMatchObject({
+            value: "Totals for Affiliate",
+            isSubtotal: true,
           });
-        expect(rowCount).toEqual(3);
-        expect(leftHeaderItems[0].value).toEqual("Totals for a"); // a is collapsed
-        expect(leftHeaderItems[1].value).toEqual("Totals for b"); // b is also collapsed
-        expect(getRowSection(0, 0)).toEqual([{ isSubtotal: true, value: "3" }]);
-        expect(getRowSection(0, 1)).toEqual([{ isSubtotal: true, value: "7" }]);
+          expect(leftHeaderItems[5]).toMatchObject({
+            value: "Totals for Twitter",
+            isSubtotal: true,
+          });
+          expect(getRowSection(1, 0)).toMatchObject([
+            {
+              value: "1",
+            },
+          ]); //Value for affiliate, but not a subtotal so it has children
+          expect(getRowSection(1, 2)).toEqual([
+            { isSubtotal: true, value: "6" },
+          ]);
+          expect(getRowSection(1, 3)).toEqual([
+            { isSubtotal: true, value: "4" },
+          ]);
+        });
       });
     });
 

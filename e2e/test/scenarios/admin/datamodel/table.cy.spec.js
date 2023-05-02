@@ -1,5 +1,5 @@
 import { restore, filter, visitQuestion } from "e2e/support/helpers";
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, SAMPLE_DB_SCHEMA_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -34,13 +34,15 @@ describe("scenarios > admin > databases > table", () => {
   it("should show 404 if database does not exist (metabase#14652)", () => {
     cy.visit("/admin/datamodel/database/54321");
     cy.get(".AdminList-item").should("have.length", 0);
-    cy.findByText("The page you asked for couldn't be found.");
+    cy.findByText("Not found.");
     cy.findByText("Select a database");
   });
 
   describe("in orders table", () => {
     beforeEach(() => {
-      cy.visit(`/admin/datamodel/database/${SAMPLE_DB_ID}/table/${ORDERS_ID}`);
+      cy.visit(
+        `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}`,
+      );
     });
 
     it("should see multiple fields", () => {

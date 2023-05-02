@@ -7,7 +7,8 @@
    [metabase.models.user :refer [User]]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
-   [toucan.db :as db]))
+   [metabase.util.malli.schema :as ms]
+   [toucan2.core :as t2]))
 
 (def ^:private UserAttributes
   (mu/with-api-error-message
@@ -21,9 +22,10 @@
 (api/defendpoint PUT "/:id/attributes"
   "Update the `login_attributes` for a User."
   [id :as {{:keys [login_attributes]} :body}]
-  {login_attributes [:maybe UserAttributes]}
-  (api/check-404 (db/select-one User :id id))
-  (db/update! User id :login_attributes login_attributes))
+  {id ms/PositiveInt
+   login_attributes [:maybe UserAttributes]}
+  (api/check-404 (t2/select-one User :id id))
+  (pos? (t2/update! User id {:login_attributes login_attributes})))
 
 (api/defendpoint GET "/attributes"
   "Fetch a list of possible keys for User `login_attributes`. This just looks at keys that have already been set for
@@ -31,7 +33,7 @@
   []
   (->>
    ;; look at the `login_attributes` for the first 1000 users that have them set. Then make a set of the keys
-   (for [login-attributes (db/select-field :login_attributes User :login_attributes [:not= nil] {:limit 1000})
+   (for [login-attributes (t2/select-fn-set :login_attributes User :login_attributes [:not= nil] {:limit 1000})
          :when (seq login-attributes)]
      (set (keys login-attributes)))
    ;; combine all the sets of attribute keys into a single set

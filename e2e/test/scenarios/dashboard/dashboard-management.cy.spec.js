@@ -5,6 +5,7 @@ import {
   visitDashboard,
   modal,
   rightSidebar,
+  appBar,
 } from "e2e/support/helpers";
 
 import { USERS } from "e2e/support/cypress_data";
@@ -82,7 +83,7 @@ describe("managing dashboard from the dashboard's edit menu", () => {
             });
 
             it("should be able to move/undo move a dashboard (metabase#13059)", () => {
-              cy.findByTestId("app-bar").contains("Our analytics");
+              appBar().contains("Our analytics");
 
               popover().within(() => {
                 cy.findByText("Move").click();
@@ -97,14 +98,14 @@ describe("managing dashboard from the dashboard's edit menu", () => {
               assertOnRequest("updateDashboard");
               cy.contains("37.65");
               // it should update dashboard's collection after the move without the page reload (metabase#13059)
-              cy.findByTestId("app-bar").contains("First collection");
+              appBar().contains("First collection");
 
               // Why do we use "Dashboard moved to" here (without its location, btw) vs. "Moved dashboard" for the same action?
               cy.findByText("Dashboard moved to");
               cy.findByText("Undo").click();
               assertOnRequest("updateDashboard");
 
-              cy.findByTestId("app-bar").contains("Our analytics");
+              appBar().contains("Our analytics");
             });
 
             it("should be able to archive/unarchive a dashboard", () => {

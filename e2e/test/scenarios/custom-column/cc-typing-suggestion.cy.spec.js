@@ -48,4 +48,22 @@ describe("scenarios > question > custom column > typing suggestion", () => {
 
     cy.contains("lower(");
   });
+
+  it("should show expression function helper if a proper function is typed", () => {
+    enterCustomColumnDetails({ formula: "lower(" });
+
+    cy.contains("lower(text)");
+    cy.findByText("Returns the string of text in all lower case.").should(
+      "be.visible",
+    );
+    cy.findByText("lower([Status])").should("be.visible");
+
+    cy.findByTestId("expression-helper-popover-arguments")
+      .findByText("text")
+      .realHover();
+
+    cy.findByText("The column with values to convert to lower case.").should(
+      "be.visible",
+    );
+  });
 });

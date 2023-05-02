@@ -5,15 +5,11 @@
   See the detailed description of the (de)serialization processes in [[metabase.models.serialization.base]]."
   (:require
    [clojure.java.io :as io]
-   [clojure.string :as str]
-   [medley.core :as m]
    [metabase.models.serialization :as serdes]
    [metabase.util.date-2 :as u.date]
-   [potemkin.types :as p]
-   [yaml.core :as yaml]
-   [yaml.reader :as y.reader])
-  (:import (java.io File)
-           (java.time.temporal Temporal)))
+   [metabase.util.yaml :as yaml]
+   [potemkin.types :as p])
+  (:import (java.io File)))
 
 (set! *warn-on-reflection* true)
 
@@ -33,28 +29,18 @@
     "Given one of the `:serdes/meta` abstract paths returned by [[ingest-list]], read in and return the entire
     corresponding entity."))
 
-(extend-type Temporal y.reader/YAMLReader
-             (decode [data]
-               (u.date/parse data)))
-
 (defn- read-timestamps [entity]
   (->> (keys entity)
        (filter #(or (#{:last_analyzed} %)
                     (.endsWith (name %) "_at")))
        (reduce #(update %1 %2 u.date/parse) entity)))
 
-(defn- parse-keys
+(defn- parse-key
   "Convert suitable string keys to clojure keywords, ignoring keys with whitespace, etc."
-  [obj]
-  (cond
-    (map? obj)        (m/map-kv (fn [k v]
-                                  [(if (re-matches #"^[0-9a-zA-Z_\./\-]+$" k)
-                                     (apply keyword (str/split k #"/"))
-                                     k)
-                                   (parse-keys v)])
-                                obj)
-    (sequential? obj) (mapv parse-keys obj)
-    :else             obj))
+  [{k :key}]
+  (if (re-matches #"^[0-9a-zA-Z_\./\-]+$" k)
+    (keyword k)
+    k))
 
 (defn- strip-labels
   [hierarchy]
@@ -65,8 +51,7 @@
   The returned entity is in \"extracted\" form, ready to be passed to the `load` step."
   [file]
   (-> file
-      (yaml/from-file false)
-      parse-keys
+      (yaml/from-file {:key-fn parse-key})
       read-timestamps))
 
 (def ^:private legal-top-level-paths

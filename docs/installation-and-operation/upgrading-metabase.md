@@ -6,6 +6,8 @@ redirect_from:
 
 # Upgrading Metabase
 
+Instructions for upgrading to a new [Metabase release](../releases.md).
+
 ## Backing up your application database
 
 The application database keeps track of all of your people, dashboards, questions, collections, permissions: all the application data in Metabase (that is, everything but the data you've connected to Metabase). While it's unlikely you'll need to roll back to your current version, a backup will do wonders for your peace of mind.
@@ -110,6 +112,21 @@ If you're running Metabase in a Docker container:
 
 On startup, Metabase will perform the upgrade automatically. Once Metabase has completed the upgrade, you'll be running the new version.
 
+## Upgrading from older versions of Metabase
+
+If you're on a Metabase version older than Metabase 40, you'll need to upgrade release by release until you're on the latest version of Metabase 40. From the latest version of Metabase 40, you can then jump to the current version of Metabase.
+
+For example, if you're running Metabase 1.38, your upgrade path would look like:
+
+- 1.38.X
+- 1.39.X
+- 1.40.X
+- Latest 
+
+With X being the latest version available for each release.
+
+For a list of releases, see [Metabase versions](../releases.md).
+
 ## Upgrading Metabase Cloud
 
 If you're on a [Metabase Cloud](https://www.metabase.com/pricing) plan, your Metabase will upgrade automatically with each new release; no action needed on your end. There's usually a short period of time (typically a week or so), between when Metabase announces a new release and when the Cloud team starts rolling out the new version on Metabase Cloud. This buffer just gives the Cloud team some time to make sure the upgrades go smoothly.
@@ -137,12 +154,6 @@ If you're running Docker, the command would be:
 
 ```
 docker run --rm metabase/metabase migrate down
-```
-
-The default is to migrate down by one major version, but you can also specify a major version (as an integer) to downgrade to:
-
-```
-java -jar metabase.jar migrate down 44
 ```
 
 Once the migration process completes, start up Metabase using the JAR or Docker image for the version you want to run.

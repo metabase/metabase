@@ -8,7 +8,7 @@ import {
   waitForElementToBeRemoved,
 } from "__support__/ui";
 import {
-  setupActionsEndpoints,
+  setupModelActionsEndpoints,
   setupCardsEndpoints,
 } from "__support__/server-mocks";
 
@@ -47,7 +47,7 @@ async function setup({
   setupCardsEndpoints([model]);
 
   if (action) {
-    setupActionsEndpoints(model.id, [action]);
+    setupModelActionsEndpoints([action], model.id);
   } else {
     fetchMock.get(`path:/api/action/${ACTION_NOT_FOUND_ID}`, 404);
   }

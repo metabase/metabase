@@ -597,3 +597,85 @@
                                                      &Products.products.category]
                                       :fields       :none}]
                       :fields       [$product_id->products.category]})))))))
+
+(deftest metadata-join-alias-test
+  (mt/dataset sample-dataset
+    ;; With remapping, metadata may contain field with `:source-field` which is not used in corresponding query.
+    ;;   See [[metabase.models.params.custom-values-test/with-mbql-card-test]].
+    (testing "`:join-alias` is correctly updated in metadata fields containing `:source-field`"
+      ;; Used metadata are simplified (invalid) for testing purposes. To the best of my knowledge only `:field_ref`
+      ;;   could contain field with `:source-field` option that should be updated.
+      (testing "With `:source-field` field in the `:source-metadata` and not in the`:source-query`, query should be left intact"
+        (let [query (mt/mbql-query products
+                      {:source-query {:source-table $$orders
+                                      :fields [$id]}
+                       :source-metadata [{:field_ref $orders.product_id->category}]})]
+          (is (query= query (add-implicit-joins query)))))
+      (testing "#26631 Case 1: Join query with implicit join into query with nested query with implicit join as source"
+        (is (= (mt/mbql-query products
+                 {:source-query {:source-table $$orders
+                                 :aggregation [[:count]]
+                                 :breakout [&PRODUCTS__via__PRODUCT_ID.$orders.product_id->category]
+                                 :joins [{:alias "PRODUCTS__via__PRODUCT_ID"
+                                          :fields :none
+                                          :condition [:= $orders.product_id &PRODUCTS__via__PRODUCT_ID.$id]
+                                          :strategy :left-join
+                                          :source-table $$products
+                                          :fk-field-id %orders.product_id}]}
+                  :source-metadata [{:field_ref &PRODUCTS__via__PRODUCT_ID.$orders.product_id->category}]
+                  :joins [{:alias "Q2"
+                           :condition [:=
+                                       &PRODUCTS__via__PRODUCT_ID.$orders.product_id->category
+                                       &Q2.$reviews.product_id->category]
+                           :strategy :left-join
+                           :source-query {:source-table $$reviews
+                                          :aggregation [[:count]]
+                                          :breakout [&PRODUCTS__via__PRODUCT_ID.$reviews.product_id->category]
+                                          :joins [{:alias "PRODUCTS__via__PRODUCT_ID"
+                                                   :fields :none
+                                                   :condition [:= $reviews.product_id &PRODUCTS__via__PRODUCT_ID.$id]
+                                                   :strategy :left-join
+                                                   :source-table $$products
+                                                   :fk-field-id %reviews.product_id}]}
+                           :source-metadata [{:field_ref &PRODUCTS__via__PRODUCT_ID.$reviews.product_id->category}]}]})
+               (add-implicit-joins
+                (mt/mbql-query products
+                  {:source-query {:source-table $$orders
+                                  :aggregation [[:count]]
+                                  :breakout [$orders.product_id->category]}
+                   :source-metadata [{:field_ref $orders.product_id->category}]
+                   :joins [{:alias "Q2"
+                            :condition [:= $orders.product_id->category &Q2.$reviews.product_id->category]
+                            :strategy :left-join
+                            :source-query {:source-table $$reviews
+                                           :aggregation [[:count]]
+                                           :breakout [$reviews.product_id->category]}
+                            :source-metadata [{:field_ref $reviews.product_id->category}]}]})))))
+      (testing "#26631 Case 3: Join query with implicit join into a query with a table as source"
+        (is (query= (mt/mbql-query products
+                      {:source-table $$products
+                       :joins [{:join-alias "Q2"
+                                :fields :all
+                                :condition [:= $category &Q2.$orders.product_id->category]
+                                :strategy :left-join
+                                :source-query {:source-table $$orders
+                                               :aggregation [[:count]]
+                                               :breakout [&PRODUCTS__via__PRODUCT_ID.$orders.product_id->category]
+                                               :joins [{:alias "PRODUCTS__via__PRODUCT_ID"
+                                                        :fields :none
+                                                        :strategy :left-join
+                                                        :condition [:= $orders.product_id &PRODUCTS__via__PRODUCT_ID.$id]
+                                                        :source-table $$products
+                                                        :fk-field-id %orders.product_id}]}
+                                :source-metadata [{:field_ref &PRODUCTS__via__PRODUCT_ID.$orders.product_id->category}]}]})
+                    (add-implicit-joins
+                     (mt/mbql-query products
+                       {:source-table $$products
+                        :joins [{:join-alias "Q2"
+                                 :fields :all
+                                 :condition [:= $category &Q2.$orders.product_id->category]
+                                 :strategy :left-join
+                                 :source-query {:source-table $$orders
+                                                :aggregation [[:count]]
+                                                :breakout [$orders.product_id->category]}
+                                 :source-metadata [{:field_ref $orders.product_id->category}]}]}))))))))

@@ -8,6 +8,7 @@ import type { TableId, VisualizationSettings } from "metabase-types/api";
 import {
   getIsPKFromTablePredicate,
   isEntityName,
+  isPK,
 } from "metabase-lib/types/utils/isa";
 import Question from "metabase-lib/Question";
 import Table from "metabase-lib/metadata/Table";
@@ -15,8 +16,8 @@ import Table from "metabase-lib/metadata/Table";
 import { ObjectId } from "./types";
 
 export interface GetObjectNameArgs {
-  table: Table | null;
-  question: Question;
+  table?: Table | null;
+  question?: Question;
   cols: Column[];
   zoomedRow: unknown[] | undefined;
 }
@@ -112,3 +113,13 @@ export const getIdValue = ({
 export function getSingleResultsRow(data: DatasetData) {
   return data.rows.length === 1 ? data.rows[0] : null;
 }
+
+export const getSinglePKIndex = (cols: Column[]) => {
+  const pkCount = cols?.filter(isPK)?.length;
+  if (pkCount !== 1) {
+    return undefined;
+  }
+  const index = cols?.findIndex(isPK);
+
+  return index === -1 ? undefined : index;
+};

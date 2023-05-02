@@ -2,7 +2,43 @@
   "rules": {
     "no-restricted-imports": [
       "error",
-      { "patterns": ["metabase-enterprise", "metabase-enterprise/*"] }
+      {
+        "patterns": [
+          "metabase-enterprise",
+          "metabase-enterprise/*",
+          "cljs/metabase.lib*"
+        ],
+        "paths": [
+          {
+            "name": "react-redux",
+            "importNames": ["useSelector", "useDispatch"],
+            "message": "Please import from `metabase/lib/redux` instead."
+          }
+        ]
+      }
     ]
-  }
+  },
+  "overrides": [
+    {
+      "files": ["**/*.unit.spec.{js,jsx,ts,tsx}"],
+      "rules": {
+        "no-console": 0
+      }
+    },
+    {
+      "files": ["lib/redux/hooks.ts"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              "metabase-enterprise",
+              "metabase-enterprise/*",
+              "cljs/metabase.lib*"
+            ]
+          }
+        ]
+      }
+    }
+  ]
 }

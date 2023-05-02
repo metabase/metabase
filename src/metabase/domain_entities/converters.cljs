@@ -1,31 +1,43 @@
 (ns metabase.domain-entities.converters
   (:require
-    [camel-snake-kebab.core :as csk]
     [malli.core :as mc]
-    [malli.transform :as mtx]))
+    [malli.transform :as mtx]
+    [metabase.util :as u]))
 
 (defn- decode-map [schema _]
-  (let [drop-nil? (set (for [[map-key props val-schema] (mc/children schema)
-                             :when (and (:optional props)
-                                        (not (#{'nil? :nil} (mc/type val-schema))))]
-                         map-key))]
+  (let [by-prop (into {} (for [[map-key props] (mc/children schema)]
+                           [(or (get props :js/prop)
+                                (u/->snake_case_en (u/qualified-name map-key)))
+                            {:map-key map-key}]))]
     {:enter (fn [x]
               (cond
-                (map? x)    x
-                (object? x) (into {} (for [prop (js/Object.keys x)
-                                           :let [js-val  (unchecked-get x prop)
-                                                 map-key (csk/->kebab-case-keyword prop)]
-                                           ;; If the value is nil, and it's both :optional and not a :maybe,
-                                           ;; we just discard the value.
-                                           :when (not (and (nil? js-val)
-                                                           (drop-nil? map-key)))]
-                                       [map-key js-val]))))
+                (map? x) x
+                (object? x)
+                (into {} (for [prop (js-keys x)
+                               :let [js-val  (unchecked-get x prop)
+                                     map-key (or (get-in by-prop [prop :map-key])
+                                                 (keyword (u/->kebab-case-en prop)))]]
+                           [map-key js-val]))))
      :leave (fn [x]
-              (if (map? x)
-                x
+              (if (object? x)
                 (throw (ex-info "decode-map leaving with a JS object not a CLJS map"
                                 {:value  x
-                                 :schema schema}))))}))
+                                 :schema (mc/form schema)}))
+                x))}))
+
+(defn- infer-child-decoder [schema _]
+  (let [mapping (into {} (for [c (mc/children schema)]
+                           (if (keyword? c)
+                             [(name c) c]
+                             [c c])))]
+    {:enter #(mapping % %)}))
+
+(defn- infer-child-encoder [schema _]
+  (let [mapping (into {} (for [c (mc/children schema)]
+                           (if (keyword? c)
+                             [c (name c)]
+                             [c c])))]
+    {:enter #(mapping % %)}))
 
 (defn- decode-map-of [keydec x]
   (cond
@@ -41,6 +53,14 @@
                           obj)
                         #js {}
                         x)))
+
+(def ^:private identity-transformers
+  (-> ['string? :string
+       'number? :number
+       'int?    :int
+       'double? :double
+       'float?  :float]
+      (zipmap (repeat {:enter identity}))))
 
 (def js-transformer
   "Malli transformer for converting JavaScript data to and from CLJS data.
@@ -72,32 +92,44 @@
   they are JS arrays."
   (mtx/transformer
     {:name :js
-     :decoders {:keyword           keyword
-                'keyword?          keyword
-                :qualified-keyword keyword
-                :vector            {:enter vec}
-                :sequential        {:enter vec}
-                :tuple             {:enter vec}
-                :map               {:compile decode-map}
-                :map-of            {:compile (fn [schema _]
-                                               (let [[key-schema] (mc/children schema)
-                                                     keydec (mc/decoder key-schema js-transformer)]
-                                                 {:enter #(decode-map-of keydec %)}))}}
-     :encoders {:keyword           name
-                'keyword?          name
-                :qualified-keyword #(str (namespace %) "/" (name %))
-                :vector            {:leave clj->js}
-                :sequential        {:leave clj->js}
-                :tuple             {:leave clj->js}
-                :map               {:compile
-                                    (fn [schema _]
-                                      (let [js-props (into {} (for [[k props] (mc/children schema)
-                                                                    :when (:js/prop props)]
-                                                                [k (:js/prop props)]))
-                                            keyenc   (fn [k] (or (get js-props k)
-                                                                 (csk/->snake_case_string k)))]
-                                        {:leave #(encode-map % keyenc)}))}
-                :map-of            {:leave #(encode-map % name)}}}))
+     :decoders
+     (merge identity-transformers
+            {:keyword           keyword
+             'keyword?          keyword
+             :qualified-keyword keyword
+             :uuid              parse-uuid
+             :vector            {:enter #(and % (vec %))}
+             :sequential        {:enter #(and % (vec %))}
+             :tuple             {:enter #(and % (vec %))}
+             :cat               {:enter #(and % (vec %))}
+             :catn              {:enter #(and % (vec %))}
+             :enum              {:compile infer-child-decoder}
+             :=                 {:compile infer-child-decoder}
+             :map               {:compile decode-map}
+             :map-of            {:compile (fn [schema _]
+                                            (let [[key-schema] (mc/children schema)
+                                                  keydec (mc/decoder key-schema js-transformer)]
+                                              {:enter #(decode-map-of keydec %)}))}})
+     :encoders
+     (merge identity-transformers
+            {:keyword           name
+             'keyword?          name
+             :qualified-keyword #(str (namespace %) "/" (name %))
+             :uuid              str
+             :vector            {:leave clj->js}
+             :sequential        {:leave clj->js}
+             :tuple             {:leave clj->js}
+             :enum              {:compile infer-child-encoder}
+             :=                 {:compile infer-child-encoder}
+             :map               {:compile
+                                 (fn [schema _]
+                                   (let [js-props (into {} (for [[k props] (mc/children schema)
+                                                                 :when (:js/prop props)]
+                                                             [k (:js/prop props)]))
+                                         keyenc   (fn [k] (or (get js-props k)
+                                                              (u/->snake_case_en (u/qualified-name k))))]
+                                     {:leave #(encode-map % keyenc)}))}
+             :map-of            {:leave #(encode-map % name)}})}))
 
 (defn incoming
   "Returns a function for converting a JS value into CLJS data structures, based on a schema."

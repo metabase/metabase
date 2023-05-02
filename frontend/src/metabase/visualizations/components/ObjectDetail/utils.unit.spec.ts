@@ -9,7 +9,12 @@ import type { DatetimeUnit } from "metabase-types/api";
 import { Card } from "metabase-types/types/Card";
 import Question from "metabase-lib/Question";
 
-import { getObjectName, getDisplayId, getIdValue } from "./utils";
+import {
+  getObjectName,
+  getDisplayId,
+  getIdValue,
+  getSinglePKIndex,
+} from "./utils";
 
 const card = {
   id: 1,
@@ -218,6 +223,24 @@ describe("ObjectDetail utils", () => {
       });
 
       expect(id).toBe(22);
+    });
+  });
+
+  describe("getSinglePKIndex", () => {
+    it("should return the index of the single PK column", () => {
+      expect(getSinglePKIndex([idCol, qtyCol, nameCol])).toBe(0);
+      expect(getSinglePKIndex([qtyCol, idCol, nameCol])).toBe(1);
+      expect(getSinglePKIndex([qtyCol, nameCol, idCol])).toBe(2);
+    });
+
+    it("should return undefined if there are multiple PKs", () => {
+      expect(getSinglePKIndex([idCol, productIdCol, qtyCol, nameCol])).toBe(
+        undefined,
+      );
+    });
+
+    it("should return undefined if there are no PKs", () => {
+      expect(getSinglePKIndex([qtyCol, nameCol])).toBe(undefined);
     });
   });
 });

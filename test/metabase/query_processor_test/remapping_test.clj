@@ -10,7 +10,7 @@
    [metabase.query-processor-test :as qp.test]
    [metabase.query-processor.middleware.add-dimension-projections :as qp.add-dimension-projections]
    [metabase.test :as mt]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (deftest basic-internal-remapping-test
   (mt/test-drivers (mt/normal-drivers)
@@ -36,7 +36,7 @@
 (deftest basic-external-remapping-test
   (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys)
     (mt/with-column-remappings [venues.category_id categories.name]
-      (let [dimension-id (db/select-one-id Dimension :field_id (mt/id :venues :category_id))]
+      (let [dimension-id (t2/select-one-pk Dimension :field_id (mt/id :venues :category_id))]
         (is (= {:rows [["American" 2 8]
                        ["Artisan"  3 2]
                        ["Asian"    4 2]]
@@ -148,7 +148,7 @@
                                 :fk_field_id   %category_id
                                 :display_name  "Category ID [external remap]"
                                 :options       {::qp.add-dimension-projections/new-field-dimension-id
-                                                (db/select-one-id Dimension :field_id (mt/id :venues :category_id))}
+                                                (t2/select-one-pk Dimension :field_id (mt/id :venues :category_id))}
                                 :name          (mt/format-name "name_2")
                                 :remapped_from (mt/format-name "category_id")
                                 :field_ref     $category_id->categories.name))]}
@@ -193,7 +193,7 @@
   (mt/test-drivers (disj (mt/normal-drivers-with-feature :foreign-keys) :redshift :oracle :vertica)
     (mt/dataset test-data-self-referencing-user
       (mt/with-column-remappings [users.created_by users.name]
-        (db/update! Field (mt/id :users :created_by)
+        (t2/update! Field (mt/id :users :created_by)
           {:fk_target_field_id (mt/id :users :id)})
         (is (= ["Dwight Gresham" "Shad Ferdynand" "Kfir Caj" "Plato Yeshua"]
                (->> (mt/run-mbql-query users
@@ -219,7 +219,6 @@
                     [2 1 123 110.93  6.1 117.03 nil  "2018-05-15T08:04:04.58Z" 3 "Mediocre Wooden Bench"]]
                    (remappings-with-metadata metadata)))))))))
         ;; doesn't currently work with any other metadata.
-
 
 (deftest remappings-with-implicit-joins-test
   (mt/with-temporary-setting-values [report-timezone "UTC"]

@@ -13,7 +13,7 @@
    [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (s/defn ^:private update-field-metadata-if-needed! :- (s/enum 0 1)
   "Update the metadata for a Metabase Field as needed if any of the info coming back from the DB has changed. Syncs
@@ -115,7 +115,7 @@
            {:database_required new-db-required}))]
     ;; if any updates need to be done, do them and return 1 (because 1 Field was updated), otherwise return 0
     (if (and (seq updates)
-             (db/update! Field (u/the-id metabase-field) updates))
+             (pos? (t2/update! Field (u/the-id metabase-field) updates)))
       1
       0)))
 

@@ -106,11 +106,5 @@ class CardRenderer extends Component {
 
 export default ExplicitSize({
   wrapped: true,
-  refreshMode: props => {
-    const { isDashboard, isEditing } = props;
-    if (isDashboard) {
-      return isEditing ? "debounce" : "debounceLeading";
-    }
-    return "throttle";
-  },
+  refreshMode: props => (props.isDashboard ? "debounce" : "throttle"),
 })(CardRenderer);

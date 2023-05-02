@@ -11,7 +11,7 @@
     :as qp.u.tag-referenced-cards]
    [metabase.util.i18n :refer [tru]]
    [schema.core :as s]
-   [toucan.db :as db]
+   [toucan2.core :as t2]
    [weavejester.dependency :as dep])
   (:import
    (clojure.lang ExceptionInfo)))
@@ -35,7 +35,7 @@
 
 (defn- card-subquery-graph
   [graph card-id]
-  (let [card-query (db/select-one-field :dataset_query Card :id card-id)]
+  (let [card-query (t2/select-one-fn :dataset_query Card :id card-id)]
     (reduce
      (fn [g sub-card-id]
        (card-subquery-graph (dep/depend g card-id sub-card-id)
@@ -45,7 +45,7 @@
 
 (defn- circular-ref-error
   [from-card to-card]
-  (let [[from-name to-name] (map :name (db/select [Card :name] :id [:in [from-card to-card]]))]
+  (let [[from-name to-name] (map :name (t2/select [Card :name] :id [:in [from-card to-card]]))]
     (str
      (tru "This query has circular referencing sub-queries. ")
      (tru "These questions seem to be part of the problem: \"{0}\" and \"{1}\"." from-name to-name))))

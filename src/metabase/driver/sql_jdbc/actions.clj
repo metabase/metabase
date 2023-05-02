@@ -14,15 +14,16 @@
    [metabase.driver.util :as driver.u]
    [metabase.models.field :refer [Field]]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
    [schema.core :as s]
-   [toucan.db :as db])
+   [toucan2.core :as t2])
   (:import
-   (java.sql Connection)))
+   (java.sql Connection PreparedStatement)))
 
 (set! *warn-on-reflection* true)
 
@@ -75,12 +76,12 @@
         column->field  (actions/cached-value
                         [::cast-values table-id]
                         (fn []
-                          (m/index-by :name (db/select Field :table_id table-id))))]
+                          (m/index-by :name (t2/select Field :table_id table-id))))]
     (m/map-kv-vals (fn [col-name value]
                      (let [col-name                         (u/qualified-name col-name)
                            {base-type :base_type :as field} (get column->field col-name)]
                        (if-let [sql-type (type->sql-type base-type)]
-                         (binding [hx/*honey-sql-version* (sql.qp/honey-sql-version driver)]
+                         (sql.qp/with-driver-honey-sql-version driver
                            (hx/cast sql-type value))
                          (try
                            (sql.qp/->honeysql driver [:value value field])
@@ -111,7 +112,9 @@
 ;;; 2. [[jdbc/with-db-transaction]] does a lot of magic that we don't necessarily want. Writing raw JDBC code is barely
 ;;;    any more code and lets us have complete control over what happens and lets us see at a glance exactly what's
 ;;;    happening without having to keep [[clojure.java.jdbc]] magic in mind or work around it.
-(defn- do-with-jdbc-transaction [database-id f]
+(defn do-with-jdbc-transaction
+  "Impl function for [[with-jdbc-transaction]]."
+  [database-id f]
   (if *connection*
     (f *connection*)
     (let [jdbc-spec (sql-jdbc.conn/db->pooled-connection-spec database-id)]
@@ -134,7 +137,7 @@
             (.rollback conn)
             (throw e)))))))
 
-(defmacro ^:private with-jdbc-transaction
+(defmacro with-jdbc-transaction
   "Execute `f` with a JDBC Connection for the Database with `database-id`. Uses [[*connection*]] if already bound,
   otherwise fetches a new Connection from the Database's Connection pool and executes `f` inside of a transaction."
   {:style/indent 1}
@@ -343,6 +346,21 @@
              successes]))))
      rows)))
 
+(defmethod driver/execute-write-query! :sql-jdbc
+  [driver {{sql :query, :keys [params]} :native}]
+  {:pre [(string? sql)]}
+  (try
+    (let [{db-id :id} (qp.store/database)]
+      (with-jdbc-transaction [conn db-id]
+        (with-open [stmt (sql-jdbc.execute/statement-or-prepared-statement driver conn sql params nil)]
+          {:rows-affected (if (instance? PreparedStatement stmt)
+                            (.executeUpdate ^PreparedStatement stmt)
+                            (.executeUpdate stmt sql))})))
+    (catch Throwable e
+      (throw (ex-info (tru "Error executing write query: {0}" (ex-message e))
+                      {:sql sql, :params params, :type qp.error-type/invalid-query}
+                      e)))))
+
 ;;;; `:bulk/create`
 
 (defmethod actions/perform-action!* [:sql-jdbc :bulk/create]
@@ -369,7 +387,7 @@
 (defn- table-id->pk-field-name->id
   "Given a `table-id` return a map of string Field name -> Field ID for the primary key columns for that Table."
   [table-id]
-  (db/select-field->id :name Field
+  (t2/select-fn->pk :name Field
     {:where [:and
              [:= :table_id table-id]
              (mdb.u/isa :semantic_type :type/PK)]}))

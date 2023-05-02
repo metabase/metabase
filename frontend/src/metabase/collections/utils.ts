@@ -56,7 +56,7 @@ export function isPersonalCollectionChild(
 }
 
 export function isRootCollection(collection: Pick<Collection, "id">): boolean {
-  return canonicalCollectionId(collection.id) === null;
+  return canonicalCollectionId(collection?.id) === null;
 }
 
 export function isItemPinned(item: CollectionItem) {
@@ -65,6 +65,10 @@ export function isItemPinned(item: CollectionItem) {
 
 export function isItemQuestion(item: CollectionItem) {
   return item.model === "card";
+}
+
+export function isItemModel(item: CollectionItem) {
+  return item.model === "dataset";
 }
 
 export function isItemCollection(item: CollectionItem) {
@@ -117,7 +121,11 @@ export function coerceCollectionId(
 export function canonicalCollectionId(
   collectionId: string | number | null | undefined,
 ): number | null {
-  if (collectionId === "root" || collectionId == null) {
+  if (
+    collectionId === "root" ||
+    collectionId === null ||
+    collectionId === undefined
+  ) {
     return null;
   } else if (typeof collectionId === "number") {
     return collectionId;

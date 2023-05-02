@@ -26,6 +26,7 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.query-processor.util.add-alias-info :as add]
+   [metabase.upload :as upload]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [deferred-tru trs]]
@@ -48,11 +49,13 @@
 
 (defmethod driver/display-name :mysql [_] "MySQL")
 
-(defmethod driver/database-supports? [:mysql :nested-field-columns] [_ _ database]
-  (let [json-setting (get-in database [:details :json-unfolding])]
-    (if (nil? json-setting)
-      true
-      json-setting)))
+;; This is a bit of a lie since the JSON type was introduced for MySQL since 5.7.8.
+;; And MariaDB doesn't have the JSON type at all, though `JSON` was introduced as an alias for LONGTEXT in 10.2.7.
+;; But since JSON unfolding will only apply columns with JSON types, this won't cause any problems during sync.
+(defmethod driver/database-supports? [:mysql :nested-field-columns] [_driver _feat db]
+  (driver.common/json-unfolding-default db))
+
+(defmethod driver/database-supports? [:mysql :uploads] [_driver _feat _db] true)
 
 (defmethod driver/database-supports? [:mysql :persist-models] [_driver _feat _db] true)
 
@@ -442,7 +445,7 @@
     :VARBINARY  :type/*
     :VARCHAR    :type/Text
     :YEAR       :type/Date
-    :JSON       :type/SerializedJSON}
+    :JSON       :type/JSON}
    ;; strip off " UNSIGNED" from end if present
    (keyword (str/replace (name database-type) #"\sUNSIGNED$" ""))))
 
@@ -606,3 +609,19 @@
   (format "convert_tz('%s', '%s', @@session.time_zone)"
           (t/format "yyyy-MM-dd HH:mm:ss.SSS" t)
           (str (t/zone-id t))))
+
+(defmethod driver/upload-type->database-type :mysql
+  [_driver upload-type]
+  (case upload-type
+    ::upload/varchar_255 "VARCHAR(255)"
+    ::upload/text        "TEXT"
+    ::upload/int         "INTEGER"
+    ::upload/float       "DOUBLE"
+    ::upload/boolean     "BOOLEAN"
+    ::upload/date        "DATE"
+    ::upload/datetime    "TIMESTAMP"))
+
+(defmethod driver/table-name-length-limit :mysql
+  [_driver]
+  ;; https://dev.mysql.com/doc/refman/8.0/en/identifier-length.html
+  64)
