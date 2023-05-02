@@ -14503,7 +14503,7 @@ databaseChangeLog:
                   constraints:
                     nullable: false
   - changeSet:
-      id: v47.00-008
+      id: v47.00-018
       author: dpsutton
       comment: Indexed Entities information table
       changes:
@@ -14592,7 +14592,7 @@ databaseChangeLog:
             tableName: model_index
 
   - changeSet:
-      id: v47.00-009
+      id: v47.00-019
       author: dpsutton
       comment: Indexed Entities values table
       changes:
@@ -14633,7 +14633,7 @@ databaseChangeLog:
             tableName: model_index_value
 
   - changeSet:
-      id: v47.00-010
+      id: v47.00-020
       author: dpsutton
       comment: Add unique constraint on index_id and pk
       changes:
