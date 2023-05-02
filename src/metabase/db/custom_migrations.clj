@@ -173,16 +173,21 @@
                      :where  [:in :metabase_field.id field-ids-to-update]}))))
 
 (define-migration MigrateLegacyVisualizationSettings
-  (let [id+visualization_settings (->> (t2/query {:select [:id :visualization_settings]
-                                                  :from   [:report_card]})
-                                       (keep (fn [{:keys [id visualization_settings]}]
-                                               (let [updated (-> visualization_settings
-                                                                 ((:out mi/transform-visualization-settings))
-                                                                 ((:in mi/transform-visualization-settings)))]
-                                                 (when (not= visualization_settings updated)
-                                                   {:id                     id
-                                                    :visualization_settings updated})))))]
-    (doseq [{:keys [id visualization_settings]} id+visualization_settings]
-      (t2/query-one {:update :report_card
-                     :set    {:visualization_settings visualization_settings}
-                     :where  [:= :id id]}))))
+  (transduce
+   (keep (fn [{:keys [id visualization_settings]}]
+           (let [updated (-> visualization_settings
+                             ((:out mi/transform-visualization-settings))
+                             ((:in mi/transform-visualization-settings)))]
+             (when (not= visualization_settings updated)
+               {:id                     id
+                :visualization_settings updated}))))
+   (fn
+     ([] nil)
+     ([_] nil)
+     ([_ id+visualization_settings]
+      (when-let [{:keys [id visualization_settings]} id+visualization_settings]
+        (t2/query-one {:update :report_card
+                       :set    {:visualization_settings visualization_settings}
+                       :where  [:= :id id]}))))
+   (t2/reducible-query {:select [:id :visualization_settings]
+                        :from   [:report_card]})))
