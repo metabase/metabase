@@ -184,7 +184,8 @@ jobs:
           --folder ${{ matrix.folder }}
         env:
           TERM: xterm
-          DEBUG: replay:cypress:plugin:events,replay:test-utils:reporter
+          DEBUG: replay:cypress:plugin:events,replay:test-utils:reporter,cypress:launcher*
+          RECORD_REPLAY_VERBOSE: 1
 
       - name: Upload Replay.io recordings
         if: always()
