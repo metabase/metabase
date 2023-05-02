@@ -1,6 +1,7 @@
 import {
   describeEE,
   openOrdersTable,
+  openProductsTable,
   popover,
   restore,
   startNewQuestion,
@@ -12,7 +13,7 @@ import {
 } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
-const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
+const { ORDERS_ID, ORDERS, PRODUCTS_ID } = SAMPLE_DATABASE;
 const { ALL_USERS_GROUP } = USER_GROUPS;
 const ORDERS_DESCRIPTION =
   "Confirmed Sample Company orders for a product, from a user.";
@@ -199,21 +200,69 @@ describe("scenarios > admin > datamodel > editor", () => {
       cy.findByText("User ID").should("be.visible");
     });
 
-    it("should allow sorting fields", () => {
-      visitTableMetadata();
+    it("should allow sorting fields as in the database", () => {
+      visitTableMetadata({ tableId: PRODUCTS_ID });
+      setTableOrder("Database");
+      openProductsTable();
+      assertTableHeader([
+        "ID",
+        "Ean",
+        "Title",
+        "Category",
+        "Vendor",
+        "Price",
+        "Rating",
+        "Created At",
+      ]);
+    });
 
-      cy.findByLabelText("Sort").click();
-      popover().findByText("Alphabetical").click();
-      cy.wait("@updateTable");
-      cy.findByText("Alphabetical").should("be.visible");
+    it("should allow sorting fields alphabetically", () => {
+      visitTableMetadata({ tableId: PRODUCTS_ID });
+      setTableOrder("Alphabetical");
+      openProductsTable();
+      assertTableHeader([
+        "Category",
+        "Created At",
+        "Ean",
+        "ID",
+        "Price",
+        "Rating",
+        "Title",
+        "Vendor",
+      ]);
+    });
 
-      moveField(3);
+    it("should allow sorting fields smartly", () => {
+      visitTableMetadata({ tableId: PRODUCTS_ID });
+      setTableOrder("Smart");
+      openProductsTable();
+      assertTableHeader([
+        "ID",
+        "Created At",
+        "Category",
+        "Ean",
+        "Price",
+        "Rating",
+        "Title",
+        "Vendor",
+      ]);
+    });
+
+    it("should allow sorting fields in the custom order", () => {
+      visitTableMetadata({ tableId: PRODUCTS_ID });
+      moveField(0, 200);
       cy.wait("@updateFieldOrder");
-
-      openOrdersTable();
-      cy.findAllByTestId("header-cell")
-        .first()
-        .should("have.text", "Product ID");
+      openProductsTable();
+      assertTableHeader([
+        "Ean",
+        "ID",
+        "Title",
+        "Category",
+        "Vendor",
+        "Price",
+        "Rating",
+        "Created At",
+      ]);
     });
 
     it("should allow hiding and restoring all tables in a schema", () => {
@@ -447,9 +496,23 @@ const getFieldSection = fieldName => {
   return cy.findByLabelText(fieldName);
 };
 
-const moveField = fieldIndex => {
+const moveField = (fieldIndex, deltaY) => {
   cy.get(".Grabber").eq(fieldIndex).trigger("mousedown", 0, 0);
   cy.get("#ColumnsList")
-    .trigger("mousemove", 10, 10)
-    .trigger("mouseup", 10, 10);
+    .trigger("mousemove", 10, deltaY)
+    .trigger("mouseup", 10, deltaY);
+};
+
+const setTableOrder = order => {
+  cy.findByLabelText("Sort").click();
+  popover().findByText(order).click();
+  cy.wait("@updateTable");
+};
+
+const assertTableHeader = columns => {
+  cy.findAllByTestId("header-cell").should("have.length", columns.length);
+
+  columns.forEach((column, index) => {
+    cy.findAllByTestId("header-cell").eq(index).should("have.text", column);
+  });
 };
