@@ -46,7 +46,13 @@ export default class Breakout extends MBQLClause {
    */
   isValid() {
     const query = this.query();
-    return !query || query.breakoutOptions(this).hasDimension(this.dimension());
+
+    if (!query) {
+      return true;
+    }
+
+    const dimension = this.getMLv1CompatibleDimension();
+    return query.breakoutOptions(this).hasDimension(dimension);
   }
 
   /**
@@ -54,6 +60,15 @@ export default class Breakout extends MBQLClause {
    */
   dimension(): Dimension {
     return this._query.parseFieldReference(this);
+  }
+
+  private getMLv1CompatibleDimension() {
+    const dimension = this.dimension();
+    const field = dimension.field();
+    const isConcreteField = typeof field?.id === "number";
+    return isConcreteField
+      ? dimension.withoutOptions("base-type", "effective-type")
+      : dimension;
   }
 
   /**
