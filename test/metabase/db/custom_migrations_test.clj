@@ -3,14 +3,13 @@
   (:require
    [cheshire.core :as json]
    [clojure.test :refer :all]
+   [clojure.walk :as walk]
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.scheduler :as qs]
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.db.schema-migrations-test.impl :as impl]
-   [metabase.models :refer [User
-                            Database
-                            Card]]
+   [metabase.models :refer [Card Database User]]
    [metabase.models.interface :as mi]
    [metabase.task :as task]
    [metabase.test.fixtures :as fixtures]
@@ -90,15 +89,25 @@
                                                         :database_id            database-id
                                                         :collection_id          nil})]
         (migrate!)
-        (testing "legacy column_settings are upated"
-         (is (= expected
-                (-> (t2/query-one {:select [:visualization_settings]
-                                   :from   [:report_card]
-                                   :where  [:= :id card-id]})
-                    :visualization_settings
-                    (mi/json-out-without-keywordization)))))
+        (testing "legacy column_settings are updated"
+          (is (= expected
+                 (-> (t2/query-one {:select [:visualization_settings]
+                                    :from   [:report_card]
+                                    :where  [:= :id card-id]})
+                     :visualization_settings
+                     (mi/json-out-without-keywordization)))))
+        (testing "legacy column_settings are updated to the current format"
+          (is (= (-> visualization-settings
+                     (mi/normalize-visualization-settings)
+                     (#'mi/migrate-viz-settings)
+                     (walk/stringify-keys))
+                 (-> (t2/query-one {:select [:visualization_settings]
+                                    :from   [:report_card]
+                                    :where  [:= :id card-id]})
+                     :visualization_settings
+                     (mi/json-out-without-keywordization)))))
         (testing "visualization_settings are equivalent before and after migration"
-          (is (= (-> expected
+          (is (= (-> visualization-settings
                      (mi/normalize-visualization-settings)
                      (#'mi/migrate-viz-settings))
                  (-> (t2/query-one {:select [:visualization_settings]
