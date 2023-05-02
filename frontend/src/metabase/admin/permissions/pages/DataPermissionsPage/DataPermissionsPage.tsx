@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback } from "react";
+import React, { useEffect, useCallback, ReactNode } from "react";
 import _ from "underscore";
 import { Route } from "react-router";
 
@@ -19,7 +19,7 @@ import { DataPermissionsHelp } from "../../components/DataPermissionsHelp";
 import ToolbarUpsell from "../../components/ToolbarUpsell";
 
 type DataPermissionsPageProps = {
-  children: React.ReactNode;
+  children: ReactNode;
   route: typeof Route;
   params: {
     databaseId: DatabaseId;
