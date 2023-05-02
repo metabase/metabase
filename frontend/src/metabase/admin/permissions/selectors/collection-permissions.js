@@ -16,7 +16,11 @@ import { COLLECTION_OPTIONS } from "../constants/collections-permissions";
 import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "../constants/messages";
 import { getPermissionWarningModal } from "./confirmations";
 
-export const collectionsQuery = { tree: true, "exclude-archived": true };
+export const collectionsQuery = {
+  tree: true,
+  "exclude-other-user-collections": true,
+  "exclude-archived": true,
+};
 
 export const getIsDirty = createSelector(
   state => state.admin.permissions.collectionPermissions,
