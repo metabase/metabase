@@ -76,13 +76,14 @@ const Fields = createEntity({
         entityQuery => Fields.getQueryKey(entityQuery),
       ),
       withNormalize(FieldSchema),
-    )(({ id: fieldId }) => async (dispatch, getState) => {
+    )(({ id: fieldId, ...params }) => async (dispatch, getState) => {
       const {
         field_id: id,
         values,
         has_more_values,
       } = await MetabaseApi.field_values({
         fieldId,
+        ...params,
       });
       return { id, values, has_more_values };
     }),
