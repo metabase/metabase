@@ -90,19 +90,21 @@
                                                         :database_id            database-id
                                                         :collection_id          nil})]
         (migrate!)
-        (is (= expected
-               (-> (t2/query-one {:select [:visualization_settings]
-                                  :from   [:report_card]
-                                  :where  [:= :id card-id]})
-                   :visualization_settings
-                   (mi/json-out-without-keywordization))))
-        (is (= (-> expected
-                   (mi/normalize-visualization-settings)
-                   (#'mi/migrate-viz-settings))
-               (-> (t2/query-one {:select [:visualization_settings]
-                                  :from   [:report_card]
-                                  :where  [:= :id card-id]})
-                   :visualization_settings
-                   (mi/json-out-without-keywordization)
-                   (mi/normalize-visualization-settings)
-                   (#'mi/migrate-viz-settings))))))))
+        (testing "legacy column_settings are upated"
+         (is (= expected
+                (-> (t2/query-one {:select [:visualization_settings]
+                                   :from   [:report_card]
+                                   :where  [:= :id card-id]})
+                    :visualization_settings
+                    (mi/json-out-without-keywordization)))))
+        (testing "visualization_settings are equivalent before and after migration"
+          (is (= (-> expected
+                     (mi/normalize-visualization-settings)
+                     (#'mi/migrate-viz-settings))
+                 (-> (t2/query-one {:select [:visualization_settings]
+                                    :from   [:report_card]
+                                    :where  [:= :id card-id]})
+                     :visualization_settings
+                     (mi/json-out-without-keywordization)
+                     (mi/normalize-visualization-settings)
+                     (#'mi/migrate-viz-settings)))))))))
