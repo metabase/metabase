@@ -182,7 +182,7 @@ export function UploadSettingsView({
           <Schemas.ListLoader query={{ dbId }}>
             {({ list: schemaList }: { list: Schema[] }) => (
               <div>
-                <SectionTitle>{t`Schema to use for uploads`}</SectionTitle>
+                <SectionTitle>{t`Schema`}</SectionTitle>
                 <Select
                   value={schemaName ?? ""}
                   placeholder={t`Select a schema`}
