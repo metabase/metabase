@@ -8,6 +8,8 @@
    [metabase.integrations.slack :as slack]
    [metabase.models
     :refer [Card Collection Pulse PulseCard PulseChannel PulseChannelRecipient]]
+   [metabase.models.dashboard :refer [Dashboard]]
+   [metabase.models.dashboard-card :refer [DashboardCard]]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.pulse :as pulse]
@@ -679,6 +681,26 @@
          (is (= (rasta-alert-email "Alert: Test card has reached its goal"
                                    [test-card-result pulse.test-util/png-attachment pulse.test-util/png-attachment])
                 (mt/summarize-multipart-email test-card-regex))))))))
+
+(deftest dashboard-description-markdown-test
+  (testing "Dashboard description renders markdown"
+    (mt/with-temp* [Card                  [{card-id :id} {:name "Test card"}]
+                    Dashboard             [{dashboard-id :id} {:description "# dashboard description"}]
+                    DashboardCard         [{dashboard-card-id :id} {:dashboard_id dashboard-id
+                                                                    :card_id card-id}]
+                    Pulse                 [{pulse-id :id} {:name "Pulse Name"
+                                                           :dashboard_id dashboard-id}]
+                    PulseCard             [_ {:pulse_id pulse-id
+                                              :card_id  card-id
+                                              :dashboard_card_id dashboard-card-id}]
+                    PulseChannel          [{pc-id :id} {:pulse_id pulse-id}]
+                    PulseChannelRecipient [_ {:user_id (pulse.test-util/rasta-id)
+                                              :pulse_channel_id pc-id}]]
+        (pulse.test-util/email-test-setup
+         (metabase.pulse/send-pulse! (pulse/retrieve-notification pulse-id))
+         (is (= (mt/email-to :rasta {:subject "Pulse Name"
+                                     :body    {"<h1>dashboard description</h1>" true}})
+                (mt/regex-email-bodies #"<h1>dashboard description</h1>")))))))
 
 (deftest basic-slack-test-2
   (testing "Basic slack test, 2 cards, 1 recipient channel"

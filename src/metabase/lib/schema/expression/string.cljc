@@ -20,10 +20,10 @@
   #_find [:schema [:ref ::expression/string]]
   #_replace [:schema [:ref ::expression/string]])
 
-(mbql-clause/define-tuple-mbql-clause :substring :- :type/Text
-  #_str [:schema [:ref ::expression/string]]
-  #_start [:schema [:ref ::expression/integer]]
-  #_end [:schema [:ref ::expression/integer]])
+(mbql-clause/define-catn-mbql-clause :substring :- :type/Text
+  [:str [:schema [:ref ::expression/string]]]
+  [:start [:schema [:ref ::expression/integer]]]
+  [:length [:? [:schema [:ref ::expression/integer]]]])
 
 (mbql-clause/define-catn-mbql-clause :concat :- :type/Text
   [:args [:repeat {:min 2} [:schema [:ref ::expression/string]]]])
