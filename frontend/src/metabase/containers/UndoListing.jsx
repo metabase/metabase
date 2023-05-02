@@ -9,6 +9,7 @@ import { dismissUndo, performUndo } from "metabase/redux/undo";
 
 import BodyComponent from "metabase/components/BodyComponent";
 
+import { isReducedMotionPreferred } from "metabase/lib/dom";
 import {
   CardContent,
   CardContentSide,
@@ -60,7 +61,7 @@ function UndoToast({ undo, onUndo, onDismiss }) {
         <ToastCard
           dark
           data-testid="toast-undo"
-          translateY={translateY}
+          translateY={isReducedMotionPreferred ? 0 : translateY}
           color={undo.toastColor}
         >
           <CardContent>

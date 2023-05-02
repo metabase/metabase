@@ -130,11 +130,7 @@ const DashboardApp = props => {
           message: (
             <>
               {t`Would you like to be notified when this dashboard is done loading?`}
-              <ToasterButton
-                className="ml2"
-                onClick={onConfirmToast}
-                aria-label="Confirm"
-              >
+              <ToasterButton className="ml2" onClick={onConfirmToast}>
                 {t`Turn on`}
               </ToasterButton>
             </>
