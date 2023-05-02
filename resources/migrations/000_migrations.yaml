@@ -14504,6 +14504,14 @@ databaseChangeLog:
                     nullable: false
   - changeSet:
       id: v47.00-016
+      author: calherres
+      comment: Added 0.47.0 - Migrate the report_card.visualization_settings.column_settings field refs from legacy format
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.MigrateLegacyColumnSettingsFieldRefs"
+
+  - changeSet:
+      id: v47.00-021
       author: noahmoss
       comment: Added 0.47.0 - Add new audit_log table
       changes:
@@ -14557,14 +14565,6 @@ databaseChangeLog:
                   type: ${text.type}
                   constraints:
                     nullable: false
-
-  - changeSet:
-      id: v47.00-016
-      author: calherres
-      comment: Added 0.47.0 - Migrate the report_card.visualization_settings.column_settings field refs from legacy format
-      changes:
-        - customChange:
-            class: "metabase.db.custom_migrations.MigrateLegacyColumnSettingsFieldRefs"
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
