@@ -8,7 +8,7 @@ import { singularize } from "metabase/lib/formatting";
 import * as Lib from "metabase-lib";
 
 import BinningStrategyPickerPopover from "./BinningStrategyPickerPopover";
-import ColumnPrecisionPickerPopover from "./ColumnPrecisionPickerPopover";
+import TemporalBucketPickerPopover from "./TemporalBucketPickerPopover";
 
 const DEFAULT_MAX_HEIGHT = 610;
 
@@ -93,7 +93,7 @@ function QueryColumnPicker({
 
       if (temporalBuckets.length > 0) {
         return (
-          <ColumnPrecisionPickerPopover
+          <TemporalBucketPickerPopover
             selectedItem={Lib.temporalBucket(query, item.column)}
             query={query}
             items={temporalBuckets}
