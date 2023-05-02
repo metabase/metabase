@@ -496,6 +496,10 @@ const TITLE_LOCALES_BN = {
     'en': 'Statistics of Venues(URC, PTI, DPEO, etc)',
     'bn': 'ট্রেইনিং ভ্যেনু (ইউআরসি, পিটিআই, ডিপিইও, ইত্যাদি) পরিসংখ্যান'
   },
+  'admin.dashboard.officer.c-in-ed.bp-in-ed': {
+    'en': 'Statistics of C-in-Ed and DPED Training',
+    'bn': 'সি-ইন-এড এবং ডিপিএড ট্রেনিং এর পরিসংখ্যান'
+  },
 }
 
 export function dashcard_locale_title (locale, title_key) {
