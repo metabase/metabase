@@ -263,7 +263,8 @@
       (testing (lib.util/format "Query =\n%s" (u/pprint-to-str query))
         (let [breakoutable-columns (lib/breakoutable-columns query)
               col                  (m/find-first #(= (:id %) (meta/id :venues :name)) breakoutable-columns)
-              query'               (lib/breakout query col)]
+              query'               (lib/breakout query col)
+              breakouts            (lib/breakouts query')]
           (is (=? {:lib/type :mbql/query
                    :database (meta/id)
                    :stages   [{:lib/type     :mbql.stage/mbql
@@ -271,7 +272,9 @@
                                :breakout     [[:field {:lib/uuid string? :base-type :type/Text} (meta/id :venues :name)]]}]}
                   query'))
           (is (=? [[:field {:lib/uuid string? :base-type :type/Text} (meta/id :venues :name)]]
-                  (lib/breakouts query')))
+                  breakouts))
+          (is (= #{(dissoc col :lib/source :lib/source-column-alias :lib/desired-column-alias)}
+                 (lib/clause-columns query' (first breakouts))))
           (is (true? (breakout-column-excluded? query col query'))))))))
 
 (deftest ^:parallel breakoutable-columns-own-and-implicitly-joinable-columns-e2e-test
@@ -317,10 +320,16 @@
                     query'))
             (is (= "My Card, Grouped by User ID"
                    (lib/describe-query query')))
-            (is (= ["User ID"]
+            (is (= [[#{{:lib/type :metadata/field,
+                       :base-type :type/Integer,
+                       :effective-type :type/Integer,
+                       :name "USER_ID",
+                       :display-name "User ID"}}
+                     "User ID"]]
                    (for [breakout (lib/breakouts query')]
-                     (lib/display-name query' breakout))))
-          (is (true? (breakout-column-excluded? query name-col query')))))))))
+                     [(lib/clause-columns query' breakout)
+                      (lib/display-name query' breakout)])))
+            (is (true? (breakout-column-excluded? query name-col query')))))))))
 
 (deftest ^:parallel breakoutable-columns-expression-e2e-test
   (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")

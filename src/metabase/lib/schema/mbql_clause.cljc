@@ -100,7 +100,7 @@
   with variable length. For clauses with fixed argument length, use [[tuple-clause-schema]] instead, since that gives
   slight better error messages and doesn't love to complain about 'potentially recursive seqexes' when you forget to
   wrap args in `:schema`."
-  [tag & args]
+  [tag args]
   {:pre [(simple-keyword? tag)
          (every? vector? args)
          (every? keyword? (map first args))]}
@@ -114,7 +114,7 @@
 (defn tuple-clause-schema
   "Helper intended for use with [[define-mbql-clause]]. Create a clause schema with `:tuple`. Use this for fixed-length
   MBQL clause schemas. Use [[catn-clause-schema]] for variable-length schemas."
-  [tag & args]
+  [tag args]
   {:pre [(simple-keyword? tag)]}
   (into [:tuple
          {:error/message (str "Valid " tag " clause")}
@@ -126,9 +126,9 @@
 
 (defn- define-mbql-clause-with-schema-fn [schema-fn tag & args]
   (let [[return-type & args] (if (= (first args) :-)
-                               (cons (second args) (drop 2 args))
+                               (next args)
                                (cons nil args))
-        schema               (apply schema-fn tag args)]
+        schema               (schema-fn tag args)]
     (if return-type
       (define-mbql-clause tag :- return-type schema)
       (define-mbql-clause tag schema))))

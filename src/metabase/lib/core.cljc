@@ -154,6 +154,7 @@
    current-limit
    limit]
   [lib.metadata.calculation
+   clause-columns
    column-name
    describe-query
    describe-top-level-key

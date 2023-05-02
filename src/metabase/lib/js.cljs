@@ -168,14 +168,25 @@
   ([a-query stage-number x]
    (lib.core/breakout a-query stage-number (lib.core/ref x))))
 
+(defn ^:export clause-columns
+  "Return the Column metadatas for the columns in the clause `a-clause` as an array.
+  The array contains distinct elements even if a column occurs several times in `a-clause`.
+  The order of the elements is unspecified.
+  The clause passed in here is typically obtained from a function like [[breakouts]]
+  or [[order-bys]]."
+  ([a-query a-clause]
+   (clause-columns a-query -1 a-clause))
+  ([a-query stage-number a-clause]
+   (to-array (lib.core/clause-columns a-query stage-number a-clause))))
+
 (defn ^:export remove-clause
   "Removes the `target-clause` in the filter of the `query`."
   ([a-query clause]
    (remove-clause a-query -1 clause))
   ([a-query stage-number clause]
    (lib.core/remove-clause
-     a-query stage-number
-     (lib.core/normalize (js->clj clause :keywordize-keys true)))))
+    a-query stage-number
+    (lib.core/normalize (js->clj clause :keywordize-keys true)))))
 
 (defn ^:export replace-clause
   "Replaces the `target-clause` with `new-clause` in the `query` stage."

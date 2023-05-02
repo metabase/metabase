@@ -371,7 +371,8 @@
       (testing (lib.util/format "Query =\n%s" (u/pprint-to-str query))
         (let [orderable-columns (lib/orderable-columns query)
               col               (m/find-first #(= (:id %) (meta/id :venues :name)) orderable-columns)
-              query'            (lib/order-by query col)]
+              query'            (lib/order-by query col)
+              order-bys         (lib/order-bys query')]
           (is (=? {:lib/type :mbql/query
                    :database (meta/id)
                    :stages   [{:lib/type     :mbql.stage/mbql
@@ -383,7 +384,9 @@
           (is (=? [[:asc
                     {:lib/uuid string?}
                     [:field {:lib/uuid string? :base-type :type/Text} (meta/id :venues :name)]]]
-                  (lib/order-bys query'))))))))
+                  order-bys))
+          (is (= #{(dissoc col :lib/source :lib/source-column-alias :lib/desired-column-alias)}
+                 (lib/clause-columns query' order-bys))))))))
 
 (deftest ^:parallel orderable-columns-with-source-card-e2e-test
   (testing "Make sure you can order by a column that comes from a source Card (Saved Question/Model/etc)"

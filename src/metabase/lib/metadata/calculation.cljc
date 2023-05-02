@@ -1,6 +1,7 @@
 (ns metabase.lib.metadata.calculation
   (:require
    [clojure.string :as str]
+   [malli.core :as mc]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata :as lib.metadata]
@@ -11,6 +12,7 @@
    [metabase.lib.schema.temporal-bucketing
     :as lib.schema.temporal-bucketing]
    [metabase.lib.util :as lib.util]
+   [metabase.mbql.util.match :as mbql.match]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -227,6 +229,28 @@
     stage-number :- :int
     x]
    (metadata-method query stage-number x)))
+
+(defn- find-clauses [x]
+  (for [c (mbql.match/match x
+            (clause :guard lib.util/clause?) clause)
+        c (cons c (find-clauses (nnext c)))]
+    c))
+
+(mu/defn clause-columns :- [:maybe [:set lib.metadata/ColumnMetadata]]
+  "Return the set of [[metabase.lib.metadata/ColumnMetadata]] for the columns in `x`."
+  ([query x] (clause-columns query -1 x))
+  ([query        :- ::lib.schema/query
+    stage-number :- :int
+    x]
+   (let [column-metadata? (mc/validator lib.metadata/ColumnMetadata)]
+     (not-empty
+      (into #{}
+            (keep (fn [clause]
+                    (u/ignore-exceptions
+                      (let [clause-metadata (metadata query stage-number clause)]
+                        (when (column-metadata? clause-metadata)
+                          clause-metadata)))))
+            (find-clauses x))))))
 
 (mu/defn describe-query :- ::lib.schema.common/non-blank-string
   "Convenience for calling [[display-name]] on a query to describe the results of its final stage."
