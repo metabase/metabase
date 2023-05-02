@@ -18,6 +18,9 @@ type DeleteTabPayload = {
   tabId: DashboardTabId | null;
   tabDeletionId: TabDeletionId;
 };
+type UndoDeleteTabPayload = {
+  tabDeletionId: TabDeletionId;
+};
 type SelectTabPayload = { tabId: DashboardTabId | null };
 type RenameTabPayload = { tabId: DashboardTabId | null; name: string };
 type SaveCardsAndTabsPayload = {
@@ -27,6 +30,7 @@ type SaveCardsAndTabsPayload = {
 
 const CREATE_NEW_TAB = "metabase/dashboard/CREATE_NEW_TAB";
 const DELETE_TAB = "metabase/dashboard/DELETE_TAB";
+const UNDO_DELETE_TAB = "metabase/dashboard/UNDO_DELETE_TAB";
 const RENAME_TAB = "metabase/dashboard/RENAME_TAB";
 const SELECT_TAB = "metabase/dashboard/SELECT_TAB";
 const SAVE_CARDS_AND_TABS = "metabase/dashboard/SAVE_CARDS_AND_TABS";
@@ -43,15 +47,10 @@ export function createNewTab() {
   return createNewTabAction({ tabId });
 }
 
-const deleteTabAction = createAction<DeleteTabPayload>(DELETE_TAB);
+export const deleteTab = createAction<DeleteTabPayload>(DELETE_TAB);
 
-let tabDeletionId = 1;
-// TODO convert to thunk and dispatch `addUndo` see `DashboardGrid` for reference
-export function deleteTab(tabId: DashboardTabId | null) {
-  const id = tabDeletionId++;
-
-  return deleteTabAction({ tabId, tabDeletionId: id });
-}
+export const undoDeleteTab =
+  createAction<UndoDeleteTabPayload>(UNDO_DELETE_TAB);
 
 export const selectTab = createAction<SelectTabPayload>(SELECT_TAB);
 
@@ -163,7 +162,7 @@ export const tabsReducer = createReducer<DashboardState>(
     });
 
     builder.addCase(
-      deleteTabAction,
+      deleteTab,
       (state, { payload: { tabId, tabDeletionId } }) => {
         const { dashId, prevDash, prevTabs } = getPrevDashAndTabs(state);
         const tabToRemove = prevTabs.find(({ id }) => id === tabId);
@@ -206,6 +205,26 @@ export const tabsReducer = createReducer<DashboardState>(
         };
       },
     );
+
+    builder.addCase(undoDeleteTab, (state, { payload: { tabDeletionId } }) => {
+      const { prevTabs } = getPrevDashAndTabs(state);
+      const { tabId, removedDashCardIds } = state.tabDeletions[tabDeletionId];
+      const removedTab = prevTabs.find(({ id }) => id === tabId);
+      if (!removedTab) {
+        throw Error(
+          `UNDO_DELETE_TAB was dispatched but tab with id ${tabId} was not found`,
+        );
+      }
+
+      // 1. Unmark tab as removed
+      removedTab.isRemoved = false;
+
+      // 2. Unmark dashcards as removed
+      removedDashCardIds.forEach(id => (state.dashcards[id].isRemoved = false));
+
+      // 3. Remove deletion from history
+      delete state.tabDeletions[tabDeletionId];
+    });
 
     builder.addCase(renameTab, (state, { payload: { tabId, name } }) => {
       const { dashId, prevDash, prevTabs } = getPrevDashAndTabs(state);
