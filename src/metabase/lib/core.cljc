@@ -69,7 +69,8 @@
    var]
   [lib.breakout
    breakout
-   current-breakouts]
+   breakoutable-columns
+   breakouts]
   [lib.column-group
    columns-group-columns
    group-columns]
@@ -144,6 +145,8 @@
   [lib.join
    join
    join-clause
+   join-conditions
+   join-fields
    joins
    with-join-alias
    with-join-fields]
@@ -184,6 +187,10 @@
    append-stage
    drop-stage]
   [lib.temporal-bucket
+   describe-temporal-unit
+   describe-temporal-interval
+   describe-relative-datetime
    available-temporal-buckets
    temporal-bucket
+   temporal-bucket-option
    with-temporal-bucket])

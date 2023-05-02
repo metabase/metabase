@@ -94,6 +94,7 @@
          (events/publish-event! :card-query {:card_id      (:card_id execution-info)
                                              :actor_id     (:executor_id execution-info)
                                              :cached       (:cached acc)
+                                             :context      (:context execution-info)
                                              :ignore_cache (get-in execution-info [:json_query :middleware :ignore-cached-results?])}))
        (save-successful-query-execution! (:cached acc) execution-info @row-count)
        (rf (if (map? acc)

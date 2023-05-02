@@ -1259,7 +1259,7 @@ Display the MetaBot character on the home page.
 Type: string<br>
 Default: `"en"`
 
-The default language for this Metabase instance. This only applies to emails, Pulses, etc. Users' browsers will specify the language used in the user interface.
+The default language for this Metabase instance. This setting applies to the Metabase UI, system emails, [dashboard subscriptions](../dashboards/subscriptions.md), and [alerts](../questions/sharing/alerts.md). People can override the default language from their [account settings](../people-and-groups/account-settings.md).
 
 ### `MB_SITE_NAME`
 

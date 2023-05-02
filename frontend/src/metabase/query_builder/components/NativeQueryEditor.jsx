@@ -361,7 +361,7 @@ class NativeQueryEditor extends Component {
           }));
           callback(null, resultsForAce);
         } catch (error) {
-          console.log("error getting autocompletion data", error);
+          console.error("error getting autocompletion data", error);
           callback(null, []);
         }
       },

@@ -9,7 +9,7 @@ redirect_from:
 
 # Metabase documentation
 
-![Metabase dashboard](./images/metabase-product-screenshot.svg)
+![Metabase dashboard](./images/metabase-product-screenshot.png)
 
 Metabase is an open-source business intelligence platform. You can use Metabase to ask questions about your data, or embed Metabase in your app to let your customers explore their data on their own.
 
@@ -53,6 +53,7 @@ Metabase's reference documentation.
 
 - [Databases overview](./databases/start.md)
 - [Adding and managing databases](./databases/connecting.md)
+- [Database users, roles, and privileges](./databases/users-roles-privileges.md)
 - [Syncing and scanning databases](./databases/sync-scan.md)
 - [Encrypting your database connection](./databases/encrypting-details-at-rest.md)
 - [SSH tunneling](./databases/ssh-tunnel.md)
@@ -242,6 +243,10 @@ We tweet stuff.
 ### [Source code repository on GitHub](https://github.com/metabase/metabase)
 
 Follow us on GitHub.
+
+### [List of releases](./releases.md)
+
+A list of all Metabase releases, including both the Enterprise Edition and the Open Source Edition.
 
 ### [Developers guide](./developers-guide/start.md)
 
