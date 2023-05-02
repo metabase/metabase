@@ -6,6 +6,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.test-metadata :as meta]
@@ -291,13 +292,17 @@
             :field-metadata   (lib.metadata/field meta/metadata-provider "PUBLIC" "PEOPLE" "LATITUDE")
             :expected-options (lib.binning/coordinate-binning-strategies)}]]
     (testing (str (:semantic-type field-metadata) " Field")
-      (doseq [[what x] {"column metadata" field-metadata, "field ref" (lib/ref field-metadata)}]
+      (doseq [[what binning-key x] [["column metadata" :metabase.lib.field/binning field-metadata]
+                                    ["field ref"       :binning                    (lib/ref field-metadata)]]]
         (testing (str what "\n\n" (u/pprint-to-str x))
           (is (= expected-options
                  (lib/available-binning-strategies query x)))
-          (testing "when bucketed, should still return the same available units"
-            (is (= expected-options
-                   (lib/available-binning-strategies query (lib/with-binning x (second expected-options)))))))))))
+          (testing "when binned, should still return the same available units"
+            (let [binned (lib/with-binning x (second expected-options))]
+              (is (= (-> expected-options second :mbql)
+                     (lib/binning binned)))
+              (is (= expected-options
+                     (lib/available-binning-strategies query binned))))))))))
 
 (deftest ^:parallel joined-field-column-name-test
   (let [card  {:dataset-query {:database (meta/id)
