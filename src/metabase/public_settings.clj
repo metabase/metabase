@@ -599,3 +599,24 @@
                     (not (t2/exists? 'Database :is_sample false, :initial_sync_status "complete"))
                     ;; frontend should set this value to `true` after the modal has been shown once
                     v))))
+
+(defsetting uploads-enabled
+  (deferred-tru "Whether or not uploads are enabled")
+  :visibility :authenticated
+  :type       :boolean
+  :default    false)
+
+(defsetting uploads-database-id
+  (deferred-tru "Database ID for uploads")
+  :visibility :authenticated
+  :type       :integer)
+
+(defsetting uploads-schema-name
+  (deferred-tru "Schema name for uploads")
+  :visibility   :authenticated
+  :type         :string)
+
+(defsetting uploads-table-prefix
+  (deferred-tru "Prefix for upload table names")
+  :visibility   :authenticated
+  :type         :string)

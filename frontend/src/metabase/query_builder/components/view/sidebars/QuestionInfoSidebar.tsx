@@ -8,6 +8,7 @@ import { PLUGIN_MODERATION, PLUGIN_CACHING } from "metabase/plugins";
 import MetabaseSettings from "metabase/lib/settings";
 import * as Urls from "metabase/lib/urls";
 
+import Link from "metabase/core/components/Link";
 import QuestionActivityTimeline from "metabase/query_builder/components/QuestionActivityTimeline";
 
 import Question from "metabase-lib/Question";
@@ -17,7 +18,6 @@ import {
   Root,
   ContentSection,
   HeaderContainer,
-  HeaderLink,
 } from "./QuestionInfoSidebar.styled";
 
 interface QuestionInfoSidebarProps {
@@ -56,9 +56,10 @@ export const QuestionInfoSidebar = ({
         <HeaderContainer>
           <h3>{t`About`}</h3>
           {question.isDataset() && (
-            <HeaderLink
+            <Link
+              variant="brand"
               to={Urls.modelDetail(question.card())}
-            >{t`Model details`}</HeaderLink>
+            >{t`Model details`}</Link>
           )}
         </HeaderContainer>
         <EditableText

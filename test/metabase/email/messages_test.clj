@@ -28,7 +28,7 @@
 (deftest password-reset-email
   (testing "password reset email can be sent successfully"
     (et/with-fake-inbox
-      (messages/send-password-reset-email! "test@test.com" false false "http://localhost/some/url" true)
+      (messages/send-password-reset-email! "test@test.com" nil "http://localhost/some/url" true)
       (is (= [{:from    "notifications@metabase.com",
                :to      ["test@test.com"],
                :subject "[Metabase] Password Reset Request",
@@ -39,19 +39,19 @@
   ;; that the contents changed in the tests below.
   (testing "password reset email tells user if they should log in with Google Sign-In"
     (et/with-fake-inbox
-      (messages/send-password-reset-email! "test@test.com" true false "http://localhost/some/url" true)
+      (messages/send-password-reset-email! "test@test.com" "google" "http://localhost/some/url" true)
       (is (-> (@et/inbox "test@test.com")
               (get-in [0 :body 0 :content])
               (str/includes? "Google")))))
   (testing "password reset email tells user if they should log in with (non-Google) SSO"
     (et/with-fake-inbox
-      (messages/send-password-reset-email! "test@test.com" false true nil true)
+      (messages/send-password-reset-email! "test@test.com" "SAML" nil true)
       (is (-> (@et/inbox "test@test.com")
               (get-in [0 :body 0 :content])
               (str/includes? "SSO")))))
   (testing "password reset email tells user if their account is inactive"
     (et/with-fake-inbox
-      (messages/send-password-reset-email! "test@test.com" false false "http://localhost/some/url" false)
+      (messages/send-password-reset-email! "test@test.com" nil "http://localhost/some/url" false)
       (is (-> (@et/inbox "test@test.com")
               (get-in [0 :body 0 :content])
               (str/includes? "deactivated"))))))

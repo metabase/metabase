@@ -62,7 +62,7 @@ describe("QueryColumnPicker", () => {
   it("should allow picking a column", async () => {
     const { sampleColumn, sampleColumnInfo, onSelect, onClose } = setup();
 
-    userEvent.click(screen.getByText(sampleColumnInfo.display_name));
+    userEvent.click(screen.getByText(sampleColumnInfo.displayName));
 
     expect(onSelect).toHaveBeenCalledWith(sampleColumn);
     expect(onClose).toHaveBeenCalled();

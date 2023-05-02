@@ -2,6 +2,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import _ from "underscore";
 import { connect } from "react-redux";
+import { useDropzone } from "react-dropzone";
 
 import { usePrevious, useMount } from "react-use";
 import Bookmark from "metabase/entities/bookmarks";
@@ -11,6 +12,7 @@ import Search from "metabase/entities/search";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getIsBookmarked } from "metabase/collections/selectors";
+import { getSetting } from "metabase/selectors/settings";
 import { getIsNavbarOpen, openNavbar } from "metabase/redux/app";
 
 import BulkActions from "metabase/collections/components/BulkActions";
@@ -19,6 +21,7 @@ import Header from "metabase/collections/containers/CollectionHeader";
 import ItemsTable from "metabase/collections/components/ItemsTable";
 import PinnedItemOverview from "metabase/collections/components/PinnedItemOverview";
 import { isPersonalCollectionChild } from "metabase/collections/utils";
+import { uploadFile } from "metabase/redux/uploads";
 
 import ItemsDragLayer from "metabase/containers/dnd/ItemsDragLayer";
 import PaginationControls from "metabase/components/PaginationControls";
@@ -27,6 +30,9 @@ import { usePagination } from "metabase/hooks/use-pagination";
 import { useListSelect } from "metabase/hooks/use-list-select";
 import { isSmallScreen } from "metabase/lib/dom";
 import Databases from "metabase/entities/databases";
+
+import UploadOverlay from "../components/UploadOverlay";
+
 import {
   CollectionEmptyContent,
   CollectionMain,
@@ -48,11 +54,20 @@ const ALL_MODELS = [
 const itemKeyFn = item => `${item.id}:${item.model}`;
 
 function mapStateToProps(state, props) {
+  const uploadDbId = getSetting(state, "uploads-database-id");
+  const canAccessUploadsDb =
+    getSetting(state, "uploads-enabled") &&
+    uploadDbId &&
+    !!Databases.selectors.getObject(state, {
+      entityId: uploadDbId,
+    });
+
   return {
     isAdmin: getUserIsAdmin(state),
     isBookmarked: getIsBookmarked(state, props),
     metadata: getMetadata(state),
     isNavbarOpen: getIsNavbarOpen(state),
+    uploadsEnabled: canAccessUploadsDb,
   };
 }
 
@@ -60,6 +75,7 @@ const mapDispatchToProps = {
   openNavbar,
   createBookmark: (id, type) => Bookmark.actions.create({ id, type }),
   deleteBookmark: (id, type) => Bookmark.actions.delete({ id, type }),
+  uploadFile,
 };
 
 function CollectionContent({
@@ -74,6 +90,8 @@ function CollectionContent({
   metadata,
   isNavbarOpen,
   openNavbar,
+  uploadFile,
+  uploadsEnabled,
 }) {
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [selectedItems, setSelectedItems] = useState(null);
@@ -109,6 +127,21 @@ function CollectionContent({
 
     setIsBookmarked(shouldBeBookmarked);
   }, [bookmarks, collectionId]);
+
+  const onDrop = useCallback(
+    acceptedFiles => {
+      uploadFile(acceptedFiles[0], collectionId);
+    },
+    [collectionId, uploadFile],
+  );
+
+  const { getRootProps, isDragActive } = useDropzone({
+    onDrop,
+    maxFiles: 1,
+    noClick: true,
+    noDragEventsBubbling: true,
+    accept: { "text/csv": [".csv"] },
+  });
 
   const handleBulkArchive = useCallback(async () => {
     try {
@@ -168,6 +201,10 @@ function CollectionContent({
     deleteBookmark(collectionId, "collection");
   };
 
+  const canUpload = uploadsEnabled && collection.can_write;
+
+  const rootProps = canUpload ? getRootProps() : {};
+
   const unpinnedQuery = {
     collection: collectionId,
     models: ALL_MODELS,
@@ -195,7 +232,8 @@ function CollectionContent({
         const hasPinnedItems = pinnedItems.length > 0;
 
         return (
-          <CollectionRoot>
+          <CollectionRoot {...rootProps}>
+            {canUpload && <UploadOverlay isDragActive={isDragActive} />}
             <CollectionMain>
               <Header
                 collection={collection}
@@ -207,6 +245,7 @@ function CollectionContent({
                 )}
                 onCreateBookmark={handleCreateBookmark}
                 onDeleteBookmark={handleDeleteBookmark}
+                canUpload={canUpload}
               />
               <PinnedItemOverview
                 databases={databases}
@@ -255,7 +294,7 @@ function CollectionContent({
                   }
 
                   return (
-                    <CollectionTable>
+                    <CollectionTable data-testid="collection-table">
                       <ItemsTable
                         databases={databases}
                         bookmarks={bookmarks}
