@@ -677,7 +677,7 @@
                     (map-indexed (fn [idx tab] (assoc tab :position idx)) ordered_tabs))]
     (when (and (seq (:ordered_tabs dashboard))
                (not (every? #(some? (:dashboard_tab_id %)) cards)))
-      (throw (ex-info (tru "This dashboard has tab, makes sure every cards has a tab assigned")
+      (throw (ex-info (tru "This dashboard has tab, makes sure every card has a tab")
                       {:status-code 400})))
     (api/check-500
       (t2/with-transaction [_conn]

@@ -1533,7 +1533,7 @@
   (testing "PUT /api/dashboard/:id/cards"
     (with-simple-dashboard-with-tabs [{:keys [dashboard-id]}]
       (testing "if a dashboard has tabs, check if all cards from the request has a tab_id"
-        (is (= "This dashboard has tab, makes sure every cards has a tab assigned"
+        (is (= "This dashboard has tab, makes sure every card has a tab"
                (mt/user-http-request :crowberto :put 400 (format "dashboard/%d/cards" dashboard-id)
                                      {:cards        (conj
                                                       (current-cards dashboard-id)
@@ -1902,7 +1902,7 @@
             (is (= 1
                    (t2/count :model/DashboardTab :dashboard_id dashboard-id)))))))
     (testing "prune"
-      (with-simple-dashboard-with-tabs [{:keys [dashboard-id dashtab-id-1 dashtab-id-2]}]
+      (with-simple-dashboard-with-tabs [{:keys [dashboard-id dashtab-id-2]}]
         (testing "we have 2 tabs, each has 1 card to begin with"
           (is (= 2
                  (t2/count DashboardCard, :dashboard_id dashboard-id)))
