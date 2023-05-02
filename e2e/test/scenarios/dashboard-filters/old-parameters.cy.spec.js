@@ -160,12 +160,12 @@ describe("scenarios > dashboard > OLD parameters", () => {
     });
 
     it("should display toasts when a dashboard takes longer than 15s to load", () => {
+      cy.clock();
       cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query", req => {
         return Cypress.Promise.delay().then(() => {
           req.reply();
         });
       });
-      cy.clock();
       cy.get("@dashboardId").then(dashboardId => {
         cy.visit({
           url: `/dashboard/${dashboardId}`,
@@ -179,7 +179,7 @@ describe("scenarios > dashboard > OLD parameters", () => {
       cy.findByTestId("dashcard")
         .findByText("Products table")
         .should("be.visible");
-      cy.tick(15 * 1000);
+      cy.tick(16 * 1000);
 
       cy.findByTestId("toast-undo").within(() => {
         cy.findByText(
