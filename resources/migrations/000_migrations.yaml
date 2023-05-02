@@ -14509,7 +14509,7 @@ databaseChangeLog:
       comment: Added 0.47.0 - Migrate the report_card.visualization_settings.column_settings field refs from legacy format
       changes:
         - customChange:
-            class: "metabase.db.custom_migrations.MigrateLegacyVisualizationSettings"
+            class: "metabase.db.custom_migrations.MigrateLegacyColumnSettingsFieldRefs"
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
