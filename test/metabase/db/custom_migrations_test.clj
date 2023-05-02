@@ -55,19 +55,21 @@
   (testing "Migrations v47.00-016: update visualization_settings.column_settings legacy field refs"
     (impl/test-migrations ["v47.00-016"] [migrate!]
       (let [visualization-settings
-            {"column_settings" {"[\"ref\",[\"field-id\",39]]"                                 {"column_title" "ID1"}
-                                "[\"ref\",[\"field\",40,null]]"                               {"column_title" "ID2"}
-                                "[\"ref\",[\"fk->\",[\"field-id\",39],[\"field-id\",40]]]"    {"column_title" "ID3"}
-                                "[\"ref\",[\"fk->\",41,42]]"                                  {"column_title" "ID4"}
-                                "[\"ref\",[\"field-literal\",\"column_name\",\"type/Text\"]]" {"column_title" "ID5"}
-                                "[\"name\",\"column_name\"]"                                  {"column_title" "ID6"}}}
+            {"column_settings" (-> {["name" "column_name"]                              {"column_title" "ID6"},
+                                    ["ref" ["field-literal" "column_name" "type/Text"]] {"column_title" "ID5"},
+                                    ["ref" ["field-id" 39]]                             {"column_title" "ID1"},
+                                    ["ref" ["field" 40 nil]]                            {"column_title" "ID2"},
+                                    ["ref" ["fk->" ["field-id" 39] ["field-id" 40]]]    {"column_title" "ID3"},
+                                    ["ref" ["fk->" 41 42]]                              {"column_title" "ID4"}}
+                                   (update-keys json/generate-string))}
             expected
-            {"column_settings" {"[\"ref\",[\"field\",39,null]]"                                       {"column_title" "ID1"}
-                                "[\"ref\",[\"field\",40,null]]"                                       {"column_title" "ID2"}
-                                "[\"ref\",[\"field\",40,{\"source-field\":39}]]"                      {"column_title" "ID3"}
-                                "[\"ref\",[\"field\",42,{\"source-field\":41}]]"                      {"column_title" "ID4"}
-                                "[\"ref\",[\"field\",\"column_name\",{\"base-type\":\"type/Text\"}]]" {"column_title" "ID5"}
-                                "[\"name\",\"column_name\"]"                                          {"column_title" "ID6"}}}
+            {"column_settings" (-> {["name" "column_name"]                                    {"column_title" "ID6"},
+                                    ["ref" ["field" "column_name" {"base-type" "type/Text"}]] {"column_title" "ID5"},
+                                    ["ref" ["field" 39 nil]]                                  {"column_title" "ID1"},
+                                    ["ref" ["field" 40 nil]]                                  {"column_title" "ID2"},
+                                    ["ref" ["field" 40 {"source-field" 39}]]                  {"column_title" "ID3"},
+                                    ["ref" ["field" 42 {"source-field" 41}]]                  {"column_title" "ID4"}}
+                                   (update-keys json/generate-string))}
             user-id     (t2/insert-returning-pks! User {:first_name  "Howard"
                                                         :last_name   "Hughes"
                                                         :email       "howard@aircraft.com"
