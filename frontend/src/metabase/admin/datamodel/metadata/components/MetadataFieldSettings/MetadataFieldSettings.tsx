@@ -49,6 +49,7 @@ interface SchemaLoaderProps {
 
 interface FieldLoaderProps {
   field: Field;
+  loading: boolean;
 }
 
 interface StateProps {
@@ -77,10 +78,11 @@ const MetadataFieldSettings = ({
   table,
   field,
   idFields,
+  loading,
   params: { schemaId, section },
 }: MetadataFieldSettingsProps) => {
   const schema = schemas.find(schema => schema.id === schemaId);
-  if (!schema) {
+  if (!schema || loading) {
     return <LoadingAndErrorWrapper loading />;
   }
 
@@ -199,7 +201,6 @@ export default _.compose(
     id: (_: State, { params }: RouterProps) =>
       Urls.extractEntityId(params.databaseId),
     query: PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
-    loadingAndErrorWrapper: false,
   }),
   Databases.load({
     id: (_: State, { params }: RouterProps) =>
@@ -207,7 +208,6 @@ export default _.compose(
     query: PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
     fetchType: "fetchIdFields",
     requestType: "idFields",
-    loadingAndErrorWrapper: false,
   }),
   Schemas.loadList({
     query: (_: State, { params }: RouterProps) => ({
@@ -215,7 +215,6 @@ export default _.compose(
       include_hidden: true,
       ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
     }),
-    loadingAndErrorWrapper: false,
   }),
   Tables.load({
     id: (state: State, { params }: RouterProps) =>
@@ -227,6 +226,21 @@ export default _.compose(
     fetchType: "fetchMetadata",
     requestType: "fetchMetadata",
     selectorName: "getObjectUnfiltered",
+  }),
+  Tables.load({
+    id: (state: State, { params }: RouterProps) => {
+      const props = { entityId: Urls.extractEntityId(params.fieldId) };
+      const field = Fields.selectors.getObjectUnfiltered(state, props);
+      return field?.target?.table_id;
+    },
+    query: {
+      include_sensitive_fields: true,
+      ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
+    },
+    fetchType: "fetchMetadata",
+    requestType: "fetchMetadata",
+    selectorName: "getObjectUnfiltered",
+    entityAlias: "foreignKeyTable",
     loadingAndErrorWrapper: false,
   }),
   Fields.load({
@@ -236,17 +250,6 @@ export default _.compose(
     fetchType: "fetchFieldValues",
     requestType: "values",
     selectorName: "getObjectUnfiltered",
-  }),
-  Tables.load({
-    id: (state: State, { field }: FieldLoaderProps) => field.target?.table_id,
-    query: {
-      include_sensitive_fields: true,
-      ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
-    },
-    fetchType: "fetchMetadata",
-    requestType: "fetchMetadata",
-    selectorName: "getObjectUnfiltered",
-    entityAlias: "foreignKeyTable",
     loadingAndErrorWrapper: false,
   }),
   connect(mapStateToProps),

@@ -305,7 +305,6 @@ export default _.compose(
     query: PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
     fetchType: "fetchIdFields",
     requestType: "idFields",
-    loadingAndErrorWrapper: false,
   }),
   Tables.load({
     id: (state: State, { selectedTableId }: OwnProps) => selectedTableId,
