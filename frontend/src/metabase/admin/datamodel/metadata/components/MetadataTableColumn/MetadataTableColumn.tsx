@@ -105,6 +105,7 @@ const MetadataTableColumn = ({
                     Number(field.id),
                   )}
                   className="text-brand-hover mr1"
+                  aria-label={t`Field settings`}
                 >
                   <Button icon="gear" style={{ padding: 10 }} />
                 </Link>

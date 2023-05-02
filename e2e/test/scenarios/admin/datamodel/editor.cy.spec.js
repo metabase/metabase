@@ -5,13 +5,18 @@ import {
   restore,
   startNewQuestion,
 } from "e2e/support/helpers";
-import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
+import {
+  SAMPLE_DB_ID,
+  SAMPLE_DB_SCHEMA_ID,
+  USER_GROUPS,
+} from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
 const { ALL_USERS_GROUP } = USER_GROUPS;
 const ORDERS_DESCRIPTION =
   "Confirmed Sample Company orders for a product, from a user.";
+const MYSQL_BD_ID = SAMPLE_DB_ID + 1;
 
 describe("scenarios > admin > datamodel > editor", () => {
   beforeEach(() => {
@@ -23,14 +28,14 @@ describe("scenarios > admin > datamodel > editor", () => {
     cy.intercept("PUT", "/api/table/*/fields/order").as("updateFieldOrder");
   });
 
-  describe("metadata editing", () => {
+  describe("table metadata", () => {
     beforeEach(() => {
       restore();
       cy.signInAsAdmin();
     });
 
     it("should allow changing the table name", () => {
-      visitOrdersTableEditor();
+      visitOrdersTable();
       setValueAndBlurInput("Orders", "New orders");
       cy.wait("@updateTable");
       cy.findByText("Updated Table display_name");
@@ -44,7 +49,7 @@ describe("scenarios > admin > datamodel > editor", () => {
     });
 
     it("should allow changing the table description", () => {
-      visitOrdersTableEditor();
+      visitOrdersTable();
       setValueAndBlurInput(ORDERS_DESCRIPTION, "New description");
       cy.wait("@updateTable");
       cy.findByText("Updated Table description");
@@ -55,7 +60,7 @@ describe("scenarios > admin > datamodel > editor", () => {
     });
 
     it("should allow clearing the table description", () => {
-      visitOrdersTableEditor();
+      visitOrdersTable();
       clearAndBlurInput(ORDERS_DESCRIPTION);
       cy.wait("@updateTable");
       cy.findByText("Updated Table description");
@@ -66,7 +71,7 @@ describe("scenarios > admin > datamodel > editor", () => {
     });
 
     it("should allow changing the table visibility", () => {
-      visitOrdersTableEditor();
+      visitOrdersTable();
       cy.findByText("Hidden").click();
       cy.wait("@updateTable");
       cy.findByText("Updated Table visibility_type");
@@ -79,7 +84,7 @@ describe("scenarios > admin > datamodel > editor", () => {
         cy.findByText("Orders").should("not.exist");
       });
 
-      visitOrdersTableEditor();
+      visitOrdersTable();
       cy.findByText("Queryable").click();
       cy.wait("@updateTable");
       cy.findByText("4 Hidden Tables").should("be.visible");
@@ -93,7 +98,7 @@ describe("scenarios > admin > datamodel > editor", () => {
     });
 
     it("should allow changing the field name", () => {
-      visitOrdersTableEditor();
+      visitOrdersTable();
       getFieldSection("TAX").within(() =>
         setValueAndBlurInput("Tax", "New tax"),
       );
@@ -106,7 +111,7 @@ describe("scenarios > admin > datamodel > editor", () => {
     });
 
     it("should allow changing the field description", () => {
-      visitOrdersTableEditor();
+      visitOrdersTable();
       getFieldSection("TOTAL").within(() =>
         setValueAndBlurInput("The total billed amount.", "New description"),
       );
@@ -121,7 +126,7 @@ describe("scenarios > admin > datamodel > editor", () => {
     });
 
     it("should allow clearing the field description", () => {
-      visitOrdersTableEditor();
+      visitOrdersTable();
       getFieldSection("TOTAL").within(() =>
         clearAndBlurInput("The total billed amount."),
       );
@@ -136,7 +141,7 @@ describe("scenarios > admin > datamodel > editor", () => {
     });
 
     it("should allow changing the field visibility", () => {
-      visitOrdersTableEditor();
+      visitOrdersTable();
       getFieldSection("TAX").findByText("Everywhere").click();
       setSelectValue("Do not include");
       cy.wait("@updateField");
@@ -148,7 +153,7 @@ describe("scenarios > admin > datamodel > editor", () => {
     });
 
     it("should allow changing the field semantic type and currency", () => {
-      visitOrdersTableEditor();
+      visitOrdersTable();
       getFieldSection("TAX").findByText("No semantic type").click();
       searchAndSelectValue("Currency");
       cy.wait("@updateField");
@@ -163,7 +168,7 @@ describe("scenarios > admin > datamodel > editor", () => {
     });
 
     it("should allow changing the field foreign key target", () => {
-      visitOrdersTableEditor();
+      visitOrdersTable();
       getFieldSection("USER_ID").findByText("People → ID").click();
       setSelectValue("Products → ID");
       cy.wait("@updateField");
@@ -182,7 +187,7 @@ describe("scenarios > admin > datamodel > editor", () => {
     });
 
     it("should allow sorting fields", () => {
-      visitOrdersTableEditor();
+      visitOrdersTable();
 
       cy.findByLabelText("Sort").click();
       popover().findByText("Alphabetical").click();
@@ -198,16 +203,33 @@ describe("scenarios > admin > datamodel > editor", () => {
     });
 
     it("should allow hiding and restoring all tables in a schema", () => {
-      visitOrdersTableEditor();
+      visitOrdersTable();
       cy.findByText("4 Queryable Tables").should("be.visible");
       cy.findByLabelText("Hide all").click();
       cy.wait("@updateTables");
 
-      visitOrdersTableEditor();
+      visitOrdersTable();
       cy.findByText("8 Hidden Tables").should("be.visible");
       cy.findByLabelText("Unhide all").click();
       cy.wait("@updateTables");
       cy.findByText("8 Queryable Tables").should("be.visible");
+    });
+  });
+
+  describe("field metadata", () => {
+    beforeEach(() => {
+      restore();
+      cy.signInAsAdmin();
+    });
+
+    it("should allow changing the field name", () => {
+      visitOrdersQuantityField();
+      setValueAndBlurInput("Quantity", "New quantity"), cy.wait("@updateField");
+      cy.findByText("Updated Quantity").should("be.visible");
+
+      openOrdersTable();
+      cy.findByText("New quantity").should("be.visible");
+      cy.findByText("Quantity").should("not.exist");
     });
   });
 
@@ -226,7 +248,7 @@ describe("scenarios > admin > datamodel > editor", () => {
 
     it("should allow changing the table name with data model permissions only", () => {
       cy.signIn("none");
-      visitOrdersTableEditor();
+      visitOrdersTable();
       setValueAndBlurInput("Orders", "New orders");
       cy.wait("@updateTable");
       cy.findByText("Updated Table display_name");
@@ -243,7 +265,7 @@ describe("scenarios > admin > datamodel > editor", () => {
 
     it("should allow changing the field name with data model permissions only", () => {
       cy.signIn("none");
-      visitOrdersTableEditor();
+      visitOrdersTable();
       getFieldSection("TAX").within(() =>
         setValueAndBlurInput("Tax", "New tax"),
       );
@@ -264,13 +286,13 @@ describe("scenarios > admin > datamodel > editor", () => {
     });
 
     it("should be able to select and update a table in a database without schemas", () => {
-      visitOrdersTableEditor("QA MySQL8");
+      visitOrdersTable(MYSQL_BD_ID);
       setValueAndBlurInput("Orders", "New orders");
       cy.wait("@updateTable");
     });
 
     it("should be able to select and update a field in a database without schemas", () => {
-      visitOrdersTableEditor("QA MySQL8");
+      visitOrdersTable(MYSQL_BD_ID);
       getFieldSection("TAX").findByText("Everywhere").click();
       setSelectValue("Do not include");
       cy.wait("@updateField");
@@ -278,12 +300,17 @@ describe("scenarios > admin > datamodel > editor", () => {
   });
 });
 
-const visitOrdersTableEditor = (database = "Sample Database") => {
-  cy.visit("/admin/datamodel");
-  cy.wait("@fetchTables");
-  cy.findByText(database).should("be.visible");
+const visitOrdersTable = (databaseId = SAMPLE_DB_ID) => {
+  cy.visit(
+    `/admin/datamodel/database/${databaseId}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}`,
+  );
+  cy.wait("@fetchMetadata");
+};
 
-  cy.findByText("Orders").click();
+const visitOrdersQuantityField = () => {
+  cy.visit(
+    `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/field/${ORDERS.QUANTITY}`,
+  );
   cy.wait("@fetchMetadata");
 };
 
