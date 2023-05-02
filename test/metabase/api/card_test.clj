@@ -354,7 +354,8 @@
                                                                                         [:field 33 {:join-alias alias}]]
                                                                             :alias alias
                                                                             :strategy :inner-join}]
-                                                                   :fields [[:field 9 nil]]}
+                                                                   :fields [[:field 9 nil]]
+                                                                   :source-table (str "card__" other-card-id)}
                                                            :database 1})}]
                     ;; matching native query
                     :model/Card [card-4 {:name "Card 4"
