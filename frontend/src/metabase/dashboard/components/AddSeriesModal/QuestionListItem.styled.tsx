@@ -7,9 +7,7 @@ export const QuestionListItemRoot = styled.li`
   display: flex;
   margin: 0;
   min-height: 36px;
-  opacity: ${props => (props.isDisabled ? 0.5 : 1)};
   padding: 0.25rem 0.5rem 0.25rem 0.75rem;
-  pointer-events: ${props => (props.isDisabled ? "none" : "all")};
 
   &:first-child {
     padding-top: 0.5rem;
@@ -24,7 +22,7 @@ export const CheckboxContainer = styled.div`
   display: inline-block;
   padding: 0 0.5rem 0 0;
   max-width: 100%;
-  width: ${({ hasIcon }) => (hasIcon ? "calc(100% - 36px)" : "100%")};
+  width: 100%;
 `;
 
 export const WarningIcon = styled(Icon)`
