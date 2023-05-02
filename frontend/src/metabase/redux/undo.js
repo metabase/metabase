@@ -1,6 +1,7 @@
 import _ from "underscore";
 
-import { createAction, createThunkAction } from "metabase/lib/redux";
+import { createAction } from "@reduxjs/toolkit";
+import { createThunkAction } from "metabase/lib/redux";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 
 const ADD_UNDO = "metabase/questions/ADD_UNDO";
@@ -23,7 +24,7 @@ export const dismissUndo = createAction(
     if (track) {
       MetabaseAnalytics.trackStructEvent("Undo", "Dismiss Undo");
     }
-    return undoId;
+    return { payload: undoId };
   },
 );
 
