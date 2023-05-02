@@ -1,7 +1,7 @@
 import React, { ComponentPropsWithoutRef } from "react";
 import { IndexRoute, Route } from "react-router";
 import { Card } from "metabase-types/api";
-import { createMockCard } from "metabase-types/api/mocks";
+import { createMockCard, createMockDataset } from "metabase-types/api/mocks";
 import {
   createSampleDatabase,
   ORDERS_ID,
@@ -11,6 +11,7 @@ import {
   setupAlertsEndpoints,
   setupBookmarksEndpoints,
   setupCardEndpoints,
+  setupCardQueryEndpoints,
   setupDatabasesEndpoints,
   setupSearchEndpoints,
   setupTimelinesEndpoints,
@@ -34,6 +35,8 @@ const TEST_CARD = createMockCard({
   },
 });
 
+const TEST_DATASET = createMockDataset();
+
 const TestQueryBuilder = (
   props: ComponentPropsWithoutRef<typeof QueryBuilder>,
 ) => {
@@ -56,6 +59,7 @@ const setup = async ({
 }: SetupOpts = {}) => {
   setupDatabasesEndpoints([TEST_DB]);
   setupCardEndpoints(card);
+  setupCardQueryEndpoints(card, TEST_DATASET);
   setupSearchEndpoints([]);
   setupAlertsEndpoints(card, []);
   setupBookmarksEndpoints([]);
@@ -78,10 +82,15 @@ const setup = async ({
 };
 
 describe("QueryBuilder", () => {
+  it("renders a structured question in the simple mode", async () => {
+    await setup();
+
+    expect(screen.getByDisplayValue(TEST_CARD.name)).toBeInTheDocument();
+  });
+
   it("renders a structured question in the notebook mode", async () => {
     await setup({
-      card: TEST_CARD,
-      initialRoute: `/question/${TEST_CARD.id}/notebook`,
+      initialRoute: `/question/${TEST_CARD.id}`,
     });
 
     expect(screen.getByDisplayValue(TEST_CARD.name)).toBeInTheDocument();
