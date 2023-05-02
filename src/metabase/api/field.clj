@@ -56,9 +56,9 @@
 (api/defendpoint-schema GET "/:id"
   "Get `Field` with ID."
   [id include_editable_data_model]
-  (let [include_editable_data_model (u/parse-boolean include_editable_data_model)
-        field (-> (api/check-404 (t2/select-one Field :id id))
-                  (hydrate [:table :db] :has_field_values :dimensions :name_field))]
+  (let [include_editable_data_model (Boolean/parseBoolean include_editable_data_model)
+        field                       (-> (api/check-404 (t2/select-one Field :id id))
+                                        (hydrate [:table :db] :has_field_values :dimensions :name_field :target))]
     ;; Normal read perms = normal access.
     ;;
     ;; There's also a special case where we allow you to fetch a Field even if you don't have full read permissions for
@@ -68,7 +68,7 @@
     ;;
     ;; Check for permissions and throw 403 if we don't have them...
     (if include_editable_data_model
-      (api/write-check (:table field))
+      (api/write-check 'Table (:table_id field))
       (throw-if-no-read-or-segmented-perms field))
     ;; ...but if we do, return the Field <3
     field))

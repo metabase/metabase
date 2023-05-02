@@ -39,7 +39,7 @@
                 (mt/object-defaults Field)
                 (t2/select-one [Field :created_at :updated_at :last_analyzed :fingerprint :fingerprint_version
                                 :database_position :database_required :database_is_auto_increment]
-                  :id (mt/id :users :name))
+                               :id (mt/id :users :name))
                 {:table_id         (mt/id :users)
                  :table            (merge
                                     (mt/obj->json->obj (mt/object-defaults Table))
@@ -61,6 +61,7 @@
                  :name             "NAME"
                  :display_name     "Name"
                  :position         1
+                 :target           nil
                  :id               (mt/id :users :name)
                  :visibility_type  "normal"
                  :database_type    "CHARACTER VARYING"
@@ -73,7 +74,16 @@
                  :name_field       nil})
                (m/dissoc-in [:table :db :updated_at] [:table :db :created_at] [:table :db :timezone]))
            (-> (mt/user-http-request :rasta :get 200 (format "field/%d" (mt/id :users :name)))
-               (update-in [:table :db] dissoc :updated_at :created_at :timezone :dbms_version))))))
+               (update-in [:table :db] dissoc :updated_at :created_at :timezone :dbms_version))))
+    (testing "target should be hydrated"
+      (is (= (t2/select-one Field :id (mt/id :categories :id))
+             (-> (:target (mt/user-http-request :rasta :get 200 (format "field/%d" (mt/id :venues :category_id))))
+                 ;; TODO: it's not clear why these values aren't keywordized on the target. See this
+                 ;; https://github.com/metabase/metabase/blob/b96b6e043933c5708fdea18e58634f375926025c/src/metabase/models/interface.clj#L259
+                 (update :base_type keyword)
+                 (update :visibility_type keyword)
+                 (update :effective_type keyword)
+                 (update :semantic_type keyword)))))))
 
 (deftest get-field-summary-test
   (testing "GET /api/field/:id/summary"
