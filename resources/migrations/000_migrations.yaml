@@ -14575,6 +14575,7 @@ databaseChangeLog:
                   defaultValueBoolean: false
                   constraints:
                     nullable: false
+
   - changeSet:
       id: v47.00-016
       author: calherres
@@ -14733,6 +14734,7 @@ databaseChangeLog:
       changes:
         - createTable:
             tableName: audit_log
+            remarks: Used to store application events for auditing use cases
             columns:
               - column:
                   name: id
@@ -14744,21 +14746,25 @@ databaseChangeLog:
               - column:
                   name: topic
                   type: varchar(32)
+                  remarks: The topic of a given audit event
                   constraints:
                     nullable: false
               - column:
                   name: timestamp
                   type: DATETIME
+                  remarks: The time an event was recorded
                   constraints:
                     nullable: false
               - column:
                   name: end_timestamp
                   type: DATETIME
+                  remarks: The time an event ended, if applicable
                   constraints:
                     nullable: true
               - column:
                   name: user_id
                   type: int
+                  remarks: The user who performed an action or triggered an event
                   constraints:
                     nullable: true
                     referencedTableName: core_user
@@ -14769,16 +14775,19 @@ databaseChangeLog:
               - column:
                   name: model
                   type: varchar(16)
+                  remarks: The name of the model this event applies to (e.g. Card, Dashboard), if applicable
                   constraints:
                     nullable: true
               - column:
                   name: model_id
                   type: int
+                  remarks: The ID of the model this event applies to, if applicable
                   constraints:
                     nullable: true
               - column:
                   name: details
                   type: ${text.type}
+                  remarks: A JSON map with misc metadata about the event
                   constraints:
                     nullable: false
 
