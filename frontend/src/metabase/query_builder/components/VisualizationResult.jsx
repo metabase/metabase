@@ -74,7 +74,11 @@ export default class VisualizationResult extends Component {
                 {supportsRowsPresentAlert && !isDirty && (
                   <p>
                     {jt`You can also ${(
-                      <a className="link" onClick={this.showCreateAlertModal}>
+                      <a
+                        className="link"
+                        key="link"
+                        onClick={this.showCreateAlertModal}
+                      >
                         {t`get an alert`}
                       </a>
                     )} when there are some results.`}
