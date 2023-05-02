@@ -179,7 +179,7 @@ describe("scenarios > dashboard > OLD parameters", () => {
       cy.findByTestId("dashcard")
         .findByText("Products table")
         .should("be.visible");
-      cy.tick(15 * 1000);
+      cy.tick(16 * 1000);
 
       cy.findByTestId("toast-undo").within(() => {
         cy.findByText(
