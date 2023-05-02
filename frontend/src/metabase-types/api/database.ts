@@ -50,10 +50,6 @@ export interface Database extends DatabaseData {
   tables?: Table[];
 }
 
-export type DatabaseWithTables = Database & {
-  tables: Table[];
-};
-
 export interface DatabaseData {
   id?: DatabaseId;
   name: string;
