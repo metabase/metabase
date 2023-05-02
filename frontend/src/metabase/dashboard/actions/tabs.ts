@@ -1,4 +1,5 @@
 import type { Action } from "redux-actions";
+import { t } from "ttag";
 
 import {
   DashboardId,
@@ -99,7 +100,7 @@ export const tabsReducer = handleActions<DashboardState, TabsReducerPayload>(
         const newTab = getDefaultTab({
           tabId,
           dashId,
-          name: `Page ${prevTabs.length + 1}`,
+          name: t`Page ${prevTabs.length + 1}`,
         });
         const dashboards: DashboardState["dashboards"] = {
           ...state.dashboards,
@@ -121,8 +122,8 @@ export const tabsReducer = handleActions<DashboardState, TabsReducerPayload>(
       const firstTabId = tabId + 1;
       const secondTabId = tabId;
       const newTabs = [
-        getDefaultTab({ tabId: firstTabId, dashId, name: "Page 1" }),
-        getDefaultTab({ tabId: secondTabId, dashId, name: "Page 2" }),
+        getDefaultTab({ tabId: firstTabId, dashId, name: t`Page 1` }),
+        getDefaultTab({ tabId: secondTabId, dashId, name: t`Page 2` }),
       ];
       const dashboards: DashboardState["dashboards"] = {
         ...state.dashboards,
