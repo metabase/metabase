@@ -399,7 +399,7 @@
                 :public_uuid         nil}
                (update serialized-dashboard :cards check-ids))))
       (testing "delete the dashcard and modify the dash attributes"
-        (dashboard-card/delete-dashboard-cards! [(:id dashboard-card)])
+        (dashboard-card/delete-dashboard-cards! [dashboard-card])
         (t2/update! Dashboard dashboard-id
                     {:name               "Revert Test"
                      :auto_apply_filters false
