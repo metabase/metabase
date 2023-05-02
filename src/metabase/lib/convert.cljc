@@ -168,9 +168,18 @@
   [[tag value opts]]
   (lib.options/ensure-uuid [tag opts value]))
 
+(defn- get-or-throw!
+  [m k]
+  (let [result (get m k ::not-found)]
+    (if-not (= result ::not-found)
+      result
+      (throw (ex-info (str "Unable to find " (pr-str k) " in map.")
+                      {:m m
+                       :k k})))))
+
 (defmethod ->pMBQL :aggregation
   [[tag value opts]]
-  (lib.options/ensure-uuid [tag opts (get *legacy-index->pMBQL-uuid* value)]))
+  (lib.options/ensure-uuid [tag opts (get-or-throw! *legacy-index->pMBQL-uuid* value)]))
 
 (defmethod ->pMBQL :aggregation-options
   [[_tag aggregation options]]
@@ -301,9 +310,9 @@
 (defmethod ->legacy-MBQL :aggregation [[_ opts agg-uuid :as ag]]
   (if (map? opts)
     (let [opts (not-empty (disqualify opts))]
-      (cond-> [:aggregation (get *pMBQL-uuid->legacy-index* agg-uuid)]
+      (cond-> [:aggregation (get-or-throw! *pMBQL-uuid->legacy-index* agg-uuid)]
         opts (conj opts)))
-    ;; Something in source_metadata that shouldn't be touched
+    ;; Our conversion is a bit too aggressive and we're hitting legacy refs like [:aggregation 0] inside source_metadata that are only used for legacy and thus can be ignored
     ag))
 
 (defmethod ->legacy-MBQL :dispatch-type/sequential [xs]
@@ -358,7 +367,7 @@
                 disqualify
                 (m/update-existing :aggregation #(mapv aggregation->legacy-MBQL %))
                 (update-list->legacy-boolean-expression :filters :filter))
-            (remove #{:aggregation :filters} stage-keys))))
+            (disj stage-keys :aggregation :filters))))
 
 (defmethod ->legacy-MBQL :mbql.stage/native [stage]
   (-> stage

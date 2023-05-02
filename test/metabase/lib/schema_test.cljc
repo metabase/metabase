@@ -38,13 +38,13 @@
       {:lib/type     :mbql.stage/mbql
        :source-table 1
        :fields       [[:aggregation {:lib/uuid (str (random-uuid))} bad-ref]]}
-      [(str "Invalid :aggregation reference: no aggregation with index " bad-ref)]
+      [(str "Invalid :aggregation reference: no aggregation with uuid " bad-ref)]
 
       {:lib/type     :mbql.stage/mbql
        :source-table 1
        :aggregation  [valid-ag-1]
        :fields       [[:aggregation {:lib/uuid (str (random-uuid))} bad-ref]]}
-      [(str "Invalid :aggregation reference: no aggregation with index " bad-ref)]
+      [(str "Invalid :aggregation reference: no aggregation with uuid " bad-ref)]
 
       ;; don't recurse into joins.
       {:lib/type     :mbql.stage/mbql

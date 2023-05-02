@@ -2,6 +2,7 @@
   (:refer-clojure :exclude [count distinct max min var])
   (:require
    [clojure.math :as math]
+   [medley.core :as m]
    [metabase.lib.common :as lib.common]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata :as lib.metadata]
@@ -28,9 +29,9 @@
    stage-number :- :int
    ag-uuid      :- :string]
   (let [{aggregations :aggregation} (lib.util/query-stage query stage-number)
-        found (first (filter (comp #{ag-uuid} :lib/uuid second) aggregations))]
+        found (m/find-first (comp #{ag-uuid} :lib/uuid second) aggregations)]
     (when-not found
-      (throw (ex-info (i18n/tru "No aggregation with index {0}" ag-uuid)
+      (throw (ex-info (i18n/tru "No aggregation with uuid {0}" ag-uuid)
                       {:uuid         ag-uuid
                        :query        query
                        :stage-number stage-number})))

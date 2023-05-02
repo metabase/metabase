@@ -67,15 +67,15 @@
     ((get-method = :dispatch-type/map) x y)))
 
 (defmethod = :aggregation
-  [x y]
+  [[x-tag x-opts x-uuid :as x] [y-tag y-opts y-uuid :as y]]
   (and (clojure.core/= 3 (count x) (count y))
-       (clojure.core/= (first x) (first y))
-       (= (second x) (second y))
+       (clojure.core/= x-tag y-tag)
+       (= x-opts y-opts)
        ;; If nil, it means we aren't comparing a stage, so just compare the uuid directly
        (if *side->uuid->index*
-         (clojure.core/= (get-in *side->uuid->index* [:left (last x)] ::no-left)
-                         (get-in *side->uuid->index* [:right (last y)] ::no-right))
-         (clojure.core/= (last x) (last y)))))
+         (clojure.core/= (get-in *side->uuid->index* [:left x-uuid] ::no-left)
+                         (get-in *side->uuid->index* [:right y-uuid] ::no-right))
+         (clojure.core/= x-uuid y-uuid))))
 
 ;;; if we've gotten here we at least know the dispatch values for `x` and `y` are the same, which means the types will
 ;;; be the same.

@@ -63,7 +63,7 @@
 (mu/defn ref-lookup :- fn?
   "Returns a function that can be resolved into an expression reference for the expression with name `expr-name`.
   Throws an exception if there is no expression with that name can be found."
-  [expression-or-aggregation :- [:enum :aggregation :expression] index-or-name :- [:or :string :int]]
+  [expression-or-aggregation :- [:enum :aggregation :expression] index-or-name :- [:or :string ::lib.schema.common/int-greater-than-or-equal-to-zero]]
   (fn [query stage-number]
     (case expression-or-aggregation
       :expression
