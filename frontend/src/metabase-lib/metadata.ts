@@ -8,6 +8,8 @@ import type {
   ColumnGroup,
   ColumnMetadata,
   MetadataProvider,
+  BinningStrategy,
+  BinningStrategyDisplayInfo,
   BreakoutClause,
   BreakoutClauseDisplayInfo,
   OrderByClause,
@@ -45,6 +47,10 @@ declare function DisplayInfoFn(
   query: Query,
   breakoutClause: BreakoutClause,
 ): BreakoutClauseDisplayInfo;
+declare function DisplayInfoFn(
+  query: Query,
+  binningStrategy: BinningStrategy,
+): BinningStrategyDisplayInfo;
 declare function DisplayInfoFn(
   query: Query,
   temporalBucket: TemporalBucket,
