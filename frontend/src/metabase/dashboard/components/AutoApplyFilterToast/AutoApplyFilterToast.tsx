@@ -49,6 +49,7 @@ export default function AutoApplyFilterToast() {
 
   useEffect(() => {
     if (autoApplyFiltersToastStateName === "shown") {
+      dispatch(dismissToast());
       const onTurnOffAutoApplyFilters = () => {
         dispatch(
           setDashboardAttributes({
@@ -59,7 +60,6 @@ export default function AutoApplyFilterToast() {
           }),
         );
         dispatch(saveDashboardAndCards());
-        dispatch(dismissToast());
       };
 
       dispatch(
@@ -79,12 +79,6 @@ export default function AutoApplyFilterToast() {
       );
     }
   }, [autoApplyFiltersToastStateName, dashboardId, dispatch]);
-
-  useEffect(() => {
-    return () => {
-      dispatch(dismissToast());
-    };
-  }, [dispatch]);
 
   return null;
 }
