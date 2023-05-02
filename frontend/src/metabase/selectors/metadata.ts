@@ -1,12 +1,14 @@
 import { createSelector } from "@reduxjs/toolkit";
-import type { Field, Table } from "metabase-types/api";
+import type { Table } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 import type Metadata from "metabase-lib/metadata/Metadata";
 import createMetadata from "metabase-lib/metadata/createMetadata";
 
-type TableSelectorOpts = {
-  includeHiddenTables?: boolean;
-};
+type TableSelectorOpts =
+  | {
+      includeHiddenTables?: boolean;
+    }
+  | undefined;
 
 export const getNormalizedDatabases = (state: State) =>
   state.entities.databases;
@@ -15,7 +17,7 @@ export const getNormalizedSchemas = (state: State) => state.entities.schemas;
 const getNormalizedTablesUnfiltered = (state: State) => state.entities.tables;
 
 const getIncludeHiddenTables = (_state: State, props?: TableSelectorOpts) =>
-  props?.includeHiddenTables;
+  !!props?.includeHiddenTables;
 
 const getNormalizedTables = createSelector(
   [getNormalizedTablesUnfiltered, getIncludeHiddenTables],
@@ -25,16 +27,34 @@ const getNormalizedTables = createSelector(
       : filterValues(tables, (table: Table) => table.visibility_type == null),
 );
 
+type FieldSelectorOpts =
+  | {
+      includeSensitiveFields?: boolean;
+    }
+  | undefined;
+
 const getNormalizedFieldsUnfiltered = (state: State) => state.entities.fields;
+const getIncludeSensitiveFields = (_state: State, props: FieldSelectorOpts) =>
+  !!props?.includeSensitiveFields;
+
 const getNormalizedFields = createSelector(
-  [getNormalizedFieldsUnfiltered, getNormalizedTablesUnfiltered],
-  (fields, tables) =>
-    filterValues(fields, (field: Field) => {
+  [
+    getNormalizedFieldsUnfiltered,
+    getNormalizedTablesUnfiltered,
+    getIncludeHiddenTables,
+    getIncludeSensitiveFields,
+  ],
+  (fields, tables, includeHiddenTables, includeSensitiveFields) =>
+    filterValues(fields, field => {
       const table = tables[field.table_id];
-      return (
-        (!table || table.visibility_type == null) &&
-        field.visibility_type !== "sensitive"
-      );
+
+      const shouldIncludeTable =
+        !table || table.visibility_type == null || includeHiddenTables;
+
+      const shouldIncludeField =
+        field.visibility_type !== "sensitive" || includeSensitiveFields;
+
+      return shouldIncludeTable && shouldIncludeField;
     }),
 );
 
@@ -50,7 +70,7 @@ export const getShallowSegments = getNormalizedSegments;
 
 export const getMetadata: (
   state: State,
-  props?: TableSelectorOpts,
+  props?: TableSelectorOpts & FieldSelectorOpts,
 ) => Metadata = createSelector(
   [
     getNormalizedDatabases,
@@ -72,6 +92,13 @@ export const getMetadata: (
       questions,
     }),
 );
+
+export const getMetadataUnfiltered = (state: State) => {
+  return getMetadata(state, {
+    includeHiddenTables: true,
+    includeSensitiveFields: true,
+  });
+};
 
 export const getMetadataWithHiddenTables = (
   state: State,
