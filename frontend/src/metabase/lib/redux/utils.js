@@ -15,7 +15,6 @@ import {
 
 // convienence
 export { combineReducers, compose } from "@reduxjs/toolkit";
-export { handleActions, createAction } from "redux-actions";
 
 // similar to createAction but accepts a (redux-thunk style) thunk and dispatches based on whether
 // the promise returned from the thunk resolves or rejects, similar to redux-promise
