@@ -55,8 +55,9 @@
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:id"
   "Get `Field` with ID."
-  [id]
-  (let [field (-> (api/check-404 (t2/select-one Field :id id))
+  [id include_editable_data_model]
+  (let [include_editable_data_model (u/parse-boolean include_editable_data_model)
+        field (-> (api/check-404 (t2/select-one Field :id id))
                   (hydrate [:table :db] :has_field_values :dimensions :name_field))]
     ;; Normal read perms = normal access.
     ;;
@@ -66,7 +67,9 @@
     ;; differently in other endpoints such as the FieldValues fetching endpoint.
     ;;
     ;; Check for permissions and throw 403 if we don't have them...
-    (throw-if-no-read-or-segmented-perms field)
+    (if include_editable_data_model
+      (api/write-check (:table field))
+      (throw-if-no-read-or-segmented-perms field))
     ;; ...but if we do, return the Field <3
     field))
 
