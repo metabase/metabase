@@ -325,17 +325,25 @@ describe("scenarios > admin > datamodel > editor", () => {
 
     it("should allow changing the field name with data model permissions only", () => {
       cy.signIn("none");
+
       visitTable();
       getFieldSection("TAX").within(() =>
         setValueAndBlurInput("Tax", "New tax"),
       );
       cy.wait("@updateField");
-      cy.findByText("Updated New tax").should("be.visible");
+      cy.findByText("Updated Tax").should("be.visible");
+
+      visitField({ fieldId: ORDERS.TOTAL });
+      setValueAndBlurInput("Total", "New total");
+      cy.wait("@updateField");
+      cy.findByText("Updated Total").should("be.visible");
 
       cy.signInAsNormalUser();
       openOrdersTable();
       cy.findByText("New tax").should("be.visible");
+      cy.findByText("New total").should("be.visible");
       cy.findByText("Tax").should("not.exist");
+      cy.findByText("Total").should("not.exist");
     });
   });
 
