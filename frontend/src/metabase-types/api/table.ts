@@ -1,5 +1,5 @@
 import { ForeignKey } from "./foreign-key";
-import { Database, InitialSyncStatus } from "./database";
+import { Database, DatabaseId, InitialSyncStatus } from "./database";
 import { Field } from "./field";
 
 export type ConcreteTableId = number;
@@ -17,9 +17,11 @@ export type TableVisibilityType =
   | "technical"
   | "cruft";
 
+export type TableFieldOrder = "database" | "alphabetical" | "custom" | "smart";
+
 export interface Table {
   id: TableId;
-  db_id: number;
+  db_id: DatabaseId;
   db?: Database;
   name: string;
   description: string | null;
@@ -29,10 +31,22 @@ export interface Table {
   schema_name?: string;
   visibility_type: TableVisibilityType;
   fields?: Field[];
+  field_order: TableFieldOrder;
   initial_sync_status: InitialSyncStatus;
 }
 
 export interface Schema {
   id: SchemaId;
   name: string;
+}
+
+export interface TableQuery {
+  include_editable_data_model?: boolean;
+}
+
+export interface TableListQuery {
+  dbId?: DatabaseId;
+  schemaName?: string;
+  include_hidden?: boolean;
+  include_editable_data_model?: boolean;
 }

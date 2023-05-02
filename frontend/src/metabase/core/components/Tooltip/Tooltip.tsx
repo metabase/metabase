@@ -70,7 +70,7 @@ function Tooltip({
   isOpen,
   isPadded = true,
   preventOverflow = false,
-  maxWidth = 200,
+  maxWidth = 300,
 }: TooltipProps) {
   const visible = isOpen != null ? isOpen : undefined;
   const animationDuration = isReducedMotionPreferred() ? 0 : undefined;

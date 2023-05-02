@@ -9,6 +9,7 @@ export const createMockTable = (opts?: Partial<Table>): Table => {
     schema: "public",
     description: null,
     visibility_type: null,
+    field_order: "database",
     initial_sync_status: "complete",
     ...opts,
   };
