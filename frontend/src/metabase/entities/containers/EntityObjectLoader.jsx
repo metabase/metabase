@@ -21,6 +21,7 @@ const CONSUMED_PROPS = [
   "LoadingAndErrorWrapper",
   "selectorName",
   "requestType",
+  "fetchType",
 ];
 
 // NOTE: Memoize entityQuery so we don't re-render even if a new but identical
