@@ -75,14 +75,18 @@ function setup(options?: Partial<UploadSettingProps>) {
   return { updateSpy, savingSpy, savedSpy, clearSpy };
 }
 
-// FIXME
-console.error = jest.fn();
-
 describe("Admin > Settings > UploadSetting", () => {
   it("should render a description", async () => {
     setup();
     expect(
       screen.getByText("Allow users to upload data to Collections"),
+    ).toBeInTheDocument();
+  });
+
+  it("should show an empty state if there are no actions-enabled databases", async () => {
+    setup({ databases: [dbs[3]] });
+    expect(
+      screen.getByText("No actions-enabled databases available."),
     ).toBeInTheDocument();
   });
 
@@ -226,7 +230,7 @@ describe("Admin > Settings > UploadSetting", () => {
 
   it("should show an error if disabling fails", async () => {
     const updateSpy = jest.fn(() => Promise.reject(new Error("Oh no!")));
-    setup({
+    const { savingSpy, clearSpy, savedSpy } = setup({
       settings: {
         uploads_enabled: true,
         uploads_database_id: 2,
@@ -247,6 +251,37 @@ describe("Admin > Settings > UploadSetting", () => {
     });
 
     expect(await screen.findByText(/There was a problem/i)).toBeInTheDocument();
+    expect(savingSpy).toHaveBeenCalledTimes(1);
+    expect(clearSpy).toHaveBeenCalledTimes(1);
+    expect(savedSpy).not.toHaveBeenCalled();
+  });
+
+  it("should populate db and schema from existing settings", async () => {
+    setup({
+      settings: {
+        uploads_enabled: true,
+        uploads_database_id: 1,
+        uploads_schema_name: "top_secret",
+        uploads_table_prefix: null,
+      },
+    });
+
+    expect(await screen.findByText("Db Uno")).toBeInTheDocument();
+    expect(await screen.findByText("top_secret")).toBeInTheDocument();
+  });
+
+  it("should populate db and stable prefix from existing settings", async () => {
+    setup({
+      settings: {
+        uploads_enabled: true,
+        uploads_database_id: 2,
+        uploads_schema_name: null,
+        uploads_table_prefix: "my_uploads_",
+      },
+    });
+
+    expect(await screen.findByText("Db Dos")).toBeInTheDocument();
+    expect(await screen.findByDisplayValue("my_uploads_")).toBeInTheDocument();
   });
 
   it("should be able to update db settings", async () => {
