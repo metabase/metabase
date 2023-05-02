@@ -500,6 +500,38 @@ const TITLE_LOCALES_BN = {
     'en': 'Statistics of C-in-Ed and DPED Training',
     'bn': 'সি-ইন-এড এবং ডিপিএড ট্রেনিং এর পরিসংখ্যান'
   },
+  'admin.dashboard.education.office.approved.post': {
+    'en': 'Approved Posts',
+    'bn': 'অনুমোদিত পদ'
+  },
+  'admin.dashboard.education.office.active.post': {
+    'en': 'Active Posts',
+    'bn': 'সক্রিয় পদ'
+  },
+  'admin.dashboard.education.office.vacant.post': {
+    'en': 'Vacant Posts',
+    'bn': 'শূন্য পদ'
+  },
+  'admin.dashboard.officer.gender': {
+    'en': 'Statistics of Officer Gender',
+    'bn': 'কর্মকর্তা জেন্ডার পরিসংখ্যান'
+  },
+  'admin.dashboard.officer.training': {
+    'en': 'Statistics of Training',
+    'bn': 'ট্রেনিং এর পরিসংখ্যান'
+  },
+  'admin.dashboard.officer.age': {
+    'en': 'Statistics of Age Group of officers',
+    'bn': 'কর্মকর্তার বয়সের গ্রুপের পরিসংখ্যান'
+  },
+  'admin.dashboard.officer.education': {
+    'en': 'Statistics of Education Degree',
+    'bn': 'শিক্ষাগত ডিগ্রীর পরিসংখ্যান'
+  },
+  'admin.dashboard.officer.job.status': {
+    'en': 'Statistics of Job Status',
+    'bn': 'জব স্ট্যাটাসের পরিসংখ্যান'
+  },
 }
 
 export function dashcard_locale_title (locale, title_key) {
