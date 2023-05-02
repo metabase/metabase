@@ -4,7 +4,12 @@ import {
   visitDashboard,
   saveDashboard,
   openQuestionsSidebar,
+  undo,
 } from "e2e/support/helpers";
+
+function createNewTab() {
+  cy.findByLabelText("Create new tab").click();
+}
 
 describe("scenarios > dashboard tabs", () => {
   beforeEach(() => {
@@ -16,7 +21,7 @@ describe("scenarios > dashboard tabs", () => {
     visitDashboard(1);
 
     editDashboard();
-    cy.findByLabelText("Create new tab").click();
+    createNewTab();
     cy.findByText("Orders").should("not.exist");
 
     cy.icon("pencil").click();
@@ -24,6 +29,21 @@ describe("scenarios > dashboard tabs", () => {
     cy.findByText("Orders, Count").click();
     saveDashboard();
 
+    cy.findByRole("tab", { name: "Page 1" }).click();
+    cy.findByText("Orders, count").should("not.exist");
+    cy.findByText("Orders").should("be.visible");
+  });
+
+  it("should allow undoing a tab deletion", () => {
+    visitDashboard(1);
+    editDashboard();
+    createNewTab();
+
+    cy.findByRole("tab", { name: "Page 1" }).findByRole("button").click();
+    cy.findByText("Delete").click();
+    cy.findByRole("tab", { name: "Page 1" }).should("not.exist");
+
+    undo();
     cy.findByRole("tab", { name: "Page 1" }).click();
     cy.findByText("Orders, count").should("not.exist");
     cy.findByText("Orders").should("be.visible");
