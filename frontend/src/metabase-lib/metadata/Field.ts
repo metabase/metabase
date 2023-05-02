@@ -145,7 +145,7 @@ class FieldInner extends Base {
   } = {}) {
     let displayName = "";
 
-    if (includeTable && this.table?.displayName) {
+    if (includeTable && this.table.displayName?.()) {
       displayName +=
         this.table.displayName({
           includeSchema,
