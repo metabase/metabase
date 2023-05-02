@@ -1529,6 +1529,21 @@
                                  :position     1}]}
                resp))))))
 
+(deftest update-cards-error-handling-test
+  (testing "PUT /api/dashboard/:id/cards"
+    (with-simple-dashboard-with-tabs [{:keys [dashboard-id]}]
+      (testing "if a dashboard has tabs, check if all cards from the request has a tab_id"
+        (is (= "This dashboard has tab, makes sure every cards has a tab assigned"
+               (mt/user-http-request :crowberto :put 400 (format "dashboard/%d/cards" dashboard-id)
+                                     {:cards        (conj
+                                                      (current-cards dashboard-id)
+                                                      {:id      -1
+                                                       :size_x  4
+                                                       :size_y  4
+                                                       :col     1
+                                                       :row     1})
+                                      :ordered_tabs (dashboard/ordered-tabs dashboard-id)})))))))
+
 ;;; -------------------------------------- Create dashcards tests ---------------------------------------
 
 (deftest simple-creation-with-no-additional-series-test

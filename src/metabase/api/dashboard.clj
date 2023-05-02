@@ -675,6 +675,10 @@
                       (t2/hydrate [:ordered_cards :series :card] :ordered_tabs))
         new-tabs  (when-not (nil? ordered_tabs)
                     (map-indexed (fn [idx tab] (assoc tab :position idx)) ordered_tabs))]
+    (when (and (seq (:ordered_tabs dashboard))
+               (not (every? #(some? (:dashboard_tab_id %)) cards)))
+      (throw (ex-info (tru "This dashboard has tab, makes sure every cards has a tab assigned")
+                      {:status-code 400})))
     (api/check-500
       (t2/with-transaction [_conn]
         (let [{:keys [temp->real-tab-ids
