@@ -345,7 +345,7 @@ describe("Admin > Settings > UploadSetting", () => {
       ).toBeDisabled();
     });
 
-    it("should show enabled disable button when no a db is populated", async () => {
+    it("should show enabled disable button when a db is populated", async () => {
       setup({
         settings: {
           uploads_enabled: true,
@@ -371,7 +371,7 @@ describe("Admin > Settings > UploadSetting", () => {
       ).toBeEnabled();
     });
 
-    it("should show the update and disable buttons button when a db is changed", async () => {
+    it("should show the only the update button when a db is changed", async () => {
       setup({
         settings: {
           uploads_enabled: true,
@@ -388,6 +388,9 @@ describe("Admin > Settings > UploadSetting", () => {
       expect(
         screen.queryByRole("button", { name: "Enable uploads" }),
       ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Disable uploads" }),
+      ).not.toBeInTheDocument();
       const updateButton = await screen.findByRole("button", {
         name: "Update settings",
       });
@@ -401,9 +404,6 @@ describe("Admin > Settings > UploadSetting", () => {
       userEvent.click(schemaItem);
 
       expect(updateButton).toBeEnabled(); // now that a schema is selected
-      expect(
-        await screen.findByRole("button", { name: "Disable uploads" }),
-      ).toBeEnabled();
     });
 
     it("should show the update button when a table prefix is changed", async () => {

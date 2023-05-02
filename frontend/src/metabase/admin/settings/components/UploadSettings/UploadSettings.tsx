@@ -20,7 +20,12 @@ import ActionButton from "metabase/components/ActionButton";
 import EmptyState from "metabase/components/EmptyState/EmptyState";
 
 import SettingHeader from "../SettingHeader";
-import { FlexContainer, SectionTitle, ColorText } from "./UploadSetting.styled";
+import {
+  FlexContainer,
+  SectionTitle,
+  ColorText,
+  PaddedForm,
+} from "./UploadSetting.styled";
 import { getDatabaseOptions, getSchemaOptions, dbHasSchema } from "./utils";
 
 const FEEDBACK_TIMEOUT = 5000;
@@ -155,7 +160,7 @@ export function UploadSettingsView({
     tablePrefix !== settings.uploads_table_prefix;
 
   return (
-    <form aria-label={t`Upload Settings Form`}>
+    <PaddedForm aria-label={t`Upload Settings Form`}>
       <Header />
       <FlexContainer>
         <div>
@@ -203,7 +208,18 @@ export function UploadSettingsView({
       </FlexContainer>
       <FlexContainer>
         {settings.uploads_enabled ? (
-          <>
+          settingsChanged ? (
+            <ActionButton
+              normalText={t`Update settings`}
+              successText={t`Settings updated`}
+              disabled={!hasValidSettings}
+              failedText={t`Failed to save upload settings`}
+              actionFn={handleEnableUploads}
+              primary
+              useLoadingSpinner
+              type="submit"
+            />
+          ) : (
             <ActionButton
               normalText={t`Disable uploads`}
               successText={
@@ -215,19 +231,7 @@ export function UploadSettingsView({
               danger
               useLoadingSpinner
             />
-            {!!settingsChanged && (
-              <ActionButton
-                normalText={t`Update settings`}
-                successText={t`Settings updated`}
-                disabled={!hasValidSettings}
-                failedText={t`Failed to save upload settings`}
-                actionFn={handleEnableUploads}
-                primary
-                useLoadingSpinner
-                type="submit"
-              />
-            )}
-          </>
+          )
         ) : (
           <ActionButton
             normalText={t`Enable uploads`}
@@ -244,7 +248,7 @@ export function UploadSettingsView({
         )}
       </FlexContainer>
       {errorMessage && <ColorText color="danger">{errorMessage}</ColorText>}
-    </form>
+    </PaddedForm>
   );
 }
 
