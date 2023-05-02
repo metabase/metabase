@@ -27,7 +27,7 @@ const ModelIndexes = createEntity({
   writableProperties: ["name", "value_ref", "pk_ref", "model_id"],
   objectSelectors: {
     getUrl: (entity: IndexedEntity) => `/model/${entity.model_id}/${entity.id}`, // FIXME: move to URLS lib
-    getIcon: () => ({ name: "beaker" }),
+    getIcon: () => ({ name: "index" }),
   },
   // objectActions: {},
   reducer: (state = {}, { type, payload }: { type: string; payload: any }) => {
