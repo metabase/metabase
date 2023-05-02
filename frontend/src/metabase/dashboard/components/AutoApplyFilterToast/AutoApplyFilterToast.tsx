@@ -16,7 +16,7 @@ import {
   setReadyForAutoApplyFiltersToast,
 } from "metabase/dashboard/actions";
 import { addUndo } from "metabase/redux/undo";
-import { ToasterButton } from "metabase/components/Toaster/Toaster.styled";
+import { StyledToasterButton } from "./AutoApplyFilterToast.styled";
 
 export default function AutoApplyFilterToast() {
   const isAutoApplyFilters = useSelector(getIsAutoApplyFilters);
@@ -67,12 +67,9 @@ export default function AutoApplyFilterToast() {
           message: (
             <>
               {t`You can make this dashboard snappier by turning off auto-applying filters.`}
-              <ToasterButton
-                className="ml2"
-                onClick={onTurnOffAutoApplyFilters}
-              >
+              <StyledToasterButton onClick={onTurnOffAutoApplyFilters}>
                 {t`Turn off`}
-              </ToasterButton>
+              </StyledToasterButton>
             </>
           ),
         }),
