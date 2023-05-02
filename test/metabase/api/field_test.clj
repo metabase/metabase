@@ -122,15 +122,25 @@
                     :fk_target_field_id nil
                     :nfc_path           nil}
                    original-val)))
-          ;; set it
-          (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id) {:name            "something else"
-                                                                                  :display_name    "yay"
-                                                                                  :description     "foobar"
-                                                                                  :semantic_type   :type/Name
-                                                                                  :json_unfolding  true
-                                                                                  :visibility_type :sensitive
-                                                                                  :nfc_path        ["bob" "dobbs"]})
-          (let [updated-val (simple-field-details (t2/select-one Field :id field-id))]
+          (let [;; set it
+                response (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id) {:name            "something else"
+                                                                                                 :display_name    "yay"
+                                                                                                 :description     "foobar"
+                                                                                                 :semantic_type   :type/Name
+                                                                                                 :json_unfolding  true
+                                                                                                 :visibility_type :sensitive
+                                                                                                 :nfc_path        ["bob" "dobbs"]})
+                updated-val (simple-field-details (t2/select-one Field :id field-id))]
+            (testing "response body should be the updated field"
+              (is (= {:name               "Field Test"
+                      :display_name       "yay"
+                      :description        "foobar"
+                      :semantic_type      "type/Name"
+                      :visibility_type    "sensitive"
+                      :json_unfolding     true
+                      :fk_target_field_id nil
+                      :nfc_path           ["bob" "dobbs"]}
+                     (simple-field-details response))))
             (testing "updated value"
               (is (= {:name               "Field Test"
                       :display_name       "yay"
@@ -195,6 +205,17 @@
     (testing "A field can only be updated by a superuser"
       (mt/with-temp Field [{field-id :id} {:name "Field Test"}]
         (mt/user-http-request :rasta :put 403 (format "field/%d" field-id) {:name "Field Test 2"})))))
+
+(deftest get-field-hydrated-target-test
+  (testing "PUT /api/field/:id"
+    (testing "target should be hydrated"
+      (mt/with-temp* [Field [fk-field-1]
+                      Field [fk-field-2]
+                      Field [{field-id :id} {:semantic_type :type/FK, :fk_target_field_id (:id fk-field-1)}]]
+        (is (= (-> fk-field-2
+                   (update :base_type u/qualified-name)
+                   (update :visibility_type u/qualified-name))
+               (:target (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id) {:fk_target_field_id (:id fk-field-2)}))))))))
 
 (deftest remove-fk-semantic-type-test
   (testing "PUT /api/field/:id"
