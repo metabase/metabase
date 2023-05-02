@@ -252,6 +252,7 @@ class DashboardHeader extends Component {
             isActive={activeSidebarName === SIDEBAR_NAME.addQuestion}
             onClick={() => toggleSidebar(SIDEBAR_NAME.addQuestion)}
             data-metabase-event="Dashboard;Add Card Sidebar"
+            aria-label="add questions"
           />
         </Tooltip>,
       );
