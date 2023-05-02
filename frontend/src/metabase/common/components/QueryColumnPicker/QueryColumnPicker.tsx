@@ -79,12 +79,13 @@ function QueryColumnPicker({
       if (binningStrategies.length > 0) {
         return (
           <BinningStrategyPickerPopover
-            selectedItem={Lib.binning(query, item.column)}
             query={query}
-            items={binningStrategies}
-            onSelect={nextStrategy =>
-              onSelect(Lib.withBinning(item.column, nextStrategy))
-            }
+            selectedBucket={Lib.binning(query, item.column)}
+            buckets={binningStrategies}
+            onSelect={nextBucket => {
+              onSelect(Lib.withBinning(item.column, nextBucket));
+              onClose?.();
+            }}
           />
         );
       }
@@ -94,19 +95,20 @@ function QueryColumnPicker({
       if (temporalBuckets.length > 0) {
         return (
           <TemporalBucketPickerPopover
-            selectedItem={Lib.temporalBucket(query, item.column)}
             query={query}
-            items={temporalBuckets}
-            onSelect={nextBucket =>
-              onSelect(Lib.withTemporalBucket(item.column, nextBucket))
-            }
+            selectedBucket={Lib.temporalBucket(query, item.column)}
+            buckets={temporalBuckets}
+            onSelect={nextBucket => {
+              onSelect(Lib.withTemporalBucket(item.column, nextBucket));
+              onClose?.();
+            }}
           />
         );
       }
 
       return null;
     },
-    [query, onSelect],
+    [query, onSelect, onClose],
   );
 
   return (

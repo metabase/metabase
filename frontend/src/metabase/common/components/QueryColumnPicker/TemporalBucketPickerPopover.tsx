@@ -1,71 +1,21 @@
-import React, { useMemo } from "react";
+import React from "react";
 import { t } from "ttag";
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import * as Lib from "metabase-lib";
-import {
-  TriggerButton,
-  TriggerIcon,
-  SelectList,
-  SelectListItem,
-} from "./ColumnPrecisionPickerPopover.styled";
+import BucketPickerPopover, {
+  BucketPickerPopoverProps,
+} from "./BucketPickerPopover";
 
-interface TemporalBucketPickerPopoverProps {
-  selectedItem?: Lib.Bucket | null;
-  query: Lib.Query;
-  items: Lib.Bucket[];
-  onSelect: (item: Lib.Bucket) => void;
+function renderTriggerContent(bucket?: Lib.BucketDisplayInfo) {
+  return bucket ? t`by ${bucket.displayName}` : null;
 }
 
-type TemporalBucketListItem = Lib.BucketDisplayInfo & {
-  temporalBucket: Lib.Bucket;
-};
-
-function TemporalBucketPickerPopover({
-  selectedItem,
-  query,
-  items,
-  onSelect,
-}: TemporalBucketPickerPopoverProps) {
-  const displayableItems: TemporalBucketListItem[] = useMemo(
-    () =>
-      items.map(temporalBucket => ({
-        ...Lib.displayInfo(query, temporalBucket),
-        temporalBucket,
-      })),
-    [query, items],
-  );
-
-  const defaultTemporalBucket = displayableItems.find(item => item.default);
-  const activeTemporalBucket =
-    selectedItem || defaultTemporalBucket?.temporalBucket;
-
-  const selectedItemName = activeTemporalBucket
-    ? Lib.displayInfo(query, activeTemporalBucket).displayName
-    : "";
-
-  const selectedItemLabel = selectedItemName ? t`by ${selectedItemName}` : null;
-
+function TemporalBucketPickerPopover(
+  props: Omit<BucketPickerPopoverProps, "renderTriggerContent">,
+) {
   return (
-    <PopoverWithTrigger
-      renderTrigger={({ onClick }) => (
-        <TriggerButton onClick={onClick}>
-          {selectedItemLabel}
-          <TriggerIcon name="chevronright" />
-        </TriggerButton>
-      )}
-      popoverContent={
-        <SelectList>
-          {displayableItems.map(item => (
-            <SelectListItem
-              id={item.displayName}
-              key={item.displayName}
-              name={item.displayName}
-              isSelected={item.temporalBucket === selectedItem}
-              onSelect={() => onSelect(item.temporalBucket)}
-            />
-          ))}
-        </SelectList>
-      }
+    <BucketPickerPopover
+      {...props}
+      renderTriggerContent={renderTriggerContent}
     />
   );
 }
