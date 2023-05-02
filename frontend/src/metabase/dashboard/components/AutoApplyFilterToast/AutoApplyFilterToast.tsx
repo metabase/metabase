@@ -15,7 +15,8 @@ import {
   setNever,
   setReady,
 } from "metabase/dashboard/actions";
-import Toaster from "metabase/components/Toaster/Toaster";
+import { addUndo } from "metabase/redux/undo";
+import { ToasterButton } from "metabase/components/Toaster/Toaster.styled";
 
 export default function AutoApplyFilterToast() {
   const isAutoApplyFilters = useSelector(getIsAutoApplyFilters);
@@ -46,29 +47,45 @@ export default function AutoApplyFilterToast() {
     }
   }, [dispatch, isReadyForToast]);
 
-  const onTurnOffAutoApplyFilters = () => {
-    dispatch(
-      setDashboardAttributes({
-        id: dashboardId,
-        attributes: {
-          auto_apply_filters: false,
-        },
-      }),
-    );
-    dispatch(saveDashboardAndCards());
-    dispatch(dismissToast());
-  };
-
-  return (
-    <Toaster
-      isShown={autoApplyFiltersToastStateName === "shown"}
-      fixed
-      onDismiss={() => {
+  useEffect(() => {
+    if (autoApplyFiltersToastStateName === "shown") {
+      const onTurnOffAutoApplyFilters = () => {
+        dispatch(
+          setDashboardAttributes({
+            id: dashboardId,
+            attributes: {
+              auto_apply_filters: false,
+            },
+          }),
+        );
+        dispatch(saveDashboardAndCards());
         dispatch(dismissToast());
-      }}
-      message={t`You can make this dashboard snappier by turning off auto-applying filters.`}
-      confirmText={t`Turn off`}
-      onConfirm={onTurnOffAutoApplyFilters}
-    />
-  );
+      };
+
+      dispatch(
+        addUndo({
+          message: (
+            <>
+              {t`You can make this dashboard snappier by turning off auto-applying filters.`}
+              <ToasterButton
+                className="ml2"
+                onClick={onTurnOffAutoApplyFilters}
+                aria-label="Confirm"
+              >
+                {t`Turn off`}
+              </ToasterButton>
+            </>
+          ),
+        }),
+      );
+    }
+  }, [autoApplyFiltersToastStateName, dashboardId, dispatch]);
+
+  useEffect(() => {
+    return () => {
+      dispatch(dismissToast());
+    };
+  }, [dispatch]);
+
+  return null;
 }
