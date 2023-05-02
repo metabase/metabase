@@ -37,17 +37,17 @@ describe("order by", () => {
       expect(ML.displayInfo(query, ordersID)).toEqual(
         expect.objectContaining({
           name: "ID",
-          display_name: "ID",
-          effective_type: "type/BigInteger",
-          semantic_type: "type/PK",
-          is_calculated: false,
-          is_from_join: false,
-          is_from_previous_stage: false,
-          is_implicitly_joinable: false,
+          displayName: "ID",
+          effectiveType: "type/BigInteger",
+          semanticType: "type/PK",
+          isCalculated: false,
+          isFromJoin: false,
+          isFromPreviousStage: false,
+          isImplicitlyJoinable: false,
           table: {
             name: "ORDERS",
-            display_name: "Orders",
-            is_source_table: true,
+            displayName: "Orders",
+            isSourceTable: true,
           },
         }),
       );
@@ -59,17 +59,17 @@ describe("order by", () => {
       expect(ML.displayInfo(query, productsTitle)).toEqual(
         expect.objectContaining({
           name: "TITLE",
-          display_name: "Title",
-          effective_type: "type/Text",
-          semantic_type: "type/Category",
-          is_calculated: false,
-          is_from_join: false,
-          is_from_previous_stage: false,
-          is_implicitly_joinable: true,
+          displayName: "Title",
+          effectiveType: "type/Text",
+          semanticType: "type/Category",
+          isCalculated: false,
+          isFromJoin: false,
+          isFromPreviousStage: false,
+          isImplicitlyJoinable: true,
           table: {
             name: "PRODUCTS",
-            display_name: "Products",
-            is_source_table: false,
+            displayName: "Products",
+            isSourceTable: false,
           },
         }),
       );
@@ -104,8 +104,8 @@ describe("order by", () => {
         (columnMetadata: ML.ColumnMetadata) => {
           const displayInfo = ML.displayInfo(query, columnMetadata);
           return (
-            displayInfo.display_name === "Title" &&
-            displayInfo.table?.display_name === "Product Model"
+            displayInfo.displayName === "Title" &&
+            displayInfo.table?.displayName === "Product Model"
           );
         },
       );
@@ -113,9 +113,9 @@ describe("order by", () => {
       expect(ML.displayInfo(query, productsTitle as ML.ColumnMetadata)).toEqual(
         expect.objectContaining({
           name: field.name,
-          display_name: field.display_name,
-          effective_type: field.base_type,
-          table: { name: "Product Model", display_name: "Product Model" },
+          displayName: field.display_name,
+          effectiveType: field.base_type,
+          table: { name: "Product Model", displayName: "Product Model" },
         }),
       );
     });

@@ -30,6 +30,7 @@ import {
   toggleSidebar,
 } from "metabase/dashboard/actions";
 
+import { hasDatabaseActionsEnabled } from "metabase/dashboard/utils";
 import Header from "../components/DashboardHeader";
 import { SIDEBAR_NAME } from "../constants";
 import {
@@ -58,7 +59,6 @@ const mapDispatchToProps = {
 class DashboardHeader extends Component {
   constructor(props) {
     super(props);
-
     this.addQuestionModal = React.createRef();
     this.handleToggleBookmark = this.handleToggleBookmark.bind(this);
   }
@@ -97,10 +97,15 @@ class DashboardHeader extends Component {
     onChangeLocation: PropTypes.func.isRequired,
 
     toggleSidebar: PropTypes.func.isRequired,
-    sidebar: PropTypes.string.isRequired,
+    sidebar: PropTypes.shape({
+      name: PropTypes.string,
+      props: PropTypes.object,
+    }).isRequired,
     setSidebar: PropTypes.func.isRequired,
     closeSidebar: PropTypes.func.isRequired,
     addActionToDashboard: PropTypes.func.isRequired,
+
+    databases: PropTypes.object,
   };
 
   handleEdit(dashboard) {
@@ -209,9 +214,14 @@ class DashboardHeader extends Component {
       toggleSidebar,
       isShowingDashboardInfoSidebar,
       closeSidebar,
+      databases,
     } = this.props;
 
     const canEdit = dashboard.can_write && isEditable && !!dashboard;
+
+    const hasModelActionsEnabled = Object.values(databases).some(
+      hasDatabaseActionsEnabled,
+    );
 
     const buttons = [];
     const extraButtons = [];
@@ -297,7 +307,7 @@ class DashboardHeader extends Component {
         </span>,
       );
 
-      if (canEdit) {
+      if (canEdit && hasModelActionsEnabled) {
         buttons.push(
           <>
             <DashboardHeaderActionDivider />

@@ -93,9 +93,9 @@
    [_field {:keys [join-alias], :as opts} id-or-name, :as _field-clause] :- :mbql.clause/field]
   (merge
    (when-let [base-type (:base-type opts)]
-     {:base_type base-type})
+     {:base-type base-type})
    (when-let [effective-type ((some-fn :effective-type :base-type) opts)]
-     {:effective_type effective-type})
+     {:effective-type effective-type})
    ;; TODO -- some of the other stuff in `opts` probably ought to be merged in here as well. Also, if the Field is
    ;; temporally bucketed, the base-type/effective-type would probably be affected, right? We should probably be
    ;; taking that into consideration?
@@ -113,9 +113,9 @@
   "If this is a nested column, add metadata about the parent column."
   [query    :- ::lib.schema/query
    metadata :- lib.metadata/ColumnMetadata]
-  (let [parent-metadata     (lib.metadata/field query (:parent_id metadata))
+  (let [parent-metadata     (lib.metadata/field query (:parent-id metadata))
         {parent-name :name} (cond->> parent-metadata
-                              (:parent_id parent-metadata) (add-parent-column-metadata query))]
+                              (:parent-id parent-metadata) (add-parent-column-metadata query))]
     (update metadata :name (fn [field-name]
                              (str parent-name \. field-name)))))
 
@@ -127,7 +127,7 @@
   (if (and temporal-unit
            (contains? lib.schema.temporal-bucketing/datetime-extraction-units temporal-unit))
     :type/Integer
-    ((some-fn :effective_type :base_type) column-metadata)))
+    ((some-fn :effective-type :base-type) column-metadata)))
 
 (defmethod lib.metadata.calculation/type-of-method :metadata/field
   [_query _stage-number column-metadata]
@@ -150,30 +150,30 @@
         metadata       (merge
                         {:lib/type :metadata/field}
                         field-metadata
-                        {:display_name (or (:display-name opts)
+                        {:display-name (or (:display-name opts)
                                            (lib.metadata.calculation/display-name query stage-number field-ref))}
                         (when effective-type
-                          {:effective_type effective-type})
+                          {:effective-type effective-type})
                         (when base-type
-                          {:base_type base-type})
+                          {:base-type base-type})
                         (when temporal-unit
                           {::temporal-unit temporal-unit})
                         (when join-alias
                           {::join-alias join-alias})
                         (when source-field
-                          {:fk_field_id source-field}))]
+                          {:fk-field-id source-field}))]
     (cond->> metadata
-      (:parent_id metadata) (add-parent-column-metadata query))))
+      (:parent-id metadata) (add-parent-column-metadata query))))
 
 ;;; this lives here as opposed to [[metabase.lib.metadata]] because that namespace is more of an interface namespace
 ;;; and moving this there would cause circular references.
 (defmethod lib.metadata.calculation/display-name-method :metadata/field
-  [query stage-number {field-display-name :display_name
+  [query stage-number {field-display-name :display-name
                        field-name         :name
                        temporal-unit      :unit
                        join-alias         :source_alias
-                       fk-field-id        :fk_field_id
-                       table-id           :table_id
+                       fk-field-id        :fk-field-id
+                       table-id           :table-id
                        :as                _field-metadata} style]
   (let [field-display-name (or field-display-name
                                (u.humanization/name->human-readable-name :simple field-name))
@@ -200,7 +200,7 @@
   (if-let [field-metadata (cond-> (resolve-field-metadata query stage-number field-clause)
                             join-alias    (assoc :source_alias join-alias)
                             temporal-unit (assoc :unit temporal-unit)
-                            source-field  (assoc :fk_field_id source-field))]
+                            source-field  (assoc :fk-field-id source-field))]
     (lib.metadata.calculation/display-name query stage-number field-metadata style)
     ;; mostly for the benefit of JS, which does not enforce the Malli schemas.
     (i18n/tru "[Unknown Field]")))
@@ -225,7 +225,7 @@
    (when (= (:lib/source field-metadata) :source/card)
      (when-let [card-id (:lib/card-id field-metadata)]
        (when-let [card (lib.metadata/card query card-id)]
-         {:table {:name (:name card), :display_name (:name card)}})))))
+         {:table {:name (:name card), :display-name (:name card)}})))))
 
 (defmethod lib.temporal-bucket/temporal-bucket-method :field
   [[_tag opts _id-or-name]]
@@ -274,12 +274,12 @@
 
 (defmethod lib.temporal-bucket/available-temporal-buckets-method :metadata/field
   [_query _stage-number field-metadata]
-  (let [effective-type ((some-fn :effective_type :base_type) field-metadata)]
+  (let [effective-type ((some-fn :effective-type :base-type) field-metadata)]
     (cond
-      (isa? effective-type :type/DateTime) lib.schema.temporal-bucketing/datetime-bucketing-units
-      (isa? effective-type :type/Date)     lib.schema.temporal-bucketing/date-bucketing-units
-      (isa? effective-type :type/Time)     lib.schema.temporal-bucketing/time-bucketing-units
-      :else                                #{})))
+      (isa? effective-type :type/DateTime) lib.temporal-bucket/datetime-bucket-options
+      (isa? effective-type :type/Date)     lib.temporal-bucket/date-bucket-options
+      (isa? effective-type :type/Time)     lib.temporal-bucket/time-bucket-options
+      :else                                [])))
 
 (defmethod lib.join/current-join-alias-method :field
   [[_tag opts]]
@@ -310,13 +310,13 @@
     :source/expressions  (lib.expression/column-metadata->expression-ref metadata)
     (let [options          (merge
                             {:lib/uuid       (str (random-uuid))
-                             :base-type      (:base_type metadata)
+                             :base-type      (:base-type metadata)
                              :effective-type (column-metadata-effective-type metadata)}
                             (when-let [join-alias (::join-alias metadata)]
                               {:join-alias join-alias})
                             (when-let [temporal-unit (::temporal-unit metadata)]
                               {:temporal-unit temporal-unit})
-                            (when-let [source-field-id (:fk_field_id metadata)]
+                            (when-let [source-field-id (:fk-field-id metadata)]
                               {:source-field source-field-id})
                             ;; TODO -- binning options.
                             )
@@ -325,7 +325,7 @@
                         (:name metadata)
                         (or (:id metadata) (:name metadata)))])))
 
-(defn- implicit-join-name [query {fk-field-id :fk_field_id, table-id :table_id, :as _field-metadata}]
+(defn- implicit-join-name [query {:keys [fk-field-id table-id], :as _field-metadata}]
   (when (and fk-field-id table-id)
     (when-let [table-metadata (lib.metadata/table query table-id)]
       (let [table-name           (:name table-metadata)

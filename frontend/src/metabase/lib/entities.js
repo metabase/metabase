@@ -474,6 +474,7 @@ export function createEntity(def) {
   );
 
   const defaultSelectors = {
+    getEntityIds,
     getList,
     getObject,
     getFetched,

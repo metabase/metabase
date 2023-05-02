@@ -15,6 +15,7 @@ import Questions from "metabase/entities/questions";
 import Collections from "metabase/entities/collections";
 import Tables from "metabase/entities/tables";
 import { getMetadata } from "metabase/selectors/metadata";
+import { coerceCollectionId } from "metabase/collections/utils";
 import {
   Card,
   CardId,
@@ -201,7 +202,7 @@ export default _.compose(
   }),
   Collections.load({
     id: (state: State, { card }: ModalCardProps) =>
-      card?.collection_id ?? "root",
+      card ? coerceCollectionId(card.collection_id) : undefined,
     LoadingAndErrorWrapper: ModalLoadingAndErrorWrapper,
   }),
   connect(mapStateToProps, mapDispatchToProps),
