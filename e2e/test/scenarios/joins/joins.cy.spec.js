@@ -336,6 +336,7 @@ describe("scenarios > question > joined questions", () => {
     });
 
     cy.get(".dot").eq(2).click({ force: true });
+    cy.findByText("Automatic insights…").click();
     cy.findByText("X-ray").click();
 
     cy.wait("@xray").then(xhr => {
