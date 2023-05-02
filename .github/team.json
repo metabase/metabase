@@ -2,7 +2,7 @@
   "teams": [
     {
       "name": "App Viz",
-      "label": ".Team/Viz 📊",
+      "label": ".Team/Viz :bar_chart:",
       "members": [
         "alxnddr",
         "iethree",
@@ -13,7 +13,7 @@
     },
     {
       "name": "Query Builder",
-      "label": ".Team/QueryBuilder 🧮",
+      "label": ".Team/QueryBuilder :abacus:",
       "members": [
         "ranquild",
         "WiNloSt",
@@ -24,12 +24,12 @@
     },
     {
       "name": "App BE",
-      "label": ".Team/Backend 🥞",
+      "label": ".Team/Backend :pancakes:",
       "members": ["dpsutton", "tsmacdonald", "qnkhuat", "calherries"]
     },
     {
       "name": "Query Processor",
-      "label": ".Team/QueryProcessor 🛠️",
+      "label": ".Team/QueryProcessor :hammer_and_wrench:",
       "members": [
         "camsaul",
         "kulyk",
@@ -41,7 +41,7 @@
     },
     {
       "name": "Fun Police",
-      "label": ".Team/FunPolice 👮",
+      "label": ".Team/FunPolice :police_officer:",
       "members": ["noahmoss", "escherize", "adam-james-v"]
     }
   ]

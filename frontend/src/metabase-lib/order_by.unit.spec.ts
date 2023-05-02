@@ -1,38 +1,16 @@
 import { createMetadata } from "__support__/sample_database_fixture";
 import { createMockTable } from "metabase-types/api/mocks";
 import { createProductsTitleField } from "metabase-types/api/mocks/presets";
-import { createQuery } from "./test-helpers";
+import { createQuery, columnFinder } from "./test-helpers";
 import * as ML from "./v2";
-
-// This is a convenience for finding an orderable column (as an opaque object) by name
-const findOrderableColumn = (
-  query: ML.Query,
-  tableName: string,
-  fieldName: string,
-): ML.ColumnMetadata => {
-  const column = ML.orderableColumns(query).find(
-    (column: ML.ColumnMetadata) => {
-      const displayInfo = ML.displayInfo(query, column);
-      return (
-        displayInfo?.table?.name === tableName &&
-        displayInfo?.name === fieldName
-      );
-    },
-  );
-
-  if (!column) {
-    throw new Error(`Could not find ${tableName}.${fieldName}`);
-  }
-
-  return column;
-};
 
 describe("order by", () => {
   describe("orderableColumns", () => {
     const query = createQuery();
+    const findOrderableColumn = columnFinder(query, ML.orderableColumns(query));
 
     it("returns metadata for columns in the source table", () => {
-      const ordersID = findOrderableColumn(query, "ORDERS", "ID");
+      const ordersID = findOrderableColumn("ORDERS", "ID");
 
       expect(ML.displayInfo(query, ordersID)).toEqual(
         expect.objectContaining({
@@ -54,7 +32,7 @@ describe("order by", () => {
     });
 
     it("returns metadata for columns in implicitly joinable tables", () => {
-      const productsTitle = findOrderableColumn(query, "PRODUCTS", "TITLE");
+      const productsTitle = findOrderableColumn("PRODUCTS", "TITLE");
 
       expect(ML.displayInfo(query, productsTitle)).toEqual(
         expect.objectContaining({
@@ -123,13 +101,14 @@ describe("order by", () => {
 
   describe("add order by", () => {
     const query = createQuery();
+    const findOrderableColumn = columnFinder(query, ML.orderableColumns(query));
 
     it("should handle no order by clauses", () => {
       expect(ML.orderBys(query)).toHaveLength(0);
     });
 
     it("should update the query", () => {
-      const productTitle = findOrderableColumn(query, "PRODUCTS", "TITLE");
+      const productTitle = findOrderableColumn("PRODUCTS", "TITLE");
       const nextQuery = ML.orderBy(query, productTitle);
       const orderBys = ML.orderBys(nextQuery);
 
@@ -140,14 +119,11 @@ describe("order by", () => {
 
   describe("replace order by", () => {
     const query = createQuery();
+    const findOrderableColumn = columnFinder(query, ML.orderableColumns(query));
 
     it("should update the query", () => {
-      const productTitle = findOrderableColumn(query, "PRODUCTS", "TITLE");
-      const productCategory = findOrderableColumn(
-        query,
-        "PRODUCTS",
-        "CATEGORY",
-      );
+      const productTitle = findOrderableColumn("PRODUCTS", "TITLE");
+      const productCategory = findOrderableColumn("PRODUCTS", "CATEGORY");
 
       const orderedQuery = ML.orderBy(query, productTitle);
       const orderBys = ML.orderBys(orderedQuery);
@@ -168,9 +144,10 @@ describe("order by", () => {
 
   describe("remove order by", () => {
     const query = createQuery();
+    const findOrderableColumn = columnFinder(query, ML.orderableColumns(query));
 
     it("should update the query", () => {
-      const productTitle = findOrderableColumn(query, "PRODUCTS", "TITLE");
+      const productTitle = findOrderableColumn("PRODUCTS", "TITLE");
 
       const orderedQuery = ML.orderBy(query, productTitle);
       const orderBys = ML.orderBys(orderedQuery);
