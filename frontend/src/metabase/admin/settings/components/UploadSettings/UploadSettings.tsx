@@ -17,10 +17,10 @@ import Link from "metabase/core/components/Link";
 import Select, { SelectChangeEvent } from "metabase/core/components/Select";
 import Input from "metabase/core/components/Input";
 import ActionButton from "metabase/components/ActionButton";
+import EmptyState from "metabase/components/EmptyState/EmptyState";
 
 import SettingHeader from "../SettingHeader";
 import { FlexContainer, SectionTitle, ColorText } from "./UploadSetting.styled";
-
 import { getDatabaseOptions, getSchemaOptions, dbHasSchema } from "./utils";
 
 const FEEDBACK_TIMEOUT = 5000;
@@ -99,7 +99,7 @@ export function UploadSettingsView({
     return (
       <>
         <Header />
-        <FlexContainer>{t`No actions-enabled databases available`}</FlexContainer>
+        <EmptyState message={t`No actions-enabled databases available.`} />
       </>
     );
   }
@@ -108,7 +108,6 @@ export function UploadSettingsView({
     setErrorMessage(msg);
     setTimeout(() => setErrorMessage(null), FEEDBACK_TIMEOUT);
     saveStatusRef?.current?.clear();
-    throw new Error(msg);
   };
 
   const showSaving = () => {
@@ -239,6 +238,7 @@ export function UploadSettingsView({
             actionFn={handleEnableUploads}
             primary={!!hasValidSettings}
             disabled={!hasValidSettings}
+            useLoadingSpinner
             type="submit"
           />
         )}
