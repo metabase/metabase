@@ -103,9 +103,9 @@ function GridLayout({
     () => ({
       width: gridWidth,
       height,
-      background: isEditing ? background : "",
+      background,
     }),
-    [gridWidth, height, background, isEditing],
+    [gridWidth, height, background],
   );
 
   const isMobile = currentBreakpoint === "mobile";
