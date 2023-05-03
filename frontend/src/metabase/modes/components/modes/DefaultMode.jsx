@@ -4,8 +4,7 @@ import QuickFilterDrill from "../drill/QuickFilterDrill";
 import ForeignKeyDrill from "../drill/ForeignKeyDrill";
 import ColumnFilterDrill from "../drill/ColumnFilterDrill";
 import UnderlyingRecordsDrill from "../drill/UnderlyingRecordsDrill";
-import AutomaticDashboardDrill from "../drill/AutomaticDashboardDrill";
-import CompareToRestDrill from "../drill/CompareToRestDrill";
+import AutomaticInsightsDrill from "../drill/AutomaticInsightsDrill";
 import ZoomDrill from "../drill/ZoomDrill";
 import FormatDrill from "../drill/FormatDrill";
 import DashboardClickDrill from "../drill/DashboardClickDrill";
@@ -20,8 +19,7 @@ const DefaultMode = {
     QuickFilterDrill,
     ForeignKeyDrill,
     ColumnFilterDrill,
-    AutomaticDashboardDrill,
-    CompareToRestDrill,
+    AutomaticInsightsDrill,
     FormatDrill,
     DashboardClickDrill,
   ],

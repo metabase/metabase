@@ -5,9 +5,9 @@ import Button from "metabase/core/components/Button";
 import BreakoutPopover from "metabase/query_builder/components/BreakoutPopover";
 
 export const Container = styled.div`
-  min-width: 210px;
+  min-width: 256px;
 
-  padding: 1.5rem 1rem 1rem;
+  padding: 1.5rem 1rem 1.5rem;
 `;
 export const Title = styled.p`
   font-weight: 700;
@@ -27,6 +27,9 @@ export const ContentWrapper = styled.div`
 export const ActionIcon = styled(Icon)`
   margin-right: 0.25rem;
 
+  width: 0.875rem;
+  height: 0.875rem;
+
   color: ${color("brand")};
   transition: all 200ms linear;
 `;
@@ -40,6 +43,8 @@ export const ClickActionButton = styled(Button)`
   border: none;
 
   padding: 0.5rem;
+
+  line-height: 1rem;
 
   &:hover {
     color: ${color("white")};
