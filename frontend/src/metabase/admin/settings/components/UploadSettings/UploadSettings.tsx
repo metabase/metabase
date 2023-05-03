@@ -16,9 +16,7 @@ import type { Schema, Database as DatabaseType } from "metabase-types/api";
 import Link from "metabase/core/components/Link";
 import Select, { SelectChangeEvent } from "metabase/core/components/Select";
 import Input from "metabase/core/components/Input";
-import ActionButton, {
-  ActionButtonRef,
-} from "metabase/components/ActionButton";
+import ActionButton from "metabase/components/ActionButton";
 import EmptyState from "metabase/components/EmptyState/EmptyState";
 
 import SettingHeader from "../SettingHeader";
@@ -102,9 +100,9 @@ export function UploadSettingsView({
   const showSchema = dbId && dbHasSchema(databases, dbId);
   const databaseOptions = getDatabaseOptions(databases);
 
-  const enableButtonRef = useRef<ActionButtonRef>(null);
-  const disableButtonRef = useRef<ActionButtonRef>(null);
-  const updateButtonRef = useRef<ActionButtonRef>(null);
+  const enableButtonRef = useRef<ActionButton>(null);
+  const disableButtonRef = useRef<ActionButton>(null);
+  const updateButtonRef = useRef<ActionButton>(null);
 
   if (!databaseOptions?.length) {
     return (
