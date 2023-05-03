@@ -1,24 +1,19 @@
 import React from "react";
 import { t } from "ttag";
-import { push } from "react-router-redux";
 import type {
   ClickActionBase,
   DrillOptions,
   PopoverClickAction,
 } from "metabase/modes/types";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
-import { useDispatch } from "metabase/lib/redux";
 import { getGALabelForAction } from "metabase/visualizations/components/ChartClickActions/utils";
 import Link from "metabase/core/components/Link/Link";
 import MetabaseSettings from "metabase/lib/settings";
 import {
-  compareToRestDrill,
-  compareToRestDrillUrl,
-} from "metabase-lib/queries/drills/compare-to-rest-drill";
-import {
-  automaticDashboardDrill,
+  automaticInsightsDrill,
   automaticDashboardDrillUrl,
-} from "metabase-lib/queries/drills/automatic-dashboard-drill";
+  compareToRestDrillUrl,
+} from "metabase-lib/queries/drills/automatic-insights-drill";
 import {
   ActionIcon,
   ClickActionButton,
@@ -38,20 +33,19 @@ const AutomaticInsightsDrill = ({
   const drillOptions: AutoInsightsDrillOption[] = [];
   const enableXrays = MetabaseSettings.get("enable-xrays");
 
-  if (automaticDashboardDrill({ question, clicked, enableXrays })) {
-    drillOptions.push({
-      title: t`X-ray`,
-      icon: "bolt",
-      url: () => automaticDashboardDrillUrl({ question, clicked }),
-    });
-  }
-
-  if (compareToRestDrill({ question, clicked, enableXrays })) {
-    drillOptions.push({
-      title: t`Compare to the rest`,
-      icon: "segment",
-      url: () => compareToRestDrillUrl({ question, clicked }),
-    });
+  if (automaticInsightsDrill({ question, clicked, enableXrays })) {
+    drillOptions.push(
+      {
+        title: t`X-ray`,
+        icon: "bolt",
+        url: () => automaticDashboardDrillUrl({ question, clicked }),
+      },
+      {
+        title: t`Compare to the rest`,
+        icon: "segment",
+        url: () => compareToRestDrillUrl({ question, clicked }),
+      },
+    );
   }
 
   if (!drillOptions.length) {
@@ -67,15 +61,6 @@ const AutomaticInsightsDrill = ({
   };
 
   const Component = () => {
-    const dispatch = useDispatch();
-
-    if (drillOptions.length === 1) {
-      const { url } = drillOptions[0];
-      dispatch(push(url()));
-
-      return <div />;
-    }
-
     return (
       <DrillActionsListPopover title={t`Automatic insights…`}>
         {drillOptions.map(({ icon, title, url }) => (
