@@ -474,10 +474,10 @@ describe("scenarios > admin > datamodel > editor", () => {
     });
 
     it("should now allow setting foreign key mapping for inaccessible tables", () => {
-      addDataModelPermissions({ tableIds: [ORDERS_ID] });
+      addDataModelPermissions({ tableIds: [REVIEWS_ID] });
 
       cy.signIn("none");
-      visitFieldMetadata({ tableId: REVIEWS_ID, fieldId: REVIEWS.PRODUCTS_ID });
+      visitFieldMetadata({ tableId: REVIEWS_ID, fieldId: REVIEWS.PRODUCT_ID });
       cy.findByText("Use original value").click();
       popover().within(() => {
         cy.findByText("Use original value").should("be.visible");
