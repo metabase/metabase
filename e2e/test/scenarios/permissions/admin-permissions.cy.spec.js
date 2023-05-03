@@ -5,12 +5,14 @@ import {
   describeEE,
   isOSS,
   assertPermissionTable,
+  assertPermissionOptions,
   modifyPermission,
   selectSidebarItem,
   assertSidebarItems,
   isPermissionDisabled,
   visitQuestion,
   visitDashboard,
+  selectPermissionRow,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
@@ -248,6 +250,25 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
       ["nosql", "No access"],
       ["readonly", "View"],
     ]);
+  });
+
+  it("show selected option for the collection with children", () => {
+    cy.visit("/admin/permissions/collections");
+
+    const collections = ["Our analytics", "First collection"];
+    assertSidebarItems(collections);
+
+    selectSidebarItem("First collection");
+    assertSidebarItems([...collections, "Second collection"]);
+
+    selectSidebarItem("Second collection");
+    selectPermissionRow("All Users", COLLECTION_ACCESS_PERMISSION_INDEX);
+    assertPermissionOptions(["Curate", "View", "No access"]);
+
+    selectSidebarItem("Third collection");
+    selectPermissionRow("All Users", COLLECTION_ACCESS_PERMISSION_INDEX);
+
+    assertPermissionOptions(["Curate", "View"]);
   });
 
   context("data permissions", () => {
