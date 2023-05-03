@@ -9,8 +9,24 @@ export interface TabButtonProps {
   disabled?: boolean;
 }
 
+// Wrapper and Resizer are needed to auto-grow the input with its content
+// https://css-tricks.com/auto-growing-inputs-textareas/#aa-resizing-actual-input-elements
+export const TabButtonInputWrapper = styled.span`
+  position: relative;
+`;
+
+export const TabButtonInputResizer = styled.span`
+  visibility: hidden;
+  white-space: pre;
+  /* For some reason the computed font-size is wrong (14px when it should be 13.33px) when using 
+  the same rem value as in TabButtonRoot so we have to manually define it in px */
+  font-size: 13.33px;
+`;
+
 export const TabButtonInput = styled.input<TabButtonProps & { value: string }>`
-  width: ${props => `${props.value.length}ch`};
+  position: absolute;
+  width: 100%;
+  left: 0;
   padding: 0;
 
   border: none;
