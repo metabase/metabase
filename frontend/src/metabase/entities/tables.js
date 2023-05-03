@@ -1,6 +1,6 @@
 import { t } from "ttag";
 import _ from "underscore";
-import { createSelector } from "reselect";
+import { createSelector } from "@reduxjs/toolkit";
 import { updateIn } from "icepick";
 import { createEntity, notify } from "metabase/lib/entities";
 import {
