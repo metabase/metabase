@@ -3,7 +3,6 @@ import _ from "underscore";
 import { getIn } from "icepick";
 import { normalize } from "normalizr";
 import { compose } from "@reduxjs/toolkit";
-import { createSelectorCreator } from "reselect";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import {
@@ -182,11 +181,6 @@ export const formDomOnlyProps = ({
   defaultValue,
   ...domProps
 }) => domProps;
-
-export const createMemoizedSelector = createSelectorCreator(
-  _.memoize,
-  (...args) => JSON.stringify(args),
-);
 
 // THUNK DECORATORS
 

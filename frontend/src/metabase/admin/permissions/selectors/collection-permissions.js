@@ -1,4 +1,4 @@
-import { createSelector } from "reselect";
+import { createSelector } from "@reduxjs/toolkit";
 import { t } from "ttag";
 import { getIn } from "icepick";
 import _ from "underscore";
