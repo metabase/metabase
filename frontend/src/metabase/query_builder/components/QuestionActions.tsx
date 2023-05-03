@@ -170,7 +170,7 @@ const QuestionActions = ({
   if (!isDataset) {
     extraButtons.push({
       title: t`Add to dashboard`,
-      icon: "dashboard",
+      icon: "add_to_dash",
       action: () => onOpenModal(MODAL_TYPES.ADD_TO_DASHBOARD),
       testId: ADD_TO_DASH_TESTID,
     });
