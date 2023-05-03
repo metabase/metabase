@@ -97,7 +97,8 @@
         (is (= quantity
                (t2/count ModelIndexValue :model_index_id (:id model-index))))
         (is (set/subset? subset (t2/select-fn-set :name ModelIndexValue
-                                                  :model_index_id (:id model-index))))))))
+                                                  :model_index_id (:id model-index))))
+        (mt/user-http-request :rasta :delete 200 (str "/model-index/" (:id model-index)))))))
 
 (deftest model-index-test
   (mt/dataset sample-dataset

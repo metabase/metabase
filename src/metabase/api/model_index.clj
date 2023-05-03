@@ -1,6 +1,5 @@
 (ns metabase.api.model-index
   (:require
-   [clojure.set :as set]
    [compojure.core :refer [POST]]
    [metabase.api.common :as api]
    [metabase.models.card :refer [Card]]
@@ -10,18 +9,36 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
+(defn- ensure-type
+  "Ensure that the ref exists and is of type required for indexing."
+  [t ref metadata]
+  (if-let [field (some (fn [f] (when ((comp #{(model-index/normalize-field-ref ref)} :field_ref) f)
+                                 f))
+                       metadata)]
+    (let [type-slot (if (= t :type/PK) :semantic_type :effective_type)]
+      (when-not (isa? (type-slot field) t)
+        (throw (ex-info (tru "Field is not of type {0}" t)
+                        {:status-code   400
+                         :expected-type t
+                         :type          (:effective_type field)
+                         :field         (:name field)}))))
+    (throw (ex-info (tru "Could not identify field by ref {0}" ref)
+                    {:status-code 400
+                     :ref         ref
+                     :fields      metadata}))))
+
 (api/defendpoint POST "/"
   [:as {{:keys [model_id pk_ref value_ref] :as _model-index} :body}]
   {model_id  ms/PositiveInt
    pk_ref    any?
    value_ref any?}
   (let [model      (api/read-check Card model_id)
-        field_refs (into #{} (map :field_ref) (:result_metadata model))]
-    (when-let [missing (seq (set/difference (into #{} (map model-index/normalize-field-ref) [pk_ref value_ref])
-                                            field_refs))]
-      (throw (ex-info (tru "Unrecognized fields to index")
-                      {:missing missing
-                       :present field_refs})))
+        metadata (:result_metadata model)]
+    (when-not (seq metadata)
+      (throw (ex-info (tru "Model has no metadata. Cannot index")
+                      {:model-id model_id})))
+    (ensure-type :type/PK pk_ref metadata)
+    (ensure-type :type/Text value_ref metadata)
     ;; todo: do we care if there's already an index on that model?
     (let [model-index (model-index/create {:model-id   model_id
                                            :pk-ref     pk_ref
