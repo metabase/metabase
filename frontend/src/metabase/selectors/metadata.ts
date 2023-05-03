@@ -218,11 +218,6 @@ export const getMetadataWithHiddenTables = (
   return getMetadata(state, { ...props, includeHiddenTables: true });
 };
 
-export const getDatabases = createSelector(
-  [getMetadata],
-  ({ databases }) => databases,
-);
-
 export const getFields = createSelector([getMetadata], ({ fields }) => fields);
 
 // Utils
