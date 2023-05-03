@@ -150,3 +150,18 @@
         {:keys [mantissa exponent]} (core/split-exponent nf base)
         ?plus (when-not (str/starts-with? exponent "-") "+")]
     (str mantissa "e" ?plus exponent)))
+
+;; Duration
+(defn format-number-duration
+  "Format Duration (00:00:00)"
+  [number _options]
+  (let [negative? (< number 0)
+        seconds (int (abs number))
+        days (quot seconds 86400)
+        hours (quot (mod seconds 86400) 3600)
+        minutes (quot (mod seconds 3600) 60)
+        seconds (mod seconds 60)
+        time (if (zero? days)
+               (format "%02d:%02d:%02d" hours minutes seconds)
+               (format "%dd %02d:%02d:%02d" days hours minutes seconds))]
+    (if negative? (str "-" time) time)))

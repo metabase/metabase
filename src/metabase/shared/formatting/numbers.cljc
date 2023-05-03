@@ -53,6 +53,9 @@
 (defmethod format-number-compact* "scientific" [number options]
   (internal/format-number-scientific number (merge options {:maximum-fraction-digits 1 :minimum-fraction-digits 1})))
 
+(defmethod format-number-compact* "duration" [number options]
+  (internal/format-number-duration number options))
+
 (defn- format-number-compact [number options]
   (format-number-compact* number (-> options
                                      (dissoc :compact)

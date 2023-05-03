@@ -79,6 +79,8 @@ export function formatNumber(
     return formatNumberCompact(number, options);
   } else if (options.number_style === "scientific") {
     return formatNumberScientific(number, options);
+  } else if (options.number_style === "duration") {
+    return formatNumberDuration(number, options);
   } else {
     try {
       let nf;
@@ -255,5 +257,29 @@ function formatNumberScientific(
     );
   } else {
     return exp;
+  }
+}
+
+function formatNumberDuration(value: number, options: FormatNumberOptionsType) {
+  if (value === 0 || value === null) {
+    return "00:00:00";
+  }
+  const prefix = value < 0 ? "-" : "";
+  let seconds = Math.round(Math.abs(value));
+  const days = Math.floor(seconds / 86400);
+  seconds %= 86400;
+  const hours = Math.floor(seconds / 3600);
+  seconds %= 3600;
+  const minutes = Math.floor(seconds / 60);
+  seconds %= 60;
+
+  const hh = `${hours}`.padStart(2, "0");
+  const mm = `${minutes}`.padStart(2, "0");
+  const ss = `${seconds}`.padStart(2, "0");
+
+  if (days > 0) {
+    return `${prefix}${days}d ${hh}:${mm}:${ss}`;
+  } else {
+    return `${prefix}${hh}:${mm}:${ss}`;
   }
 }

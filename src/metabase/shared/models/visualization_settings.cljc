@@ -87,7 +87,7 @@
 (s/def ::time-enabled #{nil "minutes" "seconds" "milliseconds"})
 (s/def ::decimals pos-int?)
 (s/def ::number-separators #(or nil? (and string? (= 2 (count %)))))
-(s/def ::number-style #{"decimal" "percent" "scientific" "currency"})
+(s/def ::number-style #{"decimal" "percent" "scientific" "currency" "duration"})
 (s/def ::prefix string?)
 (s/def ::suffix string?)
 (s/def ::view-as string?)

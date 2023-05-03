@@ -82,6 +82,8 @@
                      ::mb.viz/prefix
                      ::mb.viz/suffix)))))
 
+(not [])
+
 (defn- number-format-strings
   "Returns format strings for a number column corresponding to the given settings.
   The first value in the returned list should be used for integers, or numbers that round to integers.
@@ -101,6 +103,9 @@
           (condp = number-style
             "percent"
             (map #(str % "%") base-strings)
+
+            "duration"
+            (map (fn [_] "[hh]:mm:ss") base-strings)
 
             "scientific"
             (map #(str % "E+0") base-strings)
@@ -404,9 +409,18 @@
       (let [id-or-name   (or (:id col) (:name col))
             settings     (or (get col-settings {::mb.viz/field-id id-or-name})
                              (get col-settings {::mb.viz/column-name id-or-name}))
+
+            is-duration? (= (::mb.viz/number-style settings) "duration")
+
             scaled-val   (if (and value (::mb.viz/scale settings))
                            (* value (::mb.viz/scale settings))
                            value)
+
+            ;; Apply duration scaling
+            scaled-val (if (and value is-duration?)
+                         (/ scaled-val 86400.0)
+                         scaled-val)
+
             ;; Temporal values are converted into strings in the format-rows QP middleware, which is enabled during
             ;; dashboard subscription/pulse generation. If so, we should parse them here so that formatting is applied.
             parsed-value (or

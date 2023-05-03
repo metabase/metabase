@@ -3,6 +3,7 @@
   Implements the [[NumberFormatter]] protocol from numbers_core, plus some helpers."
   (:require
    [clojure.string :as str]
+   [goog.string :as gstr]
    [metabase.shared.formatting.internal.numbers-core :as core]
    [metabase.shared.util.currency :as currency]
    [metabase.util :as u]))
@@ -111,3 +112,18 @@
   (-> (core/prep-options options)
       number-formatter-for-options
       (core/format-number-basic number)))
+
+;; ;; Duration
+(defn format-number-duration
+  "Format Duration (00:00:00)"
+  [number _options]
+  (let [negative? (< number 0)
+        seconds (int (abs number))
+        days (quot seconds 86400)
+        hours (quot (mod seconds 86400) 3600)
+        minutes (quot (mod seconds 3600) 60)
+        seconds (mod seconds 60)
+        time (if (zero? days)
+               (gstr/format "%02d:%02d:%02d" hours minutes seconds)
+               (gstr/format "%dd %02d:%02d:%02d" days hours minutes seconds))]
+    (if negative? (str "-" time) time)))
