@@ -162,7 +162,8 @@
     (when fk-target-field-id
       (api/checkp (t2/exists? Field :id fk-target-field-id)
         :fk_target_field_id "Invalid target field"))
-    (when (and (not removed-fk?)
+    (when (and display_name
+               (not removed-fk?)
                (not= (:display_name field) display_name))
       (t2/update! Dimension :field_id id {:name display_name}))
     ;; everything checks out, now update the field
