@@ -18,6 +18,7 @@ export default class ActionButton extends Component {
       active: false,
       result: null,
     };
+    this.resetState.bind(this);
   }
 
   static propTypes = {
@@ -40,6 +41,14 @@ export default class ActionButton extends Component {
     if (this.actionPromise) {
       this.actionPromise.cancel();
     }
+  }
+
+  resetState() {
+    clearTimeout(this.timeout);
+    this.setState({
+      active: false,
+      result: null,
+    });
   }
 
   resetStateOnTimeout = () => {
@@ -98,6 +107,7 @@ export default class ActionButton extends Component {
       failedText,
       successText,
       useLoadingSpinner = false,
+      resetState,
       // eslint-disable-next-line no-unused-vars
       actionFn,
       className,
