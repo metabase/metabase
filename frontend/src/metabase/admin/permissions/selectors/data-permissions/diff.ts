@@ -1,36 +1,17 @@
 import { createSelector } from "@reduxjs/toolkit";
-import type { Selector } from "@reduxjs/toolkit";
 import _ from "underscore";
 
 import { diffDataPermissions } from "metabase/admin/permissions/utils/graph";
 import Groups from "metabase/entities/groups";
+import { getMetadata } from "metabase/selectors/metadata";
 import { PLUGIN_DATA_PERMISSIONS } from "metabase/plugins";
 
-import { Database } from "metabase-types/api";
 import { State } from "metabase-types/store";
-import { isVirtualCardId } from "metabase-lib/metadata/utils/saved-questions";
 
-const getDatabasesWithTables: Selector<State, Database[]> = createSelector(
-  (state: State) => state.entities.databases,
-  (state: State) => state.entities.tables,
-  (databases, tables) => {
-    if (!databases || !tables) {
-      return [];
-    }
-    const databasesList = Object.values(databases);
-    const tablesList = Object.values(tables);
-
-    return databasesList.map(database => {
-      const databaseTables = tablesList.filter(
-        table => table.db_id === database.id && !isVirtualCardId(table.id),
-      );
-
-      return {
-        ...database,
-        tables: databaseTables,
-      };
-    });
-  },
+const getDatabasesWithTables = createSelector(getMetadata, metadata =>
+  metadata
+    .databasesList({ savedQuestions: false })
+    .map(db => db.getPlainObject()),
 );
 
 export const getIsDirty = createSelector(
