@@ -136,7 +136,6 @@ export default class ActionButton extends Component {
         onClick={this.onClick}
       >
         {active ? (
-          // TODO: loading spinner
           useLoadingSpinner ? (
             <SmallSpinner />
           ) : (
