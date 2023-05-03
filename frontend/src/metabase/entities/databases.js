@@ -12,7 +12,7 @@ import { DatabaseSchema } from "metabase/schema";
 import Fields from "metabase/entities/fields";
 import Schemas from "metabase/entities/schemas";
 
-import { getMetadata, getFields } from "metabase/selectors/metadata";
+import { getMetadata } from "metabase/selectors/metadata";
 
 // OBJECT ACTIONS
 export const FETCH_DATABASE_METADATA =
@@ -77,9 +77,10 @@ const Databases = createEntity({
 
     getHasSampleDatabase: (state, props) =>
       _.any(Databases.selectors.getList(state, props), db => db.is_sample),
+
     getIdfields: createSelector(
       // we wrap getFields to handle a circular dep issue
-      [state => getFields(state), (state, props) => props.databaseId],
+      [state => getMetadata(state).fields, (state, props) => props.databaseId],
       (fields, databaseId) =>
         Object.values(fields).filter(f => {
           const { db_id } = f.table || {}; // a field's table can be null
