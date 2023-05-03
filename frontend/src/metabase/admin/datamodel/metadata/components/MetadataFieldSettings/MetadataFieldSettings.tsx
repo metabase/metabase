@@ -52,7 +52,7 @@ interface FieldLoaderProps {
 }
 
 interface FieldValuesLoaderProps {
-  loading: boolean;
+  fetched: boolean;
 }
 
 interface StateProps {
@@ -82,11 +82,11 @@ const MetadataFieldSettings = ({
   table,
   field,
   idFields,
-  loading,
+  fetched,
   params: { schemaId, section },
 }: MetadataFieldSettingsProps) => {
   const schema = schemas.find(schema => schema.id === schemaId);
-  if (!schema || loading) {
+  if (!schema || !fetched) {
     return <LoadingAndErrorWrapper loading />;
   }
 
