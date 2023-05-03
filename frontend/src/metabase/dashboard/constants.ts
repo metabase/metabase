@@ -21,7 +21,7 @@ export const INITIAL_DASHBOARD_STATE: DashboardState = {
   loadingDashCards: {
     dashcardIds: [],
     loadingIds: [],
-    loadingStatus: "running" as const,
+    loadingStatus: "idle" as const,
     startTime: null,
   },
   loadingControls: {},
