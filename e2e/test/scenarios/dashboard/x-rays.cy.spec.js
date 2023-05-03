@@ -35,7 +35,7 @@ describe("scenarios > x-rays", () => {
     cy.findByText(/^Some insights about/).should("not.exist");
   });
 
-  it.skip("should work on questions with explicit joins (metabase#13112)", () => {
+  it("should work on questions with explicit joins (metabase#13112)", () => {
     const PRODUCTS_ALIAS = "Products";
 
     cy.createQuestion(
@@ -71,6 +71,8 @@ describe("scenarios > x-rays", () => {
     cy.get(".dot")
       .eq(23) // Random dot
       .click({ force: true });
+
+    cy.findByText("Automatic insights…").click();
     cy.findByText("X-ray").click();
 
     // x-rays take long time even locally - that can timeout in CI so we have to extend it
@@ -101,6 +103,8 @@ describe("scenarios > x-rays", () => {
 
       cy.button("Done").click();
       cy.get(".bar").first().click({ force: true });
+
+      cy.findByText("Automatic insights…").click();
       cy.findByText(action).click();
 
       cy.wait("@xray").then(xhr => {
@@ -134,8 +138,11 @@ describe("scenarios > x-rays", () => {
       });
 
       cy.get(".bar").first().click();
+
+      cy.findByText("Automatic insights…").click();
       cy.findByText(action).click();
       cy.wait("@xray");
+
       cy.contains("null").should("not.exist");
     });
   });

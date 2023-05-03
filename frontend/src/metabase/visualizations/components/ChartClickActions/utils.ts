@@ -29,9 +29,6 @@ export const SECTIONS: Record<string, Section> = {
   standalone_filter: {
     icon: "filter",
   },
-  filter: {
-    icon: "funnel_outline",
-  },
   // There is no such icon as "summarize." This is used to ID and select the actions that we,
   // want to make larger, like Distribution, Sum over Time, etc.
   summarize: {
@@ -51,6 +48,9 @@ export const SECTIONS: Record<string, Section> = {
   },
   info: {
     icon: "info",
+  },
+  filter: {
+    icon: "funnel_outline",
   },
 };
 Object.values(SECTIONS).map((section, index) => {
