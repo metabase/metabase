@@ -1067,6 +1067,7 @@
         include_hidden              (Boolean/parseBoolean include_hidden)
         include_empty               (Boolean/parseBoolean include_empty)]
     (if include_empty
+      ;; include_empty is mutually exclusive with the include_editable_data_model and include_hidden params
       (do (api/check-superuser)
           (let [db (api/check-404 (t2/select-one Database id))]
             (driver/all-schemas (:engine db) db)))
@@ -1086,7 +1087,7 @@
                                (merge
                                 {:order-by [[:%lower.schema :asc]]}
                                 (when-not include_hidden
-                              ;; a non-nil value means Table is hidden -- see [[metabase.models.table/visibility-types]]
+                                  ;; a non-nil value means Table is hidden -- see [[metabase.models.table/visibility-types]]
                                   {:where [:= :visibility_type nil]})))
              filter-schemas
              ;; for `nil` schemas return the empty string
