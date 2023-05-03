@@ -171,3 +171,12 @@
            (fn [{schema-name :schema}]
              (testing (format "schema name = %s" (pr-str schema-name))
                (is (not= \v (first schema-name)))))))))))
+
+(deftest supports-schemas-test
+  (mt/test-drivers (mt/normal-drivers)
+    (with-open [conn ^java.sql.Connection (jdbc/get-connection (sql-jdbc.conn/db->pooled-connection-spec (mt/db)))]
+      (if (driver/database-supports? driver/*driver* :schemas (mt/db))
+        (testing "`all-schemas` should return schemas if the database supports schemas"
+          (is (seq (vec (sql-jdbc.describe-database/all-schemas (.getMetaData conn))))))
+        (testing "`all-schemas` should not return schemas if the database doesn't support schemas"
+          (is (nil? (vec (sql-jdbc.describe-database/all-schemas (.getMetaData conn))))))))))
