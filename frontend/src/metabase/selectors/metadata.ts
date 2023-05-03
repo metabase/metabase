@@ -224,19 +224,7 @@ export const getDatabases = createSelector(
   ({ databases }) => databases,
 );
 
-export const getTables = createSelector([getMetadata], ({ tables }) => tables);
-
 export const getFields = createSelector([getMetadata], ({ fields }) => fields);
-
-export const getMetrics = createSelector(
-  [getMetadata],
-  ({ metrics }) => metrics,
-);
-
-export const getSegments = createSelector(
-  [getMetadata],
-  ({ segments }) => segments,
-);
 
 // Utils
 
