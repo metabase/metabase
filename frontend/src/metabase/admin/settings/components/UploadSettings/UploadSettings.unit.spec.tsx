@@ -39,6 +39,13 @@ const dbs = [
     engine: "mongo",
     settings: { "database-enable-actions": false },
   }),
+  createMockDatabase({
+    id: 5,
+    name: "Db Cinco",
+    engine: "h2",
+    settings: { "database-enable-actions": true },
+    tables: [],
+  }),
 ];
 
 function setup(options?: Partial<UploadSettingProps>) {
@@ -282,6 +289,24 @@ describe("Admin > Settings > UploadSetting", () => {
 
     expect(await screen.findByText("Db Dos")).toBeInTheDocument();
     expect(await screen.findByDisplayValue("my_uploads_")).toBeInTheDocument();
+  });
+
+  it("should show a message if there are no schema for the selected db", async () => {
+    setup({
+      settings: {
+        uploads_enabled: false,
+        uploads_database_id: 5,
+        uploads_schema_name: null,
+        uploads_table_prefix: null,
+      },
+    });
+
+    expect(
+      await screen.findByText(/We couldn't find any schema/i),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByRole("button", { name: "Enable uploads" }),
+    ).toBeDisabled();
   });
 
   it("should be able to update db settings", async () => {
