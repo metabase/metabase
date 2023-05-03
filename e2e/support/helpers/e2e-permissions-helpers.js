@@ -16,7 +16,7 @@ export function modifyPermission(
   value,
   shouldPropagate = null,
 ) {
-  getPermissionRowPermissions(item).eq(permissionIndex).click();
+  selectPermissionRow(item, permissionIndex);
 
   popover().within(() => {
     if (shouldPropagate !== null) {
@@ -30,6 +30,10 @@ export function modifyPermission(
     }
     value && cy.findByText(value).click();
   });
+}
+
+export function selectPermissionRow(item, permissionIndex) {
+  getPermissionRowPermissions(item).eq(permissionIndex).click();
 }
 
 function getPermissionRowPermissions(item) {
@@ -52,6 +56,16 @@ export function assertPermissionTable(rows) {
     getPermissionRowPermissions(item).each(($permissionEl, index) => {
       cy.wrap($permissionEl).should("have.text", permissions[index]);
     });
+  });
+}
+
+export function assertPermissionOptions(options) {
+  popover().within(() => {
+    cy.findAllByRole("option")
+      .should("have.length", options.length)
+      .each(($accessEl, index) => {
+        cy.wrap($accessEl).findByText(options[index]);
+      });
   });
 }
 

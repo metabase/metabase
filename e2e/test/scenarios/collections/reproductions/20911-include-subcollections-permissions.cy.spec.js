@@ -40,7 +40,7 @@ describe("issue 20911", () => {
     modifyPermission(
       "collection",
       COLLECTION_ACCESS_PERMISSION_INDEX,
-      null,
+      "No access",
       true,
     );
     modal().within(() => {
