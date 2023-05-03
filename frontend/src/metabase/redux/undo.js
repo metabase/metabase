@@ -12,11 +12,11 @@ let nextUndoId = 0;
 
 export const addUndo = createThunkAction(ADD_UNDO, undo => {
   return (dispatch, getState) => {
-    const id = nextUndoId++;
-    setTimeout(
-      () => dispatch(dismissUndo(id, false)),
-      DEFAULT_TOASTER_DURATION,
-    );
+    const { timeout = DEFAULT_TOASTER_DURATION } = undo;
+    const id = undo.id ?? nextUndoId++;
+    if (timeout !== false) {
+      setTimeout(() => dispatch(dismissUndo(id, false)), timeout);
+    }
     return { ...undo, id, _domId: id };
   };
 });

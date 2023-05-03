@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo } from "react";
 import { t } from "ttag";
+import { useUnmount } from "react-use";
 
 import { useSelector, useDispatch } from "metabase/lib/redux";
 import {
@@ -15,7 +16,8 @@ import {
   setNeverShowAutoApplyFiltersToast,
   setReadyForAutoApplyFiltersToast,
 } from "metabase/dashboard/actions";
-import { addUndo } from "metabase/redux/undo";
+import { addUndo, dismissUndo } from "metabase/redux/undo";
+import { useUniqueId } from "metabase/hooks/use-unique-id";
 import { StyledToasterButton } from "./AutoApplyFiltersToast.styled";
 
 export default function AutoApplyFilterToast() {
@@ -47,9 +49,10 @@ export default function AutoApplyFilterToast() {
     }
   }, [dispatch, isReadyForToast]);
 
+  const autoApplyFiltersToastId = useUniqueId();
+
   useEffect(() => {
     if (autoApplyFiltersToastStateName === "shown") {
-      dispatch(dismissAutoApplyFiltersToast());
       const onTurnOffAutoApplyFilters = () => {
         dispatch(
           setDashboardAttributes({
@@ -64,6 +67,8 @@ export default function AutoApplyFilterToast() {
 
       dispatch(
         addUndo({
+          id: autoApplyFiltersToastId,
+          timeout: false,
           message: (
             <>
               {t`You can make this dashboard snappier by turning off auto-applying filters.`}
@@ -74,8 +79,22 @@ export default function AutoApplyFilterToast() {
           ),
         }),
       );
+
+      return () => {
+        dispatch(dismissAutoApplyFiltersToast());
+        dispatch(dismissUndo(autoApplyFiltersToastId, false));
+      };
     }
-  }, [autoApplyFiltersToastStateName, dashboardId, dispatch]);
+  }, [
+    autoApplyFiltersToastId,
+    autoApplyFiltersToastStateName,
+    dashboardId,
+    dispatch,
+  ]);
+
+  useUnmount(() => {
+    dispatch(setNeverShowAutoApplyFiltersToast());
+  });
 
   return null;
 }
