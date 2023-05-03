@@ -3,12 +3,12 @@ import { createSelector } from "@reduxjs/toolkit";
 
 import type {
   Card,
-  Database as IDatabase,
-  Schema as ISchema,
-  Table as ITable,
-  Field as IField,
-  Metric as IMetric,
-  Segment as ISegment,
+  NormalizedDatabase,
+  NormalizedSchema,
+  NormalizedTable,
+  NormalizedField,
+  NormalizedMetric,
+  NormalizedSegment,
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
@@ -49,7 +49,7 @@ const getNormalizedTables = createSelector(
   (tables, includeHiddenTables) =>
     includeHiddenTables
       ? tables
-      : filterValues(tables, (table: ITable) => table.visibility_type == null),
+      : filterValues(tables, table => table.visibility_type == null),
 );
 
 const getNormalizedFieldsUnfiltered = (state: State) => state.entities.fields;
@@ -218,25 +218,25 @@ export const getMetadataWithHiddenTables = (
 
 // Utils
 
-function createDatabase(db: IDatabase, metadata: Metadata) {
+function createDatabase(db: NormalizedDatabase, metadata: Metadata) {
   const instance = new Database(db);
   instance.metadata = metadata;
   return instance;
 }
 
-function createSchema(schema: ISchema, metadata: Metadata) {
+function createSchema(schema: NormalizedSchema, metadata: Metadata) {
   const instance = new Schema(schema);
   instance.metadata = metadata;
   return instance;
 }
 
-function createTable(table: ITable, metadata: Metadata) {
+function createTable(table: NormalizedTable, metadata: Metadata) {
   const instance = new Table(table);
   instance.metadata = metadata;
   return instance;
 }
 
-function createField(field: IField, metadata: Metadata) {
+function createField(field: NormalizedField, metadata: Metadata) {
   // We need a way to distinguish field objects that come from the server
   // vs. those that are created client-side to handle lossy transformations between
   // Field instances and FieldDimension instances.
@@ -247,13 +247,13 @@ function createField(field: IField, metadata: Metadata) {
   return instance;
 }
 
-function createMetric(metric: IMetric, metadata: Metadata) {
+function createMetric(metric: NormalizedMetric, metadata: Metadata) {
   const instance = new Metric(metric);
   instance.metadata = metadata;
   return instance;
 }
 
-function createSegment(segment: ISegment, metadata: Metadata) {
+function createSegment(segment: NormalizedSegment, metadata: Metadata) {
   const instance = new Segment(segment);
   instance.metadata = metadata;
   return instance;
