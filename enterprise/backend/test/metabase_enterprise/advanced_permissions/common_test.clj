@@ -278,19 +278,6 @@
                  (mt/user-http-request :rasta :get 200 (format "database/%d/schemas" db-id)
                                        :include_editable_data_model true))))))))
 
-(deftest update-field-hydrate-target-test
-  (mt/with-temp* Field [{field-id :id, table-id :table_id} {:name "Field Test"}]
-    (let [{table-id :id, schema :schema, db-id :db_id} (t2/select-one Table :id table-id)]
-      (testing "PUT /api/field/:id"
-        (let [endpoint (format "field/%d" field-id)]
-          (testing "a non-admin can update field metadata if they have data model permissions for the DB"
-            (with-all-users-data-perms {db-id {:data-model {:schemas :all}}}
-              (mt/user-http-request :rasta :put 200 endpoint {:name "Field Test 2"})))
-
-          (testing "target is hydrated if they have data model permissions for the table"
-            (with-all-users-data-perms {db-id {:data-model {:schemas :all}}}
-              (mt/user-http-request :rasta :put 200 endpoint {:name "Field Test 2"}))))))))
-
 (deftest get-field-hydrated-target-with-advanced-perms-test
   (testing "GET /api/field/:id"
     (mt/with-temp* [Database [{db-id :id}]
