@@ -34,6 +34,7 @@ describe("issue 18454", () => {
     cy.get(".DashCard").within(() => {
       cy.icon("info").trigger("mouseenter", { force: true });
     });
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(CARD_DESCRIPTION);
   });
 });

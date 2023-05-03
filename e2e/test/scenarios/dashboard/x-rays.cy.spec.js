@@ -26,12 +26,17 @@ describe("scenarios > x-rays", () => {
 
     cy.visit("/");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(
       "Try out these sample x-rays to see what Metabase can do.",
     ).should("not.exist");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/^A summary of/).should("not.exist");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/^A glance at/).should("not.exist");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/^A look at/).should("not.exist");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/^Some insights about/).should("not.exist");
   });
 
@@ -71,10 +76,12 @@ describe("scenarios > x-rays", () => {
     cy.get(".dot")
       .eq(23) // Random dot
       .click({ force: true });
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("X-ray").click();
 
     // x-rays take long time even locally - that can timeout in CI so we have to extend it
     cy.wait("@dataset", { timeout: 30000 });
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(
       "A closer look at number of Orders where Created At is in March 2018 and Category is Gadget",
     );
@@ -91,7 +98,9 @@ describe("scenarios > x-rays", () => {
       });
 
       startNewQuestion();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Saved Questions").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("15655").click();
       visualize();
       summarize();
@@ -101,6 +110,7 @@ describe("scenarios > x-rays", () => {
 
       cy.button("Done").click();
       cy.get(".bar").first().click({ force: true });
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(action).click();
 
       cy.wait("@xray").then(xhr => {
@@ -134,8 +144,10 @@ describe("scenarios > x-rays", () => {
       });
 
       cy.get(".bar").first().click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(action).click();
       cy.wait("@xray");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("null").should("not.exist");
     });
   });
@@ -149,12 +161,15 @@ describe("scenarios > x-rays", () => {
 
     cy.button("Save this").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Your dashboard was saved");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("See it").click();
 
     cy.url().should("contain", "a-look-at-your-orders-table");
 
     cy.get(".Card").contains("18,760");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("How these transactions are distributed");
   });
 
@@ -166,16 +181,20 @@ describe("scenarios > x-rays", () => {
     cy.wait("@geojson", { timeout });
 
     // confirm results of "Total transactions" card are present
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("18,760", timeout);
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Total transactions").click();
 
     // confirm we're in the query builder with the same results
     cy.url().should("contain", "/question");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("18,760");
 
     cy.go("back");
 
     // add a parameter filter to the auto dashboard
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("State", timeout).click();
 
     cy.findByPlaceholderText("Search the list").type("GA{enter}");
@@ -183,11 +202,15 @@ describe("scenarios > x-rays", () => {
     cy.button("Add filter").click();
 
     // confirm results of "Total transactions" card were updated
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("463", timeout);
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Total transactions").click();
 
     // confirm parameter filter is applied as filter in query builder
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("State is GA");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("463");
   });
 });

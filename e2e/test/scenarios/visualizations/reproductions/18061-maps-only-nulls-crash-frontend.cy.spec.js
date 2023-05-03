@@ -102,14 +102,17 @@ describe("issue 18061", () => {
       cy.window().then(w => (w.beforeReload = true));
 
       cy.icon("filter").parent().contains("1").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("ID is less than 3").click();
 
       popover().find("input").type("{backspace}2");
 
       cy.button("Update filter").click();
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Something went wrong").should("not.exist");
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("ID is less than 2");
       cy.get(".PinMap");
 
@@ -126,6 +129,7 @@ describe("issue 18061", () => {
       addFilter("Twitter");
 
       cy.wait("@dashCardQuery");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Something went wrong").should("not.exist");
 
       cy.location("search").should("eq", "?category=Twitter");
@@ -136,7 +140,9 @@ describe("issue 18061", () => {
     it("should handle data sets that contain only null values for longitude/latitude (metabase#18061-3)", () => {
       visitAlias("@publicLink");
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("18061D");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("18061");
       cy.get(".PinMap");
 

@@ -30,6 +30,7 @@ describe(
       cy.button("Save and enable").click();
       cy.wait("@updateLdapSettings");
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Success").should("exist");
     });
 
@@ -89,16 +90,19 @@ describe(
 
       enterLdapSettings();
       enterLdapPort("asd");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("That's not a valid port number").should("exist");
 
       enterLdapPort("21.3");
       cy.button("Save and enable").click();
       cy.wait("@updateLdapSettings");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText('For input string: "21.3"').should("exist");
 
       enterLdapPort("123 ");
       cy.button("Save failed").click();
       cy.wait("@updateLdapSettings");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText('For input string: "123 "').should("exist");
     });
 
@@ -108,7 +112,9 @@ describe(
       cy.signOut();
       cy.visit("/auth/login");
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Username or email address").should("be.visible");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Password").should("be.visible");
     });
 

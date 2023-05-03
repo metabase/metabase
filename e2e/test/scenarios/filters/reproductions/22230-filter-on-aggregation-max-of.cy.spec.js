@@ -32,6 +32,7 @@ describe("issue 22230", () => {
   });
 
   it("should be able to filter on an aggregation (metabase#22230)", () => {
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Filter").click();
     popover().contains("Max of Name").click();
     cy.findByTestId("select-button").click();
@@ -41,8 +42,11 @@ describe("issue 22230", () => {
     cy.button("Add filter").click();
 
     visualize();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Showing 2 rows").should("be.visible");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Zora Schamberger").should("be.visible");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Zoie Kozey").should("be.visible");
   });
 });

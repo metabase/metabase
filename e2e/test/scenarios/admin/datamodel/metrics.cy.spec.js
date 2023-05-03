@@ -33,12 +33,17 @@ describe("scenarios > admin > datamodel > metrics", () => {
     openOrdersTable({ mode: "notebook" });
 
     summarize({ mode: "notebook" });
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Common Metrics").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Revenue").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Pick a column to group by").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Created At").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Sort").click();
 
     // Sorts ascending by default
@@ -72,6 +77,7 @@ describe("scenarios > admin > datamodel > metrics", () => {
   describe("with no metrics", () => {
     it("should show no metrics in the list", () => {
       cy.visit("/admin/datamodel/metrics");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(
         "Create metrics to add them to the Summarize dropdown in the query builder",
       );
@@ -79,9 +85,11 @@ describe("scenarios > admin > datamodel > metrics", () => {
 
     it("should show how to create metrics", () => {
       cy.visit("/reference/metrics");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(
         "Metrics are the official numbers that your team cares about",
       );
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Learn how to create metrics");
     });
 
@@ -98,6 +106,7 @@ describe("scenarios > admin > datamodel > metrics", () => {
       // `data`, `filtered by` and `view`
       cy.wait(["@dataset", "@dataset", "@dataset"]);
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Count").click();
       popover().contains("Custom Expression").click();
 
@@ -113,9 +122,11 @@ describe("scenarios > admin > datamodel > metrics", () => {
       cy.wait("@dataset");
 
       // The test should fail on this step first
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Result: 93.8");
 
       // Let's make sure the custom expression is still preserved
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Foo").click();
       cy.get(".ace_content").should("contain", customExpression);
     });
@@ -139,8 +150,11 @@ describe("scenarios > admin > datamodel > metrics", () => {
     it("should show no questions based on a new metric", () => {
       cy.visit("/reference/metrics/1/questions");
       cy.findAllByText("Questions about orders < 100");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Loading...");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Loading...").should("not.exist");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(
         "Questions about this metric will appear here as they're added",
       );
@@ -158,14 +172,18 @@ describe("scenarios > admin > datamodel > metrics", () => {
       });
 
       cy.findByTestId("apply-filters").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Save").click();
       cy.findAllByText("Save").last().click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Not now").click();
 
       // Check the list
       cy.visit("/reference/metrics/1/questions");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Our analysis").should("not.exist");
       cy.findAllByText("Questions about orders < 100");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(
         "Orders, orders < 100, Filtered by Total is greater than or equal to 50",
       );
@@ -173,26 +191,34 @@ describe("scenarios > admin > datamodel > metrics", () => {
 
     it("should show the metric detail view for a specific id", () => {
       cy.visit("/admin/datamodel/metric/1");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Edit Your Metric");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Preview");
     });
 
     it("should update that metric", () => {
       cy.visit("/admin");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Data Model").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Metrics").click();
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("orders < 100")
         .parent()
         .parent()
         .parent()
         .find(".Icon-ellipsis")
         .click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Edit Metric").click();
 
       // update the filter from "< 100" to "> 10"
       cy.url().should("match", /metric\/1$/);
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Edit Your Metric");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains(/Total\s+is less than/).click();
       popover().contains("Less than").click();
       popover().contains("Greater than").click();
@@ -200,6 +226,7 @@ describe("scenarios > admin > datamodel > metrics", () => {
       popover().contains("Update filter").click();
 
       // confirm that the preview updated
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Result: 18758");
 
       // update name and description, set a revision note, and save the update
@@ -208,19 +235,23 @@ describe("scenarios > admin > datamodel > metrics", () => {
         "{selectall}Count of orders with a total over $10.",
       );
       cy.get('[name="revision_message"]').type("time for a change");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Save changes").click();
 
       // get redirected to previous page and see the new metric name
       cy.url().should("match", /datamodel\/metrics$/);
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("orders > 10");
 
       // clean up
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("orders > 10")
         .parent()
         .parent()
         .parent()
         .find(".Icon-ellipsis")
         .click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Retire Metric").click();
       modal().find("textarea").type("delete it");
       modal().contains("button", "Retire").click();
@@ -256,21 +287,27 @@ describe("scenarios > admin > datamodel > metrics", () => {
         "**Navigate to the metrics page and assert the metric was indeed saved**",
       );
       cy.visit("/admin/datamodel/metrics");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(
         'Unexpected input given to normalize. Expected type to be "object", found "string".',
       ).should("not.exist");
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("13022_Metric"); // Name
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Orders, CE"); // Definition
     });
 
     it("should show CE that uses 'AND/OR' (metabase#13069, metabase#13070)", () => {
       cy.visit("/admin/datamodel/metrics");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("New metric").click();
 
       selectTable("Orders");
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Add filters to narrow your answer").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Custom Expression").click();
       cy.get(".ace_text-input")
         .clear()
@@ -279,6 +316,7 @@ describe("scenarios > admin > datamodel > metrics", () => {
       cy.button("Done").click();
 
       cy.log("**Assert that there is a filter text visible**");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("ID > 0 OR ID < 9876543210");
     });
   });

@@ -17,6 +17,7 @@ describe("issue 13289", () => {
 
     openOrdersTable({ mode: "notebook" });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Custom column").click();
 
     // Add custom column that will be used later in summarize (group by)
@@ -26,8 +27,10 @@ describe("issue 13289", () => {
 
   it("should allow 'zoom in' drill-through when grouped by custom column (metabase#13289) (metabase#13289)", () => {
     summarize({ mode: "notebook" });
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Count of rows").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Pick a column to group by").click();
 
     popover().findByText(CC_NAME).click();
@@ -46,11 +49,14 @@ describe("issue 13289", () => {
         .click({ force: true });
     });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Zoom in").click();
     cy.wait("@dataset");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("There was a problem with your question").should("not.exist");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(`${CC_NAME} is equal to 2`);
   });
 });

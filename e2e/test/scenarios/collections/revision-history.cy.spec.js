@@ -38,6 +38,7 @@ describe("revision history", () => {
 
       openRevisionHistory();
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(/created this/);
 
       cy.findAllByText("Revert").should("not.exist");
@@ -68,12 +69,15 @@ describe("revision history", () => {
                 visitAndEditDashboard(body.id);
               });
               cy.icon("add").last().click();
+              // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
               cy.findByText("Orders, Count").click();
               saveDashboard();
               openRevisionHistory();
+              // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
               cy.findByText(/added a card/)
                 .siblings("button")
                 .should("not.exist");
+              // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
               cy.findByText(/rearranged the cards/).should("not.exist");
             });
 
@@ -88,9 +92,11 @@ describe("revision history", () => {
               });
 
               // We reverted the dashboard to the state prior to adding any cards to it
+              // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
               cy.findByText("This dashboard is looking empty.");
 
               // Should be able to revert back again
+              // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
               cy.findByText("History");
               clickRevert(/added a card/);
 
@@ -99,6 +105,7 @@ describe("revision history", () => {
                 expect(body.cause).not.to.exist;
               });
 
+              // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
               cy.findByText("117.03");
             });
 
@@ -116,6 +123,7 @@ describe("revision history", () => {
                 expect(body.cause).not.to.exist;
               });
 
+              // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
               cy.contains(/^Orders$/);
             });
 
@@ -125,6 +133,7 @@ describe("revision history", () => {
               visitQuestion(1);
 
               questionInfoButton().click();
+              // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
               cy.findByText("History").click();
               // Last revert is the original state
               cy.findAllByTestId("question-revert-button").last().click();
@@ -134,6 +143,7 @@ describe("revision history", () => {
                 expect(body.cause).not.to.exist;
               });
 
+              // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
               cy.contains(/^Orders$/);
             });
           });

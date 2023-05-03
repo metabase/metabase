@@ -28,6 +28,7 @@ describe("issue 18776", () => {
 
   it("should not freeze when opening a timeseries chart with sparse data and without the X-axis", () => {
     visitQuestionAdhoc(questionDetails);
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Visualization").should("be.visible");
   });
 });

@@ -38,6 +38,7 @@ describe("issue 27462", () => {
 
     cy.button("Visualize").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("200").should("be.visible");
   });
 });

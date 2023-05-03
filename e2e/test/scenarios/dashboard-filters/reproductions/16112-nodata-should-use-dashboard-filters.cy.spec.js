@@ -91,6 +91,7 @@ describe("issues 15119 and 16112", () => {
       },
     );
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(reviewerFilter.name).click();
     popover().contains("adam").click();
     cy.button("Add filter").click();
@@ -98,6 +99,7 @@ describe("issues 15119 and 16112", () => {
     cy.get(".DashCard").should("contain", "adam");
     cy.location("search").should("eq", "?reviewer=adam");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(ratingFilter.name).click();
 
     popover().contains("5").click();

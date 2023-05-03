@@ -29,6 +29,7 @@ describe("scenarios > search", () => {
     cy.findByTestId("previous-page-btn").should("be.disabled");
 
     // First page
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(`1 - ${PAGE_SIZE}`);
     cy.findByTestId("pagination-total").should("have.text", TOTAL_ITEMS);
     cy.findAllByTestId("search-result-item").should("have.length", PAGE_SIZE);
@@ -36,6 +37,7 @@ describe("scenarios > search", () => {
     cy.findByTestId("next-page-btn").click();
 
     // Second page
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(`${PAGE_SIZE + 1} - ${TOTAL_ITEMS}`);
     cy.findByTestId("pagination-total").should("have.text", TOTAL_ITEMS);
     cy.findAllByTestId("search-result-item").should("have.length", 1);
@@ -44,6 +46,7 @@ describe("scenarios > search", () => {
     cy.findByTestId("previous-page-btn").click();
 
     // First page
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(`1 - ${PAGE_SIZE}`);
     cy.findByTestId("pagination-total").should("have.text", TOTAL_ITEMS);
     cy.findAllByTestId("search-result-item").should("have.length", PAGE_SIZE);

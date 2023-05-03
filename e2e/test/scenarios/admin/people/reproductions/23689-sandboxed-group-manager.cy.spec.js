@@ -21,6 +21,7 @@ describeEE("issue 23689", () => {
 
     visitGroupPermissionsPage(COLLECTION_GROUP);
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("3 members");
 
     findUserByFullName(normal);
@@ -33,6 +34,7 @@ describeEE("issue 23689", () => {
       .click({ force: true });
 
     // Sanity check instead of waiting for the PUT request
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Manager");
 
     cy.sandboxTable({
@@ -49,6 +51,7 @@ describeEE("issue 23689", () => {
   it("sandboxed group manager should see all other members (metabase#23689)", () => {
     visitGroupPermissionsPage(COLLECTION_GROUP);
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("3 members");
 
     findUserByFullName(sandboxed);
@@ -58,6 +61,7 @@ describeEE("issue 23689", () => {
     cy.visit("/admin/people");
     cy.wait("@membership");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(`${totalUsers} people found`);
     findUserByFullName(sandboxed);
     findUserByFullName(normal);

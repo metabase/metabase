@@ -15,7 +15,9 @@ describe("scenarios > models > create", () => {
     goFromHomePageToNewNativeQueryModelPage();
 
     // Cancel creation with confirmation modal
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Cancel").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Discard").click();
 
     // Now we will create a model
@@ -26,13 +28,16 @@ describe("scenarios > models > create", () => {
 
     cy.get(".ace_editor").should("be.visible").type("select * from ORDERS");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
 
     cy.findByPlaceholderText("What is the name of your model?").type(modelName);
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
 
     // After saving, we land on view mode for the model
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Summarize");
 
     checkIfPinned();

@@ -23,10 +23,12 @@ describe("issue 22518", () => {
 
   it("UI should immediately reflect model query changes upon saving (metabase#22518)", () => {
     openQuestionActions();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Edit query definition").click();
 
     cy.get(".ace_content").type(", 'b' bar");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save changes").click();
 
     cy.findAllByTestId("header-cell")

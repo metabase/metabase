@@ -25,6 +25,7 @@ describe("issue 18589", () => {
 
     visualize();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("2,860,368");
   });
 });

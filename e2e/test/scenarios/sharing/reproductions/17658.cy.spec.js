@@ -25,9 +25,12 @@ describe("issue 17658", { tags: "@external" }, () => {
 
     cy.icon("subscription").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/^Emailed monthly/).click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Delete this subscription").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/^This dashboard will no longer be emailed to/).click();
 
     cy.button("Delete").click();

@@ -35,6 +35,7 @@ describe.skip("issue 27380", () => {
   it("should not drop fields from joined table on dashboard 'zoom-in' (metabase#27380)", () => {
     // Doesn't really matter which 'circle" we click on the graph
     cy.get("circle").last().realClick();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Zoom in").click();
     cy.wait("@dataset");
 
@@ -43,7 +44,9 @@ describe.skip("issue 27380", () => {
     cy.get("y-axis-label").invoke("text").should("eq", "Count");
 
     cy.icon("notebook").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Pick a column to group by").should("not.exist");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Products? → Created At: Month/);
   });
 });

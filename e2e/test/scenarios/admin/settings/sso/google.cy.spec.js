@@ -28,6 +28,7 @@ describe("scenarios > admin > settings > SSO > Google", () => {
     typeAndBlurUsingLabel("Client ID", `example2.${CLIENT_ID_SUFFIX}`);
     cy.button("Save changes").click();
     cy.wait("@updateGoogleSettings");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Success").should("be.visible");
   });
 
@@ -63,6 +64,7 @@ describe("scenarios > admin > settings > SSO > Google", () => {
 
     typeAndBlurUsingLabel("Client ID", "fake-client-id");
     cy.button("Save and enable").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(
       `Invalid Google Sign-In Client ID: must end with ".${CLIENT_ID_SUFFIX}"`,
     ).should("be.visible");
@@ -72,6 +74,7 @@ describe("scenarios > admin > settings > SSO > Google", () => {
     setupGoogleAuth({ enabled: true });
     cy.signOut();
     cy.visit("/auth/login");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Sign in with email").should("be.visible");
     cy.findByRole("button", { name: /Google/ }).should("be.visible");
 
@@ -79,7 +82,9 @@ describe("scenarios > admin > settings > SSO > Google", () => {
     setupGoogleAuth({ enabled: false });
     cy.signOut();
     cy.visit("/auth/login");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Email address").should("be.visible");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Password").should("be.visible");
     cy.findByRole("button", { name: /Google/ }).should("not.exist");
   });

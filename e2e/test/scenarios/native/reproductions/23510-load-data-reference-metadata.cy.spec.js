@@ -33,6 +33,7 @@ describe("issue 23510", () => {
       { visitQuestion: true },
     );
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Open Editor").click();
     cy.icon("reference").click();
 

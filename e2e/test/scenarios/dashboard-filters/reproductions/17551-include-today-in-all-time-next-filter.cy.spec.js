@@ -65,7 +65,9 @@ describe("issue 17551", () => {
 
     cy.url().should("include", "?date_filter=next30days~");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("tomorrow");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("today");
   });
 });

@@ -26,7 +26,9 @@ describeEE("formatting > whitelabel", () => {
       cy.visit("/admin/settings/whitelabel");
       cy.findByLabelText("Application Name").clear().type(COMPANY_NAME);
       // Helps scroll the page up in order to see "Saved" notification
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Application Name").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Saved");
       cy.findByDisplayValue(COMPANY_NAME);
       cy.log("Company name has been updated!");
@@ -35,18 +37,23 @@ describeEE("formatting > whitelabel", () => {
     it("changes should reflect in different parts of UI", () => {
       cy.log("New company should show up on activity page");
       cy.visit("/activity");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(`${COMPANY_NAME} is up and running.`);
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Metabase is up and running.").should("not.exist");
 
       cy.log("New company should show up when logged out");
       cy.signOut();
       cy.visit("/");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(`Sign in to ${COMPANY_NAME}`);
 
       cy.log("New company should show up for a normal user");
       cy.signInAsNormalUser();
       cy.visit("/activity");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(`${COMPANY_NAME} is up and running.`);
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Metabase is up and running.").should("not.exist");
     });
 
@@ -54,12 +61,15 @@ describeEE("formatting > whitelabel", () => {
       cy.reload();
 
       cy.findByDisplayValue(COMPANY_NAME);
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains(
         `These are the primary colors used in charts and throughout ${COMPANY_NAME}.`,
       );
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains(`The top nav bar of ${COMPANY_NAME}.`);
 
       cy.visit("/admin/settings/general");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains(`The name used for this instance of ${COMPANY_NAME}.`);
     });
   });
@@ -101,6 +111,7 @@ describeEE("formatting > whitelabel", () => {
         "https://cdn.ecosia.org/assets/images/ico/favicon.ico",
       );
       cy.get("ul").eq(1).click("right");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Saved");
       checkFavicon();
     });
@@ -116,16 +127,19 @@ describeEE("formatting > whitelabel", () => {
   describe("loading message", () => {
     it("should update loading message", () => {
       cy.visit("/question/1");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Doing science...");
 
       const runningQueryMessage = "Running query...";
       changeLoadingMessage(runningQueryMessage);
       cy.visit("/question/1");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(runningQueryMessage);
 
       const loadingResultsMessage = "Loading results...";
       changeLoadingMessage(loadingResultsMessage);
       cy.visit("/question/1");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(loadingResultsMessage);
     });
   });
@@ -136,6 +150,7 @@ describeEE("formatting > whitelabel", () => {
       cy.findByAltText("Metabot");
 
       cy.visit("/admin/settings/whitelabel");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Display welcome message on the homepage").click();
 
       cy.visit("/");

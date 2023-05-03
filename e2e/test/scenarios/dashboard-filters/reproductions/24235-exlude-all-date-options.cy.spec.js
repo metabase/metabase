@@ -37,6 +37,7 @@ describe("issue 24235", () => {
       },
     );
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(parameter.name).click();
 
     popover().within(() => {
@@ -48,6 +49,7 @@ describe("issue 24235", () => {
     });
 
     cy.wait("@getCardQuery");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Rows 1-13 of 200").should("be.visible");
   });
 });

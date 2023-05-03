@@ -62,7 +62,9 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
   context("via simple mode", () => {
     beforeEach(() => {
       startNewQuestion();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Saved Questions").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("QB Binning").click();
 
       visualize();
@@ -84,6 +86,7 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
 
       // Make sure time series footer works as well
       cy.findAllByTestId("select-button-content").contains("Year").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Quarter").click();
 
       cy.wait("@dataset");
@@ -123,11 +126,16 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
   context("via notebook mode", () => {
     beforeEach(() => {
       startNewQuestion();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Saved Questions").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("QB Binning").click();
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Pick the metric you want to see").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Count of rows").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Pick a column to group by").click();
     });
 
@@ -147,6 +155,7 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
 
       // Make sure time series footer works as well
       cy.findAllByTestId("select-button-content").contains("Year").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Quarter").click();
 
       cy.wait("@dataset");
@@ -188,16 +197,21 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
   context("via column popover", () => {
     beforeEach(() => {
       startNewQuestion();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Saved Questions").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("QB Binning").click();
       visualize();
     });
 
     it("should work for time series", () => {
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("People → Birth Date").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Distribution").click();
 
       // Reproduces metabase#16693
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Count by People → Birth Date: Month");
 
       assertOnXYAxisLabels({ xLabel: "People → Birth Date", yLabel: "Count" });
@@ -211,9 +225,11 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
 
       // Make sure time series footer works as well
       cy.findAllByTestId("select-button-content").contains("Month").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Quarter").click();
 
       // Reproduces metabase#16693
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Count by People → Birth Date: Quarter");
 
       cy.get(".axis.x")
@@ -223,25 +239,33 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
     });
 
     it("should work for number", () => {
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Products → Price").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Distribution").click();
 
       // Reproduces metabase#16693
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Count by Products → Price: Auto binned");
 
       assertOnXYAxisLabels({ xLabel: "Products → Price", yLabel: "Count" });
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("12.5");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("25");
 
       cy.get(".bar");
     });
 
     it("should work for longitude", () => {
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("People → Longitude").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Distribution").click();
 
       // Reproduces metabase#16693
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Count by People → Longitude: Auto binned");
 
       assertOnXYAxisLabels({
@@ -249,7 +273,9 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
         yLabel: "Count",
       });
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("170° W");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("160° W");
 
       cy.get(".bar");

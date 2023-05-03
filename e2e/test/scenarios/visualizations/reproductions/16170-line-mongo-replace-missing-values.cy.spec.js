@@ -36,6 +36,7 @@ describe("issue 16170", { tags: "@external" }, () => {
 
       replaceMissingValuesWith(replacementValue);
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Done").click();
 
       assertOnTheYAxis();

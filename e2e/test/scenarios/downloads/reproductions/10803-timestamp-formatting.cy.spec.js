@@ -37,6 +37,7 @@ describe("issue 10803", () => {
 
     it(`should format the date properly for ${fileType} in unsaved questions`, () => {
       // Add a space at the end of the query to make it "dirty"
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains(/open editor/i).click();
       cy.get(".ace_editor").type("{movetoend} ");
 

@@ -20,6 +20,7 @@ describe("URLs", () => {
     it(`should slugify database name when opening it from /browse"`, () => {
       cy.visit("/browse");
       cy.findByTextEnsureVisible("Sample Database").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Sample Database");
       cy.location("pathname").should(
         "eq",
@@ -33,6 +34,7 @@ describe("URLs", () => {
     ].forEach(url => {
       it("should open 'Saved Questions' database correctly", () => {
         cy.visit(url);
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Saved Questions");
         cy.location("pathname").should("eq", url);
       });
@@ -42,6 +44,7 @@ describe("URLs", () => {
   describe("dashboards", () => {
     it("should slugify dashboard URLs", () => {
       cy.visit("/collection/root");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Orders in a dashboard").click();
       cy.location("pathname").should(
         "eq",
@@ -53,6 +56,7 @@ describe("URLs", () => {
   describe("questions", () => {
     it("should slugify question URLs", () => {
       cy.visit("/collection/root");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Orders").click();
       cy.location("pathname").should("eq", "/question/1-orders");
     });
@@ -61,12 +65,14 @@ describe("URLs", () => {
   describe("collections", () => {
     it("should slugify collection name", () => {
       cy.visit("/collection/root");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("First collection").click();
       cy.location("pathname").should("eq", "/collection/9-first-collection");
     });
 
     it("should slugify current user's personal collection name correctly", () => {
       cy.visit("/collection/root");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Your personal collection").click();
       cy.location("pathname").should(
         "eq",
@@ -80,12 +86,14 @@ describe("URLs", () => {
         cy.icon("ellipsis").click();
       });
       popover().findByText("Other users' personal collections").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("All personal collections");
       cy.location("pathname").should("eq", "/collection/users");
     });
 
     it("should slugify users' personal collection URLs", () => {
       cy.visit("/collection/users");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(getFullName(normal)).click();
       cy.location("pathname").should(
         "eq",

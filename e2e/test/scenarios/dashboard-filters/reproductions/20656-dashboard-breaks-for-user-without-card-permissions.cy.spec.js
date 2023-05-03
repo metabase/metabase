@@ -63,6 +63,7 @@ describe("issue 20656", () => {
 
     // Make sure the filter widget is there
     filterWidget();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Sorry, you don't have permission to see this card.");
 
     // Trying to edit the filter should not show mapping fields and shouldn't break frontend (metabase#24536)
@@ -72,6 +73,7 @@ describe("issue 20656", () => {
       .find(".Icon-gear")
       .click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Column to filter on")
       .parent()
       .within(() => {

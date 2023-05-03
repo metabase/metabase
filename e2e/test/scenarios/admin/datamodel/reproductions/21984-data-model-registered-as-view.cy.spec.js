@@ -23,11 +23,15 @@ describe("issue 21984", () => {
   it('should not show data model visited tables in search or in "Pick up where you left off" items on homepage (metabase#21984)', () => {
     cy.visit("/");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Metabase tips");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Pick up where you left off").should("not.exist");
 
     cy.findByPlaceholderText("Search…").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Recently viewed");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Nothing here");
   });
 });

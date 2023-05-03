@@ -42,6 +42,7 @@ describe("managing question from the question's details sidebar", () => {
                 .type("1")
                 .blur();
               assertOnRequest("updateQuestion");
+              // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
               cy.findByText("Orders1");
             });
 
@@ -54,6 +55,7 @@ describe("managing question from the question's details sidebar", () => {
 
               assertOnRequest("updateQuestion");
 
+              // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
               cy.findByText("foo");
             });
 
@@ -72,11 +74,14 @@ describe("managing question from the question's details sidebar", () => {
 
                 openQuestionActions();
                 cy.findByTestId("move-button").click();
+                // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
                 cy.findByText("My personal collection").click();
                 clickButton("Move");
                 assertOnRequest("updateQuestion");
+                // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
                 cy.contains("37.65");
 
+                // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
                 cy.contains(
                   `Question moved to ${getPersonalCollectionName(USERS[user])}`,
                 );
@@ -111,11 +116,14 @@ describe("managing question from the question's details sidebar", () => {
 
                 openQuestionActions();
                 cy.findByTestId("move-button").click();
+                // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
                 cy.findByText("My personal collection").click();
                 clickButton("Move");
                 assertOnRequest("updateQuestion");
+                // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
                 cy.contains("37.65");
 
+                // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
                 cy.contains(
                   `Model moved to ${getPersonalCollectionName(USERS[user])}`,
                 );
@@ -138,6 +146,7 @@ describe("managing question from the question's details sidebar", () => {
               );
               openQuestionActions();
               cy.findByTestId("archive-button").click();
+              // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
               cy.findByText(
                 "It will also be removed from the filter that uses it to populate values.",
               ).should("not.exist");
@@ -146,14 +155,18 @@ describe("managing question from the question's details sidebar", () => {
               cy.wait("@getItems"); // pinned items
               cy.wait("@getItems"); // unpinned items
               cy.location("pathname").should("eq", "/collection/root");
+              // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
               cy.findByText("Orders").should("not.exist");
 
               cy.findByPlaceholderText("Search…").click();
+              // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
               cy.findByText("Recently viewed");
+              // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
               cy.findByText("Nothing here");
 
               // Check page for archived questions
               cy.visit("/question/1");
+              // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
               cy.findByText("This question has been archived");
             });
 
@@ -227,6 +240,7 @@ describe("managing question from the question's details sidebar", () => {
                 cy.findByTestId("archive-button").should("not.exist");
               });
 
+              // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
               cy.findByText("Revert").should("not.exist");
             });
           });

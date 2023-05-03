@@ -40,6 +40,7 @@ describe("scenarios > visualizations > line chart", () => {
 
     cy.findByTestId("viz-settings-button").click();
     openSeriesSettings("Count");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Right").click();
     cy.get(Y_AXIS_RIGHT_SELECTOR);
   });
@@ -97,6 +98,7 @@ describe("scenarios > visualizations > line chart", () => {
       },
     });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(
       "This chart type doesn't support more than 100 series of data.",
     );
@@ -494,6 +496,7 @@ describe("scenarios > visualizations > line chart", () => {
         },
         display: "line",
       });
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Category is Doohickey");
     });
 

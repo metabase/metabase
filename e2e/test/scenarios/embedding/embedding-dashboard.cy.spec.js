@@ -48,6 +48,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
       });
 
       cy.icon("share").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Embed in your application").click();
 
       cy.findByRole("heading", { name: "Parameters" })
@@ -65,6 +66,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
             });
         });
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Editable").click();
 
       cy.get("@allParameters").within(() => {
@@ -75,9 +77,11 @@ describe("scenarios > embedding > dashboard parameters", () => {
           });
       });
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Locked").click();
 
       // set the locked parameter's value
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Preview Locked Parameters")
         .parent()
         .within(() => {
@@ -111,13 +115,16 @@ describe("scenarios > embedding > dashboard parameters", () => {
       cy.get(".ScalarValue").invoke("text").should("eq", "2");
 
       // verify that disabled filters don't show up
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Source").should("not.exist");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("User").should("not.exist");
 
       // only Name parameter should be visible
       openFilterOptions("Name");
 
       cy.findByPlaceholderText("Search by Name").type("L");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Lina Heaney").click();
 
       cy.button("Add filter").click();
@@ -134,11 +141,14 @@ describe("scenarios > embedding > dashboard parameters", () => {
       });
 
       cy.icon("share").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Embed in your application").click();
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Locked").click();
       popover().contains("Disabled").click();
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Editable").click();
       popover().contains("Disabled").click();
 
@@ -220,6 +230,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
       cy.log("should accept url parameters");
 
       cy.url().then(url => cy.visit(url + "?id=1&id=3"));
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains(".ScalarValue", "2");
     });
   });

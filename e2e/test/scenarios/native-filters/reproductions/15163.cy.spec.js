@@ -89,6 +89,7 @@ const dashboardDetails = {
     });
 
     it(`${test.toUpperCase()} version:\n should be able to view SQL question when accessing via dashboard with filters connected to modified card without SQL permissions (metabase#15163)`, () => {
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("New Title").click();
 
       cy.wait("@cardQuery", { timeout: 5000 }).then(xhr => {
@@ -97,6 +98,7 @@ const dashboardDetails = {
 
       cy.get(".ace_content").should("not.be.visible");
       cy.get(".cellData").should("contain", "51");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Showing 1 row");
     });
   });

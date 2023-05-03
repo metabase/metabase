@@ -28,6 +28,7 @@ describe("issue 29786", { tags: "@external" }, () => {
     FieldFilter.addWidgetStringFilter("Von-Gulgowski");
 
     SQLFilter.runQuery();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("1087115303928").should("be.visible");
   });
 });

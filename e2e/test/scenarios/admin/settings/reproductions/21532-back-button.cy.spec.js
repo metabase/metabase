@@ -10,7 +10,9 @@ describe("issue 21532", () => {
     cy.visit("/");
 
     cy.icon("gear").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Admin settings").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Getting set up");
 
     cy.go("back");

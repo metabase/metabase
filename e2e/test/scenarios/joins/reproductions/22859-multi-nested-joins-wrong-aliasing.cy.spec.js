@@ -40,6 +40,7 @@ describe("issue 22859 - multiple levels of nesting", () => {
 
     // Join Orders table with the previously saved question and save it again
     openOrdersTable({ mode: "notebook" });
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Join data").click();
 
     popover().within(() => {
@@ -77,7 +78,9 @@ describe("issue 22859 - multiple levels of nesting", () => {
 
   it("third level of nesting with joins should result in proper column aliasing (metabase#22859-2)", () => {
     startNewQuestion();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Saved Questions").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("22859-Q2").click();
 
     visualize();

@@ -14,6 +14,7 @@ describe("issue 22473", () => {
   it("nocollection user should be able to view and unsubscribe themselves from a subscription", () => {
     cy.visit(`/dashboard/1`);
     cy.icon("subscription").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Email it").click();
     cy.findByPlaceholderText("Enter user names or email addresses")
       .click()
@@ -26,6 +27,7 @@ describe("issue 22473", () => {
     cy.signIn("nocollection");
     cy.visit("/account/notifications");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Orders in a dashboard").should("exist");
     cy.findByTestId("notifications-list").within(() => {
       cy.findByLabelText("close icon").click();
@@ -33,6 +35,7 @@ describe("issue 22473", () => {
     modal().within(() => {
       cy.button("Unsubscribe").click();
     });
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Orders in a dashboard").should("not.exist");
   });
 });

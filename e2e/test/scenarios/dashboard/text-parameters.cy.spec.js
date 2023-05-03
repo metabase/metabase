@@ -27,6 +27,7 @@ describe("scenarios > dashboard > parameters in text cards", () => {
     });
     editDashboard();
     setFilter("Number", "Equal to");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(
       "You can connect widgets to {{variables}} in text cards.",
     ).should("exist");
@@ -38,24 +39,31 @@ describe("scenarios > dashboard > parameters in text cards", () => {
     editDashboard();
     setFilter("Number", "Equal to");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Select…").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("foo").click();
     saveDashboard();
 
     filterWidget().click();
     cy.findByPlaceholderText("Enter a number").type(`1{enter}`);
     cy.button("Add filter").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Variable: 1").should("exist");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("1").click();
     popover().within(() => {
       cy.findByRole("textbox").click().type("2{enter}");
       cy.button("Update filter").click();
     });
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Variable: 1 and 2").should("exist");
 
     editDashboard();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Equal to").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("foo").should("exist");
   });
 
@@ -72,7 +80,9 @@ describe("scenarios > dashboard > parameters in text cards", () => {
     editDashboard();
     setFilter("Time", "Relative Date");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Select…").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("foo").click();
     saveDashboard();
 
@@ -81,11 +91,13 @@ describe("scenarios > dashboard > parameters in text cards", () => {
       cy.findByText("Today").click();
     });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Variable: Aujourd'hui").should("exist");
 
     // Let's make sure the localization was reset back to the user locale by checking that specific text exists in
     // English on the homepage.
     cy.visit("/");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Pick up where you left off").should("exist");
   });
 

@@ -9,7 +9,9 @@ describe(`setup on ${version}`, () => {
     cy.visit("/");
     // It redirects to the setup page
     cy.location("pathname").should("eq", "/setup");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Welcome to Metabase");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Let's get started").click();
 
     setupLanguage();

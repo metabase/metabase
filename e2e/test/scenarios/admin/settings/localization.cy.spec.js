@@ -34,6 +34,7 @@ describe("scenarios > admin > localization", () => {
 
     // find and open that question
     cy.visit("/collection/root");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Orders created before June 1st 2016").click();
 
     cy.log("Assert the dates on the X axis");
@@ -67,6 +68,7 @@ describe("scenarios > admin > localization", () => {
     });
 
     cy.visit("/collection/root");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("13604").click();
 
     cy.log("Reported failing on v0.37.0.2 and labeled as `.Regression`");
@@ -118,19 +120,28 @@ describe("scenarios > admin > localization", () => {
 
   it("should not display excessive options in localization tab (metabase#14426)", () => {
     cy.visit("/admin/settings/localization");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Instance language/i);
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Report timezone/i);
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/First day of the week/i);
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Localization options/i);
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains(/Column title/i).should("not.exist");
   });
 
   it("should use currency settings for number columns with style set to currency (metabase#10787)", () => {
     cy.visit("/admin/settings/localization");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Unit of currency");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("US Dollar").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Euro").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Saved");
 
     visitQuestionAdhoc({
@@ -152,6 +163,7 @@ describe("scenarios > admin > localization", () => {
       },
     });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("€10.00");
   });
 
@@ -164,12 +176,15 @@ describe("scenarios > admin > localization", () => {
     cy.visit("/admin/settings/localization");
 
     // update the date style setting to YYYY/MM/DD
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("January 7, 2018").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("2018/1/7").click();
     cy.wait("@updateFormatting");
     cy.findAllByTestId("select-button-content").should("contain", "2018/1/7");
 
     // update the time style setting to 24 hour
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("17:24 (24-hour clock)").click();
     cy.wait("@updateFormatting");
     cy.findByDisplayValue("HH:mm").should("be.checked");
@@ -178,8 +193,11 @@ describe("scenarios > admin > localization", () => {
 
     // create a date filter and set it to the 'On' view to see a specific date
     cy.findByTextEnsureVisible("Created At").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Filter by this column").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Specific dates...").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("On").click();
 
     // ensure the date picker is ready
@@ -196,6 +214,7 @@ describe("scenarios > admin > localization", () => {
     // add a time to the date
     const TIME_SELECTOR_DEFAULT_HOUR = 12;
     const TIME_SELECTOR_DEFAULT_MINUTE = 30;
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Add a time").click();
     cy.findByDisplayValue(`${TIME_SELECTOR_DEFAULT_HOUR}`).clear().type("19");
     cy.findByDisplayValue(`${TIME_SELECTOR_DEFAULT_MINUTE}`).clear().type("56");
@@ -207,7 +226,9 @@ describe("scenarios > admin > localization", () => {
     cy.findByTestId("loading-spinner").should("not.exist");
 
     // verify that the correct row is displayed
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("2018/5/15, 19:56");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("127.52");
   });
 });

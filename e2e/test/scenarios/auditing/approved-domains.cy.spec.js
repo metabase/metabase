@@ -29,11 +29,14 @@ describeEE(
     it("should validate approved email domains for a question alert in the audit app", () => {
       visitQuestion(1);
       cy.icon("bell").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Set up an alert").click();
       cy.button("Done").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Your alert is all set up.");
 
       cy.visit("/admin/audit/subscriptions/alerts");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("1").click();
 
       modal().within(() => {
@@ -47,7 +50,9 @@ describeEE(
     it("should validate approved email domains for a dashboard subscription in the audit app", () => {
       visitDashboard(1);
       cy.icon("share").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Dashboard subscriptions").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Email it").click();
 
       sidebar().within(() => {
@@ -56,6 +61,7 @@ describeEE(
       });
 
       cy.visit("/admin/audit/subscriptions/subscriptions");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("1").click();
 
       modal().within(() => {

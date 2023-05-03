@@ -62,6 +62,7 @@ describe("issue 28304", () => {
   });
 
   it("table should should generate default columns when table.columns entries do not match data.cols (metabase#28304)", () => {
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Count by Created At: Month").should("be.visible");
 
     cy.findByTestId("viz-settings-button").click();

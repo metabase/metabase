@@ -63,12 +63,14 @@ describe("scenarios > dashboard > filters > SQL > date", () => {
   it(`should work when set as the default filter`, () => {
     setFilter("Time", "Month and Year");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Default value").next().click();
     DateFilter.setMonthAndYear({
       month: "October",
       year: "2017",
     });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Select…").click();
     popover().contains("Month and Year").click();
     saveDashboard();
@@ -79,8 +81,10 @@ describe("scenarios > dashboard > filters > SQL > date", () => {
     });
 
     // Make sure we can override the default value
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("October, 2017").click();
     popover().contains("August").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Oda Brakus");
   });
 });

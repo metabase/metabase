@@ -25,6 +25,7 @@ describe("issue 18063", () => {
 
     // Click anywhere to close both popovers that open automatically.
     // Please see: https://github.com/metabase/metabase/issues/18063#issuecomment-927836691
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Map type").click();
   });
 

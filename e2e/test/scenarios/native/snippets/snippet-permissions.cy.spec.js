@@ -24,6 +24,7 @@ describeEE("scenarios > question > snippets", () => {
 
       openNativeEditor();
       cy.icon("snippet").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Create a snippet").click();
 
       modal().within(() => {
@@ -37,6 +38,7 @@ describeEE("scenarios > question > snippets", () => {
       });
 
       cy.wait("@snippetCreated");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("{{snippet: one}}");
 
       cy.icon("play").first().click();
@@ -60,6 +62,7 @@ describeEE("scenarios > question > snippets", () => {
     // create folder
     cy.icon("snippet").click();
     cy.findByTestId("sidebar-right").as("sidebar").find(".Icon-add").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     popover().within(() => cy.findByText("New folder").click());
     modal().within(() => {
       cy.findByText("Create your new folder");
@@ -83,17 +86,23 @@ describeEE("scenarios > question > snippets", () => {
       cy.findByText("Edit").click();
     });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     modal().within(() => cy.findByText("Top folder").click());
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     popover().within(() => cy.findByText("my favorite snippets").click());
     cy.intercept("/api/collection/root/items?namespace=snippets").as(
       "updateList",
     );
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     modal().within(() => cy.findByText("Save").click());
 
     // check that everything is in the right spot
     cy.wait("@updateList");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("snippet 1").should("not.exist");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("my favorite snippets").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("snippet 1");
   });
 
@@ -116,6 +125,7 @@ describeEE("scenarios > question > snippets", () => {
       cy.visit("/collection/root");
 
       cy.wait("@collections");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Snippet Folder").should("not.exist");
     });
 
@@ -133,6 +143,7 @@ describeEE("scenarios > question > snippets", () => {
           .click({ force: true });
       });
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Change permissions").click();
 
       // Update permissions for "All users" and let them only "View" this folder
@@ -148,7 +159,9 @@ describeEE("scenarios > question > snippets", () => {
       cy.wait("@updatePermissions");
 
       // Now let's do the sanity check for the top level (root) snippet permissions and make sure nothing changed there
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Snippets").parent().next().find(".Icon-ellipsis").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Change permissions").click();
 
       // UI check

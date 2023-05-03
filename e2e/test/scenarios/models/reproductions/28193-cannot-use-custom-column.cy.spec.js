@@ -17,6 +17,7 @@ describe.skip("issue 28193", () => {
     // Go directly to model's query definition
     cy.visit("/model/1/query");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Custom column").click();
     enterCustomColumnDetails({
       formula: "[Tax]",

@@ -45,6 +45,7 @@ describeEE(
 
       cy.visit("/");
       cy.icon("gear").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Admin settings").should("be.visible").click();
 
       cy.location("pathname").should("eq", "/admin/databases");
@@ -54,6 +55,7 @@ describeEE(
         .and("not.contain", "Settings")
         .and("not.contain", "Data Model");
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Sample Database").click();
 
       cy.findByTestId("database-actions-panel")

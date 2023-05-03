@@ -18,6 +18,7 @@ describeEE("issue 17763", () => {
   it('should be able to edit tables permissions in granular view after "block" permissions (metabase#17763)', () => {
     cy.visit(`/admin/permissions/data/database/${SAMPLE_DB_ID}`);
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Block").click();
 
     popover().contains("Granular").click();

@@ -20,9 +20,12 @@ describe("issue 19737", () => {
 
     moveModel(modelName, "My personal collection");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Moved model");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("New").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Question").should("be.visible").click();
 
     popover().within(() => {
@@ -38,11 +41,14 @@ describe("issue 19737", () => {
 
     moveModel(modelName, "First collection");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Moved model");
     // Close the modal so the next time we move the model another model will always be shown
     cy.icon("close:visible").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("New").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Question").should("be.visible").click();
 
     // Open question picker (this is crucial) so the collection list are loaded.
@@ -60,9 +66,12 @@ describe("issue 19737", () => {
 
     moveModel(modelName, "My personal collection");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Moved model");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("New").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Question").should("be.visible").click();
 
     popover().within(() => {

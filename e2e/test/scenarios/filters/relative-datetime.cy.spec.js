@@ -33,6 +33,7 @@ describe("scenarios > question > relative-datetime", () => {
           date([[-30, unit]]),
         ]);
         withStartingFrom("Past", [10, unit], [10, unit]);
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Showing 2 rows").should("exist");
       }),
     );
@@ -47,6 +48,7 @@ describe("scenarios > question > relative-datetime", () => {
           date([[30, unit]]),
         ]);
         withStartingFrom("Next", [10, unit], [10, unit]);
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Showing 2 rows").should("exist");
       }),
     );
@@ -64,6 +66,7 @@ describe("scenarios > question > relative-datetime", () => {
 
       cy.wait("@dataset");
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Created At Previous 30 Days").click();
       setRelativeDatetimeValue(1);
       setRelativeDatetimeUnit("year");
@@ -132,9 +135,11 @@ describe("scenarios > question > relative-datetime", () => {
       });
       cy.wait("@dataset");
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("There was a problem with your question").should(
         "not.exist",
       );
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("No results!").should("exist");
     });
 
@@ -227,9 +232,11 @@ describe("scenarios > question > relative-datetime", () => {
       });
       cy.wait("@dataset");
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Created At Next 30 Days, starting 7 days ago").should(
         "not.exist",
       );
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Created At Next 30 Days, starting 7 days from now").should(
         "exist",
       );

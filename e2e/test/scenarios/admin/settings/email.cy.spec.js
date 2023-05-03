@@ -20,8 +20,10 @@ describe("scenarios > admin > settings > email settings", () => {
     cy.findByLabelText("Reply-To Address")
       .type("reply-to@metabase.test")
       .blur();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save changes").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Changes saved!", { timeout: 10000 });
 
     // This part was added as a repro for metabase#17615
@@ -46,6 +48,7 @@ describe("scenarios > admin > settings > email settings", () => {
       "email-smtp-username": null,
     });
     cy.visit("/admin/settings/email");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Send test email").click();
     cy.findAllByText("Wrong host or port").should("have.length", 2);
   });
@@ -57,7 +60,9 @@ describe("scenarios > admin > settings > email settings", () => {
       setupSMTP();
 
       cy.visit("/admin/settings/email");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Send test email").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Sent!");
 
       cy.request("GET", `http://localhost:${WEB_PORT}/email`).then(
@@ -71,6 +76,7 @@ describe("scenarios > admin > settings > email settings", () => {
 
   it("should be able to clear email settings", () => {
     cy.visit("/admin/settings/email");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Clear").click();
     cy.findByLabelText("SMTP Host").should("have.value", "");
     cy.findByLabelText("SMTP Port").should("have.value", "");
@@ -87,6 +93,7 @@ describe("scenarios > admin > settings > email settings", () => {
       setupSMTP();
 
       cy.visit("/admin/settings/email");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Send test email").scrollIntoView();
       // Needed to scroll the page down first to be able to use findByRole() - it fails otherwise
       cy.button("Save changes").should("be.disabled");
@@ -111,6 +118,7 @@ describe("scenarios > admin > settings > email settings", () => {
     cy.button("Save changes").click();
 
     cy.wait("@updateSettings");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Wrong host or port");
 
     // But it shouldn't delete field values

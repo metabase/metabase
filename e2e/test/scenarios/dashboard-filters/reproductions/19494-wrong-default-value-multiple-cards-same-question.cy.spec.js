@@ -71,9 +71,11 @@ describe("issue 19494", () => {
     saveDashboard();
 
     checkAppliedFilter("Card 1 Filter", "Doohickey");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("148.23");
 
     checkAppliedFilter("Card 2 Filter", "Gizmo");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("110.93");
   });
 });

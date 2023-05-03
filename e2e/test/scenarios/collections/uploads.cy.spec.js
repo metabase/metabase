@@ -61,6 +61,7 @@ describe("CSV Uploading", { tags: ["@external", "@actions"] }, () => {
             });
           });
 
+          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
           cy.get("main").within(() => cy.findByText("Uploads Collection"));
 
           cy.findByTestId("collection-table").within(() => {

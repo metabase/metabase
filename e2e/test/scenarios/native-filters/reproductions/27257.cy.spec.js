@@ -21,6 +21,7 @@ describe("issue 27257", () => {
       cy.icon("string");
     });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Variable type").parent().findByText("Text").click();
     popover().contains("Number").click();
 
@@ -37,6 +38,7 @@ describe("issue 27257", () => {
 
   it("should not drop numeric filter widget value on refresh even if it's zero (metabase#27257)", () => {
     cy.reload();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Here's where your results will appear");
     cy.findByDisplayValue("0");
   });

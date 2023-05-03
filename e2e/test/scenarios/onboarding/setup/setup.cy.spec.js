@@ -30,6 +30,7 @@ describe("scenarios > setup", () => {
         },
       });
       cy.location("pathname").should("eq", "/setup");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Welcome to Metabase");
       cy.findByTextEnsureVisible("Let's get started").click();
 
@@ -37,8 +38,10 @@ describe("scenarios > setup", () => {
       // Language
       // ========
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("What's your preferred language?");
       cy.findByLabelText("English");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Next").click();
 
       // ====
@@ -48,6 +51,7 @@ describe("scenarios > setup", () => {
       // "Next" should be disabled on the blank form
       // NOTE: unclear why cy.findByText("Next", { selector: "button" }) doesn't work
       // alternative: cy.contains("Next").should("be.disabled");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Next").closest("button").should("be.disabled");
 
       cy.findByLabelText("First name").type("Testy");
@@ -60,7 +64,9 @@ describe("scenarios > setup", () => {
       cy.findByLabelText("Confirm your password").type("password");
 
       // the form shouldn't be valid yet and we should display an error
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("must include one number", { exact: false });
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Next").closest("button").should("be.disabled");
 
       // now try a strong password that doesn't match
@@ -74,7 +80,9 @@ describe("scenarios > setup", () => {
         .blur();
 
       // tell the user about the mismatch after clicking "Next"
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Next").closest("button").should("be.disabled");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("passwords do not match", { exact: false });
 
       // fix that mismatch
@@ -83,6 +91,7 @@ describe("scenarios > setup", () => {
         .type(strongPassword);
 
       // Submit the first section
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Next").click();
 
       // ========
@@ -90,46 +99,60 @@ describe("scenarios > setup", () => {
       // ========
 
       // The database step should be open
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Add your data");
 
       // test database setup help card is NOT displayed before DB is selected
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Need help connecting?").should("not.be.visible");
 
       // test that you can return to user settings if you want
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Hi, Testy. Nice to meet you!").click();
       cy.findByLabelText("Email").should("have.value", "testy@metabase.test");
 
       // test database setup help card is NOT displayed on other steps
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Need help connecting?").should("not.be.visible");
 
       // now back to database setting
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Next").click();
 
       // check database setup card is visible
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("MySQL").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Need help connecting?").should("be.visible");
 
       cy.findByLabelText("Remove database").click();
       cy.findByPlaceholderText("Search for a database…").type("SQL");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("SQLite").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Need help connecting?");
 
       // add h2 database
       cy.findByLabelText("Remove database").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Show more options").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("H2").click();
       cy.findByLabelText("Display name").type("Metabase H2");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Connect database").closest("button").should("be.disabled");
 
       const dbFilename = "e2e/runner/empty.db";
       const dbPath = Cypress.config("fileServerFolder") + "/" + dbFilename;
       cy.findByLabelText("Connection String").type(`file:${dbPath}`);
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Connect database")
         .closest("button")
         .should("not.be.disabled")
         .click();
 
       // test database setup help card is hidden on the next step
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Need help connecting?").should("not.be.visible");
 
       // ================
@@ -137,23 +160,29 @@ describe("scenarios > setup", () => {
       // ================
 
       // collection defaults to on and describes data collection
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("All collection is completely anonymous.");
       // turn collection off, which hides data collection description
       cy.findByLabelText(
         "Allow Metabase to anonymously collect usage events",
       ).click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("All collection is completely anonymous.").should(
         "not.exist",
       );
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Finish").click();
 
       // ==================
       // Finish & Subscribe
       // ==================
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("You're all set up!");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(
         "Get infrequent emails about new releases and feature updates.",
       );
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Take me to Metabase").click();
       cy.location("pathname").should("eq", "/");
     });
@@ -162,16 +191,20 @@ describe("scenarios > setup", () => {
   it("should set up Metabase without first name and last name (metabase#22754)", () => {
     // This is a simplified version of the "scenarios > setup" test
     cy.visit("/");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Welcome to Metabase");
     cy.location("pathname").should("eq", "/setup");
     cy.findByTextEnsureVisible("Let's get started").click();
 
     // Language
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("What's your preferred language?");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("English").click();
     cy.button("Next").click();
 
     // User
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("What should we call you?");
 
     cy.findByLabelText("Email").type(admin.email);
@@ -181,13 +214,18 @@ describe("scenarios > setup", () => {
     cy.findByLabelText("Confirm your password").type(admin.password);
     cy.button("Next").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Hi. Nice to meet you!");
 
     // Database
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Add your data");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("I'll add my data later");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Show more options").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("H2").click();
     cy.findByLabelText("Display name").type("Metabase H2");
 
@@ -200,6 +238,7 @@ describe("scenarios > setup", () => {
     cy.findByLabelText(
       "Allow Metabase to anonymously collect usage events",
     ).click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("All collection is completely anonymous.").should(
       "not.exist",
     );
@@ -207,6 +246,7 @@ describe("scenarios > setup", () => {
 
     // Finish & Subscribe
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Take me to Metabase").click();
     cy.location("pathname").should("eq", "/");
   });
@@ -216,11 +256,14 @@ describe("scenarios > setup", () => {
   it("should allow pre-filling user details", () => {
     cy.visit(`/setup#123456`);
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Welcome to Metabase");
     cy.findByTextEnsureVisible("Let's get started").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("What's your preferred language?");
     cy.findByLabelText("English");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Next").click();
 
     cy.findByLabelText("First name").should("have.value", "Testy");
@@ -248,10 +291,12 @@ describeWithSnowplow("scenarios > setup", () => {
     cy.visit(`/setup`);
 
     // 2 - setup/step_seen
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Welcome to Metabase");
     cy.button("Let's get started").click();
 
     // 3 - setup/step_seen
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("What's your preferred language?");
 
     expectGoodSnowplowEvents(3);
@@ -261,6 +306,7 @@ describeWithSnowplow("scenarios > setup", () => {
     blockSnowplow();
     cy.visit(`/setup`);
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Welcome to Metabase");
     cy.button("Let's get started").click();
 

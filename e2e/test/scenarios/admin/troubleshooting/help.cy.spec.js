@@ -16,7 +16,9 @@ describe("scenarios > admin > troubleshooting > help", () => {
     setupMetabaseCloud();
     cy.visit("/admin/troubleshooting/help");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Metabase Admin");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Contact support");
   });
 });
@@ -32,7 +34,9 @@ describe("scenarios > admin > troubleshooting > help", { tags: "@OSS" }, () => {
   it("should link `Get Help` to help", () => {
     cy.visit("/admin/troubleshooting/help");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Metabase Admin");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Get Help")
       .parents("a")
       .should("have.prop", "href")
@@ -52,7 +56,9 @@ describeEE("scenarios > admin > troubleshooting > help (EE)", () => {
   it("should link `Get Help` to help-premium", () => {
     cy.visit("/admin/troubleshooting/help");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Metabase Admin");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Get Help")
       .parents("a")
       .should("have.prop", "href")

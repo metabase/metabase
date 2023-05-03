@@ -37,7 +37,9 @@ describe("issue 12581", () => {
 
   it("should correctly display a revision state after a restore (metabase#12581)", () => {
     // Start with the original version of the question made with API
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Open Editor/i).click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Open Editor/i).should("not.exist");
 
     // Both delay and a repeated sequence of `{selectall}{backspace}` are there to prevent typing flakes
@@ -48,6 +50,7 @@ describe("issue 12581", () => {
       .type("{selectall}{backspace}", { delay: 50 });
     cy.get("@editor").click().type("{selectall}{backspace}SELECT 1");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
     modal().within(() => {
       cy.button("Save").click();
@@ -58,17 +61,21 @@ describe("issue 12581", () => {
 
     cy.findByTestId("revision-history-button").click();
     // Make sure sidebar opened and the history loaded
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("You created this");
 
     cy.findByTestId("question-revert-button").click(); // Revert to the first revision
     cy.wait("@dataset");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("You reverted to an earlier revision");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Open Editor/i).click();
 
     cy.log("Reported failing on v0.35.3");
     cy.get("@editor").should("be.visible").and("contain", ORIGINAL_QUERY);
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("37.65");
 
     // Filter dropdown field

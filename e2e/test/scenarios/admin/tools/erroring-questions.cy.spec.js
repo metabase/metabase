@@ -56,6 +56,7 @@ describe.skip(
       it("should disable search input fields (metabase#18050)", () => {
         cy.visit(TOOLS_ERRORS_URL);
 
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("No results");
         cy.button("Rerun Selected").should("be.disabled");
         cy.findByPlaceholderText("Error contents").should("be.disabled");
@@ -83,6 +84,7 @@ describe.skip(
         cy.wait("@dataset");
 
         // The question is still there because we didn't fix it
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText(brokenQuestionDetails.name);
         cy.button("Rerun Selected").should("be.disabled");
 
@@ -94,6 +96,7 @@ describe.skip(
 
         cy.wait("@dataset");
 
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("No results");
       });
 
@@ -108,6 +111,7 @@ describe.skip(
 
         cy.wait("@dataset");
 
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("No results");
       });
     });

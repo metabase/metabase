@@ -46,9 +46,11 @@ describe("scenatios > question > native > mysql", { tags: "@external" }, () => {
     cy.wait("@dataset");
     cy.findByTextEnsureVisible("SUBTOTAL");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("37.65");
 
     // Save the query
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Save").click();
 
     modal().within(() => {
@@ -61,6 +63,7 @@ describe("scenatios > question > native > mysql", { tags: "@external" }, () => {
 
     cy.findByTextEnsureVisible("Not now").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Save").should("not.exist");
     cy.url().should("match", /\/question\/\d+-[a-z0-9-]*$/);
   });

@@ -17,19 +17,26 @@ describe("scenarios > admin > datamodel > hidden tables (metabase#9759)", () => 
   it("hidden table should not show up in various places in UI", () => {
     // Visit the main page, we shouldn't be able to see the table
     cy.visit(`/browse/${PRODUCTS_ID}`);
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Products");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Orders").should("not.exist");
 
     // It shouldn't show up for a normal user either
     cy.signInAsNormalUser();
     cy.visit(`/browse/${PRODUCTS_ID}`);
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Products");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Orders").should("not.exist");
 
     // It shouldn't show in a new question data picker
     startNewQuestion();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Sample Database").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Products");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Orders").should("not.exist");
   });
 });

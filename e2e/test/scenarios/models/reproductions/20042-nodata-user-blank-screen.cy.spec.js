@@ -17,7 +17,9 @@ describe("issue 20042", () => {
 
     cy.wait("@query");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Orders Model");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("37.65");
   });
 });

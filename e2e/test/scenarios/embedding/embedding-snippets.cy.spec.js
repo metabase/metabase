@@ -17,10 +17,14 @@ describe("scenarios > embedding > code snippets", () => {
   it("dashboard should have the correct embed snippet", () => {
     visitDashboard(1);
     cy.icon("share").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Embed in your application").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Code").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("To embed this dashboard in your application:");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(
       "Insert this code snippet in your server code to generate the signed embedding URL",
     );
@@ -31,6 +35,7 @@ describe("scenarios > embedding > code snippets", () => {
       .should("match", JS_CODE({ type: "dashboard" }));
 
     // set transparent background metabase#23477
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Transparent").click();
     cy.get(".ace_content")
       .first()
@@ -68,10 +73,14 @@ describe("scenarios > embedding > code snippets", () => {
   it("question should have the correct embed snippet", () => {
     visitQuestion(1);
     cy.icon("share").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Embed in your application").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Code").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("To embed this question in your application:");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(
       "Insert this code snippet in your server code to generate the signed embedding URL",
     );
@@ -82,6 +91,7 @@ describe("scenarios > embedding > code snippets", () => {
       .should("match", JS_CODE({ type: "question" }));
 
     // set transparent background metabase#23477
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Transparent").click();
     cy.get(".ace_content")
       .first()

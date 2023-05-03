@@ -40,6 +40,7 @@ describe("scenarios > binning > from a saved QB question using implicit joins", 
 
       // Make sure time series assertQueryBuilderState works as well
       cy.findAllByTestId("select-button-content").contains("Year").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Month").click();
 
       cy.get(".cellData").should("contain", "April, 1958").and("contain", "37");
@@ -76,13 +77,17 @@ describe("scenarios > binning > from a saved QB question using implicit joins", 
     beforeEach(() => {
       cy.visit("/question/1/notebook");
       summarize({ mode: "notebook" });
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Count of rows").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Pick a column to group by").click();
       // Click "Order" accordion to collapse it and expose the other tables
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Order").click();
     });
 
     it("should work for time series", () => {
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("User").click();
       cy.findByPlaceholderText("Find...").type("birth");
 
@@ -100,12 +105,14 @@ describe("scenarios > binning > from a saved QB question using implicit joins", 
 
       // Make sure time series assertQueryBuilderStateter works as well
       cy.findAllByTestId("select-button-content").contains("Year").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Month").click();
 
       cy.get(".cellData").should("contain", "April, 1958").and("contain", "37");
     });
 
     it("should work for number", () => {
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Product").click();
 
       changeBinningForDimension({
@@ -122,6 +129,7 @@ describe("scenarios > binning > from a saved QB question using implicit joins", 
     });
 
     it("should work for longitude", () => {
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("User").click();
       cy.findByPlaceholderText("Find...").type("longitude");
 

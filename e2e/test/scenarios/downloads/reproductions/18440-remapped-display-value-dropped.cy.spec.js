@@ -41,7 +41,9 @@ describe("issue 18440", () => {
     it(`export should include a column with remapped values for ${fileType} (metabase#18440-1)`, () => {
       visitQuestionAdhoc(questionDetails);
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Product ID");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Awesome Concrete Shoes");
 
       downloadAndAssert({ fileType }, assertion);

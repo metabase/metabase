@@ -55,7 +55,9 @@ describe("scenarios > dashboard > filters > nested questions", () => {
     });
 
     editDashboard();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(filter.name).find(".Icon-gear").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Select…").click();
 
     // This part reproduces metabase#13186
@@ -77,19 +79,24 @@ describe("scenarios > dashboard > filters > nested questions", () => {
     cy.button("Add filter").click();
     cy.wait("@dashcardQuery2");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("2 selections");
     cy.get("tbody > tr").should("have.length", 2);
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Doohickey").should("not.exist");
 
     cy.reload();
     cy.wait("@dashcardQuery2");
 
     cy.location("search").should("eq", "?text=Gizmo&text=Gadget");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("2 selections");
 
     editDashboard();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(filter.name).find(".Icon-gear").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Column to filter on")
       .parent()
       .contains(/Category/i)
@@ -125,8 +132,10 @@ describe("scenarios > dashboard > filters > nested questions", () => {
 
     setFilter("ID");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("No valid fields").should("not.exist");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Select…").click();
     popover().contains("ID").click();
   });

@@ -27,6 +27,7 @@ describe.skip(
         setCachingValue("Minimum Query Duration", "1");
         setCachingValue("Cache Time-To-Live (TTL) multiplier", "2");
 
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Saved");
 
         // Run the query and save the question

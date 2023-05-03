@@ -37,7 +37,9 @@ describe("issue 14148", { tags: "@external" }, () => {
       "Reported failing on v0.38.0-rc1 querying Postgres, Redshift and BigQuery. It works on MySQL and H2.",
     );
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Grand totals/i);
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("2,500");
   });
 });

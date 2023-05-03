@@ -8,7 +8,9 @@ describe.skip("issue 15946", { tags: "@external" }, () => {
     cy.signInAsAdmin();
 
     startNewQuestion();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(MONGO_DB_NAME).click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Orders").click();
   });
 

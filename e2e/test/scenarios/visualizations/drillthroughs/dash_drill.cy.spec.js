@@ -34,6 +34,7 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
 
         addCardToNewDashboard(DASHBOARD_NAME, Q2.id);
 
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText(DASHBOARD_NAME);
         clickScalarCardTitle(Q2.name);
       });
@@ -42,6 +43,7 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
         cy.log("Assert that the url is correct");
         cy.location("pathname").should("eq", `/question/${Q2.expectedPath}`);
 
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.contains("18,760");
       });
     });
@@ -66,12 +68,14 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
 
         addCardToNewDashboard(DASHBOARD_NAME, Q2.id);
 
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText(DASHBOARD_NAME);
         clickScalarCardTitle(Q2.name);
       });
 
       it("should result in a correct query result", () => {
         cy.location("pathname").should("eq", `/question/${Q2.expectedPath}`);
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("5,755");
       });
     });
@@ -114,6 +118,7 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
       });
 
       it("should result in a correct query result", () => {
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Affiliate");
         cy.get(".dot").should("have.length.of.at.least", 100);
       });

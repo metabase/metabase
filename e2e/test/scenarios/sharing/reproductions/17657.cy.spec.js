@@ -18,6 +18,7 @@ describe("issue 17657", () => {
 
     cy.icon("subscription").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/^Emailed monthly/).click();
 
     sidebar().within(() => {
@@ -27,6 +28,7 @@ describe("issue 17657", () => {
     // Open the popover with all users
     cy.findByPlaceholderText("Enter user names or email addresses").click();
     // Pick admin as a recipient
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(`${first_name} ${last_name}`).click();
 
     sidebar().within(() => {
