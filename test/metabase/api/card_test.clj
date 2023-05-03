@@ -474,36 +474,36 @@
                                                                    :graph.dimensions ["CATEGORY_ID"]}}
                                          attrs))]
     (t2.with-temp/with-temp
-      [:model/Card card (simple-mbql-chart-query {:name "Captain Toad" :display :line})
-       :model/Card _    (simple-mbql-chart-query {:name "Luigi 1"  :display :line})
-       :model/Card _    (simple-mbql-chart-query {:name "Luigi 2"  :display :line})
-       :model/Card _    (simple-mbql-chart-query {:name "Luigi 3"  :display :line})
-       :model/Card _    (simple-mbql-chart-query {:name "Luigi 4"  :display :line})
-       :model/Card _    (simple-mbql-chart-query {:name "Luigi 5"  :display :line})
-       :model/Card _    (simple-mbql-chart-query {:name "Luigi 6"  :display :line})
-       :model/Card _    (simple-mbql-chart-query {:name "Luigi 7"  :display :line})
-       :model/Card _    (simple-mbql-chart-query {:name "Luigi 8"  :display :line})]
+      [:model/Card card   (simple-mbql-chart-query {:name "Captain Toad" :display :line})
+       :model/Card card1  (simple-mbql-chart-query {:name "Luigi 1"  :display :line})
+       :model/Card _      (simple-mbql-chart-query {:name "Luigi 2"  :display :line})
+       :model/Card _      (simple-mbql-chart-query {:name "Luigi 3"  :display :line})
+       :model/Card card4  (simple-mbql-chart-query {:name "Luigi 4"  :display :line})
+       :model/Card _      (simple-mbql-chart-query {:name "Luigi 5"  :display :line})
+       :model/Card _      (simple-mbql-chart-query {:name "Luigi 6"  :display :line})
+       :model/Card _      (simple-mbql-chart-query {:name "Luigi 7"  :display :line})
+       :model/Card _      (simple-mbql-chart-query {:name "Luigi 8"  :display :line})]
       (testing "filtering works"
         (is (true? (every? #(str/includes? % "Toad")
                            (->> (mt/user-http-request :crowberto :get 200 (format "/card/%d/series" (:id card)) :query "toad")
                                 (map :name)))))
 
-        (testing "with limit"
-          (is (= ["Luigi 1" "Luigi 2" "Luigi 3" "Luigi 4"]
+        (testing "with limit and sort by id descending"
+          (is (= ["Luigi 8" "Luigi 7" "Luigi 6" "Luigi 5"]
                  (->> (mt/user-http-request :crowberto :get 200 (format "/card/%d/series" (:id card))
                                             :query "luigi" :limit 4)
                       (map :name))))
 
           (testing "and paging works too"
-            (is (= ["Luigi 5" "Luigi 6" "Luigi 7" "Luigi 8"]
+            (is (= ["Luigi 3" "Luigi 2" "Luigi 1"]
                    (->> (mt/user-http-request :crowberto :get 200 (format "/card/%d/series" (:id card))
-                                              :query "luigi" :limit 10 :last_cursor "Luigi 4")
+                                              :query "luigi" :limit 10 :last_cursor (:id card4))
                         (map :name)))))
 
           (testing "And returning empty list if reaches there are nothing..."
             (is (= []
                    (->> (mt/user-http-request :crowberto :get 200 (format "/card/%d/series" (:id card))
-                                              :query "luigi" :limit 10 :last_cursor "luigi 8")
+                                              :query "luigi" :limit 10 :last_cursor (:id card1))
                         (map :name))))))))))
 
 (def ^:private millisecond-card

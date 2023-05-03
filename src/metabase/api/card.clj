@@ -295,10 +295,10 @@
                                    :archived false
                                    :display [:in supported-series-display-type]
                                    :id [:not= (:id card)]
-                                   (cond-> {:order-by [[:%lower.name :asc]]
+                                   (cond-> {:order-by [[:id :desc]]
                                             :where    [:and]}
                                      last-cursor
-                                     (update :where conj [:> :%lower.name (u/lower-case-en last-cursor)])
+                                     (update :where conj [:< :id last-cursor])
 
                                      query
                                      (update :where conj [:like :%lower.name (str "%" (u/lower-case-en query) "%")])
@@ -323,7 +323,7 @@
 (defn- fetch-compatible-series
   "Fetch a list of compatible series for `card`.
 
-  - last-cursor: is the card's name of the last request
+  - last-cursor: is the last card's id of the previous page
   - page-size: is nullable, it'll try to fetches exactly `page-size` cards if there are enough cards."
  ([card query last-cursor page-size]
   (fetch-compatible-series card query last-cursor page-size []))
@@ -335,17 +335,17 @@
     (if (and (some? page-size)
              (seq cards)
              (< (count cards) page-size))
-      (fetch-compatible-series card query (:name (last cards)) (- page-size (count cards)) new-cards)
+      (fetch-compatible-series card query (:id (last cards)) (- page-size (count cards)) new-cards)
       new-cards))))
 
 (api/defendpoint GET "/:id/series"
   "Fetches a list of comptatible series with the card with id `card_id`.
 
-  Provide `last_cursor` with value is the name of the last card to fetch the next page.
-  Provide `query` to search card by name."
+  - `last_cursor` with value is the id of the last card from the previous page to fetch the next page.
+  - `query` to search card by name."
   [id last_cursor query]
   {id          int?
-   last_cursor [:maybe ms/NonBlankString]
+   last_cursor [:maybe ms/PositiveInt]
    query       [:maybe ms/NonBlankString]}
   (let [card         (-> (t2/select-one :model/Card :id id) api/check-404 api/read-check)
         card-display (:display card)
@@ -359,8 +359,6 @@
                        query
                        last_cursor
                        mw.offset-paging/*limit*)]
-    #_{:series      series
-       :last_cursor (:name (last series))}
     series))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
