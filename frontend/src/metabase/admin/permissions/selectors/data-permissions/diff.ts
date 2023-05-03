@@ -3,15 +3,17 @@ import _ from "underscore";
 
 import { diffDataPermissions } from "metabase/admin/permissions/utils/graph";
 import Groups from "metabase/entities/groups";
-import { getMetadata } from "metabase/selectors/metadata";
+import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
 import { PLUGIN_DATA_PERMISSIONS } from "metabase/plugins";
 
 import { State } from "metabase-types/store";
 
-const getDatabasesWithTables = createSelector(getMetadata, metadata =>
-  metadata
-    .databasesList({ savedQuestions: false })
-    .map(db => db.getPlainObject()),
+const getDatabasesWithTables = createSelector(
+  getMetadataWithHiddenTables,
+  metadata =>
+    metadata
+      .databasesList({ savedQuestions: false })
+      .map(db => db.getPlainObject()),
 );
 
 export const getIsDirty = createSelector(
