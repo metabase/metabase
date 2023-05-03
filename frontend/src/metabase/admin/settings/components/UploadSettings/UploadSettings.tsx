@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { jt, t } from "ttag";
 import { connect } from "react-redux";
 import _ from "underscore";
@@ -16,7 +16,9 @@ import type { Schema, Database as DatabaseType } from "metabase-types/api";
 import Link from "metabase/core/components/Link";
 import Select, { SelectChangeEvent } from "metabase/core/components/Select";
 import Input from "metabase/core/components/Input";
-import ActionButton from "metabase/components/ActionButton";
+import ActionButton, {
+  ActionButtonRef,
+} from "metabase/components/ActionButton";
 import EmptyState from "metabase/components/EmptyState/EmptyState";
 
 import SettingHeader from "../SettingHeader";
@@ -100,6 +102,10 @@ export function UploadSettingsView({
   const showSchema = dbId && dbHasSchema(databases, dbId);
   const databaseOptions = getDatabaseOptions(databases);
 
+  const enableButtonRef = useRef<ActionButtonRef>(null);
+  const disableButtonRef = useRef<ActionButtonRef>(null);
+  const updateButtonRef = useRef<ActionButtonRef>(null);
+
   if (!databaseOptions?.length) {
     return (
       <>
@@ -108,6 +114,12 @@ export function UploadSettingsView({
       </>
     );
   }
+
+  const resetButtons = () => {
+    enableButtonRef?.current?.resetState();
+    disableButtonRef?.current?.resetState();
+    updateButtonRef?.current?.resetState();
+  };
 
   const showError = (msg: string) => {
     setErrorMessage(msg);
@@ -172,6 +184,7 @@ export function UploadSettingsView({
             onChange={(e: SelectChangeEvent<number>) => {
               setDbId(e.target.value);
               if (e.target.value) {
+                resetButtons();
                 setTablePrefix(null);
                 setSchemaName(null);
               }
@@ -183,14 +196,19 @@ export function UploadSettingsView({
             {({ list: schemaList }: { list: Schema[] }) => (
               <div>
                 <SectionTitle>{t`Schema`}</SectionTitle>
-                <Select
-                  value={schemaName ?? ""}
-                  placeholder={t`Select a schema`}
-                  options={getSchemaOptions(schemaList)}
-                  onChange={(e: SelectChangeEvent<string>) =>
-                    setSchemaName(e.target.value)
-                  }
-                />
+                {schemaList?.length ? (
+                  <Select
+                    value={schemaName ?? ""}
+                    placeholder={t`Select a schema`}
+                    options={getSchemaOptions(schemaList)}
+                    onChange={(e: SelectChangeEvent<string>) => {
+                      resetButtons();
+                      setSchemaName(e.target.value);
+                    }}
+                  />
+                ) : (
+                  <EmptyState message={t`We couldn't find any schema.`} />
+                )}
               </div>
             )}
           </Schemas.ListLoader>
@@ -201,7 +219,10 @@ export function UploadSettingsView({
             <Input
               value={tablePrefix ?? ""}
               placeholder={t`uploaded_`}
-              onChange={e => setTablePrefix(e.target.value)}
+              onChange={e => {
+                resetButtons();
+                setTablePrefix(e.target.value);
+              }}
             />
           </div>
         )}
@@ -210,6 +231,7 @@ export function UploadSettingsView({
         {settings.uploads_enabled ? (
           settingsChanged ? (
             <ActionButton
+              ref={updateButtonRef}
               normalText={t`Update settings`}
               successText={t`Settings updated`}
               disabled={!hasValidSettings}
@@ -221,6 +243,7 @@ export function UploadSettingsView({
             />
           ) : (
             <ActionButton
+              ref={disableButtonRef}
               normalText={t`Disable uploads`}
               successText={
                 t`Uploads enabled` /* yes, this is backwards intentionally */
@@ -234,6 +257,7 @@ export function UploadSettingsView({
           )
         ) : (
           <ActionButton
+            ref={enableButtonRef}
             normalText={t`Enable uploads`}
             successText={
               t`Uploads disabled` /* yes, this is backwards intentionally */
