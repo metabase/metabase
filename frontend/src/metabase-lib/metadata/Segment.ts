@@ -12,6 +12,7 @@ import type Table from "./Table";
  */
 
 export default class Segment extends Base {
+  id: number;
   name: string;
   table_id: Table["id"];
   table: Table;
