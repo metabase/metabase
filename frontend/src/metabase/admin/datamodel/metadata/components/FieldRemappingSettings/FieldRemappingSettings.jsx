@@ -455,6 +455,10 @@ const RemappingNamingTip = () => (
 
 const mapStateToProps = (state, { field }) => ({
   metadata: getMetadataUnfiltered(state),
+  fieldsError: Fields.selectors.getError(state, {
+    entityId: field.id,
+    requestType: "values",
+  }),
 });
 
 const mapDispatchToProps = {
