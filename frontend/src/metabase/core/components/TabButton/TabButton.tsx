@@ -22,7 +22,13 @@ import {
   TabContext,
   TabContextType,
 } from "../Tab";
-import { TabButtonInput, TabButtonRoot, MenuButton } from "./TabButton.styled";
+import {
+  TabButtonInput,
+  TabButtonRoot,
+  MenuButton,
+  TabButtonInputWrapper,
+  TabButtonInputResizer,
+} from "./TabButton.styled";
 import TabButtonMenu from "./TabButtonMenu";
 
 export type TabButtonMenuAction<T> = (
@@ -108,20 +114,24 @@ const TabButton = forwardRef(function TabButton<T>(
       aria-label={label}
       id={getTabId(idPrefix, value)}
     >
-      <TabButtonInput
-        type="text"
-        value={label}
-        isSelected={isSelected}
-        disabled={!isEditing}
-        onChange={onEdit}
-        onKeyPress={handleInputKeyPress}
-        onFocus={e => e.currentTarget.select()}
-        onBlur={onFinishEditing}
-        aria-labelledby={getTabId(idPrefix, value)}
-        id={getTabButtonInputId(idPrefix, value)}
-        ref={inputRef}
-      />
-
+      <TabButtonInputWrapper>
+        <TabButtonInputResizer aria-hidden="true">
+          {label}
+        </TabButtonInputResizer>
+        <TabButtonInput
+          type="text"
+          value={label}
+          isSelected={isSelected}
+          disabled={!isEditing}
+          onChange={onEdit}
+          onKeyPress={handleInputKeyPress}
+          onFocus={e => e.currentTarget.select()}
+          onBlur={onFinishEditing}
+          aria-labelledby={getTabId(idPrefix, value)}
+          id={getTabButtonInputId(idPrefix, value)}
+          ref={inputRef}
+        />
+      </TabButtonInputWrapper>
       {showMenu && (
         <ControlledPopoverWithTrigger
           visible={isMenuOpen}
