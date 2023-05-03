@@ -61,11 +61,11 @@ export function assertPermissionTable(rows) {
 
 export function assertPermissionOptions(options) {
   popover().within(() => {
-    const elements = cy.findAllByRole("option");
-    elements.should("have.length", options.length);
-    elements.each(($accessEl, index) => {
-      cy.wrap($accessEl).findByText(options[index]);
-    });
+    cy.findAllByRole("option")
+      .should("have.length", options.length)
+      .each(($accessEl, index) => {
+        cy.wrap($accessEl).findByText(options[index]);
+      });
   });
 }
 
