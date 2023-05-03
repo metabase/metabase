@@ -77,7 +77,7 @@
                (update-in [:table :db] dissoc :updated_at :created_at :timezone :dbms_version))))
     (testing "target should be hydrated"
       (is (= (mt/id :categories :id)
-             (:id (:target (mt/user-http-request :rasta :get 200 (format "field/%d" (mt/id :venues :category_id)))))))))
+             (:id (:target (mt/user-http-request :rasta :get 200 (format "field/%d" (mt/id :venues :category_id))))))))))
 
 (deftest get-field-summary-test
   (testing "GET /api/field/:id/summary"
