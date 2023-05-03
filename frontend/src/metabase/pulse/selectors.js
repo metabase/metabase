@@ -1,4 +1,4 @@
-import { createSelector } from "reselect";
+import { createSelector } from "@reduxjs/toolkit";
 import _ from "underscore";
 
 export const getEditingPulse = state => state.pulse.editingPulse;
