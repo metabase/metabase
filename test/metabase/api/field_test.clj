@@ -206,27 +206,16 @@
       (mt/with-temp Field [{field-id :id} {:name "Field Test"}]
         (mt/user-http-request :rasta :put 403 (format "field/%d" field-id) {:name "Field Test 2"})))))
 
-(deftest get-field-hydrated-target-test
+(deftest update-field-hydrated-target-test
   (testing "PUT /api/field/:id"
     (testing "target should be hydrated"
       (mt/with-temp* [Field [fk-field-1]
                       Field [fk-field-2]
-                      Field [{field-id :id} {:semantic_type :type/FK, :fk_target_field_id (:id fk-field-1)}]]
+                      Field [field {:semantic_type :type/FK, :fk_target_field_id (:id fk-field-1)}]]
         (is (= (-> fk-field-2
                    (update :base_type u/qualified-name)
                    (update :visibility_type u/qualified-name))
-               (:target (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id) {:fk_target_field_id (:id fk-field-2)}))))))))
-
-(deftest get-field-hydrated-has-field-values-test
-  (testing "PUT /api/field/:id"
-    (testing "has_field_values should be hydrated"
-      (mt/with-temp* [Field [fk-field-1]
-                      Field [fk-field-2]
-                      Field [{field-id :id} {:semantic_type :type/FK, :fk_target_field_id (:id fk-field-1)}]]
-        (is (= (-> fk-field-2
-                   (update :base_type u/qualified-name)
-                   (update :visibility_type u/qualified-name))
-               (:target (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id) {:fk_target_field_id (:id fk-field-2)}))))))))
+               (:target (mt/user-http-request :crowberto :put 200 (format "field/%d" (:id field)) (assoc field :fk_target_field_id (:id fk-field-2))))))))))
 
 (deftest remove-fk-semantic-type-test
   (testing "PUT /api/field/:id"

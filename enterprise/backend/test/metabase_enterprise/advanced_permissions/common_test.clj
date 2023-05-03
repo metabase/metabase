@@ -278,6 +278,56 @@
                  (mt/user-http-request :rasta :get 200 (format "database/%d/schemas" db-id)
                                        :include_editable_data_model true))))))))
 
+(deftest update-field-hydrate-target-test
+  (mt/with-temp* Field [{field-id :id, table-id :table_id} {:name "Field Test"}]
+    (let [{table-id :id, schema :schema, db-id :db_id} (t2/select-one Table :id table-id)]
+      (testing "PUT /api/field/:id"
+        (let [endpoint (format "field/%d" field-id)]
+          (testing "a non-admin can update field metadata if they have data model permissions for the DB"
+            (with-all-users-data-perms {db-id {:data-model {:schemas :all}}}
+              (mt/user-http-request :rasta :put 200 endpoint {:name "Field Test 2"})))
+
+          (testing "target is hydrated if they have data model permissions for the table"
+            (with-all-users-data-perms {db-id {:data-model {:schemas :all}}}
+              (mt/user-http-request :rasta :put 200 endpoint {:name "Field Test 2"}))))))))
+
+(deftest update-field-hydrated-target-with-advanced-perms-test
+  (testing "PUT /api/field/:id"
+    (mt/with-temp* [Database [{db-id :id}]
+                    Table    [table1 {:db_id db-id, :schema "schema1"}]
+                    Table    [table2 {:db_id db-id, :schema "schema2"}]
+                    Table    [table3 {:db_id db-id, :schema "schema3"}]
+                    Field    [fk-field-1 {:table_id (:id table1)}]
+                    Field    [fk-field-2 {:table_id (:id table2)}]
+                    Field    [field {:table_id           (:id table3)
+                                     :semantic_type      :type/FK
+                                     :fk_target_field_id (:id fk-field-1)}]]
+      (let [expected-target (-> fk-field-2
+                                (update :base_type u/qualified-name)
+                                (update :visibility_type u/qualified-name))
+            update-target   (fn []
+                              (mt/user-http-request :rasta :put 200 (format "field/%d" (:id field)) (assoc field :fk_target_field_id (:id fk-field-2))))]
+        (testing "target should be hydrated if a non-admin has data model perms for the DB"
+          (with-all-users-data-perms {db-id {:data-model {:schemas :all}}}
+            (is (= expected-target
+                   (:target (update-target))))))
+        (testing "target should not be hydrated if a non-admin does not have data model perms for the target's schema"
+          (with-all-users-data-perms {db-id {:data-model {:schemas {"schema1" :none
+                                                                    "schema2" :none
+                                                                    "schema3" :all}}}}
+            (is (nil? (:target (update-target))))))
+        (testing "target should not be hydrated if a non-admin does not have data model perms for the target's table"
+          (with-all-users-data-perms {db-id {:data-model {:schemas {"schema1" {(:id table1) :all}
+                                                                    "schema2" {(:id table2) :none}
+                                                                    "schema3" {(:id table3) :all}}}}}
+            (is (nil? (:target (update-target))))))
+        (testing "target should be hydrated if a non-admin does have data model perms for the target's table"
+          (with-all-users-data-perms {db-id {:data-model {:schemas {"schema1" {(:id table1) :none}
+                                                                    "schema2" {(:id table2) :all}
+                                                                    "schema3" {(:id table3) :all}}}}}
+            (is (= expected-target
+                   (:target (update-target))))))))))
+
 (deftest update-field-test
   (mt/with-temp Field [{field-id :id, table-id :table_id} {:name "Field Test"}]
     (let [{table-id :id, schema :schema, db-id :db_id} (t2/select-one Table :id table-id)]
