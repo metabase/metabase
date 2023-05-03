@@ -424,5 +424,60 @@ describe("Admin > Settings > UploadSetting", () => {
         await screen.findByRole("button", { name: "Update settings" }),
       ).toBeEnabled();
     });
+
+    it("should show a loading spinner on submit", async () => {
+      setup({
+        settings: {
+          uploads_enabled: true,
+          uploads_database_id: 2,
+          uploads_schema_name: null,
+          uploads_table_prefix: "up_",
+        },
+        updateSettings: () => new Promise(resolve => setTimeout(resolve, 500)),
+      });
+
+      const prefixInput = await screen.findByPlaceholderText("uploaded_");
+      userEvent.clear(prefixInput);
+      userEvent.type(prefixInput, "my_prefix_");
+
+      const updateButton = await screen.findByRole("button", {
+        name: "Update settings",
+      });
+      userEvent.click(updateButton);
+      expect(await screen.findByTestId("loading-spinner")).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Update settings" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should reset button loading state on input change", async () => {
+      setup({
+        settings: {
+          uploads_enabled: true,
+          uploads_database_id: 2,
+          uploads_schema_name: null,
+          uploads_table_prefix: "up_",
+        },
+        updateSettings: () => new Promise(resolve => setTimeout(resolve, 500)),
+      });
+
+      const prefixInput = await screen.findByPlaceholderText("uploaded_");
+      userEvent.clear(prefixInput);
+      userEvent.type(prefixInput, "my_prefix_");
+
+      const updateButton = await screen.findByRole("button", {
+        name: "Update settings",
+      });
+      userEvent.click(updateButton);
+      expect(await screen.findByTestId("loading-spinner")).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Update settings" }),
+      ).not.toBeInTheDocument();
+
+      userEvent.type(prefixInput, "_2");
+      expect(
+        screen.getByRole("button", { name: "Update settings" }),
+      ).toBeInTheDocument();
+    });
   });
 });
