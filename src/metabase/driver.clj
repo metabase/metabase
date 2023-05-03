@@ -847,7 +847,7 @@
   :hierarchy #'hierarchy)
 
 (defmulti all-schemas
-  "Returns a list of schema names (strings) in the database."
+  "Returns a list of schemas in the database (as strings)."
   {:added "0.47.0", :arglists '([driver database])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)

@@ -274,3 +274,10 @@
                     (mt/user-http-request :crowberto
                                           :post 200
                                           (format "action/%s/execute" action-id))))))))))
+
+(deftest all-schemas-test
+  (mt/test-driver :h2
+    (testing "`all-schemas` should return for a database that a user can upload to"
+      (mt/with-empty-db
+        (is (= ["PUBLIC"]
+               (driver/all-schemas driver/*driver* (mt/id))))))))
