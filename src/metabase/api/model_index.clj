@@ -15,7 +15,9 @@
   (if-let [field (some (fn [f] (when ((comp #{(model-index/normalize-field-ref ref)} :field_ref) f)
                                  f))
                        metadata)]
-    (let [type-slot (if (= t :type/PK) :semantic_type :effective_type)]
+    (let [type-slot (case t
+                      :type/PK :semantic_type
+                      :type/Text :effective_type)]
       (when-not (isa? (type-slot field) t)
         (throw (ex-info (tru "Field is not of type {0}" t)
                         {:status-code   400
