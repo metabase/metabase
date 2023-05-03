@@ -1,9 +1,9 @@
 import type {
   ConcreteTableId,
-  Database,
   Group,
   GroupsPermissions,
 } from "metabase-types/api";
+import Database from "metabase-lib/metadata/Database";
 import {
   getFieldsPermission,
   getNativePermission,
