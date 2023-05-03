@@ -597,8 +597,7 @@
       (and (= min-b max-b) (<= min-a min-b max-a)) 1
 
       ;; ranges overlap, let's calculate the percent overlap
-      (or (<= min-a min-b max-a)
-          (<= min-a max-b max-a)) (overlap vals-a vals-b)
+      (<= (max min-a min-b) (min max-a max-b)) (overlap vals-a vals-b)
 
       ;; no overlap, let's calculate a nearness value to use instead
       :else (nearness vals-a vals-b))))
