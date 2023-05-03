@@ -40,9 +40,6 @@ export type ColumnDisplayInfo = {
   name: string;
   displayName: string;
   fkReferenceName?: string;
-  // TODO -- pretty sure the types were removed?
-  semanticType?: string | null;
-  effectiveType: string;
   is_calculated: boolean;
   isFromJoin: boolean;
   isImplicitlyJoinable: boolean;
@@ -51,7 +48,7 @@ export type ColumnDisplayInfo = {
 
 export type OrderByClauseDisplayInfo = Pick<
   ColumnDisplayInfo,
-  "name" | "displayName" | "effectiveType" | "semanticType" | "table"
+  "name" | "displayName" | "table"
 > & {
   direction: OrderByDirection;
 };
