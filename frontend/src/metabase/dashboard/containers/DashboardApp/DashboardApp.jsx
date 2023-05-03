@@ -33,7 +33,8 @@ import * as Urls from "metabase/lib/urls";
 import Dashboards from "metabase/entities/dashboards";
 
 import { useDispatch } from "metabase/lib/redux";
-import { addUndo } from "metabase/redux/undo";
+import { addUndo, dismissUndo } from "metabase/redux/undo";
+import { useUniqueId } from "metabase/hooks/use-unique-id";
 import * as dashboardActions from "../../actions";
 import {
   getIsEditing,
@@ -129,6 +130,7 @@ const DashboardApp = props => {
 
   useEffect(() => {
     if (isLoadingComplete) {
+      dispatch(dismissUndo(slowToastId));
       if (
         "Notification" in window &&
         Notification.permission === "granted" &&
@@ -140,26 +142,40 @@ const DashboardApp = props => {
         );
       }
     }
-  }, [dashboard?.name, isLoadingComplete, showNotification]);
+  }, [
+    dashboard?.name,
+    dispatch,
+    isLoadingComplete,
+    showNotification,
+    slowToastId,
+  ]);
 
+  const slowToastId = useUniqueId();
   const onConfirmToast = useCallback(async () => {
     await requestPermission();
-  }, [requestPermission]);
+    dispatch(dismissUndo(slowToastId));
+  }, [dispatch, requestPermission, slowToastId]);
 
   const onTimeout = useCallback(() => {
     if ("Notification" in window && Notification.permission === "default") {
       dispatch(
         addUndo({
+          id: slowToastId,
+          timeout: false,
           message: t`Would you like to be notified when this dashboard is done loading?`,
           action: onConfirmToast,
         }),
       );
     }
-  }, [dispatch, onConfirmToast]);
+  }, [dispatch, onConfirmToast, slowToastId]);
 
   useLoadingTimer(isRunning, {
     timer: DASHBOARD_SLOW_TIMEOUT,
     onTimeout,
+  });
+
+  useUnmount(() => {
+    dispatch(dismissUndo(slowToastId));
   });
 
   return (
