@@ -17,6 +17,7 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql-jdbc.sync.describe-table
     :as sql-jdbc.describe-table]
    [metabase.driver.sql.query-processor :as sql.qp]
@@ -700,6 +701,8 @@
                 (mdb.spec/spec :postgres it)
                 (sql-jdbc.common/handle-additional-options it details-map))]
     props))
+
+(defmethod sql-jdbc.sync/excluded-schemas :postgres [_driver] #{"information_schema" "pg_catalog"})
 
 (defmethod sql-jdbc.execute/set-timezone-sql :postgres
   [_]

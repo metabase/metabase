@@ -843,6 +843,12 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
+(defmulti all-schemas
+  "Returns a list of schema names (strings) in the database."
+  {:added "0.47.0", :arglists '([driver database])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
 (defmulti upload-type->database-type
   "Returns the database type for a given `metabase.upload` type."
   {:added "0.47.0", :arglists '([driver upload-type])}

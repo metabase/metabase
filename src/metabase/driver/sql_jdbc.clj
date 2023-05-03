@@ -8,6 +8,8 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.driver.sql-jdbc.sync.describe-database
+    :as sql-jdbc.describe-database]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.query-processor.writeback :as qp.writeback]
    [metabase.util.honeysql-extensions :as hx]))
@@ -138,3 +140,10 @@
     ;; across all drivers. With that in mind, 100 seems like a safe compromise.
     (doseq [sql sqls]
       (qp.writeback/execute-write-sql! db-id sql))))
+
+(defmethod driver/all-schemas :sql-jdbc
+  [driver database]
+  (with-open [conn ^java.sql.Connection (jdbc/get-connection (sql-jdbc.conn/db->pooled-connection-spec database))]
+    (->> (sql-jdbc.describe-database/all-schemas (.getMetaData conn))
+         (into [])
+         (remove (or (sql-jdbc.sync/excluded-schemas driver) #{})))))

@@ -1025,6 +1025,19 @@
         (is (= ["" " "]
                (mt/user-http-request :lucky :get 200 (format "database/%d/schemas" db-id))))))))
 
+(deftest get-schemas-include-empty-test
+  (mt/test-drivers #{:h2 :mysql :postgres}
+    (testing "GET /api/database/:id/schemas?include_empty=true"
+      (testing "Multiple schemas are ordered by name"
+        (is (= (case driver/*driver*
+                 :h2 ["PUBLIC"]
+                 :mysql []
+                 :postgres ["public"])
+               (mt/user-http-request :crowberto :get 200 (format "database/%d/schemas?include_empty=true" (mt/id)))))
+        (testing "Non-admins don't have permission to use include_empty parameter"
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :get 403 (format "database/%d/schemas?include_empty=true" (mt/id))))))))))
+
 (deftest get-schemas-for-schemas-with-no-visible-tables
   (mt/with-temp* [Database [{db-id :id}]
                   Table    [_ {:db_id db-id, :schema "schema_1", :name "table_1"}]

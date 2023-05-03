@@ -1,5 +1,6 @@
 (ns metabase.driver.h2
   (:require
+   [clojure.java.jdbc :as jdbc]
    [clojure.math.combinatorics :as math.combo]
    [clojure.string :as str]
    [java-time :as t]
@@ -11,6 +12,7 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.plugins.classloader :as classloader]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -533,3 +535,9 @@
   [_driver]
   ;; http://www.h2database.com/html/advanced.html#limits_limitations
   256)
+
+(defmethod driver/all-schemas :h2
+  [_driver database]
+  (with-open [conn ^java.sql.Connection (jdbc/get-connection (sql-jdbc.conn/db->pooled-connection-spec database))]
+    (->> (sql-jdbc.describe-database/all-schemas (.getMetaData conn))
+         (remove #{"INFORMATION_SCHEMA"}))))
