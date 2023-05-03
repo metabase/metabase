@@ -95,8 +95,6 @@ class AddSeriesModal extends Component {
   render() {
     const { dashcard, dashcardData } = this.props;
 
-    const enabledCards = new Set(this.state.series.map(card => card.id));
-
     const series = [dashcard.card]
       .concat(this.state.series)
       .map(card => ({
@@ -162,7 +160,7 @@ class AddSeriesModal extends Component {
           }}
         >
           <QuestionList
-            enabledCards={enabledCards}
+            enabledCards={this.state.series}
             onSelect={this.handleQuestionSelectedChange}
             dashcard={this.props.dashcard}
           />

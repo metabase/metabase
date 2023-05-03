@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { t } from "ttag";
 import { AutoSizer, List } from "react-virtualized";
 
@@ -21,10 +21,10 @@ import {
 } from "./QuestionList.styled";
 import { QuestionListItem } from "./QuestionListItem";
 
-const PAGE_SIZE = 15;
+const PAGE_SIZE = 10;
 
 interface QuestionListProps {
-  enabledCards: Set<CardId>;
+  enabledCards: Card[];
   onSelect: (card: Card, isChecked: boolean) => void;
   dashcard: any;
 }
@@ -34,31 +34,45 @@ export const QuestionList = React.memo(function QuestionList({
   onSelect,
   dashcard,
 }: QuestionListProps) {
-  const [cards, setCards] = useState<Card[]>([]);
-
-  const [{ error, loading }, loadCards] = useAsyncFn(
-    async (last_cursor?: CardId) => {
-      const cards = await CardApi.compatibleCards({
-        cardId: dashcard.card_id,
-        last_cursor,
-        limit: PAGE_SIZE,
-      });
-
-      setCards(prev => [...prev, ...cards]);
-    },
-    [dashcard],
+  const enabledCardIds = useMemo(
+    () => new Set(enabledCards.map(card => card.id)),
+    [enabledCards],
   );
 
+  const [hasMore, setHasMore] = useState(true);
+  const [cards, setCards] = useState<Card[]>(enabledCards);
   const [searchText, setSearchText] = useState("");
   const debouncedSearchText = useDebouncedValue(
     searchText,
     SEARCH_DEBOUNCE_DURATION,
   );
 
+  const [{ error, loading }, loadCards] = useAsyncFn(
+    async (searchText: string, last_cursor?: CardId) => {
+      const cards = await CardApi.compatibleCards({
+        cardId: dashcard.card_id,
+        last_cursor,
+        limit: PAGE_SIZE,
+        search: searchText.length > 0 ? searchText : null,
+        exclude: Array.from(enabledCardIds.values()),
+      });
+
+      setCards(prev => [...prev, ...cards]);
+      setHasMore(cards.length > 0);
+    },
+    [dashcard, debouncedSearchText],
+  );
+
   useEffect(() => {
-    setCards([]);
-    loadCards();
+    setCards(debouncedSearchText.length > 0 ? [] : enabledCards);
+    loadCards(debouncedSearchText);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedSearchText, loadCards]);
+
+  const handleLoadNext = useCallback(async () => {
+    const lastCard = cards[cards.length - 1];
+    loadCards(debouncedSearchText, lastCard?.id);
+  }, [cards, debouncedSearchText, loadCards]);
 
   const handleSearchFocus = () => {
     MetabaseAnalytics.trackStructEvent(
@@ -68,16 +82,8 @@ export const QuestionList = React.memo(function QuestionList({
     );
   };
 
-  const handleLoadNext = useCallback(async () => {
-    const lastCard = cards[cards.length - 1];
-    loadCards(lastCard?.id);
-  }, [cards, loadCards]);
-
-  useEffect(() => {
-    loadCards();
-  }, [loadCards]);
-
   const hasQuestionsToShow = cards.length > 0;
+  const rowsCount = hasMore ? cards.length + 1 : cards.length;
 
   return (
     <>
@@ -103,7 +109,7 @@ export const QuestionList = React.memo(function QuestionList({
                 overscanRowCount={0}
                 width={width}
                 height={height}
-                rowCount={cards.length + 1}
+                rowCount={rowsCount}
                 rowHeight={36}
                 rowRenderer={({ index, key, style }) => {
                   const isLoadMoreRow = index === cards.length;
@@ -122,7 +128,7 @@ export const QuestionList = React.memo(function QuestionList({
                   }
 
                   const card = cards[index];
-                  const isEnabled = enabledCards.has(card.id);
+                  const isEnabled = enabledCardIds.has(card.id);
 
                   return (
                     <QuestionListItem
