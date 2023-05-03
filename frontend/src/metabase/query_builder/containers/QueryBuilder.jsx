@@ -220,7 +220,6 @@ function QueryBuilder(props) {
     showTimelinesForCollection,
     card,
     isLoadingComplete,
-    isNew,
     isDirty: isModelQueryDirty,
     isMetadataDirty,
   } = props;
@@ -305,8 +304,8 @@ function QueryBuilder(props) {
   }, []);
 
   const isExistingModelDirty = useMemo(
-    () => !isNew && (isModelQueryDirty || isMetadataDirty),
-    [isMetadataDirty, isModelQueryDirty, isNew],
+    () => isModelQueryDirty || isMetadataDirty,
+    [isMetadataDirty, isModelQueryDirty],
   );
 
   useBeforeUnload(isExistingModelDirty);
