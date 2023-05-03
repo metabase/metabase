@@ -532,6 +532,10 @@ const TITLE_LOCALES_BN = {
     'en': 'Statistics of Job Status',
     'bn': 'জব স্ট্যাটাসের পরিসংখ্যান'
   },
+  'admin.dashboard.officer.designation': {
+    'en': 'Statistics of Designation',
+    'bn': 'পদবির পরিসংখ্যান'
+  },
 }
 
 export function dashcard_locale_title (locale, title_key) {
