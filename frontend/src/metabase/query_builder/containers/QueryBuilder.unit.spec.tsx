@@ -1,7 +1,14 @@
 import React, { ComponentPropsWithoutRef } from "react";
 import { IndexRoute, Route } from "react-router";
-import { Card } from "metabase-types/api";
-import { createMockCard, createMockDataset } from "metabase-types/api/mocks";
+import fetchMock from "fetch-mock";
+import userEvent from "@testing-library/user-event";
+
+import { Card, Dataset } from "metabase-types/api";
+import {
+  createMockCard,
+  createMockDataset,
+  createMockNativeDatasetQuery,
+} from "metabase-types/api/mocks";
 import {
   createSampleDatabase,
   ORDERS_ID,
@@ -20,7 +27,10 @@ import {
   renderWithProviders,
   screen,
   waitForElementToBeRemoved,
+  within,
 } from "__support__/ui";
+import { callMockEvent } from "__support__/events";
+import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/hooks/use-before-unload";
 import QueryBuilder from "./QueryBuilder";
 
 const TEST_DB = createSampleDatabase();
@@ -35,7 +45,22 @@ const TEST_CARD = createMockCard({
   },
 });
 
+const TEST_NATIVE_CARD = createMockCard({
+  dataset_query: createMockNativeDatasetQuery(),
+});
+
 const TEST_DATASET = createMockDataset();
+
+const TEST_COLLECTION = {
+  authority_level: null,
+  can_write: true,
+  name: "Top folder",
+  effective_ancestors: [],
+  effective_location: null,
+  parent_id: null,
+  id: "root",
+  namespace: "snippets",
+};
 
 const TestQueryBuilder = (
   props: ComponentPropsWithoutRef<typeof QueryBuilder>,
@@ -50,6 +75,7 @@ const TestQueryBuilder = (
 
 interface SetupOpts {
   card?: Card;
+  dataset?: Dataset;
   initialRoute?: string;
 }
 
@@ -64,6 +90,10 @@ const setup = async ({
   setupAlertsEndpoints(card, []);
   setupBookmarksEndpoints([]);
   setupTimelinesEndpoints([]);
+  fetchMock.get("path:/api/native-query-snippet", []);
+  fetchMock.get("path:/api/collection", [TEST_COLLECTION]);
+
+  const mockEventListener = jest.spyOn(window, "addEventListener");
 
   renderWithProviders(
     <Route path="/question">
@@ -79,20 +109,59 @@ const setup = async ({
   );
 
   await waitForElementToBeRemoved(() => screen.queryByText(/Loading/));
+
+  return { mockEventListener };
 };
 
 describe("QueryBuilder", () => {
-  it("renders a structured question in the simple mode", async () => {
-    await setup();
+  describe("renders structured queries", () => {
+    it("renders a structured question in the simple mode", async () => {
+      await setup();
 
-    expect(screen.getByDisplayValue(TEST_CARD.name)).toBeInTheDocument();
-  });
-
-  it("renders a structured question in the notebook mode", async () => {
-    await setup({
-      initialRoute: `/question/${TEST_CARD.id}/notebook`,
+      expect(screen.getByDisplayValue(TEST_CARD.name)).toBeInTheDocument();
     });
 
-    expect(screen.getByDisplayValue(TEST_CARD.name)).toBeInTheDocument();
+    it("renders a structured question in the notebook mode", async () => {
+      await setup({
+        initialRoute: `/question/${TEST_CARD.id}/notebook`,
+      });
+
+      expect(screen.getByDisplayValue(TEST_CARD.name)).toBeInTheDocument();
+    });
+  });
+
+  describe("beforeunload events", () => {
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it("triggers beforeunload event when user tries to leave edited native query", async () => {
+      const { mockEventListener } = await setup({
+        card: TEST_NATIVE_CARD,
+        initialRoute: `/question/${TEST_CARD.id}`,
+      });
+
+      const inputArea = within(
+        screen.getByTestId("mock-native-query-editor"),
+      ).getByRole("textbox");
+
+      userEvent.click(inputArea);
+      userEvent.type(inputArea, "batman");
+
+      const mockEvent = callMockEvent(mockEventListener, "beforeunload");
+      expect(mockEvent.preventDefault).toHaveBeenCalled();
+      expect(mockEvent.returnValue).toEqual(BEFORE_UNLOAD_UNSAVED_MESSAGE);
+    });
+
+    it("should not trigger beforeunload event when query is unedited", async () => {
+      const { mockEventListener } = await setup({
+        card: TEST_NATIVE_CARD,
+        initialRoute: `/question/${TEST_CARD.id}`,
+      });
+
+      const mockEvent = callMockEvent(mockEventListener, "beforeunload");
+      expect(mockEvent.preventDefault).not.toHaveBeenCalled();
+      expect(mockEvent.returnValue).not.toEqual(BEFORE_UNLOAD_UNSAVED_MESSAGE);
+    });
   });
 });
