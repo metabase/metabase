@@ -10,6 +10,7 @@
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql-jdbc.sync.describe-database
     :as sql-jdbc.describe-database]
+   [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.query-processor.writeback :as qp.writeback]
    [metabase.util.honeysql-extensions :as hx]))
@@ -144,6 +145,5 @@
 (defmethod driver/all-schemas :sql-jdbc
   [driver database]
   (with-open [conn ^java.sql.Connection (jdbc/get-connection (sql-jdbc.conn/db->pooled-connection-spec database))]
-    (->> (sql-jdbc.describe-database/all-schemas (.getMetaData conn))
-         (into [])
-         (remove (or (sql-jdbc.sync/excluded-schemas driver) #{})))))
+    (into []
+          (sql-jdbc.sync.interface/filtered-syncable-schemas driver conn (.getMetaData conn) nil nil))))
