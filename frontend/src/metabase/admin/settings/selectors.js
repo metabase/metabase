@@ -95,7 +95,8 @@ const SECTIONS = updateSectionsWithPlugins({
         key: "custom-homepage-dashboard",
         description: null,
         getHidden: ({ "custom-homepage": customHomepage }) => !customHomepage,
-        widget: DashboardSelector,       
+        requireUserUpdate: true,
+        widget: DashboardSelector,
       },
       {
         key: "redirect-all-requests-to-https",

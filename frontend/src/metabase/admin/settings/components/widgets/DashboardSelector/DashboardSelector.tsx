@@ -1,4 +1,5 @@
 import React from "react";
+import { t } from "ttag";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger/PopoverWithTrigger";
 import DashboardPicker from "metabase/containers/DashboardPicker";
 import Dashboards from "metabase/entities/dashboards";
@@ -27,7 +28,7 @@ const DashboardSelector = ({ onChange, dashboard }: DashboardSelectorProps) => {
     <PopoverWithTrigger
       triggerElement={
         <DashboardPickerButton>
-          {dashboard?.name || "I dunno"}
+          {dashboard?.name || t`Select a Dashboard`}
         </DashboardPickerButton>
       }
     >
