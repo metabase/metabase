@@ -35,6 +35,7 @@ import title from "metabase/hoc/Title";
 import titleWithLoadingTime from "metabase/hoc/TitleWithLoadingTime";
 import favicon from "metabase/hoc/Favicon";
 
+import useBeforeUnload from "metabase/hooks/use-before-unload";
 import View from "../components/view/View";
 
 import {
@@ -90,6 +91,7 @@ import {
   getIsAdditionalInfoVisible,
   getAutocompleteResultsFn,
   getCardAutocompleteResultsFn,
+  isResultsMetadataDirty,
 } from "../selectors";
 import * as actions from "../actions";
 
@@ -159,6 +161,7 @@ const mapStateToProps = (state, props) => {
 
     isRunnable: getIsRunnable(state),
     isResultDirty: getIsResultDirty(state),
+    isMetadataDirty: isResultsMetadataDirty(state),
 
     questionAlerts: getQuestionAlerts(state),
     visualizationSettings: getVisualizationSettings(state),
@@ -217,6 +220,9 @@ function QueryBuilder(props) {
     showTimelinesForCollection,
     card,
     isLoadingComplete,
+    isNew,
+    isDirty: isModelQueryDirty,
+    isMetadataDirty,
   } = props;
 
   const forceUpdate = useForceUpdate();
@@ -297,6 +303,13 @@ function QueryBuilder(props) {
     window.addEventListener("resize", forceUpdateDebounced);
     return () => window.removeEventListener("resize", forceUpdateDebounced);
   }, []);
+
+  const isExistingModelDirty = useMemo(
+    () => !isNew && (isModelQueryDirty || isMetadataDirty),
+    [isMetadataDirty, isModelQueryDirty, isNew],
+  );
+
+  useBeforeUnload(isExistingModelDirty);
 
   useUnmount(() => {
     cancelQuery();
