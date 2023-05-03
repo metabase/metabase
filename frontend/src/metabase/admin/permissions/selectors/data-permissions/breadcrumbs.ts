@@ -1,5 +1,5 @@
 import { Group } from "metabase-types/api";
-import { isNotNull } from "metabase/core/utils/types";
+import { isNotFalsy } from "metabase/core/utils/types";
 import type Metadata from "metabase-lib/metadata/Metadata";
 import type Schema from "metabase-lib/metadata/Schema";
 import type Table from "metabase-lib/metadata/Table";
@@ -97,7 +97,7 @@ export const getGroupsDataEditorBreadcrumbs = (
   const hasMultipleSchemas = database.schemasCount() > 1;
 
   if (tableId == null) {
-    return [databaseItem, hasMultipleSchemas && schemaItem].filter(isNotNull);
+    return [databaseItem, hasMultipleSchemas && schemaItem].filter(isNotFalsy);
   }
 
   const table = metadata.table(tableId) as Table;
@@ -108,6 +108,6 @@ export const getGroupsDataEditorBreadcrumbs = (
   };
 
   return [databaseItem, hasMultipleSchemas && schemaItem, tableItem].filter(
-    isNotNull,
+    isNotFalsy,
   );
 };
