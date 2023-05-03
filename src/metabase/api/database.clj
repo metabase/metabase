@@ -274,16 +274,10 @@
     ;; don't need to i18n since this is dev-facing only
     (log/warn "GET /api/database?include_tables and ?include_cards are deprecated."
               "Prefer using ?include=tables and ?saved=true instead."))
-  (let [include-tables?                 (cond
-                                          (seq include)        (= include "tables")
-                                          (seq include_tables) include_tables)
-        include-saved-questions-db?     (cond
-                                          (seq saved)         saved
-                                          (seq include_cards) include_cards)
+  (let [include-tables?                 (or (= include "tables") include_tables)
+        include-saved-questions-db?     (or saved include_cards)
         include-saved-questions-tables? (when include-saved-questions-db?
-                                          (if (seq include_cards)
-                                            true
-                                            include-tables?))
+                                          (if include_cards true include-tables?))
         db-list-res                     (or (dbs-list :include-tables?                 include-tables?
                                                       :include-saved-questions-db?     include-saved-questions-db?
                                                       :include-saved-questions-tables? include-saved-questions-tables?
@@ -729,6 +723,25 @@
               (assoc :valid false))
       details)))
 
+(defn- insert-database! [name engine details-or-error is-full-sync? is_on_demand cache_ttl details schedules auto_run_queries]
+  (def h2-data [name engine details-or-error is-full-sync? is_on_demand cache_ttl details schedules auto_run_queries])
+  (first (t2/insert-returning-instances!
+          Database
+          (merge
+           {:name         name
+            :engine       engine
+            :details      details-or-error
+            :is_full_sync is-full-sync?
+            :is_on_demand (boolean is_on_demand)
+            :cache_ttl    cache_ttl
+            :creator_id   api/*current-user-id*}
+           (sync.schedules/schedule-map->cron-strings
+            (if (:let-user-control-scheduling details)
+              (sync.schedules/scheduling schedules)
+              (sync.schedules/default-randomized-schedule)))
+           (when (some? auto_run_queries)
+             {:auto_run_queries auto_run_queries})))))
+
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/"
   "Add a new `Database`."
@@ -753,22 +766,9 @@
     (if valid?
       ;; no error, proceed with creation. If record is inserted successfuly, publish a `:database-create` event.
       ;; Throw a 500 if nothing is inserted
-      (u/prog1 (api/check-500 (first (t2/insert-returning-instances!
-                                       Database
-                                       (merge
-                                         {:name         name
-                                          :engine       engine
-                                          :details      details-or-error
-                                          :is_full_sync is-full-sync?
-                                          :is_on_demand (boolean is_on_demand)
-                                          :cache_ttl    cache_ttl
-                                          :creator_id   api/*current-user-id*}
-                                         (sync.schedules/schedule-map->cron-strings
-                                           (if (:let-user-control-scheduling details)
-                                             (sync.schedules/scheduling schedules)
-                                             (sync.schedules/default-randomized-schedule)))
-                                         (when (some? auto_run_queries)
-                                           {:auto_run_queries auto_run_queries})))))
+      (u/prog1 (api/check-500
+                (insert-database! name engine details-or-error is-full-sync? is_on_demand cache_ttl details schedules
+                                  auto_run_queries))
         (events/publish-event! :database-create <>)
         (snowplow/track-event! ::snowplow/database-connection-successful
                                api/*current-user-id*
