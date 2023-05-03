@@ -115,17 +115,18 @@ export const ClickActionButton = styled.div<ClickActionButtonProps>`
   ${({ type }) =>
     type === "token-filter" &&
     css`
-      color: ${color("filter")};
-      font-size: 0.875em;
+      color: ${color("brand")};
+      font-size: 1.25rem;
       line-height: 1rem;
-      padding: 0.125rem 1rem;
-      border: 1px solid ${alpha("filter", 0.5)};
+      padding: 0.125rem 0.85rem 0.25rem;
+      border: 1px solid ${color("focus")};
       border-radius: 100px;
-      margin-right: 0.5rem;
+      margin-right: 0.75rem;
 
       &:hover {
         color: ${color("white")};
-        background-color: ${color("filter")};
+        background-color: ${color("brand")};
+        border-color: ${color("brand")};
       }
     `}
 `;

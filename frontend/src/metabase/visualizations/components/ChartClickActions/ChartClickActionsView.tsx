@@ -54,7 +54,7 @@ const ChartClickActionsView = ({
               className={cx(
                 "text-small",
                 "mt1",
-                hasOnlyOneSection ? "text-dark" : "text-medium",
+                hasOnlyOneSection ? "text-medium" : "text-light",
               )}
             >
               {t`Filter by this value`}
