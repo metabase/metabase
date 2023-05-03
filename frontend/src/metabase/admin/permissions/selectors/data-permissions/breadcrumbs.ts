@@ -16,7 +16,7 @@ import {
 import { DataRouteParams, GroupRouteParams } from "../../types";
 
 export type EditorBreadcrumb = {
-  id: number | string;
+  id?: number | string;
   text: string;
   url?: string;
 };
@@ -97,9 +97,7 @@ export const getGroupsDataEditorBreadcrumbs = (
   const hasMultipleSchemas = database.schemasCount() > 1;
 
   if (tableId == null) {
-    return [databaseItem, hasMultipleSchemas && schemaItem].filter(
-      isNotNull,
-    ) as EditorBreadcrumb[];
+    return [databaseItem, hasMultipleSchemas && schemaItem].filter(isNotNull);
   }
 
   const table = metadata.table(tableId) as Table;
@@ -110,6 +108,6 @@ export const getGroupsDataEditorBreadcrumbs = (
   };
 
   return [databaseItem, hasMultipleSchemas && schemaItem, tableItem].filter(
-    Boolean,
-  ) as EditorBreadcrumb[];
+    isNotNull,
+  );
 };

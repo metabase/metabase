@@ -1,4 +1,8 @@
-export const isNotNull = <T>(value: T | null | undefined): value is T => {
+// Having `false` type here makes it easier to use `isNotNull` with array filter:
+// [item, condition && anotherItem].filter(isNotNull)
+export const isNotNull = <T>(
+  value: T | false | null | undefined,
+): value is T => {
   return value != null;
 };
 
