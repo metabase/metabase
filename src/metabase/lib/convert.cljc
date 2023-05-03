@@ -309,7 +309,7 @@
 
 (defmethod ->legacy-MBQL :aggregation [[_ opts agg-uuid :as ag]]
   (if (map? opts)
-    (let [opts (not-empty (disqualify opts))]
+    (let [opts (options->legacy-MBQL opts)]
       (cond-> [:aggregation (get-or-throw! *pMBQL-uuid->legacy-index* agg-uuid)]
         opts (conj opts)))
     ;; Our conversion is a bit too aggressive and we're hitting legacy refs like [:aggregation 0] inside source_metadata that are only used for legacy and thus can be ignored
