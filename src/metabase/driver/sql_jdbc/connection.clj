@@ -5,6 +5,7 @@
    [clojure.java.jdbc :as jdbc]
    [metabase.config :as config]
    [metabase.connection-pool :as connection-pool]
+   [metabase.db.connection :as mdb.connection]
    [metabase.driver :as driver]
    [metabase.models.database :refer [Database]]
    [metabase.models.interface :as mi]
@@ -216,16 +217,17 @@
     (u/id db-or-id-or-spec)
     (let [database-id (u/the-id db-or-id-or-spec)
           ;; we need the Database instance no matter what (in order to compare details hash with cached value)
-          db          (or (when (mi/instance-of? Database db-or-id-or-spec)
-                            db-or-id-or-spec) ; passed in
-                          (t2/select-one [Database :id :engine :details] :id database-id)     ; look up by ID
+          db          (or (when (mi/instance-of? Database db-or-id-or-spec) db-or-id-or-spec) ; passed in
+                          (t2/select-one [Database :id :engine :details :is_audit] :id database-id) ; look up by ID
                           (throw (ex-info (tru "Database {0} does not exist." database-id)
-                                   {:status-code 404
-                                    :type        qp.error-type/invalid-query
-                                    :database-id database-id})))
+                                          {:status-code 404
+                                           :type        qp.error-type/invalid-query
+                                           :database-id database-id})))
           get-fn      (fn [db-id log-invalidation?]
                         (when-let [details (get @database-id->connection-pool db-id)]
                           (cond
+                            (:is_audit db)
+                            {:datasource (mdb.connection/data-source)}
                             ;; details hash changed from what is cached; invalid
                             (let [curr-hash (get @database-id->jdbc-spec-hash db-id)
                                   new-hash  (jdbc-spec-hash db)]
