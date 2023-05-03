@@ -203,6 +203,53 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
     });
   });
 
+  it("don't propagate permissions by checkbox without access select", () => {
+    cy.visit("/admin/permissions/collections");
+
+    const collections = ["Our analytics", "First collection"];
+    assertSidebarItems(collections);
+
+    selectSidebarItem("First collection");
+    assertSidebarItems([...collections, "Second collection"]);
+
+    selectSidebarItem("Second collection");
+
+    assertPermissionTable([
+      ["Administrators", "Curate"],
+      ["All Users", "No access"],
+      ["collection", "Curate"],
+      ["data", "No access"],
+      ["nosql", "No access"],
+      ["readonly", "View"],
+    ]);
+
+    modifyPermission(
+      "All Users",
+      COLLECTION_ACCESS_PERMISSION_INDEX,
+      "View",
+      false,
+    );
+
+    modifyPermission(
+      "All Users",
+      COLLECTION_ACCESS_PERMISSION_INDEX,
+      null,
+      true,
+    );
+
+    // Navigate to children
+    selectSidebarItem("Third collection");
+
+    assertPermissionTable([
+      ["Administrators", "Curate"],
+      ["All Users", "No access"], // Check permission hasn't been propagated
+      ["collection", "Curate"],
+      ["data", "No access"],
+      ["nosql", "No access"],
+      ["readonly", "View"],
+    ]);
+  });
+
   context("data permissions", () => {
     it("warns about leaving with unsaved changes", () => {
       cy.visit("/admin/permissions");
