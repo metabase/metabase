@@ -140,7 +140,7 @@ const MODEL_NAME = "Test Action Model";
           clickHelper("Create");
 
           modal().within(() => {
-            cy.findByPlaceholderText("Team name").type("Zany Zebras");
+            cy.findByPlaceholderText("Team Name").type("Zany Zebras");
             cy.findByPlaceholderText("Score").type("44");
 
             cy.button("Save").click();
@@ -181,7 +181,7 @@ const MODEL_NAME = "Test Action Model";
           cy.wait("@executePrefetch");
           // let's check that the existing values are pre-filled correctly
           modal().within(() => {
-            cy.findByPlaceholderText("Team name")
+            cy.findByPlaceholderText("Team Name")
               .should("have.value", "Energetic Elephants")
               .clear()
               .type("Emotional Elephants");
@@ -229,7 +229,7 @@ const MODEL_NAME = "Test Action Model";
           clickHelper("Delete");
 
           modal().within(() => {
-            cy.findByPlaceholderText("Id").type("3");
+            cy.findByPlaceholderText("ID").type("3");
             cy.button("Delete").click();
           });
 
@@ -283,7 +283,7 @@ const MODEL_NAME = "Test Action Model";
 
           modal().within(() => {
             changeValue({
-              fieldName: "Uuid",
+              fieldName: "UUID",
               fieldType: "text",
               oldValue: oldRow.uuid,
               newValue: "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a77",
@@ -321,7 +321,7 @@ const MODEL_NAME = "Test Action Model";
 
             // we can't assert on this value because mysql and postgres seem to
             // handle timezones differently 🥴
-            cy.findByPlaceholderText("Timestamptz")
+            cy.findByPlaceholderText("TimestampTZ")
               .should("have.attr", "type", "datetime-local")
               .clear()
               .type("2020-05-01T16:45:00");
@@ -370,12 +370,12 @@ const MODEL_NAME = "Test Action Model";
           clickHelper("Create");
 
           modal().within(() => {
-            cy.findByPlaceholderText("Uuid").type(
+            cy.findByPlaceholderText("UUID").type(
               "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a15",
             );
 
             cy.findByPlaceholderText("Integer").type("-20");
-            cy.findByPlaceholderText("Integerunsigned").type("20");
+            cy.findByPlaceholderText("IntegerUnsigned").type("20");
             cy.findByPlaceholderText("Tinyint").type("101");
             cy.findByPlaceholderText("Tinyint1").type("1");
             cy.findByPlaceholderText("Smallint").type("32767");
@@ -392,10 +392,10 @@ const MODEL_NAME = "Test Action Model";
 
             cy.findByPlaceholderText("Date").type("2020-02-01");
             cy.findByPlaceholderText("Datetime").type("2020-03-01T12:00:00");
-            cy.findByPlaceholderText("Datetimetz").type("2020-03-01T12:00:00");
+            cy.findByPlaceholderText("DatetimeTZ").type("2020-03-01T12:00:00");
             cy.findByPlaceholderText("Time").type("12:57:57");
             cy.findByPlaceholderText("Timestamp").type("2020-03-01T12:00:00");
-            cy.findByPlaceholderText("Timestamptz").type("2020-03-01T12:00:00");
+            cy.findByPlaceholderText("TimestampTZ").type("2020-03-01T12:00:00");
 
             cy.button("Save").click();
           });
@@ -456,9 +456,9 @@ const MODEL_NAME = "Test Action Model";
           clickHelper("Create");
 
           modal().within(() => {
-            cy.findByPlaceholderText("Uuid").should("be.visible");
-            cy.findByPlaceholderText("Json").should("not.exist");
-            cy.findByPlaceholderText("Jsonb").should("not.exist");
+            cy.findByPlaceholderText("UUID").should("be.visible");
+            cy.findByPlaceholderText("JSON").should("not.exist");
+            cy.findByPlaceholderText("JSONB").should("not.exist");
             cy.findByPlaceholderText("Binary").should("not.exist");
 
             if (dialect === "mysql") {
@@ -524,14 +524,14 @@ const MODEL_NAME = "Test Action Model";
             // the instance is in US/Pacific so it's -8 hours
             if (dialect === "postgres") {
               changeValue({
-                fieldName: "Datetimetz",
+                fieldName: "DatetimeTZ",
                 fieldType: "datetime-local",
                 oldValue: "2020-01-01T00:35:55",
                 newValue: newTime,
               });
 
               changeValue({
-                fieldName: "Timestamptz",
+                fieldName: "TimestampTZ",
                 fieldType: "datetime-local",
                 oldValue: "2020-01-01T00:35:55",
                 newValue: newTime,
@@ -540,14 +540,14 @@ const MODEL_NAME = "Test Action Model";
 
             if (dialect === "mysql") {
               changeValue({
-                fieldName: "Datetimetz",
+                fieldName: "DatetimeTZ",
                 fieldType: "datetime-local",
                 oldValue: oldRow.datetimeTZ.replace(" ", "T"),
                 newValue: newTime,
               });
 
               changeValue({
-                fieldName: "Timestamptz",
+                fieldName: "TimestampTZ",
                 fieldType: "datetime-local",
                 oldValue: oldRow.timestampTZ.replace(" ", "T"),
                 newValue: newTime,
