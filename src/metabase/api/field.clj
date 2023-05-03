@@ -180,13 +180,9 @@
       (update-nested-fields-on-json-unfolding-change! field json_unfolding))
     ;; return updated field. note the fingerprint on this might be out of date if the task below would replace them
     ;; but that shouldn't matter for the datamodel page
-    (u/prog1 (let [field (hydrate (t2/select-one Field :id id) :dimensions :has_field_values)
-                   target-field-id (when (isa? (:semantic_type field) :type/FK)
-                                     (:fk_target_field_id field))
-                   target-field    (when-let [target-field (and target-field-id (t2/select-one Field :id target-field-id))]
-                                     (when (mi/can-write? (hydrate target-field :table))
-                                       target-field))]
-               (assoc field :target target-field))
+    (u/prog1 (-> (t2/select-one Field :id id)
+                 (hydrate :dimensions :has_field_values)
+                 (field/hydrate-target-with-write-perms))
       (when (not= effective-type (:effective_type field))
         (sync.concurrent/submit-task (fn [] (sync/refingerprint-field! <>)))))))
 
