@@ -77,7 +77,8 @@ jobs:
 
   fe-tests-unit:
     needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.frontend_all == 'true'
+    # TODO: Revert
+    if: needs.files-changed.outputs.frontend_all == 'true'
     runs-on: buildjet-2vcpu-ubuntu-2204
     timeout-minutes: 30
     steps:
