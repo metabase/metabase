@@ -13,12 +13,15 @@ import {
 } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
-const { ORDERS_ID, ORDERS, PRODUCTS_ID } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PRODUCTS_ID, REVIEWS, REVIEWS_ID } = SAMPLE_DATABASE;
 const { ALL_USERS_GROUP } = USER_GROUPS;
-const ORDERS_DESCRIPTION =
-  "Confirmed Sample Company orders for a product, from a user.";
 const MYSQL_DB_ID = SAMPLE_DB_ID + 1;
 const MYSQL_DB_SCHEMA_ID = `${MYSQL_DB_ID}:PUBLIC`;
+
+const ORDERS_DESCRIPTION =
+  "Confirmed Sample Company orders for a product, from a user.";
+const CUSTOM_MAPPING_ERROR =
+  "You need unrestricted data access on this table to map custom display values.";
 
 describe("scenarios > admin > datamodel > editor", () => {
   beforeEach(() => {
@@ -28,6 +31,7 @@ describe("scenarios > admin > datamodel > editor", () => {
     cy.intercept("PUT", "/api/table/*").as("updateTable");
     cy.intercept("PUT", "/api/field/*").as("updateField");
     cy.intercept("PUT", "/api/table/*/fields/order").as("updateFieldOrder");
+    cy.intercept("POST", "/api/field/*/dimension").as("updateFieldDimension");
   });
 
   describe("table settings", () => {
@@ -368,7 +372,9 @@ describe("scenarios > admin > datamodel > editor", () => {
       cy.updatePermissionsGraph({
         [ALL_USERS_GROUP]: {
           [SAMPLE_DB_ID]: {
-            "data-model": { schemas: { PUBLIC: { [ORDERS_ID]: "all" } } },
+            "data-model": {
+              schemas: { PUBLIC: { [ORDERS_ID]: "all", [REVIEWS_ID]: "all" } },
+            },
           },
         },
       });
@@ -421,6 +427,42 @@ describe("scenarios > admin > datamodel > editor", () => {
       cy.findByText("New total").should("be.visible");
       cy.findByText("Total").should("not.exist");
     });
+
+    it("should allow setting foreign key mapping for accessible tables", () => {
+      cy.signIn("none");
+      visitFieldMetadata({ tableId: REVIEWS_ID, fieldId: REVIEWS.PRODUCT_ID });
+      cy.findByText("Use original value").click();
+      setSelectValue("Use foreign key");
+      cy.wait("@updateDimension");
+    });
+
+    it("should now allow setting foreign key mapping for inaccessible tables", () => {
+      cy.signIn("none");
+      visitFieldMetadata({ tableId: REVIEWS_ID, fieldId: REVIEWS.PRODUCTS_ID });
+      cy.findByText("Use original value").click();
+      setSelectValue("Use foreign key");
+    });
+
+    it("should show a proper error message when using custom mapping", () => {
+      cy.signIn("none");
+      visitFieldMetadata({ tableId: REVIEWS_ID, fieldId: REVIEWS.RATING });
+      cy.findByText("Use original value").click();
+      popover().within(() => {
+        cy.findByText("Use original value").should("be.visible");
+        cy.findByText("Custom mapping").should("not.exist");
+      });
+
+      cy.signInAsAdmin();
+      visitFieldMetadata({ tableId: REVIEWS_ID, fieldId: REVIEWS.RATING });
+      cy.findByText("Use original value").click();
+      setSelectValue("Custom mapping");
+      cy.wait("@updateFieldDimension");
+
+      cy.signIn("none");
+      visitFieldMetadata({ tableId: REVIEWS_ID, fieldId: REVIEWS.RATING });
+      cy.findByText("Custom mapping").click();
+      cy.findByText(CUSTOM_MAPPING_ERROR).should("be.visible");
+    });
   });
 
   describe("databases without schemas", { tags: ["@external"] }, () => {
@@ -458,7 +500,7 @@ const visitTableMetadata = ({
   tableId = ORDERS_ID,
 } = {}) => {
   cy.visit(
-    `/admin/datamodel/database/${databaseId}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${tableId}`,
+    `/admin/datamodel/database/${databaseId}/schema/${schemaId}/table/${tableId}`,
   );
   cy.wait("@fetchMetadata");
 };
