@@ -58,7 +58,10 @@
   [id include_editable_data_model]
   (let [include_editable_data_model (Boolean/parseBoolean include_editable_data_model)
         field                       (-> (api/check-404 (t2/select-one Field :id id))
-                                        (hydrate [:table :db] :has_field_values :dimensions :name_field :target))]
+                                        (hydrate [:table :db] :has_field_values :dimensions :name_field))
+        field                       (if include_editable_data_model
+                                      (field/hydrate-target-with-write-perms field)
+                                      (hydrate field :target))]
     ;; Normal read perms = normal access.
     ;;
     ;; There's also a special case where we allow you to fetch a Field even if you don't have full read permissions for
@@ -159,7 +162,8 @@
     (when fk-target-field-id
       (api/checkp (t2/exists? Field :id fk-target-field-id)
         :fk_target_field_id "Invalid target field"))
-    (when (and (not removed-fk?)
+    (when (and display_name
+               (not removed-fk?)
                (not= (:display_name field) display_name))
       (t2/update! Dimension :field_id id {:name display_name}))
     ;; everything checks out, now update the field
@@ -180,7 +184,9 @@
       (update-nested-fields-on-json-unfolding-change! field json_unfolding))
     ;; return updated field. note the fingerprint on this might be out of date if the task below would replace them
     ;; but that shouldn't matter for the datamodel page
-    (u/prog1 (hydrate (t2/select-one Field :id id) :dimensions :has_field_values :target)
+    (u/prog1 (-> (t2/select-one Field :id id)
+                 (hydrate :dimensions :has_field_values)
+                 (field/hydrate-target-with-write-perms))
       (when (not= effective-type (:effective_type field))
         (sync.concurrent/submit-task (fn [] (sync/refingerprint-field! <>)))))))
 

@@ -76,14 +76,8 @@
            (-> (mt/user-http-request :rasta :get 200 (format "field/%d" (mt/id :users :name)))
                (update-in [:table :db] dissoc :updated_at :created_at :timezone :dbms_version))))
     (testing "target should be hydrated"
-      (is (= (t2/select-one Field :id (mt/id :categories :id))
-             (-> (:target (mt/user-http-request :rasta :get 200 (format "field/%d" (mt/id :venues :category_id))))
-                 ;; TODO: it's not clear why these values aren't keywordized on the target. See this
-                 ;; https://github.com/metabase/metabase/blob/b96b6e043933c5708fdea18e58634f375926025c/src/metabase/models/interface.clj#L259
-                 (update :base_type keyword)
-                 (update :visibility_type keyword)
-                 (update :effective_type keyword)
-                 (update :semantic_type keyword)))))))
+      (is (= (mt/id :categories :id)
+             (:id (:target (mt/user-http-request :rasta :get 200 (format "field/%d" (mt/id :venues :category_id)))))))))
 
 (deftest get-field-summary-test
   (testing "GET /api/field/:id/summary"
@@ -206,27 +200,14 @@
       (mt/with-temp Field [{field-id :id} {:name "Field Test"}]
         (mt/user-http-request :rasta :put 403 (format "field/%d" field-id) {:name "Field Test 2"})))))
 
-(deftest get-field-hydrated-target-test
+(deftest update-field-hydrated-target-test
   (testing "PUT /api/field/:id"
     (testing "target should be hydrated"
       (mt/with-temp* [Field [fk-field-1]
                       Field [fk-field-2]
-                      Field [{field-id :id} {:semantic_type :type/FK, :fk_target_field_id (:id fk-field-1)}]]
-        (is (= (-> fk-field-2
-                   (update :base_type u/qualified-name)
-                   (update :visibility_type u/qualified-name))
-               (:target (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id) {:fk_target_field_id (:id fk-field-2)}))))))))
-
-(deftest get-field-hydrated-has-field-values-test
-  (testing "PUT /api/field/:id"
-    (testing "has_field_values should be hydrated"
-      (mt/with-temp* [Field [fk-field-1]
-                      Field [fk-field-2]
-                      Field [{field-id :id} {:semantic_type :type/FK, :fk_target_field_id (:id fk-field-1)}]]
-        (is (= (-> fk-field-2
-                   (update :base_type u/qualified-name)
-                   (update :visibility_type u/qualified-name))
-               (:target (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id) {:fk_target_field_id (:id fk-field-2)}))))))))
+                      Field [field {:semantic_type :type/FK, :fk_target_field_id (:id fk-field-1)}]]
+        (is (= (:id fk-field-2)
+               (:id (:target (mt/user-http-request :crowberto :put 200 (format "field/%d" (:id field)) (assoc field :fk_target_field_id (:id fk-field-2)))))))))))
 
 (deftest remove-fk-semantic-type-test
   (testing "PUT /api/field/:id"
