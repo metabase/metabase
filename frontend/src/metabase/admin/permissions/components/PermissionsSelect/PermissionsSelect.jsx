@@ -51,7 +51,6 @@ export const PermissionsSelect = memo(function PermissionsSelect({
 }) {
   const [toggleState, setToggleState] = useState(false);
   const selectedOption = options.find(option => option.value === value);
-  const selectableOptions = options.filter(option => option !== selectedOption);
 
   const selectedOptionValue = (
     <PermissionsSelectRoot
@@ -92,13 +91,14 @@ export const PermissionsSelect = memo(function PermissionsSelect({
     <PopoverWithTrigger
       disabled={isDisabled}
       triggerElement={selectedOptionValue}
+      onClose={() => setToggleState(false)}
       targetOffsetX={16}
       targetOffsetY={8}
     >
       {({ onClose }) => (
         <React.Fragment>
           <OptionsList role="listbox">
-            {selectableOptions.map(option => (
+            {options.map(option => (
               <OptionsListItem
                 role="option"
                 key={option.value}
@@ -131,14 +131,7 @@ export const PermissionsSelect = memo(function PermissionsSelect({
           {toggleLabel && (
             <ToggleContainer>
               <ToggleLabel>{toggleLabel}</ToggleLabel>
-              <Toggle
-                small
-                value={toggleState}
-                onChange={value => {
-                  setToggleState(value);
-                  onChange(selectedOption.value, value);
-                }}
-              />
+              <Toggle small value={toggleState} onChange={setToggleState} />
             </ToggleContainer>
           )}
         </React.Fragment>
