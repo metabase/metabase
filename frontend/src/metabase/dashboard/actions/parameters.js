@@ -8,15 +8,11 @@ import {
   setParameterName as setParamName,
 } from "metabase/parameters/utils/dashboards";
 import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-values";
-import {
-  DASHBOARD_SLOW_TIMEOUT,
-  SIDEBAR_NAME,
-} from "metabase/dashboard/constants";
+import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 
 import { getMetadata } from "metabase/selectors/metadata";
 import { isActionDashCard } from "metabase/actions/utils";
 import {
-  getAutoApplyFiltersToastTimeoutId,
   getDashboard,
   getDraftParameterValues,
   getIsAutoApplyFilters,
@@ -203,46 +199,6 @@ export const applyDraftParameterValues = createThunkAction(
     const draftParameterValues = getDraftParameterValues(getState());
     dispatch(setParameterValues(draftParameterValues));
   },
-);
-
-export const SET_READY_FOR_AUTO_APPLY_FILTERS_TOAST =
-  "SET_READY_FOR_AUTO_APPLY_FILTERS_TOAST";
-export const setReadyForAutoApplyFiltersToast = createAction(
-  SET_READY_FOR_AUTO_APPLY_FILTERS_TOAST,
-);
-
-export const SET_NEVER_SHOW_AUTO_APPLY_FILTERS_TOAST =
-  "SET_NEVER_SHOW_AUTO_APPLY_FILTERS_TOAST";
-export const setNeverShowAutoApplyFiltersToast = createAction(
-  SET_NEVER_SHOW_AUTO_APPLY_FILTERS_TOAST,
-);
-
-export const DISMISS_AUTO_APPLY_FILTERS_TOAST =
-  "DISMISS_AUTO_APPLY_FILTERS_TOAST";
-export const dismissAutoApplyFiltersToast = createAction(
-  DISMISS_AUTO_APPLY_FILTERS_TOAST,
-);
-
-export const START_FETCH_DASHBOARD_CARD_DATA_TIMEOUT =
-  "metabase/dashboard/START_FETCH_DASHBOARD_CARD_DATA_TIMEOUT";
-export const startFetchDashboardCardDataTimeout = createThunkAction(
-  START_FETCH_DASHBOARD_CARD_DATA_TIMEOUT,
-  () => (dispatch, getState) => {
-    const timeoutIdFromState = getAutoApplyFiltersToastTimeoutId(getState());
-    clearTimeout(timeoutIdFromState);
-
-    const timeoutId = setTimeout(() => {
-      dispatch(timeOutFetchDashboardCardData());
-    }, DASHBOARD_SLOW_TIMEOUT);
-
-    return { timeoutId };
-  },
-);
-
-export const TIME_OUT_FETCH_DASHBOARD_CARD_DATA =
-  "metabase/dashboard/TIME_OUT_FETCH_DASHBOARD_CARD_DATA";
-const timeOutFetchDashboardCardData = createAction(
-  TIME_OUT_FETCH_DASHBOARD_CARD_DATA,
 );
 
 export const SET_PARAMETER_DEFAULT_VALUE =

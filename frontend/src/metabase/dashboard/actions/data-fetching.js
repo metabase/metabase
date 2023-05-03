@@ -42,7 +42,6 @@ import {
 } from "../utils";
 import { DASHBOARD_SLOW_TIMEOUT } from "../constants";
 import { loadMetadataForDashboard } from "./metadata";
-import { startFetchDashboardCardDataTimeout } from "./parameters";
 
 // normalizr schemas
 const dashcard = new schema.Entity("dashcard");
@@ -367,6 +366,7 @@ export const fetchCardData = createThunkAction(
         dashcard_id: dashcard.id,
         card_id: card.id,
         result: cancelled ? null : result,
+        currentTime: performance.now(),
       };
     };
   },
@@ -375,7 +375,6 @@ export const fetchCardData = createThunkAction(
 export const fetchDashboardCardData = createThunkAction(
   FETCH_DASHBOARD_CARD_DATA,
   options => (dispatch, getState) => {
-    dispatch(startFetchDashboardCardDataTimeout());
     const dashboard = getDashboardComplete(getState());
 
     const promises = getAllDashboardCards(dashboard)
@@ -395,6 +394,8 @@ export const fetchDashboardCardData = createThunkAction(
     Promise.all(promises).then(() => {
       dispatch(loadingComplete());
     });
+
+    return { currentTime: performance.now() };
   },
 );
 

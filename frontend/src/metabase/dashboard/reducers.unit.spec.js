@@ -18,10 +18,6 @@ describe("dashboard reducers", () => {
 
   it("should return the initial state", () => {
     expect(initState).toEqual({
-      autoApplyFiltersToast: {
-        stateName: "never",
-        timeoutId: null,
-      },
       dashboardId: null,
       dashboards: {},
       dashcardData: {},

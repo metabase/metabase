@@ -36,12 +36,6 @@ import {
   RESET,
   SET_PARAMETER_VALUES,
   UNDO_REMOVE_CARD_FROM_DASH,
-  SET_LOADING_DASHCARDS_COMPLETE,
-  TIME_OUT_FETCH_DASHBOARD_CARD_DATA,
-  SET_READY_FOR_AUTO_APPLY_FILTERS_TOAST,
-  SET_NEVER_SHOW_AUTO_APPLY_FILTERS_TOAST,
-  DISMISS_AUTO_APPLY_FILTERS_TOAST,
-  START_FETCH_DASHBOARD_CARD_DATA_TIMEOUT,
 } from "./actions";
 
 import { isVirtualDashCard, syncParametersAndEmbeddingParams } from "./utils";
@@ -346,72 +340,6 @@ const draftParameterValues = handleActions(
   {},
 );
 
-const autoApplyFiltersToast = handleActions(
-  {
-    [SET_READY_FOR_AUTO_APPLY_FILTERS_TOAST]: {
-      next: state => {
-        if (state.stateName === "never") {
-          return assoc(state, "stateName", "ready");
-        }
-
-        return state;
-      },
-    },
-    [SET_NEVER_SHOW_AUTO_APPLY_FILTERS_TOAST]: {
-      next: state => assoc(state, "stateName", "never"),
-    },
-    [START_FETCH_DASHBOARD_CARD_DATA_TIMEOUT]: {
-      next: (state, { payload }) => {
-        if (["ready", "loading", "timedOut"].includes(state.stateName)) {
-          return {
-            stateName: "loading",
-            timeoutId: payload.timeoutId,
-          };
-        }
-
-        return state;
-      },
-    },
-    [TIME_OUT_FETCH_DASHBOARD_CARD_DATA]: {
-      next: state => {
-        if (state.stateName === "loading") {
-          return assoc(state, "stateName", "timedOut");
-        }
-
-        return state;
-      },
-    },
-    [SET_LOADING_DASHCARDS_COMPLETE]: {
-      next: state => {
-        const nextStateMap = {
-          loading: "ready",
-          timedOut: "shown",
-        };
-
-        const nextState = nextStateMap[state.stateName];
-        if (nextState) {
-          return assoc(state, "stateName", nextState);
-        }
-
-        return state;
-      },
-    },
-    [DISMISS_AUTO_APPLY_FILTERS_TOAST]: {
-      next: state => {
-        if (state.stateName === "shown") {
-          return assoc(state, "stateName", "ready");
-        }
-
-        return state;
-      },
-    },
-  },
-  {
-    stateName: "never",
-    timeoutId: null,
-  },
-);
-
 const loadingDashCards = handleActions(
   {
     [INITIALIZE]: {
@@ -434,25 +362,20 @@ const loadingDashCards = handleActions(
       },
     },
     [FETCH_DASHBOARD_CARD_DATA]: {
-      next: state => ({
+      next: (state, { payload: { currentTime } }) => ({
         ...state,
         loadingStatus: state.dashcardIds.length > 0 ? "running" : "idle",
-        startTime:
-          state.dashcardIds.length > 0 &&
-          // check that performance is defined just in case
-          typeof performance === "object"
-            ? performance.now()
-            : null,
+        startTime: state.dashcardIds.length > 0 && currentTime,
       }),
     },
     [FETCH_CARD_DATA]: {
-      next: (state, { payload: { dashcard_id } }) => {
+      next: (state, { payload: { dashcard_id, currentTime } }) => {
         const loadingIds = state.loadingIds.filter(id => id !== dashcard_id);
         return {
           ...state,
           loadingIds,
           ...(loadingIds.length === 0
-            ? { startTime: null, loadingStatus: "complete" }
+            ? { endTime: currentTime, loadingStatus: "complete" }
             : {}),
         };
       },
@@ -478,6 +401,7 @@ const loadingDashCards = handleActions(
     dashcardIds: [],
     loadingIds: [],
     startTime: null,
+    endTime: null,
     loadingStatus: "idle",
   },
 );
@@ -532,7 +456,6 @@ export default combineReducers({
   slowCards,
   parameterValues,
   draftParameterValues,
-  autoApplyFiltersToast,
   loadingDashCards,
   isAddParameterPopoverOpen,
   sidebar,
