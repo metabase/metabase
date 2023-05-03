@@ -36,12 +36,8 @@ import {
   RESET,
   SET_PARAMETER_VALUES,
   UNDO_REMOVE_CARD_FROM_DASH,
-  SET_LOADING_DASHCARDS_COMPLETE,
-  TIME_OUT_FETCH_DASHBOARD_CARD_DATA,
-  SET_READY_FOR_AUTO_APPLY_FILTERS_TOAST,
-  SET_NEVER_SHOW_AUTO_APPLY_FILTERS_TOAST,
-  DISMISS_AUTO_APPLY_FILTERS_TOAST,
-  START_FETCH_DASHBOARD_CARD_DATA_TIMEOUT,
+  SET_IS_SHOWING_AUTO_APPLY_FILTERS_TOAST as SET_IS_SHOWING_AUTO_APPLY_FILTERS_TOAST,
+  SET_AUTO_APPLY_FILTERS_TOAST_TIMEOUT_ID,
 } from "./actions";
 
 import { isVirtualDashCard, syncParametersAndEmbeddingParams } from "./utils";
@@ -348,66 +344,19 @@ const draftParameterValues = handleActions(
 
 const autoApplyFiltersToast = handleActions(
   {
-    [SET_READY_FOR_AUTO_APPLY_FILTERS_TOAST]: {
-      next: state => {
-        if (state.stateName === "never") {
-          return assoc(state, "stateName", "ready");
-        }
-
-        return state;
-      },
-    },
-    [SET_NEVER_SHOW_AUTO_APPLY_FILTERS_TOAST]: {
-      next: state => assoc(state, "stateName", "never"),
-    },
-    [START_FETCH_DASHBOARD_CARD_DATA_TIMEOUT]: {
+    [SET_AUTO_APPLY_FILTERS_TOAST_TIMEOUT_ID]: {
       next: (state, { payload }) => {
-        if (["ready", "loading", "timedOut"].includes(state.stateName)) {
-          return {
-            stateName: "loading",
-            timeoutId: payload.timeoutId,
-          };
-        }
-
-        return state;
+        return assoc(state, "timeoutId", payload);
       },
     },
-    [TIME_OUT_FETCH_DASHBOARD_CARD_DATA]: {
-      next: state => {
-        if (state.stateName === "loading") {
-          return assoc(state, "stateName", "timedOut");
-        }
-
-        return state;
-      },
-    },
-    [SET_LOADING_DASHCARDS_COMPLETE]: {
-      next: state => {
-        const nextStateMap = {
-          loading: "ready",
-          timedOut: "shown",
-        };
-
-        const nextState = nextStateMap[state.stateName];
-        if (nextState) {
-          return assoc(state, "stateName", nextState);
-        }
-
-        return state;
-      },
-    },
-    [DISMISS_AUTO_APPLY_FILTERS_TOAST]: {
-      next: state => {
-        if (state.stateName === "shown") {
-          return assoc(state, "stateName", "ready");
-        }
-
-        return state;
+    [SET_IS_SHOWING_AUTO_APPLY_FILTERS_TOAST]: {
+      next: (state, { payload }) => {
+        return assoc(state, "isShowing", payload);
       },
     },
   },
   {
-    stateName: "never",
+    isShowing: false,
     timeoutId: null,
   },
 );

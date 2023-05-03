@@ -1,55 +1,30 @@
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect } from "react";
 import { t } from "ttag";
 
 import { useSelector, useDispatch } from "metabase/lib/redux";
 import {
-  getAutoApplyFiltersToastStateName,
   getDashboardId,
-  getIsAutoApplyFilters,
-  getParameterValues,
+  getIsShowingAutoApplyFiltersToast,
 } from "metabase/dashboard/selectors";
 import {
-  dismissAutoApplyFiltersToast,
   saveDashboardAndCards,
   setDashboardAttributes,
-  setNeverShowAutoApplyFiltersToast,
-  setReadyForAutoApplyFiltersToast,
+  setIsShowingAutoApplyFiltersToast,
 } from "metabase/dashboard/actions";
 import { addUndo } from "metabase/redux/undo";
 import { StyledToasterButton } from "./AutoApplyFilterToast.styled";
 
 export default function AutoApplyFilterToast() {
-  const isAutoApplyFilters = useSelector(getIsAutoApplyFilters);
-  const parameterValues = useSelector(getParameterValues);
-  const autoApplyFiltersToastStateName = useSelector(
-    getAutoApplyFiltersToastStateName,
-  );
   const dashboardId = useSelector(getDashboardId);
-
-  const hasParameterValues = useMemo(
-    () =>
-      Object.values(parameterValues).some(parameterValue =>
-        Array.isArray(parameterValue)
-          ? parameterValue.length > 0
-          : parameterValue != null,
-      ),
-    [parameterValues],
+  const isShowingAutoApplyFiltersToast = useSelector(
+    getIsShowingAutoApplyFiltersToast,
   );
-  const isReadyForToast = isAutoApplyFilters && hasParameterValues;
 
   const dispatch = useDispatch();
 
   useEffect(() => {
-    if (isReadyForToast) {
-      dispatch(setReadyForAutoApplyFiltersToast());
-    } else {
-      dispatch(setNeverShowAutoApplyFiltersToast());
-    }
-  }, [dispatch, isReadyForToast]);
-
-  useEffect(() => {
-    if (autoApplyFiltersToastStateName === "shown") {
-      dispatch(dismissAutoApplyFiltersToast());
+    if (isShowingAutoApplyFiltersToast) {
+      dispatch(setIsShowingAutoApplyFiltersToast(false));
       const onTurnOffAutoApplyFilters = () => {
         dispatch(
           setDashboardAttributes({
@@ -75,7 +50,7 @@ export default function AutoApplyFilterToast() {
         }),
       );
     }
-  }, [autoApplyFiltersToastStateName, dashboardId, dispatch]);
+  }, [dashboardId, dispatch, isShowingAutoApplyFiltersToast]);
 
   return null;
 }

@@ -123,10 +123,28 @@ export const getAutoApplyFiltersToastTimeoutId = createSelector(
     return autoApplyFiltersToast.timeoutId;
   },
 );
-export const getAutoApplyFiltersToastStateName = createSelector(
+export const getIsShowingAutoApplyFiltersToast = createSelector(
   [getAutoApplyFiltersToast],
   autoApplyFiltersToast => {
-    return autoApplyFiltersToast.stateName;
+    return autoApplyFiltersToast.isShowing;
+  },
+);
+
+const getIsParameterValuesEmpty = createSelector(
+  [getParameterValues],
+  parameterValues => {
+    return Object.values(parameterValues).every(parameterValue =>
+      Array.isArray(parameterValue)
+        ? parameterValue.length === 0
+        : parameterValue == null,
+    );
+  },
+);
+
+export const getIsReadyToShowAutoApplyFiltersToast = createSelector(
+  [getDashboard, getIsParameterValuesEmpty],
+  (dashboard, isParameterValuesEmpty) => {
+    return dashboard.auto_apply_filters && !isParameterValuesEmpty;
   },
 );
 // End auto-apply filters

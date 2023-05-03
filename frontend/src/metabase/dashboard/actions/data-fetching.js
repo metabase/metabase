@@ -30,6 +30,8 @@ import {
   getDashboardComplete,
   getParameterValues,
   getLoadingDashCards,
+  getAutoApplyFiltersToastTimeoutId,
+  getIsReadyToShowAutoApplyFiltersToast,
 } from "../selectors";
 
 import {
@@ -42,7 +44,10 @@ import {
 } from "../utils";
 import { DASHBOARD_SLOW_TIMEOUT } from "../constants";
 import { loadMetadataForDashboard } from "./metadata";
-import { startFetchDashboardCardDataTimeout } from "./parameters";
+import {
+  setAutoApplyFiltersToastTimeoutId,
+  setIsShowingAutoApplyFiltersToast,
+} from "./parameters";
 
 // normalizr schemas
 const dashcard = new schema.Entity("dashcard");
@@ -375,7 +380,18 @@ export const fetchCardData = createThunkAction(
 export const fetchDashboardCardData = createThunkAction(
   FETCH_DASHBOARD_CARD_DATA,
   options => (dispatch, getState) => {
-    dispatch(startFetchDashboardCardDataTimeout());
+    let isDashboardSlow = false;
+    let autoApplyFiltersToastTimeoutId = null;
+    if (getIsReadyToShowAutoApplyFiltersToast(getState())) {
+      clearTimeout(getAutoApplyFiltersToastTimeoutId(getState()));
+      autoApplyFiltersToastTimeoutId = setTimeout(() => {
+        isDashboardSlow = true;
+      }, DASHBOARD_SLOW_TIMEOUT);
+      dispatch(
+        setAutoApplyFiltersToastTimeoutId(autoApplyFiltersToastTimeoutId),
+      );
+    }
+
     const dashboard = getDashboardComplete(getState());
 
     const promises = getAllDashboardCards(dashboard)
@@ -394,6 +410,13 @@ export const fetchDashboardCardData = createThunkAction(
     // the previous API calls finished.
     Promise.all(promises).then(() => {
       dispatch(loadingComplete());
+      clearTimeout(autoApplyFiltersToastTimeoutId);
+      if (
+        getIsReadyToShowAutoApplyFiltersToast(getState()) &&
+        isDashboardSlow
+      ) {
+        dispatch(setIsShowingAutoApplyFiltersToast(true));
+      }
     });
   },
 );
