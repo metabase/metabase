@@ -8,12 +8,12 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
-   [metabase.driver.sql-jdbc.sync.describe-database
-    :as sql-jdbc.describe-database]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.query-processor.writeback :as qp.writeback]
    [metabase.util.honeysql-extensions :as hx]))
+
+(set! *warn-on-reflection* true)
 
 (comment sql-jdbc.actions/keep-me)
 
