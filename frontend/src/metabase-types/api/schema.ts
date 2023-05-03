@@ -1,10 +1,23 @@
+import { WritebackAction } from "./actions";
+import { Alert } from "./alert";
 import { Database, DatabaseId } from "./database";
-import { Schema, SchemaId, Table, TableId } from "./table";
-import { Field, FieldDimension, FieldId } from "./field";
-import { Segment, SegmentId } from "./segment";
-import { Metric, MetricId } from "./metric";
-import { Timeline, TimelineEventId } from "./timeline";
+import { Card } from "./card";
 import { Collection, CollectionId, CollectionItemId } from "./collection";
+import { Dashboard } from "./dashboard";
+import { Field, FieldDimension, FieldId } from "./field";
+import { Metric, MetricId } from "./metric";
+import { Segment, SegmentId } from "./segment";
+import { NativeQuerySnippet } from "./snippets";
+import { Schema, SchemaId, Table, TableId } from "./table";
+import { Timeline, TimelineEventId } from "./timeline";
+import { User } from "./user";
+
+export type NormalizedWritebackAction = WritebackAction;
+export type NormalizedAlert = Alert;
+export type NormalizedDashboard = Dashboard;
+export type NormalizedUser = User;
+export type NormalizedCard = Card;
+export type NormalizedNativeQuerySnippet = NativeQuerySnippet;
 
 export interface NormalizedDatabase
   extends Omit<Database, "tables" | "schemas"> {
