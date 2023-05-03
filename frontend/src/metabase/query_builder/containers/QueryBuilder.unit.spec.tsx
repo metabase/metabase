@@ -1,9 +1,8 @@
 import React, { ComponentPropsWithoutRef } from "react";
 import { IndexRoute, Route } from "react-router";
-import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
 
-import { Card, Dataset } from "metabase-types/api";
+import { Card } from "metabase-types/api";
 import {
   createMockCard,
   createMockDataset,
@@ -46,21 +45,12 @@ const TEST_CARD = createMockCard({
 });
 
 const TEST_NATIVE_CARD = createMockCard({
-  dataset_query: createMockNativeDatasetQuery(),
+  dataset_query: createMockNativeDatasetQuery({
+    database: SAMPLE_DB_ID,
+  }),
 });
 
 const TEST_DATASET = createMockDataset();
-
-const TEST_COLLECTION = {
-  authority_level: null,
-  can_write: true,
-  name: "Top folder",
-  effective_ancestors: [],
-  effective_location: null,
-  parent_id: null,
-  id: "root",
-  namespace: "snippets",
-};
 
 const TestQueryBuilder = (
   props: ComponentPropsWithoutRef<typeof QueryBuilder>,
@@ -75,7 +65,6 @@ const TestQueryBuilder = (
 
 interface SetupOpts {
   card?: Card;
-  dataset?: Dataset;
   initialRoute?: string;
 }
 
@@ -90,8 +79,6 @@ const setup = async ({
   setupAlertsEndpoints(card, []);
   setupBookmarksEndpoints([]);
   setupTimelinesEndpoints([]);
-  fetchMock.get("path:/api/native-query-snippet", []);
-  fetchMock.get("path:/api/collection", [TEST_COLLECTION]);
 
   const mockEventListener = jest.spyOn(window, "addEventListener");
 
@@ -146,7 +133,7 @@ describe("QueryBuilder", () => {
       ).getByRole("textbox");
 
       userEvent.click(inputArea);
-      userEvent.type(inputArea, "batman");
+      userEvent.type(inputArea, " ");
 
       const mockEvent = callMockEvent(mockEventListener, "beforeunload");
       expect(mockEvent.preventDefault).toHaveBeenCalled();
