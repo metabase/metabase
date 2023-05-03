@@ -30,6 +30,7 @@ describeEE("issue 18669", { tags: "@external" }, () => {
 
   it("should send a test email with non-default parameters (metabase#18669)", () => {
     cy.icon("subscription").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Email it").click();
 
     cy.findByPlaceholderText("Enter user names or email addresses")

@@ -75,6 +75,7 @@ describe("scenarios > filters > sql filters > field filter", () => {
         field: "Longitude",
       });
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("None").should("be.visible");
 
       filterWidget().should("not.exist");
@@ -84,11 +85,14 @@ describe("scenarios > filters > sql filters > field filter", () => {
       cy.get(".RunButton").first().click();
 
       cy.wait("@dataset");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Hudson Borer");
     });
 
     it("should let you change the field filter type to something else and restore the filter widget (metabase#13825)", () => {
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Longitude").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Address").click();
 
       FieldFilter.setWidgetType("String contains");
@@ -129,6 +133,7 @@ describe("scenarios > filters > sql filters > field filter", () => {
 
     it("should work despite it not showing up in the widget type list", () => {
       cy.createNativeQuestion(questionDetails, { visitQuestion: true });
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Showing 42 rows");
 
       clearFilterValue();
@@ -140,11 +145,14 @@ describe("scenarios > filters > sql filters > field filter", () => {
       });
 
       cy.findByTestId("qb-header").find(".Icon-play").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Showing 51 rows");
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Open Editor").click();
       cy.icon("variable").click();
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Filter widget type")
         .parent()
         .findAllByTestId("select-button")

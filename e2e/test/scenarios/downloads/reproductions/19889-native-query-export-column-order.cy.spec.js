@@ -22,11 +22,13 @@ describe("issue 19889", () => {
     });
 
     // Reorder columns a and b
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("column a")
       .trigger("mousedown", 0, 0, { force: true })
       .trigger("mousemove", 5, 5, { force: true })
       .trigger("mousemove", 100, 0, { force: true })
       .trigger("mouseup", 100, 0, { force: true });
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Started from").click(); // Give DOM some time to update
   });
 
@@ -52,6 +54,7 @@ describe("issue 19889", () => {
     });
 
     it(`should order columns correctly in saved native query exports when the query was modified but not re-run before save (#19889)`, () => {
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains(/open editor/i).click();
       cy.get(".ace_editor").type(
         '{selectall}select 1 "column x", 2 "column y", 3 "column c"',
