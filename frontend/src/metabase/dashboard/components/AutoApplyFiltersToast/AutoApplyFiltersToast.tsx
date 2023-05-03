@@ -16,7 +16,7 @@ import {
   setReadyForAutoApplyFiltersToast,
 } from "metabase/dashboard/actions";
 import { addUndo } from "metabase/redux/undo";
-import { StyledToasterButton } from "./AutoApplyFilterToast.styled";
+import { StyledToasterButton } from "./AutoApplyFiltersToast.styled";
 
 export default function AutoApplyFilterToast() {
   const isAutoApplyFilters = useSelector(getIsAutoApplyFilters);
