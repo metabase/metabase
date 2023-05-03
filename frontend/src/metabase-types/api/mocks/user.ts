@@ -5,6 +5,7 @@ export const createMockUser = (opts?: Partial<User>): User => ({
   first_name: "Testy",
   last_name: "Tableton",
   common_name: `Testy Tableton`,
+  custom_homepage: null,
   email: "user@metabase.test",
   locale: null,
   google_auth: false,
