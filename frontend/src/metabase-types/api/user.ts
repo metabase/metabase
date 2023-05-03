@@ -26,6 +26,9 @@ export interface User extends BaseUser {
   has_invited_second_user: boolean;
   has_question_and_dashboard: boolean;
   personal_collection_id: number;
+  custom_homepage: {
+    dashboard_id: number;
+  } | null;
 }
 
 // Used when hydrating `creator` property
