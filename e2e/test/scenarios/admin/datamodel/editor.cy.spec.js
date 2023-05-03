@@ -157,7 +157,7 @@ describe("scenarios > admin > datamodel > editor", () => {
     it("should allow changing the field visibility", () => {
       visitTableMetadata();
       getFieldSection("TAX").findByText("Everywhere").click();
-      setSelectValue("Do not include");
+      popover().findByText("Do not include").click();
       cy.wait("@updateField");
       getFieldSection("TAX").findByText("Do not include").should("be.visible");
       cy.findByText("Do not include").should("be.visible");
@@ -187,7 +187,7 @@ describe("scenarios > admin > datamodel > editor", () => {
     it("should allow changing the field foreign key target", () => {
       visitTableMetadata();
       getFieldSection("USER_ID").findByText("People → ID").click();
-      setSelectValue("Products → ID");
+      popover().findByText("Products → ID").click();
       cy.wait("@updateField");
       getFieldSection("USER_ID")
         .findByText("Products → ID")
@@ -320,7 +320,7 @@ describe("scenarios > admin > datamodel > editor", () => {
     it("should allow changing the field visibility", () => {
       visitFieldMetadata({ fieldId: ORDERS.TAX });
       cy.findByText("Everywhere").click();
-      setSelectValue("Do not include");
+      popover().findByText("Do not include").click();
       cy.wait("@updateField");
       cy.findByText("Do not include").should("be.visible");
       cy.findByText("Updated Tax").should("be.visible");
@@ -349,7 +349,7 @@ describe("scenarios > admin > datamodel > editor", () => {
     it("should allow changing the field foreign key target", () => {
       visitFieldMetadata({ fieldId: ORDERS.USER_ID });
       cy.findByText("People → ID").click();
-      setSelectValue("Products → ID");
+      popover().findByText("Products → ID").click();
       cy.wait("@updateField");
       cy.findByText("Products → ID").should("be.visible");
       cy.findByText("Updated User ID").should("be.visible");
@@ -464,8 +464,8 @@ describe("scenarios > admin > datamodel > editor", () => {
       cy.signIn("none");
       visitFieldMetadata({ tableId: REVIEWS_ID, fieldId: REVIEWS.PRODUCT_ID });
       cy.findByText("Use original value").click();
-      setSelectValue("Use foreign key");
-      setSelectValue("Title");
+      popover().findByText("Use foreign key").click();
+      popover().findByText("Title").click();
       cy.wait("@updateFieldDimension");
 
       cy.signInAsNormalUser();
@@ -499,7 +499,7 @@ describe("scenarios > admin > datamodel > editor", () => {
       cy.signInAsAdmin();
       visitFieldMetadata({ tableId: REVIEWS_ID, fieldId: REVIEWS.RATING });
       cy.findByText("Use original value").click();
-      setSelectValue("Custom mapping");
+      popover().findByText("Custom mapping").click();
       cy.wait("@updateFieldDimension");
 
       cy.signIn("none");
@@ -531,7 +531,7 @@ describe("scenarios > admin > datamodel > editor", () => {
         schemaId: MYSQL_DB_SCHEMA_ID,
       });
       getFieldSection("TAX").findByText("Everywhere").click();
-      setSelectValue("Do not include");
+      popover().findByText("Do not include").click();
       cy.wait("@updateField");
       getFieldSection("TAX").findByText("Do not include").should("be.visible");
     });
@@ -583,12 +583,6 @@ const setValueAndBlurInput = (oldValue, newValue) => {
 
 const clearAndBlurInput = oldValue => {
   cy.findByDisplayValue(oldValue).clear().blur();
-};
-
-const setSelectValue = newValue => {
-  popover().within(() => {
-    cy.findByText(newValue).click();
-  });
 };
 
 const searchAndSelectValue = (newValue, searchText = newValue) => {
