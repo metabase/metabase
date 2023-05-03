@@ -465,7 +465,6 @@
              (is (set/subset? expected returned-card-names))
              (is (not (contains? returned-card-names #{"A pie" "A table" "A Line with no access"}))))))))))
 
-
 (deftest paging-and-filtering-works-for-series-card-test
   (let [simple-mbql-chart-query (fn [attrs]
                                   (merge (mt/card-with-source-metadata-for-query
@@ -498,13 +497,13 @@
           (testing "and paging works too"
             (is (= ["Luigi 5" "Luigi 6" "Luigi 7" "Luigi 8"]
                    (->> (mt/user-http-request :crowberto :get 200 (format "/card/%d/series" (:id card))
-                                              :query "luigi" :limit 4 :last_cursor "Luigi 4")
+                                              :query "luigi" :limit 10 :last_cursor "Luigi 4")
                         (map :name)))))
 
           (testing "And returning empty list if reaches there are nothing..."
             (is (= []
                    (->> (mt/user-http-request :crowberto :get 200 (format "/card/%d/series" (:id card))
-                                              :query "luigi" :limit 4 :last_cursor "luigi 8")
+                                              :query "luigi" :limit 10 :last_cursor "luigi 8")
                         (map :name))))))))))
 
 (def ^:private millisecond-card
