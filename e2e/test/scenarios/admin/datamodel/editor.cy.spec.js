@@ -2,6 +2,7 @@ import {
   describeEE,
   openOrdersTable,
   openProductsTable,
+  openReviewsTable,
   popover,
   restore,
   startNewQuestion,
@@ -13,7 +14,8 @@ import {
 } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
-const { ORDERS, ORDERS_ID, PRODUCTS_ID, REVIEWS, REVIEWS_ID } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PRODUCTS_ID, REVIEWS, REVIEWS_ID, PEOPLE_ID } =
+  SAMPLE_DATABASE;
 const { ALL_USERS_GROUP } = USER_GROUPS;
 const MYSQL_DB_ID = SAMPLE_DB_ID + 1;
 const MYSQL_DB_SCHEMA_ID = `${MYSQL_DB_ID}:PUBLIC`;
@@ -369,18 +371,11 @@ describe("scenarios > admin > datamodel > editor", () => {
     beforeEach(() => {
       restore();
       cy.signInAsAdmin();
-      cy.updatePermissionsGraph({
-        [ALL_USERS_GROUP]: {
-          [SAMPLE_DB_ID]: {
-            "data-model": {
-              schemas: { PUBLIC: { [ORDERS_ID]: "all", [REVIEWS_ID]: "all" } },
-            },
-          },
-        },
-      });
     });
 
     it("should allow changing the table name with data model permissions only", () => {
+      addDataModelPermissions({ tableIds: [ORDERS_ID] });
+
       cy.signIn("none");
       visitTableMetadata();
       setValueAndBlurInput("Orders", "New orders");
@@ -399,6 +394,8 @@ describe("scenarios > admin > datamodel > editor", () => {
     });
 
     it("should allow changing the field name with data model permissions only in table settings", () => {
+      addDataModelPermissions({ tableIds: [ORDERS_ID] });
+
       cy.signIn("none");
       visitTableMetadata();
       getFieldSection("TAX").within(() =>
@@ -415,6 +412,8 @@ describe("scenarios > admin > datamodel > editor", () => {
     });
 
     it("should allow changing the field name with data model permissions only in field settings", () => {
+      addDataModelPermissions({ tableIds: [ORDERS_ID] });
+
       cy.signIn("none");
       visitFieldMetadata({ fieldId: ORDERS.TOTAL });
       setValueAndBlurInput("Total", "New total");
@@ -428,22 +427,67 @@ describe("scenarios > admin > datamodel > editor", () => {
       cy.findByText("Total").should("not.exist");
     });
 
+    it("should allow changing the field foreign key target", () => {
+      addDataModelPermissions({
+        tableIds: [ORDERS_ID, PRODUCTS_ID, PEOPLE_ID],
+      });
+
+      cy.signIn("none");
+      visitFieldMetadata({ fieldId: ORDERS.USER_ID });
+      cy.findByText("People → ID").click();
+      popover().within(() => {
+        cy.findByText("Reviews → ID").should("not.exist");
+        cy.findByText("Products → ID").click();
+      });
+      cy.wait("@updateField");
+      cy.findByText("Products → ID").should("be.visible");
+      cy.findByText("Updated User ID").should("be.visible");
+
+      cy.signInAsNormalUser();
+      startNewQuestion();
+      popover().within(() => {
+        cy.findByText("Sample Database").click();
+        cy.findByText("Orders").click();
+      });
+      cy.icon("join_left_outer").click();
+      popover().within(() => {
+        cy.findByText("Products").click();
+      });
+      cy.findByText("User ID").should("be.visible");
+    });
+
     it("should allow setting foreign key mapping for accessible tables", () => {
+      addDataModelPermissions({
+        tableIds: [ORDERS_ID, REVIEWS_ID, PRODUCTS_ID],
+      });
+
       cy.signIn("none");
       visitFieldMetadata({ tableId: REVIEWS_ID, fieldId: REVIEWS.PRODUCT_ID });
       cy.findByText("Use original value").click();
       setSelectValue("Use foreign key");
-      cy.wait("@updateDimension");
+      setSelectValue("Title");
+      cy.wait("@updateFieldDimension");
+
+      cy.signInAsNormalUser();
+      openReviewsTable({ limit: 1 });
+      cy.findByText("Rustic Paper Wallet").should("be.visible");
     });
 
     it("should now allow setting foreign key mapping for inaccessible tables", () => {
+      addDataModelPermissions({ tableIds: [ORDERS_ID] });
+
       cy.signIn("none");
       visitFieldMetadata({ tableId: REVIEWS_ID, fieldId: REVIEWS.PRODUCTS_ID });
       cy.findByText("Use original value").click();
-      setSelectValue("Use foreign key");
+      popover().within(() => {
+        cy.findByText("Use original value").should("be.visible");
+        cy.findByText("Use foreign key").should("not.exist");
+      });
     });
 
     it("should show a proper error message when using custom mapping", () => {
+      addDataModelPermissions({ tableIds: [REVIEWS_ID] });
+
       cy.signIn("none");
       visitFieldMetadata({ tableId: REVIEWS_ID, fieldId: REVIEWS.RATING });
       cy.findByText("Use original value").click();
@@ -493,6 +537,22 @@ describe("scenarios > admin > datamodel > editor", () => {
     });
   });
 });
+
+const addDataModelPermissions = ({ tableIds = [] }) => {
+  const permissions = Object.fromEntries(tableIds.map(id => [id, "all"]));
+
+  cy.updatePermissionsGraph({
+    [ALL_USERS_GROUP]: {
+      [SAMPLE_DB_ID]: {
+        "data-model": {
+          schemas: {
+            PUBLIC: permissions,
+          },
+        },
+      },
+    },
+  });
+};
 
 const visitTableMetadata = ({
   databaseId = SAMPLE_DB_ID,
