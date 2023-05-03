@@ -117,16 +117,16 @@
   "Add indexed values to the model_index_value table."
   [model-index]
   (let [[error-message index-values] (fetch-values model-index)
-        generation' (inc (:generation model-index))]
+        generation'                  (inc (:generation model-index))]
     (if-not (str/blank? error-message)
-      (t2/update! ModelIndex (:id model-index) {:status "error"
-                                                :error  error-message
+      (t2/update! ModelIndex (:id model-index) {:state           "error"
+                                                :error           error-message
                                                 :state_change_at :%now})
       (do (add-values* model-index (filter (fn [[_id value]] (some? value)) index-values))
           (t2/update! ModelIndex (:id model-index)
-                      {:generation generation'
+                      {:generation      generation'
                        :state_change_at :%now
-                       :state (if (> (count index-values) 5000) "overflow" "indexed")})))))
+                       :state           (if (> (count index-values) 5000) "overflow" "indexed")})))))
 
 
 ;;;; creation
