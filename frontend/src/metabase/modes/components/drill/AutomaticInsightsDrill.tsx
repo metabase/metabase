@@ -30,27 +30,24 @@ const AutomaticInsightsDrill = ({
   question,
   clicked,
 }: DrillOptions): PopoverClickAction[] => {
-  const drillOptions: AutoInsightsDrillOption[] = [];
   const enableXrays = MetabaseSettings.get("enable-xrays");
 
-  if (automaticInsightsDrill({ question, clicked, enableXrays })) {
-    drillOptions.push(
-      {
-        title: t`X-ray`,
-        icon: "bolt",
-        url: () => automaticDashboardDrillUrl({ question, clicked }),
-      },
-      {
-        title: t`Compare to the rest`,
-        icon: "segment",
-        url: () => compareToRestDrillUrl({ question, clicked }),
-      },
-    );
-  }
-
-  if (!drillOptions.length) {
+  if (!automaticInsightsDrill({ question, clicked, enableXrays })) {
     return [];
   }
+
+  const drillOptions: AutoInsightsDrillOption[] = [
+    {
+      title: t`X-ray`,
+      icon: "bolt",
+      url: () => automaticDashboardDrillUrl({ question, clicked }),
+    },
+    {
+      title: t`Compare to the rest`,
+      icon: "segment",
+      url: () => compareToRestDrillUrl({ question, clicked }),
+    },
+  ];
 
   const clickAction: ClickActionBase = {
     name: "automatic-insights",
