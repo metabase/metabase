@@ -26,7 +26,13 @@ describe("HomePage", () => {
     const onOpenNavbar = jest.fn();
     isSmallScreenSpy.mockReturnValue(false);
 
-    render(<HomePage hasMetabot={false} onOpenNavbar={onOpenNavbar} />);
+    render(
+      <HomePage
+        hasMetabot={false}
+        onOpenNavbar={onOpenNavbar}
+        isAdmin={false}
+      />,
+    );
 
     expect(onOpenNavbar).toHaveBeenCalled();
   });
@@ -35,7 +41,13 @@ describe("HomePage", () => {
     const onOpenNavbar = jest.fn();
     isSmallScreenSpy.mockReturnValue(true);
 
-    render(<HomePage hasMetabot={false} onOpenNavbar={onOpenNavbar} />);
+    render(
+      <HomePage
+        hasMetabot={false}
+        onOpenNavbar={onOpenNavbar}
+        isAdmin={false}
+      />,
+    );
 
     expect(onOpenNavbar).not.toHaveBeenCalled();
   });

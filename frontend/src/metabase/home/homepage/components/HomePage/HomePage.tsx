@@ -1,32 +1,24 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
+import { replace } from "react-router-redux";
 import { isSmallScreen } from "metabase/lib/dom";
 import { useDispatch } from "metabase/lib/redux";
-import { replace } from "react-router-redux";
-import Dashboards from "metabase/entities/dashboards";
 
-import {Dashboard as DashboardType} from "metabase-types/api";
 import HomeLayout from "../HomeLayout";
 import HomeContent from "../../containers/HomeContent";
-
 
 export interface HomePageProps {
   hasMetabot: boolean;
   homepageDashboard?: number;
   onOpenNavbar: () => void;
-}
-
-interface DashboardLoaderProps {
-  loading: boolean;
-  error: any;
-  dashboard: DashboardType
+  isAdmin: boolean;
 }
 
 const HomePage = ({
   hasMetabot,
   onOpenNavbar,
   homepageDashboard,
+  isAdmin,
 }: HomePageProps): JSX.Element => {
-  const [showDashboard, setShowDashboard] = useState(true);
   const dispatch = useDispatch();
   useEffect(() => {
     if (!isSmallScreen()) {
@@ -34,28 +26,12 @@ const HomePage = ({
     }
   }, [onOpenNavbar]);
 
-  if (homepageDashboard && showDashboard) {
-    return (
-      <Dashboards.Loader
-        id={homepageDashboard}
-        loadingAndErrorWrapper={false}
-        dispatchApiErrorEvent={false}
-      >
-        {({ loading, error, dashboard }: DashboardLoaderProps) => {
-          if (!loading && error) {
-            setShowDashboard(false);
-          } else if (dashboard) {
-            dispatch(replace(`/dashboard/${homepageDashboard}`))
-          }
-
-          return null;
-        }}
-      </Dashboards.Loader>
-    );
+  if (homepageDashboard) {
+    dispatch(replace(`/dashboard/${homepageDashboard}`));
   }
 
   return (
-    <HomeLayout hasMetabot={hasMetabot}>
+    <HomeLayout hasMetabot={hasMetabot} isAdmin={isAdmin}>
       <HomeContent />
     </HomeLayout>
   );
