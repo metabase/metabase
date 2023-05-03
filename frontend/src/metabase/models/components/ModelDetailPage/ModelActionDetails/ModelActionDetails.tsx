@@ -162,7 +162,7 @@ function ModelActionDetails({
   return (
     <Root>
       {canWrite && (
-        <ActionsHeader>
+        <ActionsHeader data-testid="model-actions-header">
           <Button as={Link} to={newActionUrl}>{t`New action`}</Button>
           {menuItems.length > 0 && (
             <ActionMenu
