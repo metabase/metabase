@@ -60,7 +60,7 @@ import {
   getIsAdditionalInfoVisible,
 } from "../../selectors";
 import { DASHBOARD_SLOW_TIMEOUT } from "../../constants";
-import AutoApplyFilterToast from "../../components/AutoApplyFilterToast/AutoApplyFilterToast";
+import AutoApplyFiltersToast from "../../components/AutoApplyFiltersToast";
 import { StyledToasterButton } from "./DashboardApp.styled";
 
 function getDashboardId({ dashboardId, params }) {
@@ -177,7 +177,7 @@ const DashboardApp = props => {
       />
       {/* For rendering modal urls */}
       {props.children}
-      <AutoApplyFilterToast />
+      <AutoApplyFiltersToast />
     </div>
   );
 };
