@@ -47,6 +47,11 @@ export const SearchContainer = styled.div`
 
 export const SearchInput = styled(Input)`
   width: 100%;
+
+  ${Input.Field} {
+    border-radius: 0;
+    outline: none;
+  }
 `;
 
 export const EmptyStateContainer = styled.div`
