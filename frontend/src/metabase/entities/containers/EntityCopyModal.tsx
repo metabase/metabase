@@ -6,6 +6,15 @@ import { t } from "ttag";
 import EntityForm from "metabase/entities/containers/EntityForm";
 import ModalContent from "metabase/components/ModalContent";
 
+interface EntityCopyModalProps {
+  entityType: string;
+  entityObject: any;
+  copy: (data: any) => void;
+  title?: string;
+  onClose: () => void;
+  onSaved: () => void;
+}
+
 const EntityCopyModal = ({
   entityType,
   entityObject,
@@ -14,7 +23,7 @@ const EntityCopyModal = ({
   onClose,
   onSaved,
   ...props
-}) => (
+}: EntityCopyModalProps) => (
   <ModalContent
     title={title || t`Duplicate "${entityObject.name}"`}
     onClose={onClose}

@@ -4,6 +4,7 @@ export const createMockEntitiesState = (
   opts?: Partial<EntitiesState>,
 ): EntitiesState => ({
   actions: {},
+  alerts: {},
   collections: {},
   dashboards: {},
   databases: {},
