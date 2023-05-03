@@ -38,9 +38,8 @@ type FieldSelectorOpts =
     }
   | undefined;
 
-export const getNormalizedDatabases = (state: State) =>
-  state.entities.databases;
-export const getNormalizedSchemas = (state: State) => state.entities.schemas;
+const getNormalizedDatabases = (state: State) => state.entities.databases;
+const getNormalizedSchemas = (state: State) => state.entities.schemas;
 
 const getNormalizedTablesUnfiltered = (state: State) => state.entities.tables;
 
