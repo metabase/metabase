@@ -26,17 +26,15 @@ import {
   getRemappings,
 } from "metabase-lib/queries/utils/field";
 
-type TableSelectorOpts =
-  | {
-      includeHiddenTables?: boolean;
-    }
-  | undefined;
+type TableSelectorOpts = {
+  includeHiddenTables?: boolean;
+};
 
-type FieldSelectorOpts =
-  | {
-      includeSensitiveFields?: boolean;
-    }
-  | undefined;
+type FieldSelectorOpts = {
+  includeSensitiveFields?: boolean;
+};
+
+type MetadataSelectorOpts = TableSelectorOpts & FieldSelectorOpts;
 
 const getNormalizedDatabases = (state: State) => state.entities.databases;
 const getNormalizedSchemas = (state: State) => state.entities.schemas;
@@ -55,7 +53,7 @@ const getNormalizedTables = createSelector(
 );
 
 const getNormalizedFieldsUnfiltered = (state: State) => state.entities.fields;
-const getIncludeSensitiveFields = (_state: State, props: FieldSelectorOpts) =>
+const getIncludeSensitiveFields = (_state: State, props?: FieldSelectorOpts) =>
   !!props?.includeSensitiveFields;
 
 const getNormalizedFields = createSelector(
@@ -91,7 +89,7 @@ export const getShallowSegments = getNormalizedSegments;
 
 export const getMetadata: (
   state: State,
-  props?: TableSelectorOpts & FieldSelectorOpts,
+  props?: MetadataSelectorOpts,
 ) => Metadata = createSelector(
   [
     getNormalizedDatabases,
