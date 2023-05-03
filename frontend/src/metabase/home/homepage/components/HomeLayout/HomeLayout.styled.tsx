@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+import Button from "metabase/core/components/Button/Button";
 import { color, hueRotate } from "metabase/lib/colors";
 import {
   breakpointMinExtraLarge,
@@ -49,4 +50,10 @@ export const LayoutIllustration = styled.div`
   background-size: max(min(1728px, 260vh), 100%) auto;
   background-repeat: no-repeat;
   background-position: bottom;
+`;
+
+export const LayoutEditButton = styled(Button)`
+  position: absolute;
+  top: 1.5rem;
+  right: 1rem;
 `;
