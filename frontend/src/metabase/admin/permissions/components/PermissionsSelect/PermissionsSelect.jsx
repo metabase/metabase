@@ -29,6 +29,7 @@ const propTypes = {
   actions: PropTypes.object,
   value: PropTypes.string.isRequired,
   toggleLabel: PropTypes.string,
+  hasChildren: PropTypes.bool,
   onChange: PropTypes.func.isRequired,
   onAction: PropTypes.func,
   isDisabled: PropTypes.bool,
@@ -42,6 +43,7 @@ export const PermissionsSelect = memo(function PermissionsSelect({
   actions,
   value,
   toggleLabel,
+  hasChildren,
   onChange,
   onAction,
   isDisabled,
@@ -51,6 +53,9 @@ export const PermissionsSelect = memo(function PermissionsSelect({
 }) {
   const [toggleState, setToggleState] = useState(false);
   const selectedOption = options.find(option => option.value === value);
+  const selectableOptions = hasChildren
+    ? options
+    : options.filter(option => option !== selectedOption);
 
   const selectedOptionValue = (
     <PermissionsSelectRoot
@@ -98,7 +103,7 @@ export const PermissionsSelect = memo(function PermissionsSelect({
       {({ onClose }) => (
         <React.Fragment>
           <OptionsList role="listbox">
-            {options.map(option => (
+            {selectableOptions.map(option => (
               <OptionsListItem
                 role="option"
                 key={option.value}
@@ -128,7 +133,7 @@ export const PermissionsSelect = memo(function PermissionsSelect({
             </ActionsList>
           )}
 
-          {toggleLabel && (
+          {hasChildren && (
             <ToggleContainer>
               <ToggleLabel>{toggleLabel}</ToggleLabel>
               <Toggle small value={toggleState} onChange={setToggleState} />
