@@ -374,7 +374,7 @@ describe("scenarios > admin > datamodel > editor", () => {
     });
 
     it("should allow changing the table name with data model permissions only", () => {
-      addDataModelPermissions({ tableIds: [ORDERS_ID] });
+      setDataModelPermissions({ tableIds: [ORDERS_ID] });
 
       cy.signIn("none");
       visitTableMetadata();
@@ -394,7 +394,7 @@ describe("scenarios > admin > datamodel > editor", () => {
     });
 
     it("should allow changing the field name with data model permissions only in table settings", () => {
-      addDataModelPermissions({ tableIds: [ORDERS_ID] });
+      setDataModelPermissions({ tableIds: [ORDERS_ID] });
 
       cy.signIn("none");
       visitTableMetadata();
@@ -412,7 +412,7 @@ describe("scenarios > admin > datamodel > editor", () => {
     });
 
     it("should allow changing the field name with data model permissions only in field settings", () => {
-      addDataModelPermissions({ tableIds: [ORDERS_ID] });
+      setDataModelPermissions({ tableIds: [ORDERS_ID] });
 
       cy.signIn("none");
       visitFieldMetadata({ fieldId: ORDERS.TOTAL });
@@ -428,7 +428,7 @@ describe("scenarios > admin > datamodel > editor", () => {
     });
 
     it("should allow changing the field foreign key target", () => {
-      addDataModelPermissions({
+      setDataModelPermissions({
         tableIds: [ORDERS_ID, PRODUCTS_ID, PEOPLE_ID],
       });
 
@@ -457,7 +457,7 @@ describe("scenarios > admin > datamodel > editor", () => {
     });
 
     it("should allow setting foreign key mapping for accessible tables", () => {
-      addDataModelPermissions({
+      setDataModelPermissions({
         tableIds: [ORDERS_ID, REVIEWS_ID, PRODUCTS_ID],
       });
 
@@ -474,7 +474,7 @@ describe("scenarios > admin > datamodel > editor", () => {
     });
 
     it("should now allow setting foreign key mapping for inaccessible tables", () => {
-      addDataModelPermissions({ tableIds: [REVIEWS_ID] });
+      setDataModelPermissions({ tableIds: [REVIEWS_ID] });
 
       cy.signIn("none");
       visitFieldMetadata({ tableId: REVIEWS_ID, fieldId: REVIEWS.PRODUCT_ID });
@@ -486,7 +486,7 @@ describe("scenarios > admin > datamodel > editor", () => {
     });
 
     it("should show a proper error message when using custom mapping", () => {
-      addDataModelPermissions({ tableIds: [REVIEWS_ID] });
+      setDataModelPermissions({ tableIds: [REVIEWS_ID] });
 
       cy.signIn("none");
       visitFieldMetadata({ tableId: REVIEWS_ID, fieldId: REVIEWS.RATING });
@@ -538,7 +538,7 @@ describe("scenarios > admin > datamodel > editor", () => {
   });
 });
 
-const addDataModelPermissions = ({ tableIds = [] }) => {
+const setDataModelPermissions = ({ tableIds = [] }) => {
   const permissions = Object.fromEntries(tableIds.map(id => [id, "all"]));
 
   cy.updatePermissionsGraph({
