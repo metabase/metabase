@@ -291,6 +291,38 @@
             (with-all-users-data-perms {db-id {:data-model {:schemas :all}}}
               (mt/user-http-request :rasta :put 200 endpoint {:name "Field Test 2"}))))))))
 
+(deftest get-field-hydrated-target-with-advanced-perms-test
+  (testing "GET /api/field/:id"
+    (mt/with-temp* [Database [{db-id :id}]
+                    Table    [table1 {:db_id db-id, :schema "schema1"}]
+                    Table    [table2 {:db_id db-id, :schema "schema2"}]
+                    Field    [fk-field {:table_id (:id table1)}]
+                    Field    [field {:table_id           (:id table2)
+                                     :semantic_type      :type/FK
+                                     :fk_target_field_id (:id fk-field)}]]
+      (let [expected-target (-> fk-field
+                                (update :base_type u/qualified-name)
+                                (update :visibility_type u/qualified-name))
+            get-field       (fn []
+                              (mt/user-http-request :rasta :get 200 (format "field/%d?include_editable_data_model=true" (:id field))))]
+        (testing "target should be hydrated if a non-admin has data model perms for the DB"
+          (with-all-users-data-perms {db-id {:data-model {:schemas :all}}}
+            (is (= expected-target
+                   (:target (get-field))))))
+        (testing "target should not be hydrated if a non-admin does not have data model perms for the target's schema"
+          (with-all-users-data-perms {db-id {:data-model {:schemas {"schema1" :none
+                                                                    "schema2" :all}}}}
+            (is (nil? (:target (get-field))))))
+        (testing "target should not be hydrated if a non-admin does not have data model perms for the target's table"
+          (with-all-users-data-perms {db-id {:data-model {:schemas {"schema1" {(:id table1) :none}
+                                                                    "schema2" {(:id table2) :all}}}}}
+            (is (nil? (:target (get-field))))))
+        (testing "target should be hydrated if a non-admin does have data model perms for the target's table"
+          (with-all-users-data-perms {db-id {:data-model {:schemas {"schema1" {(:id table1) :all}
+                                                                    "schema2" {(:id table2) :all}}}}}
+            (is (= expected-target
+                   (:target (get-field))))))))))
+
 (deftest update-field-hydrated-target-with-advanced-perms-test
   (testing "PUT /api/field/:id"
     (mt/with-temp* [Database [{db-id :id}]

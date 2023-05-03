@@ -58,7 +58,10 @@
   [id include_editable_data_model]
   (let [include_editable_data_model (Boolean/parseBoolean include_editable_data_model)
         field                       (-> (api/check-404 (t2/select-one Field :id id))
-                                        (hydrate [:table :db] :has_field_values :dimensions :name_field :target))]
+                                        (hydrate [:table :db] :has_field_values :dimensions :name_field))
+        field                       (if include_editable_data_model
+                                      (field/hydrate-target-with-write-perms field)
+                                      (hydrate field :target))]
     ;; Normal read perms = normal access.
     ;;
     ;; There's also a special case where we allow you to fetch a Field even if you don't have full read permissions for
