@@ -16,6 +16,7 @@
   buddy/buddy-sign                          {:mvn/version "3.4.333"}            ; JSON Web Tokens; High-Level message signing library
   camel-snake-kebab/camel-snake-kebab       {:mvn/version "0.4.3"}              ; util functions for converting between camel, snake, and kebob case
   cheshire/cheshire                         {:mvn/version "5.11.0"}             ; fast JSON encoding (used by Ring JSON middleware)
+  clj-bom/clj-bom                           {:mvn/version "0.1.2"}              ; handle BOMs in imported CSVs
   clj-commons/iapetos                       {:mvn/version "0.1.13"}             ; prometheus metrics
   clj-http/clj-http                         {:mvn/version "3.12.3"              ; HTTP client
                                              :exclusions  [commons-codec/commons-codec
@@ -413,7 +414,6 @@
                                    "./deps.edn"
                                    "./package.json"
                                    "./shadow-cljs.edn"
-                                   ".circleci"
                                    ".clj-kondo"
                                    ".github"
                                    "bin"

@@ -27,7 +27,7 @@ const FileUploadLarge = ({
     title: getTitle(uploads, collection),
     items: uploads.map(upload => ({
       id: upload.id,
-      title: upload.name,
+      title: getName(upload),
       icon: "model",
       description: getDescription(upload),
       isInProgress: isUploadInProgress(upload),
@@ -37,6 +37,13 @@ const FileUploadLarge = ({
   };
 
   return <StatusLarge status={status} isActive={isActive} />;
+};
+
+const getName = (upload: FileUpload) => {
+  if (upload.status === "complete") {
+    return <Link to={`/model/${upload.modelId}`}>{upload.name}</Link>;
+  }
+  return upload.name;
 };
 
 const getTitle = (uploads: FileUpload[], collection: Collection) => {

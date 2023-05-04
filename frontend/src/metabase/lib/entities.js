@@ -73,7 +73,7 @@ import createCachedSelector from "re-reselect";
 // NOTE: need to use inflection directly here due to circular dependency
 import inflection from "inflection";
 
-import { createSelector } from "reselect";
+import { createSelector } from "@reduxjs/toolkit";
 import { normalize, denormalize, schema } from "normalizr";
 import { getIn, merge } from "icepick";
 import _ from "underscore";
@@ -474,6 +474,7 @@ export function createEntity(def) {
   );
 
   const defaultSelectors = {
+    getEntityIds,
     getList,
     getObject,
     getFetched,
