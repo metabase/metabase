@@ -65,7 +65,9 @@ const EntitiesSchema: Record<keyof EntitiesState, NormalizrSchema<any>> = {
   questions: [QuestionSchema],
 };
 
-export const createEntitiesState = (opts: EntitiesStateOpts): EntitiesState => {
+export const createMockEntitiesState = (
+  opts: EntitiesStateOpts,
+): EntitiesState => {
   const schema = normalize(opts, EntitiesSchema);
   return {
     ...createPlaceholderEntitiesState(),
