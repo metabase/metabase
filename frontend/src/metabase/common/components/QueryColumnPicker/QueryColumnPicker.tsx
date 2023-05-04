@@ -17,6 +17,7 @@ interface QueryColumnPickerProps {
   query: Lib.Query;
   stageIndex: number;
   columnGroups: Lib.ColumnGroup[];
+  hasBucketing?: boolean;
   maxHeight?: number;
   onSelect: (column: Lib.ColumnMetadata) => void;
   onClose?: () => void;
@@ -37,6 +38,7 @@ function QueryColumnPicker({
   query,
   stageIndex,
   columnGroups,
+  hasBucketing = false,
   maxHeight = DEFAULT_MAX_HEIGHT,
   onSelect,
   onClose,
@@ -73,6 +75,10 @@ function QueryColumnPicker({
 
   const renderItemExtra = useCallback(
     item => {
+      if (!hasBucketing) {
+        return false;
+      }
+
       const binningStrategies = Lib.availableBinningStrategies(
         query,
         item.column,
@@ -110,7 +116,7 @@ function QueryColumnPicker({
 
       return null;
     },
-    [query, onSelect, onClose],
+    [query, hasBucketing, onSelect, onClose],
   );
 
   return (
