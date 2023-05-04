@@ -4,6 +4,13 @@ title: Driver interface changelog
 
 # Driver Interface Changelog
 
+## Metabase 0.47.0
+
+- A new driver feature has been added: `:schemas`. This feature signals whether the database organises tables in
+  schemas (also known as namespaces) or not. Most databases have schemas so this feature is supported on by default. 
+  An implemention of the multimethod `metabase.driver/database-supports?` for `:schemas` is required only if the 
+  database doesn't store tables in schemas.
+
 ## Metabase 0.46.0
 
 - The process for building a driver has changed slightly in Metabase 0.46.0. Your build command should now look
