@@ -14,10 +14,8 @@ import {
 } from "metabase-types/store/mocks";
 
 // This is a helper for cases when entities state doesn't matter
-// Otherwise, consider using createEntitiesState from __support__/store
-const createPlaceholderEntitiesState = (
-  opts?: Partial<EntitiesState>,
-): EntitiesState => ({
+// Most likely, createEntitiesState from __support__/store would be a better choice
+export const createPlaceholderEntitiesState = (): EntitiesState => ({
   actions: {},
   alerts: {},
   collections: {},
@@ -31,7 +29,6 @@ const createPlaceholderEntitiesState = (
   snippets: {},
   users: {},
   questions: {},
-  ...opts,
 });
 
 export const createMockState = (opts?: Partial<State>): State => ({
