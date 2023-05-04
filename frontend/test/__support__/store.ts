@@ -5,7 +5,9 @@ import {
   DashboardSchema,
   DatabaseSchema,
   FieldSchema,
+  MetricSchema,
   QuestionSchema,
+  SegmentSchema,
   SnippetSchema,
   TableSchema,
   UserSchema,
@@ -17,8 +19,10 @@ import {
   Database,
   Field,
   NativeQuerySnippet,
+  Metric,
   Table,
   User,
+  Segment,
   WritebackAction,
 } from "metabase-types/api";
 import { EntitiesState } from "metabase-types/store";
@@ -31,6 +35,8 @@ const EntitiesSchema = {
   databases: [DatabaseSchema],
   tables: [TableSchema],
   fields: [FieldSchema],
+  metrics: [MetricSchema],
+  segments: [SegmentSchema],
   snippets: [SnippetSchema],
   users: [UserSchema],
   questions: [QuestionSchema],
@@ -43,6 +49,8 @@ export interface EntitiesStateOpts {
   databases?: Database[];
   tables?: Table[];
   fields?: Field[];
+  metrics?: Metric[];
+  segments?: Segment[];
   snippets?: NativeQuerySnippet[];
   users?: User[];
   questions?: Card[];
