@@ -12,7 +12,7 @@ import {
   setRequestUnloaded,
 } from "metabase/redux/requests";
 
-// convienence
+// convenience
 export { combineReducers, compose } from "@reduxjs/toolkit";
 export { handleActions, createAction } from "redux-actions";
 

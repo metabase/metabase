@@ -172,6 +172,11 @@ describe("scenarios > dashboard > OLD parameters", () => {
           qs: {
             category: "Gadget",
           },
+          onBeforeLoad(win) {
+            win.Notification = {
+              permission: "default",
+            };
+          },
         });
       });
       // Wait for the dashboard cards to start loading before advancing the clock
@@ -181,23 +186,22 @@ describe("scenarios > dashboard > OLD parameters", () => {
         .should("be.visible");
       cy.tick(16 * 1000);
 
-      // XXX: Will be fixed in https://github.com/metabase/metabase/pull/30525
-      // cy.findByTestId("toast-undo").within(() => {
-      //   cy.findByText(
-      //     "Would you like to be notified when this dashboard is done loading?",
-      //   );
-      //   cy.icon("close").click();
-      // });
+      cy.findByTestId("toast-undo").within(() => {
+        cy.findByText(
+          "Would you like to be notified when this dashboard is done loading?",
+        );
+        cy.icon("close").click();
+      });
 
       // After the dashboard cards finish loading, we'll show the auto-apply filters toast
       cy.findByTestId("dashcard").findByText("Rows 1-6 of 53");
-      cy.findAllByTestId("toast-undo")
+      cy.findByTestId("toast-undo")
         .last()
         .within(() => {
           cy.findByText(
             "You can make this dashboard snappier by turning off auto-applying filters.",
           );
-          cy.button("Undo").click();
+          cy.button("Turn off").click();
         });
 
       toggleDashboardSidebar();
