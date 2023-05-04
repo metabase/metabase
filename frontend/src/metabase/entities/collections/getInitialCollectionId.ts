@@ -10,6 +10,7 @@ import { canonicalCollectionId } from "metabase/collections/utils";
 import type { Collection, CollectionId } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
+import { getLastSeenCollection } from "metabase/home/selectors";
 import { ROOT_COLLECTION } from "./constants";
 
 type Props = {
@@ -45,6 +46,7 @@ const getInitialCollectionId = createSelector(
       const collections = state.entities.collections || {};
       return collections as Record<CollectionId, Collection>;
     },
+    getLastSeenCollection,
     getUserPersonalCollectionId,
 
     // these are listed in order of priority
@@ -53,7 +55,16 @@ const getInitialCollectionId = createSelector(
     byCollectionUrlId,
     byCollectionQueryParameter,
   ],
-  (collections, personalCollectionId, ...collectionIds) => {
+  (
+    collections,
+    lastSeenCollectionId,
+    personalCollectionId,
+    ...collectionIds
+  ) => {
+    if (lastSeenCollectionId && collections[lastSeenCollectionId]?.can_write) {
+      return canonicalCollectionId(lastSeenCollectionId);
+    }
+
     const rootCollectionId = ROOT_COLLECTION.id as CollectionId;
     const allCollectionIds = [
       ...(collectionIds as CollectionId[]),

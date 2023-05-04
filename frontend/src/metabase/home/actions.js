@@ -1,15 +1,16 @@
 import _ from "underscore";
 import moment from "moment-timezone";
 
-import { createThunkAction } from "metabase/lib/redux";
+import { createAction, createThunkAction } from "metabase/lib/redux";
 
 import { ActivityApi } from "metabase/services";
 
 // action constants
 export const FETCH_ACTIVITY = "FETCH_ACTIVITY";
 export const FETCH_RECENT_VIEWS = "FETCH_RECENT_VIEWS";
-
+export const SET_LAST_SEEN_COLLECTION = "SET_LAST_SEEN_COLLECTION";
 // action creators
+export const setLastSeenCollection = createAction(SET_LAST_SEEN_COLLECTION);
 
 export const fetchActivity = createThunkAction(FETCH_ACTIVITY, function () {
   return async function (dispatch, getState) {

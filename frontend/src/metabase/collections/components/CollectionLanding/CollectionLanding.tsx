@@ -1,5 +1,7 @@
-import React, { ReactNode } from "react";
+import React, { ReactNode, useEffect } from "react";
 import { extractCollectionId } from "metabase/lib/urls";
+import { useDispatch } from "metabase/lib/redux";
+import { setLastSeenCollection } from "metabase/home/actions";
 import CollectionContent from "../../containers/CollectionContent";
 
 export interface CollectionLandingProps {
@@ -15,8 +17,14 @@ const CollectionLanding = ({
   params: { slug },
   children,
 }: CollectionLandingProps) => {
+  const dispatch = useDispatch();
+
   const collectionId = extractCollectionId(slug);
   const isRoot = collectionId === "root";
+
+  useEffect(() => {
+    dispatch(setLastSeenCollection(collectionId));
+  }, [collectionId, dispatch]);
 
   return (
     <>
