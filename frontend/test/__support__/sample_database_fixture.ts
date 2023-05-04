@@ -5,7 +5,8 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { FieldSchema } from "metabase/schema";
 
 import type { Field as IField, FieldId } from "metabase-types/api";
-import type { State } from "metabase-types/store";
+import type { EntitiesState, State } from "metabase-types/store";
+import { createMockState } from "metabase-types/store/mocks";
 
 import type Database from "metabase-lib/metadata/Database";
 import type Field from "metabase-lib/metadata/Field";
@@ -177,5 +178,7 @@ export function makeMetadata(
 
   metadata.fields = normalizeFields(metadata.fields);
 
-  return getMetadata({ entities: metadata });
+  return getMetadata(
+    createMockState({ entities: metadata as unknown as EntitiesState }),
+  );
 }

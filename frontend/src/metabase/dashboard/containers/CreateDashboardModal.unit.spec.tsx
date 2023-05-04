@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { setupEnterpriseTest } from "__support__/enterprise";
-import { createEntitiesState } from "__support__/store";
+import { createMockEntitiesState } from "__support__/store";
 
 import { mockSettings } from "__support__/settings";
 
@@ -31,7 +31,7 @@ function setup({
 
   renderWithProviders(<CreateDashboardModal onClose={onClose} />, {
     storeInitialState: {
-      entities: createEntitiesState({
+      entities: createMockEntitiesState({
         collections: [ROOT_COLLECTION],
       }),
       settings,
