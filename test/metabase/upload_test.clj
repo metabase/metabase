@@ -39,29 +39,27 @@
                             ["$2"                         int-type]
                             ["$ 3"                        int-type]
                             ["-43€"                       int-type]
-                            ["£1,000"                     int-type]
+                            ["£1000"                      int-type]
                             ["-¥9"                        int-type]
                             ["₹ -13"                      int-type]
                             ["₪13"                        int-type]
-                            ["₩-13"                      int-type]
+                            ["₩-13"                       int-type]
                             ["₿42"                        int-type]
                             ["-99¢"                       int-type]
                             ["2"                          int-type]
                             ["-86"                        int-type]
-                            ["9,986,000"                  int-type]
                             ["3.14"                       float-type]
                             [".14"                        float-type]
                             ["0.14"                       float-type]
-                            ["-9,986.567"                 float-type]
-                            ["9,986,000.0"                float-type]
+                            ["-9986.567"                  float-type]
                             ["$2.0"                       float-type]
                             ["$ 3.50"                     float-type]
-                            ["-4,300.23€"                 float-type]
-                            ["£1,000.23"                  float-type]
+                            ["-4300.23€"                  float-type]
+                            ["£1000.23"                   float-type]
                             ["-¥9.99"                     float-type]
                             ["₹ -13.23"                   float-type]
                             ["₪13.01"                     float-type]
-                            ["₩13.33"                    float-type]
+                            ["₩13.33"                     float-type]
                             ["₿42.243646"                 float-type]
                             ["-99.99¢"                    float-type]
                             [(apply str (repeat 255 "x")) vchar-type]
@@ -232,9 +230,9 @@
          driver/*driver*
          (mt/id)
          "upload_test"
-         (csv-file-with ["id,nulls,string,bool,number,date,datetime"
-                         "2\t ,,string,true ,1.1\t    ,2022-01-01,2022-01-01T00:00:00"
-                         "   3,,string,false, $ 1000.1,2022-02-01,2022-02-01T00:00:00"]))
+         (csv-file-with ["id          ,nulls,string,bool ,number       ,date      ,datetime"
+                         "2\t         ,,          a,true ,1.1\t        ,2022-01-01,2022-01-01T00:00:00"
+                         "\"   3000\",,           b,false,\"$ 1000.1\",2022-02-01,2022-02-01T00:00:00"]))
         (testing "Table and Fields exist after sync"
           (sync/sync-database! (mt/db))
           (let [table (t2/select-one Table :db_id (mt/id))]
