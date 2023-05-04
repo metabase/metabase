@@ -12,10 +12,11 @@ import {
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
 } from "__support__/server-mocks";
+import { createEntitiesState } from "__support__/store";
 
 import * as Urls from "metabase/lib/urls";
-import { ROOT_COLLECTION } from "metabase/entities/collections";
 
+import { ROOT_COLLECTION } from "metabase/entities/collections";
 import type { Card, Dashboard, User } from "metabase-types/api";
 import {
   createMockCard,
@@ -24,13 +25,12 @@ import {
   createMockDashboard,
   createMockUser,
 } from "metabase-types/api/mocks";
+
 import {
   createMockState,
   createMockDashboardState,
-  createMockEntitiesState,
   createMockQueryBuilderState,
 } from "metabase-types/store/mocks";
-
 import MainNavbar from "./MainNavbar";
 
 type SetupOpts = {
@@ -112,7 +112,7 @@ async function setup({
     currentUser: user,
     dashboard: createMockDashboardState({ dashboardId, dashboards }),
     qb: createMockQueryBuilderState({ card: openQuestionCard }),
-    entities: createMockEntitiesState({ dashboards }),
+    entities: createEntitiesState({ dashboards: Object.values(dashboards) }),
   });
 
   renderWithProviders(

@@ -1,4 +1,4 @@
-import { createSelector } from "reselect";
+import { createSelector } from "@reduxjs/toolkit";
 
 import type { Settings, SettingKey, TokenFeatures } from "metabase-types/api";
 import type { State } from "metabase-types/store";
