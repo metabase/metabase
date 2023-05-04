@@ -3,8 +3,7 @@ name: CLJS
 on:
   push:
     branches:
-      - 'master'
-      - 'release-**'
+      - 'main'
   pull_request:
 
 concurrency:

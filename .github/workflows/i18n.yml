@@ -3,8 +3,7 @@ name: i18n
 on:
   push:
     branches:
-      - 'master'
-      - 'release-**'
+      - 'main'
   pull_request:
 
 concurrency:

@@ -4,7 +4,7 @@ on:
   workflow_run:
     workflows: [Backend, Driver Tests, E2E Tests, Frontend]
     types: [completed]
-    branches: [master, 'release-x.**', 'backport-**']
+    branches: [main]
 
 jobs:
   rerun-on-failure:

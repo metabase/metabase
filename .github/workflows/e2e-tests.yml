@@ -3,8 +3,7 @@ name: E2E Tests
 on:
   push:
     branches:
-      - "master"
-      - 'release-**'
+      - "main"
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
 
