@@ -1,7 +1,7 @@
 import React from "react";
 import userEvent from "@testing-library/user-event";
 import { getIcon, render, screen } from "__support__/ui";
-import { createEntitiesState } from "__support__/store";
+import { createMockEntitiesState } from "__support__/store";
 import { getMetadata } from "metabase/selectors/metadata";
 import { createMockState } from "metabase-types/store/mocks";
 import {
@@ -125,7 +125,7 @@ describe("ExpressionWidget", () => {
 
 const createMockQueryForExpressions = () => {
   const state = createMockState({
-    entities: createEntitiesState({
+    entities: createMockEntitiesState({
       databases: [createSampleDatabase()],
     }),
   });

@@ -14,7 +14,6 @@ import Schemas from "metabase/entities/schemas";
 
 import {
   getMetadata,
-  getFields,
   getMetadataUnfiltered,
 } from "metabase/selectors/metadata";
 
@@ -78,9 +77,11 @@ const Databases = createEntity({
 
   selectors: {
     getObject: (state, { entityId }) => getMetadata(state).database(entityId),
+
     // these unfiltered selectors include hidden tables/fields for display in the admin panel
     getObjectUnfiltered: (state, { entityId }) =>
       getMetadataUnfiltered(state).database(entityId),
+
     getListUnfiltered: (state, { entityQuery }) => {
       const entityIds =
         Databases.selectors.getEntityIds(state, { entityQuery }) ?? [];
@@ -91,9 +92,9 @@ const Databases = createEntity({
 
     getHasSampleDatabase: (state, props) =>
       _.any(Databases.selectors.getList(state, props), db => db.is_sample),
+
     getIdfields: createSelector(
-      // we wrap getFields to handle a circular dep issue
-      [state => getFields(state), (state, props) => props.databaseId],
+      [state => getMetadata(state).fields, (state, props) => props.databaseId],
       (fields, databaseId) =>
         Object.values(fields).filter(f => {
           const { db_id } = f.table || {}; // a field's table can be null
