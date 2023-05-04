@@ -3,8 +3,8 @@
  * @deprecated use existing types from, or add to metabase-types/api/*
  */
 
+import { RowValue } from "metabase-types/api";
 import { Table, TableId } from "./Table";
-import { Value } from "./Dataset";
 import { ISO8601Time } from ".";
 
 export type FieldId = number;
@@ -53,7 +53,7 @@ export type Field = {
   dimensions?: FieldDimension;
 };
 
-export type RawFieldValue = Value;
+export type RawFieldValue = RowValue;
 export type HumanReadableFieldValue = string;
 
 export type FieldValue =

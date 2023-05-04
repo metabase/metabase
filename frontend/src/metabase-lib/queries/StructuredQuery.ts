@@ -6,6 +6,7 @@
 import _ from "underscore";
 import { chain, updateIn } from "icepick";
 import { t } from "ttag";
+import { DatasetColumn } from "metabase-types/api";
 import {
   StructuredQuery as StructuredQueryObject,
   Aggregation,
@@ -23,7 +24,6 @@ import {
 import { AggregationOperator } from "metabase-types/types/Metadata";
 import { DatabaseEngine, DatabaseId } from "metabase-types/types/Database";
 import { TableId } from "metabase-types/types/Table";
-import { Column } from "metabase-types/types/Dataset";
 import {
   format as formatExpression,
   DISPLAY_QUOTES,
@@ -1514,7 +1514,7 @@ class StructuredQueryInner extends AtomicQuery {
     return null;
   }
 
-  dimensionForColumn(column: Column) {
+  dimensionForColumn(column: DatasetColumn) {
     if (column) {
       const fieldRef = this.fieldReferenceForColumn(column);
 
@@ -1533,7 +1533,7 @@ class StructuredQueryInner extends AtomicQuery {
   /**
    * Returns the corresponding {Column} in the "top-level" {StructuredQuery}
    */
-  topLevelColumn(column: Column): Column | null | undefined {
+  topLevelColumn(column: DatasetColumn): DatasetColumn | null | undefined {
     const dimension = this.topLevelDimensionForColumn(column);
 
     if (dimension) {

@@ -3,9 +3,13 @@
  * @deprecated use existing types from, or add to metabase-types/api/*
  */
 
-import { DatasetData, Column, Row, Value } from "metabase-types/types/Dataset";
 import { Card } from "metabase-types/types/Card";
-import { VisualizationSettings } from "metabase-types/api/card";
+import {
+  DatasetColumn,
+  DatasetData,
+  RowValue,
+  VisualizationSettings,
+} from "metabase-types/api";
 import { ReduxAction } from "metabase-types/types/redux";
 
 // import Question from "metabase-lib/Question";
@@ -19,7 +23,7 @@ export type QueryMode = {
   fallback?: ActionCreator;
 };
 
-export type HoverData = Array<{ key: string; value: any; col?: Column }>;
+export type HoverData = Array<{ key: string; value: any; col?: DatasetColumn }>;
 
 export type HoverObject = {
   index?: number;
@@ -30,21 +34,21 @@ export type HoverObject = {
 };
 
 export type DimensionValue = {
-  value: Value;
-  column: Column;
+  value: RowValue;
+  column: DatasetColumn;
 };
 
 export type ClickObject = {
-  value?: Value;
-  column?: Column;
+  value?: RowValue;
+  column?: DatasetColumn;
   dimensions?: DimensionValue[];
   event?: MouseEvent;
   element?: HTMLElement;
   seriesIndex?: number;
   settings?: Record<string, any>;
   origin?: {
-    row: Row;
-    cols: Column[];
+    row: RowValue;
+    cols: DatasetColumn[];
   };
   extraData?: Record<string, any>;
 };

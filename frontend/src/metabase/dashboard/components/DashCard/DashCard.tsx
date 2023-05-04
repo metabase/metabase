@@ -24,12 +24,12 @@ import ErrorBoundary from "metabase/ErrorBoundary";
 import type {
   Card,
   CardId,
+  DatasetData,
   Dashboard,
   DashboardOrderedCard,
   DashCardId,
   VisualizationSettings,
 } from "metabase-types/api";
-import type { DatasetData } from "metabase-types/types/Dataset";
 import type {
   ParameterId,
   ParameterValueOrArray,

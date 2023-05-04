@@ -1,6 +1,9 @@
-import type { DatasetData } from "metabase-types/types/Dataset";
 import type { SavedCard } from "metabase-types/types/Card";
-import type { DashboardOrderedCard, ForeignKey } from "metabase-types/api";
+import type {
+  DatasetData,
+  DashboardOrderedCard,
+  ForeignKey,
+} from "metabase-types/api";
 
 import type Table from "metabase-lib/metadata/Table";
 import type Question from "metabase-lib/Question";

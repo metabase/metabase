@@ -5,8 +5,11 @@ import {
   PRODUCTS,
 } from "__support__/sample_database_fixture";
 
-import type { DatetimeUnit } from "metabase-types/api";
 import { Card } from "metabase-types/types/Card";
+import {
+  createMockColumn,
+  createMockDatasetData,
+} from "metabase-types/api/mocks";
 import Question from "metabase-lib/Question";
 
 import {
@@ -32,57 +35,63 @@ const card = {
 } as Card;
 
 describe("ObjectDetail utils", () => {
-  const productIdCol = {
+  const productIdCol = createMockColumn({
     name: "product_id",
     display_name: "Product ID",
     base_type: "int",
     effective_type: "int",
     semantic_type: "type/PK",
     table_id: PRODUCTS.id,
-  };
-  const idCol = {
+  });
+
+  const idCol = createMockColumn({
     name: "id",
     display_name: "ID",
     base_type: "int",
     effective_type: "int",
     semantic_type: "type/PK",
     table_id: ORDERS.id,
-  };
-  const remappedIdCol = {
+  });
+
+  const remappedIdCol = createMockColumn({
     name: "id",
     display_name: "ID",
     base_type: "int",
     effective_type: "int",
     semantic_type: "type/PK",
     table_id: ORDERS.id,
-    hasRemappedValue: () => true,
-    remappedValue: () => "fooBar",
-  };
-  const qtyCol = {
+  });
+
+  (remappedIdCol as any).hasRemappedValue = () => true;
+  (remappedIdCol as any).remappedValue = () => "fooBar";
+
+  const qtyCol = createMockColumn({
     name: "qty",
     display_name: "qty",
     base_type: "int",
     effective_type: "int",
     semantic_type: "type/int",
     table_id: ORDERS.id,
-  };
-  const nameCol = {
+  });
+
+  const nameCol = createMockColumn({
     name: "id",
     display_name: "ID",
     base_type: "string",
     effective_type: "string",
     semantic_type: "type/Name",
     table_id: ORDERS.id,
-  };
-  const dateCol = {
+  });
+
+  const dateCol = createMockColumn({
     name: "date",
     display_name: "Date",
     base_type: "type/DateTime",
     effective_type: "type/DateTime",
     semantic_type: "type/DateTime",
     table_id: ORDERS.id,
-    unit: "default" as DatetimeUnit,
-  };
+    unit: "default",
+  });
 
   describe("getObjectName", () => {
     const question = new Question(card, metadata);
@@ -212,13 +221,13 @@ describe("ObjectDetail utils", () => {
     // this code should no longer be reachable now that we always reach object detail by zooming
     it("should return the primary key of the first row if now zoomed row id exists", () => {
       const id = getIdValue({
-        data: {
+        data: createMockDatasetData({
           cols: [productIdCol, idCol, qtyCol, nameCol],
           rows: [
             [11, 22, 33, "Giant Sprocket"],
             [33, 44, 55, "Tiny Sprocket"],
           ],
-        },
+        }),
         tableId: ORDERS.id,
       });
 
