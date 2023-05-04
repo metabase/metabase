@@ -14,12 +14,12 @@ The way data sandboxes work is that you pick a table that you want to sandbox fo
 
 ## Types of data sandboxes
 
-You can think of a data sandbox as a permissions "container" that includes:
+You can think of a data sandbox as a bundle of settings that include:
 
-- The edited version of a table in your database (for example, with some rows or columns removed).
+- The edited version of a table that will replace the original table in Metabase.
 - The [group](../people-and-groups/managing.md#groups) of people who should see the edited version of the table instead of the original table, everywhere that the table is used in Metabase.
 
-You can define one data sandbox (that is, one permission set) for each table and group pair in your Metabase. There are two basic types of sandboxes:
+You can define one data sandbox (that is, one bundle of permissions) for each table and group pair in your Metabase. There are two basic types of sandboxes:
 
 - A [row-restricting sandbox](#row-restricting-sandboxes) will display a filtered table in place of your original table.
 - An [advanced sandbox](#advanced-sandboxes) will display a custom query result in place of your original table.
@@ -28,7 +28,7 @@ You can define one data sandbox (that is, one permission set) for each table and
 
 A row-restricting sandbox displays the result of a filtered table based on a [user attribute](../people-and-groups/managing.md#adding-user-attributes). Groups assigned to a row-restricting sandbox will see a version of the table with some `Filter = User Attribute` applied, instead of the original table.
 
-For example, you can create a row-restricting sandbox to filter the Accounts table so that a person with the attribute "Basic" will see the rows where `Plan = Basic`, and a person with the attribute "Premium" will only sees the rows where `Plan = Premium`.
+For example, you can create a row-restricting sandbox to filter the Accounts table so that a person with the attribute "Basic" will see the rows where `Plan = Basic`, and a person with the attribute "Premium" will only see the rows where `Plan = Premium`.
 
 ### Advanced data sandboxes
 
@@ -40,18 +40,18 @@ Advanced sandboxes can also be set up to display custom datasets with joined dat
 
 ## Limitations
 
-Groups that need native query permissions (access to the SQL editor) cannot be added to a sandbox.
+**Groups with native query permissions (access to the SQL editor) cannot be sandboxed**. See [Permissions conflicts: native query editing](#native-query-editing-permissions).
 
-The results of saved SQL questions will always use original, non-sandboxed tables. You'll have to use collection permissions to prevent sandboxed groups from viewing that data. See [Permissions conflicts: saved SQL questions](#saved-sql-questions).
+**SQL questions cannot be sandboxed**. The results of a saved SQL question will always use your original tables. You'll have to use collection permissions to prevent sandboxed groups from viewing those SQL questions. See [Permissions conflicts: saved SQL questions](#saved-sql-questions).
 
-Data sandboxing is unavailable for non-SQL databases such as Google Analytics, Apache Druid, or MongoDB.
+**Data sandboxing is unavailable for non-SQL databases**, such as Google Analytics, Apache Druid, or MongoDB.
 
 ## Prerequisites for row-restricting data sandboxes
 
 - A [group](../people-and-groups/managing.md#groups) of people to be added to the row-restricting data sandbox.
 - [User attributes](../people-and-groups/managing.md#adding-a-user-attribute) for each person in the group.
 
-A row sandbox displays a filtered table in place of an original table to a specific group. The user attributes from the group will set the filter.
+A row sandbox displays a filtered table in place of an original table to a specific group. The filter is set for each person in the group depending on the value of their user attribute. For example, a person with the attribute "Basic" will see the rows where `Plan = Basic`, and a person with the attribute "Premium" will only see the rows where `Plan = Premium`.
 
 When adding a new user attribute for sandboxing, make sure that the **value** of the user attribute is an exact, case-sensitive match for the values in the column used to filter the Accounts table.
 
@@ -75,7 +75,7 @@ For a tutorial, check out [Data sandboxing: setting row-level permissions](https
 ## Prerequisites for advanced data sandboxes
 
 - A [group](../people-and-groups/managing.md#groups) of people to be added to the advanced data sandbox.
-- An admin-only [collection](../exploration-and-organization/collections.md) (with [collection permissions](../permissions/collections.md) set to **No access**) for storing your saved sandboxing questions.
+- An admin-only [collection](../exploration-and-organization/collections.md) (with [collection permissions](../permissions/collections.md) set to **No access**).
 - A [saved SQL question](../people-and-groups/) with the rows and columns to be displayed to the people in the advanced sandbox, and stored in the admin-only collection.
 - Optional: [User attributes](../people-and-groups/managing.md#adding-a-user-attribute) for each of the people in the group.
 
@@ -99,7 +99,7 @@ To display different filtered versions of the saved question for each person in 
 
 For an example, see [Advanced data sandboxing: limiting access to columns](https://www.metabase.com/learn/permissions/data-sandboxing-column-permissions).
 
-## Restricting rows in an advanced sandbox based on user attributes
+## Restricting rows in an advanced sandbox with user attributes
 
 If you want an advanced data sandbox to display different rows to each person depending on their [user attributes](../people-and-groups/managing.md#adding-a-user-attribute), such as filtering the Accounts table to `Plan = Basic` for one group, and `Plan = Premium` for another group:
 
@@ -115,17 +115,32 @@ If you want an advanced data sandbox to display different rows to each person de
 10. Set the **User attribute** to the **key** of the [user attribute](../people-and-groups/managing.md#adding-a-user-attribute) to be filtered on (such as "Plan").
 11. Click **Save**.
 
-Metabase will apply a different `WHERE` clause to the saved SQL question depending on the **value** of a person's user attribute. A person with the attribute "Plan = Basic" will see a sandboxed table with the filter `WHERE plan = "Basic"`, and a person with the attribute "Plan = Business" will see a sandboxed table with the filter `WHERE plan = "Business"`.
+Metabase will apply a different `WHERE` clause to your saved SQL question depending on the **value** of a person's user attribute. Here's a user attribute gets passed to the `WHERE` clause in your saved SQL question:
 
-Here's how it all works together:
+1. A normal `WHERE` clause will filter a column to a fixed value:
+```
+WHERE column_name = column_value
+```
 
-|                                   |                                                                                                                  |
-|-----------------------------------|------------------------------------------------------------------------------------------------------------------|
-| WHERE column_name = column_value  | A `WHERE` clause will filter a column to a fixed value.                                                          |
-| WHERE plan = {{ plan_name }}      | In step 2, add a SQL parameter so that the `WHERE` clause accepts a dynamic value.                               |
-| WHERE plan = USER_ATTRIBUTE_KEY   | In steps 9-10, tell Metabase to map the parameter to a user attribute **key** (for example, a key named "Plan"). |
-| WHERE plan = USER_ATTRIBUTE_VALUE | Metabase looks up the key to find the **value** for a specific person ("Basic", "Business", or "Premium")        |
-| WHERE plan = "Basic"              | Metabase replaces the SQL parameter with the user attribute **value** (such as "Basic").                         |
+2. In step 2, you'll add a SQL parameter so that the `WHERE` clause will accept a dynamic value:
+```
+WHERE plan = {%raw%}{{ plan_name }}{%endraw%} 
+```
+
+3. In steps 9-10, you're telling Metabase to map the SQL parameter to a user attribute **key** (for example, a key named "Plan"):
+```
+WHERE plan = USER_ATTRIBUTE_KEY
+```
+
+4. Metabase will use the user attribute key to look up the user attribute **value** for a specific person ("Basic", "Business", or "Premium"):
+```
+WHERE plan = USER_ATTRIBUTE_VALUE
+```
+
+5. Metabase replaces the SQL parameter with the user attribute **value** (such as "Basic") to display the sandboxed table to a specific person:
+```
+WHERE plan = "Basic"
+```
 
 ## Required group permissions
 
@@ -202,7 +217,6 @@ Groups with permission to use the SQL editor cannot be sandboxed, so they will a
 Some Metabase permissions can conflict with data sandboxing to give more permissive or more restrictive data access than you intended. It's a good idea to review your permissions for each of these scenarios:
 
 - [Multiple data sandboxing permissions](#multiple-data-sandboxing-permissions)
-- [Native query editing permissions](#native-query-editing-permissions)
 - [Saved SQL questions](#saved-sql-questions)
 - [Public sharing](#public-sharing)
 
@@ -221,17 +235,6 @@ To resolve data sandboxing conflicts for a person in multiple groups:
 
 - Remove the person from all but one of the groups.
 - Remove all but one of the data sandboxes for that table (change the table's data access to **No self-service** for all but one group).
-
-### Native query editing permissions
-
-People with **native query editing** permissions will always be able to write SQL queries using the original tables in a database, even if you put those people in a data sandbox.
-
-If you put Vincent Accountman in two different groups:
-
-- One group with **Native query editing** permissions to the Sample Database.
-- Another group with **Sandboxed** permissions to the Accounts table in the Sample Database.
-
-Vincent's native query permissions will override his sandboxing permissions, so he'll still be able to write SQL queries using the original, unfiltered Accounts table.
 
 ### Saved SQL questions
 
