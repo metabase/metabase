@@ -8,6 +8,7 @@ import type {
   Bucket,
   BucketDisplayInfo,
   Clause,
+  ClauseDisplayInfo,
   ColumnDisplayInfo,
   ColumnGroup,
   ColumnMetadata,
@@ -45,6 +46,7 @@ declare function DisplayInfoFn(
   query: Query,
   breakoutClause: BreakoutClause,
 ): BreakoutClauseDisplayInfo;
+declare function DisplayInfoFn(query: Query, clause: Clause): ClauseDisplayInfo;
 declare function DisplayInfoFn(query: Query, bucket: Bucket): BucketDisplayInfo;
 
 // x can be any sort of opaque object, e.g. a clause or metadata map. Values returned depend on what you pass in, but it
