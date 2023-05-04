@@ -197,7 +197,7 @@ describe("scenarios > dashboard > OLD parameters", () => {
           cy.findByText(
             "You can make this dashboard snappier by turning off auto-applying filters.",
           );
-          cy.button("Undo").click();
+          cy.button("Turn off").click();
         });
 
       toggleDashboardSidebar();

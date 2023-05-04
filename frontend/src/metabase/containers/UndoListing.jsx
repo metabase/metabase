@@ -71,10 +71,9 @@ function UndoToast({ undo, onUndo, onDismiss }) {
             </CardContentSide>
             <CardContentSide>
               {undo.actions?.length > 0 && (
-                <UndoButton
-                  role="button"
-                  onClick={onUndo}
-                >{t`Undo`}</UndoButton>
+                <UndoButton role="button" onClick={onUndo}>
+                  {undo.actionLabel ?? t`Undo`}
+                </UndoButton>
               )}
               <DismissIcon name="close" onClick={onDismiss} />
             </CardContentSide>

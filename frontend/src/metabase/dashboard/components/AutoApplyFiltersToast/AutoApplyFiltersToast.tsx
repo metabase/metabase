@@ -43,6 +43,7 @@ export default function AutoApplyFilterToast() {
           timeout: false,
           message: t`You can make this dashboard snappier by turning off auto-applying filters.`,
           action: onTurnOffAutoApplyFilters,
+          actionLabel: t`Turn off`,
         }),
       );
     } else {

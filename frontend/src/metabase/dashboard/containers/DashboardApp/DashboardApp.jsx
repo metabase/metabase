@@ -164,6 +164,7 @@ const DashboardApp = props => {
           timeout: false,
           message: t`Would you like to be notified when this dashboard is done loading?`,
           action: onConfirmToast,
+          actionLabel: t`Turn on`,
         }),
       );
     }
