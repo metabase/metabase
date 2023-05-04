@@ -1029,7 +1029,7 @@
   (testing "GET /api/database/:id/schemas?include_empty=true"
     (testing "Multiple schemas are ordered by name"
       ;; We need to redef driver/all-schemas here because different databases might have different schemas
-      (with-redefs [driver/all-schemas (constantly #{"PUBLIC"})]
+      (with-redefs [driver/syncable-schemas (constantly #{"PUBLIC"})]
         (is (= ["PUBLIC"]
                (mt/user-http-request :crowberto :get 200 (format "database/%d/schemas?include_empty=true" (mt/id)))))
         (testing "Non-admins don't have permission to use include_empty parameter"

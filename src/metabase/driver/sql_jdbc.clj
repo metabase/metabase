@@ -142,8 +142,7 @@
     (doseq [sql sqls]
       (qp.writeback/execute-write-sql! db-id sql))))
 
-(defmethod driver/all-schemas :sql-jdbc
+(defmethod driver/syncable-schemas :sql-jdbc
   [driver database]
   (with-open [conn ^java.sql.Connection (jdbc/get-connection (sql-jdbc.conn/db->pooled-connection-spec database))]
-    (into []
-          (sql-jdbc.sync.interface/filtered-syncable-schemas driver conn (.getMetaData conn) nil nil))))
+    (into #{} (sql-jdbc.sync.interface/filtered-syncable-schemas driver conn (.getMetaData conn) nil nil))))

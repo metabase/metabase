@@ -632,9 +632,9 @@
               (#'mysql.ddl/execute-with-timeout! db-spec db-spec 10 ["select sleep(5)"])))
         (is (some? (#'mysql.ddl/execute-with-timeout! db-spec db-spec 5000 ["select sleep(0.1) as val"])))))))
 
-(deftest all-schemas-test
+(deftest syncable-schemas-test
   (mt/test-driver :mysql
-    (testing "`all-schemas` should return an empty list because mysql doesn't support schemas"
+    (testing "`syncable-schemas` should return an empty list because mysql doesn't support schemas"
       (mt/with-empty-db
         (is (= []
-               (driver/all-schemas driver/*driver* (mt/id))))))))
+               (driver/syncable-schemas driver/*driver* (mt/id))))))))

@@ -1056,44 +1056,45 @@
    (perms/set-has-full-permissions? @api/*current-user-permissions-set*
                                     (perms/data-model-write-perms-path database-id schema-name))))
 
+(api/defendpoint GET "/:id/syncable_schemas"
+  "Returns a list of all syncable schemas found for the database `id`."
+  [id]
+  {id ms/PositiveInt}
+  (api/check-superuser)
+  (let [db (api/check-404 (t2/select-one Database id))]
+    (driver/syncable-schemas (:engine db) db)))
+
 (api/defendpoint GET "/:id/schemas"
-  "Returns a list of all the schemas found for the database `id`"
+  "Returns a list of all the schemas with tables found for the database `id`. Excludes schemas with no tables."
   [id include_editable_data_model include_hidden include_empty]
   {id                          ms/PositiveInt
    include_editable_data_model [:maybe ms/BooleanString]
-   include_hidden              [:maybe ms/BooleanString]
-   include_empty               [:maybe ms/BooleanString]}
+   include_hidden              [:maybe ms/BooleanString]}
   (let [include_editable_data_model (Boolean/parseBoolean include_editable_data_model)
         include_hidden              (Boolean/parseBoolean include_hidden)
-        include_empty               (Boolean/parseBoolean include_empty)]
-    (if include_empty
-      ;; include_empty is mutually exclusive with the include_editable_data_model and include_hidden params
-      (do (api/check-superuser)
-          (let [db (api/check-404 (t2/select-one Database id))]
-            (driver/all-schemas (:engine db) db)))
-      (let [filter-schemas (fn [schemas]
-                             (if include_editable_data_model
-                               (if-let [f (u/ignore-exceptions
-                                           (classloader/require 'metabase-enterprise.advanced-permissions.common)
-                                           (resolve 'metabase-enterprise.advanced-permissions.common/filter-schema-by-data-model-perms))]
-                                 (map :schema (f (map (fn [s] {:db_id id :schema s}) schemas)))
-                                 schemas)
-                               (filter (partial can-read-schema? id) schemas)))]
-        (if include_editable_data_model
-          (api/check-404 (t2/select-one Database id))
-          (api/read-check Database id))
-        (->> (t2/select-fn-set :schema Table
-                               :db_id id :active true
-                               (merge
-                                {:order-by [[:%lower.schema :asc]]}
-                                (when-not include_hidden
-                                  ;; a non-nil value means Table is hidden -- see [[metabase.models.table/visibility-types]]
-                                  {:where [:= :visibility_type nil]})))
-             filter-schemas
-             ;; for `nil` schemas return the empty string
-             (map #(if (nil? %) "" %))
-             distinct
-             sort)))))
+        filter-schemas (fn [schemas]
+                         (if include_editable_data_model
+                           (if-let [f (u/ignore-exceptions
+                                       (classloader/require 'metabase-enterprise.advanced-permissions.common)
+                                       (resolve 'metabase-enterprise.advanced-permissions.common/filter-schema-by-data-model-perms))]
+                             (map :schema (f (map (fn [s] {:db_id id :schema s}) schemas)))
+                             schemas)
+                           (filter (partial can-read-schema? id) schemas)))]
+    (if include_editable_data_model
+      (api/check-404 (t2/select-one Database id))
+      (api/read-check Database id))
+    (->> (t2/select-fn-set :schema Table
+                           :db_id id :active true
+                           (merge
+                            {:order-by [[:%lower.schema :asc]]}
+                            (when-not include_hidden
+                              ;; a non-nil value means Table is hidden -- see [[metabase.models.table/visibility-types]]
+                              {:where [:= :visibility_type nil]})))
+         filter-schemas
+         ;; for `nil` schemas return the empty string
+         (map #(if (nil? %) "" %))
+         distinct
+         sort)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET ["/:virtual-db/schemas"

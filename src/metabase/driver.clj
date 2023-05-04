@@ -843,8 +843,8 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
-(defmulti all-schemas
-  "Returns a list of schemas in the database (as strings)."
+(defmulti syncable-schemas
+  "Returns the set of syncable schemas in the database (as strings)."
   {:added "0.47.0", :arglists '([driver database])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)

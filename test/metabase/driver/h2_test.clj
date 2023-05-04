@@ -275,9 +275,9 @@
                                           :post 200
                                           (format "action/%s/execute" action-id))))))))))
 
-(deftest all-schemas-test
+(deftest syncable-schemas-test
   (mt/test-driver :h2
-    (testing "`all-schemas` should return for a database that a user can upload to"
+    (testing "`syncable-schemas` should return schemas that should be synced"
       (mt/with-empty-db
         (is (= ["PUBLIC"]
-               (driver/all-schemas driver/*driver* (mt/id))))))))
+               (driver/syncable-schemas driver/*driver* (mt/id))))))))

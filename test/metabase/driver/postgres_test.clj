@@ -1166,12 +1166,12 @@
               absolute-path
               (str/ends-with? ".p12"))))))
 
-(deftest all-schemas-test
+(deftest syncable-schemas-test
   (mt/test-driver :postgres
-    (testing "`all-schemas` should return schemas that a user can upload to"
+    (testing "`syncable-schemas` should return schemas that should be synced"
       (mt/with-empty-db
         (is (= ["public"]
-               (driver/all-schemas driver/*driver* (mt/id))))))
+               (driver/syncable-schemas driver/*driver* (mt/id))))))
     (testing "metabase_cache schemas should be excluded"
       (mt/dataset test-data
         (mt/with-persistence-enabled [persist-models!]
@@ -1184,4 +1184,4 @@
               (is (some (partial re-matches #"metabase_cache(.*)")
                         (map :schema_name (jdbc/query conn-spec "SELECT schema_name from INFORMATION_SCHEMA.SCHEMATA;"))))
               (is (nil? (some (partial re-matches #"metabase_cache(.*)")
-                              (driver/all-schemas driver/*driver* (mt/id))))))))))))
+                              (driver/syncable-schemas driver/*driver* (mt/id))))))))))))
