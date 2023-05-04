@@ -14502,6 +14502,16 @@ databaseChangeLog:
                   defaultValueBoolean: false
                   constraints:
                     nullable: false
+
+  - changeSet:
+      id: v47.00-016
+      author: calherres
+      comment: Added 0.47.0 - Migrate the report_card.visualization_settings.column_settings field refs from legacy format
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.MigrateLegacyColumnSettingsFieldRefs"
+
+
   - changeSet:
       id: v47.00-018
       author: dpsutton
@@ -14645,15 +14655,6 @@ databaseChangeLog:
         - dropUniqueConstraint:
             tableName: model_index_value
             constraintName: unique_model_index_value_index_id_model_pk
-
-
-  - changeSet:
-      id: v47.00-016
-      author: calherres
-      comment: Added 0.47.0 - Migrate the report_card.visualization_settings.column_settings field refs from legacy format
-      changes:
-        - customChange:
-            class: "metabase.db.custom_migrations.MigrateLegacyColumnSettingsFieldRefs"
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
