@@ -70,6 +70,7 @@ const NewItemMenu = ({
         link: Urls.newQuestion({
           mode: "notebook",
           creationType: "custom_question",
+          collectionId,
         }),
         event: `${analyticsContext};New Question Click;`,
         onClose: onCloseNavbar,
@@ -83,6 +84,7 @@ const NewItemMenu = ({
         link: Urls.newQuestion({
           type: "native",
           creationType: "native_question",
+          collectionId,
         }),
         event: `${analyticsContext};New SQL Query Click;`,
         onClose: onCloseNavbar,
@@ -108,7 +110,7 @@ const NewItemMenu = ({
       items.push({
         title: t`Model`,
         icon: "model",
-        link: "/model/new",
+        link: `/model/new?collectionId=${collectionId}`,
         event: `${analyticsContext};New Model Click;`,
         onClose: onCloseNavbar,
       });
@@ -132,6 +134,7 @@ const NewItemMenu = ({
     hasDatabaseWithActionsEnabled,
     analyticsContext,
     onCloseNavbar,
+    collectionId,
   ]);
 
   return (
