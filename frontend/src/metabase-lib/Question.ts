@@ -23,8 +23,11 @@ import { isFK } from "metabase-lib/types/utils/isa";
 import { memoizeClass, sortObject } from "metabase-lib/utils";
 import {
   CollectionId,
+  DatasetColumn,
+  RowValue,
   Parameter as ParameterObject,
   ParameterId,
+  VisualizationSettings,
 } from "metabase-types/api";
 
 import * as AGGREGATION from "metabase-lib/queries/utils/aggregation";
@@ -36,8 +39,6 @@ import * as Urls from "metabase/lib/urls";
 import { getCardUiParameters } from "metabase-lib/parameters/utils/cards";
 import { ParameterValues } from "metabase-types/types/Parameter";
 import { Card as CardObject, DatasetQuery } from "metabase-types/types/Card";
-import { VisualizationSettings } from "metabase-types/api/card";
-import { Column, Value } from "metabase-types/types/Dataset";
 import { TableId } from "metabase-types/types/Table";
 import { DatabaseId } from "metabase-types/types/Database";
 import {
@@ -566,7 +567,7 @@ class QuestionInner {
 
   drillUnderlyingRecords(
     dimensions: DimensionValue[],
-    column?: Column,
+    column?: DatasetColumn,
   ): Question {
     let query = this.query();
     if (!(query instanceof StructuredQuery)) {
@@ -662,7 +663,7 @@ class QuestionInner {
     });
   }
 
-  drillPK(field: Field, value: Value): Question | null | undefined {
+  drillPK(field: Field, value: RowValue): Question | null | undefined {
     const query = this.query();
 
     if (!(query instanceof StructuredQuery)) {

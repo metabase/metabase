@@ -6,9 +6,12 @@ import { isPivotGroupColumn } from "metabase/lib/data_grid";
 import { measureText } from "metabase/lib/measure-text";
 import { sumArray } from "metabase/core/utils/arrays";
 
-import type { Column, DatasetData } from "metabase-types/types/Dataset";
 import type { Card } from "metabase-types/types/Card";
-import type { VisualizationSettings } from "metabase-types/api";
+import type {
+  DatasetColumn,
+  DatasetData,
+  VisualizationSettings,
+} from "metabase-types/api";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
 import type {
@@ -35,7 +38,7 @@ import {
 // adds or removes columns from the pivot settings based on the current query
 export function updateValueWithCurrentColumns(
   storedValue: PivotSetting,
-  columns: Column[],
+  columns: DatasetColumn[],
 ) {
   const currentQueryFieldRefs = columns.map(c => JSON.stringify(c.field_ref));
   const currentSettingFieldRefs = Object.values(storedValue).flatMap(
@@ -88,7 +91,7 @@ export function addMissingCardBreakouts(setting: PivotSetting, card: Card) {
   return { ...setting, columns, rows };
 }
 
-export function isColumnValid(col: Column) {
+export function isColumnValid(col: DatasetColumn) {
   return (
     col.source === "aggregation" ||
     col.source === "breakout" ||
@@ -96,7 +99,7 @@ export function isColumnValid(col: Column) {
   );
 }
 
-export function isFormattablePivotColumn(column: Column) {
+export function isFormattablePivotColumn(column: DatasetColumn) {
   return column.source === "aggregation";
 }
 
@@ -202,7 +205,7 @@ export function databaseSupportsPivotTables(query: StructuredQuery) {
 }
 
 export function isSensible(
-  { cols }: { cols: Column[] },
+  { cols }: { cols: DatasetColumn[] },
   query: StructuredQuery,
 ) {
   return (
