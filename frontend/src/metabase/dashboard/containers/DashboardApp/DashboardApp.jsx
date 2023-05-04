@@ -131,7 +131,6 @@ const DashboardApp = props => {
   const slowToastId = useUniqueId();
   useEffect(() => {
     if (isLoadingComplete) {
-      dispatch(dismissUndo(slowToastId));
       if (
         "Notification" in window &&
         Notification.permission === "granted" &&
@@ -143,6 +142,10 @@ const DashboardApp = props => {
         );
       }
     }
+
+    return () => {
+      dispatch(dismissUndo(slowToastId));
+    };
   }, [
     dashboard?.name,
     dispatch,
@@ -173,10 +176,6 @@ const DashboardApp = props => {
   useLoadingTimer(isRunning, {
     timer: DASHBOARD_SLOW_TIMEOUT,
     onTimeout,
-  });
-
-  useUnmount(() => {
-    dispatch(dismissUndo(slowToastId));
   });
 
   useAutoApplyFiltersToast();
