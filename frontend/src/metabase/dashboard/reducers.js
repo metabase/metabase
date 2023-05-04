@@ -362,25 +362,23 @@ const loadingDashCards = handleActions(
       },
     },
     [FETCH_DASHBOARD_CARD_DATA]: {
-      next: state => ({
+      next: (state, { payload: { currentTime } }) => ({
         ...state,
         loadingStatus: state.dashcardIds.length > 0 ? "running" : "idle",
-        startTime:
-          state.dashcardIds.length > 0 &&
-          // check that performance is defined just in case
-          typeof performance === "object"
-            ? performance.now()
-            : null,
+        startTime: state.dashcardIds.length > 0 && currentTime,
       }),
     },
     [FETCH_CARD_DATA]: {
-      next: (state, { payload: { dashcard_id } }) => {
+      next: (state, { payload: { dashcard_id, currentTime } }) => {
         const loadingIds = state.loadingIds.filter(id => id !== dashcard_id);
         return {
           ...state,
           loadingIds,
           ...(loadingIds.length === 0
-            ? { startTime: null, loadingStatus: "complete" }
+            ? {
+                endTime: currentTime,
+                loadingStatus: "complete",
+              }
             : {}),
         };
       },
@@ -391,7 +389,6 @@ const loadingDashCards = handleActions(
         return {
           ...state,
           loadingIds,
-          ...(loadingIds.length === 0 ? { startTime: null } : {}),
         };
       },
     },
@@ -406,6 +403,7 @@ const loadingDashCards = handleActions(
     dashcardIds: [],
     loadingIds: [],
     startTime: null,
+    endTime: null,
     loadingStatus: "idle",
   },
 );
