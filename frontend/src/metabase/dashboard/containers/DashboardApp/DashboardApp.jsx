@@ -128,6 +128,7 @@ const DashboardApp = props => {
 
   useUnmount(props.reset);
 
+  const slowToastId = useUniqueId();
   useEffect(() => {
     if (isLoadingComplete) {
       dispatch(dismissUndo(slowToastId));
@@ -150,7 +151,6 @@ const DashboardApp = props => {
     slowToastId,
   ]);
 
-  const slowToastId = useUniqueId();
   const onConfirmToast = useCallback(async () => {
     await requestPermission();
     dispatch(dismissUndo(slowToastId));
