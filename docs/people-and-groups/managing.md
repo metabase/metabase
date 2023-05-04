@@ -28,7 +28,7 @@ You can edit someone's name and email address by clicking the three dots icon an
 
 {% include plans-blockquote.html feature="User attributes" %}
 
-To add a user attributes manually:
+To add a user attribute manually:
 
 1. Go to **Admin settings** > **People**.
 2. Find the person's account and click the **three dot** (...) menu.
@@ -36,18 +36,12 @@ To add a user attributes manually:
 4. Click **+ Add an attribute**.
 5. Add the name of the user attribute under "Key". For example, "Department".
 6. Add the value that applies to the specific person. For example, "Engineering".
-7. Optional: if it doesn't exist, [create a group](#creating-a-group) to organize people who will get sandboxed table permissions, such as "Sandboxed People".
+7. Optional: if a group for sandboxed people doesn't exist, [create a group](#creating-a-group) to organize people who will get sandboxed table permission, such as "Sandboxed people".
 8. Add the person to the group.
 
 You can also sync user attributes from your identity provider [via SSO](./start.md#authentication).
 
-### User attributes and data sandboxing
-
 User attributes are required for [data sandboxing](../permissions/data-sandboxes.md) permissions.
-
-When adding a new user attribute for sandboxing, make sure that the **value** of the user attribute is an exact, case-sensitive match for the values in the column used to filter the Accounts table.
-
-For example, if you're creating a row-limiting sandbox that only includes rows where `Plan = Basic`, make sure that you enter "Basic" as the value for a user attribute. If you set the user attribute to lowercase "basic" (which doesn't exist), the sandboxed Accounts table will appear empty.
 
 ## Deactivating an account
 
