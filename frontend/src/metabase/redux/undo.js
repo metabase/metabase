@@ -1,6 +1,5 @@
 import _ from "underscore";
 
-import { createAction } from "@reduxjs/toolkit";
 import { createThunkAction } from "metabase/lib/redux";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 
@@ -21,20 +20,29 @@ export const addUndo = createThunkAction(ADD_UNDO, undo => {
   };
 });
 
-export const dismissUndo = createAction(
+function getUndo(state, undoId) {
+  return _.findWhere(state.undo, { id: undoId });
+}
+
+export const dismissUndo = createThunkAction(
   DISMISS_UNDO,
   (undoId, track = true) => {
-    if (track) {
-      MetabaseAnalytics.trackStructEvent("Undo", "Dismiss Undo");
-    }
-    return { payload: undoId };
+    return (_dispatch, getState) => {
+      const undo = getUndo(getState(), undoId);
+      if (track && !undo.actionLabel) {
+        MetabaseAnalytics.trackStructEvent("Undo", "Dismiss Undo");
+      }
+      return undoId;
+    };
   },
 );
 
 export const performUndo = createThunkAction(PERFORM_UNDO, undoId => {
   return (dispatch, getState) => {
-    MetabaseAnalytics.trackStructEvent("Undo", "Perform Undo");
-    const undo = _.findWhere(getState().undo, { id: undoId });
+    const undo = getUndo(getState(), undoId);
+    if (!undo.actionLabel) {
+      MetabaseAnalytics.trackStructEvent("Undo", "Perform Undo");
+    }
     if (undo) {
       undo.actions.map(action => dispatch(action));
       dispatch(dismissUndo(undoId, false));
