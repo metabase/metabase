@@ -71,6 +71,9 @@ class FieldInner extends Base {
   table?: Table;
   table_id?: Table["id"];
   target?: Field;
+  fk_target_field_id?: Field["id"] | null;
+  name_field?: Field["id"];
+  remapping?: unknown;
   has_field_values?: "list" | "search" | "none";
   has_more_values?: boolean;
   values: any[];

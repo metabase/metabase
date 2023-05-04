@@ -446,7 +446,7 @@ describe("Dimension", () => {
             name: "CREATED_AT",
             display_name: "Created At",
             base_type: "type/DateTime",
-            semantic_type: null,
+            semantic_type: "type/CreationTimestamp",
             field_ref: [
               "field",
               ORDERS.CREATED_AT.id,

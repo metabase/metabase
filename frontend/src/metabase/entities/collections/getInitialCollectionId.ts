@@ -1,4 +1,4 @@
-import { createSelector } from "reselect";
+import { createSelector } from "@reduxjs/toolkit";
 import type { Location } from "history";
 
 import * as Urls from "metabase/lib/urls";

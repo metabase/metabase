@@ -72,7 +72,7 @@
   [:tuple
    [:= :aggregation]
    ::aggregation-options
-   ::common/int-greater-than-or-equal-to-zero])
+   :string])
 
 (defmethod expression/type-of* :aggregation
   [[_tag opts _index]]
