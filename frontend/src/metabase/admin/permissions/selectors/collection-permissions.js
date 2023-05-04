@@ -1,4 +1,4 @@
-import { createSelector } from "reselect";
+import { createSelector } from "@reduxjs/toolkit";
 import { t } from "ttag";
 import { getIn } from "icepick";
 import _ from "underscore";
@@ -188,6 +188,7 @@ export const getCollectionsPermissionEditor = createSelector(
         permissions: [
           {
             toggleLabel,
+            hasChildren,
             isDisabled: isAdmin,
             disabledTooltip: isAdmin
               ? UNABLE_TO_CHANGE_ADMIN_PERMISSIONS

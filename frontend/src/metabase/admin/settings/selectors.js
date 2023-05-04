@@ -1,7 +1,7 @@
 /* eslint-disable react/display-name */
 import React from "react";
 import _ from "underscore";
-import { createSelector } from "reselect";
+import { createSelector } from "@reduxjs/toolkit";
 import { t, jt } from "ttag";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import MetabaseSettings from "metabase/lib/settings";

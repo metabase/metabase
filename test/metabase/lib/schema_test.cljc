@@ -25,44 +25,46 @@
     2]])
 
 (deftest ^:parallel check-aggregation-references-test
-  (are [stage errors] (= errors
-                         (me/humanize (mc/explain ::lib.schema/stage stage)))
-    {:lib/type     :mbql.stage/mbql
-     :source-table 1
-     :aggregation  [valid-ag-1 valid-ag-2]
-     :fields       [[:aggregation {:lib/uuid (str (random-uuid))} 1]]}
-    nil
+  (let [bad-ref (str (random-uuid))
+        good-ref (:lib/uuid (second valid-ag-1))]
+    (are [stage errors] (= errors
+                           (me/humanize (mc/explain ::lib.schema/stage stage)))
+      {:lib/type     :mbql.stage/mbql
+       :source-table 1
+       :aggregation  [valid-ag-1 valid-ag-2]
+       :fields       [[:aggregation {:lib/uuid (str (random-uuid))} good-ref]]}
+      nil
 
-    {:lib/type     :mbql.stage/mbql
-     :source-table 1
-     :fields       [[:aggregation {:lib/uuid (str (random-uuid))} 1]]}
-    ["Invalid :aggregation reference: no aggregation at index 1"]
+      {:lib/type     :mbql.stage/mbql
+       :source-table 1
+       :fields       [[:aggregation {:lib/uuid (str (random-uuid))} bad-ref]]}
+      [(str "Invalid :aggregation reference: no aggregation with uuid " bad-ref)]
 
-    {:lib/type     :mbql.stage/mbql
-     :source-table 1
-     :aggregation  [valid-ag-1]
-     :fields       [[:aggregation {:lib/uuid (str (random-uuid))} 1]]}
-    ["Invalid :aggregation reference: no aggregation at index 1"]
+      {:lib/type     :mbql.stage/mbql
+       :source-table 1
+       :aggregation  [valid-ag-1]
+       :fields       [[:aggregation {:lib/uuid (str (random-uuid))} bad-ref]]}
+      [(str "Invalid :aggregation reference: no aggregation with uuid " bad-ref)]
 
-    ;; don't recurse into joins.
-    {:lib/type     :mbql.stage/mbql
-     :source-table 1
-     :joins        [{:lib/type    :mbql/join
-                     :lib/options {:lib/uuid (str (random-uuid))}
-                     :alias       "Q1"
-                     :fields      :all
-                     :conditions  [[:=
-                                    {:lib/uuid (str (random-uuid))}
-                                    [:field {:lib/uuid (str (random-uuid))} 1]
-                                    [:field {:join-alias "Q1", :lib/uuid (str (random-uuid))} 2]]]
-                     :stages      [{:lib/type     :mbql.stage/mbql
-                                    :source-table 3
-                                    :aggregation  [[:count {:lib/uuid (str (random-uuid))}]]
-                                    :order-by     [[:asc
-                                                    {:lib/uuid (str (random-uuid))}
-                                                    [:aggregation {:lib/uuid (str (random-uuid))} 0]]]}
-                                   {:lib/type :mbql.stage/mbql, :lib/options {:lib/uuid (str (random-uuid))}}]}]}
-    nil))
+      ;; don't recurse into joins.
+      {:lib/type     :mbql.stage/mbql
+       :source-table 1
+       :joins        [{:lib/type    :mbql/join
+                       :lib/options {:lib/uuid (str (random-uuid))}
+                       :alias       "Q1"
+                       :fields      :all
+                       :conditions  [[:=
+                                      {:lib/uuid (str (random-uuid))}
+                                      [:field {:lib/uuid (str (random-uuid))} 1]
+                                      [:field {:join-alias "Q1", :lib/uuid (str (random-uuid))} 2]]]
+                       :stages      [{:lib/type     :mbql.stage/mbql
+                                      :source-table 3
+                                      :aggregation  [valid-ag-1]
+                                      :order-by     [[:asc
+                                                      {:lib/uuid (str (random-uuid))}
+                                                      [:aggregation {:lib/uuid (str (random-uuid))} good-ref]]]}
+                                     {:lib/type :mbql.stage/mbql, :lib/options {:lib/uuid (str (random-uuid))}}]}]}
+      nil)))
 
 (def ^:private valid-expression
   [:+
