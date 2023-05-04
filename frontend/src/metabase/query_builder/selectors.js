@@ -1,7 +1,7 @@
 /*eslint no-use-before-define: "error"*/
 
 import d3 from "d3";
-import { createSelector } from "reselect";
+import { createSelector } from "@reduxjs/toolkit";
 import createCachedSelector from "re-reselect";
 import _ from "underscore";
 import { getIn, merge, updateIn } from "icepick";

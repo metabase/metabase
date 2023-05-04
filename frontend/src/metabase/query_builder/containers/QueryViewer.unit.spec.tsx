@@ -11,7 +11,7 @@ import {
   createMockNativeDatasetQuery,
 } from "metabase-types/api/mocks";
 
-import { createEntitiesState } from "__support__/store";
+import { createMockEntitiesState } from "__support__/store";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import QueryViewer from "./QueryViewer";
@@ -26,7 +26,7 @@ const makeQuery = (options: any) => {
 const setup = ({ query }: { query: DatasetQuery }) => {
   const database = createSampleDatabase();
   const state = createMockState({
-    entities: createEntitiesState({
+    entities: createMockEntitiesState({
       databases: [database],
     }),
   });
