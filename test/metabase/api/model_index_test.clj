@@ -44,7 +44,8 @@
                      :state      "indexed"
                      :model_id   (:id model)
                      :error      nil}
-                    (mt/user-http-request :rasta :get 200 (str "/model-index/" (:id model))))))
+                    (mt/user-http-request :rasta :get 200
+                                          (str "/model-index/" (:id model-index))))))
           (testing "DELETE"
             (let [by-key (fn [k xs]
                            (some (fn [x] (when (= (:key x) k) x)) xs))]

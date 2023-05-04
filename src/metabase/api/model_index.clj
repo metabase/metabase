@@ -61,14 +61,15 @@
     (t2/select ModelIndex :model_id model_id)))
 
 (api/defendpoint GET "/:id"
-  [model_id]
-  {model_id ms/PositiveInt}
-  (let [model (api/read-check Card model_id)]
+  [id]
+  {id ms/PositiveInt}
+  (let [model-index (api/check-404 (t2/select-one ModelIndex :id id))
+        model       (api/read-check Card (:model_id model-index))]
     (when-not (:dataset model)
-      (throw (ex-info (tru "Question {0} is not a model" model_id)
-                      {:model_id model_id
+      (throw (ex-info (tru "Question {0} is not a model" id)
+                      {:model_id id
                        :status-code 400})))
-    (t2/select-one ModelIndex :id model_id)))
+    model-index))
 
 (api/defendpoint DELETE "/:id"
   [id]
