@@ -7,6 +7,5 @@ export function createMockMetadata(
   opts?: MetadataSelectorOpts,
 ) {
   const state = createMockState({ entities: createEntitiesState(entities) });
-  const metadata = getMetadata(state, opts);
-  return { metadata, state };
+  return getMetadata(state, opts);
 }
