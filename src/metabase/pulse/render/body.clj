@@ -569,7 +569,7 @@
   The nearness is 1 - length(AD) / length(BC) or equivalently:
   length(AB) + length(CD) / length(AD)"
   [vals-a vals-b]
-  (let [[a b c d] (sort (concat vals-a vals-b))]
+  (let [[a b c d] (sort (concat ((juxt first last) vals-a) ((juxt first last) vals-b)))]
     (- 1 (double (/ (abs (- c b)) (abs (- a d)))))))
 
 (defn- axis-group-score
