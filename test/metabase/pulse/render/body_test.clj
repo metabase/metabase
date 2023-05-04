@@ -639,6 +639,16 @@
                (filter #{"visx-axis-left" "visx-axis-right"}))]
    (into #{} xf nodes)))
 
+(deftest axes-group-scoring-test
+  (let [axis-group-score  #'body/axis-group-score]
+    (testing "Overlapped and 'near' ranges return scores between 0 and 1."
+      (is (<= 0.59 (axis-group-score [0 10] [1 7]) 0.61))
+      (is (<= 0.24 (axis-group-score [5 20] [0 10]) 0.26))
+      (is (<= 0.79 (axis-group-score [0 5] [7 10]) 0.81)))
+    (testing "'Degenerate' ranges will still score."
+      (is (= 1 (axis-group-score [0 10] [2 2])))
+      (is (<= 0.32 (axis-group-score [0 10] [30 30]) 0.34)))))
+
 (deftest reasonable-split-axes-test
   (let [rows [["Category" "Series A" "Series B"]
               ["A"        1          1.3]

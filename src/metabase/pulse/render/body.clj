@@ -558,28 +558,19 @@
     (/ (double overlap-width) (double max-width))))
 
 (defn- nearness
-  "Calculate the 'nearness' score for ranges specified by `vals-a` and `vals-b`.
+  "Calculate a 'nearness' score for ranges specified by `vals-a` and `vals-b`.
 
-  The nearness score is the percent of the total range that the 'valid range' covers IF,
-  the outer point's distance to the nearest range end covers less of the total range.
-  for visual:  *     *--------------*  <---- the 'pt' on the left is close enough."
+  The nearness score is the percent of the total range that the two ranges cover.
+  for visual:
+
+     A   B     C              D
+     *---*     *--------------*
+
+  The nearness is 1 - length(AD) / length(BC) or equivalently:
+  length(AB) + length(CD) / length(AD)"
   [vals-a vals-b]
-  (let [[min-a max-a]          (-> vals-a sort ((juxt first last)))
-        [min-b max-b]          (-> vals-b sort ((juxt first last)))]
-    (cond
-      (or (= min-a max-a) (= min-b max-b))
-      (let [pt                (if (= min-a max-a) min-a min-b)
-            [r1 r2]           (if (= min-a max-a) [min-b max-b] [min-a max-a])
-            total-range       (- (max pt r2) (min pt r1))
-            valid-range-score (/ (- r2 r1) total-range)
-            outer-pt-score    (/ (min (abs (- pt r1))
-                                      (abs (- pt r2)))
-                                 total-range)]
-        (if (>= valid-range-score outer-pt-score)
-          (double valid-range-score)
-          0))
-
-      :else 0)))
+  (let [[a b c d] (sort (concat vals-a vals-b))]
+    (- 1 (double (/ (abs (- c b)) (abs (- a d)))))))
 
 (defn- axis-group-score
   "Calculate the axis grouping threshold value for the ranges specified by `vals-a` and `vals-b`.
