@@ -9,7 +9,7 @@ jobs:
   percy:
     if: contains(github.event.pull_request.labels.*.name, 'visual')
     timeout-minutes: 30
-    runs-on: buildjet-4vcpu-ubuntu-2004
+    runs-on: ubuntu-20.04
     env:
       NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -53,7 +53,7 @@ jobs:
 
   percy:
     timeout-minutes: 30
-    runs-on: buildjet-4vcpu-ubuntu-2004
+    runs-on: ubuntu-20.04
     needs: [pr_info]
     env:
       NPM_TOKEN: ${{ secrets.NPM_TOKEN }}

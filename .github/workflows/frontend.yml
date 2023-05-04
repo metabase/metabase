@@ -69,11 +69,8 @@ jobs:
   fe-tests-unit:
     needs: files-changed
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.frontend_all == 'true'
-    runs-on: buildjet-2vcpu-ubuntu-2204
-    timeout-minutes: 60
-    env:
-      JEST_JUNIT_OUTPUT_DIR: ./target/junit
-      JEST_JUNIT_OUTPUT_NAME: test-report-frontend-unit.xml
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - name: Prepare front-end environment
