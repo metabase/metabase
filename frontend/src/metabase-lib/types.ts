@@ -46,7 +46,7 @@ export type ColumnDisplayInfo = {
   name: string;
   displayName: string;
   fkReferenceName?: string;
-  is_calculated: boolean;
+  isCalculated: boolean;
   isFromJoin: boolean;
   isImplicitlyJoinable: boolean;
   table?: TableInlineDisplayInfo;
