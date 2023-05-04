@@ -1,6 +1,5 @@
 import { useEffect } from "react";
 import { t } from "ttag";
-import { useUnmount } from "react-use";
 
 import { useSelector, useDispatch } from "metabase/lib/redux";
 import {
@@ -46,8 +45,10 @@ export default function useAutoApplyFiltersToast() {
           actionLabel: t`Turn off`,
         }),
       );
-    } else {
-      dispatch(dismissUndo(autoApplyFiltersToastId, false));
+
+      return () => {
+        dispatch(dismissUndo(autoApplyFiltersToastId, false));
+      };
     }
   }, [
     autoApplyFiltersToastId,
@@ -55,8 +56,4 @@ export default function useAutoApplyFiltersToast() {
     dispatch,
     isReadyToShowAutoApplyFiltersToast,
   ]);
-
-  useUnmount(() => {
-    dispatch(dismissUndo(autoApplyFiltersToastId, false));
-  });
 }

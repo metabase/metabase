@@ -84,8 +84,7 @@ export default function (state = [], { type, payload, error }) {
         _domId: previous._domId, // use original _domId so we don't get funky animations swapping for the new one
       });
     } else {
-      const currentUndoId = undo.id;
-      return state.filter(undo => undo.id !== currentUndoId).concat(undo);
+      return state.concat(undo);
     }
   } else if (type === DISMISS_UNDO) {
     if (error) {
