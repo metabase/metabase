@@ -67,6 +67,7 @@ function Timeline({
         const {
           icon,
           title,
+          titleText,
           description,
           timestamp,
           formattedTimestamp,
@@ -96,6 +97,7 @@ function Timeline({
                       borderless
                       onClick={() => revertFn(revision)}
                       data-testid="question-revert-button"
+                      aria-label={t`revert to ${titleText}`}
                     />
                   </Tooltip>
                 )}

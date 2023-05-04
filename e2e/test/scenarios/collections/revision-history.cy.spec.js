@@ -166,7 +166,7 @@ describe("revision history", () => {
 });
 
 function clickRevert(event_name, index = 0) {
-  cy.findAllByText(event_name).eq(index).siblings("button").first().click();
+  cy.findAllByLabelText(event_name).eq(index).click();
 }
 
 function visitAndEditDashboard(id) {
