@@ -1,4 +1,5 @@
 name: Prepare front-end environment
+description: Installs Node.js and installs node_modules
 runs:
   using: "composite"
   steps:
