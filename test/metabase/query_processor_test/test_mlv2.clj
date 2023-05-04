@@ -41,10 +41,6 @@
      (mbql.u/match-one joins
        {:fields (join-fields :guard (partial not= :none))}
        "#29904"))
-   ;; #29909: these clauses are not implemented yet.
-   (mbql.u/match-one legacy-query
-     #{:get-year :get-quarter :get-month :get-day :get-day-of-week :get-hour :get-minute :get-second}
-     "#29909")
    ;; #29938: conversion for `:case` with default value does not work correctly
    (mbql.u/match-one legacy-query
      :case
@@ -63,10 +59,6 @@
        (mbql.u/match-one &match
          :field
          "#29946")))
-   ;; #29948: `:substring` is broken
-   (mbql.u/match-one legacy-query
-     :substring
-     "#29948")
    ;; #29949: missing schema
    (mbql.u/match-one legacy-query
      :regex-match-first

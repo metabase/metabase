@@ -24,6 +24,7 @@
          old-field-comment              :field-comment
          old-semantic-type              :semantic-type
          old-database-position          :database-position
+         old-position                   :position
          old-database-name              :name
          old-database-is-auto-increment :database-is-auto-increment
          old-db-required                :database-required} metabase-field
@@ -95,6 +96,13 @@
                           old-database-position
                           new-database-position))
            {:database_position new-database-position})
+         (when (and (= (:field_order table) :database)
+                    (not= old-position new-database-position))
+           (log/info (trs "Position of {0} has changed from ''{1}'' to ''{2}''."
+                          (common/field-metadata-name-for-logging table metabase-field)
+                          old-position
+                          new-database-position))
+           {:position new-database-position})
          (when new-name?
            (log/info (trs "Name of {0} has changed from ''{1}'' to ''{2}''."
                           (common/field-metadata-name-for-logging table metabase-field)

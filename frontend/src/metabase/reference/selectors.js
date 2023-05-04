@@ -1,4 +1,4 @@
-import { createSelector } from "reselect";
+import { createSelector } from "@reduxjs/toolkit";
 import { assoc, getIn } from "icepick";
 
 import Dashboards from "metabase/entities/dashboards";

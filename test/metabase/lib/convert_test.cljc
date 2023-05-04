@@ -134,14 +134,18 @@
              :query {:source-table 1
                      :aggregation  [[:sum [:field 1 nil]]]
                      :breakout     [[:aggregation 0 {:display-name "Revenue"}]]}}
-            (lib.convert/->legacy-MBQL
-             {:lib/type :mbql/query
-              :stages   [{:lib/type     :mbql.stage/mbql
-                          :source-table 1
-                          :aggregation  [[:sum {:lib/uuid string?} [:field {:lib/uuid string?
-                                                                            :effective-type :type/Integer} 1]]]
-                          :breakout     [[:aggregation 0 {:display-name   "Revenue"
-                                                          :effective-type :type/Integer}]]}]})))))
+            (let [ag-uuid (str (random-uuid))]
+              (lib.convert/->legacy-MBQL
+                {:lib/type :mbql/query
+                 :stages   [{:lib/type     :mbql.stage/mbql
+                             :source-table 1
+                             :aggregation  [[:sum {:lib/uuid ag-uuid}
+                                             [:field {:lib/uuid string?
+                                                      :effective-type :type/Integer} 1]]]
+                             :breakout     [[:aggregation
+                                             {:display-name   "Revenue"
+                                              :effective-type :type/Integer}
+                                             ag-uuid]]}]}))))))
 
 (deftest ^:parallel round-trip-test
   ;; Miscellaneous queries that have caused test failures in the past, captured here for quick feedback.
@@ -179,8 +183,6 @@
      :type :query}
 
     [:value nil {:base_type :type/Number}]
-
-    [:aggregation 0 {:display-name "Bean Count"}]
 
     [:expression "expr" {:display-name "Iambic Diameter"}]
 

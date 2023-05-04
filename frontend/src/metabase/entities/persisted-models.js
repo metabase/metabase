@@ -1,4 +1,4 @@
-import { createSelector } from "reselect";
+import { createSelector } from "@reduxjs/toolkit";
 import { PersistedModelSchema } from "metabase/schema";
 import { createEntity } from "metabase/lib/entities";
 import { CardApi, PersistedModelsApi } from "metabase/services";

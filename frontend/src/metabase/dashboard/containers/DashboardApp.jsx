@@ -20,7 +20,7 @@ import { useWebNotification } from "metabase/hooks/use-web-notification";
 import { fetchDatabaseMetadata } from "metabase/redux/metadata";
 import { getIsNavbarOpen, closeNavbar, setErrorPage } from "metabase/redux/app";
 
-import { getDatabases, getMetadata } from "metabase/selectors/metadata";
+import { getMetadata } from "metabase/selectors/metadata";
 import {
   getUserIsAdmin,
   canManageSubscriptions,
@@ -67,6 +67,7 @@ function getDashboardId({ dashboardId, params }) {
 }
 
 const mapStateToProps = (state, props) => {
+  const metadata = getMetadata(state);
   return {
     dashboardId: getDashboardId(props),
     canManageSubscriptions: canManageSubscriptions(state, props),
@@ -80,12 +81,12 @@ const mapStateToProps = (state, props) => {
     dashboard: getDashboardComplete(state, props),
     dashcardData: getCardData(state, props),
     slowCards: getSlowCards(state, props),
-    databases: getDatabases(state, props),
+    databases: metadata.databases,
     editingParameter: getEditingParameter(state, props),
     parameters: getParameters(state, props),
     parameterValues: getParameterValues(state, props),
     draftParameterValues: getDraftParameterValues(state, props),
-    metadata: getMetadata(state),
+    metadata,
     loadingStartTime: getLoadingStartTime(state),
     clickBehaviorSidebarDashcard: getClickBehaviorSidebarDashcard(state),
     isAddParameterPopoverOpen: getIsAddParameterPopoverOpen(state),

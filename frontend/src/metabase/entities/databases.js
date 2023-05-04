@@ -1,7 +1,7 @@
 import { normalize } from "normalizr";
 import _ from "underscore";
 
-import { createSelector } from "reselect";
+import { createSelector } from "@reduxjs/toolkit";
 import { createEntity } from "metabase/lib/entities";
 import * as Urls from "metabase/lib/urls";
 import { color } from "metabase/lib/colors";
@@ -12,7 +12,10 @@ import { DatabaseSchema } from "metabase/schema";
 import Fields from "metabase/entities/fields";
 import Schemas from "metabase/entities/schemas";
 
-import { getMetadata, getFields } from "metabase/selectors/metadata";
+import {
+  getMetadata,
+  getMetadataUnfiltered,
+} from "metabase/selectors/metadata";
 
 // OBJECT ACTIONS
 export const FETCH_DATABASE_METADATA =
@@ -75,11 +78,23 @@ const Databases = createEntity({
   selectors: {
     getObject: (state, { entityId }) => getMetadata(state).database(entityId),
 
+    // these unfiltered selectors include hidden tables/fields for display in the admin panel
+    getObjectUnfiltered: (state, { entityId }) =>
+      getMetadataUnfiltered(state).database(entityId),
+
+    getListUnfiltered: (state, { entityQuery }) => {
+      const entityIds =
+        Databases.selectors.getEntityIds(state, { entityQuery }) ?? [];
+      return entityIds.map(entityId =>
+        Databases.selectors.getObjectUnfiltered(state, { entityId }),
+      );
+    },
+
     getHasSampleDatabase: (state, props) =>
       _.any(Databases.selectors.getList(state, props), db => db.is_sample),
+
     getIdfields: createSelector(
-      // we wrap getFields to handle a circular dep issue
-      [state => getFields(state), (state, props) => props.databaseId],
+      [state => getMetadata(state).fields, (state, props) => props.databaseId],
       (fields, databaseId) =>
         Object.values(fields).filter(f => {
           const { db_id } = f.table || {}; // a field's table can be null
