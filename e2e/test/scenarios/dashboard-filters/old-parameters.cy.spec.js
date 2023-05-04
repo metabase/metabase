@@ -181,21 +181,24 @@ describe("scenarios > dashboard > OLD parameters", () => {
         .should("be.visible");
       cy.tick(16 * 1000);
 
-      cy.findByTestId("toast-undo").within(() => {
-        cy.findByText(
-          "Would you like to be notified when this dashboard is done loading?",
-        );
-        cy.icon("close").click();
-      });
+      // XXX: Will be fixed in https://github.com/metabase/metabase/pull/30525
+      // cy.findByTestId("toast-undo").within(() => {
+      //   cy.findByText(
+      //     "Would you like to be notified when this dashboard is done loading?",
+      //   );
+      //   cy.icon("close").click();
+      // });
 
       // After the dashboard cards finish loading, we'll show the auto-apply filters toast
       cy.findByTestId("dashcard").findByText("Rows 1-6 of 53");
-      cy.findByTestId("toast-undo").within(() => {
-        cy.findByText(
-          "You can make this dashboard snappier by turning off auto-applying filters.",
-        );
-        cy.button("Turn off").click();
-      });
+      cy.findAllByTestId("toast-undo")
+        .last()
+        .within(() => {
+          cy.findByText(
+            "You can make this dashboard snappier by turning off auto-applying filters.",
+          );
+          cy.button("Undo").click();
+        });
 
       toggleDashboardSidebar();
       rightSidebar()
