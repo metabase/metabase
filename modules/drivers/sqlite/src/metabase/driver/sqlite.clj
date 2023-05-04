@@ -38,6 +38,7 @@
                               :percentile-aggregations                false
                               :advanced-math-expressions              false
                               :standard-deviation-aggregations        false
+                              :schemas                                false
                               :datetime-diff                          true
                               :now                                    true}]
   (defmethod driver/supports? [:sqlite feature] [_ _] supported?))

@@ -57,7 +57,7 @@
 
 (defmethod driver/database-supports? [:mysql :uploads] [_driver _feat _db] true)
 
-(defmethod driver/database-supports? [:mysql :schemas] [_driver _feat _db] true)
+(defmethod driver/database-supports? [:mysql :schemas] [_driver _feat _db] false)
 
 (defmethod driver/database-supports? [:mysql :persist-models] [_driver _feat _db] true)
 
