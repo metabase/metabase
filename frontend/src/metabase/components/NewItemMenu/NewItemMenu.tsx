@@ -110,7 +110,7 @@ const NewItemMenu = ({
       items.push({
         title: t`Model`,
         icon: "model",
-        link: `/model/new?collectionId=${collectionId}`,
+        link: `/model/new`,
         event: `${analyticsContext};New Model Click;`,
         onClose: onCloseNavbar,
       });
