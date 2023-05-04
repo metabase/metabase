@@ -4,6 +4,12 @@ title: Driver interface changelog
 
 # Driver Interface Changelog
 
+## Metabase 0.47.0
+
+- The multimethod `metabase.driver/syncable-schemas` has been added. This method is used to list schemas to upload 
+  CSVs to, and it should include all schemas that are able to be synced to. Currently it only needs to be implemented
+  if the database has schema, and the database supports the `uploads` feature.
+
 ## Metabase 0.46.0
 
 - The process for building a driver has changed slightly in Metabase 0.46.0. Your build command should now look
