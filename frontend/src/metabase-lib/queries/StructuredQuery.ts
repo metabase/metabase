@@ -21,7 +21,6 @@ import {
   DatasetQuery,
   StructuredDatasetQuery,
 } from "metabase-types/types/Card";
-import { AggregationOperator } from "metabase-types/types/Metadata";
 import { DatabaseEngine, DatabaseId } from "metabase-types/types/Database";
 import { TableId } from "metabase-types/types/Table";
 import {
@@ -48,6 +47,7 @@ import Dimension, {
   AggregationDimension,
 } from "metabase-lib/Dimension";
 import DimensionOptions from "metabase-lib/DimensionOptions";
+import type { AggregationOperator } from "metabase-lib/deprecated-types";
 
 import * as ML from "../v2";
 import type { Limit, Query } from "../types";

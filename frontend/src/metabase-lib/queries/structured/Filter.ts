@@ -7,7 +7,6 @@ import {
   FieldFilter,
   Field,
 } from "metabase-types/types/Query";
-import { FilterOperator } from "metabase-types/types/Metadata";
 import { isExpression } from "metabase-lib/expressions";
 import { getFilterArgumentFormatOptions } from "metabase-lib/operators/utils";
 import {
@@ -24,6 +23,7 @@ import {
   getFilterOptions,
   setFilterOptions,
 } from "metabase-lib/queries/utils/filter";
+import type { FilterOperator } from "../../deprecated-types";
 import Dimension from "../../Dimension";
 import StructuredQuery from "../StructuredQuery";
 import MBQLClause from "./MBQLClause";
