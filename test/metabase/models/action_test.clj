@@ -6,6 +6,7 @@
    [metabase.driver :as driver]
    [metabase.models :refer [Action Card Dashboard DashboardCard]]
    [metabase.models.action :as action]
+   [metabase.query-processor :as qp]
    [metabase.sync :as sync]
    [metabase.test :as mt]
    [metabase.test.data.one-off-dbs :as one-off-dbs]
@@ -26,15 +27,20 @@
 (deftest hydrate-implicit-action-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
     (mt/with-actions-test-data-and-actions-enabled
-      (mt/with-actions [{:keys [action-id] :as _context} {:type :implicit}]
-        (is (partial= {:id          action-id
-                       :name        "Update Example"
-                       :database_id (mt/id)
-                       :parameters  [(if (= driver/*driver* :h2)
-                                       {:type :type/BigInteger}
-                                       {:type :type/Integer})
-                                     {:type :type/Text, :id "name"}]}
-                      (action/select-action :id action-id))))))
+      (let [query (mt/mbql-query categories)]
+        (mt/with-actions [_model {:dataset         true
+                                  :dataset_query   query
+                                  :result_metadata (assoc-in (get-in (qp/process-query query) [:data :results_metadata :columns])
+                                                             [1 :display_name] "Display Name")}
+                          {:keys [action-id] :as _context} {:type :implicit}]
+          (is (partial= {:id          action-id
+                         :name        "Update Example"
+                         :database_id (mt/id)
+                         :parameters  [(if (= driver/*driver* :h2)
+                                         {:type :type/BigInteger}
+                                         {:type :type/Integer})
+                                       {:type :type/Text, :id "name" :display-name "Display Name"}]}
+                        (action/select-action :id action-id)))))))
   (testing "Implicit actions do not map parameters to json fields (parents or nested)"
     (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom :nested-field-columns)
       (mt/dataset json

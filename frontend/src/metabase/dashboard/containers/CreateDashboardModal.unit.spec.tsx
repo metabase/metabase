@@ -4,11 +4,11 @@ import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { setupEnterpriseTest } from "__support__/enterprise";
+import { createEntitiesState } from "__support__/store";
+
 import { mockSettings } from "__support__/settings";
 
 import type { Collection } from "metabase-types/api";
-import { createMockEntitiesState } from "metabase-types/store/mocks";
-
 import CreateDashboardModal from "./CreateDashboardModal";
 
 const ROOT_COLLECTION = {
@@ -31,10 +31,8 @@ function setup({
 
   renderWithProviders(<CreateDashboardModal onClose={onClose} />, {
     storeInitialState: {
-      entities: createMockEntitiesState({
-        collections: {
-          root: ROOT_COLLECTION,
-        },
+      entities: createEntitiesState({
+        collections: [ROOT_COLLECTION],
       }),
       settings,
     },

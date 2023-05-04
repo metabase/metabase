@@ -9,6 +9,7 @@ import { render, screen } from "__support__/ui";
 import {
   createMockActionDashboardCard,
   createMockActionParameter,
+  createMockFieldSettings,
   createMockQueryAction,
   createMockImplicitQueryAction,
   createMockDashboard,
@@ -23,16 +24,30 @@ import ActionParametersInputModal, {
 
 const parameter1 = createMockActionParameter({
   id: "parameter_1",
+  name: "Parameter 1",
   type: "type/Text",
 });
 
 const parameter2 = createMockActionParameter({
   id: "parameter_2",
+  name: "Parameter 2",
   type: "type/Text",
 });
 
 const mockAction = createMockQueryAction({
   parameters: [parameter1, parameter2],
+  visualization_settings: {
+    fields: {
+      parameter_1: createMockFieldSettings({
+        id: "parameter_1",
+        placeholder: "Parameter 1 placeholder",
+      }),
+      parameter_2: createMockFieldSettings({
+        id: "parameter_1",
+        placeholder: "Parameter 2 placeholder",
+      }),
+    },
+  },
 });
 
 const defaultProps: ActionParametersInputFormProps = {
@@ -110,14 +125,16 @@ describe("Actions > ActionParametersInputForm", () => {
   });
 
   it("should generate field types from parameter types", async () => {
-    const action = createMockQueryAction({
+    const action = createMockImplicitQueryAction({
       parameters: [
         createMockActionParameter({
           id: "parameter_1",
+          "display-name": "Parameter 1",
           type: "type/Text",
         }),
         createMockActionParameter({
           id: "parameter_2",
+          "display-name": "Parameter 2",
           type: "type/Integer",
         }),
       ],
@@ -138,6 +155,18 @@ describe("Actions > ActionParametersInputForm", () => {
     setupPrefetch();
 
     const idParameter = createMockActionParameter({ id: "id" });
+
+    const parameter1 = createMockActionParameter({
+      id: "parameter_1",
+      type: "type/Text",
+      "display-name": "Parameter 1",
+    });
+
+    const parameter2 = createMockActionParameter({
+      id: "parameter_2",
+      type: "type/Text",
+      "display-name": "Parameter 2",
+    });
 
     await setup({
       action: createMockImplicitQueryAction({
@@ -208,10 +237,9 @@ describe("Actions > ActionParametersInputForm", () => {
 
       expect(screen.getByText("My Test Modal")).toBeInTheDocument();
       expect(screen.getByTestId("action-form")).toBeInTheDocument();
-      expect(screen.getByPlaceholderText("Parameter 1")).toHaveAttribute(
-        "type",
-        "text",
-      );
+      expect(
+        screen.getByPlaceholderText("Parameter 1 placeholder"),
+      ).toHaveAttribute("type", "text");
     });
 
     it("should show a delete confirm message with the showConfirmMessage prop", async () => {
