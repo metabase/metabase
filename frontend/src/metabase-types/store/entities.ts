@@ -5,7 +5,9 @@ import {
   NormalizedDashboard,
   NormalizedDatabase,
   NormalizedField,
+  NormalizedIndexedEntity,
   NormalizedMetric,
+  NormalizedModelIndex,
   NormalizedNativeQuerySnippet,
   NormalizedSchema,
   NormalizedSegment,
@@ -25,6 +27,8 @@ export interface EntitiesState {
   fields: Record<string, NormalizedField>;
   segments: Record<string, NormalizedSegment>;
   metrics: Record<string, NormalizedMetric>;
+  modelIndexes: Record<string, NormalizedModelIndex>;
+  indexedEntities: Record<string, NormalizedIndexedEntity>;
   snippets: Record<string, NormalizedNativeQuerySnippet>;
   users: Record<string, NormalizedUser>;
   questions: Record<string, NormalizedCard>;
