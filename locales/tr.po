@@ -13835,7 +13835,7 @@ msgstr "{0} Veritabanı için görevler zamanlanamadı"
 msgid "All elements must be distinct."
 msgstr "Tüm unsurlar farklı olmalıdır"
 
-#: 
+#:
 msgctxt "Modal for selecting columns in source data or when doing a join."
 msgid "Pick the columns you want to include"
 msgstr "Eklemek istediğiniz sütunları seçin"
@@ -18310,12 +18310,12 @@ msgstr "{0} {1}"
 msgid "{1}"
 msgstr "{1}"
 
-#: 
+#:
 msgctxt "This is a new information message on the new pulse creation page."
 msgid "Pulses are being phased out"
 msgstr "Pulses aşamalı olarak kaldırılıyor"
 
-#: 
+#:
 msgctxt "An info message letting you know you can create dashboard subscriptions instead of pulses."
 msgid "You can now set up {0} instead. We'll remove Pulses in a future release, and help you migrate any that you still have."
 msgstr "Artık bunun yerine {0} kurabilirsiniz. Pulses gelecekteki bir sürümde kaldıracağız ve hala sahip olduklarınızı taşımanıza yardımcı olacağız."
@@ -18324,7 +18324,7 @@ msgstr "Artık bunun yerine {0} kurabilirsiniz. Pulses gelecekteki bir sürümde
 msgid "dashboard subscriptions"
 msgstr "kontrol paneli abonelikleri"
 
-#: 
+#:
 msgid "{0} charts in your subscription won't look the same as in your dashboard. {1}"
 msgstr "Aboneliğinizdeki {0} grafikleri, kontrol panelinizdekilerle aynı görünmeyecek. {1}"
 
@@ -18473,7 +18473,7 @@ msgid "Set up {0} source database and run migrations..."
 msgstr "{0} kaynak veritabanını kurun ve taşıma işlemleri çalıştırın ..."
 
 #. make sure the dest DB is up-to-date
-#. 
+#.
 #. don't need or want to run data migrations in the target DB, since the data is already migrated appropriately
 #: metabase/cmd/copy.clj:388
 msgid "Set up {0} target database and run migrations..."
@@ -22822,7 +22822,7 @@ msgstr "Bilim Yapılıyor..."
 
 #: frontend/src/metabase/query_builder/actions/querying.js:159
 msgid "Still Here..."
-msgstr "Hala burada..."
+msgstr "Yükleniyor..."
 
 #: frontend/src/metabase/query_builder/actions/querying.js:55
 msgid "Your question is ready!"
@@ -26439,12 +26439,12 @@ msgstr "Örnek veritabanı plugins dizinine çıkarılamadı, bu da yavaş başl
 msgid "Metabase config files require a Premium token with the :advanced-config feature."
 msgstr "Metabase yapılandırma dosyaları, :advanced-config özelliğine sahip bir Premium belirteci gerektirir."
 
-#: 
+#:
 msgctxt "This is in the sidebar when creating or editing a dashboard subscription."
 msgid "Charts in subscriptions may look slightly different from charts in dashboards."
 msgstr "Aboneliklerdeki grafikler, gösterge tablolarındaki grafiklerden biraz farklı görünebilir."
 
-#: 
+#:
 msgctxt "Seen when creating a new dashboard subscription."
 msgid "Recipients will see this data just as you see it, regardless of their permissions."
 msgstr "Alıcılar, izinlerinden bağımsız olarak bu verileri tıpkı sizin gördüğünüz gibi göreceklerdir."
