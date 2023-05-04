@@ -172,6 +172,11 @@ describe("scenarios > dashboard > OLD parameters", () => {
           qs: {
             category: "Gadget",
           },
+          onBeforeLoad(win) {
+            win.Notification = {
+              permission: "default",
+            };
+          },
         });
       });
       // Wait for the dashboard cards to start loading before advancing the clock
