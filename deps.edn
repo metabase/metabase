@@ -390,6 +390,7 @@
     "modules/drivers/sparksql/test"
     "modules/drivers/sqlite/test"
     "modules/drivers/sqlserver/test"
+    "modules/drivers/starburst/src"
     "modules/drivers/vertica/test"]}
 
 ;;; Linters
@@ -416,6 +417,7 @@
                 "modules/drivers/sparksql/src"
                 "modules/drivers/sqlite/src"
                 "modules/drivers/sqlserver/src"
+                "modules/drivers/starburst/src"
                 "modules/drivers/vertica/src"]
    :jvm-opts   ["-Dclojure.main.report=stderr"]}
 
@@ -438,6 +440,7 @@
                                  "modules/drivers/sparksql/src"
                                  "modules/drivers/sqlite/src"
                                  "modules/drivers/sqlserver/src"
+                                 "modules/drivers/starburst/src"
                                  "modules/drivers/vertica/src"]
                :exclude-linters [ ;; Turn this off temporarily until we finish removing
                                  ;; self-deprecated functions & macros

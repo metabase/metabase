@@ -30,6 +30,7 @@
                             "/modules/drivers/sparksql/src"
                             "/modules/drivers/sqlite/src"
                             "/modules/drivers/sqlserver/src"
+                            "/modules/drivers/starburst/src"
                             "/modules/drivers/vertica/src"]))
 
 (def overrides
