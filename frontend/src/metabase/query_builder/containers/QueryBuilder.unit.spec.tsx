@@ -57,6 +57,7 @@ const TEST_MODEL_CARD = createMockCard({
     type: "query",
     query: {
       "source-table": ORDERS_ID,
+      limit: 1,
     },
   },
   dataset: true,
@@ -79,9 +80,6 @@ const TEST_MODEL_DATASET = createMockDataset({
           description: "test",
           name: "ID",
           field_ref: ["field", 37, null],
-          id: 37,
-          display_name: "ID",
-          base_type: "type/BigInteger",
         },
       ],
     },
@@ -128,13 +126,12 @@ const setup = async ({
 
   renderWithProviders(
     <Route>
+      <IndexRoute component={TestQueryBuilder} />
       <Route path="/model">
-        <IndexRoute component={TestQueryBuilder} />
         <Route path=":slug/query" component={TestQueryBuilder} />
         <Route path=":slug/metadata" component={TestQueryBuilder} />
       </Route>
       <Route path="/question">
-        <IndexRoute component={TestQueryBuilder} />
         <Route path="notebook" component={TestQueryBuilder} />
         <Route path=":slug" component={TestQueryBuilder} />
         <Route path=":slug/notebook" component={TestQueryBuilder} />

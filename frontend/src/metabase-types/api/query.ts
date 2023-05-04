@@ -7,6 +7,7 @@ import type { TableId } from "./table";
 export interface StructuredQuery {
   "source-table"?: TableId;
   aggregation?: AggregationClause;
+  limit?: number;
 }
 
 export interface NativeQuery {

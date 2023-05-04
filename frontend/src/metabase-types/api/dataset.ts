@@ -12,8 +12,9 @@ export type RowValues = RowValue[];
 export interface DatasetColumn {
   id?: FieldId;
   name: string;
-  display_name: string;
-  source: string;
+  display_name?: string;
+  source?: string;
+  description?: string;
   // FIXME: this prop does not come from API
   remapped_to_column?: DatasetColumn;
   unit?: DatetimeUnit;
@@ -34,6 +35,9 @@ export interface DatasetData {
   cols: DatasetColumn[];
   rows_truncated: number;
   download_perms?: DownloadPermission;
+  results_metadata?: {
+    columns: DatasetColumn[];
+  };
 }
 
 export type JsonQuery = DatasetQuery & {
@@ -47,6 +51,8 @@ export interface Dataset {
   running_time: number;
   json_query?: JsonQuery;
   error?: string;
+  context?: string;
+  status?: string;
 }
 
 export interface NativeQueryForm {
