@@ -79,7 +79,7 @@
 
 ;; These are pulled out so that the regex is only compiled once, not for every invocation of value->type
 (def ^:private int-regex "Digits, perhaps with separators and at least one digit" (with-currency #"\d+"))
-(def ^:private float-regex "Digits, perhaps with separators and at least one digit" (with-currency #"[\d,]*\.\d+"))
+(def ^:private float-regex "Digits, perhaps with separators and at least one digit" (with-currency #"[\d]*\.\d+"))
 
 (defn value->type
   "The most-specific possible type for a given value. Possibilities are:
