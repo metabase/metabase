@@ -55,19 +55,18 @@ export type ColumnDisplayInfo = {
   orderByPosition?: number;
 };
 
-export type BreakoutClauseDisplayInfo = Pick<
+export type ClauseDisplayInfo = Pick<
   ColumnDisplayInfo,
   "name" | "displayName" | "table"
 >;
+
+export type BreakoutClauseDisplayInfo = ClauseDisplayInfo;
 
 export type BucketDisplayInfo = {
   displayName: string;
   default?: boolean;
 };
 
-export type OrderByClauseDisplayInfo = Pick<
-  ColumnDisplayInfo,
-  "name" | "displayName" | "table"
-> & {
+export type OrderByClauseDisplayInfo = ClauseDisplayInfo & {
   direction: OrderByDirection;
 };
