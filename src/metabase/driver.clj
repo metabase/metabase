@@ -493,9 +493,6 @@
     ;; Does the driver support uploading files
     :uploads
 
-    ;; Does the driver support schemas (aka namespaces) for tables
-    :schemas
-
     ;; Does the driver support custom writeback actions. Drivers that support this must
     ;; implement [[execute-write-query!]]
     :actions/custom
