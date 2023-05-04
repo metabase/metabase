@@ -25,11 +25,11 @@
     include-field-values
     (conj "FieldValues")
 
+    ;; If `targets` is not specifieid, or if it is a non-empty collection, then we
+    ;; extract all content models. If `targets` is an empty, collection, we do not export
+    ;; any content.
     (or (nil? targets) (seq targets))
     (into serdes.models/content)
-
-    (empty? targets)
-    (into (map first targets))
 
     (not no-data-model)
     (into serdes.models/data-model)))
