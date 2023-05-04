@@ -61,7 +61,6 @@ import {
 } from "../../selectors";
 import { DASHBOARD_SLOW_TIMEOUT } from "../../constants";
 import AutoApplyFilterToast from "../../components/AutoApplyFilterToast/AutoApplyFilterToast";
-import { StyledToasterButton } from "./DashboardApp.styled";
 
 function getDashboardId({ dashboardId, params }) {
   if (dashboardId) {
@@ -151,14 +150,8 @@ const DashboardApp = props => {
     if ("Notification" in window && Notification.permission === "default") {
       dispatch(
         addUndo({
-          message: (
-            <>
-              {t`Would you like to be notified when this dashboard is done loading?`}
-              <StyledToasterButton onClick={onConfirmToast}>
-                {t`Turn on`}
-              </StyledToasterButton>
-            </>
-          ),
+          message: t`Would you like to be notified when this dashboard is done loading?`,
+          action: onConfirmToast,
         }),
       );
     }
