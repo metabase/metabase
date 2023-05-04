@@ -71,6 +71,14 @@
   [_driver _feat _db]
   true)
 
+(defmethod driver/database-supports? [:postgres :convert-timezone]
+  [_driver _feat _db]
+  true)
+
+(defmethod driver/database-supports? [:postgres :now]
+  [_driver _feat _db]
+  true)
+
 (doseq [feature [:actions :actions/custom :uploads]]
   (defmethod driver/database-supports? [:postgres feature]
     [driver _feat _db]
