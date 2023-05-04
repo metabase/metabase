@@ -15,6 +15,7 @@ const DEFAULT_MAX_HEIGHT = 610;
 interface QueryColumnPickerProps {
   className?: string;
   query: Lib.Query;
+  clause?: Lib.Clause;
   columnGroups: Lib.ColumnGroup[];
   hasBucketing?: boolean;
   maxHeight?: number;
@@ -35,6 +36,7 @@ type Sections = {
 function QueryColumnPicker({
   className,
   query,
+  clause,
   columnGroups,
   hasBucketing = false,
   maxHeight = DEFAULT_MAX_HEIGHT,
@@ -69,6 +71,12 @@ function QueryColumnPicker({
       onClose?.();
     },
     [onSelect, onClose],
+  );
+
+  const itemIsSelected = useCallback(
+    (item: ColumnListItem) =>
+      clause && Lib.isClauseColumn(query, clause, item.column),
+    [query, clause],
   );
 
   const renderItemExtra = useCallback(
@@ -124,6 +132,7 @@ function QueryColumnPicker({
       maxHeight={maxHeight}
       alwaysExpanded={false}
       onChange={handleSelect}
+      itemIsSelected={itemIsSelected}
       renderItemName={renderItemName}
       renderItemDescription={omitItemDescription}
       renderItemIcon={renderItemIcon}
