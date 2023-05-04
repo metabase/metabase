@@ -1,6 +1,8 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
 import Base from "./Base";
+import type Metadata from "./Metadata";
+import type Table from "./Table";
 /**
  * @typedef { import("./Metadata").FilterClause } FilterClause
  */
@@ -10,7 +12,11 @@ import Base from "./Base";
  */
 
 export default class Segment extends Base {
+  id: number;
   name: string;
+  table_id: Table["id"];
+  table: Table;
+  metadata: Metadata;
 
   displayName() {
     return this.name;
