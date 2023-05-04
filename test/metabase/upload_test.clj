@@ -230,9 +230,9 @@
          driver/*driver*
          (mt/id)
          "upload_test"
-         (csv-file-with ["id          ,nulls,string,bool ,number       ,date      ,datetime"
-                         "2\t         ,,          a,true ,1.1\t        ,2022-01-01,2022-01-01T00:00:00"
-                         "\"   3000\",,           b,false,\"$ 1000.1\",2022-02-01,2022-02-01T00:00:00"]))
+         (csv-file-with ["id    ,nulls,string ,bool ,number      ,date      ,datetime"
+                         "2\t   ,,          a ,true ,1.1\t       ,2022-01-01,2022-01-01T00:00:00"
+                         "\" 3\",,           b,false,\"$ 1000.1\",2022-02-01,2022-02-01T00:00:00"]))
         (testing "Table and Fields exist after sync"
           (sync/sync-database! (mt/db))
           (let [table (t2/select-one Table :db_id (mt/id))]
