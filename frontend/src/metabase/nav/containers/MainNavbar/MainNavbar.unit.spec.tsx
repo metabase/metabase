@@ -33,7 +33,7 @@ import {
   createMockQueryBuilderState,
 } from "metabase-types/store/mocks";
 
-import { DashboardState, EntitiesState } from "metabase-types/store";
+import { DashboardState } from "metabase-types/store";
 import MainNavbar from "./MainNavbar";
 
 type SetupOpts = {
@@ -111,14 +111,14 @@ async function setup({
 
   let dashboardId: DashboardId | null = null;
   const dashboardsForState: DashboardState["dashboards"] = {};
-  const dashboardsForEntities: EntitiesState["dashboards"] = {};
+  const dashboardsForEntities: Dashboard[] = [];
   if (openDashboard) {
     dashboardId = openDashboard.id;
     dashboardsForState[openDashboard.id] = {
       ...openDashboard,
       ordered_cards: openDashboard.ordered_cards.map(c => c.id),
     };
-    dashboardsForEntities[openDashboard.id] = openDashboard;
+    dashboardsForEntities.push(openDashboard);
   }
 
   const storeInitialState = createMockState({
