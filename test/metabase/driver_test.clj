@@ -58,11 +58,11 @@
 (deftest supports-schemas-matches-describe-database-test
   (mt/test-drivers (mt/normal-drivers)
     (if (driver/database-supports? driver/*driver* :schemas (mt/db))
-      (testing "`all-schemas` should return schemas if the database supports schemas"
+      (testing "`describe-database` should return schemas with tables if the database supports schemas"
         (is (some? (->> (driver/describe-database driver/*driver* (mt/db))
                         :tables
                         (some :schema)))))
-      (testing "`all-schemas` should not return schemas if the database doesn't support schemas"
+      (testing "`describe-database` should not return schemas with tables if the database doesn't support schemas"
         (is (nil? (->> (driver/describe-database driver/*driver* (mt/db))
                        :tables
                        (some :schema))))))))
