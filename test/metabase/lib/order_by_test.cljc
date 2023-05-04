@@ -741,7 +741,17 @@
               :table          {:name "VENUES", :display-name "Venues"}
               :direction      :asc}]
             (for [order-by (lib/order-bys query')]
-              (lib/display-info query' order-by))))))
+              (lib/display-info query' order-by))))
+    (is (=? [{:display-name "ID"}
+             {:display-name "Name", :order-by-position 0}
+             {:display-name "Category ID"}
+             {:display-name "Latitude"}
+             {:display-name "Longitude"}
+             {:display-name "Price"}
+             {:display-name "ID"}
+             {:display-name "Name"}]
+            (for [orderable-column (lib/orderable-columns query')]
+              (lib/display-info query' orderable-column))))))
 
 (deftest ^:parallel change-direction-test
   (doseq [[dir opposite] {:asc :desc, :desc :asc}]
