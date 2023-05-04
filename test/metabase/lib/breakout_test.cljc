@@ -278,7 +278,7 @@
                                :breakout     [[:field {:lib/uuid string? :base-type :type/Text} (meta/id :venues :name)]]}]}
                   query'))
           (is (=? [[:field {:lib/uuid string? :base-type :type/Text} (meta/id :venues :name)]]
-                  (lib/breakouts query')))
+                  breakouts))
           (is (= #{(dissoc col :lib/source :lib/source-column-alias :lib/desired-column-alias)}
                  (lib/clause-columns query' (first breakouts))))
           (assert-breakout-column-excluded query query' col))))))
