@@ -78,8 +78,8 @@
                    "\\s*" currency-regex "?")))
 
 ;; These are pulled out so that the regex is only compiled once, not for every invocation of value->type
-(def ^:private int-regex "Digits, perhaps with separators and at least one digit" (with-currency #"\d+"))
-(def ^:private float-regex "Digits, perhaps with separators and at least one digit" (with-currency #"[\d]*\.\d+"))
+(def ^:private int-regex "Digits, perhaps with separators and at least one digit" (with-currency #"[\d,]+"))
+(def ^:private float-regex "Digits, perhaps with separators and at least one digit" (with-currency #"[\d,]*\.\d+"))
 
 (defn value->type
   "The most-specific possible type for a given value. Possibilities are:
@@ -177,11 +177,15 @@
   [s]
   (str/replace s currency-regex ""))
 
+(defn- remove-separators
+  [s]
+  (str/replace s "," ""))
+
 (def ^:private upload-type->parser
   {::varchar_255 identity
    ::text        identity
-   ::int         #(parse-long (remove-currency-signs (str/trim %)))
-   ::float       #(parse-double (remove-currency-signs (str/trim %)))
+   ::int         #(parse-long (remove-currency-signs (remove-separators (str/trim %))))
+   ::float       #(parse-double (remove-currency-signs (remove-separators (str/trim %))))
    ::boolean     #(parse-bool (str/trim %))
    ::date        #(parse-date (str/trim %))
    ::datetime    #(parse-datetime (str/trim %))})

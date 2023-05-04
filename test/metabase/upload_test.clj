@@ -49,7 +49,8 @@
            ["-99¢"       -99            int-type]
            ["2"          2              int-type]
            ["-86"        -86            int-type]
-           ["9,986,000"  "9,986,000"    vchar-type] ;; TODO: this should be an integer in the future
+           ["9,986,000"  9986000        int-type]
+           [",,,"        nil            int-type]   ;; TODO: this should be a vchar in the future
            ["9.986.000"  "9.986.000"    vchar-type] ;; TODO: this should be an integer in the future
            ["3.14"       3.14           float-type]
            [".14"        0.14           float-type]
@@ -58,8 +59,8 @@
            ["$2.0"       2.0            float-type]
            ["$ 3.50"     3.50           float-type]
            ["-4300.23€"  -4300.23       float-type]
-           ["£1,000.23"  "£1,000.23"    vchar-type] ;; TODO: this should be a float in the future
-           ["£1.000,23"  "£1.000,23"    vchar-type]
+           ["£1,000.23"  1000.23        float-type]
+           ["£1.000,23"  "£1.000,23"    vchar-type] ;; TODO: this should be a float in the future
            ["-¥9.99"     -9.99          float-type]
            ["₹ -13.23"   -13.23         float-type]
            ["₪13.01"     13.01          float-type]
@@ -240,9 +241,9 @@
          driver/*driver*
          (mt/id)
          "upload_test"
-         (csv-file-with ["id    ,nulls,string ,bool ,number      ,date      ,datetime"
-                         "2\t   ,,          a ,true ,1.1\t       ,2022-01-01,2022-01-01T00:00:00"
-                         "\" 3\",,           b,false,\"$ 1000.1\",2022-02-01,2022-02-01T00:00:00"]))
+         (csv-file-with ["id    ,nulls,string ,bool ,number       ,date      ,datetime"
+                         "2\t   ,,          a ,true ,1.1\t        ,2022-01-01,2022-01-01T00:00:00"
+                         "\" 3\",,           b,false,\"$ 1,000.1\",2022-02-01,2022-02-01T00:00:00"]))
         (testing "Table and Fields exist after sync"
           (sync/sync-database! (mt/db))
           (let [table (t2/select-one Table :db_id (mt/id))]
