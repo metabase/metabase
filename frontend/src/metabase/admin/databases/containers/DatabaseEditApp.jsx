@@ -125,6 +125,8 @@ class DatabaseEditApp extends Component {
       }
     };
 
+    const autofocusFieldName = window.location.hash.slice(1);
+
     return (
       <DatabaseEditRoot>
         <Breadcrumbs className="py4" crumbs={crumbs} />
@@ -142,6 +144,7 @@ class DatabaseEditApp extends Component {
                       <DatabaseForm
                         initialValues={database}
                         isAdvanced
+                        autofocusFieldName={autofocusFieldName}
                         onSubmit={handleSubmit}
                       />
                     </DatabaseEditForm>

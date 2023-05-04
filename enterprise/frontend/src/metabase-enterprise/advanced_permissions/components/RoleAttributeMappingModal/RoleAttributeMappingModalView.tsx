@@ -1,7 +1,6 @@
 import React, { useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
-import Link from "metabase/core/components/Link";
 import FormSelect from "metabase/core/components/FormSelect";
 import FormProvider from "metabase/core/components/FormProvider";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
@@ -18,10 +17,9 @@ import {
 import Alert from "metabase/core/components/Alert";
 import FormFooter from "metabase/core/components/FormFooter";
 import Button from "metabase/core/components/Button";
-import * as Urls from "metabase/lib/urls";
 import ExternalLink from "metabase/core/components/ExternalLink/ExternalLink";
+import RoleAccessWarning from "../RoleAccessWarning";
 import {
-  RoleAttributeMappingAlert,
   RoleAttributeMappingDescription,
   RoleAttributeMappingModalViewRoot,
 } from "./RoleAttributeMappingModalView.styled";
@@ -47,7 +45,6 @@ const RoleAttributeMappingModalView = ({
   onCancel,
 }: RoleAttributeMappingModalViewProps) => {
   const initialValues = mapping ?? ROLE_ATTRIBUTION_MAPPING_SCHEMA.getDefault();
-  const databaseUser = database.details.user;
 
   const hasAttributes = attributes.length > 0;
   const attributeOptions = useMemo(
@@ -83,15 +80,7 @@ const RoleAttributeMappingModalView = ({
                 options={attributeOptions}
               />
 
-              {databaseUser != null ? (
-                <RoleAttributeMappingAlert icon="warning" variant="warning">
-                  {t`${databaseUser} is the database user Metabase is using to connect to ${database.name}. Make sure that ${database.details.user} has access to everything in ${database.name} that all Metabase groups may need access to, as that database user account is what Metabase uses to sync table information.`}{" "}
-                  <Link
-                    className="link"
-                    to={Urls.editDatabase(database.id)}
-                  >{t`Edit settings`}</Link>
-                </RoleAttributeMappingAlert>
-              ) : null}
+              <RoleAccessWarning database={database} />
 
               <FormInput
                 infoTooltip={t`Users with empty attributes will run queries using this role. We also restore the connection to this role after every query.`}
