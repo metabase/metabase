@@ -32,7 +32,7 @@ import {
 } from "metabase-types/api";
 import { EntitiesState } from "metabase-types/store";
 
-interface EntitiesStateOpts {
+export interface EntitiesStateOpts {
   actions?: WritebackAction[];
   alerts?: Alert[];
   collections?: Collection[];
