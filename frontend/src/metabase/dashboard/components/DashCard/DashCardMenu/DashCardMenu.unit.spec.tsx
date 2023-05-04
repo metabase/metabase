@@ -2,6 +2,7 @@ import React from "react";
 import { Route } from "react-router";
 import userEvent from "@testing-library/user-event";
 import { checkNotNull } from "metabase/core/utils/types";
+import { getMetadata } from "metabase/selectors/metadata";
 import { Card, Dataset } from "metabase-types/api";
 import {
   createMockCard,
@@ -14,8 +15,9 @@ import {
   ORDERS_ID,
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
+import { createMockState } from "metabase-types/store/mocks";
 import { setupCardQueryDownloadEndpoint } from "__support__/server-mocks";
-import { createMockMetadata } from "__support__/metadata";
+import { createEntitiesState } from "__support__/store";
 import { getIcon, renderWithProviders, screen } from "__support__/ui";
 import DashCardMenu from "./DashCardMenu";
 
@@ -57,11 +59,14 @@ interface SetupOpts {
 }
 
 const setup = ({ card = TEST_CARD, result = TEST_RESULT }: SetupOpts = {}) => {
-  const { metadata, state } = createMockMetadata({
-    databases: [createSampleDatabase()],
-    questions: [card],
+  const storeInitialState = createMockState({
+    entities: createEntitiesState({
+      databases: [createSampleDatabase()],
+      questions: [card],
+    }),
   });
 
+  const metadata = getMetadata(storeInitialState);
   const question = checkNotNull(metadata.question(card.id));
 
   setupCardQueryDownloadEndpoint(card, "json");
@@ -76,7 +81,7 @@ const setup = ({ card = TEST_CARD, result = TEST_RESULT }: SetupOpts = {}) => {
       <Route path="question/:slug/notebook" component={() => <div />} />
     </>,
     {
-      storeInitialState: state,
+      storeInitialState,
       withRouter: true,
       initialRoute: "/dashboard/1",
     },
