@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { useSelector, useDispatch } from "metabase/lib/redux";
 import {
   getDashboardId,
-  getIsShowingAutoApplyFiltersToast,
+  getIsReadyToShowAutoApplyFiltersToast,
 } from "metabase/dashboard/selectors";
 import {
   saveDashboardAndCards,
@@ -14,14 +14,14 @@ import { addUndo } from "metabase/redux/undo";
 
 export default function AutoApplyFilterToast() {
   const dashboardId = useSelector(getDashboardId);
-  const isShowingAutoApplyFiltersToast = useSelector(
-    getIsShowingAutoApplyFiltersToast,
+  const isReadyToShowAutoApplyFiltersToast = useSelector(
+    getIsReadyToShowAutoApplyFiltersToast,
   );
 
   const dispatch = useDispatch();
 
   useEffect(() => {
-    if (isShowingAutoApplyFiltersToast) {
+    if (isReadyToShowAutoApplyFiltersToast) {
       const onTurnOffAutoApplyFilters = () => {
         dispatch(
           setDashboardAttributes({
@@ -41,7 +41,7 @@ export default function AutoApplyFilterToast() {
         }),
       );
     }
-  }, [dashboardId, dispatch, isShowingAutoApplyFiltersToast]);
+  }, [dashboardId, dispatch, isReadyToShowAutoApplyFiltersToast]);
 
   return null;
 }

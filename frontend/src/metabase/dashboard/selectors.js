@@ -144,7 +144,7 @@ const getIsParameterValuesEmpty = createSelector(
   },
 );
 
-export const getIsShowingAutoApplyFiltersToast = createSelector(
+export const getIsReadyToShowAutoApplyFiltersToast = createSelector(
   [
     getDashboard,
     getIsParameterValuesEmpty,
