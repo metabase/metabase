@@ -158,6 +158,53 @@ describe("scenarios > dashboard > OLD parameters", () => {
       filterWidget().findByText("Gadget").should("be.visible");
       cy.findByText("Rows 1-6 of 53").should("be.visible");
     });
+
+    it("should display toasts when a dashboard takes longer than 15s to load", () => {
+      cy.clock();
+      cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query", req => {
+        return Cypress.Promise.delay().then(() => {
+          req.reply();
+        });
+      });
+      cy.get("@dashboardId").then(dashboardId => {
+        cy.visit({
+          url: `/dashboard/${dashboardId}`,
+          qs: {
+            category: "Gadget",
+          },
+        });
+      });
+      // Wait for the dashboard cards to start loading before advancing the clock
+      // so the slow timer works as expected.
+      cy.findByTestId("dashcard")
+        .findByText("Products table")
+        .should("be.visible");
+      cy.tick(16 * 1000);
+
+      // XXX: Will be fixed in https://github.com/metabase/metabase/pull/30525
+      // cy.findByTestId("toast-undo").within(() => {
+      //   cy.findByText(
+      //     "Would you like to be notified when this dashboard is done loading?",
+      //   );
+      //   cy.icon("close").click();
+      // });
+
+      // After the dashboard cards finish loading, we'll show the auto-apply filters toast
+      cy.findByTestId("dashcard").findByText("Rows 1-6 of 53");
+      cy.findAllByTestId("toast-undo")
+        .last()
+        .within(() => {
+          cy.findByText(
+            "You can make this dashboard snappier by turning off auto-applying filters.",
+          );
+          cy.button("Undo").click();
+        });
+
+      toggleDashboardSidebar();
+      rightSidebar()
+        .findByLabelText("Auto-apply filters")
+        .should("not.be.checked");
+    });
   });
 
   describe("question connected to a 'location/state' parameter", () => {

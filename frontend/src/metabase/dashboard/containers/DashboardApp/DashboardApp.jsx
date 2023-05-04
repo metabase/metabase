@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import _ from "underscore";
@@ -12,7 +12,6 @@ import favicon from "metabase/hoc/Favicon";
 import titleWithLoadingTime from "metabase/hoc/TitleWithLoadingTime";
 
 import Dashboard from "metabase/dashboard/components/Dashboard/Dashboard";
-import Toaster from "metabase/components/Toaster";
 
 import { useLoadingTimer } from "metabase/hooks/use-loading-timer";
 import { useWebNotification } from "metabase/hooks/use-web-notification";
@@ -33,7 +32,9 @@ import * as Urls from "metabase/lib/urls";
 
 import Dashboards from "metabase/entities/dashboards";
 
-import * as dashboardActions from "../actions";
+import { useDispatch } from "metabase/lib/redux";
+import { addUndo } from "metabase/redux/undo";
+import * as dashboardActions from "../../actions";
 import {
   getIsEditing,
   getIsSharing,
@@ -57,7 +58,9 @@ import {
   getIsLoadingComplete,
   getIsHeaderVisible,
   getIsAdditionalInfoVisible,
-} from "../selectors";
+} from "../../selectors";
+import { DASHBOARD_SLOW_TIMEOUT } from "../../constants";
+import AutoApplyFilterToast from "../../components/AutoApplyFilterToast/AutoApplyFilterToast";
 
 function getDashboardId({ dashboardId, params }) {
   if (dashboardId) {
@@ -118,18 +121,7 @@ const DashboardApp = props => {
   const editingOnLoad = options.edit;
   const addCardOnLoad = options.add && parseInt(options.add);
 
-  const [isShowingToaster, setIsShowingToaster] = useState(false);
-
-  const onTimeout = useCallback(() => {
-    if ("Notification" in window && Notification.permission === "default") {
-      setIsShowingToaster(true);
-    }
-  }, []);
-
-  useLoadingTimer(isRunning, {
-    timer: 15000,
-    onTimeout,
-  });
+  const dispatch = useDispatch();
 
   const [requestPermission, showNotification] = useWebNotification();
 
@@ -137,7 +129,6 @@ const DashboardApp = props => {
 
   useEffect(() => {
     if (isLoadingComplete) {
-      setIsShowingToaster(false);
       if (
         "Notification" in window &&
         Notification.permission === "granted" &&
@@ -149,16 +140,27 @@ const DashboardApp = props => {
         );
       }
     }
-  }, [isLoadingComplete, showNotification, dashboard?.name]);
+  }, [dashboard?.name, isLoadingComplete, showNotification]);
 
   const onConfirmToast = useCallback(async () => {
     await requestPermission();
-    setIsShowingToaster(false);
   }, [requestPermission]);
 
-  const onDismissToast = useCallback(() => {
-    setIsShowingToaster(false);
-  }, []);
+  const onTimeout = useCallback(() => {
+    if ("Notification" in window && Notification.permission === "default") {
+      dispatch(
+        addUndo({
+          message: t`Would you like to be notified when this dashboard is done loading?`,
+          action: onConfirmToast,
+        }),
+      );
+    }
+  }, [dispatch, onConfirmToast]);
+
+  useLoadingTimer(isRunning, {
+    timer: DASHBOARD_SLOW_TIMEOUT,
+    onTimeout,
+  });
 
   return (
     <div className="shrink-below-content-size full-height">
@@ -169,13 +171,7 @@ const DashboardApp = props => {
       />
       {/* For rendering modal urls */}
       {props.children}
-      <Toaster
-        message={t`Would you like to be notified when this dashboard is done loading?`}
-        isShown={isShowingToaster}
-        onDismiss={onDismissToast}
-        onConfirm={onConfirmToast}
-        fixed
-      />
+      <AutoApplyFilterToast />
     </div>
   );
 };
