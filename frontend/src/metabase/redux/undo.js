@@ -2,7 +2,6 @@ import _ from "underscore";
 
 import { createAction, createThunkAction } from "metabase/lib/redux";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
-import { DEFAULT_TOASTER_DURATION } from "metabase/components/Toaster";
 
 const ADD_UNDO = "metabase/questions/ADD_UNDO";
 const DISMISS_UNDO = "metabase/questions/DISMISS_UNDO";
@@ -13,10 +12,7 @@ let nextUndoId = 0;
 export const addUndo = createThunkAction(ADD_UNDO, undo => {
   return (dispatch, getState) => {
     const id = nextUndoId++;
-    setTimeout(
-      () => dispatch(dismissUndo(id, false)),
-      DEFAULT_TOASTER_DURATION,
-    );
+    setTimeout(() => dispatch(dismissUndo(id, false)), 5000);
     return { ...undo, id, _domId: id };
   };
 });

@@ -9,7 +9,11 @@ export function useLoadingTimer(isLoading: boolean, props: LoadingTimerProps) {
   const { onTimeout, timer } = props;
   useEffect(() => {
     if (isLoading) {
-      const timeoutId = setTimeout(onTimeout, timer);
+      const timeoutId = setTimeout(() => {
+        if (isLoading) {
+          onTimeout();
+        }
+      }, timer);
       return () => clearTimeout(timeoutId);
     }
   }, [isLoading, timer, onTimeout]);

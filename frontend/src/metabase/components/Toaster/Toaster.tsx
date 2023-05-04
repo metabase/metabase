@@ -9,12 +9,12 @@ import {
   ToasterDismiss,
 } from "./Toaster.styled";
 
-export interface ToasterProps extends HTMLAttributes<HTMLDivElement> {
+export interface ToasterProps extends HTMLAttributes<HTMLAnchorElement> {
   message: string;
   confirmText?: string;
   isShown: boolean;
   fixed?: boolean;
-  className?: string;
+  className: string;
   onConfirm: () => void;
   onDismiss: () => void;
 }
@@ -24,10 +24,9 @@ const Toaster = ({
   confirmText = t`Turn on`,
   isShown,
   fixed,
-  className,
   onConfirm,
   onDismiss,
-  ...props
+  className,
 }: ToasterProps): JSX.Element | null => {
   const [open, setOpen] = useState(false);
   const [render, setRender] = useState(false);
@@ -47,12 +46,7 @@ const Toaster = ({
   }, [isShown]);
 
   return render ? (
-    <ToasterContainer
-      show={open}
-      fixed={fixed}
-      className={className}
-      {...props}
-    >
+    <ToasterContainer show={open} fixed={fixed} className={className}>
       <ToasterMessage>{message}</ToasterMessage>
       <ToasterButton onClick={onConfirm} aria-label="Confirm">
         {confirmText}
