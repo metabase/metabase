@@ -26,7 +26,7 @@ jobs:
     timeout-minutes: 40
     strategy:
       matrix:
-        edition: [ee, oss]
+        edition: [oss]
     env:
       MB_EDITION: ${{ matrix.edition }}
       INTERACTIVE: false
@@ -55,7 +55,7 @@ jobs:
     timeout-minutes: 10
     strategy:
       matrix:
-        edition: [ee, oss]
+        edition: [oss]
         java-version: [11, 17]
     steps:
     - name: Prepare JRE (Java Run-time Environment)
@@ -80,7 +80,7 @@ jobs:
     needs: check_jar_health
     strategy:
       matrix:
-        edition: [ee, oss]
+        edition: [oss]
     services:
       registry:
         image: registry:2

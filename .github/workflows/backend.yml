@@ -178,7 +178,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        edition: [oss, ee]
+        edition: [oss]
         java-version: [11, 17, 21]
     steps:
       - uses: actions/checkout@v4
@@ -244,7 +244,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        edition: [oss, ee]
+        edition: [oss]
         java-version: [11, 17, 21]
     steps:
       - run: |

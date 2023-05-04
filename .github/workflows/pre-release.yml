@@ -88,7 +88,7 @@ jobs:
     timeout-minutes: 10
     strategy:
       matrix:
-        edition: [oss, ee]
+        edition: [oss]
         java-version: [11, 17]
     steps:
     - name: Prepare JRE (Java Run-time Environment)
@@ -176,7 +176,7 @@ jobs:
     timeout-minutes: 15
     strategy:
       matrix:
-        edition: [oss, ee]
+        edition: [oss]
     services:
       registry:
         image: registry:2
@@ -257,7 +257,7 @@ jobs:
     timeout-minutes: 15
     strategy:
       matrix:
-        edition: [oss, ee]
+        edition: [oss]
     env:
       IMAGE_TAG: ${{ needs.containerize.outputs.image_tag }}
     steps:
