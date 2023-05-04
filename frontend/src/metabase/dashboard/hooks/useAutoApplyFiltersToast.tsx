@@ -14,7 +14,7 @@ import {
 import { addUndo, dismissUndo } from "metabase/redux/undo";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
 
-export default function AutoApplyFilterToast() {
+export default function useAutoApplyFiltersToast() {
   const dashboardId = useSelector(getDashboardId);
   const isReadyToShowAutoApplyFiltersToast = useSelector(
     getIsReadyToShowAutoApplyFiltersToast,
@@ -59,6 +59,4 @@ export default function AutoApplyFilterToast() {
   useUnmount(() => {
     dispatch(dismissUndo(autoApplyFiltersToastId, false));
   });
-
-  return null;
 }
