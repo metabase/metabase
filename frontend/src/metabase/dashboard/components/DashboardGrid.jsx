@@ -253,11 +253,13 @@ class DashboardGrid extends Component {
 
     let x = dashcard.col || 0;
     let w = dashcard.size_x || initialSize.width;
+    let h = dashcard.size_y || initialSize.height;
 
     if (gridSize === 24) {
       const newDimensions = migrate18to24(x, w);
       x = newDimensions.x;
       w = newDimensions.w;
+      h = Math.round((h * 4) / 3);
     }
 
     return {
@@ -265,7 +267,7 @@ class DashboardGrid extends Component {
       x,
       y: dashcard.row || 0,
       w,
-      h: dashcard.size_y || initialSize.height,
+      h,
       dashcard: dashcard,
       minW: minSize.width,
       minH: minSize.height,
