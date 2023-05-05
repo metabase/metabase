@@ -3,7 +3,7 @@ import React from "react";
 import ItemPicker, { PickerValue, PickerItemId } from "./ItemPicker";
 
 export interface DashboardPickerProps {
-  value?: PickerValue;
+  value?: PickerItemId;
   onChange: (dashboardId: PickerItemId | undefined) => void;
 }
 
