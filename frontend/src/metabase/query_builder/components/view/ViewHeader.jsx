@@ -33,7 +33,6 @@ import QuestionFilters, {
 import { QuestionSummarizeWidget } from "./QuestionSummaries";
 import {
   AdHocViewHeading,
-  BackButton,
   SaveButton,
   SavedQuestionHeaderButtonContainer,
   ViewHeaderMainLeftContentContainer,
@@ -46,6 +45,7 @@ import {
   HeaderDivider,
   ViewHeaderActionPanel,
   ViewHeaderIconButtonContainer,
+  BackButton,
   BackButtonContainer,
 } from "./ViewHeader.styled";
 
