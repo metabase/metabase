@@ -119,7 +119,7 @@ You can append options to the connection string that Metabase uses to connect to
 options=-c%20key=value
 ```
 
-Note that PostgreSQL connection URIs expect percent-encoding for whitespaces and symbols.
+PostgreSQL connection URIs expect [percent-encoding](https://developer.mozilla.org/en-US/docs/Glossary/Percent-encoding) for whitespaces and symbols.
 
 ### Re-run queries for simple explorations
 
