@@ -1,8 +1,7 @@
 (ns metabase-enterprise.audit-db
   "This is here so we can try to require it and see whether or not EE code is on the classpath."
-  (:require [metabase.models.database :refer [Database]]
-            [metabase.sync.schedules :as sync.schedules]
-            [metabase.db.env :as mdb.env]
+  (:require [metabase.db.env :as mdb.env]
+            [metabase.models.database :refer [Database]]
             [metabase.util :as u]
             [metabase.util.log :as log]
             [toucan2.core :as t2]))
