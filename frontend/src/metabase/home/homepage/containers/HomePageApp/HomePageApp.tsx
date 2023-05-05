@@ -4,10 +4,7 @@ import Databases from "metabase/entities/databases";
 import Search from "metabase/entities/search";
 import { openNavbar } from "metabase/redux/app";
 import { getSetting } from "metabase/selectors/settings";
-import {
-  getUserIsAdmin,
-  getUserRedirectHomepageToDashboard,
-} from "metabase/selectors/user";
+import { getUserRedirectHomepageToDashboard } from "metabase/selectors/user";
 import { CollectionItem } from "metabase-types/api";
 import { State } from "metabase-types/store";
 import { canUseMetabotOnDatabase } from "metabase/metabot/utils";
@@ -22,7 +19,6 @@ interface EntityLoaderProps {
 interface StateProps {
   hasMetabot: boolean;
   homepageDashboard: number | null;
-  isAdmin: boolean;
 }
 
 const mapStateToProps = (
@@ -36,7 +32,6 @@ const mapStateToProps = (
   return {
     hasMetabot: hasModels && hasSupportedDatabases && isMetabotEnabled,
     homepageDashboard: getUserRedirectHomepageToDashboard(state),
-    isAdmin: getUserIsAdmin(state),
   };
 };
 

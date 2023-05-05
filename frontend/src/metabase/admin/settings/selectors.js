@@ -10,6 +10,8 @@ import { PersistedModelsApi, UtilApi } from "metabase/services";
 import { PLUGIN_ADMIN_SETTINGS_UPDATES } from "metabase/plugins";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
+import DashboardSelector from "metabase/components/DashboardSelector";
+
 import SettingCommaDelimitedInput from "./components/widgets/SettingCommaDelimitedInput";
 import CustomGeoJSONWidget from "./components/widgets/CustomGeoJSONWidget";
 import { UploadSettings } from "./components/UploadSettings";
@@ -30,7 +32,7 @@ import FormattingWidget from "./components/widgets/FormattingWidget";
 import FullAppEmbeddingLinkWidget from "./components/widgets/FullAppEmbeddingLinkWidget";
 import ModelCachingScheduleWidget from "./components/widgets/ModelCachingScheduleWidget";
 import SectionDivider from "./components/widgets/SectionDivider";
-import DashboardSelector from "./components/widgets/DashboardSelector";
+
 import SettingsUpdatesForm from "./components/SettingsUpdatesForm/SettingsUpdatesForm";
 import SettingsEmailForm from "./components/SettingsEmailForm";
 import SetupCheckList from "./setup/components/SetupCheckList";
@@ -90,6 +92,7 @@ const SECTIONS = updateSectionsWithPlugins({
         key: "custom-homepage",
         display_name: t`Custom Homepage`,
         type: "boolean",
+        requireUserUpdate: true,
       },
       {
         key: "custom-homepage-dashboard",
@@ -97,6 +100,9 @@ const SECTIONS = updateSectionsWithPlugins({
         getHidden: ({ "custom-homepage": customHomepage }) => !customHomepage,
         requireUserUpdate: true,
         widget: DashboardSelector,
+        getProps: setting => ({
+          value: setting.value,
+        }),
       },
       {
         key: "redirect-all-requests-to-https",
