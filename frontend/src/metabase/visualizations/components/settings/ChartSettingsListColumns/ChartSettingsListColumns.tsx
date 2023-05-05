@@ -4,9 +4,8 @@ import _ from "underscore";
 
 import Button from "metabase/core/components/Button";
 
-import { FieldId } from "metabase-types/types/Field";
 import { ConcreteField } from "metabase-types/types/Query";
-import { DatasetColumn } from "metabase-types/api";
+import { DatasetColumn, FieldId } from "metabase-types/api";
 import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
 import Question from "metabase-lib/Question";
 

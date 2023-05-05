@@ -3,9 +3,13 @@
  * @deprecated use existing types from, or add to metabase-types/api/*
  */
 
-import { Metric, TableId as _TableId, Segment } from "metabase-types/api";
+import {
+  Field,
+  Metric,
+  TableId as _TableId,
+  Segment,
+} from "metabase-types/api";
 import { ForeignKey } from "../api/foreign-key";
-import { Field } from "./Field";
 import { DatabaseId } from "./Database";
 import { ISO8601Time } from ".";
 
