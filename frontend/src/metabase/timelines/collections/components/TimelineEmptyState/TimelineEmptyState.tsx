@@ -51,7 +51,7 @@ const TimelineEmptyState = ({
           </svg>
         </EmptyStateChart>
         <EmptyStateTooltip>
-          <EmptyStateTooltipIcon name="mail" />
+          <EmptyStateTooltipIcon name="mail_filled" />
           <EmptyStateTooltipBody>
             <EmptyStateTooltipTitle>{t`Launch of v2.0`}</EmptyStateTooltipTitle>
             <EmptyStateTooltipDate value={date} unit="day" data-server-date />
