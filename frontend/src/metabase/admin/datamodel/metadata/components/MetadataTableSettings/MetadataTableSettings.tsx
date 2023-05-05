@@ -133,8 +133,8 @@ export default _.compose(
     query: PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
   }),
   Schemas.loadList({
-    query: (_: State, { database }: DatabaseLoaderProps) => ({
-      dbId: database.id,
+    query: (_: State, { params }: RouterProps) => ({
+      dbId: Urls.extractEntityId(params.databaseId),
       include_hidden: true,
       ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
     }),

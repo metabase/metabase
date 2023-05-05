@@ -132,7 +132,8 @@
 (defn- ids-of-dbs-that-support-source-queries []
   (set (filter (fn [db-id]
                  (try
-                   (some-> (driver.u/database->driver db-id) (driver/supports? :nested-queries))
+                   (when-let [db (t2/select-one Database :id db-id)]
+                     (driver/database-supports? (:engine db) :nested-queries db))
                    (catch Throwable e
                      (log/error e (tru "Error determining whether Database supports nested queries")))))
                (t2/select-pks-set Database))))

@@ -541,7 +541,7 @@
                   :parent :sql-jdbc
                   :abstract? true)
 
-(defmethod driver/supports? [::no-nested-query-support :nested-queries] [_ _] false)
+(defmethod driver/database-supports? [::no-nested-query-support :nested-queries] [_driver _feature _db] false)
 
 (deftest databases-list-test
   (testing "GET /api/database"
@@ -700,11 +700,11 @@
               (check-tables-not-included response (virtual-table-for-card bad-card)))))
 
         (testing "should work when there are no DBs that support nested queries"
-          (with-redefs [metabase.driver/supports? (constantly false)]
+          (with-redefs [metabase.driver/database-supports? (constantly false)]
             (is (nil? (fetch-virtual-database)))))
 
         (testing "should work when there are no DBs that support nested queries"
-          (with-redefs [metabase.driver/supports? (constantly false)]
+          (with-redefs [metabase.driver/database-supports? (constantly false)]
             (is (nil? (fetch-virtual-database)))))
 
         (testing "should remove Cards that use cumulative-sum and cumulative-count aggregations"

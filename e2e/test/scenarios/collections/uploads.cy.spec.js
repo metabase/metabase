@@ -32,7 +32,7 @@ describe("CSV Uploading", { tags: ["@external", "@actions"] }, () => {
           cy.wrap(collectionId).as("collectionId");
         });
         resyncDatabase({ dbId: WRITABLE_DB_ID });
-        enableUploads();
+        enableUploads(dialect);
       });
 
       testFiles.forEach(testFile => {
@@ -74,7 +74,7 @@ describe("CSV Uploading", { tags: ["@external", "@actions"] }, () => {
           cy.url().should("include", `/model/4`);
           cy.findByTestId("TableInteractive-root");
 
-          const tableQuery = `SELECT * FROM information_schema.tables WHERE table_name LIKE 'upload_${testFile.tableName}_%' ORDER BY table_name DESC LIMIT 1;`;
+          const tableQuery = `SELECT * FROM information_schema.tables WHERE table_name LIKE '%${testFile.tableName}_%' ORDER BY table_name DESC LIMIT 1;`;
 
           queryWritableDB(tableQuery, dialect).then(result => {
             expect(result.rows.length).to.equal(1);
@@ -93,17 +93,13 @@ describe("CSV Uploading", { tags: ["@external", "@actions"] }, () => {
   });
 });
 
-function enableUploads() {
+function enableUploads(dialect) {
   const settings = {
     "uploads-enabled": true,
     "uploads-database-id": WRITABLE_DB_ID,
-    "uploads-schema-name": "public",
-    "uploads-table-prefix": "upload_",
+    "uploads-schema-name": dialect === "postgres" ? "public" : null,
+    "uploads-table-prefix": dialect === "mysql" ? "upload_" : null,
   };
 
-  Object.entries(settings).forEach(([key, value]) => {
-    cy.request("PUT", `/api/setting/${key}`, {
-      value,
-    });
-  });
+  cy.request("PUT", `/api/setting`, settings);
 }
