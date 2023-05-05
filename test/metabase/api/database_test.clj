@@ -1028,11 +1028,11 @@
 (deftest get-syncable-schemas-test
   (testing "GET /api/database/:id/syncable_schemas"
     (testing "Multiple schemas are ordered by name"
-      ;; We need to redef driver/all-schemas here because different databases might have different schemas
+      ;; We need to redef driver/syncable-schemas here because different databases might have different schemas
       (with-redefs [driver/syncable-schemas (constantly #{"PUBLIC"})]
         (is (= ["PUBLIC"]
                (mt/user-http-request :crowberto :get 200 (format "database/%d/syncable_schemas" (mt/id)))))
-        (testing "Non-admins don't have permission to use include_empty parameter"
+        (testing "Non-admins don't have permission to see syncable schemas"
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403 (format "database/%d/syncable_schemas" (mt/id))))))))))
 

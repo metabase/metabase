@@ -1170,7 +1170,7 @@
   (mt/test-driver :postgres
     (testing "`syncable-schemas` should return schemas that should be synced"
       (mt/with-empty-db
-        (is (= ["public"]
+        (is (= #{"public"}
                (driver/syncable-schemas driver/*driver* (mt/id))))))
     (testing "metabase_cache schemas should be excluded"
       (mt/dataset test-data

@@ -634,7 +634,7 @@
 
 (deftest syncable-schemas-test
   (mt/test-driver :mysql
-    (testing "`syncable-schemas` should return an empty list because mysql doesn't support schemas"
+    (testing "`syncable-schemas` should return an empty set because mysql doesn't support schemas"
       (mt/with-empty-db
-        (is (= []
+        (is (= #{}
                (driver/syncable-schemas driver/*driver* (mt/id))))))))

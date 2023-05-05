@@ -1067,7 +1067,7 @@
 
 (api/defendpoint GET "/:id/schemas"
   "Returns a list of all the schemas with tables found for the database `id`. Excludes schemas with no tables."
-  [id include_editable_data_model include_hidden include_empty]
+  [id include_editable_data_model include_hidden]
   {id                          ms/PositiveInt
    include_editable_data_model [:maybe ms/BooleanString]
    include_hidden              [:maybe ms/BooleanString]}
