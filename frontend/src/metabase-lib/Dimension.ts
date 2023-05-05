@@ -12,7 +12,6 @@ import {
   DatetimeUnit,
 } from "metabase-types/types/Query";
 import { VariableTarget } from "metabase-types/types/Parameter";
-import { IconName } from "metabase-types/types";
 import * as Lib from "metabase-lib";
 import { infer, MONOTYPE } from "metabase-lib/expressions/typeinferencer";
 import { TYPE } from "metabase-lib/types/constants";
@@ -381,7 +380,7 @@ export default class Dimension {
    * An icon name representing this dimension's type, to be used in the <Icon> component.
    * @abstract
    */
-  icon(): IconName | null | undefined {
+  icon(): string | null | undefined {
     return null;
   }
 
@@ -1290,7 +1289,7 @@ export class ExpressionDimension extends Dimension {
     });
   }
 
-  icon(): IconName {
+  icon(): string {
     const field = this.field();
     return field ? field.icon() : "unknown";
   }
