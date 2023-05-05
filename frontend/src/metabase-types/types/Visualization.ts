@@ -10,7 +10,7 @@ import {
   RowValue,
   VisualizationSettings,
 } from "metabase-types/api";
-import { ReduxAction } from "metabase-types/types/redux";
+import { ReduxAction } from "metabase-types/store";
 
 // import Question from "metabase-lib/Question";
 type Question = any;
