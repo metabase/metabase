@@ -1,7 +1,7 @@
 import React from "react";
 
 import { renderWithProviders, screen, getIcon } from "__support__/ui";
-import { createEntitiesState } from "__support__/store";
+import { createMockEntitiesState } from "__support__/store";
 import { setupDatabasesEndpoints } from "__support__/server-mocks/database";
 import { setupSearchEndpoints } from "__support__/server-mocks/search";
 
@@ -27,7 +27,7 @@ const makeQuery = (options: any) => {
 const setup = ({ query }: { query: DatasetQuery }) => {
   const database = createSampleDatabase();
   const state = createMockState({
-    entities: createEntitiesState({
+    entities: createMockEntitiesState({
       databases: [database],
     }),
   });
