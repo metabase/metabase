@@ -20,6 +20,7 @@ import type {
   DashboardOrderedCard,
   DashCardId,
   Dataset,
+  Series,
   VirtualCardDisplay,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -27,7 +28,6 @@ import type {
   ParameterId,
   ParameterValueOrArray,
 } from "metabase-types/types/Parameter";
-import type { Series } from "metabase-types/types/Visualization";
 import type { Dispatch } from "metabase-types/store";
 
 import Question from "metabase-lib/Question";

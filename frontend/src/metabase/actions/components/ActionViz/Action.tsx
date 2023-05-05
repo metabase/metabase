@@ -11,13 +11,13 @@ import Databases from "metabase/entities/databases";
 import { executeRowAction } from "metabase/dashboard/actions";
 import { getEditingDashcardId } from "metabase/dashboard/selectors";
 
+import type { VisualizationProps } from "metabase/visualizations/types";
 import type {
   ActionDashboardCard,
   Dashboard,
   ParametersForActionExecution,
   WritebackAction,
 } from "metabase-types/api";
-import type { VisualizationProps } from "metabase-types/types/Visualization";
 import type { ParameterValueOrArray } from "metabase-types/types/Parameter";
 import type { Dispatch, State } from "metabase-types/store";
 
