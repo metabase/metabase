@@ -17,6 +17,7 @@ export type DashboardSidebarName =
 
 export interface DashboardState {
   dashboardId: DashboardId | null;
+  activeDashboardId: DashboardId | null;
   dashboards: Record<DashboardId, Dashboard>;
 
   dashcards: Record<DashCardId, DashboardOrderedCard>;
