@@ -1,5 +1,4 @@
 import { Parameter } from "metabase-types/api/parameters";
-import type { EntityId } from "metabase-types/types";
 import type {
   ParameterTarget,
   ParameterId,
@@ -32,7 +31,7 @@ export interface Dashboard {
   auto_apply_filters: boolean;
 }
 
-export type DashCardId = EntityId;
+export type DashCardId = number;
 
 export type BaseDashboardOrderedCard = {
   id: DashCardId;

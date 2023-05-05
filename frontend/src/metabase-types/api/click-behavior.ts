@@ -1,4 +1,4 @@
-import { EntityId } from "metabase-types/types";
+import type { CardId, DashboardId } from "metabase-types/api";
 import { ParameterId } from "metabase-types/types/Parameter";
 
 // Used to set values for question filters
@@ -41,7 +41,7 @@ export interface CrossFilterClickBehavior {
 export interface EntityCustomDestinationClickBehavior {
   type: "link";
   linkType: CustomDestinationClickBehaviorEntity;
-  targetId: EntityId;
+  targetId: CardId | DashboardId;
   parameterMapping?: ClickBehaviorParameterMapping;
 }
 
