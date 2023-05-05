@@ -3,10 +3,9 @@
  * @deprecated use existing types from, or add to metabase-types/api/*
  */
 
-import { TemplateTags, DatetimeUnit } from "metabase-types/api";
+import { DatetimeUnit, TemplateTags, SegmentId } from "metabase-types/api";
 import { TableId } from "./Table";
 import { BaseType, FieldId } from "./Field";
-import { SegmentId } from "./Segment";
 import { MetricId } from "./Metric";
 
 export type ExpressionName = string;
