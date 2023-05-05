@@ -115,8 +115,9 @@
        (normalize-params matching-params))
      ;; otherwise, attempt to fall back to the default value specified as part of the template tag.
      (when-let [tag-default (:default tag)]
-       {:type  (:widget-type tag :dimension) ; widget-type is the actual type of the default value if set
-        :value tag-default})
+       {:type    (:widget-type tag :dimension) ; widget-type is the actual type of the default value if set
+        :options (:options tag)
+        :value   tag-default})
      ;; if that doesn't exist, see if the matching parameters specified default values This can be the case if the
      ;; parameters came from a Dashboard -- Dashboard parameter mappings can specify their own defaults -- but we want
      ;; the defaults specified in the template tag to take precedence if both are specified
