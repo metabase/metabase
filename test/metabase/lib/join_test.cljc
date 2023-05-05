@@ -214,7 +214,12 @@
               :lib/source-column-alias       "ID"
               :lib/desired-column-alias      "Cat__ID"
               :metabase.lib.field/join-alias "Cat"
-              :lib/source                    :source/fields}]
+              :lib/source                    :source/fields}
+             {:name                          "NAME"
+              :lib/source-column-alias       "NAME"
+              :lib/desired-column-alias      "Cat__NAME"
+              :metabase.lib.field/join-alias "Cat"
+              :lib/source                    :source/joins}]
             (lib.metadata.calculation/metadata query)))
     (testing "Introduce a new stage"
       (let [query' (lib/append-stage query)]
@@ -225,6 +230,10 @@
                  {:name                          "ID"
                   :lib/source-column-alias       "Cat__ID"
                   :lib/desired-column-alias      "Cat__ID"
+                  :lib/source                    :source/previous-stage}
+                 {:name                          "NAME"
+                  :lib/source-column-alias       "Cat__NAME"
+                  :lib/desired-column-alias      "Cat__NAME"
                   :lib/source                    :source/previous-stage}]
                 (lib.metadata.calculation/metadata query')))))))
 
