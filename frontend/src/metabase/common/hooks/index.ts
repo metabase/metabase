@@ -4,3 +4,5 @@ export * from "./use-database-query";
 export * from "./use-schema-list-query";
 export * from "./use-table-list-query";
 export * from "./use-table-query";
+export * from "./use-collection-query";
+export * from "./use-most-recently-viewed-dashboard";

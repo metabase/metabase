@@ -12,7 +12,7 @@ import { entityListLoader } from "metabase/entities/containers/EntityListLoader"
 import { entityObjectLoader } from "metabase/entities/containers/EntityObjectLoader";
 import { isRootCollection } from "metabase/collections/utils";
 
-import type { Collection } from "metabase-types/api";
+import type { Collection, CollectionId } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 import type {
@@ -35,6 +35,7 @@ interface OwnProps {
   className?: string;
   style?: React.CSSProperties;
   onChange: (value: PickerValue) => void;
+  initialOpenCollectionId?: CollectionId | "root";
 }
 
 interface StateProps {
@@ -83,9 +84,11 @@ function ItemPicker({
   style,
   onChange,
   getCollectionIcon,
+  initialOpenCollectionId = "root",
 }: Props) {
-  const [openCollectionId, setOpenCollectionId] =
-    useState<Collection["id"]>("root");
+  const [openCollectionId, setOpenCollectionId] = useState<Collection["id"]>(
+    initialOpenCollectionId,
+  );
   const [searchString, setSearchString] = useState("");
 
   const isPickingNotCollection = models.some(model => model !== "collection");
