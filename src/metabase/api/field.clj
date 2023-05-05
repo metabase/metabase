@@ -71,7 +71,7 @@
     ;;
     ;; Check for permissions and throw 403 if we don't have them...
     (if include_editable_data_model
-      (api/write-check 'Table (:table_id field))
+      (api/write-check Table (:table_id field))
       (throw-if-no-read-or-segmented-perms field))
     ;; ...but if we do, return the Field <3
     field))

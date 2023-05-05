@@ -117,13 +117,15 @@
                     :nfc_path           nil}
                    original-val)))
           (let [;; set it
-                response (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id) {:name            "something else"
-                                                                                                 :display_name    "yay"
-                                                                                                 :description     "foobar"
-                                                                                                 :semantic_type   :type/Name
-                                                                                                 :json_unfolding  true
-                                                                                                 :visibility_type :sensitive
-                                                                                                 :nfc_path        ["bob" "dobbs"]})
+                response (mt/user-http-request :crowberto :put 200
+                                               (format "field/%d" field-id)
+                                               {:name            "something else"
+                                                :display_name    "yay"
+                                                :description     "foobar"
+                                                :semantic_type   :type/Name
+                                                :json_unfolding  true
+                                                :visibility_type :sensitive
+                                                :nfc_path        ["bob" "dobbs"]})
                 updated-val (simple-field-details (t2/select-one Field :id field-id))]
             (testing "response body should be the updated field"
               (is (= {:name               "Field Test"
