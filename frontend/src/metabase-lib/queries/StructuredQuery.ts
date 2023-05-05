@@ -11,18 +11,16 @@ import {
   Breakout,
   DatabaseId,
   DatasetColumn,
+  DatasetQuery,
   DependentMetadataItem,
   ExpressionClause,
   Filter,
   Join,
   OrderBy,
   TableId,
+  StructuredDatasetQuery,
   StructuredQuery as StructuredQueryObject,
 } from "metabase-types/api";
-import {
-  DatasetQuery,
-  StructuredDatasetQuery,
-} from "metabase-types/types/Card";
 import {
   format as formatExpression,
   DISPLAY_QUOTES,

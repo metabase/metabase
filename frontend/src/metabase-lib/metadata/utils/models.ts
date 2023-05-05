@@ -1,15 +1,12 @@
 import {
+  Card,
   DatasetColumn,
   FieldReference,
   ModelCacheRefreshStatus,
   TableColumnOrderSetting,
   TemplateTag,
-} from "metabase-types/api";
-import {
-  Card as CardObject,
-  CardId,
   StructuredDatasetQuery,
-} from "metabase-types/types/Card";
+} from "metabase-types/api";
 import { getQuestionVirtualTableId } from "metabase-lib/metadata/utils/saved-questions";
 import Database from "metabase-lib/metadata/Database";
 import Question from "metabase-lib/Question";
@@ -113,11 +110,6 @@ export function checkCanBeModel(question: Question) {
     .templateTags()
     .every(isSupportedTemplateTagForModel);
 }
-
-type Card = CardObject & {
-  id?: CardId;
-  dataset?: boolean;
-};
 
 export function isAdHocModelQuestionCard(card: Card, originalCard?: Card) {
   if (!originalCard || !isStructured(card.dataset_query)) {

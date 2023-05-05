@@ -19,13 +19,13 @@ import ChartSettingsTableFormatting from "metabase/visualizations/components/set
 import { ChartSettingIconRadio } from "metabase/visualizations/components/settings/ChartSettingIconRadio";
 
 import type {
+  Card,
   DatasetColumn,
   DatasetData,
   Series,
   RowValue,
   VisualizationSettings,
 } from "metabase-types/api";
-import type { Card } from "metabase-types/types/Card";
 
 import { isDimension } from "metabase-lib/types/utils/isa";
 

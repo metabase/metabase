@@ -1,7 +1,11 @@
 import * as questionActions from "metabase/questions/actions";
-import { ConcreteFieldReference, TemplateTag } from "metabase-types/api";
+import {
+  ConcreteFieldReference,
+  StructuredDatasetQuery,
+  TemplateTag,
+  UnsavedCard,
+} from "metabase-types/api";
 import { createMockDataset } from "metabase-types/api/mocks";
-import { Card, StructuredDatasetQuery } from "metabase-types/types/Card";
 import { QueryBuilderMode } from "metabase-types/store";
 import {
   createMockState,
@@ -137,7 +141,7 @@ const PIVOT_TABLE_PRODUCT_CATEGORY_FIELD: ConcreteFieldReference = [
   { "source-field": ORDERS.PRODUCT_ID.id },
 ];
 
-const PIVOT_TABLE_QUESTION: Card<StructuredDatasetQuery> = {
+const PIVOT_TABLE_QUESTION: UnsavedCard<StructuredDatasetQuery> = {
   display: "pivot",
   dataset_query: {
     type: "query",

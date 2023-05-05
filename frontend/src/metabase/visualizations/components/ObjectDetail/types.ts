@@ -1,5 +1,5 @@
-import type { SavedCard } from "metabase-types/types/Card";
 import type {
+  Card,
   DatasetData,
   DashboardOrderedCard,
   ForeignKey,
@@ -25,7 +25,7 @@ export type OnVisualizationClickType =
 export interface ObjectDetailProps {
   data: DatasetData;
   question?: Question;
-  card?: SavedCard;
+  card?: Card;
   dashcard?: DashboardOrderedCard;
   isObjectDetail?: boolean; // whether this should be shown in a modal
   table?: Table | null;
