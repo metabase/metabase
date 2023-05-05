@@ -10,14 +10,12 @@ export interface HomePageProps {
   hasMetabot: boolean;
   homepageDashboard?: number;
   onOpenNavbar: () => void;
-  isAdmin: boolean;
 }
 
 const HomePage = ({
   hasMetabot,
   onOpenNavbar,
   homepageDashboard,
-  isAdmin,
 }: HomePageProps): JSX.Element => {
   const dispatch = useDispatch();
   useEffect(() => {
@@ -31,7 +29,7 @@ const HomePage = ({
   }
 
   return (
-    <HomeLayout hasMetabot={hasMetabot} isAdmin={isAdmin}>
+    <HomeLayout hasMetabot={hasMetabot}>
       <HomeContent />
     </HomeLayout>
   );

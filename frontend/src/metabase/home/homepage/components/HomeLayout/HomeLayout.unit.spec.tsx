@@ -22,4 +22,18 @@ describe("HomeLayout", () => {
     setup({ currentUser: createMockUser({ first_name: "Test" }) });
     expect(screen.getByText(/Test/)).toBeInTheDocument();
   });
+
+  it("should show customize button when user is an admin", () => {
+    setup({
+      currentUser: createMockUser({ first_name: "Test", is_superuser: true }),
+    });
+    expect(screen.getByText(/Customize/)).toBeInTheDocument();
+  });
+
+  it("should not show customize button when user is not an admin", () => {
+    setup({
+      currentUser: createMockUser({ first_name: "Test", is_superuser: false }),
+    });
+    expect(screen.queryByText(/Customize/)).not.toBeInTheDocument();
+  });
 });
