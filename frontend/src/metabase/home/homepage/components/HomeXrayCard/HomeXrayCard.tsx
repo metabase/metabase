@@ -22,7 +22,7 @@ const HomeXrayCard = ({
   return (
     <HomeCard url={url}>
       <CardIconContainer>
-        <CardIcon name="bolt" />
+        <CardIcon name="bolt_filled" />
       </CardIconContainer>
       <CardTitle>
         <CardTitleSecondary>{message}</CardTitleSecondary>{" "}
