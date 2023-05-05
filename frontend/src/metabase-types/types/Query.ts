@@ -5,12 +5,12 @@
 
 import {
   DatetimeUnit,
+  FieldId,
   MetricId,
   TemplateTags,
   SegmentId,
 } from "metabase-types/api";
 import { TableId } from "./Table";
-import { BaseType, FieldId } from "./Field";
 
 export type ExpressionName = string;
 
@@ -243,7 +243,7 @@ export type ForeignFieldReference = [
 
 export type ExpressionReference = ["expression", ExpressionName];
 
-export type FieldLiteral = ["field", string, { "base-type": BaseType }];
+export type FieldLiteral = ["field", string, { "base-type": string }];
 
 export type JoinedFieldReference = [
   "field",

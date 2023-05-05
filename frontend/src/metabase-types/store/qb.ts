@@ -1,7 +1,6 @@
-import { Dataset } from "metabase-types/api/dataset";
+import { Dataset, Field } from "metabase-types/api";
 
 import { Card } from "metabase-types/types/Card";
-import { Field } from "metabase-types/types/Field";
 import { ParameterValueOrArray } from "metabase-types/types/Parameter";
 
 export type QueryBuilderMode = "view" | "notebook" | "dataset";
