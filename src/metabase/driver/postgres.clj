@@ -697,6 +697,8 @@
                 (sql-jdbc.common/handle-additional-options it details-map))]
     props))
 
+(defmethod sql-jdbc.sync/excluded-schemas :postgres [_driver] #{"information_schema" "pg_catalog"})
+
 (defmethod sql-jdbc.execute/set-timezone-sql :postgres
   [_]
   "SET SESSION TIMEZONE TO %s;")
