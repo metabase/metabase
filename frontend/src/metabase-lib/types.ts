@@ -44,6 +44,8 @@ export type ColumnDisplayInfo = {
   isFromJoin: boolean;
   isImplicitlyJoinable: boolean;
   table?: TableInlineDisplayInfo;
+
+  orderByPosition?: number;
 };
 
 export type OrderByClauseDisplayInfo = Pick<
