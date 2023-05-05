@@ -618,26 +618,26 @@
                   "Should be possible to convert to another temporal type/should report its type correctly")
               (is (= [expected-sql]
                      (hformat/format (#'bigquery.qp/->temporal-type temporal-type form)))
-                  "Should convert to the correct SQL"))))))
+                  "Should convert to the correct SQL")))))
 
-    (testing (str "The object returned by `current-datetime-honeysql-form` should use the reporting timezone when set.")
-      (doseq [timezone ["UTC" "US/Pacific"]]
-        (mt/with-temporary-setting-values [report-timezone timezone]
-          (let [form (sql.qp/current-datetime-honeysql-form :bigquery-cloud-sdk)]
-            (is (= ["current_timestamp()"]
-                   (hformat/format form))
-                "Should fall back to acting like a timestamp if we don't coerce it to something else first")
-            (doseq [[temporal-type expected-sql] {:date      (str "current_date('" timezone "')")
-                                                  :time      (str "current_time('" timezone "')")
-                                                  :datetime  (str "current_datetime('" timezone "')")
-                                                  :timestamp "current_timestamp()"}]
-              (testing (format "temporal type = %s" temporal-type)
-                (is (= temporal-type
-                       (#'bigquery.qp/temporal-type (#'bigquery.qp/->temporal-type temporal-type form)))
-                    "Should be possible to convert to another temporal type/should report its type correctly")
-                (is (= [expected-sql]
-                       (hformat/format (#'bigquery.qp/->temporal-type temporal-type form)))
-                    "Should specify the correct timezone in the SQL for non-timestamp functions")))))))))
+      (testing (str "The object returned by `current-datetime-honeysql-form` should use the reporting timezone when set.")
+        (doseq [timezone ["UTC" "US/Pacific"]]
+          (mt/with-temporary-setting-values [report-timezone timezone]
+            (let [form (sql.qp/current-datetime-honeysql-form :bigquery-cloud-sdk)]
+              (is (= ["current_timestamp()"]
+                     (hformat/format form))
+                  "Should fall back to acting like a timestamp if we don't coerce it to something else first")
+              (doseq [[temporal-type expected-sql] {:date      (str "current_date('" timezone "')")
+                                                    :time      (str "current_time('" timezone "')")
+                                                    :datetime  (str "current_datetime('" timezone "')")
+                                                    :timestamp "current_timestamp()"}]
+                (testing (format "temporal type = %s" temporal-type)
+                  (is (= temporal-type
+                         (#'bigquery.qp/temporal-type (#'bigquery.qp/->temporal-type temporal-type form)))
+                      "Should be possible to convert to another temporal type/should report its type correctly")
+                  (is (= [expected-sql]
+                         (hformat/format (#'bigquery.qp/->temporal-type temporal-type form)))
+                      "Should specify the correct timezone in the SQL for non-timestamp functions"))))))))))
 
 (deftest add-interval-honeysql-form-test
   ;; this doesn't test conversion to/from time because there's no unit we can use that works for all for. So we'll
