@@ -3,7 +3,7 @@
  * @deprecated use existing types from, or add to metabase-types/api/*
  */
 
-import { Table } from "./Table";
+import { Table } from "metabase-types/api";
 import { ISO8601Time } from ".";
 
 export type DatabaseId = number;

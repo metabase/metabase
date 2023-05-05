@@ -1,5 +1,4 @@
-import { Field } from "metabase-types/api";
-import { Table } from "metabase-types/types/Table";
+import { Field, Table } from "metabase-types/api";
 
 type FieldsFilter = (fields: Field[]) => Field[];
 

@@ -7,10 +7,10 @@ import {
   DatetimeUnit,
   FieldId,
   MetricId,
+  TableId,
   TemplateTags,
   SegmentId,
 } from "metabase-types/api";
-import { TableId } from "./Table";
 
 export type ExpressionName = string;
 
