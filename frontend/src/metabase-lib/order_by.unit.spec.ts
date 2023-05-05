@@ -120,7 +120,7 @@ describe("order by", () => {
       )("ORDERS", "TAX");
 
       expect(
-        ML.displayInfo(nextQuery, roundtripTaxColumn).orderByPosition,
+        ML.displayInfo(roundtripQuery, roundtripTaxColumn).orderByPosition,
       ).toBe(0);
     });
   });

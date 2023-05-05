@@ -21,6 +21,32 @@ describe("breakout", () => {
       expect(breakouts).toHaveLength(1);
       expect(ML.displayName(nextQuery, breakouts[0])).toBe("Title");
     });
+
+    it("should preserve breakout positions between v1-v2 roundtrip", () => {
+      const query = createQuery();
+      const taxColumn = findBreakoutableColumn("ORDERS", "TAX");
+      const nextQuery = ML.breakout(query, taxColumn);
+      const nextQueryColumns = ML.breakoutableColumns(nextQuery);
+      const nextTaxColumn = columnFinder(nextQuery, nextQueryColumns)(
+        "ORDERS",
+        "TAX",
+      );
+
+      expect(ML.displayInfo(nextQuery, nextTaxColumn).breakoutPosition).toBe(0);
+
+      const roundtripQuery = createQuery({
+        query: ML.toLegacyQuery(nextQuery),
+      });
+      const roundtripQueryColumns = ML.breakoutableColumns(roundtripQuery);
+      const roundtripTaxColumn = columnFinder(
+        roundtripQuery,
+        roundtripQueryColumns,
+      )("ORDERS", "TAX");
+
+      expect(
+        ML.displayInfo(roundtripQuery, roundtripTaxColumn).breakoutPosition,
+      ).toBe(0);
+    });
   });
 
   describe("replace breakout", () => {
