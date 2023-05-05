@@ -41,10 +41,6 @@ import { ParameterValues } from "metabase-types/types/Parameter";
 import { Card as CardObject, DatasetQuery } from "metabase-types/types/Card";
 import { TableId } from "metabase-types/types/Table";
 import { DatabaseId } from "metabase-types/types/Database";
-import {
-  ClickObject,
-  DimensionValue,
-} from "metabase-types/types/Visualization";
 import { DependentMetadataItem } from "metabase-types/types/Query";
 import { utf8_to_b64url } from "metabase/lib/encoding";
 
@@ -75,6 +71,10 @@ import {
   ALERT_TYPE_TIMESERIES_GOAL,
 } from "metabase-lib/Alert";
 import { getBaseDimensionReference } from "metabase-lib/references";
+import type {
+  ClickObject,
+  ClickObjectDimension,
+} from "metabase-lib/queries/drills/types";
 
 import type { Query } from "./types";
 import * as ML from "./v2";
@@ -566,7 +566,7 @@ class QuestionInner {
   }
 
   drillUnderlyingRecords(
-    dimensions: DimensionValue[],
+    dimensions: ClickObjectDimension[],
     column?: DatasetColumn,
   ): Question {
     let query = this.query();

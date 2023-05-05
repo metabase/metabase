@@ -28,13 +28,13 @@ import type {
   Dashboard,
   DashboardOrderedCard,
   DashCardId,
+  Series,
   VisualizationSettings,
 } from "metabase-types/api";
 import type {
   ParameterId,
   ParameterValueOrArray,
 } from "metabase-types/types/Parameter";
-import type { Series } from "metabase-types/types/Visualization";
 
 import { getParameterValuesBySlug } from "metabase-lib/parameters/utils/parameter-values";
 
