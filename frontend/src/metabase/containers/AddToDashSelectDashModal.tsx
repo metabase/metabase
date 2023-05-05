@@ -1,4 +1,4 @@
-import React, { Component, ComponentPropsWithoutRef } from "react";
+import React, { ComponentPropsWithoutRef, useState } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 
@@ -11,16 +11,18 @@ import { CreateDashboardFormOwnProps } from "metabase/dashboard/containers/Creat
 import * as Urls from "metabase/lib/urls";
 import CreateDashboardModal from "metabase/dashboard/containers/CreateDashboardModal";
 import { Card, Dashboard } from "metabase-types/api";
+import {
+  useCollectionQuery,
+  useMostRecentlyViewedDashboard,
+} from "metabase/common/hooks";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { LinkContent } from "./AddToDashSelectDashModal.styled";
+import type { PickerValue } from "./ItemPicker";
 
 function mapStateToProps(state: State) {
   return {
     dashboards: state.entities.dashboards,
   };
-}
-
-interface AddToDashSelectDashModalState {
-  shouldCreateDashboard: boolean;
 }
 
 interface AddToDashSelectDashModalProps {
@@ -32,18 +34,23 @@ interface AddToDashSelectDashModalProps {
 
 type DashboardPickerProps = ComponentPropsWithoutRef<typeof DashboardPicker>;
 
-class AddToDashSelectDashModal extends Component<
-  AddToDashSelectDashModalProps,
-  AddToDashSelectDashModalState
-> {
-  state = {
-    shouldCreateDashboard: false,
-  };
+const AddToDashSelectDashModal = ({
+  card,
+  dashboards,
+  onClose,
+  onChangeLocation,
+}: AddToDashSelectDashModalProps) => {
+  const [shouldCreateDashboard, setShouldCreateDashboard] = useState(false);
+  const queryDash = useMostRecentlyViewedDashboard();
 
-  navigateToDashboard: Required<CreateDashboardFormOwnProps>["onCreate"] =
+  const collectionId = queryDash.data?.collection_id;
+  const collectionQuery = useCollectionQuery({
+    id: collectionId || "root",
+    enabled: typeof collectionId !== "undefined",
+  });
+
+  const navigateToDashboard: Required<CreateDashboardFormOwnProps>["onCreate"] =
     dashboard => {
-      const { card, onChangeLocation } = this.props;
-
       onChangeLocation(
         Urls.dashboard(dashboard, {
           editMode: true,
@@ -52,47 +59,55 @@ class AddToDashSelectDashModal extends Component<
       );
     };
 
-  onDashboardSelected: DashboardPickerProps["onChange"] = dashboardId => {
+  const onDashboardSelected: DashboardPickerProps["onChange"] = dashboardId => {
     if (dashboardId) {
-      const dashboard = this.props.dashboards[dashboardId];
-      this.navigateToDashboard(dashboard);
+      const dashboard = dashboards[dashboardId];
+      navigateToDashboard(dashboard);
     }
   };
 
-  render() {
-    if (this.state.shouldCreateDashboard) {
-      return (
-        <CreateDashboardModal
-          collectionId={this.props.card.collection_id}
-          onCreate={this.navigateToDashboard}
-          onClose={() => this.setState({ shouldCreateDashboard: false })}
-        />
-      );
-    }
-
+  if (shouldCreateDashboard) {
     return (
+      <CreateDashboardModal
+        collectionId={card.collection_id}
+        onCreate={navigateToDashboard}
+        onClose={() => setShouldCreateDashboard(false)}
+      />
+    );
+  }
+
+  return (
+    <LoadingAndErrorWrapper
+      loading={queryDash.isLoading || collectionQuery.isLoading}
+      error={[queryDash.error, collectionQuery.error]
+        .filter(Boolean)
+        .map(error => (error as Error).message)
+        .join(", ")}
+      noWrapper
+    >
       <ModalContent
         id="AddToDashSelectDashModal"
         title={
-          this.props.card.dataset
+          card.dataset
             ? t`Add this model to a dashboard`
             : t`Add this question to a dashboard`
         }
-        onClose={this.props.onClose}
+        onClose={onClose}
       >
-        <DashboardPicker onChange={this.onDashboardSelected} />
-        <Link
-          onClick={() => this.setState({ shouldCreateDashboard: true })}
-          to={""}
-        >
+        <DashboardPicker
+          onChange={onDashboardSelected}
+          collectionId={collectionId}
+          value={queryDash.data?.id as PickerValue | undefined}
+        />
+        <Link onClick={() => setShouldCreateDashboard(true)} to="">
           <LinkContent>
             <Icon name="add" mx={1} />
             <h4>{t`Create a new dashboard`}</h4>
           </LinkContent>
         </Link>
       </ModalContent>
-    );
-  }
-}
+    </LoadingAndErrorWrapper>
+  );
+};
 
 export default connect(mapStateToProps)(AddToDashSelectDashModal);
