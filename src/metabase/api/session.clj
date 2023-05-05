@@ -1,6 +1,7 @@
 (ns metabase.api.session
   "/api/session endpoints"
   (:require
+   [buddy.core.codecs :as codecs]
    [compojure.core :refer [DELETE GET POST]]
    [java-time :as t]
    [metabase.analytics.snowplow :as snowplow]
@@ -11,6 +12,7 @@
    [metabase.events :as events]
    [metabase.integrations.google :as google]
    [metabase.integrations.ldap :as ldap]
+   [metabase.models :refer [PulseChannel]]
    [metabase.models.login-history :refer [LoginHistory]]
    [metabase.models.session :refer [Session]]
    [metabase.models.setting :as setting]
@@ -19,13 +21,16 @@
    [metabase.server.middleware.session :as mw.session]
    [metabase.server.request.util :as request.u]
    [metabase.util :as u]
+   [metabase.util.encryption :as encryption]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.password :as u.password]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [throttle.core :as throttle]
-   [toucan2.core :as t2])
+   [toucan2.core :as t2]
+   [metabase.models.pulse-channel :as pulse-channel])
   (:import
    (com.unboundid.util LDAPSDKException)
    (java.util UUID)))
@@ -312,5 +317,43 @@
       (catch Throwable e
         (log/error e (trs "Authentication endpoint error"))
         (throw e)))))
+
+;;; ----------------------------------------------------- Unsubscribe non-users from pulses -----------------------------------------------
+
+(defn- check-hash [pulse-id email hash]
+  (when (not= hash
+              (codecs/bytes->hex
+               (encryption/validate-and-hash-secret-key
+                (str (public-settings/site-uuid-for-unsubscribing-url) " " email " " pulse-id))))
+    (throw (ex-info (tru "Invalid hash.")
+                    {:type        type
+                     :status-code 400}))))
+
+(api/defendpoint POST "/pulse/unsubscribe"
+  "Allow non-users to unsubscribe from pulses/subscriptions,
+
+ hash given through email."
+  [:as {{:keys [email hash pulse-id]} :body}]
+  {pulse-id ms/PositiveInt
+   email    :string
+   hash     :string}
+  (check-hash pulse-id email hash)
+  (api/let-404 [pulse-channel    (t2/select-one PulseChannel :pulse_id pulse-id :channel_type "email")]
+               (let [emails (get-in pulse-channel [:details :emails])]
+                 (t2/update! PulseChannel (:id pulse-channel) (assoc-in pulse-channel [:details :emails] (remove #(= % email) emails)))))
+  {:status :success})
+
+(api/defendpoint POST "/pulse/unsubscribe/undo"
+  "Update SAML related settings. You must be a superuser to do this."
+  [:as {{:keys [email hash pulse-id]} :body}]
+  {pulse-id ms/PositiveInt
+   email    :string
+   hash     :string}
+  (check-hash pulse-id email hash)
+  (api/let-404 [pulse-channel    (t2/select-one PulseChannel :pulse_id pulse-id :channel_type "email")]
+               (let [emails (get-in pulse-channel [:details :emails])]
+                 (when (not (some #(= email %) emails))
+                   (t2/update! PulseChannel (:id pulse-channel) (update pulse-channel [:details :emails] (conj emails email))))))
+  {:status :success})
 
 (api/define-routes +log-all-request-failures)
