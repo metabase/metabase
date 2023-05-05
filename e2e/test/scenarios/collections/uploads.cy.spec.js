@@ -74,7 +74,7 @@ describe("CSV Uploading", { tags: ["@external", "@actions"] }, () => {
           cy.url().should("include", `/model/4`);
           cy.findByTestId("TableInteractive-root");
 
-          const tableQuery = `SELECT * FROM information_schema.tables WHERE table_name LIKE 'upload_${testFile.tableName}_%' ORDER BY table_name DESC LIMIT 1;`;
+          const tableQuery = `SELECT * FROM information_schema.tables WHERE table_name LIKE '%${testFile.tableName}_%' ORDER BY table_name DESC LIMIT 1;`;
 
           queryWritableDB(tableQuery, dialect).then(result => {
             expect(result.rows.length).to.equal(1);
