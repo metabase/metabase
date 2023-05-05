@@ -51,6 +51,15 @@ const dashboardId = handleActions(
   null,
 );
 
+const recentDashboardId = handleActions(
+  {
+    [FETCH_DASHBOARD]: {
+      next: (state, { payload: { dashboardId } }) => dashboardId,
+    },
+  },
+  null,
+);
+
 const isEditing = handleActions(
   {
     [INITIALIZE]: { next: state => null },
@@ -452,6 +461,7 @@ const missingActionParameters = handleActions(
 
 export default combineReducers({
   dashboardId,
+  recentDashboardId,
   isEditing,
   loadingControls,
   dashboards,
