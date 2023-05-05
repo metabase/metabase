@@ -6,10 +6,11 @@
 import {
   DatabaseId,
   Field,
+  NativeQuery,
   Parameter,
+  StructuredQuery,
   VisualizationSettings,
 } from "metabase-types/api";
-import { StructuredQuery, NativeQuery } from "./Query";
 import { ParameterQueryObject } from "./Parameter";
 
 export type CardId = number;

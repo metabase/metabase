@@ -3,8 +3,8 @@
  * @deprecated use existing types from, or add to metabase-types/api/*
  */
 
+import { ForeignFieldReference, LocalFieldReference } from "metabase-types/api";
 import { CardId } from "./Card";
-import { ForeignFieldReference, LocalFieldReference } from "./Query";
 
 export type ParameterId = string;
 

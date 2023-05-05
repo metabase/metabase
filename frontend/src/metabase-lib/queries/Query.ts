@@ -1,7 +1,7 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
+import type { DependentMetadataItem } from "metabase-types/api";
 import { DatasetQuery } from "metabase-types/types/Card";
-import { DependentMetadataItem } from "metabase-types/types/Query";
 import Metadata from "metabase-lib/metadata/Metadata";
 import Question from "metabase-lib/Question";
 import Dimension from "metabase-lib/Dimension";

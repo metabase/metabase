@@ -10,16 +10,12 @@ import type { Card } from "metabase-types/types/Card";
 import type {
   DatasetColumn,
   DatasetData,
+  FieldReference,
   VisualizationSettings,
 } from "metabase-types/api";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
-import type {
-  PivotSetting,
-  FieldOrAggregationReference,
-  HeaderItem,
-  CustomColumnWidth,
-} from "./types";
+import type { PivotSetting, HeaderItem, CustomColumnWidth } from "./types";
 
 import { partitions } from "./partitions";
 
@@ -42,22 +38,18 @@ export function updateValueWithCurrentColumns(
 ) {
   const currentQueryFieldRefs = columns.map(c => JSON.stringify(c.field_ref));
   const currentSettingFieldRefs = Object.values(storedValue).flatMap(
-    (fieldRefs: FieldOrAggregationReference[]) =>
-      fieldRefs.map((field_ref: FieldOrAggregationReference) =>
-        JSON.stringify(field_ref),
-      ),
+    (fieldRefs: FieldReference[]) =>
+      fieldRefs.map((field_ref: FieldReference) => JSON.stringify(field_ref)),
   );
   const toAdd = _.difference(currentQueryFieldRefs, currentSettingFieldRefs);
   const toRemove = _.difference(currentSettingFieldRefs, currentQueryFieldRefs);
 
   // remove toRemove
-  const value = _.mapObject(
-    storedValue,
-    (fieldRefs: FieldOrAggregationReference[]) =>
-      fieldRefs.filter(
-        (field_ref: FieldOrAggregationReference) =>
-          !toRemove.includes(JSON.stringify(field_ref)),
-      ),
+  const value = _.mapObject(storedValue, (fieldRefs: FieldReference[]) =>
+    fieldRefs.filter(
+      (field_ref: FieldReference) =>
+        !toRemove.includes(JSON.stringify(field_ref)),
+    ),
   );
 
   // add toAdd to first partitions where it matches the filter
@@ -67,7 +59,7 @@ export function updateValueWithCurrentColumns(
         c => JSON.stringify(c.field_ref) === fieldRef,
       );
       if (filter == null || filter(column)) {
-        value[name].push(column?.field_ref as FieldOrAggregationReference);
+        value[name].push(column?.field_ref as FieldReference);
         break;
       }
     }

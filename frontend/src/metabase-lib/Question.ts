@@ -26,6 +26,7 @@ import type {
   CollectionId,
   DatabaseId,
   DatasetColumn,
+  DependentMetadataItem,
   TableId,
   RowValue,
   Parameter as ParameterObject,
@@ -42,7 +43,6 @@ import * as Urls from "metabase/lib/urls";
 import { getCardUiParameters } from "metabase-lib/parameters/utils/cards";
 import { ParameterValues } from "metabase-types/types/Parameter";
 import { Card as CardObject, DatasetQuery } from "metabase-types/types/Card";
-import { DependentMetadataItem } from "metabase-types/types/Query";
 import { utf8_to_b64url } from "metabase/lib/encoding";
 
 import { getParameterValuesBySlug } from "metabase-lib/parameters/utils/parameter-values";

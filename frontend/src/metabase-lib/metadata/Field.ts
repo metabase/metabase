@@ -7,14 +7,13 @@ import { is_coerceable, coercions_for_type } from "cljs/metabase.types";
 import { formatField, stripId } from "metabase/lib/formatting";
 import type {
   DatasetColumn,
-  Field as IField,
+  FieldReference,
   FieldFingerprint,
   FieldId,
   FieldFormattingSettings,
   FieldVisibilityType,
   FieldValuesType,
 } from "metabase-types/api";
-import type { Field as FieldRef } from "metabase-types/types/Query";
 import { TYPE } from "metabase-lib/types/constants";
 import {
   isa,
@@ -70,7 +69,7 @@ const LONG_TEXT_MIN = 80;
  */
 
 class FieldInner extends Base {
-  id: number | FieldRef;
+  id: number | FieldReference;
   name: string;
   display_name: string;
   description: string | null;
