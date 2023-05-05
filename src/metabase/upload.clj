@@ -127,7 +127,7 @@
 
 (defn- row->types
   [row]
-  (map (comp (partial value->type get-number-separators) search-util/normalize) row))
+  (map (comp value->type search-util/normalize) row))
 
 (defn- lowest-common-member [[x & xs :as all-xs] ys]
   (cond
