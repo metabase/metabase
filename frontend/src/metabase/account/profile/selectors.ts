@@ -1,4 +1,4 @@
-import { createSelector } from "reselect";
+import { createSelector } from "@reduxjs/toolkit";
 
 import { getUser } from "metabase/selectors/user";
 import { getSettings } from "metabase/selectors/settings";

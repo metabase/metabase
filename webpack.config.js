@@ -60,6 +60,11 @@ const config = (module.exports = {
     styles: "./css/index.css",
   },
 
+  externals: {
+    canvg: "canvg",
+    dompurify: "dompurify"
+  },
+
   // output to "dist"
   output: {
     path: BUILD_PATH + "/app/dist",

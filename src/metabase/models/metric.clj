@@ -56,7 +56,7 @@
   [metadata-provider :- lib.metadata/MetadataProvider
    {:keys [definition], table-id :table_id, :as _metric}]
   (when (seq definition)
-    (when-let [{database-id :db_id} (when table-id
+    (when-let [{database-id :db-id} (when table-id
                                       (lib.metadata.protocols/table metadata-provider table-id))]
       (try
         (let [definition (merge {:source-table table-id}

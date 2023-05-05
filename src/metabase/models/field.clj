@@ -325,6 +325,15 @@
           :let  [target-id (:fk_target_field_id field)]]
       (assoc field :target (id->target-field target-id)))))
 
+(defn hydrate-target-with-write-perms
+  "Hydrates :target on field, but if the `:fk_target_field_id` field is not writable, `:target` will be nil."
+  [field]
+  (let [target-field-id (when (isa? (:semantic_type field) :type/FK)
+                          (:fk_target_field_id field))
+        target-field    (when-let [target-field (and target-field-id (t2/select-one Field :id target-field-id))]
+                          (when (mi/can-write? (hydrate target-field :table))
+                            target-field))]
+    (assoc field :target target-field)))
 
 (defn qualified-name-components
   "Return the pieces that represent a path to `field`, of the form `[table-name parent-fields-name* field-name]`."

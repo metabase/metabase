@@ -2,6 +2,8 @@
 // @ts-nocheck
 import Filter from "metabase-lib/queries/structured/Filter";
 import Base from "./Base";
+import type Metadata from "./Metadata";
+import type Table from "./Table";
 /**
  * @typedef { import("./Metadata").Aggregation } Aggregation
  */
@@ -12,6 +14,9 @@ import Base from "./Base";
 
 export default class Metric extends Base {
   name: string;
+  table_id: Table["id"];
+  table: Table;
+  metadata: Metadata;
 
   displayName() {
     return this.name;

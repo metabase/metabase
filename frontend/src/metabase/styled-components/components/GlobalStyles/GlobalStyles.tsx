@@ -1,7 +1,7 @@
 import React from "react";
 import { css, Global } from "@emotion/react";
 import { FontFile } from "metabase-types/api";
-import { saveChartImageStyles } from "metabase/visualizations/lib/save-chart-image";
+import { saveDomImageStyles } from "metabase/visualizations/lib/save-chart-image";
 
 export interface GlobalStylesProps {
   font: string;
@@ -26,7 +26,7 @@ const GlobalStyles = ({ font, fontFiles }: GlobalStylesProps): JSX.Element => {
       `,
     )}
 
-    ${saveChartImageStyles}
+    ${saveDomImageStyles}
   `;
 
   return <Global styles={styles} />;

@@ -19,12 +19,15 @@ export const createMockField = (opts?: Partial<Field>): Field => ({
 
   base_type: "type/Text",
   semantic_type: "type/Text",
+  fk_target_field_id: null,
 
   active: true,
   visibility_type: "normal",
   preview_display: true,
   position: 1,
   nfc_path: null,
+  json_unfolding: null,
+  coercion_strategy: null,
   fingerprint: null,
 
   has_field_values: "list",

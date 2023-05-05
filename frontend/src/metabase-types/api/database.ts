@@ -75,3 +75,22 @@ export interface DatabaseUsageInfo {
   metric: number;
   segment: number;
 }
+
+export interface DatabaseQuery {
+  include?: "tables" | "tables.fields";
+  include_editable_data_model?: boolean;
+  exclude_uneditable_details?: boolean;
+}
+
+export interface DatabaseListQuery {
+  include?: "tables";
+  include_cards?: boolean;
+  include_tables?: boolean;
+  saved?: boolean;
+  include_editable_data_model?: boolean;
+  exclude_uneditable_details?: boolean;
+}
+
+export interface DatabaseIdFieldListQuery {
+  include_editable_data_model?: boolean;
+}
