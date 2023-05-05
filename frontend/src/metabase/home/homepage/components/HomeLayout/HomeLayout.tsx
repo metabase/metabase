@@ -1,6 +1,7 @@
 import React, { ReactNode, useState } from "react";
 import { connect } from "react-redux";
 import { getSetting } from "metabase/selectors/settings";
+import { getUserIsAdmin } from "metabase/selectors/user";
 import MetabotWidget from "metabase/metabot/components/MetabotWidget";
 import { State } from "metabase-types/store";
 import Tooltip from "metabase/core/components/Tooltip/Tooltip";
@@ -16,24 +17,25 @@ import {
 interface OwnProps {
   hasMetabot?: boolean;
   children?: ReactNode;
-  isAdmin?: boolean;
 }
 
 interface StateProps {
   hasIllustration?: boolean;
+  isAdmin?: boolean;
 }
 
 type HomeLayoutProps = OwnProps & StateProps;
 
 const mapStateToProps = (state: State) => ({
   hasIllustration: getSetting(state, "show-lighthouse-illustration"),
+  isAdmin: getUserIsAdmin(state),
 });
 
 const HomeLayout = ({
   hasMetabot,
   hasIllustration,
   children,
-  isAdmin = true,
+  isAdmin,
 }: HomeLayoutProps): JSX.Element => {
   const [showModal, setShowModal] = useState(false);
 

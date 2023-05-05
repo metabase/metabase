@@ -7,8 +7,11 @@ import { refreshCurrentUser } from "metabase/redux/user";
 import Modal from "metabase/components/Modal";
 import ModalContent from "metabase/components/ModalContent";
 
-import DashboardSelector from "metabase/admin/settings/components/widgets/DashboardSelector/DashboardSelector";
+import DashboardSelector from "metabase/components/DashboardSelector/DashboardSelector";
 import Button from "metabase/core/components/Button/Button";
+
+const CUSTOM_HOMEPAGE_SETTING_KEY = "custom-homepage";
+const CUSTOM_HOMEPAGE_DASHBOARD_SETTING_KEY = "custom-homepage-dashboard";
 
 interface CustomHomePageModalProps {
   isOpen: boolean;
@@ -22,8 +25,8 @@ const CustomHomePageModal = ({ isOpen, onClose }: CustomHomePageModalProps) => {
   const handleSave = async () => {
     await dispatch(
       updateSettings({
-        "custom-homepage-dashboard": dashboard,
-        "custom-homepage": true,
+        [CUSTOM_HOMEPAGE_DASHBOARD_SETTING_KEY]: dashboard,
+        [CUSTOM_HOMEPAGE_SETTING_KEY]: true,
       }),
     );
     await dispatch(refreshCurrentUser());

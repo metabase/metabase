@@ -14,12 +14,6 @@ import {
 interface DashboardSelectorProps {
   onChange: (value: string) => void;
   dashboard: Dashboard;
-  setting?: {
-    key: string;
-    value: string | null;
-    default?: string;
-    placeholder?: string;
-  };
   value?: string;
 }
 
@@ -44,6 +38,5 @@ const DashboardSelector = ({ onChange, dashboard }: DashboardSelectorProps) => {
 };
 
 export default Dashboards.load({
-  id: (state: State, props: DashboardSelectorProps) =>
-    props.value || props.setting?.value,
+  id: (state: State, props: DashboardSelectorProps) => props.value,
 })(DashboardSelector);
