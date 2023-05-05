@@ -272,7 +272,6 @@
   defdataset
   dispatch-on-driver-with-test-extensions
   get-dataset-definition
-  has-questionable-timezone-support?
   has-test-extensions?
   metabase-instance
   sorts-nil-first?

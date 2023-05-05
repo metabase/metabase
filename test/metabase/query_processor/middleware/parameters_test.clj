@@ -32,7 +32,8 @@
 
 (defn- substitute-params [query]
   (driver/with-driver :h2
-    (parameters/substitute-parameters (mbql.normalize/normalize query))))
+    (mt/with-everything-store
+      (parameters/substitute-parameters (mbql.normalize/normalize query)))))
 
 (deftest ^:parallel expand-mbql-top-level-params-test
   (testing "can we expand MBQL params if they are specified at the top level?"

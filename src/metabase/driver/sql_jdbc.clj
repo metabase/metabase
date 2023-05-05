@@ -49,8 +49,8 @@
   (query driver database table {:select [:*]}))
 
 ;; TODO - this implementation should itself be deprecated! And have drivers implement it directly instead.
-(defmethod driver/supports? [:sql-jdbc :set-timezone]
-  [driver _]
+(defmethod driver/database-supports? [:sql-jdbc :set-timezone]
+  [driver _feature _db]
   (boolean (seq (sql-jdbc.execute/set-timezone-sql driver))))
 
 (defmethod driver/db-default-timezone :sql-jdbc

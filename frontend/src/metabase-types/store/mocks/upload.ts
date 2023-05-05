@@ -1,7 +1,7 @@
 import { FileUpload } from "../upload";
 
-export const createMockUploadState = () => {
-  return {};
+export const createMockUploadState = (uploads = {}) => {
+  return { ...uploads };
 };
 
 export const createMockUpload = (props?: Partial<FileUpload>): FileUpload => {

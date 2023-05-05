@@ -1,11 +1,11 @@
 import React, { useCallback, useMemo } from "react";
 
 import AccordionList from "metabase/core/components/AccordionList";
+import { getColumnIcon } from "metabase/common/utils/columns";
 import Icon from "metabase/components/Icon";
 import { singularize } from "metabase/lib/formatting";
 
 import * as Lib from "metabase-lib";
-import { getIconForField } from "metabase-lib/metadata/utils/fields";
 
 const DEFAULT_MAX_HEIGHT = 610;
 
@@ -89,7 +89,7 @@ function omitItemDescription() {
 }
 
 function renderItemIcon(item: ColumnListItem) {
-  return <Icon name={getIconForField(item)} size={18} />;
+  return <Icon name={getColumnIcon(item.column)} size={18} />;
 }
 
 function getGroupName(groupInfo: Lib.ColumnDisplayInfo | Lib.TableDisplayInfo) {

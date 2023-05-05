@@ -627,21 +627,22 @@
   (testing "Should be able to order by an aggregation (#30089)"
     (let [query             (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
                                 (lib/aggregate (lib/avg (lib/+ (lib/field "VENUES" "PRICE") 1))))
+          {ag-uuid :metabase.lib.aggregation/aggregation-uuid} (first (lib/aggregations query))
           orderable-columns (lib/orderable-columns query)]
       (is (=? [{:lib/type                                   :metadata/field
                 :base-type                                  :type/Float
                 :display-name                               "Average of Price + 1"
                 :lib/source                                 :source/aggregations
-                :metabase.lib.aggregation/aggregation-index 0}]
+                :metabase.lib.aggregation/aggregation-uuid  ag-uuid}]
               orderable-columns))
       (let [ag-ref (first orderable-columns)
             query' (lib/order-by query ag-ref)]
         (is (=? {:stages
                  [{:aggregation [[:avg {} [:+ {} [:field {} (meta/id :venues :price)] 1]]]
-                   :order-by    [[:asc {} [:aggregation {:effective-type :type/Float} 0]]]}]}
+                   :order-by    [[:asc {} [:aggregation {:effective-type :type/Float} ag-uuid]]]}]}
                 query'))
-        (is (=? [[:asc {} [:aggregation {:effective-type :type/Float} 0]]]
-               (lib/order-bys query')))
+        (is (=? [[:asc {} [:aggregation {:effective-type :type/Float} ag-uuid]]]
+                (lib/order-bys query')))
         (is (=? [{:display-name "Average of Price + 1"
                   :direction    :asc}]
                 (map (partial lib/display-info query') (lib/order-bys query'))))
@@ -651,7 +652,7 @@
           (let [query'' (lib/append-stage query')]
             (is (=? {:stages
                      [{:aggregation [[:avg {} [:+ {} [:field {} (meta/id :venues :price)] 1]]]
-                       :order-by    [[:asc {} [:aggregation {} 0]]]}
+                       :order-by    [[:asc {} [:aggregation {} ag-uuid]]]}
                       {}]}
                     query''))
             (is (=? []

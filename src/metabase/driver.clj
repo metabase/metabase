@@ -506,9 +506,8 @@
 
     (supports? :postgres :set-timezone) ; -> true
 
-  DEPRECATED — [[database-supports?]] is intended to replace this method. However, it driver authors should continue
-  _implementing_ `supports?` for the time being until we get a chance to migrate all our usages."
-  {:arglists '([driver feature]), :deprecated "0.41.0"}
+  DEPRECATED — [[database-supports?]] should be used instead. This function will be removed in Metabase version 0.50.0."
+  {:arglists '([driver feature]), :deprecated "0.47.0"}
   (fn [driver feature]
     (when-not (driver-features feature)
       (throw (Exception. (tru "Invalid driver feature: {0}" feature))))
@@ -516,13 +515,6 @@
   :hierarchy #'hierarchy)
 
 (defmethod supports? :default [_ _] false)
-
-(defmethod supports? [::driver :basic-aggregations] [_ _] true)
-(defmethod supports? [::driver :case-sensitivity-string-filter-options] [_ _] true)
-(defmethod supports? [::driver :date-arithmetics] [_ _] true)
-(defmethod supports? [::driver :temporal-extract] [_ _] true)
-(defmethod supports? [::driver :convert-timezone] [_ _] false)
-(defmethod supports? [::driver :test/jvm-timezone-setting] [_ _] true)
 
 (defmulti database-supports?
   "Does this driver and specific instance of a database support a certain `feature`?
@@ -548,6 +540,14 @@
   :hierarchy #'hierarchy)
 
 (defmethod database-supports? :default [driver feature _] (supports? driver feature))
+
+(doseq [[feature supported?] {:basic-aggregations                     true
+                              :case-sensitivity-string-filter-options true
+                              :date-arithmetics                       true
+                              :temporal-extract                       true
+                              :convert-timezone                       false
+                              :test/jvm-timezone-setting              true}]
+  (defmethod database-supports? [::driver feature] [_driver _feature _db] supported?))
 
 (defmulti ^String escape-alias
   "Escape a `column-or-table-alias` string in a way that makes it valid for your database. This method is used for
