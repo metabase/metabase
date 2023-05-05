@@ -134,7 +134,7 @@
       (sample-data/update-sample-database-if-needed!))
     (init-status/set-progress! 0.9))
   (when config/ee-available?
-    ((requiring-resolve 'metabase-enterprise.audit-db/ensure-db-exists!)))
+    ((requiring-resolve 'metabase-enterprise.audit-db/ensure-db-installed!)))
   ;; start scheduler at end of init!
   (task/start-scheduler!)
   (init-status/set-complete!)
