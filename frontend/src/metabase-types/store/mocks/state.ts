@@ -27,6 +27,8 @@ export const createPlaceholderEntitiesState = (): EntitiesState => ({
   metrics: {},
   segments: {},
   snippets: {},
+  modelIndexes: {},
+  indexedEntities: {},
   users: {},
   questions: {},
 });
