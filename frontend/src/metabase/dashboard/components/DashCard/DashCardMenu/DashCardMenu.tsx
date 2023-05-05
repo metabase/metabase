@@ -10,7 +10,7 @@ import {
   DownloadQueryResultsOpts,
 } from "metabase/query_builder/actions";
 import QueryDownloadPopover from "metabase/query_builder/components/QueryDownloadPopover";
-import { SAVING_CHART_IMAGE_HIDDEN_CLASS } from "metabase/visualizations/lib/save-chart-image";
+import { SAVING_DOM_IMAGE_HIDDEN_CLASS } from "metabase/visualizations/lib/save-chart-image";
 import {
   DashboardId,
   DashCardId,
@@ -107,7 +107,7 @@ const DashCardMenu = ({
 
   return (
     <CardMenuRoot
-      className={SAVING_CHART_IMAGE_HIDDEN_CLASS}
+      className={SAVING_DOM_IMAGE_HIDDEN_CLASS}
       items={menuItems}
       renderTrigger={({ open, onClick }: TriggerProps) => (
         <Icon
