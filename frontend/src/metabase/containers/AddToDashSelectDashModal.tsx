@@ -6,7 +6,6 @@ import Icon from "metabase/components/Icon";
 import Link from "metabase/core/components/Link";
 import ModalContent from "metabase/components/ModalContent";
 import DashboardPicker from "metabase/containers/DashboardPicker";
-import type { State } from "metabase-types/store";
 import { CreateDashboardFormOwnProps } from "metabase/dashboard/containers/CreateDashboardForm";
 import * as Urls from "metabase/lib/urls";
 import CreateDashboardModal from "metabase/dashboard/containers/CreateDashboardModal";
@@ -16,8 +15,9 @@ import {
   useMostRecentlyViewedDashboard,
 } from "metabase/common/hooks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import type { State } from "metabase-types/store";
 import { LinkContent } from "./AddToDashSelectDashModal.styled";
-import type { PickerValue } from "./ItemPicker";
+import type { PickerItemId } from "./ItemPicker";
 
 function mapStateToProps(state: State) {
   return {
@@ -76,37 +76,35 @@ const AddToDashSelectDashModal = ({
     );
   }
 
+  const isLoading = queryDash.isLoading || collectionQuery.isLoading;
+  const error = queryDash.error ?? collectionQuery.error;
+
+  if (isLoading || error) {
+    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+  }
+
   return (
-    <LoadingAndErrorWrapper
-      loading={queryDash.isLoading || collectionQuery.isLoading}
-      error={[queryDash.error, collectionQuery.error]
-        .filter(Boolean)
-        .map(error => (error as Error).message)
-        .join(", ")}
-      noWrapper
+    <ModalContent
+      id="AddToDashSelectDashModal"
+      title={
+        card.dataset
+          ? t`Add this model to a dashboard`
+          : t`Add this question to a dashboard`
+      }
+      onClose={onClose}
     >
-      <ModalContent
-        id="AddToDashSelectDashModal"
-        title={
-          card.dataset
-            ? t`Add this model to a dashboard`
-            : t`Add this question to a dashboard`
-        }
-        onClose={onClose}
-      >
-        <DashboardPicker
-          onChange={onDashboardSelected}
-          collectionId={collectionId}
-          value={queryDash.data?.id as PickerValue | undefined}
-        />
-        <Link onClick={() => setShouldCreateDashboard(true)} to="">
-          <LinkContent>
-            <Icon name="add" mx={1} />
-            <h4>{t`Create a new dashboard`}</h4>
-          </LinkContent>
-        </Link>
-      </ModalContent>
-    </LoadingAndErrorWrapper>
+      <DashboardPicker
+        onChange={onDashboardSelected}
+        collectionId={collectionId}
+        value={queryDash.data?.id as PickerItemId | undefined}
+      />
+      <Link onClick={() => setShouldCreateDashboard(true)} to="">
+        <LinkContent>
+          <Icon name="add" mx={1} />
+          <h4>{t`Create a new dashboard`}</h4>
+        </LinkContent>
+      </Link>
+    </ModalContent>
   );
 };
 

@@ -4,7 +4,7 @@ import { Dashboard } from "metabase-types/api";
 import ItemPicker, { PickerValue, PickerItemId } from "./ItemPicker";
 
 export interface DashboardPickerProps {
-  value?: PickerValue;
+  value?: PickerItemId;
   onChange: (dashboardId: PickerItemId | undefined) => void;
   collectionId?: Dashboard["collection_id"];
 }
