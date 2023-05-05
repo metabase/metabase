@@ -13,14 +13,19 @@ import { EngineFieldOverride } from "../../types";
 
 export interface DatabaseDetailFieldProps {
   field: EngineField;
+  autoFocus?: boolean;
 }
 
 const DatabaseDetailField = ({
   field,
+  autoFocus,
 }: DatabaseDetailFieldProps): JSX.Element => {
   const override = FIELD_OVERRIDES[field.name];
   const type = getFieldType(field, override);
-  const props = getFieldProps(field, override);
+  const props = {
+    autoFocus,
+    ...getFieldProps(field, override),
+  };
 
   if (typeof type === "function") {
     const Component = type;

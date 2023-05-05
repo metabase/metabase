@@ -24,6 +24,7 @@ import { LinkButton, LinkFooter } from "./DatabaseForm.styled";
 export interface DatabaseFormProps {
   engines: Record<string, Engine>;
   initialValues?: DatabaseData;
+  autofocusFieldName?: string;
   isHosted?: boolean;
   isAdvanced?: boolean;
   isCachingEnabled?: boolean;
@@ -35,6 +36,7 @@ export interface DatabaseFormProps {
 const DatabaseForm = ({
   engines,
   initialValues: initialData,
+  autofocusFieldName,
   isHosted = false,
   isAdvanced = false,
   isCachingEnabled = false,
@@ -83,6 +85,7 @@ const DatabaseForm = ({
         engine={engine}
         engineKey={engineKey}
         engines={engines}
+        autofocusFieldName={autofocusFieldName}
         isHosted={isHosted}
         isAdvanced={isAdvanced}
         isCachingEnabled={isCachingEnabled}
@@ -97,6 +100,7 @@ interface DatabaseFormBodyProps {
   engine: Engine | undefined;
   engineKey: string | undefined;
   engines: Record<string, Engine>;
+  autofocusFieldName?: string;
   isHosted: boolean;
   isAdvanced: boolean;
   isCachingEnabled: boolean;
@@ -108,6 +112,7 @@ const DatabaseFormBody = ({
   engine,
   engineKey,
   engines,
+  autofocusFieldName,
   isHosted,
   isAdvanced,
   isCachingEnabled,
@@ -136,7 +141,12 @@ const DatabaseFormBody = ({
       />
       {engine && <DatabaseNameField engine={engine} />}
       {fields.map(field => (
-        <DatabaseDetailField key={field.name} field={field} />
+        <DatabaseDetailField
+          key={field.name}
+          field={field}
+          autoFocus={field.name === autofocusFieldName}
+          data-kek={field.name}
+        />
       ))}
       {isCachingEnabled && <PLUGIN_CACHING.DatabaseCacheTimeField />}
       <DatabaseFormFooter isAdvanced={isAdvanced} onCancel={onCancel} />
