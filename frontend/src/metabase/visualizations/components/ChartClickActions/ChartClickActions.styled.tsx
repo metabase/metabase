@@ -19,25 +19,8 @@ export const Container = styled.div`
   font-weight: 700;
 `;
 
-export const Section = styled.div<{
-  type: SectionType;
-  hasOnlyOneSection: boolean;
-}>`
-  &:not(:last-child):not(:first-child) {
-    padding-bottom: 1rem;
-  }
-
-  ${({ type, hasOnlyOneSection }) =>
-    type === "records" &&
-    css`
-      &:after {
-        ${!hasOnlyOneSection ? `content: "";` : ""};
-        height: 1px;
-        background-color: ${color("border")};
-        margin: 1rem -1.5rem 1rem;
-        display: block;
-      }
-    `}
+export const GearIcon = styled(Icon)`
+  margin-right: 0.5rem;
 `;
 
 export const ActionIcon = styled(Icon)`
@@ -95,22 +78,7 @@ export const ClickActionButton = styled.div<ClickActionButtonProps>`
       }
     `}
 
-  ${({ type }) =>
-    type === "token" &&
-    css`
-      color: ${color("brand")};
-      font-size: 0.875em;
-      line-height: 1rem;
-      margin-right: 0.5rem;
-      padding: 0.3125rem 0.875rem;
-      border: 1px solid ${alpha("brand", 0.35)};
-      border-radius: 100px;
-
-      &:hover {
-        color: ${color("white")};
-        background-color: ${color("brand")};
-      }
-    `}
+  ${({ type }) => type === "token" && css``}
 
   ${({ type }) =>
     type === "token-filter" &&
@@ -123,12 +91,24 @@ export const ClickActionButton = styled.div<ClickActionButtonProps>`
       border-radius: 100px;
       margin-right: 0.75rem;
 
+      cursor: pointer;
+
       &:hover {
         color: ${color("white")};
         background-color: ${color("brand")};
         border-color: ${color("brand")};
       }
     `}
+`;
+
+export const ClickActionButtonIcon = styled(Icon)`
+  margin-right: 0.75rem;
+
+  width: 0.875rem;
+  height: 0.875rem;
+
+  color: ${color("brand")};
+  transition: all 200ms linear;
 `;
 
 export const FlexTippyPopover = styled(TippyPopover)`

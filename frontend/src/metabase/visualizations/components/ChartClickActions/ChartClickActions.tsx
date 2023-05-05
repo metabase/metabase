@@ -5,10 +5,14 @@ import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { getEventTarget } from "metabase/lib/dom";
 import { performAction } from "metabase/visualizations/lib/action";
 import {
-  ClickAction,
   ClickObject,
   OnChangeCardAndRun,
 } from "metabase-types/types/Visualization";
+import {
+  ClickAction,
+  isPopoverClickAction,
+  PopoverClickAction,
+} from "metabase/modes/types";
 import { Dispatch } from "metabase-types/store";
 import { Series } from "metabase-types/api";
 
@@ -28,7 +32,7 @@ interface ChartClickActionsProps {
 }
 
 interface State {
-  popoverAction: ClickAction | null;
+  popoverAction: PopoverClickAction | null;
 }
 
 class ChartClickActions extends Component<ChartClickActionsProps, State> {
@@ -47,7 +51,7 @@ class ChartClickActions extends Component<ChartClickActionsProps, State> {
 
   handleClickAction = (action: ClickAction) => {
     const { dispatch, onChangeCardAndRun } = this.props;
-    if (action.popover) {
+    if (isPopoverClickAction(action)) {
       MetabaseAnalytics.trackStructEvent(
         "Actions",
         "Open Click Action Popover",

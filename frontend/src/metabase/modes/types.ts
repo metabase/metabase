@@ -8,6 +8,7 @@ import type {
 import type { Dispatch, ReduxAction } from "metabase-types/store";
 import type { OnChangeCardAndRun } from "metabase/visualizations/types";
 import type Question from "metabase-lib/Question";
+// import type {ClickAction as ClickActionBase} from "metabase-types/types/Visualization";
 
 type DimensionValue = {
   value: RowValue;
@@ -50,8 +51,8 @@ export type ClickActionButtonType =
 export type ClickActionBase = {
   name: string;
   title?: React.ReactNode;
-  section: string;
-  icon?: string;
+  section: string; // TODO [26836]: add strict typings
+  icon?: React.ReactNode;
   buttonType: ClickActionButtonType;
   default?: boolean;
   tooltip?: string;
@@ -98,3 +99,27 @@ export type DrillOptions = {
 };
 
 export type Drill = (options: DrillOptions) => ClickAction[];
+
+export const isReduxClickAction = (
+  clickAction: ClickAction,
+): clickAction is ReduxClickAction => "action" in clickAction;
+
+export const isQuestionChangeClickAction = (
+  clickAction: ClickAction,
+): clickAction is QuestionChangeClickAction => "question" in clickAction;
+
+export const isPopoverClickAction = (
+  clickAction: ClickAction,
+): clickAction is PopoverClickAction => "popover" in clickAction;
+
+export const isUrlClickAction = (
+  clickAction: ClickAction,
+): clickAction is UrlClickAction => "url" in clickAction;
+
+export const isRegularClickAction = (
+  clickAction: ClickAction,
+): clickAction is RegularClickAction =>
+  isReduxClickAction(clickAction) ||
+  isQuestionChangeClickAction(clickAction) ||
+  isPopoverClickAction(clickAction) ||
+  isUrlClickAction(clickAction);

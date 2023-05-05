@@ -3,6 +3,7 @@ import { render, screen } from "__support__/ui";
 import DefaultMode from "metabase/modes/components/modes/DefaultMode";
 import { QueryMode } from "metabase-types/types/Visualization";
 import { checkNotNull } from "metabase/core/utils/types";
+import { ClickAction } from "metabase/modes/types";
 import Mode from "metabase-lib/Mode";
 import { getAdHocQuestion } from "metabase-lib/mocks";
 import ChartClickActionsView from "./ChartClickActionsView";
@@ -37,7 +38,7 @@ function setup(queryMode: QueryMode = DefaultMode as QueryMode) {
     ],
   };
 
-  const clickActions = mode.actionsForClick(clicked, {});
+  const clickActions = mode.actionsForClick(clicked, {}) as ClickAction[];
   const onClick = jest.fn();
 
   render(

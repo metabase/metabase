@@ -1,6 +1,6 @@
 import _ from "underscore";
-import type { ClickAction } from "metabase-types/types/Visualization";
-import type { ClickActionButtonType } from "metabase/modes/types";
+import { t } from "ttag";
+import type { ClickAction } from "metabase/modes/types";
 
 type Section = {
   icon: string;
@@ -57,17 +57,15 @@ Object.values(SECTIONS).map((section, index) => {
   section.index = index;
 });
 
-type ClickActionWithButtonType = ClickAction & {
-  buttonType?: ClickActionButtonType;
-};
-
 export const getGroupedAndSortedActions = (clickActions: ClickAction[]) => {
-  const groupedClickActions: Record<string, ClickActionWithButtonType[]> =
-    _.groupBy(clickActions, "section");
+  const groupedClickActions: Record<string, ClickAction[]> = _.groupBy(
+    clickActions,
+    "section",
+  );
 
-  if (groupedClickActions?.["sum"]?.length === 1) {
+  if (groupedClickActions["sum"]?.length === 1) {
     // if there's only one "sum" click action, merge it into "summarize" and change its button type and icon
-    if (!groupedClickActions?.["summarize"]) {
+    if (!groupedClickActions["summarize"]) {
       groupedClickActions["summarize"] = [];
     }
     groupedClickActions["summarize"].push({
@@ -93,4 +91,35 @@ export const getGroupedAndSortedActions = (clickActions: ClickAction[]) => {
 };
 
 export const getGALabelForAction = (action: ClickAction) =>
-  action ? `${action.section || ""}:${action.name || ""}` : null;
+  action
+    ? `${("section" in action && action.section) || ""}:${action.name || ""}`
+    : null;
+
+export const getFilterSectionTitle = (actions: ClickAction[]) => {
+  const valueType = actions[0]?.extra?.().valueType;
+
+  if (valueType === "date") {
+    return t`Filter by this date`;
+  }
+
+  if (valueType === "text") {
+    return t`Filter by this text`;
+  }
+
+  return t`Filter by this value`;
+};
+
+export const getSectionTitle = (
+  section: string,
+  actions: ClickAction[],
+): string | null => {
+  switch (section) {
+    case "filter":
+      return getFilterSectionTitle(actions);
+
+    case "sum":
+      return t`Summarize`;
+  }
+
+  return null;
+};
