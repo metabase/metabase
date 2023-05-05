@@ -70,11 +70,16 @@
   ([query        :- ::lib.schema/query
     stage-number :- :int]
    (let [indexed-breakouts (map-indexed vector (breakouts query stage-number))
-         breakout-pos      (fn [x]
-                             (some (fn [[pos existing-breakout]]
-                                     (when (lib.equality/= (lib.ref/ref x) existing-breakout)
-                                       pos))
-                                   indexed-breakouts))
+
+         breakout-pos
+         (fn [x]
+           (some (fn [[pos existing-breakout]]
+                   (let [a-ref (lib.ref/ref x)]
+                     (when (or (lib.equality/= a-ref existing-breakout)
+                               (lib.equality/= a-ref (lib.util/with-default-effective-type existing-breakout)))
+                       pos)))
+                 indexed-breakouts))
+
          columns           (let [stage (lib.util/query-stage query stage-number)]
                              (lib.metadata.calculation/visible-columns query stage-number stage))]
      (some->> (not-empty columns)

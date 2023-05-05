@@ -149,13 +149,17 @@
   ([query        :- ::lib.schema/query
     stage-number :- :int]
    (let [indexed-order-bys (map-indexed (fn [pos [_tag _opts expr]]
-                                           [pos expr])
-                                         (order-bys query stage-number))
-         order-by-pos      (fn [x]
-                             (some (fn [[pos existing-order-by]]
-                                     (when (lib.equality/= (lib.ref/ref x) existing-order-by)
-                                       pos))
-                                   indexed-order-bys))
+                                          [pos expr])
+                                        (order-bys query stage-number))
+         order-by-pos
+         (fn [x]
+           (some (fn [[pos existing-order-by]]
+                   (let [a-ref (lib.ref/ref x)]
+                     (when (or (lib.equality/= a-ref existing-order-by)
+                               (lib.equality/= a-ref (lib.util/with-default-effective-type existing-order-by)))
+                       pos)))
+                 indexed-order-bys))
+
          breakouts          (not-empty (lib.breakout/breakouts-metadata query stage-number))
          aggregations       (not-empty (lib.aggregation/aggregations query stage-number))
          columns            (if (or breakouts aggregations)
