@@ -12,7 +12,7 @@ import {
 } from "./DashboardSelector.styled";
 
 interface DashboardSelectorProps {
-  onChange: (value: string) => void;
+  onChange: (value?: number | null) => void;
   dashboard: Dashboard;
   value?: string;
 }
@@ -27,11 +27,7 @@ const DashboardSelector = ({ onChange, dashboard }: DashboardSelectorProps) => {
       }
     >
       <DashboardPickerContainer>
-        <DashboardPicker
-          value={dashboard?.id}
-          onChange={onChange}
-          showScroll={false}
-        />
+        <DashboardPicker value={dashboard?.id} onChange={onChange} />
       </DashboardPickerContainer>
     </PopoverWithTrigger>
   );
