@@ -152,7 +152,7 @@ export const field_semantic_types = [
     id: TYPE.Birthdate,
     name: t`Birthday`,
     section: t`Profile`,
-    icon: "balloons",
+    icon: "birthday",
   },
   {
     id: TYPE.Company,

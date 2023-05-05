@@ -84,7 +84,7 @@ class MetricRevisions extends Component {
       <div style={style} className="full">
         <ReferenceHeader
           name={t`Revision history for ${this.props.metric.name}`}
-          headerIcon="ruler"
+          headerIcon="metric"
         />
         <LoadingAndErrorWrapper
           loading={!loadingError && loading}

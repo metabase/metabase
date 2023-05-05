@@ -21,7 +21,7 @@ const BaseSidebar = ({ style, className }) => (
       <SidebarItem
         key="/reference/metrics"
         href="/reference/metrics"
-        icon="ruler"
+        icon="metric"
         name={t`Metrics`}
       />
       <SidebarItem

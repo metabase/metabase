@@ -74,7 +74,7 @@ class MetricList extends Component {
                             name={entity.display_name || entity.name}
                             description={entity.description}
                             url={`/reference/metrics/${entity.id}`}
-                            icon="ruler"
+                            icon="metric"
                           />
                         </li>
                       ),
