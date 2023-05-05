@@ -1,4 +1,4 @@
-import { Table } from "metabase-types/api";
+import { Table, Schema } from "metabase-types/api";
 
 export const createMockTable = (opts?: Partial<Table>): Table => {
   return {
@@ -14,3 +14,9 @@ export const createMockTable = (opts?: Partial<Table>): Table => {
     ...opts,
   };
 };
+
+export const createMockSchema = (opts?: Partial<Schema>): Schema => ({
+  id: "1",
+  name: "Schema 1",
+  ...opts,
+});
