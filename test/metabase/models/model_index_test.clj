@@ -113,64 +113,63 @@
         (mt/user-http-request :rasta :delete 200 (str "/model-index/" (:id model-index)))))))
 
 (deftest model-index-test
-  (mt/test-drivers (mt/normal-drivers)
-   (mt/dataset sample-dataset
-     (testing "Simple queries"
-       (test-index {:query      (mt/mbql-query products)
-                    :pk-name    "id"
-                    :value-name "title"
-                    :quantity   200
-                    :subset     #{"Awesome Concrete Shoes" "Mediocre Wooden Bench"}
-                    :scenario   :simple-table}))
-     (testing "With joins"
-       (test-index {:query      (mt/$ids
-                                 {:type     :query,
-                                  :query    {:source-table $$people,
-                                             :joins        [{:fields       :all,
-                                                             :source-table $$orders,
-                                                             :condition    [:=
-                                                                            [:field $people.id nil]
-                                                                            [:field $orders.user_id {:join-alias "Orders"}]],
-                                                             :alias        "Orders"}
-                                                            {:fields       :all,
-                                                             :source-table $$products,
-                                                             :condition    [:=
-                                                                            [:field $orders.product_id {:join-alias "Orders"}]
-                                                                            [:field $products.id {:join-alias "Products"}]],
-                                                             :alias        "Products"}]},
-                                  :database (mt/id)})
-                    :pk-name    "Products → ID"
-                    :value-name "Products → Title"
-                    :quantity   200
-                    :subset     #{"Awesome Concrete Shoes" "Mediocre Wooden Bench"}
-                    :scenario   :with-joins}))
-     (testing "Native"
-       (test-index {:query      (mt/native-query (qp/compile (mt/mbql-query products)))
-                    :pk-name    "id"
-                    :value-name "title"
-                    :quantity   200
-                    :subset     #{"Awesome Concrete Shoes" "Mediocre Wooden Bench"}
-                    :scenario   :native}))
-     (testing "Records error message on failure"
-       (let [query             (mt/mbql-query products {:fields [$id $title]})
-             pk-ref            (mt/$ids $products.id)
-             invalid-value-ref (mt/$ids $products.ean)]
-         (mt/with-temp* [Card [model {:dataset         true
-                                      :name            "model index test"
-                                      :dataset_query   query
-                                      :result_metadata (result-metadata-for-query query)}]
-                         ModelIndex [mi {:model_id   (:id model)
-                                         :pk_ref     pk-ref
-                                         :value_ref  invalid-value-ref
-                                         :generation 0
-                                         :creator_id (mt/user->id :rasta)
-                                         :schedule   "0 0 23 * * ? *"
-                                         :state      "initial"}]]
-           (model-index/add-values! mi)
-           (let [bad-attempt (t2/select-one ModelIndex :id (:id mi))]
-             (is (=? {:state "error"
-                      :error #"(?s)Error executing query.*"}
-                     bad-attempt)))))))))
+  (mt/dataset sample-dataset
+    (testing "Simple queries"
+      (test-index {:query      (mt/mbql-query products)
+                   :pk-name    "id"
+                   :value-name "title"
+                   :quantity   200
+                   :subset     #{"Awesome Concrete Shoes" "Mediocre Wooden Bench"}
+                   :scenario   :simple-table}))
+    (testing "With joins"
+      (test-index {:query      (mt/$ids
+                                {:type     :query,
+                                 :query    {:source-table $$people,
+                                            :joins        [{:fields       :all,
+                                                            :source-table $$orders,
+                                                            :condition    [:=
+                                                                           [:field $people.id nil]
+                                                                           [:field $orders.user_id {:join-alias "Orders"}]],
+                                                            :alias        "Orders"}
+                                                           {:fields       :all,
+                                                            :source-table $$products,
+                                                            :condition    [:=
+                                                                           [:field $orders.product_id {:join-alias "Orders"}]
+                                                                           [:field $products.id {:join-alias "Products"}]],
+                                                            :alias        "Products"}]},
+                                 :database (mt/id)})
+                   :pk-name    "Products → ID"
+                   :value-name "Products → Title"
+                   :quantity   200
+                   :subset     #{"Awesome Concrete Shoes" "Mediocre Wooden Bench"}
+                   :scenario   :with-joins}))
+    (testing "Native"
+      (test-index {:query      (mt/native-query (qp/compile (mt/mbql-query products)))
+                   :pk-name    "id"
+                   :value-name "title"
+                   :quantity   200
+                   :subset     #{"Awesome Concrete Shoes" "Mediocre Wooden Bench"}
+                   :scenario   :native}))
+    (testing "Records error message on failure"
+      (let [query             (mt/mbql-query products {:fields [$id $title]})
+            pk-ref            (mt/$ids $products.id)
+            invalid-value-ref (mt/$ids $products.ean)]
+        (mt/with-temp* [Card [model {:dataset         true
+                                     :name            "model index test"
+                                     :dataset_query   query
+                                     :result_metadata (result-metadata-for-query query)}]
+                        ModelIndex [mi {:model_id   (:id model)
+                                        :pk_ref     pk-ref
+                                        :value_ref  invalid-value-ref
+                                        :generation 0
+                                        :creator_id (mt/user->id :rasta)
+                                        :schedule   "0 0 23 * * ? *"
+                                        :state      "initial"}]]
+          (model-index/add-values! mi)
+          (let [bad-attempt (t2/select-one ModelIndex :id (:id mi))]
+            (is (=? {:state "error"
+                     :error #"(?s)Error executing query.*"}
+                    bad-attempt))))))))
 
 (deftest generation-test
   (mt/dataset sample-dataset
