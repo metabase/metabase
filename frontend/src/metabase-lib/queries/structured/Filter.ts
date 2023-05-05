@@ -2,11 +2,11 @@
 // @ts-nocheck
 import { t, ngettext, msgid } from "ttag";
 import _ from "underscore";
-import {
+import type {
   Filter as FilterObject,
   FieldFilter,
-  Field,
-} from "metabase-types/types/Query";
+  FieldReference,
+} from "metabase-types/api";
 import { isExpression } from "metabase-lib/expressions";
 import { getFilterArgumentFormatOptions } from "metabase-lib/operators/utils";
 import {
@@ -254,7 +254,7 @@ export default class Filter extends MBQLClause {
   }
 
   setDimension(
-    fieldRef: Field | null | undefined,
+    fieldRef: FieldReference | null | undefined,
     {
       useDefaultOperator = false,
     }: {

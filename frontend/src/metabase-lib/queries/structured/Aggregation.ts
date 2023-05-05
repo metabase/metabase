@@ -1,8 +1,11 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
 import { t } from "ttag";
-import { FieldId, MetricId } from "metabase-types/api";
-import { Aggregation as AggregationObject } from "metabase-types/types/Query";
+import {
+  Aggregation as AggregationObject,
+  FieldId,
+  MetricId,
+} from "metabase-types/api";
 import { TYPE } from "metabase-lib/types/constants";
 import * as AGGREGATION from "metabase-lib/queries/utils/aggregation";
 import Filter from "metabase-lib/queries/structured/Filter";

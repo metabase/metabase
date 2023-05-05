@@ -1,6 +1,5 @@
 import {
   DatasetColumn,
-  Field,
   FieldReference,
   ModelCacheRefreshStatus,
   TableColumnOrderSetting,
@@ -164,7 +163,7 @@ export function getModelCacheSchemaName(databaseId: number, siteUUID: string) {
   return `metabase_cache_${firstLetters}_${databaseId}`;
 }
 
-type QueryField = Field & { field_ref: FieldReference };
+type QueryField = FieldReference & { field_ref: FieldReference };
 
 function getFieldFromColumnVizSetting(
   columnVizSetting: TableColumnOrderSetting,

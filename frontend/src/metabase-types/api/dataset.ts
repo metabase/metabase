@@ -1,4 +1,4 @@
-import { LocalFieldReference } from "metabase-types/types/Query";
+import type { LocalFieldReference } from "metabase-types/api";
 import { ParameterType } from "metabase-types/types/Parameter";
 import { Card } from "./card";
 import { DatabaseId } from "./database";

@@ -7,6 +7,7 @@ import slugg from "slugg";
 import * as ML from "cljs/metabase.lib.js";
 import {
   DatabaseId,
+  DependentMetadataItem,
   ParameterValuesConfig,
   TemplateTag,
   TemplateTags,
@@ -16,7 +17,6 @@ import {
   DatasetQuery,
   NativeDatasetQuery,
 } from "metabase-types/types/Card";
-import { DependentMetadataItem } from "metabase-types/types/Query";
 import Question from "metabase-lib/Question";
 import Table from "metabase-lib/metadata/Table";
 import Database from "metabase-lib/metadata/Database";

@@ -6,17 +6,19 @@
 import _ from "underscore";
 import { chain, updateIn } from "icepick";
 import { t } from "ttag";
-import { DatabaseId, DatasetColumn, TableId } from "metabase-types/api";
 import {
-  StructuredQuery as StructuredQueryObject,
   Aggregation,
   Breakout,
+  DatabaseId,
+  DatasetColumn,
+  DependentMetadataItem,
+  ExpressionClause,
   Filter,
   Join,
   OrderBy,
-  DependentMetadataItem,
-  ExpressionClause,
-} from "metabase-types/types/Query";
+  TableId,
+  StructuredQuery as StructuredQueryObject,
+} from "metabase-types/api";
 import {
   DatasetQuery,
   StructuredDatasetQuery,
