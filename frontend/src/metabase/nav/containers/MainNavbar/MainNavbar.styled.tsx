@@ -135,6 +135,9 @@ export const AddYourOwnDataLink = styled(SidebarLink)`
   color: ${color("white")};
   margin: ${space(1)};
   padding: 2px 6px;
+  svg {
+    color: ${color("brand-light")};
+  }
   transition: background-color 0.3s linear;
 
   @media (prefers-reduced-motion) {
