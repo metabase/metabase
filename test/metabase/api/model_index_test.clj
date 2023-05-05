@@ -3,7 +3,6 @@
             [clojure.test :refer :all]
             [metabase.models.card :refer [Card]]
             [metabase.query-processor.async :as qp.async]
-            [metabase.task :as task]
             [metabase.test :as mt]
             [toucan2.util :as u]))
 
@@ -47,18 +46,7 @@
                     (mt/user-http-request :rasta :get 200
                                           (str "/model-index/" (:id model-index))))))
           (testing "DELETE"
-            (let [by-key (fn [k xs]
-                           (some (fn [x] (when (= (:key x) k) x)) xs))]
-              (testing "There's a task to sync the values"
-                (let [index-trigger! #(->> (task/scheduler-info)
-                                           :jobs
-                                           (by-key "metabase.task.IndexValues.job")
-                                           :triggers
-                                           (by-key (format "metabase.task.IndexValues.trigger.%d"
-                                                           (:id model-index))))]
-                  (is (some? (index-trigger!)) "Index trigger not found")
-                  (mt/user-http-request :rasta :delete 200 (str "model-index/" (:id model-index)))
-                  (is (nil? (index-trigger!)) "Index trigger not cleaned up"))))))))))
+            (mt/user-http-request :rasta :delete 200 (str "model-index/" (:id model-index)))))))))
 
 (deftest create-tests
   (testing "Ensures that the pk ref is a primary key"

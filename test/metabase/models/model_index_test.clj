@@ -60,26 +60,27 @@
                        :model_id   (:id model)
                        :error      nil}
                       (mt/user-http-request :rasta :get 200 (str "/model-index/" (:id model-index))))))
-            (testing "There's a task to sync the values"
-              (let [index-trigger (->> (task/scheduler-info)
-                                       :jobs
-                                       (by-key "metabase.task.IndexValues.job")
-                                       :triggers
-                                       (by-key (format "metabase.task.IndexValues.trigger.%d"
-                                                       (:id model-index))))]
-                (is (some? index-trigger) "Index trigger not found")
-                (is (= (:schedule index-trigger) (:schedule model-index)))
-                (is (= {"model-index-id" (:id model-index)}
-                       (qc/from-job-data (:data index-trigger))))))
-            ;; for now initial is done on thread on post.
-            #_(testing "There are no values for that model index yet"
-                (is (zero? (count (t2/select ModelIndexValue :model_index_id (:id model-index))))))
             (testing "We can invoke the task ourself manually"
               (model-index/add-values! model-index)
               (is (= 200 (count (t2/select ModelIndexValue :model_index_id (:id model-index)))))
               (is (= (into #{} cat (mt/rows (qp/process-query
                                              (mt/mbql-query products {:fields [$title]}))))
-                     (t2/select-fn-set :name ModelIndexValue :model_index_id (:id model-index)))))))))))
+                     (t2/select-fn-set :name ModelIndexValue :model_index_id (:id model-index)))))
+            (let [index-trigger! #(->> (task/scheduler-info)
+                                       :jobs
+                                       (by-key "metabase.task.IndexValues.job")
+                                       :triggers
+                                       (by-key (format "metabase.task.IndexValues.trigger.%d"
+                                                       (:id model-index))))]
+              (testing "There's a task to sync the values"
+                (let [trigger (index-trigger!)]
+                  (is (some? trigger) "Index trigger not found")
+                  (is (= (:schedule model-index) (:schedule trigger)))
+                  (is (= {"model-index-id" (:id model-index)}
+                         (qc/from-job-data (:data trigger))))))
+              (testing "Deleting the model index removes the indexing task"
+                (t2/delete! ModelIndex :id (:id model-index))
+                (is (nil? (index-trigger!)) "Index trigger not removed")))))))))
 
 (defn- test-index
   "Takes a query, pk and value names so it can look up the exact field ref from the metadata. This is what the UI would
