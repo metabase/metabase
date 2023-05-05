@@ -1,20 +1,23 @@
 (ns metabase.metabot.infer-mbql
   (:require [cheshire.core :as json]
+            [clojure.pprint :as pp]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
+            [malli.core :as m]
             [malli.core :as mc]
+            [malli.error :as me]
             [malli.generator :as mg]
             [malli.json-schema :as mjs]
+            [malli.provider :as mp]
             [malli.transform :as mtx]
-            [metabase.db.query :as mdb.query]
-            [metabase.lib.core :as lib]
             [metabase.metabot.client :as metabot-client]
             [metabase.metabot.util :as metabot-util]
             [metabase.query-processor :as qp]
+            [metabase.util :as u]
             [toucan2.core :as t2]))
 
 (defn schema
-  "Returns Malli schema for subset of MBQL constrained to available field IDs"
+  "Returns Malli schema for subset of MBQL constrained to available field IDs."
   [{:keys [result_metadata]}]
   (mc/schema
     [:map {:registry
@@ -54,10 +57,12 @@
       {:optional true}
       [:vector
        {:min 1}
-       [:tuple {:title       "Aggregation"
-                :description "A single aggregate operation over a field"}
-        ::available_aggregations
-        ::available_fields]]]
+       [:or
+        [:tuple [:enum :count]]
+        [:tuple {:title       "Aggregation"
+                 :description "A single aggregate operation over a field"}
+         ::available_aggregations
+         ::available_fields]]]]
      [:breakout
       {:optional true}
       [:vector {:min 1} ::available_fields]]
@@ -106,23 +111,52 @@
                  [:avg 58]]
    :breakout    [62]})
 
+(defn aggregate-and-breakout-example-gen [ids]
+  (let [[x y] (take 2 (cycle (shuffle ids)))]
+    {:aggregation [[:min x]
+                   [:max x]
+                   [:avg x]]
+     :breakout    [y]}))
+
 (def select-top-10-example
   {:fields   [58 59]
    :limit    10
    :order-by [[:asc {:field_id 58}]]})
+
+(defn select-top-10-example-gen [ids]
+  (let [[x y] (take 2 (cycle (shuffle ids)))]
+    {:fields   x
+     :limit    y
+     :order-by [[:asc {:field_id x}]]}))
 
 (def filter-by-value-example
   {:fields  [59 65]
    :filters [[:< 65 {:value 3.6}]
              [:> 65 {:value 3.4}]]})
 
+(defn filter-by-value-example-gen [ids]
+  (let [[x y] (take 2 (cycle (shuffle ids)))]
+    {:fields  [x y]
+     :filters [[:< y {:value 3.6}]
+               [:> y {:value 3.4}]]}))
+
 (def filter-by-ref-example
   {:aggregation [[:count 58]]
    :filters     [[:> 58 {:field_id 38}]]})
 
+(defn filter-by-ref-example-gen [ids]
+  (let [[x y] (take 2 (cycle (shuffle ids)))]
+    {:aggregation [[:count x]]
+     :filters     [[:> x {:field_id y}]]}))
+
 (def sum-over-states-example
   {:aggregation [[:sum 40]]
    :filters     [[:= 53 {:values ["CO" "UT" "NV"]}]]})
+
+(defn sum-over-states-example-gen [ids]
+  (let [[x y] (take 2 (cycle (shuffle ids)))]
+    {:aggregation [[:sum x]]
+     :filters     [[:= y {:values ["CO" "UT" "NV"]}]]}))
 
 (defn- model-field-ref-lookup
   [{:keys [result_metadata]}]
@@ -145,17 +179,16 @@
 
 (defn- postprocess-result
   "Given a model and the response from the LLM, attempt to convert the response to valid MBQL."
-  [{model-id :id :keys [database_id] :as model} json-response]
-  (let [{:keys [breakout aggregation fields filters order-by]
-         :as   coerced-response} (mc/coerce (schema model) json-response mtx/json-transformer)
-        _          (tap> coerced-response)
+  [{:keys [model]}
+   {:keys [breakout aggregation fields filters order-by] :as coerced-response}]
+  (let [{model-id :id :keys [database_id]} model
         id->ref    (model-field-ref-lookup model)
         inner-mbql (cond-> (assoc
                              coerced-response
                              :source-table (format "card__%s" model-id))
                      aggregation
                      (update :aggregation (partial mapv (fn [[op id]]
-                                                          [op {} (id->ref id)])))
+                                                          (cond-> [op {}] id (conj (id->ref id))))))
                      breakout
                      (update :breakout (partial mapv id->ref))
                      fields
@@ -179,9 +212,12 @@
                                                field_id [op (id->ref field_id)]
                                                aggregation [op [:aggregation aggregation]]))
                                            clauses))))]
-    {:database database_id
-     :lib/type :mbql/query
-     :stages   [(assoc inner-mbql :lib/type :mbql.stage/mbql)]}))
+    {:database  database_id
+     :lib/type  :mbql/query
+     :stages    [(-> inner-mbql
+                     (dissoc :llm/usage)
+                     (assoc :lib/type :mbql.stage/mbql))]
+     :llm/usage (:llm/usage inner-mbql)}))
 
 (defn- ->prompt
   "Returns {:messages [{:role ... :content ...} ...]} prompt map for use in API calls."
@@ -197,232 +233,108 @@
   [x]
   (str "\n```\n" (json/generate-string x) "\n```\n"))
 
+(defn parse-result [{:keys [usage] :as raw-response}]
+  (let [response (metabot-util/find-result
+                   (fn [message]
+                     (metabot-util/extract-json message))
+                   raw-response)]
+    (if (:error response)
+      (throw
+        (ex-info
+          "LLM did not produce MBQL response."
+          (doto
+            {:fail   response
+             :reason :llm-generated-error}
+            tap>)))
+      (assoc response :llm/usage usage))))
+
+(defn validate-result [{:keys [user_prompt schema]} json-response]
+  (try
+    (mc/coerce schema json-response mtx/json-transformer)
+    (catch Exception e
+      (log/warnf
+        "Response does not comply with schema: %s"
+        (with-out-str
+          (pp/pprint json-response)))
+      (throw
+        (ex-info
+          "Response does not comply with schema"
+          (doto
+            {:user-prompt      user_prompt
+             :invalid-response json-response
+             :reason           :invalid-response
+             :error            (me/humanize (get-in (ex-data e) [:data :explain]))}
+            tap>))))))
+
+(defn generate-prompt [{:keys [model schema user_prompt]}]
+  (let [field-info (mapv #(select-keys % [:id :name :possible_values]) (:result_metadata model))
+        ids        (map :id field-info)]
+    (->prompt
+      [:system ["You are a pedantic Metabase query generation assistant."
+                "You respond to user queries by building a JSON object that conforms to this json schema:"
+                (json-block (-> schema mjs/transform))
+                "Here are some example queries (Note that field ids in the examples are just placeholders. They may not be found in the actual schema.):"
+                ;(str/join "\n" (map json-block (gen-samples model)))
+                (json-block (select-top-10-example-gen ids))
+                (json-block (aggregate-and-breakout-example-gen ids))
+                (json-block (filter-by-value-example-gen ids))
+                (json-block (filter-by-ref-example-gen ids))
+                (json-block (sum-over-states-example-gen ids))
+                "If you are unable to generate a query, return a JSON object like:"
+                (json-block {:error      "I was unable to generate a query because..."
+                             :query      "<user's original query>"
+                             :suggestion ["<example natural-language query that might work based on the data model>"]})
+                "A JSON description of the fields available in the user's data model:"
+                (json-block field-info)
+                "Take a natural-language query from the user and construct a query using the supplied schema, available fields, and what you already know."
+                "Respond only with schema compliant JSON."]]
+      [:user user_prompt])))
+
+(defn create-context [model user_prompt]
+  {:model       (update model :result_metadata #(mapv metabot-util/add-field-values %))
+   :schema      (schema model)
+   :user_prompt user_prompt})
+
 (defn infer-mbql
   "Returns MBQL query from natural language user prompt"
-  [user_prompt model]
-  (let [json-schema   (-> model schema mjs/transform)
-        {:keys [result_metadata]} (update model :result_metadata #(mapv metabot-util/add-field-values %))
-        field-info    (mapv #(select-keys % [:id :name :possible_values]) result_metadata)
-        prompt        (->prompt
-                        [:system ["You are a pedantic Metabase query generation assistant."
-                                  "You respond to user queries by building a JSON object that conforms to this json schema:"
-                                  (json-block json-schema)
-                                  "Here are some example queries:"
-                                  ;(str/join "\n" (map json-block (gen-samples model)))
-                                  (json-block select-top-10-example)
-                                  (json-block aggregate-and-breakout-example)
-                                  (json-block filter-by-value-example)
-                                  (json-block filter-by-ref-example)
-                                  (json-block sum-over-states-example)
-                                  "If you are unable to generate a query, return a JSON object like:"
-                                  (json-block {:error      "I was unable to generate a query because..."
-                                               :query      "<user's original query>"
-                                               :suggestion ["<example natural-language query that might work based on the data model>"]})
-                                  "A JSON description of the fields available in the user's data model:"
-                                  (json-block field-info)
-                                  "Take a natural-language query from the user and construct a query using the supplied schema, available fields, and what you already know."
-                                  "Respond only with schema compliant JSON."]]
-                        [:user user_prompt])
-        {:keys [usage] :as raw-response} (metabot-client/invoke-metabot prompt)
-        json-response (metabot-util/find-result
-                        (fn [message]
-                          (metabot-util/extract-json message))
-                        raw-response)]
-    (tap> json-response)
-    ;; handle cases where the LLM detects its own errors first
-    (assoc
-      (if (:error json-response)
-        {:fail   json-response
-         :reason :llm-generated-error}
-        (try
-          (postprocess-result model json-response)
-          (catch Exception e
-            (log/error e "Error validating MBQL generated from natural-language query")
-            {:fail   json-response
-             :reason :invalid-response})))
-      :usage usage)))
+  [model user_prompt]
+  (let [context (create-context model user_prompt)]
+    (->> context
+         generate-prompt
+         metabot-client/invoke-metabot
+         parse-result
+         (validate-result context)
+         (postprocess-result context))))
 
-(defn infer-question-from-mbql [mbql]
-  (let [{:keys [query]} (qp/compile mbql)
+(defn infer-question-from-mbql
+  "Given an MBQL query, have the LLM attempt to guess what question you might have asked to create it."
+  [mbql]
+  (let [{sql-query :query} (qp/compile mbql)
         prompt (->prompt
                  [:system ["You are a helpful assistant that determines what question the provided SQL query is answering in plain English."
                            "Pretend you don't know anything about the underlying table structure."]]
                  [:user ["```SQL"
-                         query
+                         sql-query
                          "```"
                          "Question:"]])]
     (get-in (metabot-client/invoke-metabot prompt) [:choices 0 :message :content])))
 
-(defn try-query [model-id prompt]
-  (let [{:keys [fail reason usage] :as mbql} (infer-mbql prompt (t2/select-one 'Card :id model-id))]
-    (assoc
-      (if fail
-        {:fail   fail
-         :reason reason}
-        {:mbql (dissoc mbql :usage)
-         :data (try
-                 (let [{:keys [data row_count status]} (qp/process-query mbql)
-                       {:keys [rows cols]} data]
-                   {:cols      (mapv
-                                 (fn [col] (select-keys col [:id :name :display_name]))
-                                 cols)
-                    :rows      (->> rows
-                                    (map (fn [row]
-                                           (into {} (map (fn [{:keys [name]} v] [(keyword name) v]) cols row))))
-                                    (take 10)
-                                    vec)
-                    :row_count row_count
-                    :status    status})
-                 (catch Exception _
-                   {:status :invalid-query}))})
-      :usage usage)))
-
-(defn sample-mbql [{:keys [prompt filename hint_type n-samples]
-                    :or   {n-samples 10}}]
-  (let [res {:prompt  prompt
-             :results (vec
-                        (for [i (range n-samples)
-                              :let [ti  (System/currentTimeMillis)
-                                    res (try-query 1 prompt)
-                                    tf  (System/currentTimeMillis)]]
-                          (do
-                            (log/infof "Completed prompt %s of %s" (inc i) n-samples)
-                            (assoc res :dt_sec (/ (- tf ti) 1000.0)))))}]
-    (tap> res)
-    (spit
-      (format "mbql_%s_%s.json" filename hint_type)
-      (json/generate-string res {:pretty true}))))
-
 (comment
-  (->> (t2/select-one 'Card :id 1) :result_metadata (map (juxt :id :name)))
+  (def model-id 1)
+  (def model (t2/select-one 'Card :id model-id))
 
-  (-> (t2/select-one 'Card :id 1) schema mjs/transform)
+  (def prompt "What are the 5 highest rated products by average product rating?")
+  (def prompt "Show me total sales grouped by category where rating is between 1.5 and 3.4.")
 
-  (let [model         (t2/select-one 'Card :id 1)
-        json-response {:aggregation [["sum" 41]], :filters [["=" 50 {:value "Boston"}]]}
-        malli-schema  (schema model)]
-    (mc/coerce malli-schema json-response mtx/json-transformer)
-    malli-schema)
+  ;; Generate some MBQL
+  (def mbql (infer-mbql model prompt))
+  (pp/pprint mbql)
 
-  (sample-mbql {:prompt    "Provide descriptive stats for sales per state"
-                :filename  "stats"
-                :hint_type "curated"})
+  ;; Process the results
+  (def query-results (qp/process-query mbql))
+  (pp/pprint query-results)
 
-  (sample-mbql {:prompt    "What are the 10 highest rated products?"
-                :filename  "top10"
-                :hint_type "curated"})
-
-  (sample-mbql {:prompt    "What products have a rating greater than 2.0?"
-                :filename  "plus2rating"
-                :hint_type "curated"})
-
-  (sample-mbql {:prompt    "How many sales had a product price greater than the discount?"
-                :filename  "sls_gt_disc"
-                :hint_type "curated"})
-
-  (sample-mbql {:prompt    "Show me total sales grouped by category where rating is between 1.5 and 3.4."
-                :filename  "ratingsbetween15and34"
-                :hint_type "curated"})
-
-  (sample-mbql {:prompt    "Show me email addresses from gmail."
-                :filename  "gmail_emails"
-                :hint_type "curated"})
-
-  (sample-mbql {:prompt    "Show me the total sales for products sold in Boston."
-                :filename  "total_in_boston"
-                :hint_type "curated"})
-
-  (sample-mbql {:prompt    "How many sales were in Idaho?"
-                :filename  "sales_in_id"
-                :hint_type "curated"})
-
-  (try-query 1 "Provide descriptive stats for sales per state")
-  (try-query 1 "What are the 5 highest rated products by average product rating?")
-  (try-query 1 "What are the 10 highest rated individual products?")
-  (try-query 1 "What products have a rating greater than 2.0?")
-  (try-query 1 "How many sales had a product price greater than the discount?")
-  (try-query 1 "How many sales had a product price less than the discount?")
-  (try-query 1 "How many sales weren't discounted?")        ;; problematic
-  (try-query 1 "How many sales are there?")                 ;; problematic
-  (try-query 1 "Show me total sales grouped by category where rating is between 1.5 and 3.4.")
-  (try-query 1 "Show me email addresses from gmail.")
-  (try-query 1 "What is the most common product category purchased by gmail users?")
-  (try-query 1 "Show me the total sales for products sold in Rosebud.") ;;problematic
-  (try-query 1 "Show me the total sales for products sold to residents of Rosebud.")
-  (try-query 1 "What cities do people live in?")
-  (try-query 1 "How many sales were in Idaho?")
-  (try-query 1 "How much revenue did we have in the states CO, UT, and NV?")
-  ;; "CO" "UT" "NV" -- Is that right?
-  (try-query 1 "How many sales were in the intermountain west?")
-  (try-query 1 "How many sales were in the pacific northwest?") ;; problematic
-  ;; The above is weird. It produces this result. It's like "I don't know the answer, but maybe you should ask this
-  ;; instead because I actually do know the answer."
-  {:fail {:error "I was unable to generate a query because the Pacific Northwest region is not directly defined in the data model.",
-          :query "How many sales were in the pacific northwest?",
-          :suggestion ["How many sales were in the states WA, OR, and ID?"]},
-   :reason :llm-generated-error,
-   :usage {:prompt_tokens 1746, :completion_tokens 55, :total_tokens 1801}}
-
-  ;; "I was unable to generate a query because the term 'rust belt' is not part of the data model"
-  (try-query 1 "How many sales occurred in the rust belt?")
-  ;; Works - "CA" "OR" "WA"
-  (try-query 1 "How many sales occurred on the west coast?")
-  ;; Works - "CO" "UT" "NV"
-  (try-query 1 "What is the total revenue from sales in the intermountain west?")
-  ;; Same problems as above
-  (try-query 1 "What is the total revenue from sales in the pacific northwest?")
-  (try-query 1 "How many gizmos did I sell?")
-  (try-query 1 "How many sales did I have in each category?") ;; problematic - The count aggregate needs work
-  (try-query 1 "What is the average sales revenue in each category?")
-
-  (t2/select-one 'Card :id 2840)
-  (-> (t2/select-one 'Card :id 1) schema mjs/transform)
-
-  (let [model      (t2/select-one 'Card :id 1)
-        {:keys [result_metadata]} (update model :result_metadata #(mapv metabot-util/add-field-values %))
-        field-info (mapv #(select-keys % [:id :name :possible_values]) result_metadata)]
-    field-info)
-
-  (t2/select-one 'Field :id 62)
-  (t2/select-one 'FieldValues :field_id 50)
-
-  (let [model        (t2/select-one 'Card :id 1)
-        malli-schema (schema model)]
-    (mg/generate malli-schema))
-
-  (let [{:keys [results]} (-> "mbql_sales_in_id_curated.json"
-                              slurp
-                              (json/parse-string true))
-        freqs (frequencies (map (comp :query :mbql) results))]
-    {:distinct       freqs
-     :distinct_ct    (vec (vals freqs))
-     :statuses       (frequencies (map (comp :status :data) results))
-     :fails          (remove #{[nil nil]} (map (juxt :reason :fail) results))
-     :distinct-fails (vals (frequencies (remove #{[nil nil]} (map (juxt :reason :fail) results))))
-     :sample2        (map (comp (partial take 2) :rows :data) results)})
-
-  (t2/select ['Field :name :table_id] :id 43)
-
-  (->>
-    {:database 1,
-     :lib/type :mbql/query,
-     :stages   [{:aggregation  [[:count {} [:field {} 43]]],
-                 :filters      [[:= [:field {:join-alias "Products"} 53] "ID"]],
-                 :source-table "card__1",
-                 :lib/type     :mbql.stage/mbql}]}
-    qp/compile
-    :query
-    mdb.query/format-sql
-    println)
-
-  (qp/process-query
-    {:database 1,
-     :lib/type :mbql/query,
-     :stages   [{:aggregation  [[:avg {} [:field {:join-alias "Products"} 65]]]
-                 :breakout     [[:field {:join-alias "Products"} 59]]
-                 :order-by     [[:desc [:aggregation 0]]]
-                 :limit        5
-                 :source-table "card__1",
-                 :lib/type     :mbql.stage/mbql}]})
-
+  ;; Try to back out our question
+  (def inferred-question (infer-question-from-mbql mbql))
+  (pp/pprint inferred-question)
   )
