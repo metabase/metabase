@@ -1,5 +1,7 @@
-import type { ConcreteFieldReference } from "metabase-types/api";
-import type { VariableTarget } from "metabase-types/types/Parameter";
+import type {
+  ConcreteFieldReference,
+  VariableTarget,
+} from "metabase-types/api";
 import type Metadata from "metabase-lib/metadata/Metadata";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import type NativeQuery from "metabase-lib/queries/NativeQuery";

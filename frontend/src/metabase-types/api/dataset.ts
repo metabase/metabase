@@ -1,5 +1,4 @@
 import type { LocalFieldReference } from "metabase-types/api";
-import { ParameterType } from "metabase-types/types/Parameter";
 import { Card } from "./card";
 import { DatabaseId } from "./database";
 import { FieldFingerprint, FieldId, FieldVisibilityType } from "./field";
@@ -92,7 +91,7 @@ export interface TemplateTag {
   "display-name": string;
   type: TemplateTagType;
   dimension?: LocalFieldReference;
-  "widget-type"?: ParameterType;
+  "widget-type"?: string;
   required?: boolean;
   default?: string;
 
