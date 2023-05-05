@@ -198,7 +198,7 @@
   [s]
   (str/replace s currency-regex ""))
 
-(defn parse-number [s]
+(defn- parse-number [s]
   (case (get-number-separators)
     ("." ".,") (. (NumberFormat/getInstance (Locale. "en" "US")) parse s)
     ",." (. (NumberFormat/getInstance (Locale. "de" "DE")) parse s)
