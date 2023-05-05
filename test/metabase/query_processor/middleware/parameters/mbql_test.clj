@@ -287,37 +287,39 @@
 
 ;;
 (deftest handle-fk-forms-test
-  (mt/test-drivers (filter #(driver/supports? % :foreign-keys) (params-test-drivers))
-    (testing "Make sure we properly handle paramters that have `fk->` forms in `:dimension` targets (#9017)"
-      (is (= [[31 "Bludso's BBQ" 5 33.8894 -118.207 2]
-              [32 "Boneyard Bistro" 5 34.1477 -118.428 3]
-              [33 "My Brother's Bar-B-Q" 5 34.167 -118.595 2]
-              [35 "Smoke City Market" 5 34.1661 -118.448 1]
-              [37 "bigmista's barbecue" 5 34.118 -118.26 2]
-              [38 "Zeke's Smokehouse" 5 34.2053 -118.226 2]
-              [39 "Baby Blues BBQ" 5 34.0003 -118.465 2]]
-             (mt/formatted-rows :venues
-               (qp/process-query
-                (mt/query venues
-                  {:query      {:order-by [[:asc $id]]}
-                   :parameters [{:type   :id
-                                 :target [:dimension $category_id->categories.name]
-                                 :value  ["BBQ"]}]}))))))
-    (testing "Operators work on fk"
-      (is (= [[31 "Bludso's BBQ" 5 33.8894 -118.207 2]
-              [32 "Boneyard Bistro" 5 34.1477 -118.428 3]
-              [33 "My Brother's Bar-B-Q" 5 34.167 -118.595 2]
-              [35 "Smoke City Market" 5 34.1661 -118.448 1]
-              [37 "bigmista's barbecue" 5 34.118 -118.26 2]
-              [38 "Zeke's Smokehouse" 5 34.2053 -118.226 2]
-              [39 "Baby Blues BBQ" 5 34.0003 -118.465 2]]
-             (mt/formatted-rows :venues
-               (qp/process-query
-                (mt/query venues
-                  {:query      {:order-by [[:asc $id]]}
-                   :parameters [{:type   :string/starts-with
-                                 :target [:dimension $category_id->categories.name]
-                                 :value  ["BB"]}]}))))))))
+  (mt/test-drivers (params-test-drivers)
+    (mt/with-everything-store
+      (when (driver/database-supports? driver/*driver* :foreign-keys (mt/db))
+        (testing "Make sure we properly handle paramters that have `fk->` forms in `:dimension` targets (#9017)"
+          (is (= [[31 "Bludso's BBQ" 5 33.8894 -118.207 2]
+                  [32 "Boneyard Bistro" 5 34.1477 -118.428 3]
+                  [33 "My Brother's Bar-B-Q" 5 34.167 -118.595 2]
+                  [35 "Smoke City Market" 5 34.1661 -118.448 1]
+                  [37 "bigmista's barbecue" 5 34.118 -118.26 2]
+                  [38 "Zeke's Smokehouse" 5 34.2053 -118.226 2]
+                  [39 "Baby Blues BBQ" 5 34.0003 -118.465 2]]
+                 (mt/formatted-rows :venues
+                   (qp/process-query
+                    (mt/query venues
+                              {:query      {:order-by [[:asc $id]]}
+                               :parameters [{:type   :id
+                                             :target [:dimension $category_id->categories.name]
+                                             :value  ["BBQ"]}]}))))))
+        (testing "Operators work on fk"
+          (is (= [[31 "Bludso's BBQ" 5 33.8894 -118.207 2]
+                  [32 "Boneyard Bistro" 5 34.1477 -118.428 3]
+                  [33 "My Brother's Bar-B-Q" 5 34.167 -118.595 2]
+                  [35 "Smoke City Market" 5 34.1661 -118.448 1]
+                  [37 "bigmista's barbecue" 5 34.118 -118.26 2]
+                  [38 "Zeke's Smokehouse" 5 34.2053 -118.226 2]
+                  [39 "Baby Blues BBQ" 5 34.0003 -118.465 2]]
+                 (mt/formatted-rows :venues
+                   (qp/process-query
+                    (mt/query venues
+                              {:query      {:order-by [[:asc $id]]}
+                               :parameters [{:type   :string/starts-with
+                                             :target [:dimension $category_id->categories.name]
+                                             :value  ["BB"]}]}))))))))))
 
 (deftest test-mbql-parameters
   (testing "Should be able to pass parameters in to an MBQL query"

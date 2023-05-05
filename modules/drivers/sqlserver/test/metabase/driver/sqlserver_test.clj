@@ -189,7 +189,7 @@
       ;; we're doing things here with low-level calls to HoneySQL (emulating what the QP does) instead of using normal
       ;; QP pathways because `SET LANGUAGE` doesn't seem to persist to subsequent executions so to test that things
       ;; are working we need to add to in from of the query we're trying to check
-      (with-open [conn (sql-jdbc.execute/connection-with-timezone :sqlserver (mt/db) (qp.timezone/report-timezone-id-if-supported))]
+      (with-open [conn (sql-jdbc.execute/connection-with-timezone :sqlserver (mt/db) (qp.timezone/report-timezone-id-if-supported :sqlserver (mt/db)))]
         (.setAutoCommit conn false)
         (try
           (doseq [[sql & params] [["DROP TABLE IF EXISTS temp;"]

@@ -4,6 +4,10 @@ title: Driver interface changelog
 
 # Driver Interface Changelog
 
+## Metabase 0.47.0
+
+- The multimethod `metabase.driver/supports?` has been deprecated in favor of `metabase.driver/database-supports?`. The existing default implementation of `database-supports?` currently calls `supports?`, but it will be removed in 0.55.0.
+  
 ## Metabase 0.46.0
 
 - The process for building a driver has changed slightly in Metabase 0.46.0. Your build command should now look
