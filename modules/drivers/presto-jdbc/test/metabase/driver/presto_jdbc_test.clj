@@ -27,6 +27,10 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 
+(use-fixtures :each (fn [thunk]
+                      (binding [hx/*honey-sql-version* 2]
+                        (thunk))))
+
 (deftest describe-database-test
   (mt/test-driver :presto-jdbc
     (is (= {:tables #{{:name "test_data_categories" :schema "default"}
