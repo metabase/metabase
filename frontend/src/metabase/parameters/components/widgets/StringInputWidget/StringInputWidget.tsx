@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { t } from "ttag";
-import { isEqual, isString, isEmpty } from "lodash";
+import { isEqual, isString, isEmpty } from "underscore";
 
 import TokenField, { parseStringValue } from "metabase/components/TokenField";
 import {
