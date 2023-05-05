@@ -6,7 +6,7 @@
 import _ from "underscore";
 import { chain, updateIn } from "icepick";
 import { t } from "ttag";
-import { DatasetColumn, TableId } from "metabase-types/api";
+import { DatabaseId, DatasetColumn, TableId } from "metabase-types/api";
 import {
   StructuredQuery as StructuredQueryObject,
   Aggregation,
@@ -21,7 +21,6 @@ import {
   DatasetQuery,
   StructuredDatasetQuery,
 } from "metabase-types/types/Card";
-import { DatabaseEngine, DatabaseId } from "metabase-types/types/Database";
 import {
   format as formatExpression,
   DISPLAY_QUOTES,
@@ -195,7 +194,7 @@ class StructuredQueryInner extends AtomicQuery {
   /**
    * @returns the database engine object, if a database is selected and loaded.
    */
-  engine(): DatabaseEngine | null | undefined {
+  engine(): string | null | undefined {
     const database = this.database();
     return database && database.engine;
   }

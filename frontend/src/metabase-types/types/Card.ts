@@ -3,8 +3,12 @@
  * @deprecated use existing types from, or add to metabase-types/api/*
  */
 
-import { Field, Parameter, VisualizationSettings } from "metabase-types/api";
-import { DatabaseId } from "./Database";
+import {
+  DatabaseId,
+  Field,
+  Parameter,
+  VisualizationSettings,
+} from "metabase-types/api";
 import { StructuredQuery, NativeQuery } from "./Query";
 import { ParameterQueryObject } from "./Parameter";
 
