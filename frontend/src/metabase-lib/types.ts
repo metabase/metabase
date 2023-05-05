@@ -45,6 +45,7 @@ export type ColumnDisplayInfo = {
   isImplicitlyJoinable: boolean;
   table?: TableInlineDisplayInfo;
 
+  breakoutPosition?: number;
   orderByPosition?: number;
 };
 
