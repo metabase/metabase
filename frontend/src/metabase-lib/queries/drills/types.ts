@@ -1,9 +1,9 @@
 import {
+  Card,
   DatasetColumn,
   RowValue,
   VisualizationSettings,
 } from "metabase-types/api";
-import type { Card } from "metabase-types/types/Card";
 import Question from "metabase-lib/Question";
 
 type OnChangeCardAndRunOpts = {

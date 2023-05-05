@@ -1,6 +1,4 @@
-import type { DatasetColumn } from "metabase-types/api";
-import type { Card } from "metabase-types/types/Card";
-
+import type { Card, DatasetColumn } from "metabase-types/api";
 import type { PivotSetting, HeaderItem } from "./types";
 
 import {

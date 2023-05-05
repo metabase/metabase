@@ -5,7 +5,7 @@ import {
   PRODUCTS,
 } from "__support__/sample_database_fixture";
 
-import { Card } from "metabase-types/types/Card";
+import { Card } from "metabase-types/api";
 import {
   createMockColumn,
   createMockDatasetData,

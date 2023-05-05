@@ -6,8 +6,8 @@ import { isPivotGroupColumn } from "metabase/lib/data_grid";
 import { measureText } from "metabase/lib/measure-text";
 import { sumArray } from "metabase/core/utils/arrays";
 
-import type { Card } from "metabase-types/types/Card";
 import type {
+  Card,
   DatasetColumn,
   DatasetData,
   FieldReference,

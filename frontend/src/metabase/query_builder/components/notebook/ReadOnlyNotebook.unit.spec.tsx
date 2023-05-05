@@ -5,8 +5,7 @@ import { createMockEntitiesState } from "__support__/store";
 import { setupDatabasesEndpoints } from "__support__/server-mocks/database";
 import { setupSearchEndpoints } from "__support__/server-mocks/search";
 
-import type { DatasetQuery } from "metabase-types/types/Card";
-
+import type { DatasetQuery } from "metabase-types/api";
 import { createMockState } from "metabase-types/store/mocks";
 import { createMockStructuredDatasetQuery } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";

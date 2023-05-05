@@ -23,13 +23,16 @@ import { isFK } from "metabase-lib/types/utils/isa";
 import { memoizeClass, sortObject } from "metabase-lib/utils";
 
 import type {
+  Card as CardObject,
   CollectionId,
   DatabaseId,
   DatasetColumn,
+  DatasetQuery,
   DependentMetadataItem,
   TableId,
   RowValue,
   Parameter as ParameterObject,
+  ParameterValues,
   ParameterId,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -41,8 +44,6 @@ import * as QUERY from "metabase-lib/queries/utils/query";
 // TODO: remove these dependencies
 import * as Urls from "metabase/lib/urls";
 import { getCardUiParameters } from "metabase-lib/parameters/utils/cards";
-import { ParameterValues } from "metabase-types/types/Parameter";
-import { Card as CardObject, DatasetQuery } from "metabase-types/types/Card";
 import { utf8_to_b64url } from "metabase/lib/encoding";
 
 import { getParameterValuesBySlug } from "metabase-lib/parameters/utils/parameter-values";

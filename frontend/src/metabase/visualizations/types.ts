@@ -1,10 +1,10 @@
 import {
+  Card,
   DatasetColumn,
   DatasetData,
   Series,
   VisualizationSettings,
 } from "metabase-types/api";
-import type { Card } from "metabase-types/types/Card";
 import type { ClickObject } from "metabase-lib/queries/drills/types";
 
 type OnChangeCardAndRunOpts = {
