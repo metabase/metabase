@@ -1,5 +1,5 @@
+import type { TableId, SchemaName } from "metabase-types/api";
 import { DatabaseId } from "metabase-types/types/Database";
-import { SchemaName, TableId } from "metabase-types/types/Table";
 import { GroupId } from "./group";
 import { UserAttribute } from "./user";
 

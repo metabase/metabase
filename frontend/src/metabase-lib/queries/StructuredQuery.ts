@@ -6,7 +6,7 @@
 import _ from "underscore";
 import { chain, updateIn } from "icepick";
 import { t } from "ttag";
-import { DatasetColumn } from "metabase-types/api";
+import { DatasetColumn, TableId } from "metabase-types/api";
 import {
   StructuredQuery as StructuredQueryObject,
   Aggregation,
@@ -22,7 +22,6 @@ import {
   StructuredDatasetQuery,
 } from "metabase-types/types/Card";
 import { DatabaseEngine, DatabaseId } from "metabase-types/types/Database";
-import { TableId } from "metabase-types/types/Table";
 import {
   format as formatExpression,
   DISPLAY_QUOTES,

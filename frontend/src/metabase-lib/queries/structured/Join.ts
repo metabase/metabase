@@ -3,7 +3,7 @@
 import { t } from "ttag";
 import _ from "underscore";
 import { pluralize } from "metabase/lib/formatting";
-import { TableId } from "metabase-types/types/Table";
+import type { TableId } from "metabase-types/api";
 import {
   Join as JoinObject,
   JoinStrategy,
