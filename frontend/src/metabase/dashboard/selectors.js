@@ -16,7 +16,7 @@ import Question from "metabase-lib/Question";
 import { isVirtualDashCard } from "./utils";
 
 export const getDashboardId = state => state.dashboard.dashboardId;
-export const getActiveDashboardId = state => state.dashboard.recentDashboardId;
+export const getActiveDashboardId = state => state.dashboard.activeDashboardId;
 export const getIsEditing = state => !!state.dashboard.isEditing;
 export const getDashboardBeforeEditing = state => state.dashboard.isEditing;
 export const getClickBehaviorSidebarDashcard = state => {
