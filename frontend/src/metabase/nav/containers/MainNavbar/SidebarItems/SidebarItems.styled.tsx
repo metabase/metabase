@@ -18,7 +18,7 @@ export const SidebarIcon = styled(Icon)<{
   ${props =>
     !props.color &&
     css`
-      color: ${props.isSelected ? color("brand") : color("brand-light")};
+      color: ${color("brand")};
     `}
 `;
 
@@ -28,7 +28,7 @@ SidebarIcon.defaultProps = {
 
 export const ExpandToggleButton = styled(TreeNode.ExpandToggleButton)`
   padding: 4px 0 4px 2px;
-  color: ${color("brand-light")};
+  color: ${color("brand")};
 `;
 
 const activeColorCSS = css`
