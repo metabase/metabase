@@ -21,13 +21,11 @@ import type {
   DashCardId,
   Dataset,
   Series,
+  ParameterId,
+  ParameterValueOrArray,
   VirtualCardDisplay,
   VisualizationSettings,
 } from "metabase-types/api";
-import type {
-  ParameterId,
-  ParameterValueOrArray,
-} from "metabase-types/types/Parameter";
 import type { Dispatch } from "metabase-types/store";
 
 import Question from "metabase-lib/Question";

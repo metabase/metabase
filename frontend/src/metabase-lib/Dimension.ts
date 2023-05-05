@@ -10,8 +10,8 @@ import {
   LocalFieldReference,
   ExpressionReference,
   DatetimeUnit,
+  VariableTarget,
 } from "metabase-types/api";
-import { VariableTarget } from "metabase-types/types/Parameter";
 import * as Lib from "metabase-lib";
 import { infer, MONOTYPE } from "metabase-lib/expressions/typeinferencer";
 import { TYPE } from "metabase-lib/types/constants";

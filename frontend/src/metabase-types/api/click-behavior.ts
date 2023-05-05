@@ -1,5 +1,4 @@
-import type { CardId, DashboardId } from "metabase-types/api";
-import { ParameterId } from "metabase-types/types/Parameter";
+import type { CardId, DashboardId, ParameterId } from "metabase-types/api";
 
 // Used to set values for question filters
 // Example: "[\"dimension\",[\"field\",17,null]]"

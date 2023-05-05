@@ -3,9 +3,9 @@ import _ from "underscore";
 import {
   Parameter,
   ParameterValuesConfig,
+  ParameterTarget,
   TemplateTag,
 } from "metabase-types/api";
-import type { ParameterTarget } from "metabase-types/types/Parameter";
 import type { Card } from "metabase-types/types/Card";
 import type { ParameterWithTarget } from "metabase-lib/parameters/types";
 import { getTemplateTagFromTarget } from "metabase-lib/parameters/utils/targets";

@@ -16,9 +16,9 @@ import type {
   ActionDashboardCard,
   Dashboard,
   ParametersForActionExecution,
+  ParameterValueOrArray,
   WritebackAction,
 } from "metabase-types/api";
-import type { ParameterValueOrArray } from "metabase-types/types/Parameter";
 import type { Dispatch, State } from "metabase-types/store";
 
 import type Database from "metabase-lib/metadata/Database";

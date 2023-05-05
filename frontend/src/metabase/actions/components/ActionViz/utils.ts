@@ -9,10 +9,10 @@ import type {
   ActionParameterValue,
   ParameterId,
   ParametersForActionExecution,
+  ParameterValueOrArray,
   WritebackAction,
   WritebackParameter,
 } from "metabase-types/api";
-import type { ParameterValueOrArray } from "metabase-types/types/Parameter";
 
 type ActionParameterTuple = [ParameterId, ActionParameterValue];
 

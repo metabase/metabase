@@ -8,10 +8,10 @@ import {
   Field,
   NativeQuery,
   Parameter,
+  ParameterQueryObject,
   StructuredQuery,
   VisualizationSettings,
 } from "metabase-types/api";
-import { ParameterQueryObject } from "./Parameter";
 
 export type CardId = number;
 
