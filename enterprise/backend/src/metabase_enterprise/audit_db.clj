@@ -37,17 +37,3 @@
 
       :else
       :metabase-enterprise.audit-db/no-op)))
-
-
-
-
-(comment
-
-  [(t2/delete! Database :is_audit true)
-   (ensure-db-installed!)
-   (ensure-db-installed!)
-
-   (t2/update! Database :is_audit true {:engine "shmostgres"})
-   (ensure-db-installed!)
-   (ensure-db-installed!)]
-  )

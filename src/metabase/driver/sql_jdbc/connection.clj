@@ -212,12 +212,14 @@
   "Return a JDBC connection spec that includes a cp30 `ComboPooledDataSource`. These connection pools are cached so we
   don't create multiple ones for the same DB."
   [db-or-id-or-spec]
+
   (cond
     ;; db-or-id-or-spec is a Database instance or an integer ID
     (u/id db-or-id-or-spec)
     (let [database-id (u/the-id db-or-id-or-spec)
           ;; we need the Database instance no matter what (in order to compare details hash with cached value)
-          db          (or (when (mi/instance-of? Database db-or-id-or-spec) db-or-id-or-spec) ; passed in
+          db          (or (when (mi/instance-of? Database db-or-id-or-spec)
+                            db-or-id-or-spec) ; passed in
                           (t2/select-one [Database :id :engine :details :is_audit] :id database-id) ; look up by ID
                           (throw (ex-info (tru "Database {0} does not exist." database-id)
                                           {:status-code 404
@@ -226,6 +228,8 @@
           get-fn      (fn [db-id log-invalidation?]
                         (when-let [details (get @database-id->connection-pool db-id)]
                           (cond
+                            ;; For the audit db, we pass the datasource for the app-db. This lets us use fewer db
+                            ;; connections with the *application-db*, and 1 less connection pool.
                             (:is_audit db)
                             {:datasource (mdb.connection/data-source)}
                             ;; details hash changed from what is cached; invalid
