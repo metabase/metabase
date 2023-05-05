@@ -60,7 +60,7 @@ const TimelineEmptyState = ({
         <EmptyStateThread>
           <EmptyStateThreadLine />
           <EmptyStateThreadIconContainer>
-            <EmptyStateThreadIcon name="balloons" />
+            <EmptyStateThreadIcon name="star" />
           </EmptyStateThreadIconContainer>
           <EmptyStateThreadLine />
         </EmptyStateThread>
