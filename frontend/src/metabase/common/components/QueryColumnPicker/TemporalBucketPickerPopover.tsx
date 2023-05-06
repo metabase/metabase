@@ -10,11 +10,15 @@ function renderTriggerContent(bucket?: Lib.BucketDisplayInfo) {
 }
 
 function TemporalBucketPickerPopover(
-  props: Omit<BucketPickerPopoverProps, "renderTriggerContent">,
+  props: Omit<
+    BucketPickerPopoverProps,
+    "triggerLabel" | "renderTriggerContent"
+  >,
 ) {
   return (
     <BucketPickerPopover
       {...props}
+      triggerLabel={t`Temporal bucket`}
       renderTriggerContent={renderTriggerContent}
     />
   );
