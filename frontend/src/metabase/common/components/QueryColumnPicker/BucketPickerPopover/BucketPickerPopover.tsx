@@ -12,6 +12,7 @@ export interface BucketPickerPopoverProps {
   query: Lib.Query;
   selectedBucket?: Lib.Bucket | null;
   buckets: Lib.Bucket[];
+  triggerLabel?: string;
   renderTriggerContent: (bucket?: Lib.BucketDisplayInfo) => void;
   onSelect: (item: Lib.Bucket) => void;
 }
@@ -24,6 +25,7 @@ function BucketPickerPopover({
   selectedBucket,
   query,
   buckets,
+  triggerLabel,
   renderTriggerContent,
   onSelect,
 }: BucketPickerPopoverProps) {
@@ -49,7 +51,7 @@ function BucketPickerPopover({
   return (
     <PopoverWithTrigger
       renderTrigger={({ onClick }) => (
-        <TriggerButton onClick={onClick}>
+        <TriggerButton aria-label={triggerLabel} onClick={onClick}>
           {renderTriggerContent(triggerContentBucketDisplayInfo)}
           <TriggerIcon name="chevronright" />
         </TriggerButton>
