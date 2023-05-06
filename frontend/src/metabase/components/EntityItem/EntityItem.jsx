@@ -112,7 +112,7 @@ function EntityItemMenu({
       [
         onPin && {
           title: isPinned ? t`Unpin` : t`Pin this`,
-          icon: "pin",
+          icon: isPinned ? "unpin" : "pin",
           action: onPin,
           event: `${analyticsContext};Entity Item;Pin Item;${item.model}`,
         },
