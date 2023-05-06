@@ -19,11 +19,15 @@ function renderTriggerContent(bucket?: Lib.BucketDisplayInfo) {
 }
 
 function BinningStrategyPickerPopover(
-  props: Omit<BucketPickerPopoverProps, "renderTriggerContent">,
+  props: Omit<
+    BucketPickerPopoverProps,
+    "triggerLabel" | "renderTriggerContent"
+  >,
 ) {
   return (
     <BucketPickerPopover
       {...props}
+      triggerLabel={t`Binning strategy`}
       renderTriggerContent={renderTriggerContent}
     />
   );
