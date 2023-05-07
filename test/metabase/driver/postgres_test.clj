@@ -1165,3 +1165,23 @@
               :sslkey
               absolute-path
               (str/ends-with? ".p12"))))))
+
+(deftest syncable-schemas-test
+  (mt/test-driver :postgres
+    (testing "`syncable-schemas` should return schemas that should be synced"
+      (mt/with-empty-db
+        (is (= #{"public"}
+               (driver/syncable-schemas driver/*driver* (mt/id))))))
+    (testing "metabase_cache schemas should be excluded"
+      (mt/dataset test-data
+        (mt/with-persistence-enabled [persist-models!]
+          (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
+            (mt/with-temp* [:model/Card [_ {:name "model"
+                                            :dataset true
+                                            :dataset_query (mt/mbql-query categories)
+                                            :database_id (mt/id)}]]
+              (persist-models!)
+              (is (some (partial re-matches #"metabase_cache(.*)")
+                        (map :schema_name (jdbc/query conn-spec "SELECT schema_name from INFORMATION_SCHEMA.SCHEMATA;"))))
+              (is (nil? (some (partial re-matches #"metabase_cache(.*)")
+                              (driver/syncable-schemas driver/*driver* (mt/id))))))))))))
