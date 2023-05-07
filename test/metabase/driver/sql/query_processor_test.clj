@@ -359,7 +359,7 @@
 
 (deftest ^:parallel ambiguous-field-metadata-test
   (testing "With queries that refer to the same field more than once, can we generate sane SQL?"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (is (= '{:select    [ORDERS.ID                       AS ID
                            ORDERS.PRODUCT_ID               AS PRODUCT_ID
                            PRODUCTS__via__PRODUCT_ID.TITLE AS PRODUCTS__via__PRODUCT_ID__TITLE
@@ -427,7 +427,7 @@
 
 (deftest ^:parallel multiple-joins-with-expressions-test
   (testing "We should be able to compile a complicated query with multiple joins and expressions correctly"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (is (= '{:select   [source.PRODUCTS__via__PRODUCT_ID__CATEGORY AS PRODUCTS__via__PRODUCT_ID__CATEGORY
                           source.PEOPLE__via__USER_ID__SOURCE AS PEOPLE__via__USER_ID__SOURCE
                           DATE_TRUNC ("year" source.CREATED_AT) AS CREATED_AT
@@ -617,7 +617,7 @@
 
 (deftest ^:parallel join-inside-source-query-test
   (testing "Make sure a JOIN inside a source query gets compiled as expected"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (mt/with-everything-store
         (is (= '{:select [source.P1__CATEGORY AS P1__CATEGORY]
                  :from   [{:select    [P1.CATEGORY AS P1__CATEGORY]
@@ -639,7 +639,7 @@
 
 (deftest ^:parallel join-against-source-query-test
   (testing "Make sure a JOIN referencing fields from the source query use correct aliases/etc"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (mt/with-everything-store
         (is (= '{:select    [source.P1__CATEGORY AS P1__CATEGORY]
                  :from      [{:select    [P1.CATEGORY AS P1__CATEGORY]
@@ -718,7 +718,7 @@
 
 (deftest ^:parallel expression-with-duplicate-column-name-test
   (testing "Can we use expression with same column name as table (#14267)"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (is (= '{:select   [source.CATEGORY_2 AS CATEGORY_2
                           COUNT (*)         AS count]
                :from     [{:select [PRODUCTS.CATEGORY            AS CATEGORY
@@ -739,7 +739,7 @@
 
 (deftest ^:parallel join-source-queries-with-joins-test
   (testing "Should be able to join against source queries that themselves contain joins (#12928)"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (is (= '{:select    [source.P1__CATEGORY   AS P1__CATEGORY
                            source.People__SOURCE AS People__SOURCE
                            source.count          AS count
@@ -859,7 +859,7 @@
 
 (deftest ^:parallel join-against-query-with-implicit-joins-test
   (testing "Should be able to do subsequent joins against a query with implicit joins (#17767)"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (is (= '{:select    [source.PRODUCTS__via__PRODUCT_ID__ID AS PRODUCTS__via__PRODUCT_ID__ID
                            source.count                         AS count
                            Reviews.ID                           AS Reviews__ID
@@ -892,7 +892,7 @@
 
 (deftest ^:parallel join-table-on-itself-with-custom-column-test
   (testing "Should be able to join a source query against itself using an expression (#17770)"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (is (= '{:select    [source.CATEGORY AS CATEGORY
                            source.count    AS count
                            source.CC       AS CC
@@ -947,7 +947,7 @@
 
 (deftest ^:parallel mega-query-test
   (testing "Should generate correct SQL for joins against source queries that contain joins (#12928)"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (is (= '{:select    [source.P1__CATEGORY   AS P1__CATEGORY
                            source.People__SOURCE AS People__SOURCE
                            source.count          AS count
@@ -1062,7 +1062,7 @@
 
 (deftest ^:parallel binning-optimize-math-expressions-test
   (testing "Don't include nonsense like `+ 0.0` and `- 0.0` when generating expressions for binning"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (binding [hx/*honey-sql-version* 2]
         (is (= ["SELECT"
                 "  FLOOR((ORDERS.QUANTITY / 10)) * 10 AS QUANTITY,"

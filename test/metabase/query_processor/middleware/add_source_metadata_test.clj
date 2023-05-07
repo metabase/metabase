@@ -288,7 +288,7 @@
 
 (deftest inception-test
   (testing "Should be able to do an 'inception-style' nesting of source > source > source with a join (#14724)"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       ;; these tests look at the metadata for just one column so it's easier to spot the differences.
       (letfn [(ean-metadata [query]
                 (as-> query query
@@ -320,7 +320,7 @@
   (testing "Should ignore 'legacy' < 0.38.0 source metadata and recalculate it for MBQL queries (#14788)"
     ;; normally this middleware will use existing source metadata rather than recalculating it, but if we encounter <
     ;; 0.38.0 source metadata that is missing `:field_ref` and `:id` information we should ignore it.
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (let [query             (mt/mbql-query orders
                                 {:source-query {:source-table $$orders
                                                 :joins        [{:source-table $$products
@@ -359,7 +359,7 @@
 
 (deftest add-correct-metadata-fields-for-deeply-nested-source-queries-test
   (testing "Make sure we add correct `:fields` from deeply-nested source queries (#14872)"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (is (= (mt/$ids orders
                [$product_id->products.title
                 [:aggregation 0]])

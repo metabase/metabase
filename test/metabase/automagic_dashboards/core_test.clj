@@ -219,7 +219,7 @@
     (let [fa-fieldspec "ga:name"]
       (is (= fa-fieldspec ((#'magic/fieldspec-matcher fa-fieldspec) {:name fa-fieldspec})))))
   (testing "The fieldspec-matcher does not match on ID columns."
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (let [id-field (field! :products :id)]
         ;; the id-field does have a type...
         (is (true? (#'magic/field-isa? id-field :type/*)))
@@ -228,7 +228,7 @@
         ;; ...unless you're looking explicitly for a primary key
         (is (true? ((#'magic/fieldspec-matcher :type/PK) id-field))))))
   (testing "The fieldspec-matcher should match fields by their fieldspec"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (let [price-field (field! :products :price)
             latitude-field (field! :people :latitude)
             created-at-field (field! :people :created_at)
@@ -238,20 +238,20 @@
         (is (true? ((#'magic/fieldspec-matcher :type/CreationTimestamp) created-at-field)))
         (is (true? ((#'magic/fieldspec-matcher :type/*) created-at-field))))))
   (testing "The name-regex-matcher should return fields with string/regex matches"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (let [price-field (field! :products :price)
             category-field (field! :products :category)
             ice-pred (#'magic/name-regex-matcher "ice")]
         (is (some? (ice-pred price-field)))
         (is (nil? (ice-pred category-field))))))
   (testing "The max-cardinality-matcher should return fields with cardinality <= the specified cardinality"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (let [category-field (field! :products :category)]
         (is (false? ((#'magic/max-cardinality-matcher 3) category-field)))
         (is (true? ((#'magic/max-cardinality-matcher 4) category-field)))
         (is (true? ((#'magic/max-cardinality-matcher 100) category-field))))))
   (testing "Roll the above together and test filter-fields"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (let [category-field (field! :products :category)
             price-field (field! :products :price)
             latitude-field (field! :people :latitude)
@@ -280,7 +280,7 @@
 
 (deftest ensure-field-dimension-bindings-test
   (testing "A very simple card with two plain fields should return the singe assigned dimension for each field."
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (mt/with-non-admin-groups-no-root-collection-perms
         (let [source-query {:database (mt/id)
                             :query    (mt/$ids
@@ -308,7 +308,7 @@
 (deftest ensure-field-dimension-bindings-test-2
   (testing "A model that spans 3 tables should use all fields, provide correct candidate bindings,
             and choose the best-match candidate."
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (mt/with-non-admin-groups-no-root-collection-perms
         (let [source-query {:database (mt/id)
                             :type     :query
@@ -351,7 +351,7 @@
 
 (deftest field-candidate-matching-test
   (testing "Simple dimensions with only a tablespec can be matched directly against fields."
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (mt/with-non-admin-groups-no-root-collection-perms
         ;; This is a fabricated context with simple fields.
         ;; These can be matched against dimension definitions with simple 1-element vector table specs
@@ -374,7 +374,7 @@
           ;; context is fabricated and needs additional data (:table). See above test for a working example with a match
           (is (= #{} (set (map :id (#'magic/field-candidates context (dimensions "Lat"))))))))))
   (testing "Verify dimension selection works for dimension definitions with 2-element [tablespec fieldspec] definitions."
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (mt/with-non-admin-groups-no-root-collection-perms
         ;; Unlike the above test, we do need to provide a full context to match these fields against the dimension definitions.
         (let [source-query {:database (mt/id)
@@ -466,7 +466,7 @@
   ;; (don't show non-selected fields from within the model or its parent)
   ;; - The dashboard should reference its source as a :related field
   (testing "Simple model with a price dimension"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (mt/with-non-admin-groups-no-root-collection-perms
         (let [source-query {:database (mt/id)
                             :query    (mt/$ids
@@ -506,7 +506,7 @@
   (testing "Simple model with a temporal dimension detected"
     ;; Same as above, but the code should detect the time dimension of the model and present
     ;; cards with a time axis.
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (mt/with-non-admin-groups-no-root-collection-perms
         (let [temporal-field-id (mt/id :products :created_at)
               source-query      {:database (mt/id)
@@ -540,7 +540,7 @@
 
 (deftest basic-root-model-test-3
   (testing "A simple model with longitude and latitude dimensions should generate a card with a map."
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (mt/with-non-admin-groups-no-root-collection-perms
         (let [source-query {:database (mt/id)
                             :query    (mt/$ids
@@ -572,7 +572,7 @@
 (deftest model-with-joins-test
   ;; This model does a join of 3 tables and aliases columns.
   ;; The created dashboard should use all the data with the correct labels.
-  (mt/dataset sample-dataset
+  (mt/dataset test-data
     (mt/with-non-admin-groups-no-root-collection-perms
       (let [source-query {:database (mt/id)
                           :type     :query
@@ -964,7 +964,7 @@
 
 (deftest filter-referenced-fields-test
   (testing "X-Ray should work if there's a filter in the question (#19241)"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (let [query (mi/instance
                    Query
                    {:database-id   (mt/id)

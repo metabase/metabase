@@ -13,7 +13,7 @@
    [schema.core :as s]))
 
 (deftest resolve-implicit-joins-test
-  (mt/dataset sample-dataset
+  (mt/dataset test-data
     (let [query (mt/nest-query
                  (mt/mbql-query orders
                    {:source-table $$orders
@@ -135,7 +135,7 @@
                                 :fk-field-id  %category_id}]}}))))
 
     (testing "Should work at arbitrary levels of nesting"
-      (mt/dataset sample-dataset
+      (mt/dataset test-data
         (doseq [level (range 4)]
           (testing (format "(%d levels of nesting)" level)
             (let [query (-> (mt/mbql-query orders
@@ -204,7 +204,7 @@
 
 (deftest reuse-existing-joins-test-2
   (testing "We DEFINITELY need to reuse joins if adding them again would break the query."
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (is (= (mt/mbql-query orders
                {:filter       [:> *count/Integer 5]
                 :fields       [$created_at
@@ -234,7 +234,7 @@
                  :limit        5})))))))
 
 (deftest add-fields-for-reused-joins-test
-  (mt/dataset sample-dataset
+  (mt/dataset test-data
     (testing "If we reuse a join, make sure we add Fields to `:fields` to the source query so we can reference them in the parent level"
       (is (= (mt/mbql-query orders
                {:source-query {:source-table $$orders
@@ -301,7 +301,7 @@
                  :limit        5})))))))
 
 (deftest reuse-joins-sanity-check-test
-  (mt/dataset sample-dataset
+  (mt/dataset test-data
     (testing "Reusing existing joins shouldn't break access to columns we're referencing at the top level"
       (let [query (mt/mbql-query orders
                     {:source-query {:source-table $$orders
@@ -465,7 +465,7 @@
 
 (deftest dont-add-duplicate-fields-test
   (testing "Don't add duplicate `:fields` to parent query if they are only different because of namespaced options"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (is (query= (mt/mbql-query orders
                     {:source-query {:source-table $$orders
                                     :joins        [{:source-table $$products
@@ -518,7 +518,7 @@
 
 (deftest resolve-implicit-joins-in-join-conditions-test
   (testing "Should be able to resolve implicit joins inside a join `:condition`"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (is (query= (mt/mbql-query orders
                     {:source-query {:source-table $$orders
                                     :fields       [$product_id]}
@@ -554,7 +554,7 @@
 
 (deftest use-source-query-implicit-joins-for-join-conditions-test
   (testing "Implicit join inside a join `:condition` should use implicit join from source query if available (#20519)"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (is (query= (mt/mbql-query orders
                     {:source-query {:source-table $$orders
                                     :joins        [{:source-table $$products
@@ -599,7 +599,7 @@
                       :fields       [$product_id->products.category]})))))))
 
 (deftest metadata-join-alias-test
-  (mt/dataset sample-dataset
+  (mt/dataset test-data
     ;; With remapping, metadata may contain field with `:source-field` which is not used in corresponding query.
     ;;   See [[metabase.models.params.custom-values-test/with-mbql-card-test]].
     (testing "`:join-alias` is correctly updated in metadata fields containing `:source-field`"

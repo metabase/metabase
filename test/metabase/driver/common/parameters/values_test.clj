@@ -523,7 +523,7 @@
 
 (deftest parse-card-include-parameters-test
   (testing "Parsing a Card reference should return a `ReferencedCardQuery` record that includes its parameters (#12236)"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (mt/with-temp Card [card {:dataset_query (mt/mbql-query orders
                                                  {:filter      [:between $total 30 60]
                                                   :aggregation [[:aggregation-options
@@ -547,7 +547,7 @@
   (testing "Default values in a template tag should take precedence over default values passed in as part of the request"
     ;; Dashboard parameter mappings can have their own defaults specified, and those get passed in as part of the
     ;; request parameter. If the template tag also specifies a default, we should prefer that.
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (testing "Field filters"
         (is (schema= {(s/eq "filter") {:value    {:type     (s/eq :category)
                                                   :value    (s/eq ["Gizmo" "Gadget"])
@@ -603,7 +603,7 @@
 
 (deftest use-parameter-defaults-test
   (testing "If parameter specifies a default value (but tag does not), use the parameter's default"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (testing "Field filters"
         (is (schema= {(s/eq "filter") {:value    {:type     (s/eq :string/=)
                                                   :default  (s/eq ["Widget"])
@@ -649,7 +649,7 @@
 
 (deftest handle-referenced-card-parameter-mixed-with-other-parameters-test
   (testing "Should be able to handle for Card ref params regardless of whether other params are passed in (#21246)\n"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (mt/with-temp Card [{card-id :id} {:dataset_query (mt/mbql-query products)}]
         (let [param-name    (format "#%d" card-id)
               template-tags {param-name {:type         :card

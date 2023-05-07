@@ -204,7 +204,7 @@
 
 (deftest native-query-remapping-test
   (testing "Remapping should work for native queries"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (letfn [(remappings-with-metadata [metadata]
                 (metabase.test/with-column-remappings [orders.product_id products.title]
                   (mt/rows
@@ -224,7 +224,7 @@
   (mt/with-temporary-setting-values [report-timezone "UTC"]
     (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys :nested-queries)
       (testing "Queries with implicit joins should still work when FK remaps are used (#13641)"
-        (mt/dataset sample-dataset
+        (mt/dataset test-data
           (mt/with-column-remappings [orders.product_id products.title]
             (let [query (mt/mbql-query orders
                           {:source-query {:source-table $$orders
@@ -266,7 +266,7 @@
                          ;; mongodb doesn't support foreign keys required by this test
                          :mongo)
     (testing "Remapped columns in joined source queries should work (#15578)"
-      (mt/dataset sample-dataset
+      (mt/dataset test-data
         (mt/with-bigquery-fks #{:bigquery :bigquery-cloud-sdk}
           (mt/with-column-remappings [orders.product_id products.title]
             (let [query (mt/mbql-query products
@@ -298,7 +298,7 @@
 (deftest inception-style-nested-query-with-joins-test
   (testing "source query > source query > query with join (with remappings) should work (#14724)"
     ;; this error only seems to be triggered when actually using Cards as sources (and include the source metadata)
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (mt/with-column-remappings [orders.product_id products.title]
         ;; this is only triggered when using the results metadata from the Card itself --  see #19895
         (let [q1 (mt/mbql-query orders

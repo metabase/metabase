@@ -676,7 +676,7 @@
                           (:cols (add-column-info nested-query {})))))))))))
 
   (testing "Aggregated question with source is an aggregated models should infer display_name correctly (#23248)"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
      (mt/with-temp* [Card [{card-id :id}
                            {:dataset true
                             :dataset_query
@@ -713,7 +713,7 @@
 
 (deftest ^:parallel inception-test
   (testing "Should return correct metadata for an 'inception-style' nesting of source > source > source with a join (#14745)"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       ;; these tests look at the metadata for just one column so it's easier to spot the differences.
       (letfn [(ean-metadata [result]
                 (as-> (:cols result) result
@@ -743,7 +743,7 @@
 
 ;; metabase#14787
 (deftest col-info-for-fields-from-card-test
-  (mt/dataset sample-dataset
+  (mt/dataset test-data
     (let [card-1-query (mt/mbql-query orders
                          {:joins [{:fields       :all
                                    :source-table $$products
@@ -800,7 +800,7 @@
 (deftest ^:parallel preserve-original-join-alias-test
   (testing "The join alias for the `:field_ref` in results metadata should match the one originally specified (#27464)"
     (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
-      (mt/dataset sample-dataset
+      (mt/dataset test-data
         (let [join-alias "Products with a very long name - Product ID with a very long name"
               results    (mt/run-mbql-query orders
                            {:joins  [{:source-table $$products

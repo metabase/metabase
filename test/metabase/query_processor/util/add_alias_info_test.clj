@@ -84,7 +84,7 @@
                   :limit        1})))))
 
 (deftest multiple-joins-test
-  (mt/dataset sample-dataset
+  (mt/dataset test-data
     (is (query= (mt/mbql-query orders
                   {:source-query {:source-table $$orders
                                   :joins        [{:source-table $$products
@@ -160,7 +160,7 @@
                     :limit        1}))))))
 
 (deftest uniquify-aliases-test
-  (mt/dataset sample-dataset
+  (mt/dataset test-data
     (is (query= (mt/mbql-query products
                   {:source-table $$products
                    :expressions  {"CATEGORY" [:concat
@@ -304,7 +304,7 @@
 
 (deftest join-source-query-join-test
   (with-redefs [fix-bad-refs/fix-bad-references identity]
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (is (query= (mt/mbql-query orders
                     {:joins  [{:source-query {:source-table $$reviews
                                               :aggregation  [[:aggregation-options
@@ -482,7 +482,7 @@
 
 (deftest use-correct-alias-for-joined-field-test
   (testing "Make sure we call `driver/escape-alias` for the `:source-alias` for Fields coming from joins (#20413)"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (let [db (mt/db)]
         (driver/with-driver ::custom-escape-spaces-to-underscores
           (mt/with-db db
@@ -646,7 +646,7 @@
 (deftest fuzzy-field-info-test
   (testing "[[add/alias-from-join]] should match Fields in the Join source query even if they have temporal units"
     (mt/with-driver :h2
-      (mt/dataset sample-dataset
+      (mt/dataset test-data
         (mt/with-everything-store
           (is (= {:field-name              "CREATED_AT"
                   :join-is-this-level?     "Q2"

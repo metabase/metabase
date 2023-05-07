@@ -14,7 +14,7 @@
 (defn pivot-query
   "A basic pivot table query"
   []
-  (mt/dataset sample-dataset
+  (mt/dataset test-data
     (-> (mt/mbql-query orders
                        {:aggregation [[:count] [:sum $orders.quantity]]
                         :breakout    [$orders.user_id->people.state

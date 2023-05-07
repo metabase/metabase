@@ -281,7 +281,7 @@
 
 (deftest dimension-remappings-test
   (testing "Make sure columns from remapping Dimensions are spliced into the query during pre-processing"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (mt/with-column-remappings [orders.product_id products.title]
         (let [query        (mt/mbql-query orders
                              {:fields   [$id $user_id $product_id $subtotal $tax $total $discount !default.created_at $quantity]
@@ -448,7 +448,7 @@
 
 (deftest add-remappings-inside-joins-test
   (testing "Remappings should work inside joins (#15578)"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (mt/with-column-remappings [orders.product_id products.title]
         (is (partial (mt/mbql-query products
                        {:joins  [{:source-query {:source-table $$orders}

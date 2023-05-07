@@ -562,7 +562,7 @@
 
 (deftest use-default-values-test
   (testing "Dashboard Subscriptions SHOULD use default values for Dashboard parameters when running (#20516)"
-    (mt/dataset sample-dataset
+    (mt/dataset test-data
       (mt/with-temp Dashboard [{dashboard-id :id, :as dashboard} {:name       "20516 Dashboard"
                                                                   :parameters [{:name    "Category"
                                                                                 :slug    "category"
