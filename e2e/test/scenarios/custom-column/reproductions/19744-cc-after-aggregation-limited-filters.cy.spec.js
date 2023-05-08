@@ -32,7 +32,7 @@ const questionDetails = {
   display: "bar",
 };
 
-describe.skip("issue 19744", () => {
+describe("issue 19744", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
