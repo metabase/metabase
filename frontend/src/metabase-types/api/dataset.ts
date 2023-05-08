@@ -12,9 +12,9 @@ export type RowValues = RowValue[];
 export interface DatasetColumn {
   id?: FieldId;
   name: string;
-  display_name?: string;
+  display_name: string | null;
   source?: string;
-  description?: string;
+  description: string | null;
   // FIXME: this prop does not come from API
   remapped_to_column?: DatasetColumn;
   unit?: DatetimeUnit;

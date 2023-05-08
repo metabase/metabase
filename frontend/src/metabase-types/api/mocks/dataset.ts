@@ -6,11 +6,14 @@ import {
   TemplateTag,
 } from "metabase-types/api/dataset";
 
-export const createMockColumn = (data: Partial<DatasetColumn>) => {
+export const createMockColumn = (
+  data: Partial<DatasetColumn>,
+): DatasetColumn => {
   return {
     display_name: "Column",
     source: "native",
     name: "column",
+    description: "Column description",
     ...data,
   };
 };
@@ -23,7 +26,7 @@ export const createMockDataset = ({
   data = {},
   ...opts
 }: MockDatasetOpts = {}) => {
-  const columns = data.cols ?? [
+  const columns: DatasetColumn[] = data.cols ?? [
     createMockColumn({
       display_name: "NAME",
       source: "native",
