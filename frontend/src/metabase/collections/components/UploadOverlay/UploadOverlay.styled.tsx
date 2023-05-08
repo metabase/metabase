@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import { color, alpha } from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 
 export const DragOverlay = styled.div<{ isDragActive: boolean }>`
   position: absolute;
@@ -7,15 +7,24 @@ export const DragOverlay = styled.div<{ isDragActive: boolean }>`
   left: 0;
   right: 0;
   bottom: 0;
-  z-index: 1000;
-  background-color: ${alpha("white", 0.8)};
-  padding: 2rem;
-  font-size: 2rem;
-  color: ${color("text-dark")};
-  opacity: ${props => (props.isDragActive ? 1 : 0)};
-  transition: opacity 0.2s;
+  z-index: 1;
   display: flex;
-  align-items: center;
+  flex-direction: column;
   justify-content: center;
+  align-items: center;
+  gap: 1rem;
+
+  background-color: ${color("brand-lighter")};
+  opacity: ${props => (props.isDragActive ? 0.9 : 0)};
+  transition: opacity 0.2s;
+  border: 1px dashed ${color("brand")};
+  border-radius: 0.5rem;
+  margin: 0.5rem 4%;
+  padding: 4rem;
+
+  color: ${color("brand")};
+  font-size: 1.125rem;
+  font-weight: bold;
+
   pointer-events: none;
 `;
