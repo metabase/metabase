@@ -66,7 +66,7 @@ function UndoToast({ undo, onUndo, onDismiss }) {
         >
           <CardContent>
             <CardContentSide>
-              <CardIcon name={undo.icon || "check"} color="white" />
+              {undo.icon && <CardIcon name={undo.icon} color="white" />}
               {renderMessage(undo)}
             </CardContentSide>
             <CardContentSide>

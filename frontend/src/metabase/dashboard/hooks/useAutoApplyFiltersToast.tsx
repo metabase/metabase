@@ -19,7 +19,8 @@ export default function useAutoApplyFiltersToast() {
       dispatch(
         addUndo({
           id: toastId,
-          timeout: false,
+          icon: null,
+          timeout: null,
           message: t`You can make this dashboard snappier by turning off auto-applying filters.`,
           action,
           actionLabel: t`Turn off`,

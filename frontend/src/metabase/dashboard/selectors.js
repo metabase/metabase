@@ -153,10 +153,11 @@ export const getIsReadyToShowAutoApplyFiltersToast = createSelector(
   ],
   (dashboard, isParameterValuesEmpty, isSlowDashboard, isLoadingComplete) => {
     return (
-      dashboard?.auto_apply_filters &&
-      !isParameterValuesEmpty &&
-      isSlowDashboard &&
-      isLoadingComplete
+      true ||
+      (dashboard?.auto_apply_filters &&
+        !isParameterValuesEmpty &&
+        isSlowDashboard &&
+        isLoadingComplete)
     );
   },
 );

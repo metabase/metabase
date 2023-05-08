@@ -19,16 +19,12 @@ export default function FilterApplyButton() {
     dispatch(applyDraftParameterValues());
   }, [dispatch]);
 
-  if (isAutoApplyFilters) {
+  if (isAutoApplyFilters || !hasUnappliedParameterValues) {
     return null;
   }
 
   return (
-    <ApplyButton
-      primary
-      isVisible={hasUnappliedParameterValues}
-      onClick={handleApplyFilters}
-    >
+    <ApplyButton primary onClick={handleApplyFilters}>
       Apply
     </ApplyButton>
   );
