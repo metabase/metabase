@@ -1,6 +1,5 @@
 (ns metabase.models.model-index-test
-  (:require [clojure.core.async :as a]
-            [clojure.set :as set]
+  (:require [clojure.set :as set]
             [clojure.test :refer :all]
             [clojurewerkz.quartzite.conversion :as qc]
             [clojurewerkz.quartzite.scheduler :as qs]
@@ -8,20 +7,14 @@
             [metabase.models.model-index :as model-index :refer [ModelIndex
                                                                  ModelIndexValue]]
             [metabase.query-processor :as qp]
-            [metabase.query-processor.async :as qp.async]
             [metabase.task :as task]
             [metabase.task.index-values :as task.index-values]
             [metabase.task.sync-databases :as task.sync-databases]
             [metabase.test :as mt]
             [metabase.test.util :as tu]
             [metabase.util :as u]
-            [toucan2.core :as t2]))
-
-(defn- result-metadata-for-query [query]
-  (first
-   (a/alts!!
-    [(qp.async/result-metadata-for-query-async query)
-     (a/timeout 2000)])))
+            [toucan2.core :as t2]
+            [toucan2.tools.with-temp :as t2.with-temp]))
 
 (defmacro with-scheduler-setup [& body]
   `(let [scheduler# (#'tu/in-memory-scheduler)]
@@ -44,10 +37,9 @@
       (let [query     (mt/mbql-query products)
             pk_ref    (mt/$ids $products.id)
             value_ref (mt/$ids $products.title)]
-        (mt/with-temp* [Card [model {:dataset         true
-                                     :name            "model index test"
-                                     :dataset_query   query
-                                     :result_metadata (result-metadata-for-query query)}]]
+        (t2.with-temp/with-temp [Card model (assoc (mt/card-with-source-metadata-for-query query)
+                                                   :dataset         true
+                                                   :name            "model index test")]
           (let [model-index (mt/user-http-request :rasta :post 200 "/model-index"
                                                   {:model_id  (:id model)
                                                    :pk_ref    pk_ref
@@ -87,10 +79,9 @@
   do and ensures that items in the options map are correct."
   [{:keys [query pk-name value-name quantity subset scenario]}]
   (testing scenario
-    (mt/with-temp* [Card [model {:dataset         true
-                                 :name            "model index test"
-                                 :dataset_query   query
-                                 :result_metadata (result-metadata-for-query query)}]]
+    (t2.with-temp/with-temp [Card model (assoc (mt/card-with-source-metadata-for-query query)
+                                               :dataset         true
+                                               :name            "model index test")]
       (let [by-name     (fn [n] (or (some (fn [f]
                                             (when (= (-> f :display_name u/lower-case-en) (u/lower-case-en n))
                                               (:field_ref f)))
@@ -154,17 +145,16 @@
       (let [query             (mt/mbql-query products {:fields [$id $title]})
             pk-ref            (mt/$ids $products.id)
             invalid-value-ref (mt/$ids $products.ean)]
-        (mt/with-temp* [Card [model {:dataset         true
-                                     :name            "model index test"
-                                     :dataset_query   query
-                                     :result_metadata (result-metadata-for-query query)}]
-                        ModelIndex [mi {:model_id   (:id model)
-                                        :pk_ref     pk-ref
-                                        :value_ref  invalid-value-ref
-                                        :generation 0
-                                        :creator_id (mt/user->id :rasta)
-                                        :schedule   "0 0 23 * * ? *"
-                                        :state      "initial"}]]
+        (t2.with-temp/with-temp [Card model (assoc (mt/card-with-source-metadata-for-query query)
+                                                   :dataset         true
+                                                   :name            "model index test")
+                                 ModelIndex mi {:model_id   (:id model)
+                                                :pk_ref     pk-ref
+                                                :value_ref  invalid-value-ref
+                                                :generation 0
+                                                :creator_id (mt/user->id :rasta)
+                                                :schedule   "0 0 23 * * ? *"
+                                                :state      "initial"}]
           (model-index/add-values! mi)
           (let [bad-attempt (t2/select-one ModelIndex :id (:id mi))]
             (is (=? {:state "error"
@@ -175,17 +165,16 @@
   (mt/dataset sample-dataset
     (let [query  (mt/mbql-query products)
           pk_ref (mt/$ids $products.id)]
-      (mt/with-temp* [Card [model {:dataset         true
-                                   :name            "Simple MBQL model"
-                                   :dataset_query   query
-                                   :result_metadata (result-metadata-for-query query)}]
-                      ModelIndex [model-index {:model_id   (:id model)
-                                               :pk_ref     pk_ref
-                                               :schedule   "0 0 23 * * ? *"
-                                               :state      "initial"
-                                               :value_ref  (mt/$ids $products.title)
-                                               :generation 0
-                                               :creator_id (mt/user->id :rasta)}]]
+      (t2.with-temp/with-temp [Card model (assoc (mt/card-with-source-metadata-for-query query)
+                                           :dataset         true
+                                           :name            "Simple MBQL model")
+                               ModelIndex model-index {:model_id   (:id model)
+                                                       :pk_ref     pk_ref
+                                                       :schedule   "0 0 23 * * ? *"
+                                                       :state      "initial"
+                                                       :value_ref  (mt/$ids $products.title)
+                                                       :generation 0
+                                                       :creator_id (mt/user->id :rasta)}]
         (let [indexed-values! (fn fetch-indexed-values []
                                 (into {}
                                       (map (juxt :model_pk identity))

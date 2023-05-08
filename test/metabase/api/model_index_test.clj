@@ -1,26 +1,18 @@
 (ns metabase.api.model-index-test
-  (:require [clojure.core.async :as a]
-            [clojure.test :refer :all]
+  (:require [clojure.test :refer :all]
             [metabase.models.card :refer [Card]]
-            [metabase.query-processor.async :as qp.async]
             [metabase.test :as mt]
+            [toucan2.tools.with-temp :as t2.with-temp]
             [toucan2.util :as u]))
-
-(defn- result-metadata-for-query [query]
-  (first
-   (a/alts!!
-    [(qp.async/result-metadata-for-query-async query)
-     (a/timeout 2000)])))
 
 (deftest full-lifecycle-test
   (mt/dataset sample-dataset
     (let [query     (mt/mbql-query products)
           pk_ref    (mt/$ids $products.id)
           value_ref (mt/$ids $products.title)]
-      (mt/with-temp* [Card [model {:dataset         true
-                                   :name            "model index test"
-                                   :dataset_query   query
-                                   :result_metadata (result-metadata-for-query query)}]]
+      (t2.with-temp/with-temp [Card model (assoc (mt/card-with-source-metadata-for-query query)
+                                                 :dataset true
+                                                 :name "model index test")]
         (let [model-index (mt/user-http-request :rasta :post 200 "/model-index"
                                                 {:model_id  (:id model)
                                                  :pk_ref    pk_ref
@@ -52,10 +44,9 @@
   (testing "Ensures that the pk ref is a primary key"
     (mt/dataset sample-dataset
       (let [query (mt/mbql-query products)]
-        (mt/with-temp* [Card [model {:dataset         true
-                                     :name            "model index test"
-                                     :dataset_query   query
-                                     :result_metadata (result-metadata-for-query query)}]]
+        (t2.with-temp/with-temp [Card model (assoc (mt/card-with-source-metadata-for-query query)
+                                                   :dataset         true
+                                                   :name            "model index test")]
           (let [by-name (fn [n] (or (some (fn [f] (when (= n (-> f :name u/lower-case-en))
                                                     (:field_ref f)))
                                           (:result_metadata model))
