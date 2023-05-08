@@ -28,7 +28,7 @@ Enter “Metabase” as the application name with type “Regular Web Applicatio
 Now go to Settings tab inside Auth0's Metabase App and fill in the following values:
 
 - Application Login URI: the URL of your Metabase instance.
-- Allowed Callback URLs: the URL that's below **Configure your identity provider (IdP)** in SAML settings inside Metabase (it ends with /auth/sso).
+- Allowed Callback URLs: the URL that's below **Configure your identity provider (IdP)** in SAML settings inside Metabase (it ends with `/auth/sso/`).
 
 ![Auth0 SAML Settings Page](images/auth0callbackurl.png)
 
