@@ -54,7 +54,7 @@ const SAVED_QUESTION = {
   result_metadata: [],
 };
 
-function getQuestion(card: Partial<SavedCard | SavedCard>) {
+function getQuestion(card: Partial<SavedCard>) {
   return new Question(
     {
       ...BASE_GUI_QUESTION,
