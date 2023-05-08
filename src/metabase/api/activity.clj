@@ -210,7 +210,7 @@
          (take 5))))
 
 (api/defendpoint GET "/most_recently_viewed_dashboard"
-  "Get the most recently viewed dashboard for the current user. Returns a 404 if the user has not viewed any dashboards
+  "Get the most recently viewed dashboard for the current user. Returns a 204 if the user has not viewed any dashboards
    in the last 24 hours."
   []
   (if-let [dashboard-id (view-log/most-recently-viewed-dashboard)]
