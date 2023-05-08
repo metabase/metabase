@@ -316,7 +316,6 @@ export const closeSyncingModal = createThunkAction(
 );
 
 // reducers
-
 const editingDatabase = handleActions(
   {
     [RESET]: () => null,

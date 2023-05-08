@@ -3,6 +3,7 @@
 import {
   Database as IDatabase,
   DatabaseFeature,
+  DatabaseSchedules,
   DatabaseSettings,
   NativePermissions,
   StructuredQuery,
@@ -14,6 +15,7 @@ import Base from "./Base";
 import Table from "./Table";
 import Schema from "./Schema";
 import Metadata from "./Metadata";
+
 /**
  * @typedef { import("./Metadata").SchemaName } SchemaName
  */
@@ -34,8 +36,17 @@ class DatabaseInner extends Base {
   schemas: Schema[];
   metadata: Metadata;
   features: DatabaseFeature[];
+  details: Record<string, unknown>;
   settings?: DatabaseSettings;
   native_permissions: NativePermissions;
+  details: Record<string, unknown>;
+  schedules: DatabaseSchedules;
+  auto_run_queries: boolean | null;
+  refingerprint: boolean | null;
+  cache_ttl: number | null;
+  is_sample: boolean;
+  is_full_sync: boolean;
+  is_on_demand: boolean;
 
   // Only appears in  GET /api/database/:id
   "can-manage"?: boolean;

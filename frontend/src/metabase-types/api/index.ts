@@ -1,5 +1,6 @@
 export * from "./actions";
 export * from "./activity";
+export * from "./alert";
 export * from "./automagic-dashboards";
 export * from "./bookmark";
 export * from "./card";
@@ -18,6 +19,7 @@ export * from "./notifications";
 export * from "./permissions";
 export * from "./query";
 export * from "./revision";
+export * from "./schema";
 export * from "./segment";
 export * from "./settings";
 export * from "./setup";

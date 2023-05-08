@@ -45,7 +45,8 @@ export type FieldVisibilityType =
   | "details-only"
   | "hidden"
   | "normal"
-  | "retired";
+  | "retired"
+  | "sensitive";
 
 type HumanReadableFieldValue = string;
 export type FieldValue = [RowValue] | [RowValue, HumanReadableFieldValue];
@@ -88,6 +89,8 @@ export interface ConcreteField {
   points_of_interest?: string;
 
   nfc_path: string[] | null;
+  json_unfolding: boolean | null;
+  coercion_strategy: string | null;
   fingerprint: FieldFingerprint | null;
 
   last_analyzed: string;

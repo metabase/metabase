@@ -86,5 +86,7 @@ function DataPermissionsPage({
 
 export default _.compose(
   Groups.loadList(),
-  Databases.loadList(),
+  Databases.loadList({
+    selectorName: "getListUnfiltered",
+  }),
 )(DataPermissionsPage);
