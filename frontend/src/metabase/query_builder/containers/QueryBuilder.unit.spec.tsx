@@ -67,7 +67,6 @@ const TEST_NATIVE_CARD = createMockCard({
   }),
 });
 
-const TEST_DATASET: Dataset = createMockDataset();
 const TEST_MODEL_DATASET_COLUMN = createMockColumn({
   name: "ID",
   source: "fields",
@@ -107,7 +106,7 @@ interface SetupOpts {
 
 const setup = async ({
   card = TEST_CARD,
-  dataset = TEST_DATASET,
+  dataset = createMockDataset(),
   initialRoute = `/question/${card.id}`,
 }: SetupOpts = {}) => {
   setupDatabasesEndpoints([TEST_DB]);
