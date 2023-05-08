@@ -13,7 +13,7 @@ export const createMockColumn = (
     display_name: "Column",
     source: "native",
     name: "column",
-    description: "Column description",
+    description: null,
     ...data,
   };
 };
