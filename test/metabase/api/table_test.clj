@@ -49,7 +49,8 @@
     :refingerprint               nil
     :auto_run_queries            true
     :settings                    nil
-    :cache_ttl                   nil}))
+    :cache_ttl                   nil
+    :is_audit                    false}))
 
 (defn- table-defaults []
   (merge
