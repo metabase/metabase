@@ -98,10 +98,11 @@ export function getParameterMappingOptions(
   } else if (question.isStructured()) {
     options.push(
       ...query
-        .dimensionOptions(
-          parameter ? dimensionFilterForParameter(parameter) : undefined,
-        )
-        .sections()
+        .topLevelFilterFieldOptionSections({
+          dimensionFilter: parameter
+            ? dimensionFilterForParameter(parameter)
+            : undefined,
+        })
         .flatMap(section => buildStructuredQuerySectionOptions(section)),
     );
   } else {

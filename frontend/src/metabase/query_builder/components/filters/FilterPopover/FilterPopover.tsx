@@ -190,8 +190,8 @@ export default function FilterPopover({
             isTopLevel
               ? query.topLevelFilterFieldOptionSections()
               : ((filter && filter.query()) || query).filterFieldOptionSections(
-                  filter,
                   {
+                    filter,
                     includeSegments: showCustom,
                   },
                 )

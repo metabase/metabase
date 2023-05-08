@@ -55,7 +55,9 @@ const BulkFilterModal = ({
   }, [query]);
 
   const sections = useMemo(() => {
-    return query.topLevelFilterFieldOptionSections(null, 2, true);
+    return query.topLevelFilterFieldOptionSections({
+      includeAppliedSegments: true,
+    });
   }, [query]);
 
   const searchItems = useDebouncedEffect(

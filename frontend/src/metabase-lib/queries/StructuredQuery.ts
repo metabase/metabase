@@ -874,12 +874,18 @@ class StructuredQueryInner extends AtomicQuery {
     return [].concat(...queries.map(q => q.filters()));
   }
 
-  filterFieldOptionSections(
-    filter?: (Filter | FilterWrapper) | null | undefined,
-    { includeSegments = true } = {},
+  filterFieldOptionSections({
+    filter = null,
+    includeSegments = true,
     includeAppliedSegments = false,
-  ) {
-    const filterDimensionOptions = this.filterDimensionOptions();
+    dimensionFilter,
+  }: {
+    filter?: (Filter | FilterWrapper) | null | undefined;
+    includeSegments?: boolean;
+    includeAppliedSegments?: boolean;
+    dimensionFilter?: DimensionFilter;
+  } = {}) {
+    const filterDimensionOptions = this.filterDimensionOptions(dimensionFilter);
     const filterSegmentOptions = includeSegments
       ? this.filterSegmentOptions(filter, includeAppliedSegments)
       : [];
@@ -893,11 +899,18 @@ class StructuredQueryInner extends AtomicQuery {
     });
   }
 
-  topLevelFilterFieldOptionSections(
+  topLevelFilterFieldOptionSections({
     filter = null,
     stages = 2,
     includeAppliedSegments = false,
-  ): FilterSection[] {
+    dimensionFilter,
+  }: {
+    filter?: (Filter | FilterWrapper) | null | undefined;
+    stages?: number;
+    includeSegments?: boolean;
+    includeAppliedSegments?: boolean;
+    dimensionFilter?: DimensionFilter;
+  } = {}): FilterSection[] {
     const queries = this.queries().slice(-stages);
 
     // allow post-aggregation filtering
@@ -908,7 +921,11 @@ class StructuredQueryInner extends AtomicQuery {
     queries.reverse();
     const sections = [].concat(
       ...queries.map(q =>
-        q.filterFieldOptionSections(filter, undefined, includeAppliedSegments),
+        q.filterFieldOptionSections({
+          filter,
+          includeAppliedSegments,
+          dimensionFilter,
+        }),
       ),
     );
 
@@ -943,8 +960,10 @@ class StructuredQueryInner extends AtomicQuery {
   /**
    * @returns @type {DimensionOptions} that can be used in filters.
    */
-  filterDimensionOptions(): DimensionOptions {
-    return this.dimensionOptions();
+  filterDimensionOptions(
+    dimensionFilter: DimensionFilter = dimension => true,
+  ): DimensionOptions {
+    return this.dimensionOptions(dimensionFilter);
   }
 
   /**
