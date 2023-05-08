@@ -35,7 +35,7 @@
   {model_id  ms/PositiveInt
    pk_ref    any?
    value_ref any?}
-  (let [model      (api/read-check Card model_id)
+  (let [model    (api/read-check Card model_id)
         metadata (:result_metadata model)]
     (when-not (seq metadata)
       (throw (ex-info (tru "Model has no metadata. Cannot index")
