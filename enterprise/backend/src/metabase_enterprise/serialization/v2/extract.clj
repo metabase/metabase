@@ -5,7 +5,6 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
-   [medley.core :as m]
    [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
    [metabase-enterprise.serialization.v2.models :as serdes.models]
    [metabase.models :refer [Card Collection Dashboard DashboardCard]]
@@ -25,7 +24,7 @@
     include-field-values
     (conj "FieldValues")
 
-    ;; If `targets` is not specifieid, or if it is a non-empty collection, then we
+    ;; If `targets` is not specified, or if it is a non-empty collection, then we
     ;; extract all content models. If `targets` is an empty, collection, we do not export
     ;; any content.
     (or (nil? targets) (seq targets))
@@ -53,8 +52,8 @@
                                                        [:= :personal_owner_id user-id]]]})]
     ;; start with the special "nil" root collection ID
     (-> #{nil}
-        (into (map :id roots))
-        (into (mapcat collection/descendant-ids roots)))))
+        (into (map :id) roots)
+        (into (mapcat collection/descendant-ids) roots))))
 
 (defn- extract-metabase
   "Returns reducible stream of serializable entity maps, with `:serdes/meta` keys.
@@ -62,8 +61,7 @@
   [{:keys [user-id] :as opts}]
   (log/tracef "Extracting Metabase with options: %s" (pr-str opts))
   (let [extract-opts (assoc opts :collection-set (collection-set-for-user user-id))]
-    (eduction cat (for [model (model-set opts)]
-                    (serdes/extract-all model extract-opts)))))
+    (eduction (map #(serdes/extract-all % extract-opts)) cat (model-set opts))))
 
 ;; TODO Properly support "continue" - it should be contagious. Eg. a Dashboard with an illegal Card gets excluded too.
 (defn- descendants-closure [targets]
@@ -85,11 +83,8 @@
   Returns a data structure detailing the gaps. Use [[escape-report]] to output this data in a human-friendly format.
   Returns nil if there are no escaped values, which is useful for a test."
   [targets]
-  (let [collection-ids (set (map second (targets-of-type targets "Collection")))
-        collection-set (->> (t2/select Collection :id [:in collection-ids])
-                            (mapcat metabase.models.collection/descendant-ids)
-                            set
-                            (set/union (set collection-ids)))
+  (let [collection-ids (into #{} (map second) (targets-of-type targets "Collection"))
+        collection-set (into collection-ids (mapcat collection/descendant-ids) (t2/select Collection :id [:in collection-ids]))
         dashboards     (t2/select Dashboard :collection_id [:in collection-set])
         ;; All cards that are in this collection set.
         cards          (reduce set/union (for [coll-id collection-set]
@@ -184,14 +179,14 @@ Eg. if Dashboard B includes a Card A that is derived from a
     ;; If it's nil, there are no errors, and we can proceed to do the dump.
     (let [closure  (descendants-closure targets)
           ;; filter the selected models based on user options
-          export?  (model-set opts)
-          by-model (->> closure
-                        (filter #(export? (first %)))
-                        (group-by first)
-                        (m/map-vals #(set (map second %))))]
-      (eduction cat (for [[model ids] by-model]
-                      (eduction (map #(serdes/extract-one model opts %))
-                                (db/select-reducible (symbol model) :id [:in ids])))))))
+          by-model (-> (group-by first closure)
+                       (select-keys (model-set opts))
+                       (update-vals #(set (map second %))))]
+      (eduction (map (fn [[model ids]]
+                       (eduction (map #(serdes/extract-one model opts %))
+                                 (db/select-reducible (symbol model) :id [:in ids]))))
+                cat
+                by-model))))
 
 (defn extract
   "Returns a reducible stream of entities to serialize"
