@@ -36,6 +36,7 @@ import {
   RESET,
   SET_PARAMETER_VALUES,
   UNDO_REMOVE_CARD_FROM_DASH,
+  SHOW_AUTO_APPLY_PARAMETERS_TOAST,
 } from "./actions";
 
 import { isVirtualDashCard, syncParametersAndEmbeddingParams } from "./utils";
@@ -446,6 +447,28 @@ const missingActionParameters = handleActions(
   null,
 );
 
+export const autoApplyParameters = handleActions(
+  {
+    [FETCH_DASHBOARD]: {
+      next: state => ({
+        ...state,
+        hasShown: false,
+      }),
+    },
+    [SHOW_AUTO_APPLY_PARAMETERS_TOAST]: {
+      next: (state, { payload: { toastId } }) => ({
+        ...state,
+        toastId,
+        hasShown: true,
+      }),
+    },
+  },
+  {
+    toastId: null,
+    hasShown: false,
+  },
+);
+
 export default combineReducers({
   dashboardId,
   isEditing,
@@ -459,5 +482,6 @@ export default combineReducers({
   loadingDashCards,
   isAddParameterPopoverOpen,
   sidebar,
+  autoApplyParameters,
   missingActionParameters,
 });

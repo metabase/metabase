@@ -35,7 +35,6 @@ import Dashboards from "metabase/entities/dashboards";
 import { useDispatch } from "metabase/lib/redux";
 import { addUndo, dismissUndo } from "metabase/redux/undo";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
-import useAutoApplyFiltersToast from "metabase/dashboard/hooks/useAutoApplyFiltersToast";
 import * as dashboardActions from "../../actions";
 import {
   getIsEditing,
@@ -177,8 +176,6 @@ const DashboardApp = props => {
     timer: DASHBOARD_SLOW_TIMEOUT,
     onTimeout,
   });
-
-  useAutoApplyFiltersToast();
 
   return (
     <div className="shrink-below-content-size full-height">

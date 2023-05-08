@@ -1,7 +1,9 @@
 import { assoc } from "icepick";
 import _ from "underscore";
+import { t } from "ttag";
 
 import { createAction, createThunkAction } from "metabase/lib/redux";
+import { addUndo, dismissUndo } from "metabase/redux/undo";
 
 import {
   createParameter,
@@ -20,6 +22,7 @@ import {
   getParameterValues,
   getParameters,
   getDashboardId,
+  getAutoApplyParametersToastId,
 } from "../selectors";
 
 import { isVirtualDashCard } from "../utils";
@@ -324,14 +327,54 @@ export const setParameterValuesFromQueryParams =
     dispatch(setParameterValues(parameterValues));
   };
 
-export const toggleAutoApplyFilters = isEnabled => (dispatch, getState) => {
-  const dashboardId = getDashboardId(getState());
+export const TOGGLE_AUTO_APPLY_PARAMETERS =
+  "metabase/dashboard/TOGGLE_AUTO_APPLY_PARAMETERS";
+export const toggleAutoApplyParameters = createThunkAction(
+  TOGGLE_AUTO_APPLY_PARAMETERS,
+  isEnabled => (dispatch, getState) => {
+    const dashboardId = getDashboardId(getState());
 
-  dispatch(
-    setDashboardAttributes({
-      id: dashboardId,
-      attributes: { auto_apply_filters: isEnabled },
-    }),
-  );
-  dispatch(saveDashboardAndCards(true));
-};
+    dispatch(
+      setDashboardAttributes({
+        id: dashboardId,
+        attributes: { auto_apply_filters: isEnabled },
+      }),
+    );
+    dispatch(saveDashboardAndCards(true));
+  },
+);
+
+export const SHOW_AUTO_APPLY_PARAMETERS_TOAST =
+  "metabase/dashboard/SHOW_AUTO_APPLY_PARAMETERS_TOAST";
+export const showAutoApplyParametersToast = createThunkAction(
+  SHOW_AUTO_APPLY_PARAMETERS_TOAST,
+  () => dispatch => {
+    const action = toggleAutoApplyParameters(false);
+    const toastId = _.uniqueId();
+
+    dispatch(
+      addUndo({
+        id: toastId,
+        icon: null,
+        timeout: null,
+        message: t`You can make this dashboard snappier by turning off auto-applying filters.`,
+        action,
+        actionLabel: t`Turn off`,
+      }),
+    );
+
+    return { toastId };
+  },
+);
+
+export const CLOSE_AUTO_APPLY_PARAMETERS_TOAST =
+  "metabase/dashboard/SHOW_AUTO_APPLY_PARAMETERS_TOAST";
+export const closeAutoApplyParametersToast = createThunkAction(
+  SHOW_AUTO_APPLY_PARAMETERS_TOAST,
+  () => (dispatch, getState) => {
+    const toastId = getAutoApplyParametersToastId(getState());
+    if (toastId) {
+      dispatch(dismissUndo(toastId, false));
+    }
+  },
+);

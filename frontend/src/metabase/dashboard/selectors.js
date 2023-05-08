@@ -119,9 +119,13 @@ export const getDashboardComplete = createSelector(
     },
 );
 
-// Auto-apply filters
+export const getAutoApplyParametersToastId = state =>
+  state.dashboard.autoApplyParameters.toastId;
+export const getHasShownAutoApplyParametersToast = state =>
+  state.dashboard.autoApplyParameters.hasShown;
 export const getDraftParameterValues = state =>
   state.dashboard.draftParameterValues;
+
 export const getIsAutoApplyFilters = createSelector(
   [getDashboard],
   dashboard => dashboard?.auto_apply_filters,
@@ -144,19 +148,19 @@ const getIsParameterValuesEmpty = createSelector(
   },
 );
 
-export const getIsReadyToShowAutoApplyFiltersToast = createSelector(
+export const getCanShowAutoApplyParametersToast = createSelector(
   [
     getDashboard,
     getIsParameterValuesEmpty,
     getIsSlowDashboard,
-    getIsLoadingComplete,
+    getHasShownAutoApplyParametersToast,
   ],
-  (dashboard, isParameterValuesEmpty, isSlowDashboard, isLoadingComplete) => {
+  (dashboard, isParameterValuesEmpty, isSlowDashboard, hasShownToast) => {
     return (
       dashboard?.auto_apply_filters &&
       !isParameterValuesEmpty &&
       isSlowDashboard &&
-      isLoadingComplete
+      !hasShownToast
     );
   },
 );
