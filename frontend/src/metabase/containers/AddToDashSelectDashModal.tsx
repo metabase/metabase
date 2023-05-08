@@ -17,7 +17,6 @@ import {
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import type { State } from "metabase-types/store";
 import { LinkContent } from "./AddToDashSelectDashModal.styled";
-import type { PickerItemId } from "./ItemPicker";
 
 function mapStateToProps(state: State) {
   return {
@@ -41,9 +40,12 @@ const AddToDashSelectDashModal = ({
   onChangeLocation,
 }: AddToDashSelectDashModalProps) => {
   const [shouldCreateDashboard, setShouldCreateDashboard] = useState(false);
-  const queryDash = useMostRecentlyViewedDashboard();
 
-  const collectionId = queryDash.data?.collection_id;
+  const mostRecentDashboardQuery = useMostRecentlyViewedDashboard();
+
+  const collectionId = mostRecentDashboardQuery.data?.collection_id;
+  // when no collectionId and loading is completed, we show root collection
+  // as user didnt' visit any dashboard last 24hrs
   const collectionQuery = useCollectionQuery({
     id: collectionId || "root",
     enabled: typeof collectionId !== "undefined",
@@ -76,8 +78,9 @@ const AddToDashSelectDashModal = ({
     );
   }
 
-  const isLoading = queryDash.isLoading || collectionQuery.isLoading;
-  const error = queryDash.error ?? collectionQuery.error;
+  const isLoading =
+    mostRecentDashboardQuery.isLoading || collectionQuery.isLoading;
+  const error = mostRecentDashboardQuery.error ?? collectionQuery.error;
 
   if (isLoading || error) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
@@ -96,7 +99,7 @@ const AddToDashSelectDashModal = ({
       <DashboardPicker
         onChange={onDashboardSelected}
         collectionId={collectionId}
-        value={queryDash.data?.id as PickerItemId | undefined}
+        value={mostRecentDashboardQuery.data?.id}
       />
       <Link onClick={() => setShouldCreateDashboard(true)} to="">
         <LinkContent>
