@@ -1,10 +1,9 @@
 (ns metabase.models.model-index
   (:require
-   [cheshire.core :as json]
    [clojure.string :as str]
    [metabase.db.connection :as mdb.connection]
-   [metabase.mbql.normalize :as mbql.normalize]
    [metabase.models.card :refer [Card]]
+   [metabase.models.interface :as mi]
    [metabase.query-processor :as qp]
    [metabase.sync.schedules :as sync.schedules]
    [metabase.util.cron :as u.cron]
@@ -20,16 +19,9 @@
 
 (derive ModelIndex :hook/created-at-timestamped?)
 
-(def normalize-field-ref
-  "Normalize the field ref. Ensure it's well-formed mbql, not just json."
-  (comp #'mbql.normalize/canonicalize-mbql-clauses
-        #'mbql.normalize/normalize-tokens))
-
 (t2/deftransforms ModelIndex
-  {:pk_ref    {:in  json/generate-string
-               :out (comp normalize-field-ref #(json/parse-string % true))}
-   :value_ref {:in  json/generate-string
-               :out (comp normalize-field-ref #(json/parse-string % true))}})
+  {:pk_ref    mi/transform-field-ref
+   :value_ref mi/transform-field-ref})
 
 (t2/define-before-delete ModelIndex
   [model-index]
