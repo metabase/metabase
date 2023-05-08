@@ -182,6 +182,7 @@ export const createOrdersUserIdField = (opts?: Partial<Field>): Field =>
     display_name: "User Id",
     base_type: "type/Integer",
     semantic_type: "type/FK",
+    fk_target_field_id: PEOPLE.ID,
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
         "distinct-count": 929,
@@ -198,6 +199,7 @@ export const createOrdersProductIdField = (opts?: Partial<Field>): Field =>
     display_name: "Product ID",
     base_type: "type/Integer",
     semantic_type: "type/FK",
+    fk_target_field_id: PRODUCTS.ID,
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
         "distinct-count": 200,
@@ -829,6 +831,7 @@ export const createReviewsProductIdField = (opts?: Partial<Field>): Field =>
     display_name: "Product ID",
     base_type: "type/Integer",
     semantic_type: "type/FK",
+    fk_target_field_id: PRODUCTS.ID,
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
         "distinct-count": 176,
