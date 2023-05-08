@@ -1,5 +1,6 @@
 export * from "./actions";
 export * from "./activity";
+export * from "./alert";
 export * from "./automagic-dashboards";
 export * from "./card";
 export * from "./collection";

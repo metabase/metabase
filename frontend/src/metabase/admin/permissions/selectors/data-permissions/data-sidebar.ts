@@ -1,11 +1,13 @@
-import { createSelector } from "reselect";
+import { createSelector } from "@reduxjs/toolkit";
+import type { Selector } from "@reduxjs/toolkit";
 import { t } from "ttag";
 
 import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
 
-import { State } from "metabase-types/store";
 import { ITreeNodeItem } from "metabase/components/tree/types";
 import { isNotNull } from "metabase/core/utils/types";
+
+import { State } from "metabase-types/store";
 import Database from "metabase-lib/metadata/Database";
 import Metadata from "metabase-lib/metadata/Metadata";
 import { EntityId, RawDataRouteParams } from "../../types";
@@ -16,6 +18,20 @@ import {
 } from "../../utils/data-entity-id";
 import { getDatabase } from "../../utils/metadata";
 import { getIsLoadingDatabaseTables } from "./permission-editor";
+
+type DataTreeNodeItem = {
+  entityId: EntityId;
+  children?: DataTreeNodeItem[];
+} & ITreeNodeItem;
+
+type DataSidebarProps = {
+  title?: string;
+  description?: string;
+  entityGroups: DataTreeNodeItem[][];
+  entityViewFocus?: "database";
+  selectedId?: string | null;
+  filterPlaceholder?: string;
+};
 
 const getRouteParams = (
   _state: State,
@@ -32,7 +48,7 @@ const getRouteParams = (
 const getSchemaId = (name: string) => `schema:${name}`;
 const getTableId = (id: string | number) => `table:${id}`;
 
-const getDatabasesSidebar = (metadata: Metadata) => {
+const getDatabasesSidebar = (metadata: Metadata): DataSidebarProps => {
   const entities = metadata
     .databasesList({ savedQuestions: false })
     .map(database => ({
@@ -49,16 +65,11 @@ const getDatabasesSidebar = (metadata: Metadata) => {
   };
 };
 
-type DataTreeNodeItem = {
-  entityId: EntityId;
-  children?: DataTreeNodeItem[];
-} & ITreeNodeItem;
-
 const getTablesSidebar = (
   database: Database,
   schemaName?: string,
   tableId?: string,
-) => {
+): DataSidebarProps => {
   let selectedId = null;
 
   if (tableId != null) {
@@ -102,23 +113,24 @@ const getTablesSidebar = (
   };
 };
 
-export const getDataFocusSidebar = createSelector(
-  getMetadataWithHiddenTables,
-  getRouteParams,
-  getIsLoadingDatabaseTables,
-  (metadata, params, isLoading) => {
-    if (isLoading) {
-      return null;
-    }
+export const getDataFocusSidebar: Selector<State, DataSidebarProps | null> =
+  createSelector(
+    getMetadataWithHiddenTables,
+    getRouteParams,
+    getIsLoadingDatabaseTables,
+    (metadata, params, isLoading) => {
+      if (isLoading) {
+        return null;
+      }
 
-    const { databaseId, schemaName, tableId } = params;
+      const { databaseId, schemaName, tableId } = params;
 
-    if (databaseId == null) {
-      return getDatabasesSidebar(metadata);
-    }
+      if (databaseId == null) {
+        return getDatabasesSidebar(metadata);
+      }
 
-    const database = getDatabase(metadata, databaseId);
+      const database = getDatabase(metadata, databaseId);
 
-    return getTablesSidebar(database, schemaName, tableId);
-  },
-);
+      return getTablesSidebar(database, schemaName, tableId);
+    },
+  );

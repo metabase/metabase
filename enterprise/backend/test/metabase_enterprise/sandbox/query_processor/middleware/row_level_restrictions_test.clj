@@ -79,7 +79,7 @@
 
 (defn- venues-category-native-gtap-def []
   (driver/with-driver (or driver/*driver* :h2)
-    (assert (driver/supports? driver/*driver* :native-parameters))
+    (assert (driver/database-supports? driver/*driver* :native-parameters (mt/db)))
     (binding [#_{:clj-kondo/ignore [:deprecated-var]} hx/*honey-sql-version* (sql.qp/honey-sql-version driver/*driver*)]
       {:query (mt/native-query
                 {:query
@@ -97,7 +97,7 @@
 
 (defn- parameterized-sql-with-join-gtap-def []
   (driver/with-driver (or driver/*driver* :h2)
-    (assert (driver/supports? driver/*driver* :native-parameters))
+    (assert (driver/database-supports? driver/*driver* :native-parameters (mt/db)))
     (binding [#_{:clj-kondo/ignore [:deprecated-var]} hx/*honey-sql-version* (sql.qp/honey-sql-version driver/*driver*)]
       {:query (mt/native-query
                 {:query
@@ -424,11 +424,11 @@
           (is (= #{[nil "Quentin Sören" 45] [1 "Quentin Sören" 10]}
                  (set
                   (mt/format-rows-by [#(when % (int %)) str int]
-                    (mt/rows
-                     (mt/run-mbql-query checkins
-                       {:aggregation [[:count]]
-                        :order-by    [[:asc $venue_id->venues.price]]
-                        :breakout    [$venue_id->venues.price $user_id->users.name]})))))))))))
+                                     (mt/rows
+                                      (mt/run-mbql-query checkins
+                                        {:aggregation [[:count]]
+                                         :order-by    [[:asc $venue_id->venues.price]]
+                                         :breakout    [$venue_id->venues.price $user_id->users.name]})))))))))))
 
 (defn- run-query-returning-remark [run-query-fn]
   (let [remark (atom nil)

@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import AggregationPopover from "metabase/query_builder/components/AggregationPopover";
 
-import type { Aggregation as IAggregation } from "metabase-types/types/Query";
+import type { Aggregation as IAggregation } from "metabase-types/api";
 import type { NotebookStepUiComponentProps } from "../types";
 import ClauseStep from "./ClauseStep";
 

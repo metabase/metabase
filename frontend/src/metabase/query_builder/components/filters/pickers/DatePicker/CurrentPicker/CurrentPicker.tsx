@@ -1,7 +1,7 @@
 import React from "react";
 
 import TippyPopover from "metabase/components/Popover/TippyPopover";
-import { formatBucketing } from "metabase-lib/queries/utils/query-time";
+import * as Lib from "metabase-lib";
 import Filter from "metabase-lib/queries/structured/Filter";
 import { DATE_PERIODS } from "../RelativeDatePicker";
 import {
@@ -46,7 +46,7 @@ export default function CurrentPicker(props: CurrentPickerProps) {
                   onCommit([operator, field, "current", period]);
                 }}
               >
-                {formatBucketing(period, 1)}
+                {Lib.describeTemporalUnit(period, 1)}
               </CurrentButton>
             </TippyPopover>
           ))}

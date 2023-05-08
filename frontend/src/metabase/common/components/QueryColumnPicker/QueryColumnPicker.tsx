@@ -1,11 +1,11 @@
 import React, { useCallback, useMemo } from "react";
 
 import AccordionList from "metabase/core/components/AccordionList";
+import { getColumnIcon } from "metabase/common/utils/columns";
 import Icon from "metabase/components/Icon";
 import { singularize } from "metabase/lib/formatting";
 
 import * as Lib from "metabase-lib";
-import { getIconForField } from "metabase-lib/metadata/utils/fields";
 
 const DEFAULT_MAX_HEIGHT = 610;
 
@@ -81,7 +81,7 @@ function QueryColumnPicker({
 }
 
 function renderItemName(item: ColumnListItem) {
-  return item.display_name;
+  return item.displayName;
 }
 
 function omitItemDescription() {
@@ -89,23 +89,23 @@ function omitItemDescription() {
 }
 
 function renderItemIcon(item: ColumnListItem) {
-  return <Icon name={getIconForField(item)} size={18} />;
+  return <Icon name={getColumnIcon(item.column)} size={18} />;
 }
 
 function getGroupName(groupInfo: Lib.ColumnDisplayInfo | Lib.TableDisplayInfo) {
   const columnInfo = groupInfo as Lib.ColumnDisplayInfo;
   const tableInfo = groupInfo as Lib.TableDisplayInfo;
-  return columnInfo.fk_reference_name || singularize(tableInfo.display_name);
+  return columnInfo.fkReferenceName || singularize(tableInfo.displayName);
 }
 
 function getGroupIcon(groupInfo: Lib.ColumnDisplayInfo | Lib.TableDisplayInfo) {
-  if ((groupInfo as Lib.TableDisplayInfo).is_source_table) {
+  if ((groupInfo as Lib.TableDisplayInfo).isSourceTable) {
     return "table";
   }
-  if (groupInfo.is_from_join) {
+  if (groupInfo.isFromJoin) {
     return "join_left_outer";
   }
-  if (groupInfo.is_implicitly_joinable) {
+  if (groupInfo.isImplicitlyJoinable) {
     return "connections";
   }
   return;
