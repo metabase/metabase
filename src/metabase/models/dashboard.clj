@@ -27,7 +27,7 @@
    [metabase.public-settings :as public-settings]
    [metabase.query-processor.async :as qp.async]
    [metabase.util :as u]
-   [metabase.util.i18n :as i18n :refer [tru]]
+   [metabase.util.i18n :as i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -218,41 +218,35 @@
                                       num-series₂ (count (get-in dashboard2 [:cards idx :series]))]
                                   (cond
                                     (< num-series₁ num-series₂)
-                                    (format "added some series to card %d" (get-in dashboard1 [:cards idx :card_id]))
+                                    (deferred-tru "added some series to card {0}" (get-in dashboard1 [:cards idx :card_id]))
 
                                     (> num-series₁ num-series₂)
-                                    (format "removed some series from card %d" (get-in dashboard1 [:cards idx :card_id]))
+                                    (deferred-tru "removed some series from card {0}" (get-in dashboard1 [:cards idx :card_id]))
 
                                     :else
-                                    (format "modified the series on card %d" (get-in dashboard1 [:cards idx :card_id]))))))]
-    (-> [(when (and dashboard1 (:name changes))
-           (format "renamed it from \"%s\" to \"%s\"" (:name dashboard1) (:name dashboard2)))
-         (when (:description changes)
-           (cond
-             (nil? (:description dashboard1)) "added a description"
-             (nil? (:description dashboard2)) "removed the description"
-             :else (format "changed the description from \"%s\" to \"%s\""
-                           (:description dashboard1) (:description dashboard2))))
+                                    (deferred-tru "modified the series on card {0}" (get-in dashboard1 [:cards idx :card_id]))))))]
+    (-> [(when-let [default-description ((get-method revision/diff-str :default) Dashboard dashboard1 dashboard2)]
+           (cond-> default-description
+             (str/ends-with? default-description ".") (subs 0 (dec (count default-description)))))
          (when (:cache_ttl changes)
            (cond
-             (nil? (:cache_ttl dashboard1)) "added a cache ttl"
-             (nil? (:cache_ttl dashboard2)) "removed the cache ttl"
-             :else (format "changed the cache ttl from \"%s\" to \"%s\""
+             (nil? (:cache_ttl dashboard1)) (deferred-tru "added a cache ttl")
+             (nil? (:cache_ttl dashboard2)) (deferred-tru "removed the cache ttl")
+             :else (deferred-tru "changed the cache ttl from \"{0}\" to \"{1}\""
                            (:cache_ttl dashboard1) (:cache_ttl dashboard2))))
          (when (or (:cards changes) (:cards removals))
            (let [num-cards1  (count (:cards dashboard1))
                  num-cards2  (count (:cards dashboard2))]
              (cond
-               (< num-cards1 num-cards2) "added a card"
-               (> num-cards1 num-cards2) "removed a card"
-               :else                     "rearranged the cards")))
+               (< num-cards1 num-cards2) (deferred-tru "added a card")
+               (> num-cards1 num-cards2) (deferred-tru "removed a card")
+               :else                     (deferred-tru "rearranged the cards"))))
          (let [f (comp boolean :auto_apply_filters)]
-          (when (not= (f dashboard1) (f dashboard2))
-            (format "set auto apply filters to %s" (str (f dashboard2)))))]
+           (when (not= (f dashboard1) (f dashboard2))
+             (deferred-tru "set auto apply filters to {0}" (str (f dashboard2)))))]
         (concat (map-indexed check-series-change (:cards changes)))
         (->> (filter identity)
              build-sentence))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 OTHER CRUD FNS                                                 |

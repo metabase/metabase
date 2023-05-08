@@ -282,8 +282,9 @@ export function getRevisionEventsForTimeline(
           />
         );
       } else {
-        message = changes;
-        event.title = <RevisionTitle username={username} message={message} />;
+        event.title = (
+          <RevisionTitle username={username} message={revision.description} />
+        );
       }
       event.titleText = getRevisionTitleText(username, message);
 

@@ -1987,7 +1987,7 @@
                               :after  {:name        "c"
                                        :description "something"
                                        :cards       [{:series [8 9], :size_y 3, :size_x 5}]}}
-               :description  "renamed it from \"b\" to \"c\", added a description, rearranged the cards and added some series to card 123."}
+               :description  "added a description and renamed it from \"b\" to \"c\", rearranged the cards and added some series to card 123."}
               {:is_reversion false
                :is_creation  true
                :message      nil
@@ -2031,7 +2031,7 @@
                                 (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
               :diff         {:before {:name "b"}
                              :after  {:name "a"}}
-              :description  "renamed it from \"b\" to \"a\"."}
+              :description  "renamed this Dashboard from \"b\" to \"a\"."}
              (dissoc (mt/user-http-request :crowberto :post 200 (format "dashboard/%d/revert" dashboard-id)
                                            {:revision_id revision-id})
                      :id :timestamp)))
@@ -2043,7 +2043,7 @@
                                  (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
                :diff         {:before {:name "b"}
                               :after  {:name "a"}}
-               :description  "renamed it from \"b\" to \"a\"."}
+               :description  "renamed this Dashboard from \"b\" to \"a\"."}
               {:is_reversion false
                :is_creation  false
                :message      "updated"
@@ -2051,7 +2051,7 @@
                                  (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
                :diff         {:before {:name "a"}
                               :after  {:name "b"}}
-               :description  "renamed it from \"a\" to \"b\"."}
+               :description  "renamed this Dashboard from \"a\" to \"b\"."}
               {:is_reversion false
                :is_creation  true
                :message      nil

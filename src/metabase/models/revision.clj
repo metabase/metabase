@@ -6,7 +6,7 @@
    [metabase.models.revision.diff :refer [diff-string]]
    [metabase.models.user :refer [User]]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]
+   [metabase.util.i18n :refer [deferred-tru tru]]
    [toucan.hydrate :refer [hydrate]]
    [toucan.models :as models]
    [toucan2.core :as t2]
@@ -46,7 +46,9 @@
        :after  after})))
 
 (defmulti diff-str
-  "Return a string describing the difference between `object-1` and `object-2`."
+  "Return a string describing the difference between `object-1` and `object-2`.
+
+  The returned string should be i18n-ed."
   {:arglists '([model object-1 object-2])}
   mi/dispatch-on-model)
 
@@ -83,12 +85,19 @@
 
 ;;; # Functions
 
+(defn- revision-description
+  [model prev-revision revision]
+  (cond
+    (:is_creation revision) (deferred-tru "created this.")
+    (:is_reversion revision) (deferred-tru "reverted to an earlier revision.")
+    :else (diff-str model (:object prev-revision) (:object revision))))
+
 (defn add-revision-details
   "Add enriched revision data such as `:diff` and `:description` as well as filter out some unnecessary props."
   [model revision prev-revision]
   (-> revision
       (assoc :diff        (diff-map model (:object prev-revision) (:object revision))
-             :description (diff-str model (:object prev-revision) (:object revision)))
+             :description (revision-description model prev-revision revision))
       ;; add revision user details
       (hydrate :user)
       (update :user select-keys [:id :first_name :last_name :common_name])

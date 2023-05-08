@@ -1,33 +1,50 @@
 (ns metabase.models.revision.diff
   (:require
    [clojure.core.match :refer [match]]
-   [clojure.string :as str]))
+   [metabase.util.i18n :refer [deferred-tru]]))
 
-(defn- diff-string* [k v1 v2]
+(defn- diff-string* [k v1 v2 identifier]
   (match [k v1 v2]
     [:name _ _]
-    (format "renamed it from \"%s\" to \"%s\"" v1 v2)
+    (deferred-tru "renamed {0} from \"{1}\" to \"{2}\"" identifier v1 v2)
+
+    [:description nil _]
+    (deferred-tru "added a description")
+
+    [:description (_ :guard some?) _]
+    (deferred-tru "changed the description")
 
     [:private true false]
-    "made it public"
+    (deferred-tru "made {0} public" identifier)
 
     [:private false true]
-    "made it private"
+    (deferred-tru "made {0} private" identifier)
 
-    [:updated_at _ _]
-    nil
+    [:archived false true]
+    (deferred-tru "unarchived this")
+
+    [:archived true false]
+    (deferred-tru "archived this")
+
+    [:dataset false true]
+    (deferred-tru "turned this into a model")
+
+    [:dataset false false]
+    (deferred-tru "changed this from a model to a saved question")
+
+    [:display _ _]
+    (deferred-tru "changed the display from {0} to {1}" v1 v2)
 
     [:result_metadata _ _]
-    nil
+    (deferred-tru "edited the metadata")
 
     [:dataset_query _ _]
-    "modified the query"
+    (deferred-tru "modified the query")
 
     [:visualization_settings _ _]
-    "changed the visualization settings"
+    (deferred-tru "changed the visualization settings")
 
-    [_ _ _]
-    (format "changed %s from \"%s\" to \"%s\"" (name k) v1 v2)))
+    :else nil))
 
 (defn build-sentence
   "Join parts of a sentence together to build a compound one."
@@ -35,16 +52,16 @@
   (when (seq parts)
     (cond
       (= (count parts) 1) (str (first parts) \.)
-      (= (count parts) 2) (format "%s and %s." (first parts) (second parts))
-      :else               (format "%s, %s" (first parts) (build-sentence (rest parts))))))
+      (= (count parts) 2) (str (first parts) " " (deferred-tru "and")  " " (second parts) \.)
+      :else               (str (first parts) ", " (build-sentence (rest parts))))))
 
 (defn diff-string
   "Create a string describing how `o1` is different from `o2`.
-   The directionality of the statement should indicate that `o1` changed into `o2`."
-  [t before after]
+  The directionality of the statement should indicate that `o1` changed into `o2`."
+  [model before after]
   (when before
     (let [ks (keys before)]
-      (some-> (filter identity (for [k ks]
-                                 (diff-string* k (k before) (k after))))
-              build-sentence
-              (str/replace-first #" it " (format " this %s " t))))))
+      (some-> (filter identity (map-indexed (fn [i k]
+                                              (diff-string* k (k before) (k after)
+                                                            (if (zero? i) (deferred-tru "this {0}" model) (deferred-tru "it")))) ks))
+              build-sentence))))

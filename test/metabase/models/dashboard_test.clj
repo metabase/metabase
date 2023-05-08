@@ -55,7 +55,7 @@
 
 
 (deftest diff-dashboards-str-test
-  (is (= "renamed it from \"Diff Test\" to \"Diff Test Changed\" and added a description."
+  (is (= "added a description and renamed it from \"Diff Test\" to \"Diff Test Changed\"."
          (revision/diff-str
           Dashboard
           {:name        "Diff Test"
@@ -89,7 +89,7 @@
           {:name               "Diff Test"
            :auto_apply_filters false})))
 
-  (is (= "changed the cache ttl from \"333\" to \"1227\", rearranged the cards, modified the series on card 1 and added some series to card 2."
+  (is (= "changed the cache ttl from \"333\" to \"1,227\", rearranged the cards, modified the series on card 1 and added some series to card 2."
          (revision/diff-str
           Dashboard
           {:name        "Diff Test"

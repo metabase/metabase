@@ -63,14 +63,6 @@
             {:name "Spots by State", :private false}
             {:name "Spots by State", :private true})))))
 
-(deftest fallback-description-test
-  (testing "Check the fallback sentence fragment for key without specialized sentence fragment"
-    (is (= "changed priority from \"Important\" to \"Regular\"."
-           ((get-method revision/diff-str :default)
-            Card
-            {:priority "Important"}
-            {:priority "Regular"})))))
-
 (deftest multiple-changes-test
   (testing "Check that 2 changes are handled nicely"
     (is (= "made this Card private and renamed it from \"Tips by State\" to \"Spots by State\"."
@@ -80,12 +72,11 @@
             {:name "Spots by State", :private true}))))
 
   (testing "Check that several changes are handled nicely"
-    (is (= (str "changed priority from \"Important\" to \"Regular\", made this Card private and renamed it from "
-                "\"Tips by State\" to \"Spots by State\".")
+    (is (= (str "turned this into a model, made it private and renamed it from \"Tips by State\" to \"Spots by State\".")
            ((get-method revision/diff-str :default)
             Card
-            {:name "Tips by State", :private false, :priority "Important"}
-            {:name "Spots by State", :private true, :priority "Regular"})))))
+            {:name "Tips by State", :private false, :dataset false}
+            {:name "Spots by State", :private true, :dataset true})))))
 
 ;;; # REVISIONS + PUSH-REVISION!
 
