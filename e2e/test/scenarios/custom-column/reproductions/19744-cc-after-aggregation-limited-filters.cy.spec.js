@@ -5,6 +5,8 @@ import {
   popover,
   visitDashboard,
   addOrUpdateDashboardCard,
+  getDashboardCard,
+  saveDashboard,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -48,12 +50,22 @@ describe("issue 19744", () => {
   it("custom column after aggregation shouldn't limit or change the behavior of dashboard filters (metabase#19744)", () => {
     editDashboard();
     cy.icon("filter").click();
-
     cy.findByText("Time").click();
     cy.findByText("All Options").click();
+    getDashboardCard().findByText("Select…").click();
+    popover().findByText("Created At").click();
+    saveDashboard();
 
-    cy.get(".DashCard").contains("Select…").click();
-    popover().contains("Created At");
+    cy.findByText("Date Filter").click();
+    popover().within(() => {
+      cy.findByText("Specific dates...").click();
+    });
+    popover().within(() => {
+      cy.findByText("On").click();
+      cy.findByRole("textbox").clear().type("01/01/2019");
+      cy.button("Update filter").click();
+    });
+    cy.get(".bar").should("have.length", 1);
   });
 });
 
