@@ -24,25 +24,28 @@
   "States of a model index that are refreshable."
   #{"indexed" "initial" "error" "overflow"})
 
-(defn unindex?
+(defn should-deindex?
   "Whether to unindex the the model indexing job.
   If the model does not exist, the model-index record, or if the model has reverted to a question."
   [model model-index]
   (or (nil? model) (nil? model-index)
-      (not (:dataset model))))
+      (not (:dataset model))
+      (:archived model)))
 
 (declare model-index-trigger-key)
 
 (defn- refresh-index!
-  "Function "
+  "Refresh the index on a model. Note, if the index should be removed (no longer a model, archived,
+  etc, (see [[should-deindex?]])) will delete the indexing job."
   [model-index-id]
   (let [model-index              (t2/select-one ModelIndex :id model-index-id)
         model                    (when model-index
                                    (t2/select-one Card :id (:model_id model-index)))]
-    (if (unindex? model model-index)
+    (if (should-deindex? model model-index)
       (u/ignore-exceptions
        (let [trigger-key (model-index-trigger-key model-index-id)]
-         (task/delete-trigger! trigger-key)))
+         (task/delete-trigger! trigger-key)
+         (t2/delete! ModelIndex model-index-id)))
       (model-index/add-values! model-index))))
 
 (jobs/defjob ^{org.quartz.DisallowConcurrentExecution true

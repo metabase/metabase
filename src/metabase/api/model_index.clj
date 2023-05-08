@@ -17,10 +17,10 @@
                                  f))
                        metadata)]
     (let [type-slot (case t
-                      :type/PK :semantic_type
-                      :type/Text :effective_type)]
+                      :type/PK                   :semantic_type
+                      (:type/Integer :type/Text) :effective_type)]
       (when-not (isa? (type-slot field) t)
-        (throw (ex-info (tru "Field is not of type {0}" t)
+        (throw (ex-info (tru "Field is not of {0} `{1}`" type-slot t)
                         {:status-code   400
                          :expected-type t
                          :type          (:effective_type field)
@@ -41,6 +41,7 @@
       (throw (ex-info (tru "Model has no metadata. Cannot index")
                       {:model-id model_id})))
     (ensure-type :type/PK pk_ref metadata)
+    (ensure-type :type/Integer pk_ref metadata)
     (ensure-type :type/Text value_ref metadata)
     ;; todo: do we care if there's already an index on that model?
     (let [model-index (model-index/create {:model-id   model_id

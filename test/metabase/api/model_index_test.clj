@@ -68,7 +68,7 @@
                                                    {:model_id  (:id model)
                                                     :pk_ref    bad-pk-ref ;; invalid pk
                                                     :value_ref (by-name "title")})]
-                (is (=? {:cause "Field is not of type :type/PK"
+                (is (=? {:cause "Field is not of :semantic_type `:type/PK`"
                          :data  {:expected-type "type/PK"}}
                         response))))
             (doseq [bad-value-ref [(by-name "id") (by-name "price") (by-name "created_at")]]
@@ -76,7 +76,7 @@
                                                    {:model_id  (:id model)
                                                     :pk_ref    (by-name "id")
                                                     :value_ref bad-value-ref})]
-                (is (=? {:cause "Field is not of type :type/Text"
+                (is (=? {:cause "Field is not of :effective_type `:type/Text`"
                          :data  {:expected-type "type/Text"}}
                         response))))
             (let [not-in-query (mt/$ids $people.email)]
