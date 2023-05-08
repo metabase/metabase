@@ -54,7 +54,7 @@
    [metabase.upload :as upload]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.i18n :refer [deferred-tru trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -290,7 +290,7 @@
 
   Provide `page-size` to limit the number of cards returned, it does not guaranteed to return exactly `page-size` cards.
   Use `fetch-compatible-series` for that."
-  [card query last-cursor page-size]
+  [card {:keys [query last-cursor page-size exclude-ids] :as _options}]
   (let [matching-cards  (t2/select Card
                                    :archived false
                                    :display [:in supported-series-display-type]
@@ -300,8 +300,13 @@
                                      last-cursor
                                      (update :where conj [:< :id last-cursor])
 
+                                     (seq exclude-ids)
+                                     (update :where conj [:not [:in :id exclude-ids]])
+
+
                                      query
                                      (update :where conj [:like :%lower.name (str "%" (u/lower-case-en query) "%")])
+
                                      ;; add a little buffer to the page to account for cards that are not
                                      ;; compatible + do not have permissions to read
                                      ;; this is just a heuristic, but it should be good enough
@@ -323,43 +328,56 @@
 (defn- fetch-compatible-series
   "Fetch a list of compatible series for `card`.
 
-  - last-cursor: is the last card's id of the previous page
-  - page-size: is nullable, it'll try to fetches exactly `page-size` cards if there are enough cards."
- ([card query last-cursor page-size]
-  (fetch-compatible-series card query last-cursor page-size []))
+  options:
+  - exclude-ids: filter out these card ids
+  - query:       filter cards by name
+  - last-cursor: the id of the last card from the previous page
+  - page-size:   is nullable, it'll try to fetches exactly `page-size` cards if there are enough cards."
+  ([card options]
+   (fetch-compatible-series card options []))
 
- ([card query last-cursor page-size current-cards]
-  (let [cards     (fetch-compatible-series* card query last-cursor page-size)
-        new-cards (concat current-cards cards)]
-    ;; if the total card fetches is less than page-size and there are still more, continue fetching
-    (if (and (some? page-size)
-             (seq cards)
-             (< (count cards) page-size))
-      (fetch-compatible-series card query (:id (last cards)) (- page-size (count cards)) new-cards)
-      new-cards))))
+  ([card {:keys [page-size] :as options} current-cards]
+   (let [cards     (fetch-compatible-series* card options)
+         new-cards (concat current-cards cards)]
+     ;; if the total card fetches is less than page-size and there are still more, continue fetching
+     (if (and (some? page-size)
+              (seq cards)
+              (< (count cards) page-size))
+       (fetch-compatible-series card
+                                (merge options
+                                       {:page-size   (- page-size (count cards))
+                                        :last-cursor (:id (last cards))})
+                                new-cards)
+       new-cards))))
 
 (api/defendpoint GET "/:id/series"
   "Fetches a list of comptatible series with the card with id `card_id`.
 
   - `last_cursor` with value is the id of the last card from the previous page to fetch the next page.
-  - `query` to search card by name."
-  [id last_cursor query]
+  - `query` to search card by name.
+  - `exclude_ids` to filter out a list of card ids"
+  [id last_cursor query exclude_ids]
   {id          int?
    last_cursor [:maybe ms/PositiveInt]
-   query       [:maybe ms/NonBlankString]}
-  (let [card         (-> (t2/select-one :model/Card :id id) api/check-404 api/read-check)
-        card-display (:display card)
-        _            (when-not (supported-series-display-type card-display)
-                       (throw (ex-info (tru "Card with type {0} is not compatible to have series" (name card-display))
-                                       {:display         card-display
-                                        :allowed-display (map name supported-series-display-type)
-                                        :status-code     400})))
-        series       (fetch-compatible-series
-                       card
-                       query
-                       last_cursor
-                       mw.offset-paging/*limit*)]
-    series))
+   query       [:maybe ms/NonBlankString]
+   exclude_ids [:maybe [:fn
+                        {:error/fn (fn [_ _] (deferred-tru "value must be a sequence of positive integers"))}
+                        (fn [x]
+                          (every? pos-int? (json/parse-string x)))]]}
+  (let [exclude_ids  (json/parse-string exclude_ids)
+        card         (-> (t2/select-one :model/Card :id id) api/check-404 api/read-check)
+        card-display (:display card)]
+   (when-not (supported-series-display-type card-display)
+             (throw (ex-info (tru "Card with type {0} is not compatible to have series" (name card-display))
+                             {:display         card-display
+                              :allowed-display (map name supported-series-display-type)
+                              :status-code     400})))
+   (fetch-compatible-series
+                      card
+                      {:exclude-ids exclude_ids
+                       :query       query
+                       :last-cursor last_cursor
+                       :page-size   mw.offset-paging/*limit*})))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:id/timelines"

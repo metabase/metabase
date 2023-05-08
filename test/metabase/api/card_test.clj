@@ -481,12 +481,20 @@
        :model/Card card4  (simple-mbql-chart-query {:name "Luigi 4"  :display :line})
        :model/Card _      (simple-mbql-chart-query {:name "Luigi 5"  :display :line})
        :model/Card _      (simple-mbql-chart-query {:name "Luigi 6"  :display :line})
-       :model/Card _      (simple-mbql-chart-query {:name "Luigi 7"  :display :line})
-       :model/Card _      (simple-mbql-chart-query {:name "Luigi 8"  :display :line})]
-      (testing "filtering works"
+       :model/Card card7  (simple-mbql-chart-query {:name "Luigi 7"  :display :line})
+       :model/Card card8  (simple-mbql-chart-query {:name "Luigi 8"  :display :line})]
+      (testing "filter by name works"
         (is (true? (every? #(str/includes? % "Toad")
-                           (->> (mt/user-http-request :crowberto :get 200 (format "/card/%d/series" (:id card)) :query "toad")
-                                (map :name)))))
+                         (->> (mt/user-http-request :crowberto :get 200 (format "/card/%d/series" (:id card)) :query "toad")
+                              (map :name)))))
+
+        (testing "exclude ids works"
+          (is (true?
+                (every?
+                  #(not (#{(:id card) (:id card7) (:id card8)} %))
+                  (->> (mt/user-http-request :crowberto :get 200 (format "/card/%d/series" (:id card))
+                                                    :query "luigi" :exclude_ids [(:id card7) (:id card8)])
+                       (map :id))))))
 
         (testing "with limit and sort by id descending"
           (is (= ["Luigi 8" "Luigi 7" "Luigi 6" "Luigi 5"]
