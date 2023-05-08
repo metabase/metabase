@@ -4,7 +4,10 @@ import _ from "underscore";
 import Utils from "metabase/lib/utils";
 
 import TimelineEvents from "metabase/entities/timeline-events";
-import { NAVIGATE_TO_NEW_CARD } from "metabase/dashboard/actions";
+import {
+  EDIT_QUESTION,
+  NAVIGATE_TO_NEW_CARD,
+} from "metabase/dashboard/actions";
 
 import {
   RESET_QB,
@@ -548,6 +551,9 @@ export const currentState = handleActions(
 export const dashboardId = handleActions(
   {
     [NAVIGATE_TO_NEW_CARD]: {
+      next: (state, { payload: { dashboardId } }) => dashboardId,
+    },
+    [EDIT_QUESTION]: {
       next: (state, { payload: { dashboardId } }) => dashboardId,
     },
     [CLOSE_QB]: { next: () => null },

@@ -1,10 +1,25 @@
 import { createThunkAction } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
 
 import { openUrl } from "metabase/redux/app";
 import { getParametersMappedToDashcard } from "metabase/parameters/utils/dashboards";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
 import Question from "metabase-lib/Question";
+import { getDashboardId } from "../selectors";
+
+export const EDIT_QUESTION = "metabase/dashboard/EDIT_QUESTION";
+export const editQuestion = createThunkAction(
+  EDIT_QUESTION,
+  question => (dispatch, getState) => {
+    const dashboardId = getDashboardId(getState());
+    const mode = question.isNative() ? "view" : "notebook";
+    const url = Urls.question(question.card(), { mode });
+
+    dispatch(openUrl(url));
+    return { dashboardId };
+  },
+);
 
 /**
  * All navigation actions from dashboards to cards (e.x. clicking a title, drill through)
