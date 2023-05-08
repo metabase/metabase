@@ -53,18 +53,6 @@ describe("ObjectDetail utils", () => {
     table_id: ORDERS.id,
   });
 
-  const remappedIdCol = createMockColumn({
-    name: "id",
-    display_name: "ID",
-    base_type: "int",
-    effective_type: "int",
-    semantic_type: "type/PK",
-    table_id: ORDERS.id,
-  });
-
-  (remappedIdCol as any).hasRemappedValue = () => true;
-  (remappedIdCol as any).remappedValue = () => "fooBar";
-
   const qtyCol = createMockColumn({
     name: "qty",
     display_name: "qty",
@@ -178,22 +166,6 @@ describe("ObjectDetail utils", () => {
       });
 
       expect(id).toBe("33");
-    });
-
-    it("should format the id value per column remapping settings", () => {
-      const id = getDisplayId({
-        cols: [remappedIdCol, qtyCol, nameCol],
-        zoomedRow: [11, 33, "Giant Sprocket"],
-        tableId: ORDERS.id,
-        settings: {
-          column: () => ({
-            remap: true,
-            column: remappedIdCol,
-          }),
-        },
-      });
-
-      expect(id).toBe("fooBar");
     });
 
     it("should format a date value per column remapping settings", () => {
