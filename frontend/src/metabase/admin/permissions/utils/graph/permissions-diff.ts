@@ -105,7 +105,7 @@ export function diffDataPermissions(
   oldPerms: GroupsPermissions,
   groups: Group[],
   databases: Database[],
-) {
+): { groups: any } {
   const permissionsDiff: { groups: any } = { groups: {} };
   if (newPerms && oldPerms && databases) {
     for (const group of groups) {
