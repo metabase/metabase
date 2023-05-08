@@ -22,6 +22,19 @@ export type MockDatasetOpts = Partial<Omit<Dataset, "data">> & {
   data?: Partial<DatasetData>;
 };
 
+export const createMockDatasetData = (
+  columns: DatasetColumn[] = [createMockColumn({})],
+  opts?: Partial<DatasetData>,
+) => {
+  return {
+    rows: [],
+    cols: columns,
+    rows_truncated: 0,
+    results_metadata: createMockResultsMetadata(columns),
+    ...opts,
+  };
+};
+
 export const createMockDataset = ({
   data = {},
   ...opts
@@ -35,13 +48,7 @@ export const createMockDataset = ({
   ];
 
   return {
-    data: {
-      rows: [],
-      cols: columns,
-      rows_truncated: 0,
-      results_metadata: createMockResultsMetadata(columns),
-      ...data,
-    },
+    data: createMockDatasetData(columns),
     database_id: 1,
     row_count: 0,
     running_time: 1000,
