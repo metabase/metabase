@@ -47,7 +47,7 @@
 
 (driver/register! :postgres, :parent :sql-jdbc)
 
-(doseq [[feature supported?] {:datetime-dff true
+(doseq [[feature supported?] {:datetime-diff true
                               :persist-models true
                               :convert-timezone true
                               :now true}]

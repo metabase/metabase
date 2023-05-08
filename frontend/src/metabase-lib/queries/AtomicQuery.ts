@@ -1,6 +1,6 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
-import { DatabaseEngine, DatabaseId } from "metabase-types/types/Database";
+import { DatabaseId } from "metabase-types/api";
 import Query from "metabase-lib/queries/Query";
 import Table from "metabase-lib/metadata/Table";
 import Database from "metabase-lib/metadata/Database";
@@ -25,7 +25,7 @@ export default class AtomicQuery extends Query {
     return null;
   }
 
-  engine(): DatabaseEngine | null | undefined {
+  engine(): string | null | undefined {
     return null;
   }
 
