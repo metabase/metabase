@@ -3,9 +3,14 @@ import { IndexRoute, Route } from "react-router";
 
 import userEvent from "@testing-library/user-event";
 import { Card, Dataset } from "metabase-types/api";
-import { createMockCard, createMockDataset } from "metabase-types/api/mocks";
+import {
+  createMockCard,
+  createMockColumn,
+  createMockDataset,
+} from "metabase-types/api/mocks";
 import {
   createSampleDatabase,
+  ORDERS,
   ORDERS_ID,
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
@@ -29,16 +34,6 @@ import { callMockEvent } from "__support__/events";
 import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/hooks/use-before-unload";
 import QueryBuilder from "./QueryBuilder";
 
-jest.mock("metabase/query_builder/components/QueryVisualization", () => {
-  const TestQueryVisualization = () => (
-    <div data-testid="query-visualization" />
-  );
-  return {
-    __esModule: true,
-    default: TestQueryVisualization,
-  };
-});
-
 const TEST_DB = createSampleDatabase();
 
 const TEST_CARD = createMockCard({
@@ -61,28 +56,21 @@ const TEST_MODEL_CARD = createMockCard({
     },
   },
   dataset: true,
+  display: "scalar",
 });
 
 const TEST_DATASET = createMockDataset();
+const TEST_MODEL_DATASET_COLUMN = createMockColumn({
+  name: "ID",
+  source: "fields",
+  display_name: "ID",
+  description: "test",
+  field_ref: ["field", ORDERS.ID, null],
+});
 const TEST_MODEL_DATASET = createMockDataset({
   data: {
     rows: [["1"]],
-    cols: [
-      {
-        name: "ID",
-        source: "fields",
-        display_name: "ID",
-      },
-    ],
-    results_metadata: {
-      columns: [
-        {
-          description: "test",
-          name: "ID",
-          field_ref: ["field", 37, null],
-        },
-      ],
-    },
+    cols: [TEST_MODEL_DATASET_COLUMN],
   },
   database_id: SAMPLE_DB_ID,
 

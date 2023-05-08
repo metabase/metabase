@@ -30,14 +30,16 @@ export interface DatasetColumn {
   };
 }
 
+export interface ResultsMetadata {
+  columns: DatasetColumn[];
+}
+
 export interface DatasetData {
   rows: RowValues[];
   cols: DatasetColumn[];
   rows_truncated: number;
   download_perms?: DownloadPermission;
-  results_metadata?: {
-    columns: DatasetColumn[];
-  };
+  results_metadata: ResultsMetadata;
 }
 
 export type JsonQuery = DatasetQuery & {
