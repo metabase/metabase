@@ -25,7 +25,7 @@
     (conj "FieldValues")
 
     ;; If `targets` is not specified, or if it is a non-empty collection, then we
-    ;; extract all content models. If `targets` is an empty, collection, we do not export
+    ;; extract all content models. If `targets` is an empty collection, then do not export
     ;; any content.
     (or (nil? targets) (seq targets))
     (into serdes.models/content)
@@ -36,7 +36,7 @@
 (defn targets-of-type
   "Returns target seq filtered on given model name"
   [targets model-name]
-  (filter #(= model-name (first %)) targets))
+  (filter #(= (first %) model-name) targets))
 
 (defn make-targets-of-type
   "Returns a targets seq with model type and given ids"
