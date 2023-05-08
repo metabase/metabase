@@ -19,7 +19,7 @@ export const REVIEWS_ID = 8;
 export const ORDERS = {
   ID: 11,
   USER_ID: 15,
-  PRODUCTS_ID: 9,
+  PRODUCT_ID: 9,
   SUBTOTAL: 16,
   TAX: 10,
   TOTAL: 13,
@@ -195,7 +195,7 @@ export const createOrdersUserIdField = (opts?: Partial<Field>): Field =>
 
 export const createOrdersProductIdField = (opts?: Partial<Field>): Field =>
   createMockField({
-    id: ORDERS.PRODUCTS_ID,
+    id: ORDERS.PRODUCT_ID,
     table_id: ORDERS_ID,
     name: "PRODUCT_ID",
     display_name: "Product ID",
