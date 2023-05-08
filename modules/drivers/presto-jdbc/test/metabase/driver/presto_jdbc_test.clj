@@ -162,12 +162,14 @@
                                      :additional-options "Option1=Value1&Option2=Value2"})))))
 
 (deftest honeysql-tests
-  (testing "Complex HoneySQL conversions work as expected"
-    (testing "unix-timestamp with microsecond precision"
-      (is (= [(str "date_add('millisecond', mod((1623963256123456 / 1000), 1000),"
-                   " from_unixtime(((1623963256123456 / 1000) / 1000), 'UTC'))")]
-             (-> (sql.qp/unix-timestamp->honeysql :presto-jdbc :microseconds (hx/raw 1623963256123456))
-                 (hformat/format)))))))
+  (mt/test-driver :presto-jdbc
+    (mt/with-everything-store
+      (testing "Complex HoneySQL conversions work as expected"
+        (testing "unix-timestamp with microsecond precision"
+          (is (= [(str "date_add('millisecond', mod((1623963256123456 / 1000), 1000),"
+                       " from_unixtime(((1623963256123456 / 1000) / 1000), 'UTC'))")]
+                 (-> (sql.qp/unix-timestamp->honeysql :presto-jdbc :microseconds (hx/raw 1623963256123456))
+                     (hformat/format)))))))))
 
 (defn- clone-db-details
   "Clones the details of the current DB ensuring fresh copies for the secrets

@@ -1,5 +1,6 @@
 /* eslint-disable react/prop-types */
 import React from "react";
+import { connect } from "react-redux";
 
 import { t } from "ttag";
 import _ from "underscore";
@@ -9,20 +10,22 @@ import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import ButtonWithStatus from "metabase/components/ButtonWithStatus";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
+import Fields from "metabase/entities/fields";
+import { getMetadataUnfiltered } from "metabase/selectors/metadata";
 
 import { isEntityName, isFK } from "metabase-lib/types/utils/isa";
 import {
   hasSourceField,
   getFieldTargetId,
 } from "metabase-lib/queries/utils/field-ref";
-import SelectSeparator from "../components/SelectSeparator";
+import FieldSeparator from "../FieldSeparator";
 import {
   FieldMappingContainer,
   FieldMappingRoot,
   FieldSelectButton,
   ForeignKeyList,
   FieldValueMappingInput,
-} from "./FieldRemapping.styled";
+} from "./FieldRemappingSettings.styled";
 
 const MAP_OPTIONS = {
   original: { type: "original", name: t`Use original value` },
@@ -30,7 +33,7 @@ const MAP_OPTIONS = {
   custom: { type: "custom", name: t`Custom mapping` },
 };
 
-export default class FieldRemapping extends React.Component {
+class FieldRemappingSettings extends React.Component {
   state = {
     isChoosingInitialFkTarget: false,
     dismissedInitialFkTargetPopover: false,
@@ -66,12 +69,13 @@ export default class FieldRemapping extends React.Component {
 
   hasMappableNumeralValues = () => {
     const { field } = this.props;
+    const remapping = new Map(field.remappedValues());
 
     // Only show the "custom" option if we have some values that can be mapped to user-defined custom values
     // (for a field without user-defined remappings, every key of `field.remappings` has value `undefined`)
     return (
-      field.remapping.size > 0 &&
-      [...field.remapping.keys()].every(
+      remapping.size > 0 &&
+      [...remapping.keys()].every(
         key => typeof key === "number" || key === null,
       )
     );
@@ -115,13 +119,7 @@ export default class FieldRemapping extends React.Component {
   };
 
   handleChangeMappingType = async ({ target: { value: mappingType } }) => {
-    const {
-      table,
-      field,
-      fetchTableMetadata,
-      updateFieldDimension,
-      deleteFieldDimension,
-    } = this.props;
+    const { field, updateFieldDimension, deleteFieldDimension } = this.props;
 
     this.clearEditingStates();
 
@@ -176,15 +174,10 @@ export default class FieldRemapping extends React.Component {
     } else {
       throw new Error(t`Unrecognized mapping type`);
     }
-
-    // TODO Atte Keinänen 7/11/17: It's a pretty heavy approach to reload the whole table after a single field
-    // has been updated; would be nicer to just fetch a single field. MetabaseApi.field_get seems to exist for that
-    await fetchTableMetadata({ id: table.id }, { reload: true });
   };
 
   onForeignKeyFieldChange = async foreignKeyClause => {
-    const { table, field, fetchTableMetadata, updateFieldDimension } =
-      this.props;
+    const { field, updateFieldDimension } = this.props;
 
     this.clearEditingStates();
 
@@ -202,9 +195,7 @@ export default class FieldRemapping extends React.Component {
         },
       );
 
-      await fetchTableMetadata({ id: table.id }, { reload: true });
-
-      this.fkPopover.current.close();
+      this.fkPopover.current?.close();
     } else {
       throw new Error(t`The selected field isn't a foreign key`);
     }
@@ -229,13 +220,14 @@ export default class FieldRemapping extends React.Component {
   };
 
   render() {
-    const { field, table, fields, fieldsError } = this.props;
+    const { field, table, metadata, fieldsError } = this.props;
     const {
       isChoosingInitialFkTarget,
       hasChanged,
       dismissedInitialFkTargetPopover,
     } = this.state;
 
+    const remapping = new Map(field.remappedValues());
     const isFieldsAccessRestricted = fieldsError?.status === 403;
 
     const mappingType = this.getMappingTypeForField(field);
@@ -244,7 +236,7 @@ export default class FieldRemapping extends React.Component {
       isFKMapping && field.dimensions?.[0]?.human_readable_field_id !== null;
     const fkMappingField =
       hasFKMappingValue &&
-      fields[field.dimensions?.[0]?.human_readable_field_id];
+      metadata.field(field.dimensions?.[0]?.human_readable_field_id);
 
     return (
       <div>
@@ -258,7 +250,7 @@ export default class FieldRemapping extends React.Component {
           />
           {mappingType === MAP_OPTIONS.foreign && (
             <>
-              <SelectSeparator classname="flex" key="foreignKeySeparator" />
+              <FieldSeparator />
               <PopoverWithTrigger
                 key="foreignKeyName"
                 ref={this.fkPopover}
@@ -305,7 +297,7 @@ export default class FieldRemapping extends React.Component {
             <div className="mt3">
               {hasChanged && <RemappingNamingTip />}
               <ValueRemappings
-                remappings={field && field.remapping}
+                remappings={remapping}
                 updateRemappings={this.onUpdateRemappings}
               />
             </div>
@@ -316,7 +308,7 @@ export default class FieldRemapping extends React.Component {
 }
 
 // consider renaming this component to something more descriptive
-export class ValueRemappings extends React.Component {
+class ValueRemappings extends React.Component {
   state = {
     editingRemappings: new Map(),
   };
@@ -433,7 +425,7 @@ export class ValueRemappings extends React.Component {
   }
 }
 
-export class FieldValueMapping extends React.Component {
+class FieldValueMapping extends React.Component {
   onInputChange = e => {
     this.props.setMapping(e.target.value);
   };
@@ -454,9 +446,28 @@ export class FieldValueMapping extends React.Component {
   }
 }
 
-export const RemappingNamingTip = () => (
+const RemappingNamingTip = () => (
   <div className="bordered rounded p1 mt1 mb2 border-brand">
     <span className="text-brand text-bold">{t`Tip: `}</span>
     {t`You might want to update the field name to make sure it still makes sense based on your remapping choices.`}
   </div>
 );
+
+const mapStateToProps = (state, { field }) => ({
+  metadata: getMetadataUnfiltered(state),
+  fieldsError: Fields.selectors.getError(state, {
+    entityId: field.id,
+    requestType: "values",
+  }),
+});
+
+const mapDispatchToProps = {
+  updateFieldValues: Fields.actions.updateFieldValues,
+  updateFieldDimension: Fields.actions.updateFieldDimension,
+  deleteFieldDimension: Fields.actions.deleteFieldDimension,
+};
+
+export default connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)(FieldRemappingSettings);

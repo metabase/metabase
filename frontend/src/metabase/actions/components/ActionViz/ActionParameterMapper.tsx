@@ -10,14 +10,12 @@ import { setParameterMapping } from "metabase/dashboard/actions";
 import type {
   ActionDashboardCard,
   ActionParametersMapping,
+  Dashboard,
+  ParameterId,
+  ParameterTarget,
   WritebackParameter,
   WritebackAction,
-  Dashboard,
 } from "metabase-types/api";
-import type {
-  ParameterTarget,
-  ParameterId,
-} from "metabase-types/types/Parameter";
 import type Question from "metabase-lib/Question";
 
 import {

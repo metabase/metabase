@@ -8,9 +8,12 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.query-processor.writeback :as qp.writeback]
    [metabase.util.honeysql-extensions :as hx]))
+
+(set! *warn-on-reflection* true)
 
 (comment sql-jdbc.actions/keep-me)
 
@@ -49,8 +52,8 @@
   (query driver database table {:select [:*]}))
 
 ;; TODO - this implementation should itself be deprecated! And have drivers implement it directly instead.
-(defmethod driver/supports? [:sql-jdbc :set-timezone]
-  [driver _]
+(defmethod driver/database-supports? [:sql-jdbc :set-timezone]
+  [driver _feature _db]
   (boolean (seq (sql-jdbc.execute/set-timezone-sql driver))))
 
 (defmethod driver/db-default-timezone :sql-jdbc
@@ -138,3 +141,8 @@
     ;; across all drivers. With that in mind, 100 seems like a safe compromise.
     (doseq [sql sqls]
       (qp.writeback/execute-write-sql! db-id sql))))
+
+(defmethod driver/syncable-schemas :sql-jdbc
+  [driver database]
+  (with-open [conn ^java.sql.Connection (jdbc/get-connection (sql-jdbc.conn/db->pooled-connection-spec database))]
+    (into #{} (sql-jdbc.sync.interface/filtered-syncable-schemas driver conn (.getMetaData conn) nil nil))))
