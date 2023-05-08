@@ -27,7 +27,7 @@
    [metabase.public-settings :as public-settings]
    [metabase.query-processor.async :as qp.async]
    [metabase.util :as u]
-   [metabase.util.i18n :as i18n :refer [deferred-tru tru]]
+   [metabase.util.i18n :as i18n :refer [deferred-tru deferred-trun tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -235,12 +235,18 @@
              :else (deferred-tru "changed the cache ttl from \"{0}\" to \"{1}\""
                            (:cache_ttl dashboard1) (:cache_ttl dashboard2))))
          (when (or (:cards changes) (:cards removals))
-           (let [num-cards1  (count (:cards dashboard1))
-                 num-cards2  (count (:cards dashboard2))]
+           (let [card-ids1      (set (map :id (:cards dashboard1)))
+                 num-cards1     (count card-ids1)
+                 card-ids2      (set (map :id (:cards dashboard2)))
+                 num-cards2     (count card-ids2)
+                 num-cards-diff (abs (- num-cards1 num-cards2))]
              (cond
-               (< num-cards1 num-cards2) (deferred-tru "added a card")
-               (> num-cards1 num-cards2) (deferred-tru "removed a card")
-               :else                     (deferred-tru "rearranged the cards"))))
+               (< num-cards1 num-cards2)      (deferred-trun "added a card" "added {0} cards" num-cards-diff)
+               (> num-cards1 num-cards2)      (deferred-trun "removed a card" "removed {0} cards" num-cards-diff)
+               (and (= num-cards1 num-cards2)
+                    (= card-ids1 card-ids2))  (deferred-tru "rearranged the cards")
+               :else                          (deferred-tru "modified the cards"))))
+
          (let [f (comp boolean :auto_apply_filters)]
            (when (not= (f dashboard1) (f dashboard2))
              (deferred-tru "set auto apply filters to {0}" (str (f dashboard2)))))]
