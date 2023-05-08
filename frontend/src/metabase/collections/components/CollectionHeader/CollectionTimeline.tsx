@@ -16,7 +16,7 @@ const CollectionTimeline = ({
   const url = Urls.timelinesInCollection(collection);
 
   return (
-    <Tooltip tooltip={t`Events`}>
+    <Tooltip tooltip={t`Events`} placement="bottom">
       <div>
         <CollectionHeaderButton as={Link} to={url} icon="calendar" />
       </div>

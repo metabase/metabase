@@ -69,6 +69,7 @@ const CollectionMenu = ({
         items={items}
         triggerIcon="ellipsis"
         tooltip={t`Move, archive, and more...`}
+        tooltipPlacement="bottom"
       />
     );
   } else {

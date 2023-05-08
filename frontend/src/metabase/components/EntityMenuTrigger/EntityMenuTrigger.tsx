@@ -11,6 +11,7 @@ type EntityMenuTriggerProps = {
   onClick: () => void;
   open?: boolean;
   tooltip?: string;
+  tooltipPlacement?: "top" | "bottom";
   triggerProps?: EntityMenuIconButtonProps;
   trigger?: React.ReactElement;
   ariaLabel?: string;
@@ -21,6 +22,7 @@ const EntityMenuTrigger = ({
   onClick,
   open,
   tooltip,
+  tooltipPlacement,
   triggerProps,
   trigger,
   ariaLabel,
@@ -38,7 +40,7 @@ const EntityMenuTrigger = ({
     />
   );
   return tooltip ? (
-    <Tooltip tooltip={tooltip} isEnabled={!open}>
+    <Tooltip tooltip={tooltip} isEnabled={!open} placement={tooltipPlacement}>
       {triggerContent}
     </Tooltip>
   ) : (
