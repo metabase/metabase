@@ -31,6 +31,7 @@
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.streaming :as qp.streaming]
+   [metabase.server.middleware.session :as mw.session]
    [metabase.util :as u]
    [metabase.util.embed :as embed]
    [metabase.util.i18n :refer [tru]]
@@ -157,12 +158,12 @@
   ;; we actually need to bind the current user perms here twice, once so `card-api` will have the full perms when it
   ;; tries to do the `read-check`, and a second time for when the query is ran (async) so the QP middleware will have
   ;; the correct perms
-  (binding [api/*current-user-permissions-set* (atom #{"/"})]
-    (m/mapply qp.card/run-query-for-card-async card-id export-format
-              :parameters parameters
-              :context    :public-question
-              :run        (run-query-for-card-with-id-async-run-fn qp-runner export-format)
-              options)))
+  (mw.session/as-admin
+   (m/mapply qp.card/run-query-for-card-async card-id export-format
+             :parameters parameters
+             :context    :public-question
+             :run        (run-query-for-card-with-id-async-run-fn qp-runner export-format)
+             options)))
 
 (s/defn ^:private run-query-for-card-with-public-uuid-async
   "Run query for a *public* Card with UUID. If public sharing is not enabled, this throws an exception. Returns a
