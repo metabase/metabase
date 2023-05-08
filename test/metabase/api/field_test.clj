@@ -7,7 +7,7 @@
    [metabase.driver :as driver]
    [metabase.driver.mysql-test :as mysql-test]
    [metabase.driver.util :as driver.u]
-   [metabase.models :refer [Database Field FieldValues Table]]
+   [metabase.models :refer [Database Dimension Field FieldValues Table]]
    [metabase.sync :as sync]
    [metabase.sync.concurrent :as sync.concurrent]
    [metabase.test :as mt]
@@ -39,7 +39,7 @@
                 (mt/object-defaults Field)
                 (t2/select-one [Field :created_at :updated_at :last_analyzed :fingerprint :fingerprint_version
                                 :database_position :database_required :database_is_auto_increment]
-                  :id (mt/id :users :name))
+                               :id (mt/id :users :name))
                 {:table_id         (mt/id :users)
                  :table            (merge
                                     (mt/obj->json->obj (mt/object-defaults Table))
@@ -61,6 +61,7 @@
                  :name             "NAME"
                  :display_name     "Name"
                  :position         1
+                 :target           nil
                  :id               (mt/id :users :name)
                  :visibility_type  "normal"
                  :database_type    "CHARACTER VARYING"
@@ -73,7 +74,10 @@
                  :name_field       nil})
                (m/dissoc-in [:table :db :updated_at] [:table :db :created_at] [:table :db :timezone]))
            (-> (mt/user-http-request :rasta :get 200 (format "field/%d" (mt/id :users :name)))
-               (update-in [:table :db] dissoc :updated_at :created_at :timezone :dbms_version))))))
+               (update-in [:table :db] dissoc :updated_at :created_at :timezone :dbms_version))))
+    (testing "target should be hydrated"
+      (is (= (mt/id :categories :id)
+             (:id (:target (mt/user-http-request :rasta :get 200 (format "field/%d" (mt/id :venues :category_id))))))))))
 
 (deftest get-field-summary-test
   (testing "GET /api/field/:id/summary"
@@ -112,15 +116,27 @@
                     :fk_target_field_id nil
                     :nfc_path           nil}
                    original-val)))
-          ;; set it
-          (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id) {:name            "something else"
-                                                                                  :display_name    "yay"
-                                                                                  :description     "foobar"
-                                                                                  :semantic_type   :type/Name
-                                                                                  :json_unfolding  true
-                                                                                  :visibility_type :sensitive
-                                                                                  :nfc_path        ["bob" "dobbs"]})
-          (let [updated-val (simple-field-details (t2/select-one Field :id field-id))]
+          (let [;; set it
+                response (mt/user-http-request :crowberto :put 200
+                                               (format "field/%d" field-id)
+                                               {:name            "something else"
+                                                :display_name    "yay"
+                                                :description     "foobar"
+                                                :semantic_type   :type/Name
+                                                :json_unfolding  true
+                                                :visibility_type :sensitive
+                                                :nfc_path        ["bob" "dobbs"]})
+                updated-val (simple-field-details (t2/select-one Field :id field-id))]
+            (testing "response body should be the updated field"
+              (is (= {:name               "Field Test"
+                      :display_name       "yay"
+                      :description        "foobar"
+                      :semantic_type      "type/Name"
+                      :visibility_type    "sensitive"
+                      :json_unfolding     true
+                      :fk_target_field_id nil
+                      :nfc_path           ["bob" "dobbs"]}
+                     (simple-field-details response))))
             (testing "updated value"
               (is (= {:name               "Field Test"
                       :display_name       "yay"
@@ -185,6 +201,15 @@
     (testing "A field can only be updated by a superuser"
       (mt/with-temp Field [{field-id :id} {:name "Field Test"}]
         (mt/user-http-request :rasta :put 403 (format "field/%d" field-id) {:name "Field Test 2"})))))
+
+(deftest update-field-hydrated-target-test
+  (testing "PUT /api/field/:id"
+    (testing "target should be hydrated"
+      (mt/with-temp* [Field [fk-field-1]
+                      Field [fk-field-2]
+                      Field [field {:semantic_type :type/FK, :fk_target_field_id (:id fk-field-1)}]]
+        (is (= (:id fk-field-2)
+               (:id (:target (mt/user-http-request :crowberto :put 200 (format "field/%d" (:id field)) (assoc field :fk_target_field_id (:id fk-field-2)))))))))))
 
 (deftest remove-fk-semantic-type-test
   (testing "PUT /api/field/:id"
@@ -353,6 +378,28 @@
   [field-id map-to-post & {:keys [expected-status-code]
                            :or   {expected-status-code 200}}]
   (mt/user-http-request :crowberto :post expected-status-code (format "field/%d/dimension" field-id) map-to-post))
+
+(deftest update-display-name-dimension-test
+  (testing "Updating a field's display_name should update the dimension's name"
+    (mt/with-temp* [Database  [db    {:name "field-db" :engine :h2}]
+                    Table     [table1 {:schema "PUBLIC" :name "widget" :db_id (:id db)}]
+                    Table     [table2 {:schema "PUBLIC" :name "orders" :db_id (:id db)}]
+                    Field     [field {:name          "WIDGET_ID"
+                                      :display_name  "Widget ID"
+                                      :table_id      (:id table2)
+                                      :semantic_type :type/FK}]
+                    Field     [human-readable-field {:name "Name" :table_id (:id table1)}]
+                    Dimension [_dim  {:field_id                (:id field)
+                                      :name                    (:display_name field)
+                                      :type                    :external
+                                      :human_readable_field_id (:id human-readable-field)}]]
+      (testing "before update"
+        (is (= "Widget ID"
+               (:name (dimension-for-field (:id field))))))
+      (mt/user-http-request :crowberto :put 200 (format "field/%d" (:id field)) (assoc field :display_name "SKU"))
+      (testing "after update"
+        (is (= "SKU"
+               (:name (dimension-for-field (:id field)))))))))
 
 (deftest create-update-dimension-test
   (mt/with-temp* [Field [{field-id :id} {:name "Field Test"}]]

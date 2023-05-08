@@ -37,15 +37,13 @@
 
 (set! *warn-on-reflection* true)
 
-(defmethod driver/database-supports? [:oracle :now] [_driver _feat _db] true)
+(driver/register! :oracle, :parent #{:sql-jdbc
+                                     ::sql.qp.empty-string-is-null/empty-string-is-null})
 
-(driver/register! :oracle, :parent #{:sql-jdbc ::sql.qp.empty-string-is-null/empty-string-is-null})
-
-(defmethod driver/database-supports? [:oracle :datetime-diff] [_driver _feat _db] true)
-
-(defmethod driver/database-supports? [:oracle :convert-timezone]
-  [_driver _feat _db]
-  true)
+(doseq [[feature supported?] {:datetime-diff    true
+                              :now              true
+                              :convert-timezone true}]
+  (defmethod driver/database-supports? [:oracle feature] [_driver _feature _db] supported?))
 
 (def ^:private database-type->base-type
   (sql-jdbc.sync/pattern-based-database-type->base-type

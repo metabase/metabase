@@ -1,4 +1,4 @@
-import { createSelector } from "reselect";
+import { createSelector } from "@reduxjs/toolkit";
 
 import { getSettings } from "metabase/selectors/settings";
 import { PLUGIN_AUTH_PROVIDERS } from "metabase/plugins";
