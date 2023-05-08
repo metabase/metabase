@@ -299,8 +299,8 @@ export const createOrdersDiscountField = (opts?: Partial<Field>): Field =>
     name: "DISCOUNT",
     display_name: "Discount",
     base_type: "type/Float",
-    semantic_type: null,
     effective_type: "type/Float",
+    semantic_type: "type/Discount",
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
         "distinct-count": 701,
