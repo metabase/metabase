@@ -19,7 +19,7 @@ export const REVIEWS_ID = 8;
 export const ORDERS = {
   ID: 11,
   USER_ID: 15,
-  PRODUCTS_ID: 9,
+  PRODUCT_ID: 9,
   SUBTOTAL: 16,
   TAX: 10,
   TOTAL: 13,
@@ -169,6 +169,7 @@ export const createOrdersIdField = (opts?: Partial<Field>): Field =>
     name: "ID",
     display_name: "ID",
     base_type: "type/BigInteger",
+    effective_type: "type/BigInteger",
     semantic_type: "type/PK",
     fingerprint: null,
     ...opts,
@@ -179,9 +180,11 @@ export const createOrdersUserIdField = (opts?: Partial<Field>): Field =>
     id: ORDERS.USER_ID,
     table_id: ORDERS_ID,
     name: "USER_ID",
-    display_name: "User Id",
+    display_name: "User ID",
     base_type: "type/Integer",
+    effective_type: "type/Integer",
     semantic_type: "type/FK",
+    fk_target_field_id: PEOPLE.ID,
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
         "distinct-count": 929,
@@ -192,12 +195,14 @@ export const createOrdersUserIdField = (opts?: Partial<Field>): Field =>
 
 export const createOrdersProductIdField = (opts?: Partial<Field>): Field =>
   createMockField({
-    id: ORDERS.PRODUCTS_ID,
+    id: ORDERS.PRODUCT_ID,
     table_id: ORDERS_ID,
     name: "PRODUCT_ID",
     display_name: "Product ID",
     base_type: "type/Integer",
+    effective_type: "type/Integer",
     semantic_type: "type/FK",
+    fk_target_field_id: PRODUCTS.ID,
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
         "distinct-count": 200,
@@ -213,6 +218,7 @@ export const createOrdersSubtotalField = (opts?: Partial<Field>): Field =>
     name: "SUBTOTAL",
     display_name: "Subtotal",
     base_type: "type/Float",
+    effective_type: "type/Float",
     semantic_type: null,
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
@@ -239,6 +245,7 @@ export const createOrdersTaxField = (opts?: Partial<Field>): Field =>
     name: "TAX",
     display_name: "Tax",
     base_type: "type/Float",
+    effective_type: "type/Float",
     semantic_type: null,
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
@@ -265,6 +272,7 @@ export const createOrdersTotalField = (opts?: Partial<Field>): Field =>
     name: "TOTAL",
     display_name: "Total",
     base_type: "type/Float",
+    effective_type: "type/Float",
     semantic_type: null,
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
@@ -291,7 +299,8 @@ export const createOrdersDiscountField = (opts?: Partial<Field>): Field =>
     name: "DISCOUNT",
     display_name: "Discount",
     base_type: "type/Float",
-    semantic_type: null,
+    effective_type: "type/Float",
+    semantic_type: "type/Discount",
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
         "distinct-count": 701,
@@ -318,6 +327,7 @@ export const createOrdersCreatedAtField = (opts?: Partial<Field>): Field =>
     name: "CREATED_AT",
     display_name: "Created At",
     base_type: "type/DateTime",
+    effective_type: "type/DateTime",
     semantic_type: "type/CreationTimestamp",
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
@@ -340,6 +350,7 @@ export const createOrdersQuantityField = (opts?: Partial<Field>): Field =>
     name: "QUANTITY",
     display_name: "Quantity",
     base_type: "type/Integer",
+    effective_type: "type/Integer",
     semantic_type: "type/Quantity",
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
@@ -366,6 +377,7 @@ export const createPeopleIdField = (opts?: Partial<Field>): Field =>
     name: "ID",
     display_name: "ID",
     base_type: "type/BigInteger",
+    effective_type: "type/BigInteger",
     semantic_type: "type/PK",
     fingerprint: null,
     ...opts,
@@ -378,6 +390,7 @@ export const createPeopleAddressField = (opts?: Partial<Field>): Field =>
     name: "ADDRESS",
     display_name: "Address",
     base_type: "type/Text",
+    effective_type: "type/Text",
     semantic_type: null,
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
@@ -399,6 +412,7 @@ export const createPeopleEmailField = (opts?: Partial<Field>): Field =>
     name: "EMAIL",
     display_name: "Email",
     base_type: "type/Text",
+    effective_type: "type/Text",
     semantic_type: "type/Email",
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
@@ -421,6 +435,7 @@ export const createPeoplePasswordField = (opts?: Partial<Field>): Field =>
     name: "PASSWORD",
     display_name: "Password",
     base_type: "type/Text",
+    effective_type: "type/Text",
     semantic_type: null,
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
@@ -442,6 +457,7 @@ export const createPeopleNameField = (opts?: Partial<Field>): Field =>
     name: "NAME",
     display_name: "Name",
     base_type: "type/Text",
+    effective_type: "type/Text",
     semantic_type: "type/Name",
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
@@ -463,6 +479,7 @@ export const createPeopleCityField = (opts?: Partial<Field>): Field =>
     name: "CITY",
     display_name: "City",
     base_type: "type/Text",
+    effective_type: "type/Text",
     semantic_type: "type/City",
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
@@ -485,6 +502,7 @@ export const createPeopleLongitudeField = (opts?: Partial<Field>): Field =>
     name: "LONGITUDE",
     display_name: "Longitude",
     base_type: "type/Float",
+    effective_type: "type/Float",
     semantic_type: "type/Longitude",
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
@@ -511,6 +529,7 @@ export const createPeopleStateField = (opts?: Partial<Field>): Field =>
     name: "STATE",
     display_name: "State",
     base_type: "type/Text",
+    effective_type: "type/Text",
     semantic_type: "type/State",
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
@@ -533,6 +552,7 @@ export const createPeopleSourceField = (opts?: Partial<Field>): Field =>
     name: "SOURCE",
     display_name: "Source",
     base_type: "type/Text",
+    effective_type: "type/Text",
     semantic_type: "type/Source",
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
@@ -554,6 +574,7 @@ export const createPeopleBirthDateField = (opts?: Partial<Field>): Field =>
     name: "BIRTH_DATE",
     display_name: "Birth Date",
     base_type: "type/Date",
+    effective_type: "type/Date",
     semantic_type: null,
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
@@ -576,6 +597,7 @@ export const createPeopleZipField = (opts?: Partial<Field>): Field =>
     name: "ZIP",
     display_name: "Zip",
     base_type: "type/Text",
+    effective_type: "type/Text",
     semantic_type: "type/ZipCode",
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
@@ -597,6 +619,7 @@ export const createPeopleLatitudeField = (opts?: Partial<Field>): Field =>
     name: "LATITUDE",
     display_name: "Latitude",
     base_type: "type/Float",
+    effective_type: "type/Float",
     semantic_type: "type/Latitude",
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
@@ -623,6 +646,7 @@ export const createPeopleCreatedAtField = (opts?: Partial<Field>): Field =>
     name: "CREATED_AT",
     display_name: "Created At",
     base_type: "type/DateTime",
+    effective_type: "type/Text",
     semantic_type: "type/CreationTimestamp",
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
@@ -646,6 +670,7 @@ export const createProductsIdField = (opts?: Partial<Field>): Field =>
     name: "ID",
     display_name: "ID",
     base_type: "type/BigInteger",
+    effective_type: "type/BigInteger",
     semantic_type: "type/PK",
     fingerprint: null,
     ...opts,
@@ -658,6 +683,7 @@ export const createProductsEanField = (opts?: Partial<Field>): Field =>
     name: "EAN",
     display_name: "Ean",
     base_type: "type/Text",
+    effective_type: "type/Text",
     semantic_type: null,
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
@@ -679,6 +705,7 @@ export const createProductsTitleField = (opts?: Partial<Field>): Field =>
     name: "TITLE",
     display_name: "Title",
     base_type: "type/Text",
+    effective_type: "type/Text",
     semantic_type: "type/Title",
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
@@ -700,6 +727,7 @@ export const createProductsCategoryField = (opts?: Partial<Field>): Field =>
     name: "CATEGORY",
     display_name: "Category",
     base_type: "type/Text",
+    effective_type: "type/Text",
     semantic_type: "type/Category",
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
@@ -721,6 +749,7 @@ export const createProductsVendorField = (opts?: Partial<Field>): Field =>
     name: "VENDOR",
     display_name: "Vendor",
     base_type: "type/Text",
+    effective_type: "type/Text",
     semantic_type: "type/Company",
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
@@ -742,6 +771,7 @@ export const createProductsPriceField = (opts?: Partial<Field>): Field =>
     name: "PRICE",
     display_name: "Price",
     base_type: "type/Float",
+    effective_type: "type/Float",
     semantic_type: null,
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
@@ -768,6 +798,7 @@ export const createProductsRatingField = (opts?: Partial<Field>): Field =>
     name: "RATING",
     display_name: "Rating",
     base_type: "type/Float",
+    effective_type: "type/Float",
     semantic_type: "type/Score",
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
@@ -794,6 +825,7 @@ export const createProductsCreatedAtField = (opts?: Partial<Field>): Field =>
     name: "CREATED_AT",
     display_name: "Created At",
     base_type: "type/DateTime",
+    effective_type: "type/DateTime",
     semantic_type: "type/CreationTimestamp",
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
@@ -828,7 +860,9 @@ export const createReviewsProductIdField = (opts?: Partial<Field>): Field =>
     name: "PRODUCT_ID",
     display_name: "Product ID",
     base_type: "type/Integer",
+    effective_type: "type/Integer",
     semantic_type: "type/FK",
+    fk_target_field_id: PRODUCTS.ID,
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
         "distinct-count": 176,
@@ -845,6 +879,7 @@ export const createReviewsReviewerField = (opts?: Partial<Field>): Field =>
     name: "REVIEWER",
     display_name: "Reviewer",
     base_type: "type/Text",
+    effective_type: "type/Text",
     semantic_type: null,
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
@@ -867,6 +902,7 @@ export const createReviewsRatingField = (opts?: Partial<Field>): Field =>
     name: "RATING",
     display_name: "Rating",
     base_type: "type/Integer",
+    effective_type: "type/Integer",
     semantic_type: "type/Score",
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
@@ -893,6 +929,7 @@ export const createReviewsBodyField = (opts?: Partial<Field>): Field =>
     name: "BODY",
     display_name: "Body",
     base_type: "type/Text",
+    effective_type: "type/Text",
     semantic_type: "type/Description",
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
@@ -914,6 +951,7 @@ export const createReviewsCreatedAtField = (opts?: Partial<Field>): Field =>
     name: "CREATED_AT",
     display_name: "Created At",
     base_type: "type/DateTime",
+    effective_type: "type/DateTime",
     semantic_type: "type/CreationTimestamp",
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
