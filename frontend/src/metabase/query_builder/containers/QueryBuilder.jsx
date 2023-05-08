@@ -303,7 +303,17 @@ function QueryBuilder(props) {
     return () => window.removeEventListener("resize", forceUpdateDebounced);
   }, []);
 
-  useBeforeUnload(isModelQueryDirty || isMetadataDirty || isNativeEditorOpen);
+  const isExistingModelDirty = useMemo(
+    () => isModelQueryDirty || isMetadataDirty,
+    [isMetadataDirty, isModelQueryDirty],
+  );
+
+  const isExistingSqlQueryDirty = useMemo(
+    () => isModelQueryDirty && isNativeEditorOpen,
+    [isModelQueryDirty, isNativeEditorOpen],
+  );
+
+  useBeforeUnload(isExistingModelDirty || isExistingSqlQueryDirty);
 
   useUnmount(() => {
     cancelQuery();
