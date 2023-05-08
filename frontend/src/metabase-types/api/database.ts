@@ -42,6 +42,8 @@ export interface Database extends DatabaseData {
 
   settings?: DatabaseSettings | null;
 
+  caveats?: string;
+  points_of_interest?: string;
   created_at: ISO8601Time;
   updated_at: ISO8601Time;
 

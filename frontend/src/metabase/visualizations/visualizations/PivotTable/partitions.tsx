@@ -1,15 +1,14 @@
 import React from "react";
 import { t } from "ttag";
 
-import type { Column } from "metabase-types/types/Dataset";
-
+import type { DatasetColumn } from "metabase-types/api";
 import { isDimension } from "metabase-lib/types/utils/isa";
 
 import { PivotTableSettingLabel } from "./PivotTable.styled";
 
 interface Partition {
   name: "rows" | "columns" | "values";
-  columnFilter: (col: Column | undefined) => boolean;
+  columnFilter: (col: DatasetColumn | undefined) => boolean;
   title: React.ReactNode;
 }
 
