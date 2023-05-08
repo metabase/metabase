@@ -115,7 +115,7 @@ const mapDispatchToProps = {
 
 // NOTE: should use DashboardControls and DashboardData HoCs here?
 const DashboardApp = props => {
-  const { isRunning, isLoadingComplete, dashboard } = props;
+  const { isRunning, isLoadingComplete, dashboard, closeDashboard } = props;
 
   const options = parseHashOptions(window.location.hash);
   const editingOnLoad = options.edit;
@@ -175,6 +175,10 @@ const DashboardApp = props => {
   useLoadingTimer(isRunning, {
     timer: DASHBOARD_SLOW_TIMEOUT,
     onTimeout,
+  });
+
+  useUnmount(() => {
+    closeDashboard();
   });
 
   return (
