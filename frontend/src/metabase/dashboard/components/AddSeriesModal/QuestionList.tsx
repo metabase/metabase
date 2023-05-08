@@ -49,16 +49,27 @@ export const QuestionList = React.memo(function QuestionList({
 
   const [{ error, loading }, loadCards] = useAsyncFn(
     async (searchText: string, last_cursor?: CardId) => {
-      const cards = await CardApi.compatibleCards({
+      const payload: {
+        cardId: number;
+        last_cursor?: number;
+        limit: number;
+        query?: string;
+        exclude: number[];
+      } = {
         cardId: dashcard.card_id,
         last_cursor,
         limit: PAGE_SIZE,
-        search: searchText.length > 0 ? searchText : null,
         exclude: Array.from(enabledCardIds.values()),
-      });
+      };
+
+      if (searchText.length > 0) {
+        payload.query = searchText;
+      }
+
+      const cards = await CardApi.compatibleCards(payload);
 
       setCards(prev => [...prev, ...cards]);
-      setHasMore(cards.length > 0);
+      setHasMore(cards.length === PAGE_SIZE);
     },
     [dashcard, debouncedSearchText],
   );
