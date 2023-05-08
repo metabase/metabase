@@ -22,7 +22,7 @@ export default function ColllectionUpload({
   };
 
   return (
-    <Tooltip tooltip={t`Upload data`}>
+    <Tooltip tooltip={t`Upload data to ${collection.name}`}>
       <label htmlFor="upload-csv">
         <CollectionHeaderButton as="span" to="" icon="arrow_up" />
       </label>

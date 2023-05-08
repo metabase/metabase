@@ -44,6 +44,9 @@ const CollectionHeader = ({
         onUpdateCollection={onUpdateCollection}
       />
       <HeaderActions data-testid="collection-menu">
+        {canUpload && (
+          <CollectionUpload collection={collection} onUpload={onUpload} />
+        )}
         <CollectionTimeline collection={collection} />
         <CollectionBookmark
           collection={collection}
@@ -51,9 +54,6 @@ const CollectionHeader = ({
           onCreateBookmark={onCreateBookmark}
           onDeleteBookmark={onDeleteBookmark}
         />
-        {canUpload && (
-          <CollectionUpload collection={collection} onUpload={onUpload} />
-        )}
         <CollectionMenu
           collection={collection}
           isAdmin={isAdmin}
