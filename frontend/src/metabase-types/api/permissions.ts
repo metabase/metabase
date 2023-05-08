@@ -19,6 +19,7 @@ export type GroupPermissions = {
 export type DownloadPermission = "full" | "limited" | "none";
 
 export type DownloadAccessPermission = {
+  native?: DownloadSchemasPermission;
   schemas: DownloadSchemasPermission;
 };
 
@@ -38,9 +39,9 @@ export type DownloadTablePermission =
 
 export type DatabasePermissions = {
   data: DatabaseAccessPermissions;
-  "data-model": DataModelPermissions;
+  "data-model"?: DataModelPermissions;
   download: DownloadAccessPermission;
-  details: DetailsPermissions;
+  details?: DetailsPermissions;
 };
 
 export type DataModelPermissions = {

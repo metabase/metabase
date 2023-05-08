@@ -7,7 +7,9 @@ import {
   createMockCard,
   createMockColumn,
   createMockDataset,
+  createMockNativeDatasetQuery,
 } from "metabase-types/api/mocks";
+
 import {
   createSampleDatabase,
   ORDERS,
@@ -59,7 +61,13 @@ const TEST_MODEL_CARD = createMockCard({
   display: "scalar",
 });
 
-const TEST_DATASET = createMockDataset();
+const TEST_NATIVE_CARD = createMockCard({
+  dataset_query: createMockNativeDatasetQuery({
+    database: SAMPLE_DB_ID,
+  }),
+});
+
+const TEST_DATASET: Dataset = createMockDataset();
 const TEST_MODEL_DATASET_COLUMN = createMockColumn({
   name: "ID",
   source: "fields",
@@ -236,6 +244,41 @@ describe("QueryBuilder", () => {
         expect(mockEvent.preventDefault).not.toHaveBeenCalled();
         expect(mockEvent.returnValue).toBe(undefined);
       });
+    });
+  });
+
+  describe("beforeunload events", () => {
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it("triggers beforeunload event when user tries to leave edited native query", async () => {
+      const { mockEventListener } = await setup({
+        card: TEST_NATIVE_CARD,
+        initialRoute: `/question/${TEST_NATIVE_CARD.id}`,
+      });
+
+      const inputArea = within(
+        screen.getByTestId("mock-native-query-editor"),
+      ).getByRole("textbox");
+
+      userEvent.click(inputArea);
+      userEvent.type(inputArea, " ");
+
+      const mockEvent = callMockEvent(mockEventListener, "beforeunload");
+      expect(mockEvent.preventDefault).toHaveBeenCalled();
+      expect(mockEvent.returnValue).toEqual(BEFORE_UNLOAD_UNSAVED_MESSAGE);
+    });
+
+    it("should not trigger beforeunload event when query is unedited", async () => {
+      const { mockEventListener } = await setup({
+        card: TEST_NATIVE_CARD,
+        initialRoute: `/question/${TEST_NATIVE_CARD.id}`,
+      });
+
+      const mockEvent = callMockEvent(mockEventListener, "beforeunload");
+      expect(mockEvent.preventDefault).not.toHaveBeenCalled();
+      expect(mockEvent.returnValue).not.toEqual(BEFORE_UNLOAD_UNSAVED_MESSAGE);
     });
   });
 });

@@ -36,12 +36,12 @@ export const createMockDataset = ({
       rows: [],
       cols: columns,
       rows_truncated: 0,
+      results_metadata: createMockResultsMetadata(columns),
       ...data,
     },
     database_id: 1,
     row_count: 0,
     running_time: 1000,
-    results_metadata: createMockResultsMetadata(columns),
     ...opts,
   };
 };
