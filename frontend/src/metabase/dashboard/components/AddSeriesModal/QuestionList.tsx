@@ -9,7 +9,7 @@ import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import EmptyState from "metabase/components/EmptyState";
 
 import { CardApi } from "metabase/services";
-import { Card, CardId } from "metabase-types/api";
+import { Card, CardId, DashboardOrderedCard } from "metabase-types/api";
 import {
   LoadMoreButton,
   LoadMoreRow,
@@ -21,12 +21,12 @@ import {
 } from "./QuestionList.styled";
 import { QuestionListItem } from "./QuestionListItem";
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 50;
 
 interface QuestionListProps {
   enabledCards: Card[];
   onSelect: (card: Card, isChecked: boolean) => void;
-  dashcard: any;
+  dashcard: DashboardOrderedCard;
 }
 
 export const QuestionList = React.memo(function QuestionList({
@@ -49,17 +49,21 @@ export const QuestionList = React.memo(function QuestionList({
 
   const [{ error, loading }, loadCards] = useAsyncFn(
     async (searchText: string, last_cursor?: CardId) => {
+      if (dashcard.card_id == null) {
+        return;
+      }
+
       const payload: {
         cardId: number;
         last_cursor?: number;
         limit: number;
         query?: string;
-        exclude: number[];
+        exclude_ids: number[];
       } = {
         cardId: dashcard.card_id,
         last_cursor,
         limit: PAGE_SIZE,
-        exclude: Array.from(enabledCardIds.values()),
+        exclude_ids: Array.from(enabledCardIds.values()),
       };
 
       if (searchText.length > 0) {
