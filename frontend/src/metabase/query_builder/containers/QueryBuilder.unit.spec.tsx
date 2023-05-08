@@ -246,7 +246,7 @@ describe("QueryBuilder", () => {
     });
   });
 
-  describe("beforeunload events", () => {
+  describe("beforeunload events in native queries", () => {
     afterEach(() => {
       jest.restoreAllMocks();
     });
