@@ -91,7 +91,7 @@
      (u/format-color :green (trs "Scheduling indexing for model: {0}" (:model_id model-index))))
     (try (task/add-trigger! trigger)
          (catch ObjectAlreadyExistsException _e
-           (log/info (u/format-color :green (trs "Persistence already present for model: {0}"
+           (log/info (u/format-color :red (trs "Index already present for model: {0}"
                                                  (:model_id model-index)))))
          (catch Exception e
            (log/warn (trs "Error scheduling indexing for model: {0}"
