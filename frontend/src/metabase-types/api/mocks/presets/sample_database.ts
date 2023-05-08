@@ -180,7 +180,7 @@ export const createOrdersUserIdField = (opts?: Partial<Field>): Field =>
     id: ORDERS.USER_ID,
     table_id: ORDERS_ID,
     name: "USER_ID",
-    display_name: "User Id",
+    display_name: "User ID",
     base_type: "type/Integer",
     effective_type: "type/Integer",
     semantic_type: "type/FK",
