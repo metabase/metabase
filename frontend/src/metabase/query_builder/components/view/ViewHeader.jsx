@@ -167,14 +167,17 @@ function DashboardBackButton() {
     return null;
   }
 
+  const label = `Back to ${dashboard.name}`;
+
   return (
-    <Tooltip tooltip={`Back to ${dashboard.name}`}>
+    <Tooltip tooltip={label}>
       <BackButtonContainer>
         <BackButton
           as={Link}
           to={Urls.dashboard(dashboard)}
           round
           icon="arrow_left"
+          aria-label={label}
         />
       </BackButtonContainer>
     </Tooltip>
