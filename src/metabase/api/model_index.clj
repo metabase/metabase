@@ -35,7 +35,7 @@
   {model_id  ms/PositiveInt
    pk_ref    any?
    value_ref any?}
-  (let [model    (api/read-check Card model_id)
+  (let [model    (api/write-check Card model_id)
         metadata (:result_metadata model)]
     (when-not (seq metadata)
       (throw (ex-info (tru "Model has no metadata. Cannot index")
@@ -76,7 +76,7 @@
   [id]
   {id ms/PositiveInt}
   (api/let-404 [model-index (t2/select-one ModelIndex :id id)]
-    (api/read-check Card (:model_id model-index))
+    (api/write-check Card (:model_id model-index))
     (t2/delete! ModelIndex id)))
 
 (api/define-routes)

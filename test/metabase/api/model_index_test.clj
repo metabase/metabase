@@ -22,7 +22,13 @@
                      :state      "indexed"
                      :model_id   (:id model)
                      :error      nil}
-                    model-index)))
+                    model-index))
+            (testing "Need write access to post"
+              (mt/with-non-admin-groups-no-root-collection-perms
+                (mt/user-http-request :rasta :post 403 "/model-index"
+                                      {:model_id  (:id model)
+                                       :pk_ref    pk_ref
+                                       :value_ref value_ref}))))
           (testing "GET by model id"
             (is (=? [{:generation 1
                       :state      "indexed"
@@ -38,6 +44,10 @@
                     (mt/user-http-request :rasta :get 200
                                           (str "/model-index/" (:id model-index))))))
           (testing "DELETE"
+            (testing "Must have write access to the underlying model"
+              (mt/with-non-admin-groups-no-root-collection-perms
+                (mt/user-http-request :rasta :delete 403
+                                      (str "model-index/" (:id model-index)))))
             (mt/user-http-request :rasta :delete 200 (str "model-index/" (:id model-index)))))))))
 
 (deftest create-tests
