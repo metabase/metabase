@@ -972,12 +972,17 @@ class StructuredQueryInner extends AtomicQuery {
     filter?: Filter | FilterWrapper,
     includeAppliedSegments = false,
   ): Segment[] {
+    const table = this.table();
+    if (!table) {
+      return [];
+    }
+
     if (filter && !(filter instanceof FilterWrapper)) {
       filter = new FilterWrapper(filter, null, this);
     }
 
     const currentSegmentId = filter && filter.isSegment() && filter.segmentId();
-    return this.table().segments.filter(
+    return table.segments.filter(
       segment =>
         (currentSegmentId != null && currentSegmentId === segment.id) ||
         (!segment.archived &&
