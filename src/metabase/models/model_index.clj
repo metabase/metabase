@@ -5,7 +5,6 @@
    [metabase.db.connection :as mdb.connection]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.models.card :refer [Card]]
-   [metabase.models.interface :as mi]
    [metabase.query-processor :as qp]
    [metabase.sync.schedules :as sync.schedules]
    [metabase.util.cron :as u.cron]
@@ -19,14 +18,7 @@
 (models/defmodel ModelIndex :model_index)
 (models/defmodel ModelIndexValue :model_index_value)
 
-
-;; switch to the one in mi after #29513 lands
-(t2/define-before-insert ::created-at-timestamp
-  [instance]
-  #_{:clj-kondo/ignore [:private-call]}
-  (#'mi/add-created-at-timestamp instance))
-
-(derive ModelIndex ::created-at-timestamp)
+(derive ModelIndex :hook/created-at-timestamped?)
 
 (def normalize-field-ref
   "Normalize the field ref. Ensure it's well-formed mbql, not just json."
