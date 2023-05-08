@@ -907,7 +907,6 @@ class StructuredQueryInner extends AtomicQuery {
   }: {
     filter?: (Filter | FilterWrapper) | null | undefined;
     stages?: number;
-    includeSegments?: boolean;
     includeAppliedSegments?: boolean;
     dimensionFilter?: DimensionFilter;
   } = {}): FilterSection[] {
