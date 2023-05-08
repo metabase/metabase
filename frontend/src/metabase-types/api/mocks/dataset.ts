@@ -7,7 +7,7 @@ import {
 } from "metabase-types/api/dataset";
 
 export const createMockColumn = (
-  data: Partial<DatasetColumn>,
+  data: Partial<DatasetColumn> = {},
 ): DatasetColumn => {
   return {
     display_name: "Column",
@@ -23,7 +23,7 @@ export type MockDatasetOpts = Partial<Omit<Dataset, "data">> & {
 };
 
 export const createMockDatasetData = (
-  columns: DatasetColumn[] = [createMockColumn({})],
+  columns: DatasetColumn[] = [createMockColumn()],
   opts?: Partial<DatasetData>,
 ) => {
   return {
@@ -39,13 +39,7 @@ export const createMockDataset = ({
   data = {},
   ...opts
 }: MockDatasetOpts = {}) => {
-  const columns: DatasetColumn[] = data.cols ?? [
-    createMockColumn({
-      display_name: "NAME",
-      source: "native",
-      name: "NAME",
-    }),
-  ];
+  const columns: DatasetColumn[] = data.cols ?? [createMockColumn()];
 
   return {
     data: createMockDatasetData(columns),
@@ -67,7 +61,7 @@ export const createMockTemplateTag = (
 });
 
 export const createMockResultsMetadata = (
-  columns: DatasetColumn[] = [createMockColumn({})],
+  columns: DatasetColumn[] = [createMockColumn()],
   opts?: Partial<ResultsMetadata>,
 ): ResultsMetadata => ({
   columns,
