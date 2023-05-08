@@ -16,7 +16,6 @@ import Question from "metabase-lib/Question";
 import { isVirtualDashCard } from "./utils";
 
 export const getDashboardId = state => state.dashboard.dashboardId;
-export const getActiveDashboardId = state => state.dashboard.activeDashboardId;
 export const getIsEditing = state => !!state.dashboard.isEditing;
 export const getDashboardBeforeEditing = state => state.dashboard.isEditing;
 export const getClickBehaviorSidebarDashcard = state => {
@@ -66,12 +65,12 @@ export const getDashboard = createSelector(
   (dashboardId, dashboards) => dashboards[dashboardId],
 );
 
-export const getActiveDashboard = createSelector(
-  [getActiveDashboardId, getDashboards],
-  (dashboardId, dashboards) => dashboards[dashboardId],
-);
-
 export const getLoadingDashCards = state => state.dashboard.loadingDashCards;
+
+export const getDashboardById = (state, dashboardId) => {
+  const dashboards = getDashboards(state);
+  return dashboards[dashboardId];
+};
 
 export const getDashCardById = (state, dashcardId) => {
   const dashcards = getDashcards(state);

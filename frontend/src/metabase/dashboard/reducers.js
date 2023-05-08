@@ -1,7 +1,6 @@
 import { assoc, dissoc, assocIn, updateIn, chain, merge } from "icepick";
 import { handleActions, combineReducers } from "metabase/lib/redux";
 import Dashboards from "metabase/entities/dashboards";
-import { CLOSE_QB } from "metabase/query_builder/actions";
 
 import {
   INITIALIZE,
@@ -48,18 +47,6 @@ const dashboardId = handleActions(
       next: (state, { payload: { dashboardId } }) => dashboardId,
     },
     [RESET]: { next: state => null },
-  },
-  null,
-);
-
-const activeDashboardId = handleActions(
-  {
-    [FETCH_DASHBOARD]: {
-      next: (state, { payload: { dashboardId } }) => dashboardId,
-    },
-    [CLOSE_QB]: {
-      next: () => null,
-    },
   },
   null,
 );
@@ -465,7 +452,6 @@ const missingActionParameters = handleActions(
 
 export default combineReducers({
   dashboardId,
-  activeDashboardId,
   isEditing,
   loadingControls,
   dashboards,

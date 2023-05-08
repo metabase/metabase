@@ -21,7 +21,7 @@ import Question from "metabase-lib/Question";
  *     - those all can be applied without or with a dashboard filter
  */
 
-const NAVIGATE_TO_NEW_CARD = "metabase/dashboard/NAVIGATE_TO_NEW_CARD";
+export const NAVIGATE_TO_NEW_CARD = "metabase/dashboard/NAVIGATE_TO_NEW_CARD";
 export const navigateToNewCardFromDashboard = createThunkAction(
   NAVIGATE_TO_NEW_CARD,
   ({ nextCard, previousCard, dashcard, objectId }) =>
@@ -70,5 +70,6 @@ export const navigateToNewCardFromDashboard = createThunkAction(
       );
 
       dispatch(openUrl(url));
+      return { dashboardId };
     },
 );

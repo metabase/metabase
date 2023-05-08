@@ -4,7 +4,6 @@ export const createMockDashboardState = (
   opts: Partial<DashboardState> = {},
 ): DashboardState => ({
   dashboardId: null,
-  activeDashboardId: null,
   dashboards: {},
   dashcards: {},
   dashcardData: {},

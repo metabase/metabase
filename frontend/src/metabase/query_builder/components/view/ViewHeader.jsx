@@ -12,12 +12,11 @@ import { useToggle } from "metabase/hooks/use-toggle";
 import Link from "metabase/core/components/Link";
 import Tooltip from "metabase/core/components/Tooltip";
 
-import { getActiveDashboard } from "metabase/dashboard/selectors";
-
 import ViewButton from "metabase/query_builder/components/view/ViewButton";
 import SavedQuestionHeaderButton from "metabase/query_builder/components/SavedQuestionHeaderButton/SavedQuestionHeaderButton";
-import { MODAL_TYPES } from "metabase/query_builder/constants";
 
+import { MODAL_TYPES } from "metabase/query_builder/constants";
+import { getDashboard } from "metabase/query_builder/selectors";
 import RunButtonWithTooltip from "../RunButtonWithTooltip";
 import QuestionActions from "../QuestionActions";
 import { HeadBreadcrumbs } from "./HeaderBreadcrumbs";
@@ -163,7 +162,7 @@ export function ViewTitleHeader(props) {
 }
 
 function DashboardBackButton() {
-  const dashboard = useSelector(getActiveDashboard);
+  const dashboard = useSelector(getDashboard);
   if (!dashboard) {
     return null;
   }
