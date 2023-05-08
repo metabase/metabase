@@ -12,12 +12,14 @@ import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 
 import { getMetadata } from "metabase/selectors/metadata";
 import { isActionDashCard } from "metabase/actions/utils";
+import { saveDashboardAndCards } from "metabase/dashboard/actions/save";
 import {
   getDashboard,
   getDraftParameterValues,
   getIsAutoApplyFilters,
   getParameterValues,
   getParameters,
+  getDashboardId,
 } from "../selectors";
 
 import { isVirtualDashCard } from "../utils";
@@ -321,3 +323,15 @@ export const setParameterValuesFromQueryParams =
 
     dispatch(setParameterValues(parameterValues));
   };
+
+export const toggleAutoApplyFilters = isEnabled => (dispatch, getState) => {
+  const dashboardId = getDashboardId(getState());
+
+  dispatch(
+    setDashboardAttributes({
+      id: dashboardId,
+      attributes: { auto_apply_filters: isEnabled },
+    }),
+  );
+  dispatch(saveDashboardAndCards(true));
+};
