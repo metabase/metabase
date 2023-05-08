@@ -363,4 +363,6 @@ function DashCard({
   );
 }
 
-export default DashCard;
+export default Object.assign(DashCard, {
+  root: DashCardRoot,
+});
