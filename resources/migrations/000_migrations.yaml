@@ -14656,6 +14656,38 @@ databaseChangeLog:
             tableName: model_index_value
             constraintName: unique_model_index_value_index_id_model_pk
 
+  - changeSet:
+      id: v47.00-022
+      author: dpsutton
+      comment: Added 0.47.0 -- model_index_value index
+      changes:
+        - createIndex:
+            tableName: model_index_value
+            columns:
+              - column:
+                  name: model_index_id
+            indexName: idx_model_index_value_model_index_id
+      rollback:
+        - dropIndex:
+            tableName: model_index_value
+            indexName: idx_model_index_value_model_index_id
+
+  - changeSet:
+      id: v47.00-023
+      author: dpsutton
+      comment: Added 0.47.0 -- model_index index
+      changes:
+        - createIndex:
+            tableName: model_index
+            columns:
+              - column:
+                  name: model_id
+            indexName: idx_model_index_model_id
+      rollback:
+        - dropIndex:
+            tableName: model_index
+            indexName: idx_model_index_model_id
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
