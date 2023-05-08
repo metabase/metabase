@@ -43,7 +43,7 @@ jobs:
             } else {
               // notify slack of repeated failure
               const WebClient = require('@slack/web-api');
-              const slack = new WebClient(${{ secrets.SLACK_BOT_TOKEN }});
+              const slack = new WebClient('${{ secrets.SLACK_BOT_TOKEN }}');
 
               await slack.chat.postMessage({
                 channel: 'engineering-ci',

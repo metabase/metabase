@@ -25,6 +25,7 @@
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sql.util.unprepare :as unprepare]
    [metabase.models.secret :as secret]
+   [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
@@ -35,24 +36,36 @@
    (com.facebook.presto.jdbc PrestoConnection)
    (com.mchange.v2.c3p0 C3P0ProxyConnection)
    (java.sql
-    Connection
-    PreparedStatement
-    ResultSet
-    ResultSetMetaData
-    Time
-    Types)
+     Connection
+     PreparedStatement
+     ResultSet
+     ResultSetMetaData
+     Time
+     Types)
    (java.time
-    LocalDateTime
-    LocalTime
-    OffsetDateTime
-    OffsetTime
-    ZonedDateTime)
+     LocalDateTime
+     LocalTime
+     OffsetDateTime
+     OffsetTime
+     ZonedDateTime)
    (java.time.format DateTimeFormatter)
    (java.time.temporal ChronoField Temporal)))
 
 (set! *warn-on-reflection* true)
 
-(defmethod driver/database-supports? [:presto-jdbc :now] [_driver _feat _db] true)
+(driver/register! :presto-jdbc, :parent #{:sql-jdbc
+                                          ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
+
+(doseq [[feature supported?] {:set-timezone                    true
+                              :basic-aggregations              true
+                              :standard-deviation-aggregations true
+                              :expressions                     true
+                              :native-parameters               true
+                              :expression-aggregations         true
+                              :binning                         true
+                              :foreign-keys                    true
+                              :now                             true}]
+  (defmethod driver/database-supports? [:presto-jdbc feature] [_driver _feature _db] supported?))
 
 ;;; Presto API helpers
 
@@ -259,22 +272,6 @@
   [& args]
   (apply driver.common/current-db-time args))
 
-(doseq [[feature supported?] {:set-timezone                    true
-                              :basic-aggregations              true
-                              :standard-deviation-aggregations true
-                              :expressions                     true
-                              :native-parameters               true
-                              :expression-aggregations         true
-                              :binning                         true
-                              :foreign-keys                    true
-                              :now                             true}]
-  (defmethod driver/supports? [:presto-jdbc feature] [_ _] supported?))
-
-;; presto-jdbc
-
-(driver/register! :presto-jdbc, :parent #{:sql-jdbc
-                                          ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          Custom HoneySQL Clause Impls                                          |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -313,7 +310,7 @@
   "Returns a HoneySQL form to interpret the `expr` (a temporal value) in the current report time zone, via Presto's
   `AT TIME ZONE` operator. See https://prestodb.io/docs/current/functions/datetime.html"
   [expr]
-  (let [report-zone (qp.timezone/report-timezone-id-if-supported :presto-jdbc)
+  (let [report-zone (qp.timezone/report-timezone-id-if-supported :presto-jdbc (qp.store/database))
         ;; if the expression itself has type info, use that, or else use a parent expression's type info if defined
         type-info   (hx/type-info expr)
         db-type     (hx/type-info->db-type type-info)]
@@ -395,13 +392,13 @@
 
 (defmethod sql.qp/unix-timestamp->honeysql [:presto-jdbc :seconds]
   [_ _ expr]
-  (let [report-zone (qp.timezone/report-timezone-id-if-supported :presto-jdbc)]
+  (let [report-zone (qp.timezone/report-timezone-id-if-supported :presto-jdbc (qp.store/database))]
     (hx/call :from_unixtime expr (hx/literal (or report-zone "UTC")))))
 
 (defmethod sql.qp/unix-timestamp->honeysql [:presto-jdbc :milliseconds]
   [_ _ expr]
   ;; from_unixtime doesn't support milliseconds directly, but we can add them back in
-  (let [report-zone (qp.timezone/report-timezone-id-if-supported :presto-jdbc)
+  (let [report-zone (qp.timezone/report-timezone-id-if-supported :presto-jdbc (qp.store/database))
         millis      (hx/call (u/qualified-name ::mod) expr 1000)]
     (hx/call :date_add
              (hx/literal "millisecond")
@@ -690,7 +687,7 @@
   ;; (which was set via report time zone), it is necessary to use the `from_iso8601_timestamp` function on the string
   ;; representation of the `ZonedDateTime` instance, but converted to the report time zone
   #_(date-time->substitution (.format (t/offset-date-time (t/local-date-time t) (t/zone-offset 0)) DateTimeFormatter/ISO_OFFSET_DATE_TIME))
-  (let [report-zone       (qp.timezone/report-timezone-id-if-supported :presto-jdbc)
+  (let [report-zone       (qp.timezone/report-timezone-id-if-supported :presto-jdbc (qp.store/database))
         ^ZonedDateTime ts (if (str/blank? report-zone) t (t/with-zone-same-instant t (t/zone-id report-zone)))]
     ;; the `from_iso8601_timestamp` only accepts timestamps with an offset (not a zone ID), so only format with offset
     (date-time->substitution (.format ts DateTimeFormatter/ISO_OFFSET_DATE_TIME))))
@@ -792,4 +789,4 @@
 ;;; |                                           Other Driver Method Impls                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(prefer-method driver/supports? [:presto-jdbc :set-timezone] [:sql-jdbc :set-timezone])
+(prefer-method driver/database-supports? [:presto-jdbc :set-timezone] [:sql-jdbc :set-timezone])

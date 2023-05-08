@@ -69,7 +69,7 @@
   [query _stage-number {[first-stage] :stages, :as _join} _style]
   (if-let [source-table (:source-table first-stage)]
     (if (integer? source-table)
-      (:display_name (lib.metadata/table query source-table))
+      (:display-name (lib.metadata/table query source-table))
       ;; handle card__<id> source tables.
       (let [card-id (lib.util/string-table-id->card-id source-table)]
         (i18n/tru "Saved Question #{0}" card-id)))
@@ -78,7 +78,7 @@
 (defmethod lib.metadata.calculation/display-info-method :mbql/join
   [query stage-number join]
   (let [display-name (lib.metadata.calculation/display-name query stage-number join)]
-    {:name (or (:alias join) display-name), :display_name display-name}))
+    {:name (or (:alias join) display-name), :display-name display-name}))
 
 (mu/defn ^:private column-from-join-fields :- lib.metadata.calculation/ColumnMetadataWithSource
   "For a column that comes from a join `:fields` list, add or update metadata as needed, e.g. include join name in the
@@ -89,7 +89,7 @@
    join-alias      :- ::lib.schema.common/non-blank-string]
   (let [column-metadata (assoc column-metadata :source_alias join-alias)
         col             (-> (assoc column-metadata
-                                   :display_name (lib.metadata.calculation/display-name query stage-number column-metadata)
+                                   :display-name (lib.metadata.calculation/display-name query stage-number column-metadata)
                                    :lib/source   :source/joins)
                             (with-join-alias join-alias))]
     (assert (= (current-join-alias col) join-alias))
@@ -284,3 +284,13 @@
   [table-name           :- ::lib.schema.common/non-blank-string
    source-field-id-name :- ::lib.schema.common/non-blank-string]
   (lib.util/format "%s__via__%s" table-name source-field-id-name))
+
+(mu/defn join-conditions :- ::lib.schema.join/conditions
+  "Get all join conditions for the given join"
+  [j :- ::lib.schema.join/join]
+  (:conditions j))
+
+(mu/defn join-fields :- [:maybe ::lib.schema/fields]
+  "Get all join conditions for the given join"
+  [j :- ::lib.schema.join/join]
+  (:fields j))

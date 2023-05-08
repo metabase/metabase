@@ -1,14 +1,16 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
 import { t } from "ttag";
-import { Aggregation as AggregationObject } from "metabase-types/types/Query";
-import { AggregationOperator } from "metabase-types/types/Metadata";
-import { MetricId } from "metabase-types/types/Metric";
-import { FieldId } from "metabase-types/types/Field";
+import {
+  Aggregation as AggregationObject,
+  FieldId,
+  MetricId,
+} from "metabase-types/api";
 import { TYPE } from "metabase-lib/types/constants";
 import * as AGGREGATION from "metabase-lib/queries/utils/aggregation";
 import Filter from "metabase-lib/queries/structured/Filter";
 import Metric from "metabase-lib/metadata/Metric";
+import type { AggregationOperator } from "metabase-lib/deprecated-types";
 import StructuredQuery from "../StructuredQuery";
 import Dimension, { AggregationDimension } from "../../Dimension";
 import MBQLClause from "./MBQLClause";

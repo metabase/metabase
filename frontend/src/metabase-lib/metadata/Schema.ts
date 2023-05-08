@@ -2,6 +2,7 @@
 // @ts-nocheck
 import { titleize, humanize } from "metabase/lib/formatting";
 import Base from "./Base";
+import type Metadata from "./Metadata";
 import type Database from "./Database";
 import type Table from "./Table";
 /**
@@ -13,6 +14,7 @@ export default class Schema extends Base {
   name: string;
   database: Database;
   tables: Table[];
+  metadata: Metadata;
 
   displayName() {
     return this.name ? titleize(humanize(this.name)) : null;

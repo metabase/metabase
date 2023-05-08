@@ -50,17 +50,18 @@
    #_expr [:ref ::expression/expression]])
 
 
-(mbql-clause/define-tuple-mbql-clause :case
+(mbql-clause/define-catn-mbql-clause :case
   ;; TODO -- we should further constrain this so all of the exprs are of the same type
-  [:sequential {:min 1} [:ref ::case-subclause]])
+  [:pred-expr-pairs [:sequential {:min 1} [:ref ::case-subclause]]]
+  [:default [:? [:schema [:ref ::expression/expression]]]])
 
 (defmethod expression/type-of* :case
-  [[_tag _opts pred-expr-pairs]]
+  [[_tag _opts pred-expr-pairs default]]
   (reduce
    (fn [best-guess [_pred expr]]
      (let [expr-type (expression/type-of expr)]
        (best-return-type best-guess expr-type)))
-   nil
+   default
    pred-expr-pairs))
 
 ;;; TODO -- add constraint that these types have to be compatible

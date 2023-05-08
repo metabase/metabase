@@ -89,26 +89,26 @@
       (testing "overall extraction returns the expected set"
         (testing "no user specified"
           (is (= #{coll-eid child-eid}
-                 (by-model "Collection" (extract/extract-metabase nil)))))
+                 (by-model "Collection" (extract/extract nil)))))
 
         (testing "valid user specified"
           (is (= #{coll-eid child-eid pc-eid}
-                 (by-model "Collection" (extract/extract-metabase {:user mark-id})))))
+                 (by-model "Collection" (extract/extract {:user-id mark-id})))))
 
         (testing "invalid user specified"
           (is (= #{coll-eid child-eid}
-                 (by-model "Collection" (extract/extract-metabase {:user 218921})))))))))
+                 (by-model "Collection" (extract/extract {:user-id 218921})))))))))
 
 (deftest database-test
   (mt/with-empty-h2-app-db
     (ts/with-temp-dpc [Database   [_ {:name "My Database"}]]
       (testing "without :include-database-secrets"
-        (let [extracted (extract/extract-metabase {})
+        (let [extracted (extract/extract {})
               dbs       (filter #(= "Database" (:model (last (serdes/path %)))) extracted)]
           (is (= 1 (count dbs)))
           (is (not-any? :details dbs))))
       (testing "with :include-database-secrets"
-        (let [extracted (extract/extract-metabase {:include-database-secrets true})
+        (let [extracted (extract/extract {:include-database-secrets true})
               dbs       (filter #(= "Database" (:model (last (serdes/path %)))) extracted)]
           (is (= 1 (count dbs)))
           (is (every? :details dbs)))))))
@@ -470,11 +470,11 @@
                      (map :name)))))
        (testing "unowned collections and the personal one with a user"
          (is (= #{coll-eid mark-coll-eid}
-                (->> {:collection-set (extract/collection-set-for-user mark-id)}
+                (->> {:collection-set (#'extract/collection-set-for-user mark-id)}
                      (serdes/extract-all "Collection")
                      (by-model "Collection"))))
          (is (= #{coll-eid dave-coll-eid}
-                (->> {:collection-set (extract/collection-set-for-user dave-id)}
+                (->> {:collection-set (#'extract/collection-set-for-user dave-id)}
                      (serdes/extract-all "Collection")
                      (by-model "Collection"))))))
 
@@ -485,12 +485,12 @@
                      (serdes/extract-all "Dashboard")
                      (by-model "Dashboard"))))
          (is (= #{dash-eid}
-                (->> {:collection-set (extract/collection-set-for-user mark-id)}
+                (->> {:collection-set (#'extract/collection-set-for-user mark-id)}
                      (serdes/extract-all "Dashboard")
                      (by-model "Dashboard")))))
        (testing "dashboards in personal collections are returned for the :user"
          (is (= #{dash-eid other-dash param-dash}
-                (->> {:collection-set (extract/collection-set-for-user dave-id)}
+                (->> {:collection-set (#'extract/collection-set-for-user dave-id)}
                      (serdes/extract-all "Dashboard")
                      (by-model "Dashboard")))))))))
 
@@ -915,9 +915,9 @@
       (testing "extract-metabase behavior"
         (testing "without :include-field-values"
           (is (= #{}
-                 (by-model "FieldValues" (extract/extract-metabase {})))))
+                 (by-model "FieldValues" (extract/extract {})))))
         (testing "with :include-field-values true"
-          (let [models (->> {:include-field-values true} extract/extract-metabase (map (comp :model last :serdes/meta)))]
+          (let [models (->> {:include-field-values true} extract/extract (map (comp :model last :serdes/meta)))]
             ;; why 6?
             (is (= 6 (count (filter #{"FieldValues"} models))))))))))
 
@@ -1292,7 +1292,7 @@
           (is (= #{[{:model "Dashboard" :id dash1-eid :label "dashboard_1"}]
                    [{:model "Card"      :id c1-1-eid  :label "question_1_1"}]
                    [{:model "Card"      :id c1-2-eid  :label "question_1_2"}]}
-                 (->> (extract/extract-subtrees {:targets [["Dashboard" dash1-id]]})
+                 (->> (extract/extract {:targets [["Dashboard" dash1-id]]})
                       (map serdes/path)
                       set))))
 
@@ -1300,7 +1300,7 @@
           (is (= #{[{:model "Dashboard" :id dash2-eid :label "dashboard_2"}]
                    [{:model "Card"      :id c2-1-eid  :label "question_2_1"}]
                    [{:model "Card"      :id c2-2-eid  :label "question_2_2"}]}
-                 (->> (extract/extract-subtrees {:targets [["Dashboard" dash2-id]]})
+                 (->> (extract/extract {:targets [["Dashboard" dash2-id]]})
                       (map serdes/path)
                       set))))
 
@@ -1308,7 +1308,7 @@
           (is (= #{[{:model "Dashboard" :id dash3-eid :label "dashboard_3"}]
                    [{:model "Card"      :id c3-1-eid  :label "question_3_1"}]
                    [{:model "Card"      :id c3-2-eid  :label "question_3_2"}]}
-                 (->> (extract/extract-subtrees {:targets [["Dashboard" dash3-id]]})
+                 (->> (extract/extract {:targets [["Dashboard" dash3-id]]})
                       (map serdes/path)
                       set))))
 
@@ -1319,7 +1319,7 @@
                     [{:model "Card"          :id c1-1-eid  :label "question_1_1"}]
                     ;; card that the card on dashboard linked to
                     [{:model "Card"          :id c1-2-eid  :label "question_1_2"}]}
-               (->> (extract/extract-subtrees {:targets [["Dashboard" dash4-id]]})
+               (->> (extract/extract {:targets [["Dashboard" dash4-id]]})
                     (map serdes/path)
                     set)))))
 
@@ -1341,17 +1341,17 @@
                                   [{:model "Card"          :id c1-3-eid  :label "question_1_3"}]}]
           (testing "grandchild collection has all its own contents"
             (is (= grandchild-paths ; Includes the third card not found in the collection
-                   (->> (extract/extract-subtrees {:targets [["Collection" coll3-id]]})
+                   (->> (extract/extract {:targets [["Collection" coll3-id]]})
                         (map serdes/path)
                         set))))
           (testing "middle collection has all its own plus the grandchild and its contents"
             (is (= (set/union middle-paths grandchild-paths)
-                   (->> (extract/extract-subtrees {:targets [["Collection" coll2-id]]})
+                   (->> (extract/extract {:targets [["Collection" coll2-id]]})
                         (map serdes/path)
                         set))))
           (testing "grandparent collection has all its own plus the grandchild and middle collections with contents"
             (is (= (set/union grandparent-paths middle-paths grandchild-paths)
-                   (->> (extract/extract-subtrees {:targets [["Collection" coll1-id]]})
+                   (->> (extract/extract {:targets [["Collection" coll1-id]]})
                         (map serdes/path)
                         set))))
 
@@ -1363,7 +1363,7 @@
                       [{:model "Card"          :id c1-1-eid  :label "question_1_1"}]
                       ;; card that the card on dashboard linked to
                       [{:model "Card"          :id c1-2-eid  :label "question_1_2"}]}
-                 (->> (extract/extract-subtrees {:targets [["Collection" coll4-id]]})
+                 (->> (extract/extract {:targets [["Collection" coll4-id]]})
                       (map serdes/path)
                       set)))))))))
 
