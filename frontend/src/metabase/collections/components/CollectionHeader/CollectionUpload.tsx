@@ -1,7 +1,9 @@
 import React from "react";
+import { t } from "ttag";
 
 import type { Collection, CollectionId } from "metabase-types/api";
 
+import Tooltip from "metabase/core/components/Tooltip";
 import { CollectionHeaderButton } from "./CollectionHeader.styled";
 import { UploadInput } from "./CollectionUpload.styled";
 
@@ -20,7 +22,7 @@ export default function ColllectionUpload({
   };
 
   return (
-    <>
+    <Tooltip tooltip={t`Upload data`}>
       <label htmlFor="upload-csv">
         <CollectionHeaderButton as="span" to="" icon="arrow_up" />
       </label>
@@ -31,6 +33,6 @@ export default function ColllectionUpload({
         onChange={handleFileUpload}
         data-testid="upload-input"
       />
-    </>
+    </Tooltip>
   );
 }
