@@ -4,7 +4,7 @@ import { getScrollX, getScrollY } from "metabase/lib/dom";
 import SandboxedPortal from "metabase/components/SandboxedPortal";
 import {
   getModalContent,
-  ModalWrapper,
+  MaybeOnClickOutsideWrapper,
 } from "metabase/components/Modal/common";
 
 export type FullPageModalProps = {
@@ -101,9 +101,9 @@ export class FullPageModal extends Component<
               occupies the entire screen. We do this to put this modal on top of
               the OnClickOutsideWrapper popover stack.  Otherwise, clicks within
               this modal might be seen as clicks outside another popover. */}
-              <ModalWrapper
+              <MaybeOnClickOutsideWrapper
                 handleDismissal={this.handleDismissal}
-                {...this.props}
+                noOnClickOutsideWrapper={this.props.noOnClickOutsideWrapper}
               >
                 <div
                   className="full-height relative scroll-y"
@@ -116,7 +116,7 @@ export class FullPageModal extends Component<
                     onClose: this.handleDismissal,
                   })}
                 </div>
-              </ModalWrapper>
+              </MaybeOnClickOutsideWrapper>
             </div>
           </SandboxedPortal>
         )}
