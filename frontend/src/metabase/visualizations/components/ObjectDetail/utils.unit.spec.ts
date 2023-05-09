@@ -193,8 +193,7 @@ describe("ObjectDetail utils", () => {
     // this code should no longer be reachable now that we always reach object detail by zooming
     it("should return the primary key of the first row if now zoomed row id exists", () => {
       const id = getIdValue({
-        data: createMockDatasetData({
-          cols: [productIdCol, idCol, qtyCol, nameCol],
+        data: createMockDatasetData([productIdCol, idCol, qtyCol, nameCol], {
           rows: [
             [11, 22, 33, "Giant Sprocket"],
             [33, 44, 55, "Tiny Sprocket"],
