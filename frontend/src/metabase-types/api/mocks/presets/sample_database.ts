@@ -178,6 +178,7 @@ export const createProductsTable = (opts?: Partial<Table>): Table =>
     db_id: SAMPLE_DB_ID,
     name: "PRODUCTS",
     display_name: "Products",
+    description: "All of our products",
     schema: "PUBLIC",
     fields: [
       createProductsIdField(),

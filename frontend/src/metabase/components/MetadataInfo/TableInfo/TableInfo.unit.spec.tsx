@@ -1,13 +1,24 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
-
-import { PRODUCTS } from "__support__/sample_database_fixture";
+import { createMockEntitiesState } from "__support__/store";
+import { getMetadata } from "metabase/selectors/metadata";
+import {
+  createSampleDatabase,
+  PRODUCTS_ID,
+} from "metabase-types/api/mocks/presets";
+import { createMockState } from "metabase-types/store/mocks";
 import Table from "metabase-lib/metadata/Table";
-
 import { TableInfo } from "./TableInfo";
 
+const state = createMockState({
+  entities: createMockEntitiesState({
+    databases: [createSampleDatabase()],
+  }),
+});
+const metadata = getMetadata(state);
+
 const productsTable = new Table({
-  ...PRODUCTS,
+  ...metadata.table(PRODUCTS_ID),
   fields: [1, 2, 3],
   fks: [
     {
@@ -47,11 +58,15 @@ function setup({ id, table }: { table: Table | undefined; id: Table["id"] }) {
 describe("TableInfo", () => {
   it("should fetch table metadata if fields are missing", () => {
     setup({
-      id: PRODUCTS.id,
-      table: new Table({ ...PRODUCTS, fields: undefined, fks: [] }),
+      id: PRODUCTS_ID,
+      table: new Table({
+        ...metadata.table(PRODUCTS_ID),
+        fields: undefined,
+        fks: [],
+      }),
     });
     expect(fetchMetadata).toHaveBeenCalledWith({
-      id: PRODUCTS.id,
+      id: PRODUCTS_ID,
     });
     expect(fetchForeignKeys).not.toHaveBeenCalled();
   });
@@ -69,19 +84,23 @@ describe("TableInfo", () => {
 
   it("should fetch fks if fks are undefined on table", () => {
     setup({
-      id: PRODUCTS.id,
-      table: new Table({ ...PRODUCTS, fields: [1, 2, 3], fks: undefined }),
+      id: PRODUCTS_ID,
+      table: new Table({
+        ...metadata.table(PRODUCTS_ID),
+        fields: [1, 2, 3],
+        fks: undefined,
+      }),
     });
 
     expect(fetchMetadata).not.toHaveBeenCalled();
     expect(fetchForeignKeys).toHaveBeenCalledWith({
-      id: PRODUCTS.id,
+      id: PRODUCTS_ID,
     });
   });
 
   it("should not send requests fetching table metadata when metadata is already present", () => {
     setup({
-      id: PRODUCTS.id,
+      id: PRODUCTS_ID,
       table: productsTable,
     });
 
@@ -100,19 +119,19 @@ describe("TableInfo", () => {
 
   describe("after metadata has been fetched", () => {
     it("should display the given table's description", () => {
-      setup({ id: PRODUCTS.id, table: productsTable });
+      setup({ id: PRODUCTS_ID, table: productsTable });
       expect(
-        screen.getByText(PRODUCTS.description as string),
+        screen.getByText(metadata.table(PRODUCTS_ID)?.description as string),
       ).toBeInTheDocument();
     });
 
     it("should show a count of columns on the table", () => {
-      setup({ id: PRODUCTS.id, table: productsTable });
+      setup({ id: PRODUCTS_ID, table: productsTable });
       expect(screen.getByText("3 columns")).toBeInTheDocument();
     });
 
     it("should list connected tables", () => {
-      setup({ id: PRODUCTS.id, table: productsTable });
+      setup({ id: PRODUCTS_ID, table: productsTable });
       expect(screen.getByText("Connected Table")).toBeInTheDocument();
     });
   });
