@@ -13,15 +13,13 @@ describe(
         cy.signInAsAdmin();
 
         visitDatabase(WRITABLE_DB_ID).then(({ response: { body } }) => {
-          if (body.name !== "Audit Database") {
-            expect(body.name).to.include("Writable");
-            expect(body.name.toLowerCase()).to.include(dialect);
+          expect(body.name).to.include("Writable");
+          expect(body.name.toLowerCase()).to.include(dialect);
 
-            expect(body.details.dbname).to.equal(
-              WRITABLE_DB_CONFIG[dialect].connection.database,
-            );
-            expect(body.settings["database-enable-actions"]).to.eq(true);
-          }
+          expect(body.details.dbname).to.equal(
+            WRITABLE_DB_CONFIG[dialect].connection.database,
+          );
+          expect(body.settings["database-enable-actions"]).to.eq(true);
         });
 
         cy.get("#model-actions-toggle").should(
