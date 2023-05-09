@@ -190,7 +190,7 @@ export function UploadSettingsView({
           />
         </div>
         {!!showSchema && (
-          <Schemas.ListLoader query={{ dbId }}>
+          <Schemas.ListLoader query={{ dbId, getAll: true }}>
             {({ list: schemaList }: { list: Schema[] }) => (
               <div>
                 <SectionTitle>{t`Schema`}</SectionTitle>

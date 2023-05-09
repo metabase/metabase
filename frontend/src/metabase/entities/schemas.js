@@ -1,7 +1,6 @@
 import { updateIn } from "icepick";
 import { createEntity } from "metabase/lib/entities";
-
-import { GET } from "metabase/lib/api";
+import { MetabaseApi } from "metabase/services";
 
 import { SchemaSchema } from "metabase/schema";
 import Questions from "metabase/entities/questions";
@@ -16,19 +15,18 @@ import {
 
 // This is a weird entity because we don't have actual schema objects
 
-const listDatabaseSchemas = GET("/api/database/:dbId/schemas");
-const getSchemaTables = GET("/api/database/:dbId/schema/:schemaName");
-const getVirtualDatasetTables = GET("/api/database/:dbId/datasets/:schemaName");
-
 export default createEntity({
   name: "schemas",
   schema: SchemaSchema,
   api: {
-    list: async ({ dbId, ...args }) => {
+    list: async ({ dbId, getAll = false, ...args }) => {
       if (!dbId) {
         throw new Error("Schemas can only be listed for a particular dbId");
       }
-      const schemaNames = await listDatabaseSchemas({ dbId, ...args });
+      const schemaNames = await (getAll
+        ? MetabaseApi.db_syncable_schemas({ dbId, ...args }) // includes empty schema
+        : MetabaseApi.db_schemas({ dbId, ...args }));
+
       return schemaNames.map(schemaName => ({
         // NOTE: needs unique IDs for entities to work correctly
         id: generateSchemaId(dbId, schemaName),
@@ -42,8 +40,12 @@ export default createEntity({
         throw new Error("Schemas ID is of the form dbId:schemaName");
       }
       const tables = opts?.isDatasets
-        ? await getVirtualDatasetTables({ dbId, schemaName, ...args })
-        : await getSchemaTables({ dbId, schemaName, ...args });
+        ? await MetabaseApi.db_virtual_dataset_tables({
+            dbId,
+            schemaName,
+            ...args,
+          })
+        : await MetabaseApi.db_schema_tables({ dbId, schemaName, ...args });
       return {
         id,
         name: schemaName,

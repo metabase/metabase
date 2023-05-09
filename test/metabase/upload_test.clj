@@ -26,23 +26,21 @@
 (def text-type      :metabase.upload/text)
 
 (deftest type-detection-and-parse-test
-  (doseq [[string-value  expected-value expected-type]
-          [["0"          false          bool-type]
-           ["1"          true           bool-type]
-           ["t"          true           bool-type]
-           ["T"          true           bool-type]
-           ["tRuE"       true           bool-type]
-           ["f"          false          bool-type]
-           ["F"          false          bool-type]
-           ["FAlse"      false          bool-type]
-           ["Y"          true           bool-type]
-           ["n"          false          bool-type]
-           ["yes"        true           bool-type]
-           ["NO"         false          bool-type]
+  (doseq [[string-value  expected-value expected-type seps]
+          [["0.0"        0              float-type "."]
+           ["0.0"        0              float-type ".,"]
+           ["0,0"        0              float-type ",."]
+           ["0,0"        0              float-type ", "]
+           ["0.0"        0              float-type ".’"]
            ["$2"         2              int-type]
            ["$ 3"        3              int-type]
            ["-43€"       -43            int-type]
            ["£1000"      1000           int-type]
+           ["£1000"      1000           int-type "."]
+           ["£1000"      1000           int-type ".,"]
+           ["£1000"      1000           int-type ",."]
+           ["£1000"      1000           int-type ", "]
+           ["£1000"      1000           int-type ".’"]
            ["-¥9"        -9             int-type]
            ["₹ -13"      -13            int-type]
            ["₪13"        13             int-type]
@@ -52,23 +50,36 @@
            ["2"          2              int-type]
            ["-86"        -86            int-type]
            ["9,986,000"  9986000        int-type]
-           [",,,"        nil            int-type]   ;; TODO: this should be a vchar in the future
-           ["9.986.000"  "9.986.000"    vchar-type] ;; TODO: this should be an integer in the future
+           ["9,986,000"  9986000        int-type "."]
+           ["9,986,000"  9986000        int-type ".,"]
+           ["9.986.000"  9986000        int-type ",."]
+           ["9’986’000"  9986000        int-type ".’"]
+           ["9.986.000"  "9.986.000"    vchar-type ".,"]
            ["3.14"       3.14           float-type]
-           [".14"        0.14           float-type]
-           ["0.14"       0.14           float-type]
-           ["-9986.567"  -9986.567      float-type]
-           ["$2.0"       2.0            float-type]
-           ["$ 3.50"     3.50           float-type]
-           ["-4300.23€"  -4300.23       float-type]
+           ["3.14"       3.14           float-type "."]
+           ["3.14"       3.14           float-type ".,"]
+           ["3,14"       3.14           float-type ",."]
+           ["3,14"       3.14           float-type ", "]
+           ["3.14"       3.14           float-type ".’"]
+           [".14"        ".14"          vchar-type ".,"] ;; TODO: this should be a float type
+           ["0.14"       0.14           float-type ".,"]
+           ["-9986.567"  -9986.567      float-type ".,"]
+           ["$2.0"       2              float-type ".,"]
+           ["$ 3.50"     3.50           float-type ".,"]
+           ["-4300.23€"  -4300.23       float-type ".,"]
            ["£1,000.23"  1000.23        float-type]
-           ["£1.000,23"  "£1.000,23"    vchar-type] ;; TODO: this should be a float in the future
-           ["-¥9.99"     -9.99          float-type]
-           ["₹ -13.23"   -13.23         float-type]
-           ["₪13.01"     13.01          float-type]
-           ["₩13.33"     13.33          float-type]
-           ["₿42.243646" 42.243646      float-type]
-           ["-99.99¢"    -99.99         float-type]
+           ["£1,000.23"  1000.23        float-type "."]
+           ["£1,000.23"  1000.23        float-type ".,"]
+           ["£1.000,23"  1000.23        float-type ",."]
+           ["£1 000,23"  1000.23        float-type ", "]
+           ["£1’000.23"  1000.23        float-type ".’"]
+           ["-¥9.99"     -9.99          float-type ".,"]
+           ["₹ -13.23"   -13.23         float-type ".,"]
+           ["₪13.01"     13.01          float-type ".,"]
+           ["₩13.33"     13.33          float-type ".,"]
+           ["₿42.243646" 42.243646      float-type ".,"]
+           ["-99.99¢"    -99.99         float-type ".,"]
+           ["."          "."            vchar-type]
            [(apply str (repeat 255 "x")) (apply str (repeat 255 "x")) vchar-type]
            [(apply str (repeat 256 "x")) (apply str (repeat 256 "x")) text-type]
            ["86 is my favorite number"   "86 is my favorite number"   vchar-type]
@@ -77,14 +88,15 @@
            ["2022-01-01T01:00:00"           #t "2022-01-01T01:00" datetime-type]
            ["2022-01-01T01:00:00.00"        #t "2022-01-01T01:00" datetime-type]
            ["2022-01-01T01:00:00.000000000" #t "2022-01-01T01:00" datetime-type]]]
-    (let [type   (upload/value->type string-value)
-          parser (#'upload/upload-type->parser type)]
-      (testing (format "\"%s\" is a %s" string-value type)
-        (is (= expected-type
-               type)))
-      (testing (format "\"%s\" is parsed into %s" string-value expected-value)
-        (is (= expected-value
-               (parser string-value)))))))
+    (mt/with-temporary-setting-values [custom-formatting (when seps {:type/Number {:number_separators seps}})]
+      (let [type   (upload/value->type string-value)
+            parser (#'upload/upload-type->parser type)]
+        (testing (format "\"%s\" is a %s" string-value type)
+          (is (= expected-type
+                 type)))
+        (testing (format "\"%s\" is parsed into %s" string-value expected-value)
+          (is (= expected-value
+                 (parser string-value))))))))
 
 (deftest type-coalescing-test
   (doseq [[type-a type-b expected] [[bool-type     bool-type     bool-type]
