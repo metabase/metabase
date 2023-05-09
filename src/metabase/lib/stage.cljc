@@ -107,7 +107,7 @@
               :lib/source-column-alias  (lib.metadata.calculation/column-name query stage-number metadata)
               :lib/desired-column-alias (unique-name-fn (lib.field/desired-alias query metadata)))))))
 
-(mu/defn ^:private summary-columns :- [:maybe lib.metadata.calculation/ColumnsWithUniqueAliases]
+(mu/defn ^:private breakout-ags-fields-columns :- [:maybe lib.metadata.calculation/ColumnsWithUniqueAliases]
   [query          :- ::lib.schema/query
    stage-number   :- :int
    unique-name-fn :- fn?]
@@ -116,7 +116,8 @@
          (mapcat (fn [f]
                    (f query stage-number unique-name-fn)))
          [breakouts-columns
-          aggregations-columns])))
+          aggregations-columns
+          fields-columns])))
 
 (mu/defn ^:private previous-stage-metadata :- [:maybe lib.metadata.calculation/ColumnsWithUniqueAliases]
   "Metadata for the previous stage, if there is one."
@@ -210,9 +211,8 @@
 
 (mu/defn ^:private stage-metadata :- [:maybe lib.metadata.calculation/ColumnsWithUniqueAliases]
   "Return results metadata about the expected columns in an MBQL query stage. If the query has
-  aggregations/breakouts, then return those and the fields columns.
-  Otherwise if there are fields columns return those and the joined columns.
-  Otherwise return the defaults based on the source Table or previous stage + joins."
+  aggregations/breakouts/fields, then return THOSE. Otherwise return the defaults based on the source Table or
+  previous stage + joins."
   ([query stage-number]
    (stage-metadata query stage-number (lib.util/unique-name-generator)))
 
@@ -221,23 +221,11 @@
     unique-name-fn :- fn?]
    (or
     (existing-stage-metadata query stage-number)
-    (let [query (ensure-previous-stages-have-metadata query stage-number)
-          summary-cols (summary-columns query stage-number unique-name-fn)
-          field-cols (fields-columns query stage-number unique-name-fn)]
+    (let [query (ensure-previous-stages-have-metadata query stage-number)]
       ;; ... then calculate metadata for this stage
-      (cond
-        summary-cols
-        (into summary-cols field-cols)
-
-        field-cols
-        (do (doall field-cols)          ; force generation of unique names before join columns
-            (into []
-                  (m/distinct-by #(dissoc % :source_alias :lib/source :lib/desired-column-alias))
-                  (concat field-cols
-                          (lib.join/all-joins-default-columns query stage-number unique-name-fn))))
-
-        :else
-        (lib.metadata.calculation/default-columns query stage-number (lib.util/query-stage query stage-number) unique-name-fn))))))
+      (or
+       (breakout-ags-fields-columns query stage-number unique-name-fn)
+       (lib.metadata.calculation/default-columns query stage-number (lib.util/query-stage query stage-number) unique-name-fn))))))
 
 (defmethod lib.metadata.calculation/metadata-method ::stage
   [query stage-number _stage]
