@@ -62,7 +62,6 @@ class DatabaseList extends Component {
                   {databases.map(database => (
                     <li className="relative" key={database.id}>
                       <ListItem
-                        id={database.id}
                         name={database.name}
                         description={database.description}
                         url={`/reference/databases/${database.id}`}

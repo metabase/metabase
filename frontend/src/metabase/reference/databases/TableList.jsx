@@ -44,7 +44,6 @@ const mapDispatchToProps = {
 const createListItem = entity => (
   <li className="relative" key={entity.id}>
     <ListItem
-      id={entity.id}
       name={entity.display_name || entity.name}
       description={entity.description}
       url={`/reference/databases/${entity.db_id}/tables/${entity.id}`}
