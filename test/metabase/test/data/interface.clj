@@ -330,17 +330,6 @@
 
 (defmethod ddl.i/format-name ::test-extensions [_ table-or-field-name] table-or-field-name)
 
-(defmulti has-questionable-timezone-support?
-  "Does this driver have \"questionable\" timezone support? (i.e., does it group things by UTC instead of the
-  `US/Pacific` when we're testing?). Defaults to `(not (driver/supports? driver) :set-timezone)`."
-  {:arglists '([driver])}
-  dispatch-on-driver-with-test-extensions
-  :hierarchy #'driver/hierarchy)
-
-(defmethod has-questionable-timezone-support? ::test-extensions [driver]
-  (not (driver/supports? driver :set-timezone)))
-
-
 (defmulti id-field-type
   "Return the `base_type` of the `id` Field (e.g. `:type/Integer` or `:type/BigInteger`). Defaults to `:type/Integer`."
   {:arglists '([driver])}

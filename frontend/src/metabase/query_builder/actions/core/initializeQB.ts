@@ -14,12 +14,12 @@ import Questions from "metabase/entities/questions";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { fetchAlertsForQuestion } from "metabase/alert/alert";
 
+import { Card } from "metabase-types/api";
 import {
   Dispatch,
   GetState,
   QueryBuilderUIControls,
 } from "metabase-types/store";
-import type { Card } from "metabase-types/types/Card";
 import { isSavedCard } from "metabase-types/guards";
 import { isNotNull } from "metabase/core/utils/types";
 import { cardIsEquivalent } from "metabase-lib/queries/utils/card";

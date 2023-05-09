@@ -93,10 +93,11 @@ const Tables = createEntity({
       ),
       withNormalize(TableSchema),
     )(
-      ({ id }, options = {}) =>
+      ({ id, ...params }, options = {}) =>
         (dispatch, getState) =>
           MetabaseApi.table_query_metadata({
             tableId: id,
+            ...params,
             ...options.params,
           }),
     ),

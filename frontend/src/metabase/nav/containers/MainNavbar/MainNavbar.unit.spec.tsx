@@ -12,7 +12,7 @@ import {
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
 } from "__support__/server-mocks";
-import { createEntitiesState } from "__support__/store";
+import { createMockEntitiesState } from "__support__/store";
 
 import * as Urls from "metabase/lib/urls";
 
@@ -112,7 +112,9 @@ async function setup({
     currentUser: user,
     dashboard: createMockDashboardState({ dashboardId, dashboards }),
     qb: createMockQueryBuilderState({ card: openQuestionCard }),
-    entities: createEntitiesState({ dashboards: Object.values(dashboards) }),
+    entities: createMockEntitiesState({
+      dashboards: Object.values(dashboards),
+    }),
   });
 
   renderWithProviders(

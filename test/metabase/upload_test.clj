@@ -25,37 +25,78 @@
 (def datetime-type  :metabase.upload/datetime)
 (def text-type      :metabase.upload/text)
 
-(deftest type-detection-test
-  (doseq [[value expected] [["0"                          bool-type]
-                            ["1"                          bool-type]
-                            ["t"                          bool-type]
-                            ["T"                          bool-type]
-                            ["tRuE"                       bool-type]
-                            ["f"                          bool-type]
-                            ["F"                          bool-type]
-                            ["FAlse"                      bool-type]
-                            ["Y"                          bool-type]
-                            ["n"                          bool-type]
-                            ["yes"                        bool-type]
-                            ["NO"                         bool-type]
-                            ["2"                          int-type]
-                            ["-86"                        int-type]
-                            ["9,986,000"                  int-type]
-                            ["3.14"                       float-type]
-                            [".14"                        float-type]
-                            ["0.14"                       float-type]
-                            ["-9,986.567"                 float-type]
-                            ["9,986,000.0"                float-type]
-                            [(apply str (repeat 255 "x")) vchar-type]
-                            [(apply str (repeat 256 "x")) text-type]
-                            ["86 is my favorite number"   vchar-type]
-                            ["My favorite number is 86"   vchar-type]
-                            ["2022-01-01"                 date-type]
-                            ["2022-01-01T01:00:00"        datetime-type]
-                            ["2022-01-01T01:00:00.00"     datetime-type]
-                            ["2022-01-01T01:00:00.000000000" datetime-type]]]
-    (testing (format "\"%s\" is a %s" value expected)
-      (is (= expected (upload/value->type value))))))
+(deftest type-detection-and-parse-test
+  (doseq [[string-value  expected-value expected-type seps]
+          [["0.0"        0              float-type "."]
+           ["0.0"        0              float-type ".,"]
+           ["0,0"        0              float-type ",."]
+           ["0,0"        0              float-type ", "]
+           ["0.0"        0              float-type ".’"]
+           ["$2"         2              int-type]
+           ["$ 3"        3              int-type]
+           ["-43€"       -43            int-type]
+           ["£1000"      1000           int-type]
+           ["£1000"      1000           int-type "."]
+           ["£1000"      1000           int-type ".,"]
+           ["£1000"      1000           int-type ",."]
+           ["£1000"      1000           int-type ", "]
+           ["£1000"      1000           int-type ".’"]
+           ["-¥9"        -9             int-type]
+           ["₹ -13"      -13            int-type]
+           ["₪13"        13             int-type]
+           ["₩-13"       -13            int-type]
+           ["₿42"        42             int-type]
+           ["-99¢"       -99            int-type]
+           ["2"          2              int-type]
+           ["-86"        -86            int-type]
+           ["9,986,000"  9986000        int-type]
+           ["9,986,000"  9986000        int-type "."]
+           ["9,986,000"  9986000        int-type ".,"]
+           ["9.986.000"  9986000        int-type ",."]
+           ["9’986’000"  9986000        int-type ".’"]
+           ["9.986.000"  "9.986.000"    vchar-type ".,"]
+           ["3.14"       3.14           float-type]
+           ["3.14"       3.14           float-type "."]
+           ["3.14"       3.14           float-type ".,"]
+           ["3,14"       3.14           float-type ",."]
+           ["3,14"       3.14           float-type ", "]
+           ["3.14"       3.14           float-type ".’"]
+           [".14"        ".14"          vchar-type ".,"] ;; TODO: this should be a float type
+           ["0.14"       0.14           float-type ".,"]
+           ["-9986.567"  -9986.567      float-type ".,"]
+           ["$2.0"       2              float-type ".,"]
+           ["$ 3.50"     3.50           float-type ".,"]
+           ["-4300.23€"  -4300.23       float-type ".,"]
+           ["£1,000.23"  1000.23        float-type]
+           ["£1,000.23"  1000.23        float-type "."]
+           ["£1,000.23"  1000.23        float-type ".,"]
+           ["£1.000,23"  1000.23        float-type ",."]
+           ["£1 000,23"  1000.23        float-type ", "]
+           ["£1’000.23"  1000.23        float-type ".’"]
+           ["-¥9.99"     -9.99          float-type ".,"]
+           ["₹ -13.23"   -13.23         float-type ".,"]
+           ["₪13.01"     13.01          float-type ".,"]
+           ["₩13.33"     13.33          float-type ".,"]
+           ["₿42.243646" 42.243646      float-type ".,"]
+           ["-99.99¢"    -99.99         float-type ".,"]
+           ["."          "."            vchar-type]
+           [(apply str (repeat 255 "x")) (apply str (repeat 255 "x")) vchar-type]
+           [(apply str (repeat 256 "x")) (apply str (repeat 256 "x")) text-type]
+           ["86 is my favorite number"   "86 is my favorite number"   vchar-type]
+           ["My favorite number is 86"   "My favorite number is 86"   vchar-type]
+           ["2022-01-01"                    #t "2022-01-01"       date-type]
+           ["2022-01-01T01:00:00"           #t "2022-01-01T01:00" datetime-type]
+           ["2022-01-01T01:00:00.00"        #t "2022-01-01T01:00" datetime-type]
+           ["2022-01-01T01:00:00.000000000" #t "2022-01-01T01:00" datetime-type]]]
+    (mt/with-temporary-setting-values [custom-formatting (when seps {:type/Number {:number_separators seps}})]
+      (let [type   (upload/value->type string-value)
+            parser (#'upload/upload-type->parser type)]
+        (testing (format "\"%s\" is a %s" string-value type)
+          (is (= expected-type
+                 type)))
+        (testing (format "\"%s\" is parsed into %s" string-value expected-value)
+          (is (= expected-value
+                 (parser string-value))))))))
 
 (deftest type-coalescing-test
   (doseq [[type-a type-b expected] [[bool-type     bool-type     bool-type]
@@ -217,9 +258,9 @@
          driver/*driver*
          (mt/id)
          "upload_test"
-         (csv-file-with ["id,nulls,string,bool,number,date,datetime"
-                         "2\t ,,string,true ,1.1\t  ,2022-01-01,2022-01-01T00:00:00"
-                         "   3,,string,false,    1.1,2022-02-01,2022-02-01T00:00:00"]))
+         (csv-file-with ["id    ,nulls,string ,bool ,number       ,date      ,datetime"
+                         "2\t   ,,          a ,true ,1.1\t        ,2022-01-01,2022-01-01T00:00:00"
+                         "\" 3\",,           b,false,\"$ 1,000.1\",2022-02-01,2022-02-01T00:00:00"]))
         (testing "Table and Fields exist after sync"
           (sync/sync-database! (mt/db))
           (let [table (t2/select-one Table :db_id (mt/id))]

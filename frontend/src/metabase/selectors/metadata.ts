@@ -34,7 +34,7 @@ type FieldSelectorOpts = {
   includeSensitiveFields?: boolean;
 };
 
-type MetadataSelectorOpts = TableSelectorOpts & FieldSelectorOpts;
+export type MetadataSelectorOpts = TableSelectorOpts & FieldSelectorOpts;
 
 const getNormalizedDatabases = (state: State) => state.entities.databases;
 const getNormalizedSchemas = (state: State) => state.entities.schemas;
