@@ -5,7 +5,7 @@ import {
   getModalContent,
   ModalSize,
   modalSizes,
-  ModalWrapper,
+  MaybeOnClickOutsideWrapper,
 } from "metabase/components/Modal/common";
 
 import SandboxedPortal from "metabase/components/SandboxedPortal";
@@ -66,10 +66,10 @@ export class WindowModal extends Component<WindowModalProps> {
         .map(type => `Modal--${type}`),
     );
     return (
-      <ModalWrapper
+      <MaybeOnClickOutsideWrapper
         backdropElement={this._modalElement}
         handleDismissal={this.handleDismissal}
-        {...this.props}
+        noOnClickOutsideWrapper={this.props.noOnClickOutsideWrapper}
       >
         <div
           className={cx(className, "relative bg-white rounded")}
@@ -83,7 +83,7 @@ export class WindowModal extends Component<WindowModalProps> {
             formModal: !!this.props.form || this.props.formModal,
           })}
         </div>
-      </ModalWrapper>
+      </MaybeOnClickOutsideWrapper>
     );
   }
 
