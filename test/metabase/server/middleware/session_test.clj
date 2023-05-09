@@ -5,12 +5,15 @@
    [clojure.test :refer :all]
    [environ.core :as env]
    [java-time :as t]
-   [metabase.api.common :refer [*current-user* *current-user-id*]]
+   [metabase.api.common :as api :refer [*current-user* *current-user-id*]]
    [metabase.config :as config]
    [metabase.core.initialization-status :as init-status]
    [metabase.db :as mdb]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.models :refer [PermissionsGroupMembership Session User]]
+   [metabase.models.setting :as setting]
+   [metabase.models.setting-test :as setting-test]
+   [metabase.models.user :as user]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.public-settings.premium-features-test
@@ -356,6 +359,33 @@
             :user    {}}
            (user-bound-handler
             (request-with-user-id 0))))))
+
+
+;;; ----------------------------------------------   with-current-user -------------------------------------------------
+
+(deftest with-current-user-test
+  (testing "with-current-user correctly binds the appropriate vars for the provided user ID"
+    (mw.session/with-current-user (mt/user->id :rasta)
+      ;; Set a user-local value for rasta so that we can make sure that the user-local settings map is correctly bound
+      (setting-test/test-user-local-only-setting! "XYZ")
+
+      (is (= (mt/user->id :rasta) *current-user-id*))
+      (is (= "rasta@metabase.com" (:email @*current-user*)))
+      (is (false? api/*is-superuser?*))
+      (is (= nil i18n/*user-locale*))
+      (is (false? api/*is-group-manager?*))
+      (is (= (user/permissions-set (mt/user->id :rasta)) @api/*current-user-permissions-set*))
+      (is (partial= {:test-user-local-only-setting "XYZ"} @@setting/*user-local-values*)))))
+
+(deftest as-admin-test
+  (testing "as-admin overrides *is-superuser?* and *current-user-permissions-set*"
+    (mw.session/with-current-user (mt/user->id :rasta)
+      (mw.session/as-admin
+       ;; Current user ID remains the same
+       (is (= (mt/user->id :rasta) *current-user-id*))
+       ;; *is-superuser?* and permissions set are overrided
+       (is (true? api/*is-superuser?*))
+       (is (= #{"/"} @api/*current-user-permissions-set*))))))
 
 
 ;;; ----------------------------------------------------- Locale -----------------------------------------------------

@@ -31,6 +31,7 @@
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.streaming :as qp.streaming]
+   [metabase.server.middleware.session :as mw.session]
    [metabase.util :as u]
    [metabase.util.embed :as embed]
    [metabase.util.i18n :refer [tru]]
@@ -137,13 +138,13 @@
   [qp-runner export-format]
   (fn [query info]
     (qp.streaming/streaming-response
-        [{:keys [reducedf], :as context} export-format (u/slugify (:card-name info))]
-        (let [context  (assoc context :reducedf (public-reducedf reducedf))
-              in-chan  (binding [api/*current-user-permissions-set* (atom #{"/"})]
-                         (qp-runner query info context))
-              out-chan (a/promise-chan (map transform-results))]
-          (async.u/promise-pipe in-chan out-chan)
-          out-chan))))
+     [{:keys [reducedf], :as context} export-format (u/slugify (:card-name info))]
+     (let [context  (assoc context :reducedf (public-reducedf reducedf))
+           in-chan  (mw.session/as-admin
+                     (qp-runner query info context))
+           out-chan (a/promise-chan (map transform-results))]
+       (async.u/promise-pipe in-chan out-chan)
+       out-chan))))
 
 (defn run-query-for-card-with-id-async
   "Run the query belonging to Card with `card-id` with `parameters` and other query options (e.g. `:constraints`).
@@ -157,12 +158,12 @@
   ;; we actually need to bind the current user perms here twice, once so `card-api` will have the full perms when it
   ;; tries to do the `read-check`, and a second time for when the query is ran (async) so the QP middleware will have
   ;; the correct perms
-  (binding [api/*current-user-permissions-set* (atom #{"/"})]
-    (m/mapply qp.card/run-query-for-card-async card-id export-format
-              :parameters parameters
-              :context    :public-question
-              :run        (run-query-for-card-with-id-async-run-fn qp-runner export-format)
-              options)))
+  (mw.session/as-admin
+   (m/mapply qp.card/run-query-for-card-async card-id export-format
+             :parameters parameters
+             :context    :public-question
+             :run        (run-query-for-card-with-id-async-run-fn qp-runner export-format)
+             options)))
 
 (s/defn ^:private run-query-for-card-with-public-uuid-async
   "Run query for a *public* Card with UUID. If public sharing is not enabled, this throws an exception. Returns a
@@ -253,8 +254,8 @@
     ;; Run this query with full superuser perms. We don't want the various perms checks failing because there are no
     ;; current user perms; if this Dashcard is public you're by definition allowed to run it without a perms check
     ;; anyway
-    (binding [api/*current-user-permissions-set* (atom #{"/"})]
-      (m/mapply qp.dashboard/run-query-for-dashcard-async options))))
+    (mw.session/as-admin
+     (m/mapply qp.dashboard/run-query-for-dashcard-async options))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema ^:streaming GET "/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id"
@@ -525,8 +526,8 @@
   [uuid param-key]
   (validation/check-public-sharing-enabled)
   (let [card (db/select-one Card :public_uuid uuid, :archived false)]
-    (binding [api/*current-user-permissions-set* (atom #{"/"})]
-      (api.card/param-values card param-key))))
+    (mw.session/as-admin
+     (api.card/param-values card param-key))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/card/:uuid/params/:param-key/search/:query"
@@ -534,24 +535,24 @@
   [uuid param-key query]
   (validation/check-public-sharing-enabled)
   (let [card (db/select-one Card :public_uuid uuid, :archived false)]
-    (binding [api/*current-user-permissions-set* (atom #{"/"})]
-      (api.card/param-values card param-key query))))
+    (mw.session/as-admin
+     (api.card/param-values card param-key query))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/dashboard/:uuid/params/:param-key/values"
   "Fetch filter values for dashboard parameter `param-key`."
   [uuid param-key :as {:keys [query-params]}]
   (let [dashboard (dashboard-with-uuid uuid)]
-    (binding [api/*current-user-permissions-set* (atom #{"/"})]
-      (api.dashboard/param-values dashboard param-key query-params))))
+    (mw.session/as-admin
+     (api.dashboard/param-values dashboard param-key query-params))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/dashboard/:uuid/params/:param-key/search/:query"
   "Fetch filter values for dashboard parameter `param-key`, containing specified `query`."
   [uuid param-key query :as {:keys [query-params]}]
   (let [dashboard (dashboard-with-uuid uuid)]
-    (binding [api/*current-user-permissions-set* (atom #{"/"})]
-      (api.dashboard/param-values dashboard param-key query-params query))))
+    (mw.session/as-admin
+     (api.dashboard/param-values dashboard param-key query-params query))))
 
 ;;; ----------------------------------------------------- Pivot Tables -----------------------------------------------
 
