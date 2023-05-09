@@ -23,7 +23,7 @@ You can define up to one data sandbox for each table/group combo in your Metabas
 
 ## Types of data sandboxes
 
-A [row-restricted sandbox](#row-restricted-sandboxes-filter-by-a-column-in-the-table-based-on-user-attributes-filter-by-a-column-in-the-table-based-on-user-attributes) will display a filtered table in place of the original table (to a specific group).
+A [row-restricted sandbox](#row-restricted-sandboxes-filter-by-a-column-in-the-table-based-on-user-attributes) will display a filtered table in place of the original table (to a specific group).
 
 A [custom sandbox](#custom-sandboxes-use-a-saved-question-to-create-a-custom-view-for-this-table) will display a custom query result in place of the original table (to a specific group).
 
