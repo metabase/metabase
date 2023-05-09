@@ -13,6 +13,13 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  test-run-id:
+    runs-on: ubuntu-latest
+    outputs:
+      testRunId: ${{ steps.testRunId.outputs.testRunId }}
+    steps:
+      - id: testRunId
+        run: echo testRunId=$(npx uuid) >> "$GITHUB_OUTPUT"
   files-changed:
     name: Check which files changed
     runs-on: ubuntu-22.04
@@ -55,7 +62,7 @@ jobs:
         uses: ./.github/actions/prepare-uberjar-artifact
 
   e2e-tests:
-    needs: [build, files-changed]
+    needs: [build, files-changed, test-run-id]
     if: |
       always() &&
       needs.files-changed.outputs.e2e_all == 'true' &&
@@ -184,6 +191,8 @@ jobs:
           --folder ${{ matrix.folder }}
         env:
           TERM: xterm
+          RECORD_REPLAY_METADATA_FILE: /tmp/replay-metadata.json
+          RECORD_REPLAY_METADATA_TEST_RUN_ID: ${{ needs.test-run-id.outputs.testRunId }}
 
       - name: Upload Replay.io recordings
         if: always()
