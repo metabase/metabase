@@ -44,8 +44,6 @@ ListItem.propTypes = {
   description: PropTypes.string,
   placeholder: PropTypes.string,
   icon: PropTypes.string,
-  isEditing: PropTypes.bool,
-  field: PropTypes.object,
 };
 
 export default React.memo(ListItem);
