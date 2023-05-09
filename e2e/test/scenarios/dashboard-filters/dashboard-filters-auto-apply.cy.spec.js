@@ -2,6 +2,7 @@ import {
   dashboardHeader,
   filterWidget,
   getDashboardCard,
+  popover,
   restore,
   rightSidebar,
   undoToast,
@@ -15,7 +16,7 @@ const questionDetails = {
   query: { "source-table": PRODUCTS_ID },
 };
 
-const dashboardFilter = {
+const filter = {
   name: "Category",
   slug: "category",
   id: "2a12e66c",
@@ -24,7 +25,7 @@ const dashboardFilter = {
 };
 
 const dashboardDetails = {
-  parameters: [dashboardFilter],
+  parameters: [filter],
 };
 
 const toastTimeout = 20000;
@@ -38,10 +39,11 @@ describe("scenarios > dashboards > filters > auto apply", () => {
   });
 
   it("should display toasts when a dashboard takes longer than 15s to load", () => {
-    visitSlowDashboard({
-      [dashboardFilter.slug]: "Gadget",
-    });
+    cy.clock();
+    visitSlowDashboard({ [filter.slug]: "Gadget" });
 
+    cy.tick(toastTimeout);
+    cy.wait("@cardQuery");
     undoToast().within(() => {
       cy.button("Turn off").click();
       cy.wait("@updateDashboard");
@@ -55,6 +57,29 @@ describe("scenarios > dashboards > filters > auto apply", () => {
     filterWidget().within(() => {
       cy.findByText("Gadget").should("be.visible");
     });
+  });
+
+  it("should not display the same toast twice for a dashboard", () => {
+    cy.clock();
+    visitSlowDashboard({ [filter.slug]: "Gadget" });
+
+    cy.tick(toastTimeout);
+    cy.wait("@cardQuery");
+    undoToast().within(() => {
+      cy.button("Turn off").should("be.visible");
+      cy.icon("close").click();
+    });
+    filterWidget().within(() => {
+      cy.findByText("Gadget").click();
+    });
+    popover().within(() => {
+      cy.findByText("Widget").click();
+      cy.findByText("Update filter").click();
+    });
+
+    cy.tick(toastTimeout);
+    cy.wait("@cardQuery");
+    undoToast().should("not.exist");
   });
 });
 
@@ -72,18 +97,16 @@ const getParameterMapping = ({ card_id }) => ({
   parameter_mappings: [
     {
       card_id,
-      parameter_id: dashboardFilter.id,
+      parameter_id: filter.id,
       target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
     },
   ],
 });
 
 const visitSlowDashboard = params => {
-  cy.clock();
-
   cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query", req => {
     return Cypress.Promise.delay().then(() => req.reply());
-  });
+  }).as("cardQuery");
 
   cy.get("@dashboardId").then(dashboardId => {
     return cy.visit({
@@ -93,5 +116,4 @@ const visitSlowDashboard = params => {
   });
 
   getDashboardCard().should("be.visible");
-  cy.tick(toastTimeout);
 };
