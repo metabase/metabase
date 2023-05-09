@@ -3,14 +3,19 @@
 
 import React from "react";
 import { screen } from "@testing-library/react";
-import { metadata } from "__support__/sample_database_fixture";
+import { createMockMetadata } from "__support__/metadata";
 import { renderWithProviders } from "__support__/ui";
 
+import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 import Field from "metabase-lib/metadata/Field";
 import Filter from "metabase-lib/queries/structured/Filter";
 import Question from "metabase-lib/Question";
 
 import { BulkFilterItem } from "./BulkFilterItem";
+
+const metadata = createMockMetadata({
+  databases: [createSampleDatabase()],
+});
 
 const booleanField = new Field({
   database_type: "test",
