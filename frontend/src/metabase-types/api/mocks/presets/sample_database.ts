@@ -1,4 +1,4 @@
-import { Database, Field, Table } from "metabase-types/api";
+import { Database, Field, FieldValues, Table } from "metabase-types/api";
 import {
   createMockDatabase,
   createMockTable,
@@ -62,6 +62,22 @@ export const REVIEWS = {
   RATING: 66,
   BODY: 70,
   CREATED_AT: 71,
+};
+
+// Note: don't assign field values to the field object itself
+// Field values are not included in the field object in the API response
+// Please use `setupFieldValuesEndpoints` utility from `__support__/server-mocks`
+
+export const PRODUCT_CATEGORY_VALUES: FieldValues = {
+  field_id: PRODUCTS.CATEGORY,
+  values: [["Doohickey"], ["Gadget"], ["Gizmo"], ["Widget"]],
+  has_more_values: false,
+};
+
+export const PRODUCT_VENDOR_VALUES: FieldValues = {
+  field_id: PRODUCTS.VENDOR,
+  values: [["Vendor 1"], ["Vendor 2"], ["Vendor 3"], ["Vendor 4"]],
+  has_more_values: true,
 };
 
 export const createSampleDatabase = (opts?: Partial<Database>): Database =>
