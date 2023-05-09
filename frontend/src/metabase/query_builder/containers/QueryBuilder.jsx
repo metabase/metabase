@@ -91,6 +91,7 @@ import {
   getIsAdditionalInfoVisible,
   getAutocompleteResultsFn,
   getCardAutocompleteResultsFn,
+  isResultsMetadataDirty,
 } from "../selectors";
 import * as actions from "../actions";
 
@@ -160,6 +161,7 @@ const mapStateToProps = (state, props) => {
 
     isRunnable: getIsRunnable(state),
     isResultDirty: getIsResultDirty(state),
+    isMetadataDirty: isResultsMetadataDirty(state),
 
     questionAlerts: getQuestionAlerts(state),
     visualizationSettings: getVisualizationSettings(state),
@@ -218,6 +220,8 @@ function QueryBuilder(props) {
     showTimelinesForCollection,
     card,
     isLoadingComplete,
+    isDirty: isModelQueryDirty,
+    isMetadataDirty,
   } = props;
 
   const forceUpdate = useForceUpdate();
@@ -299,7 +303,17 @@ function QueryBuilder(props) {
     return () => window.removeEventListener("resize", forceUpdateDebounced);
   }, []);
 
-  useBeforeUnload(props.isDirty && props.isNativeEditorOpen);
+  const isExistingModelDirty = useMemo(
+    () => isModelQueryDirty || isMetadataDirty,
+    [isMetadataDirty, isModelQueryDirty],
+  );
+
+  const isExistingSqlQueryDirty = useMemo(
+    () => isModelQueryDirty && isNativeEditorOpen,
+    [isModelQueryDirty, isNativeEditorOpen],
+  );
+
+  useBeforeUnload(isExistingModelDirty || isExistingSqlQueryDirty);
 
   useUnmount(() => {
     cancelQuery();

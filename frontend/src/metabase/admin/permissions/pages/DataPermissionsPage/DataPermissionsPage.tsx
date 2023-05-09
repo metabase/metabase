@@ -6,8 +6,9 @@ import Tables from "metabase/entities/tables";
 import Groups from "metabase/entities/groups";
 import Databases from "metabase/entities/databases";
 
-import { DatabaseId } from "metabase-types/api";
+import { DatabaseId, Group } from "metabase-types/api";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import Database from "metabase-lib/metadata/Database";
 import { getIsDirty, getDiff } from "../../selectors/data-permissions/diff";
 import {
   saveDataPermissions,
@@ -24,6 +25,8 @@ type DataPermissionsPageProps = {
   params: {
     databaseId: DatabaseId;
   };
+  databases: Database[];
+  groups: Group[];
 };
 
 export const DATA_PERMISSIONS_TOOLBAR_CONTENT = [
@@ -34,9 +37,11 @@ function DataPermissionsPage({
   children,
   route,
   params,
+  databases,
+  groups,
 }: DataPermissionsPageProps) {
   const isDirty = useSelector(getIsDirty);
-  const diff = useSelector(getDiff);
+  const diff = useSelector(state => getDiff(state, { databases, groups }));
 
   const dispatch = useDispatch();
 
