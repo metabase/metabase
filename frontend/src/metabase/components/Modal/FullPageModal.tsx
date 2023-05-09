@@ -3,23 +3,15 @@ import { Motion, spring } from "react-motion";
 import { getScrollX, getScrollY } from "metabase/lib/dom";
 import SandboxedPortal from "metabase/components/SandboxedPortal";
 import {
+  BaseModalProps,
   getModalContent,
-  MaybeOnClickOutsideWrapper,
 } from "metabase/components/Modal/common";
+import { MaybeOnClickOutsideWrapper } from "metabase/components/Modal/MaybeOnClickOutsideWrapper";
 
-export type FullPageModalProps = {
+export type FullPageModalProps = BaseModalProps & {
   isOpen: boolean;
   onClose: () => void;
-  children: React.ReactNode;
-  className?: string;
-  backdropClassName?: string;
   fullPageModal?: boolean;
-  enableMouseEvents?: boolean;
-  enableTransition?: boolean;
-  noOnClickOutsideWrapper?: boolean;
-  noBackdrop?: boolean;
-  noCloseOnBackdrop?: boolean;
-  form?: unknown;
 };
 
 type FullPageModalState = {

@@ -1,28 +1,20 @@
-import React, { Component, CSSProperties, ReactNode } from "react";
+import React, { Component, CSSProperties } from "react";
 import { CSSTransition, TransitionGroup } from "react-transition-group";
 import cx from "classnames";
 import {
   getModalContent,
   ModalSize,
   modalSizes,
-  MaybeOnClickOutsideWrapper,
+  BaseModalProps,
 } from "metabase/components/Modal/common";
 
 import SandboxedPortal from "metabase/components/SandboxedPortal";
+import { MaybeOnClickOutsideWrapper } from "metabase/components/Modal/MaybeOnClickOutsideWrapper";
 
-export type WindowModalProps = {
+export type WindowModalProps = BaseModalProps & {
   isOpen?: boolean;
   onClose?: () => void;
-  children?: ReactNode;
-  className?: string;
-  backdropClassName?: string;
   fullPageModal?: boolean;
-  enableMouseEvents?: boolean;
-  enableTransition?: boolean;
-  noOnClickOutsideWrapper?: boolean;
-  noBackdrop?: boolean;
-  noCloseOnBackdrop?: boolean;
-  form?: unknown;
   formModal?: boolean;
   style?: CSSProperties;
 } & {

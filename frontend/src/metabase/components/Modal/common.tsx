@@ -1,7 +1,21 @@
 import React from "react";
 import _ from "underscore";
-import OnClickOutsideWrapper from "metabase/components/OnClickOutsideWrapper";
 import ModalContent from "metabase/components/ModalContent";
+
+export const modalSizes = ["small", "medium", "wide", "tall", "fit"] as const;
+export type ModalSize = typeof modalSizes[number];
+
+export type BaseModalProps = {
+  children?: React.ReactNode;
+  className?: string;
+  backdropClassName?: string;
+  enableMouseEvents?: boolean;
+  enableTransition?: boolean;
+  noOnClickOutsideWrapper?: boolean;
+  noBackdrop?: boolean;
+  noCloseOnBackdrop?: boolean;
+  form?: unknown;
+};
 
 export function getModalContent(props: any) {
   if (
@@ -14,21 +28,3 @@ export function getModalContent(props: any) {
     return React.Children.only(props.children);
   }
 }
-
-export function MaybeOnClickOutsideWrapper({
-  children,
-  noOnClickOutsideWrapper = false,
-  ...props
-}: {
-  children: React.ReactNode;
-  noOnClickOutsideWrapper?: boolean;
-} & React.ComponentProps<typeof OnClickOutsideWrapper>) {
-  return noOnClickOutsideWrapper ? (
-    <div>{children}</div>
-  ) : (
-    <OnClickOutsideWrapper {...props}>{children}</OnClickOutsideWrapper>
-  );
-}
-
-export const modalSizes = ["small", "medium", "wide", "tall", "fit"] as const;
-export type ModalSize = typeof modalSizes[number];
