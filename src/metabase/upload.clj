@@ -71,7 +71,7 @@
        (catch Exception _
          false)))
 
-(def ^:private currency-regex "Digits, perhaps with separators and at least one digit" #"[$€£¥₹₪₩₿¢\s]")
+(def ^:private currency-regex "Supported currency signs" #"[$€£¥₹₪₩₿¢\s]")
 
 (defn- with-currency
   "Returns a regex that matches a positive or negative number, including currency symbols"
@@ -111,7 +111,8 @@
     - nil, in which case other functions are expected to replace it with ::text as the catch-all type
 
   NB: There are currently the following gotchas:
-    1. ints/floats are assumed to have commas as separators and periods as decimal points
+    1. ints/floats are assumed to use the separators and decimal points corresponding to the locale defined in the
+       application settings
     2. 0 and 1 are assumed to be booleans, not ints."
   [value]
   (let [number-separators (get-number-separators)]
@@ -198,19 +199,26 @@
   [s]
   (str/replace s currency-regex ""))
 
-(defn- parse-number [s]
+(defn- parse-plain-number [s]
   (case (get-number-separators)
     ("." ".,") (. (NumberFormat/getInstance (Locale. "en" "US")) parse s)
     ",." (. (NumberFormat/getInstance (Locale. "de" "DE")) parse s)
     ", " (. (NumberFormat/getInstance (Locale. "fr" "FR")) parse (str/replace s \space \u00A0)) ; \u00A0 is a non-breaking space
     ".’" (. (NumberFormat/getInstance (Locale. "de" "CH")) parse s)))
 
+(defn- parse-number
+  [s]
+  (-> s
+      (str/trim)
+      (remove-currency-signs)
+      (parse-plain-number)))
+
 (defn- upload-type->parser [upload-type]
   (case upload-type
     ::varchar_255 identity
     ::text        identity
-    ::int         #(parse-number (remove-currency-signs (str/trim %)))
-    ::float       #(parse-number (remove-currency-signs (str/trim %)))
+    ::int         parse-number
+    ::float       parse-number
     ::boolean     #(parse-bool (str/trim %))
     ::date        #(parse-date (str/trim %))
     ::datetime    #(parse-datetime (str/trim %))))
