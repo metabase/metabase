@@ -1,10 +1,10 @@
 import { merge } from "icepick";
-
+import { createMockMetadata } from "__support__/metadata";
 import {
-  metadata,
-  PRODUCTS,
-  SAMPLE_DATABASE,
-} from "__support__/sample_database_fixture";
+  createSampleDatabase,
+  PRODUCTS_ID,
+  SAMPLE_DB_ID,
+} from "metabase-types/api/mocks/presets";
 import Question from "metabase-lib/Question";
 import Table from "metabase-lib/metadata/Table";
 import Field from "metabase-lib/metadata/Field";
@@ -15,7 +15,7 @@ import { getNativeQueryTable } from "./native-query-table";
 const NATIVE_QUERY_CARD = {
   id: 1,
   dataset_query: {
-    database: SAMPLE_DATABASE?.id,
+    database: SAMPLE_DB_ID,
     type: "native",
     native: {
       query: "select * from ORDERS where CREATED_AT = {{created}}",
@@ -24,9 +24,15 @@ const NATIVE_QUERY_CARD = {
 };
 
 describe("metabase-lib/queries/utils/native-query-table", () => {
+  const metadata = createMockMetadata({
+    databases: [createSampleDatabase()],
+  });
+
+  const productId = metadata.field(PRODUCTS_ID) as Field;
+
   describe("native query associated with a dataset/model question", () => {
     const PRODUCT_ID_WITH_OVERRIDING_METADATA = new Field({
-      ...PRODUCTS.ID.getPlainObject(),
+      ...productId.getPlainObject(),
       display_name: "~*~Products.ID~*~",
     });
 
@@ -69,11 +75,13 @@ describe("metabase-lib/queries/utils/native-query-table", () => {
   });
 
   describe("native query associated with botha `collection` and a `database`", () => {
+    const productsTable = metadata.table(PRODUCTS_ID) as Table;
+
     const nativeQuestionWithCollection = new Question(
       merge(NATIVE_QUERY_CARD, {
         dataset_query: {
           native: {
-            collection: PRODUCTS.name,
+            collection: productsTable.name,
           },
         },
       }),
@@ -85,7 +93,7 @@ describe("metabase-lib/queries/utils/native-query-table", () => {
     );
 
     it("should return the concrete `table` associated with the given collection name", () => {
-      expect(table).toBe(PRODUCTS);
+      expect(table).toBe(productsTable);
     });
   });
 
