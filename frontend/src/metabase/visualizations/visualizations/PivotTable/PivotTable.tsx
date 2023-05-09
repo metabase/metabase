@@ -497,7 +497,6 @@ export default Object.assign(connect(mapStateToProps)(PivotTable), {
   settings,
   columnSettings,
   isLiveResizable: () => false,
-  seriesAreCompatible: () => false,
 });
 
 export { PivotTable };

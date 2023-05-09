@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
@@ -32,6 +31,7 @@ class AddSeriesModal extends Component {
     fetchCardData: PropTypes.func.isRequired,
     fetchDatabaseMetadata: PropTypes.func.isRequired,
     setDashCardAttributes: PropTypes.func.isRequired,
+    loadMetadataForQueries: PropTypes.func.isRequired,
     onClose: PropTypes.func.isRequired,
   };
   static defaultProps = {};
