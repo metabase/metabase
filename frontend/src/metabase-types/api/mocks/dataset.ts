@@ -10,10 +10,15 @@ export const createMockColumn = (
   data: Partial<DatasetColumn> = {},
 ): DatasetColumn => {
   return {
+    id: 1,
     display_name: "Column",
     source: "native",
     name: "column",
     description: null,
+    coercion_strategy: null,
+    visibility_type: "normal",
+    table_id: 1,
+    fingerprint: null,
     ...data,
   };
 };

@@ -3,8 +3,11 @@ import {
   getDefaultFieldSettings,
 } from "metabase/actions/utils";
 
-import type { Parameter, TemplateTagType } from "metabase-types/api";
-import type { NativeDatasetQuery } from "metabase-types/types/Card";
+import type {
+  NativeDatasetQuery,
+  Parameter,
+  TemplateTagType,
+} from "metabase-types/api";
 import { getUnsavedNativeQuestion } from "metabase-lib/mocks";
 
 import {

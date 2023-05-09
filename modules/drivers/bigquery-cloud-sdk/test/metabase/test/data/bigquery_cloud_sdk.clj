@@ -35,7 +35,7 @@
 ;;
 ;; TODO - either write BigQuery-speciifc tests for FK functionality or add additional code to manually set up these FK
 ;; relationships for FK tables
-(defmethod driver/supports? [:bigquery-cloud-sdk :foreign-keys] [_ _] (not config/is-test?))
+(defmethod driver/database-supports? [:bigquery-cloud-sdk :foreign-keys] [_driver _feature _db] (not config/is-test?))
 
 
 ;;; ----------------------------------------------- Connection Details -----------------------------------------------

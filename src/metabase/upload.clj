@@ -67,6 +67,21 @@
        (catch Exception _
          false)))
 
+(def ^:private currency-regex "Digits, perhaps with separators and at least one digit" #"[$€£¥₹₪₩₿¢\s]")
+
+(defn- with-currency
+  "Returns a regex that matches a positive or negative number, including currency symbols"
+  [number-regex]
+  ;; currency signs can be all over: $2, -$2, $-2, 2€
+  (re-pattern (str currency-regex "?\\s*-?"
+                   currency-regex "?"
+                   number-regex
+                   "\\s*" currency-regex "?")))
+
+;; These are pulled out so that the regex is only compiled once, not for every invocation of value->type
+(def ^:private int-regex "Digits, perhaps with separators and at least one digit" (with-currency #"[\d,]+"))
+(def ^:private float-regex "Digits, perhaps with separators and at least one digit" (with-currency #"[\d,]*\.\d+"))
+
 (defn value->type
   "The most-specific possible type for a given value. Possibilities are:
     - ::boolean
@@ -83,10 +98,10 @@
   (cond
     (str/blank? value)                                      nil
     (re-matches #"(?i)true|t|yes|y|1|false|f|no|n|0" value) ::boolean
-    (re-matches #"-?[\d,]+"                          value) ::int
-    (re-matches #"-?[\d,]*\.\d+"                     value) ::float
     (datetime-string?                                value) ::datetime
     (date-string?                                    value) ::date
+    (re-matches int-regex                            value) ::int
+    (re-matches float-regex                          value) ::float
     (re-matches #".{1,255}"                          value) ::varchar_255
     :else                                                   ::text))
 
@@ -159,11 +174,19 @@
     (date-string? s) (t/local-date-time (t/local-date s) (t/local-time "00:00:00"))
     (datetime-string? s) (t/local-date-time s)))
 
+(defn- remove-currency-signs
+  [s]
+  (str/replace s currency-regex ""))
+
+(defn- remove-separators
+  [s]
+  (str/replace s "," ""))
+
 (def ^:private upload-type->parser
   {::varchar_255 identity
    ::text        identity
-   ::int         #(Integer/parseInt (str/trim %))
-   ::float       #(parse-double (str/trim %))
+   ::int         #(parse-long (remove-currency-signs (remove-separators (str/trim %))))
+   ::float       #(parse-double (remove-currency-signs (remove-separators (str/trim %))))
    ::boolean     #(parse-bool (str/trim %))
    ::date        #(parse-date (str/trim %))
    ::datetime    #(parse-datetime (str/trim %))})
