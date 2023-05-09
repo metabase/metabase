@@ -67,14 +67,13 @@ class MetricList extends Component {
                       entity &&
                       entity.id &&
                       entity.name && (
-                        <li className="relative" key={entity.id}>
-                          <ListItem
-                            name={entity.display_name || entity.name}
-                            description={entity.description}
-                            url={`/reference/metrics/${entity.id}`}
-                            icon="ruler"
-                          />
-                        </li>
+                        <ListItem
+                          key={entity.id}
+                          name={entity.display_name || entity.name}
+                          description={entity.description}
+                          url={`/reference/metrics/${entity.id}`}
+                          icon="ruler"
+                        />
                       ),
                   )}
                 </List>

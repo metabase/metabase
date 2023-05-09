@@ -60,14 +60,13 @@ class DatabaseList extends Component {
               <div className="wrapper">
                 <List>
                   {databases.map(database => (
-                    <li className="relative" key={database.id}>
-                      <ListItem
-                        name={database.name}
-                        description={database.description}
-                        url={`/reference/databases/${database.id}`}
-                        icon="database"
-                      />
-                    </li>
+                    <ListItem
+                      key={database.id}
+                      name={database.name}
+                      description={database.description}
+                      url={`/reference/databases/${database.id}`}
+                      icon="database"
+                    />
                   ))}
                 </List>
               </div>
