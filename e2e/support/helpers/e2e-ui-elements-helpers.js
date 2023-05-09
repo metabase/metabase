@@ -99,3 +99,11 @@ export const moveColumnDown = (column, distance) => {
 export const queryBuilderMain = () => {
   return cy.findByTestId("query-builder-main");
 };
+
+export const dashboardHeader = () => {
+  return cy.get("main header");
+};
+
+export const undoToast = () => {
+  return cy.findByTestId("toast-undo");
+};

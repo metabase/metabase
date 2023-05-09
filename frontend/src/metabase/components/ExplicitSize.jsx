@@ -48,7 +48,7 @@ export default ({ selector, wrapped, refreshMode = "throttle" } = {}) =>
         this._initResizeObserver();
         // Set the size on the next tick. We had issues with wrapped components
         // not adjusting if the size was fixed during mounting.
-        setTimeout(this._updateSize, 0);
+        this.timeoutId = setTimeout(this._updateSize, 0);
       }
 
       componentDidUpdate() {
@@ -60,6 +60,7 @@ export default ({ selector, wrapped, refreshMode = "throttle" } = {}) =>
       componentWillUnmount() {
         this._teardownResizeObserver();
         this._teardownQueryMediaListener();
+        clearTimeout(this.timeoutId);
       }
 
       _getRefreshMode = () => {
