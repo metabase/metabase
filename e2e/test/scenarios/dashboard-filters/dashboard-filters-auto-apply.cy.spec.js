@@ -1,5 +1,6 @@
 import {
   dashboardHeader,
+  filterWidget,
   getDashboardCard,
   restore,
   rightSidebar,
@@ -26,36 +27,33 @@ const dashboardDetails = {
   parameters: [dashboardFilter],
 };
 
-const toastTimeout = 16000;
+const toastTimeout = 20000;
 
 describe("scenarios > dashboards > filters > auto apply", () => {
   beforeEach(() => {
     restore();
     cy.signInAsNormalUser();
     createDashboard();
-    cy.intercept("GET", "/api/dashboard/*").as("getDashboard");
+    cy.intercept("PUT", "/api/dashboard/*").as("updateDashboard");
   });
 
   it("should display toasts when a dashboard takes longer than 15s to load", () => {
-    cy.clock();
-    mockSlowCardQuery();
-
-    cy.get("@dashboardId").then(dashboardId =>
-      visitLoadingDashboard(dashboardId, {
-        [dashboardFilter.slug]: "Gadget",
-      }),
-    );
-    getDashboardCard().should("be.visible");
-    cy.tick(toastTimeout);
+    visitSlowDashboard({
+      [dashboardFilter.slug]: "Gadget",
+    });
 
     undoToast().within(() => {
       cy.button("Turn off").click();
+      cy.wait("@updateDashboard");
     });
     dashboardHeader().within(() => {
       cy.icon("info").click();
     });
     rightSidebar().within(() => {
       cy.findByLabelText("Auto-apply filters").should("not.be.checked");
+    });
+    filterWidget().within(() => {
+      cy.findByText("Gadget").should("be.visible");
     });
   });
 });
@@ -80,17 +78,20 @@ const getParameterMapping = ({ card_id }) => ({
   ],
 });
 
-const visitLoadingDashboard = (dashboardId, params) => {
-  cy.visit({
-    url: `/dashboard/${dashboardId}`,
-    qs: params,
-  });
-};
+const visitSlowDashboard = params => {
+  cy.clock();
 
-const mockSlowCardQuery = () => {
   cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query", req => {
-    return Cypress.Promise.delay().then(() => {
-      req.reply();
+    return Cypress.Promise.delay().then(() => req.reply());
+  });
+
+  cy.get("@dashboardId").then(dashboardId => {
+    return cy.visit({
+      url: `/dashboard/${dashboardId}`,
+      qs: params,
     });
   });
+
+  getDashboardCard().should("be.visible");
+  cy.tick(toastTimeout);
 };
