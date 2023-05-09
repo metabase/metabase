@@ -11,17 +11,15 @@ interface QuestionListItemProps {
   card: Card;
   onChange: (value: boolean) => void;
   isEnabled: boolean;
-  style: React.CSSProperties;
 }
 
 export const QuestionListItem = React.memo(function QuestionListItem({
   card,
   onChange,
   isEnabled,
-  style,
 }: QuestionListItemProps) {
   return (
-    <QuestionListItemRoot style={style}>
+    <QuestionListItemRoot>
       <CheckboxContainer>
         <CheckBox
           label={card.name}

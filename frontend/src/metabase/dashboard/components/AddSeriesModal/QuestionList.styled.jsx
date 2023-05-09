@@ -33,7 +33,7 @@ export const LoadMoreRow = styled.li`
   justify-content: center;
   list-style: none;
   margin: 0;
-  padding: 0;
+  padding: 0.5rem 0;
   width: 100%;
 `;
 

@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { t } from "ttag";
-import { AutoSizer, List } from "react-virtualized";
 
 import { useAsyncFn } from "react-use";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
@@ -9,7 +8,12 @@ import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import EmptyState from "metabase/components/EmptyState";
 
 import { CardApi } from "metabase/services";
-import { Card, CardId, DashboardOrderedCard } from "metabase-types/api";
+import {
+  Card,
+  CardId,
+  DashboardOrderedCard,
+  GetCompatibleCardsPayload,
+} from "metabase-types/api";
 import {
   LoadMoreButton,
   LoadMoreRow,
@@ -53,14 +57,7 @@ export const QuestionList = React.memo(function QuestionList({
         return;
       }
 
-      const payload: {
-        cardId: number;
-        last_cursor?: number;
-        limit: number;
-        query?: string;
-        exclude_ids: number[];
-      } = {
-        cardId: dashcard.card_id,
+      const payload: GetCompatibleCardsPayload = {
         last_cursor,
         limit: PAGE_SIZE,
         exclude_ids: Array.from(enabledCardIds.values()),
@@ -70,7 +67,10 @@ export const QuestionList = React.memo(function QuestionList({
         payload.query = searchText;
       }
 
-      const cards = await CardApi.compatibleCards(payload);
+      const cards = await CardApi.compatibleCards({
+        ...payload,
+        cardId: dashcard.card_id,
+      });
 
       setCards(prev => [...prev, ...cards]);
       setHasMore(cards.length === PAGE_SIZE);
@@ -98,7 +98,6 @@ export const QuestionList = React.memo(function QuestionList({
   };
 
   const hasQuestionsToShow = cards.length > 0;
-  const rowsCount = hasMore ? cards.length + 1 : cards.length;
 
   return (
     <>
@@ -118,46 +117,27 @@ export const QuestionList = React.memo(function QuestionList({
         noBackground
       >
         <QuestionListContainer>
-          <AutoSizer>
-            {({ width, height }) => (
-              <List
-                overscanRowCount={0}
-                width={width}
-                height={height}
-                rowCount={rowsCount}
-                rowHeight={36}
-                rowRenderer={({ index, key, style }) => {
-                  const isLoadMoreRow = index === cards.length;
+          {hasQuestionsToShow && (
+            <div>
+              {cards.map(card => (
+                <QuestionListItem
+                  key={card.id}
+                  card={card}
+                  isEnabled={enabledCardIds.has(card.id)}
+                  onChange={value => onSelect(card, value)}
+                />
+              ))}
 
-                  if (isLoadMoreRow) {
-                    return (
-                      <LoadMoreRow style={style}>
-                        <LoadMoreButton
-                          onClick={handleLoadNext}
-                          disabled={loading}
-                        >
-                          {loading ? t`Loading` : t`Load more`}
-                        </LoadMoreButton>
-                      </LoadMoreRow>
-                    );
-                  }
+              {hasMore && (
+                <LoadMoreRow>
+                  <LoadMoreButton onClick={handleLoadNext} disabled={loading}>
+                    {loading ? t`Loading` : t`Load more`}
+                  </LoadMoreButton>
+                </LoadMoreRow>
+              )}
+            </div>
+          )}
 
-                  const card = cards[index];
-                  const isEnabled = enabledCardIds.has(card.id);
-
-                  return (
-                    <QuestionListItem
-                      key={key}
-                      card={card}
-                      isEnabled={isEnabled}
-                      style={style}
-                      onChange={value => onSelect(card, value)}
-                    />
-                  );
-                }}
-              />
-            )}
-          </AutoSizer>
           {!hasQuestionsToShow && (
             <EmptyStateContainer>
               <EmptyState message={t`Nothing here`} icon="folder" />

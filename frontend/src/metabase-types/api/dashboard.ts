@@ -97,3 +97,10 @@ export interface LinkCardSettings {
   url?: string;
   entity?: LinkEntity;
 }
+
+export interface GetCompatibleCardsPayload {
+  last_cursor?: number;
+  limit: number;
+  query?: string;
+  exclude_ids: number[];
+}
