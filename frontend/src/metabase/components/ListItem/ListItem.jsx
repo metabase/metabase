@@ -8,7 +8,6 @@ import Card from "metabase/components/Card";
 import S from "metabase/components/List/List.css";
 import Icon from "metabase/components/Icon";
 
-//TODO: extend this to support functionality required for questions
 const ListItem = ({ name, description, placeholder, url, icon }) => (
   <Link to={url} className="text-brand-hover">
     <Card hoverable className="mb2 p3 bg-white rounded bordered">
