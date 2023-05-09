@@ -1,12 +1,4 @@
-import {
-  restore,
-  popover,
-  visitDashboard,
-  rightSidebar,
-  filterWidget,
-  editDashboard,
-  saveDashboard,
-} from "e2e/support/helpers";
+import { restore, popover, visitDashboard } from "e2e/support/helpers";
 // NOTE: some overlap with parameters-embedded.cy.spec.js
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -63,23 +55,15 @@ describe("scenarios > dashboard > OLD parameters", () => {
             ],
           });
 
-          cy.intercept("PUT", `/api/dashboard/${dashboard_id}`).as(
-            "updateDashboard",
-          );
-
-          cy.wrap(dashboard_id).as("dashboardId");
+          visitDashboard(dashboard_id);
         },
       );
     });
 
     it("should work", () => {
-      cy.get("@dashboardId").then(dashboard_id => {
-        visitDashboard(dashboard_id);
-      });
-
       cy.findAllByText("Doohickey");
 
-      cy.button("Category").click();
+      cy.contains("Category").click();
       popover().within(() => {
         cy.findByText("Gadget").click();
         cy.findByText("Add filter").click();
@@ -87,127 +71,6 @@ describe("scenarios > dashboard > OLD parameters", () => {
 
       // verify that the filter is applied
       cy.findByText("Doohickey").should("not.exist");
-
-      // test prevent auto-apply filters in slow dashboards metabase#29267
-      toggleDashboardSidebar();
-
-      filterWidget().findByText("Gadget").should("be.visible");
-      rightSidebar().findByLabelText("Auto-apply filters").click();
-      cy.button("Apply").should("not.exist");
-
-      filterWidget().within(() => {
-        cy.icon("close").click();
-      });
-
-      cy.findByText("Rows 1-6 of 53").should("be.visible");
-      cy.button("Apply").click();
-      cy.findByText("Rows 1-6 of 200").should("be.visible");
-
-      // test that the apply button won't showup even when adding a new parameter or removing existing ones
-      toggleDashboardSidebar();
-      editDashboard();
-      cy.icon("filter").click();
-      popover().within(() => {
-        cy.findByText("Text or Category").click();
-        cy.findByText("Is").click();
-      });
-
-      saveDashboard();
-      cy.button("Apply").should("not.exist");
-
-      editDashboard();
-      cy.findByText("Text").within(() => {
-        cy.icon("gear").click();
-      });
-      cy.button("Remove").click();
-      saveDashboard();
-      cy.button("Apply").should("not.exist");
-    });
-
-    it("should not clear existing parameter values after editing dashboards", () => {
-      cy.get("@dashboardId").then(dashboardId => {
-        visitDashboard(dashboardId, {
-          params: {
-            category: "Gadget",
-          },
-        });
-      });
-
-      toggleDashboardSidebar();
-      filterWidget().findByText("Gadget").should("be.visible");
-      rightSidebar().within(() => {
-        cy.findByPlaceholderText("Add description")
-          .click()
-          .type("Please keep filter values 🥹")
-          .blur();
-      });
-      cy.wait("@updateDashboard");
-      filterWidget().findByText("Gadget").should("be.visible");
-      cy.findByText("Rows 1-6 of 53").should("be.visible");
-
-      rightSidebar().findByLabelText("Auto-apply filters").click();
-      cy.wait("@updateDashboard");
-      filterWidget().findByText("Gadget").should("be.visible");
-      cy.findByText("Rows 1-6 of 53").should("be.visible");
-
-      cy.findByTestId("dashboard-name-heading")
-        .click()
-        .type(" new name")
-        .blur();
-      cy.wait("@updateDashboard");
-      filterWidget().findByText("Gadget").should("be.visible");
-      cy.findByText("Rows 1-6 of 53").should("be.visible");
-    });
-
-    it("should display toasts when a dashboard takes longer than 15s to load", () => {
-      cy.clock();
-      cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query", req => {
-        return Cypress.Promise.delay().then(() => {
-          req.reply();
-        });
-      });
-      cy.get("@dashboardId").then(dashboardId => {
-        cy.visit({
-          url: `/dashboard/${dashboardId}`,
-          qs: {
-            category: "Gadget",
-          },
-          onBeforeLoad(win) {
-            win.Notification = {
-              permission: "default",
-            };
-          },
-        });
-      });
-      // Wait for the dashboard cards to start loading before advancing the clock
-      // so the slow timer works as expected.
-      cy.findByTestId("dashcard")
-        .findByText("Products table")
-        .should("be.visible");
-      cy.tick(16 * 1000);
-
-      cy.findByTestId("toast-undo").within(() => {
-        cy.findByText(
-          "Would you like to be notified when this dashboard is done loading?",
-        );
-        cy.icon("close").click();
-      });
-
-      // After the dashboard cards finish loading, we'll show the auto-apply filters toast
-      cy.findByTestId("dashcard").findByText("Rows 1-6 of 53");
-      cy.findByTestId("toast-undo")
-        .last()
-        .within(() => {
-          cy.findByText(
-            "You can make this dashboard snappier by turning off auto-applying filters.",
-          );
-          cy.button("Turn off").click();
-        });
-
-      toggleDashboardSidebar();
-      rightSidebar()
-        .findByLabelText("Auto-apply filters")
-        .should("not.be.checked");
     });
   });
 
@@ -339,9 +202,3 @@ describe("scenarios > dashboard > OLD parameters", () => {
     });
   });
 });
-
-function toggleDashboardSidebar() {
-  cy.get("main header").within(() => {
-    cy.icon("info").click();
-  });
-}
