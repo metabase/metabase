@@ -1,4 +1,4 @@
-import { ORDERS, SAMPLE_DATABASE } from "__support__/sample_database_fixture";
+import { ORDERS_ID, SAMPLE_DB_ID } from "metabase-types/api/mocks/presets";
 import Question from "metabase-lib/Question";
 
 const TEST_EXPRESSION = ["+", 1, 1];
@@ -9,9 +9,9 @@ function getQuery({ expressions } = {}) {
   const question = new Question({
     dataset_query: {
       type: "query",
-      database: SAMPLE_DATABASE.id,
+      database: SAMPLE_DB_ID,
       query: {
-        "source-table": ORDERS.id,
+        "source-table": ORDERS_ID,
         expressions: expressions,
       },
     },
