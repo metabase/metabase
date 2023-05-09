@@ -11,7 +11,9 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.yaml :as yaml]
-   [toucan2.core :as t2])
+   [toucan2.core :as t2]
+   [metabase-enterprise.serialization.v2.extract :as v2.extract]
+   [metabase-enterprise.serialization.v2.storage :as v2.storage])
   (:import
    (java.util UUID)))
 
@@ -133,3 +135,22 @@
               (testing "Don't delete the Card even tho it was deleted. Just delete the DashboardCard"
                 (is (= 2 (t2/count Card)) "# Cards"))
               (is (= 1 (t2/count DashboardCard)) "# DashboardCards"))))))))
+
+(deftest export-options-test
+  (ts/create! User, :is_superuser true)
+  (let [extract-args (atom nil)
+        superuser (t2/select-one User :is_superuser true)]
+    (with-redefs [v2.extract/extract (partial reset! extract-args)
+                  v2.storage/store!  (constantly nil)]
+      (testing "With --user and --collection"
+       (cmd/export "/tmp/dump" "--user" (:email superuser) "--collection" "1")
+        (is (= {:user-id (:id superuser)
+                :user-email (:email superuser)
+                :collections [1]
+                :targets '(["Collection" 1])}
+               @extract-args)))
+      (testing "without any options"
+        (cmd/export "/tmp/dump")
+        (is (= {:user-id nil
+                :targets nil}
+               @extract-args))))))
