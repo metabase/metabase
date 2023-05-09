@@ -31,7 +31,7 @@ import {
   getDashboardComplete,
   getParameterValues,
   getLoadingDashCards,
-  getCanShowAutoApplyParametersToast,
+  getCanShowAutoApplyFiltersToast,
 } from "../selectors";
 
 import {
@@ -123,7 +123,7 @@ const loadingComplete = createThunkAction(
       );
     }
 
-    if (getCanShowAutoApplyParametersToast(getState())) {
+    if (getCanShowAutoApplyFiltersToast(getState())) {
       dispatch(showAutoApplyFiltersToast());
     }
   },

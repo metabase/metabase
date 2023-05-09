@@ -368,10 +368,10 @@ export const showAutoApplyFiltersToast = createThunkAction(
   },
 );
 
-export const CLOSE_AUTO_APPLY_PARAMETERS_TOAST =
+export const CLOSE_AUTO_APPLY_FILTERS_TOAST =
   "metabase/dashboard/SHOW_AUTO_APPLY_FILTERS_TOAST";
-export const closeAutoApplyParametersToast = createThunkAction(
-  CLOSE_AUTO_APPLY_PARAMETERS_TOAST,
+export const closeAutoApplyFiltersToast = createThunkAction(
+  CLOSE_AUTO_APPLY_FILTERS_TOAST,
   () => (dispatch, getState) => {
     const toastId = getAutoApplyFiltersToastId(getState());
     if (toastId) {

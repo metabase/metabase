@@ -34,12 +34,12 @@ describe("scenarios > dashboards > filters > auto apply", () => {
   beforeEach(() => {
     restore();
     cy.signInAsNormalUser();
-    createDashboard();
     cy.intercept("PUT", "/api/dashboard/*").as("updateDashboard");
   });
 
   it("should display a toast when a dashboard takes longer than 15s to load", () => {
     cy.clock();
+    createDashboard();
     visitSlowDashboard({ [filter.slug]: "Gadget" });
 
     cy.tick(toastTimeout);
@@ -59,8 +59,29 @@ describe("scenarios > dashboards > filters > auto apply", () => {
     });
   });
 
+  it("should not display the toast when auto apply filters is disabled", () => {
+    cy.clock();
+    createDashboard({ auto_apply_filters: false });
+    visitSlowDashboard({ [filter.slug]: "Gadget" });
+
+    cy.tick(toastTimeout);
+    cy.wait("@cardQuery");
+    undoToast().should("not.exist");
+  });
+
+  it("should not display the toast if there are no parameter values", () => {
+    cy.clock();
+    createDashboard();
+    visitSlowDashboard();
+
+    cy.tick(toastTimeout);
+    cy.wait("@cardQuery");
+    undoToast().should("not.exist");
+  });
+
   it("should not display the same toast twice for a dashboard", () => {
     cy.clock();
+    createDashboard();
     visitSlowDashboard({ [filter.slug]: "Gadget" });
 
     cy.tick(toastTimeout);
@@ -83,10 +104,10 @@ describe("scenarios > dashboards > filters > auto apply", () => {
   });
 });
 
-const createDashboard = () => {
+const createDashboard = (dashboardOpts = {}) => {
   cy.createQuestionAndDashboard({
     questionDetails,
-    dashboardDetails,
+    dashboardDetails: { ...dashboardDetails, ...dashboardOpts },
   }).then(({ body: card }) => {
     cy.editDashboardCard(card, getParameterMapping(card));
     cy.wrap(card.dashboard_id).as("dashboardId");
@@ -103,7 +124,7 @@ const getParameterMapping = ({ card_id }) => ({
   ],
 });
 
-const visitSlowDashboard = params => {
+const visitSlowDashboard = (params = {}) => {
   cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query", req => {
     return Cypress.Promise.delay().then(() => req.reply());
   }).as("cardQuery");

@@ -148,7 +148,7 @@ const getIsParameterValuesEmpty = createSelector(
   },
 );
 
-export const getCanShowAutoApplyParametersToast = createSelector(
+export const getCanShowAutoApplyFiltersToast = createSelector(
   [
     getDashboardId,
     getAutoApplyFiltersToastDashboardId,
