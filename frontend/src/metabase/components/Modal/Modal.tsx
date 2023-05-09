@@ -5,7 +5,7 @@ import { WindowModal } from "metabase/components/Modal/WindowModal";
 const Modal = ({
   full = false,
   ...props
-}: { full: boolean; isOpen: boolean } & { [_: string]: any }) =>
+}: { full?: boolean; isOpen?: boolean } & { [_: string]: any }) =>
   full ? (
     props.isOpen ? (
       <RoutelessFullPageModal {...props} />

@@ -653,7 +653,10 @@ class NativeQueryEditor extends Component {
           />
 
           {this.props.modalSnippet && (
-            <Modal onClose={this.props.closeSnippetModal}>
+            <Modal
+              noOnClickOutsideWrapper
+              onClose={this.props.closeSnippetModal}
+            >
               <SnippetFormModal
                 snippet={this.props.modalSnippet}
                 onCreate={this.props.insertSnippet}
