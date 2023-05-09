@@ -489,12 +489,20 @@
                               (map :name)))))
 
         (testing "exclude ids works"
-          (is (true?
-                (every?
-                  #(not (#{(:id card) (:id card7) (:id card8)} %))
-                  (->> (mt/user-http-request :crowberto :get 200 (format "/card/%d/series" (:id card))
-                                                    :query "luigi" :exclude_ids [(:id card7) (:id card8)])
-                       (map :id))))))
+          (testing "with single id"
+            (is (true?
+                  (every?
+                    #(not (#{(:id card) (:id card8)} %))
+                    (->> (mt/user-http-request :crowberto :get 200 (format "/card/%d/series" (:id card))
+                                               :query "luigi" :exclude_ids (:id card8))
+                         (map :id))))))
+          (testing "with multiple ids"
+            (is (true?
+                  (every?
+                    #(not (#{(:id card) (:id card7) (:id card8)} %))
+                    (->> (mt/user-http-request :crowberto :get 200 (format "/card/%d/series" (:id card))
+                                               :query "luigi" :exclude_ids (:id card7) :exclude_ids (:id card8))
+                         (map :id)))))))
 
         (testing "with limit and sort by id descending"
           (is (= ["Luigi 8" "Luigi 7" "Luigi 6" "Luigi 5"]

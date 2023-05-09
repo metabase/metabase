@@ -362,9 +362,9 @@
    query       [:maybe ms/NonBlankString]
    exclude_ids [:maybe [:fn
                         {:error/fn (fn [_ _] (deferred-tru "value must be a sequence of positive integers"))}
-                        (fn [x]
-                          (every? pos-int? (json/parse-string x)))]]}
-  (let [exclude_ids  (json/parse-string exclude_ids)
+                        (fn [ids]
+                          (every? pos-int? (api/parse-multi-values-param ids parse-long)))]]}
+  (let [exclude_ids  (when exclude_ids (api/parse-multi-values-param #p exclude_ids parse-long))
         card         (-> (t2/select-one :model/Card :id id) api/check-404 api/read-check)
         card-display (:display card)]
    (when-not (supported-series-display-type card-display)
@@ -373,11 +373,11 @@
                               :allowed-display (map name supported-series-display-type)
                               :status-code     400})))
    (fetch-compatible-series
-                      card
-                      {:exclude-ids exclude_ids
-                       :query       query
-                       :last-cursor last_cursor
-                       :page-size   mw.offset-paging/*limit*})))
+     card
+     {:exclude-ids exclude_ids
+      :query       query
+      :last-cursor last_cursor
+      :page-size   mw.offset-paging/*limit*})))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:id/timelines"
