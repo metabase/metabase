@@ -4,6 +4,8 @@
    [clojure.test :refer :all]
    [metabase-enterprise.serialization.load :as load]
    [metabase-enterprise.serialization.test-util :as ts]
+   [metabase-enterprise.serialization.v2.extract :as v2.extract]
+   [metabase-enterprise.serialization.v2.storage :as v2.storage]
    [metabase.cmd :as cmd]
    [metabase.models :refer [Card Dashboard DashboardCard Database User]]
    [metabase.test :as mt]
@@ -11,9 +13,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.yaml :as yaml]
-   [toucan2.core :as t2]
-   [metabase-enterprise.serialization.v2.extract :as v2.extract]
-   [metabase-enterprise.serialization.v2.storage :as v2.storage])
+   [toucan2.core :as t2])
   (:import
    (java.util UUID)))
 
