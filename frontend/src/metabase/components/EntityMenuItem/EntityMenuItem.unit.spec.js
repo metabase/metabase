@@ -1,5 +1,5 @@
 import React from "react";
-import { fireEvent, render, screen, getIcon, queryIcon } from "__support__/ui";
+import { fireEvent, render, screen, getIcon } from "__support__/ui";
 
 import EntityMenuItem from "metabase/components/EntityMenuItem";
 
@@ -44,25 +44,27 @@ describe("EntityMenuItem", () => {
 
     it("should not render if both action and link props are present", () => {
       render(
-        <EntityMenuItem
-          title="A pencil icon"
-          icon="pencil"
-          link="/derp"
-          action={() => ({})}
-        />,
+        <div data-testid="container">
+          <EntityMenuItem
+            title="A pencil icon"
+            icon="pencil"
+            link="/derp"
+            action={() => ({})}
+          />
+        </div>,
       );
 
-      expect(queryIcon("pencil")).not.toBeInTheDocument();
-      expect(screen.queryByText("A pencil icon")).not.toBeInTheDocument();
-      expect(screen.queryByTestId("entity-menu-link")).not.toBeInTheDocument();
+      expect(screen.getByTestId("container")).toBeEmptyDOMElement();
     });
 
     it("should not render if neither action nor link props are present", () => {
-      render(<EntityMenuItem title="A pencil icon" icon="pencil" />);
+      render(
+        <div data-testid="container">
+          <EntityMenuItem title="A pencil icon" icon="pencil" />
+        </div>,
+      );
 
-      expect(queryIcon("pencil")).not.toBeInTheDocument();
-      expect(screen.queryByText("A pencil icon")).not.toBeInTheDocument();
-      expect(screen.queryByTestId("entity-menu-link")).not.toBeInTheDocument();
+      expect(screen.getByTestId("container")).toBeEmptyDOMElement();
     });
   });
 });
