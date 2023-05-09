@@ -543,6 +543,53 @@
                                            "card"
                                            (assoc card :result_metadata []))))))))
 
+(deftest save-new-card-with-result-metadata-test
+  (mt/with-model-cleanup [:model/Card]
+    (testing "we should ignore result_metadata on new Cards"
+      (let [saved-query (mt/mbql-query venues {:fields [$id $name]})
+            old-metadata (->> (qp/process-query (mt/mbql-query venues))
+                              :data
+                              :results_metadata
+                              :columns
+                              (mapv #(m/update-existing % :display_name u/upper-case-en)))
+            expected-metadata (->> (qp/process-query saved-query)
+                                   :data
+                                   :results_metadata
+                                   :columns
+                                   (mapv #(select-keys % #{:id :name :display_name})))
+            {card-id :id} (mt/user-http-request :rasta
+                                                :post
+                                                200
+                                                "card"
+                                                (merge (mt/with-temp-defaults :model/Card)
+                                                       {:dataset_query saved-query
+                                                        :result_metadata old-metadata}))]
+        (is (=? {:result_metadata expected-metadata}
+                (mt/user-http-request :rasta :get 200 (str "card/" card-id))))))
+    (testing "we should incorporate result_metadata on new Models"
+      (let [saved-query (mt/mbql-query venues {:fields [$id $name]})
+            old-metadata (->> (qp/process-query (mt/mbql-query venues))
+                             :data
+                             :results_metadata
+                             :columns
+                             (mapv #(m/update-existing % :display_name u/upper-case-en)))
+            expected-metadata (->> (qp/process-query saved-query)
+                                   :data
+                                   :results_metadata
+                                   :columns
+                                   (mapv #(-> (select-keys % #{:id :name :display_name})
+                                              (m/update-existing :display_name u/upper-case-en))))
+            {card-id :id} (mt/user-http-request :rasta
+                                                :post
+                                                200
+                                                "card"
+                                                (merge (mt/with-temp-defaults :model/Card)
+                                                       {:dataset true
+                                                        :dataset_query saved-query
+                                                        :result_metadata old-metadata}))]
+        (is (=? {:result_metadata expected-metadata}
+                (mt/user-http-request :rasta :get 200 (str "card/" card-id))))))))
+
 (deftest cache-ttl-save
   (testing "POST /api/card/:id"
     (testing "saving cache ttl by post actually saves it"
