@@ -473,7 +473,7 @@
   This is needed only because we have to convert queries to the Legacy
   form.
   The round trip conversion pMBQL -> legacy MBQL -> pMBQL loses the
-  :effective-type property, but is should be present for the frontend
+  :effective-type property, but it should be present for the frontend
   to work. It defaults to the :base-type property."
   [clause]
   (let [options (lib.options/options clause)
