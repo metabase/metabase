@@ -8,8 +8,7 @@ import {
   setupUnauthorizedDatabasesEndpoints,
 } from "__support__/server-mocks";
 
-import type { ActionDashboardCard } from "metabase-types/api";
-import type { ParameterTarget } from "metabase-types/types/Parameter";
+import type { ActionDashboardCard, ParameterTarget } from "metabase-types/api";
 import {
   createMockActionDashboardCard as _createMockActionDashboardCard,
   createMockActionParameter,

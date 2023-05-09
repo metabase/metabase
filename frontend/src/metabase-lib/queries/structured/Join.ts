@@ -3,17 +3,17 @@
 import { t } from "ttag";
 import _ from "underscore";
 import { pluralize } from "metabase/lib/formatting";
-import { TableId } from "metabase-types/types/Table";
-import {
+import type {
+  ConcreteFieldReference,
   Join as JoinObject,
   JoinStrategy,
   JoinFields,
   JoinAlias,
   JoinCondition,
   JoinedFieldReference,
+  TableId,
   StructuredQuery as StructuredQueryObject,
-  ConcreteField,
-} from "metabase-types/types/Query";
+} from "metabase-types/api";
 import {
   getDatetimeUnit,
   isDateTimeField,
@@ -368,7 +368,7 @@ export default class Join extends MBQLObjectClause {
     return this;
   }
 
-  _convertDimensionIntoMBQL(dimension: Dimension | ConcreteField) {
+  _convertDimensionIntoMBQL(dimension: Dimension | ConcreteFieldReference) {
     return dimension instanceof Dimension ? dimension.mbql() : dimension;
   }
 

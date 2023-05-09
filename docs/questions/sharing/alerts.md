@@ -75,7 +75,6 @@ Admins get special privileges with alerts.
 ### Everyone
 
 - Everyone can edit alerts that they've set up (but not alerts set up by other people).
-- Everyone can add any Metabase user account, email address, or even a Slack channel as a recipient of an alert that they created (but not alerts created by others).
 - Everyone can view and unsubscribe from all alerts they receive by clicking on the **gear** icon in the upper right and navigating to **Account settings** > **Notifications**.
 
 ## Avoid changing the name of the alerted channel in Slack
