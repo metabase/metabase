@@ -820,6 +820,7 @@ export const createProductsCategoryField = (opts?: Partial<Field>): Field =>
     table_id: PRODUCTS_ID,
     name: "CATEGORY",
     display_name: "Category",
+    description: "The type of product.",
     base_type: "type/Text",
     effective_type: "type/Text",
     semantic_type: "type/Category",
