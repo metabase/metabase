@@ -167,7 +167,7 @@ function DashboardBackButton() {
     return null;
   }
 
-  const label = `Back to ${dashboard.name}`;
+  const label = t`Back to ${dashboard.name}`;
 
   return (
     <Tooltip tooltip={label}>
