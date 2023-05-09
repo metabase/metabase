@@ -88,7 +88,6 @@ class MetricQuestions extends Component {
                       entity.name && (
                         <li className="relative" key={entity.id}>
                           <ListItem
-                            id={entity.id}
                             name={entity.display_name || entity.name}
                             description={t`Created ${moment(
                               entity.created_at,
