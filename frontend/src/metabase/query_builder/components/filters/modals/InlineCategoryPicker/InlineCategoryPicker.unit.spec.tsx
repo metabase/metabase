@@ -5,8 +5,9 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders } from "__support__/ui";
-import { metadata } from "__support__/sample_database_fixture";
+import { createMockMetadata } from "__support__/metadata";
 
+import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 import Field from "metabase-lib/metadata/Field";
 import Filter from "metabase-lib/queries/structured/Filter";
 import Question from "metabase-lib/Question";
@@ -14,6 +15,10 @@ import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
 import { InlineCategoryPickerComponent } from "./InlineCategoryPicker";
 import { MAX_INLINE_CATEGORIES } from "./constants";
+
+const metadata = createMockMetadata({
+  databases: [createSampleDatabase()],
+});
 
 const smallCategoryField = new Field({
   database_type: "test",
