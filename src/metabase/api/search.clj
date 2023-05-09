@@ -11,6 +11,7 @@
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
+   [metabase.public-settings.premium-features :as premium-features]
    [metabase.search.config :as search-config]
    [metabase.search.scoring :as scoring]
    [metabase.search.util :as search-util]
@@ -205,12 +206,19 @@
     (into [:or]
           (for [column searchable-columns
                 token (search-util/tokenize (search-util/normalize query))]
-            (if (and (= model "card") (= column (keyword (name (model->alias model)) "dataset_query")))
+            (cond
+              (and (= model "card")
+                   (= column (keyword (name (model->alias model)) "dataset_query")))
               [:and
                [:= (keyword (name (model->alias model)) "query_type") "native"]
                [:like
                 [:lower column]
                 (wildcard-match token)]]
+
+              (and (= model "indexed-entity") (premium-features/segmented-user?))
+              [:= 0 1]
+
+              :else
               [:like
                [:lower column]
                (wildcard-match token)])))))
@@ -383,7 +391,8 @@
         columns-to-search (->> all-search-columns
                                (filter (fn [[_k v]] (= v :text)))
                                (map first)
-                               (remove #{:collection_authority_level :moderated_status :initial_sync_status}))
+                               (remove #{:collection_authority_level :moderated_status
+                                         :initial_sync_status :pk_ref}))
         case-clauses      (as-> columns-to-search <>
                             (map (fn [col] [:like [:lower col] match]) <>)
                             (interleave <> (repeat [:inline 0]))

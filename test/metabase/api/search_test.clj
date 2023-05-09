@@ -3,28 +3,17 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.api.common :as api]
    [metabase.api.search :as api.search]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.models
-    :refer [Action
-            Card
-            CardBookmark
-            Collection
-            Dashboard
-            DashboardBookmark
-            DashboardCard
-            Database
-            Metric
-            PermissionsGroup
-            PermissionsGroupMembership
-            Pulse
-            PulseCard
-            QueryAction
-            Segment
-            Table]]
+    :refer [Action Card CardBookmark Collection Dashboard DashboardBookmark
+            DashboardCard Database Metric PermissionsGroup
+            PermissionsGroupMembership Pulse PulseCard QueryAction Segment Table]]
    [metabase.models.model-index :as model-index]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
+   [metabase.public-settings.premium-features :as premium-features]
    [metabase.search.config :as search-config]
    [metabase.search.scoring :as scoring]
    [metabase.test :as mt]
@@ -237,7 +226,6 @@
              [:like [:lower :table_description] "%foo%"] [:inline 0]
              [:like [:lower :model_name]        "%foo%"] [:inline 0]
              [:like [:lower :dataset_query]     "%foo%"] [:inline 0]
-             [:like [:lower :pk_ref]            "%foo%"] [:inline 0]
              :else [:inline 1]]]
            (api.search/order-clause "Foo")))))
 
@@ -499,6 +487,11 @@
                      "Fort Worth" "Fort Smith" "Fort Wayne"}
                    (into #{} (comp relevant (map :name)) (search! "fort"))))
 
+            (testing "Sandboxed users do not see indexed entities in search"
+              (with-redefs [premium-features/segmented-user? (constantly true)]
+                (is (= #{}
+                       (into #{} (comp relevant (map :name)) (search! "fort"))))))
+
             (let [normalize (fn [x] (-> x
                                         (update :dataset_query mbql.normalize/normalize)
                                         (update :pk_ref mbql.normalize/normalize)))]
@@ -513,7 +506,21 @@
                                  :model_id      (:id model)
                                  :model_name    (:name model)}}
                       (into {} (comp relevant (map (juxt :name normalize)))
-                            (search! "rom")))))))))))
+                            (search! "rom"))))))))))
+
+  (testing "Sandboxing inhibits searching indexes"
+    (binding [api/*current-user-id* (mt/user->id :rasta)]
+      (is (= [:and
+              [:inline [:= 1 1]]
+              [:or [:like [:lower :model-index-value.name] "%foo%"]]]
+             (#'api.search/base-where-clause-for-model "indexed-entity" {:archived? false
+                                                                         :search-string "foo"
+                                                                         :current-user-perms #{"/"}})))
+      (with-redefs [premium-features/segmented-user? (constantly true)]
+        (is (= [:and [:inline [:= 1 1]] [:or [:= 0 1]]]
+               (#'api.search/base-where-clause-for-model "indexed-entity" {:archived? false
+                                                                           :search-string "foo"
+                                                                           :current-user-perms #{"/"}})))))))
 
 (deftest archived-results-test
   (testing "Should return unarchived results by default"
