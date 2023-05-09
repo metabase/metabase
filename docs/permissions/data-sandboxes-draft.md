@@ -43,9 +43,9 @@ To **restrict the columns** of a table (in addition to row-restriction), you'll 
 
 For example, say your original Accounts table includes the columns: ID, Email, Plan, and Created At. 
 
-You can create a "Sandboxed Accounts" question that excludes the Email column: ID, Plan, and Created At. 
+To hide the Email column, you'll create a "Sandboxed Accounts" question with the columns: ID, Plan, and Created At.
 
-Then, set up an advanced sandbox to display "Sandboxed Accounts" (without the Email column) instead of the original Accounts table, everywhere that Accounts is used in Metabase.
+Then, set up an advanced sandbox to display "Sandboxed Accounts" instead of the original Accounts table, to a specific group. Groups in the advanced sandbox will see the "Sandboxed Accounts" question result instead of the original Accounts table, everywhere that Accounts is used in Metabase.
 
 ## Limitations
 
@@ -93,7 +93,7 @@ The **user attribute value** must be an exact, case-sensitive match for the valu
 7. Click the dropdown under **Column** and enter the filter name for your table, such as "Plan".
 8. Click the dropdown under **User attribute** and enter the user attribute **key**, such as "User's Plan".
 
-> If you have existing saved SQL questions that use the sandboxed table, make sure to move all of those questions to admin-only collections. For more info, see [Permissions conflicts: saved SQL questions](#saved-sql-questions).
+> If you have existing saved SQL questions that use the sandboxed table, make sure to move all of those questions to admin-only collections. See [Permissions conflicts: saved SQL questions](#saved-sql-questions).
 
 For a tutorial, check out [Data sandboxing: setting row-level permissions](https://www.metabase.com/learn/permissions/data-sandboxing-row-permissions).
 
@@ -112,11 +112,13 @@ In an advanced data sandbox, a saved question will be displayed in place of an o
 
 **Use a SQL question** to define the exact rows and columns to be included in the sandbox. If you use a query builder (GUI) question, you might accidentally expose extra data, since GUI questions can include data from other saved questions or models.
 
-> Make sure to save the SQL question in an admin-only [collection](../exploration-and-organization/collections.md) ([collection permissions](../permissions/collections.md) set to **No access** for all groups except Administrators). For more info, see [Permissions conflicts: saved SQL questions](#saved-sql-questions).
+> Make sure to save the SQL question in an admin-only collection ([collection permissions](../permissions/collections.md) set to **No access** for all groups except Administrators). For more info, see [Permissions conflicts: saved SQL questions](#saved-sql-questions).
 
 ### Editing columns in an advanced sandbox
 
-Aside from excluding rows and columns from an advanced sandbox, you can also display **edited columns**. For example, you could created a "Sandboxed Accounts" SQL question that truncates the Email column to display usernames (anything before the `@`) instead of complete email addresses.
+Aside from excluding rows and columns from an advanced sandbox, you can also display **edited columns**. 
+
+For example, you could created a "Sandboxed Accounts" SQL question that truncates the Email column to display usernames instead of complete email addresses.
 
 You cannot add columns to an advanced sandbox. The schema of the saved SQL question (one you want to display in the sandbox) must match the schema of the original table.
 
@@ -185,7 +187,7 @@ WHERE plan = "Basic"
 
 ## How sandboxing permissions interact with other permissions
 
-Let's say you set up an [advanced sandbox](#advanced-sandboxes) to hide the Email column from the Accounts table from a group. Here's what you can expect when the sandboxed group tries to interact with something that uses the Accounts table in Metabase:
+Let's say you set up an [advanced sandbox](#advanced-sandboxes) to hide the Email column from the Accounts table (for a particular group). Here's what you can expect when the sandboxed group tries to interact with something that uses the Accounts table in Metabase:
 
 |                                                                           | Uses sandboxing rules        |
 |---------------------------------------------------------------------------|------------------------------|
@@ -270,23 +272,27 @@ To resolve data sandboxing conflicts for a person in multiple groups:
 
 ### Saved SQL questions
 
-Data sandboxing permissions don't apply to the results of SQL questions. Metabase doesn't know what tables are included in a SQL query, so SQL questions will always display results from the original (non-sandboxed) version of a table.
+Data sandboxing permissions don't apply to the results of SQL questions. That is, saved SQL questions will always display results from the original table.
 
-Say that you have a data sandbox for the Accounts table that excludes the Email column. If someone makes a SQL question using the Accounts table and includes the Email column, **anyone with collection permissions to view that SQL question** will be able to:
+Say that you have an advanced sandbox that hides the Email column from the Accounts table.
+
+If a person with native query permissions creates a SQL question that includes the Email column, **anyone with collection permissions to view that SQL question** will be able to:
 
 - See the Email column in the SQL question results.
 - Use the SQL question to start a new question that includes the Email column.
 
-To prevent people in a data sandbox from viewing the original (non-sandboxed) Accounts data via a SQL question:
+To prevent sandboxed groups from gaining access to the Email column via a SQL question:
 
-- Put any SQL questions using the Accounts table in a separate collection.
-- Set the [collection permissions](../permissions/collections.md) to **No access** for groups who should only see sandboxed versions of the Accounts table.
+- Put any SQL questions that include the Email column in a separate collection.
+- Set the [collection permissions](../permissions/collections.md) to **No access** for sandboxed groups that should not see the Email column.
 
 [Collection permissions](../permissions/collections.md) must be used to prevent sandboxed groups from viewing saved SQL questions that reference sandboxed tables. That's why, when you create an advanced sandbox, you have to put the saved SQL question (the one you want to display in the sandbox) in an admin-only collection.
 
 ### Public sharing
 
-Data sandboxing permissions don't apply to public questions or public dashboards. If someone creates a public link using data from a sandboxed table, the public link may display non-sandboxed data (depending on the question or dashboard in the link).
+Data sandboxing permissions don't apply to public questions or public dashboards. 
+
+If someone creates a public link using data from a sandboxed table, the public link may display non-sandboxed data (depending on the question or dashboard in the link).
 
 To prevent this from happening, you'll have to [disable public sharing](../questions/sharing/public-links.md) for your Metabase instance.
 
