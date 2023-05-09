@@ -85,16 +85,15 @@ class SegmentQuestions extends Component {
                       entity &&
                       entity.id &&
                       entity.name && (
-                        <li className="relative" key={entity.id}>
-                          <ListItem
-                            name={entity.display_name || entity.name}
-                            description={t`Created ${moment(
-                              entity.created_at,
-                            ).fromNow()} by ${entity.creator.common_name}`}
-                            url={Urls.question(entity)}
-                            icon={visualizations.get(entity.display).iconName}
-                          />
-                        </li>
+                        <ListItem
+                          key={entity.id}
+                          name={entity.display_name || entity.name}
+                          description={t`Created ${moment(
+                            entity.created_at,
+                          ).fromNow()} by ${entity.creator.common_name}`}
+                          url={Urls.question(entity)}
+                          icon={visualizations.get(entity.display).iconName}
+                        />
                       ),
                   )}
                 </List>
