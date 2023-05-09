@@ -5,9 +5,9 @@ import fetchMock from "fetch-mock";
 import {
   renderWithProviders,
   screen,
+  waitFor,
   waitForElementToBeRemoved,
 } from "__support__/ui";
-import { createEntitiesState } from "__support__/store";
 import {
   setupCardsEndpoints,
   setupDatabasesEndpoints,
@@ -78,13 +78,6 @@ const setup = ({
       params={params}
       policy={policy}
     />,
-    {
-      storeInitialState: {
-        entities: createEntitiesState({
-          databases: [database],
-        }),
-      },
-    },
   );
 
   return { onSave };
@@ -114,14 +107,16 @@ describe("EditSandboxingModal", () => {
 
         userEvent.click(screen.getByText("Save"));
 
-        expect(onSave).toHaveBeenCalledWith({
-          attribute_remappings: {
-            foo: ["dimension", ["field", PEOPLE.ID, null]],
-          },
-          card_id: null,
-          group_id: 1,
-          table_id: PEOPLE_ID,
-        });
+        await waitFor(() =>
+          expect(onSave).toHaveBeenCalledWith({
+            attribute_remappings: {
+              foo: ["dimension", ["field", PEOPLE.ID, null]],
+            },
+            card_id: null,
+            group_id: 1,
+            table_id: PEOPLE_ID,
+          }),
+        );
       });
 
       it("should allow creating a new policy based on a card", async () => {
