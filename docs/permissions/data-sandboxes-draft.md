@@ -12,39 +12,40 @@ Say you have people who you want to be able to log into your Metabase, but who s
 
 ## How sandboxes work
 
-Data sandboxes work by displaying an edited version of a table instead of the original table to a specific group.
+Data sandboxes work by displaying an edited version of a table, instead of the original table, to a specific group.
 
-YOu can think of a data sandbox is a bundle of permissions that includes:
+You can think of a data sandbox as a bundle of permissions that includes:
 
 - The edited version of a table that will replace the original table in Metabase.
-- The [group](../people-and-groups/managing.md#groups) of people who should see the edited version of the table instead of the original table, everywhere that the table is used in Metabase.
+- The [group](../people-and-groups/managing.md#groups) of people who should see the edited version of the table, instead of the original table, everywhere that the table is used in Metabase.
 
 You can define up to one data sandbox for each table and group combo in your Metabase. That means you can display different versions of a table for different groups, such as "Sandboxed Accounts for A" to Customer A, and "Sandboxed Accounts for B" to Customer B.
 
 ## Types of data sandboxes
 
-There are two basic types of sandboxes:
+A [row-restricted sandbox](#row-restricted-sandboxes) will display a filtered table in place of the original table (to a specific group).
 
-- A [row-restricted sandbox](#row-restricted-sandboxes) will display a filtered table in place of the original table (to a specific group).
-- An [advanced sandbox](#advanced-sandboxes) will display a custom query result in place of the original table (to a specific group).
+An [advanced sandbox](#advanced-sandboxes) will display a custom query result in place of the original table (to a specific group).
 
 ### Row-restricted sandboxes
 
-A row-restricted sandbox displays the result of a filtered table based on a [user attribute](../people-and-groups/managing.md#adding-user-attributes). A group assigned to a row-restricted sandbox will see a version of the table with a filter like `Filter = "User Attribute"` applied to the original table.
+A row-restricted sandbox displays the result of a filtered table based on a [user attribute](../people-and-groups/managing.md#adding-user-attributes), in place of the original table.
 
-For example, you can create a row-restricted sandbox to filter the Accounts table so that:
+A group assigned to a row-restricted sandbox will see a table with some `Filter = "User Attribute"` applied.
+
+For example, you can create a row-restricted sandbox to filter an Accounts table so that:
 - Someone with the user attribute "Basic" will see the rows where `Plan = "Basic"`.
 - Someone with the user attribute "Premium" will only see the rows where `Plan = "Premium"`.
 
 ### Advanced sandboxes
 
-To **restrict or edit the columns** of a table (in addition to row-restriction), you'll have to use an advanced sandbox. An advanced sandbox displays the results of a saved SQL question in place of a table, anywhere that the table is used in Metabase.
+To **restrict the columns** of a table (in addition to row-restriction), you'll have to use an advanced sandbox. An advanced sandbox displays the results of a saved SQL question in place of an original table.
 
-Say you create a saved question called "Sandboxed Accounts" that excludes the Email column from the Accounts table. An advanced sandbox can display the "Sandboxed Accounts" question result instead of the original Accounts table, everywhere that Accounts is used in Metabase.
+For example, say your original Accounts table includes the columns: ID, Email, Plan, and Created At. 
 
-Aside from excluding columns, you can also display edited columns in an advanced sandbox. For example, you could truncate the Email column to display usernames instead of complete email addresses. 
+You can create a "Sandboxed Accounts" question that excludes the Email column: ID, Plan, and Created At. 
 
-However, you cannot add columns to an advanced sandbox. The schema of the saved SQL question (one you want to display in the sandbox) must match the schema of the original table. That is, your "Sandboxed Accounts" question must have the same number of columns and data types as the original Accounts table.
+Then, set up an advanced sandbox to display "Sandboxed Accounts" (without the Email column) instead of the original Accounts table, everywhere that Accounts is used in Metabase.
 
 ## Limitations
 
@@ -112,6 +113,14 @@ In an advanced data sandbox, a saved question will be displayed in place of an o
 **Use a SQL question** to define the exact rows and columns to be included in the sandbox. If you use a query builder (GUI) question, you might accidentally expose extra data, since GUI questions can include data from other saved questions or models.
 
 > Make sure to save the SQL question in an admin-only [collection](../exploration-and-organization/collections.md) ([collection permissions](../permissions/collections.md) set to **No access** for all groups except Administrators). For more info, see [Permissions conflicts: saved SQL questions](#saved-sql-questions).
+
+### Editing columns in an advanced sandbox
+
+Aside from excluding rows and columns from an advanced sandbox, you can also display **edited columns**. For example, you could created a "Sandboxed Accounts" SQL question that truncates the Email column to display usernames (anything before the `@`) instead of complete email addresses.
+
+You cannot add columns to an advanced sandbox. The schema of the saved SQL question (one you want to display in the sandbox) must match the schema of the original table.
+
+In our example, that means the "Sandboxed Accounts" SQL question must return the same number of columns and corresponding data types as the original Accounts table.
 
 ## Creating an advanced sandbox
 
