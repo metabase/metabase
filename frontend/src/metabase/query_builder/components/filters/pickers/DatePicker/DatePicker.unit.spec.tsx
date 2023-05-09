@@ -2,12 +2,24 @@ import React, { useState } from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import { ORDERS } from "__support__/sample_database_fixture";
+import { createMockMetadata } from "__support__/metadata";
+import { checkNotNull } from "metabase/core/utils/types";
+
+import {
+  ORDERS,
+  ORDERS_ID,
+  createSampleDatabase,
+} from "metabase-types/api/mocks/presets";
 import Filter from "metabase-lib/queries/structured/Filter";
 
 import DatePicker from "./DatePicker";
 
-const ordersQuery = ORDERS.query();
+const metadata = createMockMetadata({
+  databases: [createSampleDatabase()],
+});
+
+const ordersTable = checkNotNull(metadata.table(ORDERS_ID));
+const ordersQuery = ordersTable.query();
 
 // this component does not manage its own filter state, so we need a wrapper to test
 // any state updates because the component's behavior is based on the filter state
@@ -33,7 +45,7 @@ const DatePickerStateWrapper = ({
   );
 };
 
-const CREATED_AT_FIELD = ORDERS.CREATED_AT.reference();
+const CREATED_AT_FIELD = ["field", ORDERS.CREATED_AT, null];
 
 const createDateFilter = (operator: null | string = null, ...args: any[]) =>
   new Filter([operator, CREATED_AT_FIELD, ...(args ?? [])], null, ordersQuery);
