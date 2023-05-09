@@ -110,10 +110,35 @@ If you've already been running Metabase with the default application database (H
 
 ## Additional Podman maintenance and configuration
 
+
+- [Running Metabase as a service](#running-metabase-as-a-service)
 - [Customizing the Metabase Jetty server](#customizing-the-metabase-jetty-server)
 - [Setting the Java Timezone](#setting-the-java-timezone)
 - [Troubleshooting](#troubleshooting)
 - [Continue to setup](#continue-to-setup)
+
+### Running Metabase as a service
+
+We can use the [systemd](https://systemd.io/) initialization service to register a Metabase service that can be started and stopped automatically. Prior to executing this process, ensure that the Metabase container is operational. Then, utilize Podman's built-in feature to generate the service file as follows:
+
+```
+sudo podman generate systemd --new --name metabase > metabase.service
+```
+
+Before executing the service, inspect the contents of the `metabase.service` file to verify that all the accurate configurations are present. Once confirmed, locate the service file to the appropriate location by running the command:
+
+```
+sudo mv metabase.service /etc/systemd/system
+```
+
+To enable the automatic initiation of the Metabase service during system boot, execute:
+
+```
+sudo systemctl enable metabase
+```
+
+To verify that the system functions correctly, reboot the system. Upon completion of the system initialization process, the Metabase container should be operational as intended.
+
 
 ### Customizing the Metabase Jetty server
 
