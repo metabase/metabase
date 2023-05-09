@@ -12,6 +12,7 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.models :refer [PermissionsGroupMembership Session User]]
    [metabase.models.setting :as setting]
+   [metabase.models.setting-test :as setting-test]
    [metabase.models.user :as user]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
@@ -365,13 +366,16 @@
 (deftest with-current-user-test
   (testing "with-current-user correctly binds the appropriate vars for the provided user ID"
     (mw.session/with-current-user (mt/user->id :rasta)
+      ;; Set a user-local value for rasta so that we can make sure that the user-local settings map is correctly bound
+      (setting-test/test-user-local-only-setting! "XYZ")
+
       (is (= (mt/user->id :rasta) *current-user-id*))
       (is (= "rasta@metabase.com" (:email @*current-user*)))
       (is (false? api/*is-superuser?*))
       (is (= nil i18n/*user-locale*))
       (is (false? api/*is-group-manager?*))
       (is (= (user/permissions-set (mt/user->id :rasta)) @api/*current-user-permissions-set*))
-      (is (= {} @@setting/*user-local-values*)))))
+      (is (partial= {:test-user-local-only-setting "XYZ"} @@setting/*user-local-values*)))))
 
 (deftest as-admin-test
   (testing "as-admin overrides *is-superuser?* and *current-user-permissions-set*"
