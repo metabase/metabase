@@ -62,7 +62,7 @@ describe("issue 19744", () => {
     });
     popover().within(() => {
       cy.findByText("On").click();
-      cy.findByRole("textbox").clear().type("01/01/2019");
+      cy.findByRole("textbox").clear().type("05/26/2018");
       cy.button("Update filter").click();
     });
     cy.get(".bar").should("have.length", 1);

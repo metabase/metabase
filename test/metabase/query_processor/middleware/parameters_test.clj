@@ -317,3 +317,25 @@
                                    s/Keyword s/Any}
                         s/Keyword s/Any}
                        (substitute-params query))))))))
+
+(deftest ^:parallel nested-param-test
+  (mt/dataset sample-dataset
+    (is (= (mt/mbql-query
+               products
+               {:source-query
+                {:source-table $$products
+                 :filter [:= !day.created_at "2019-01-01"]
+                 :breakout [$category]
+                 :aggregation [[:count] [:sum $price] [:sum $rating]]}
+                :expressions {"Math" [:+ 1 1]}})
+           (substitute-params
+            (mt/mbql-query
+                products
+                {:source-query
+                 {:source-table $$products
+                  :breakout [$category]
+                  :aggregation [[:count] [:sum $price] [:sum $rating]]}
+                 :expressions {"Math" [:+ 1 1]}
+                 :parameters [{:type :date/all-options
+                               :value "2019-01-01"
+                               :target [:dimension $created_at]}]}))))))

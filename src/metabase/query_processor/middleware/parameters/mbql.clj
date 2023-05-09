@@ -7,6 +7,7 @@
    [metabase.mbql.util :as mbql.u]
    [metabase.models.field :refer [Field]]
    [metabase.models.params :as params]
+   [metabase.query-processor.middleware.add-source-metadata :as add-source-metadata]
    [schema.core :as s]
    [toucan2.core :as t2]))
 
@@ -72,6 +73,29 @@
      (params/wrap-field-id-if-needed field)
      (parse-param-value-for-type param-type param-value (params/unwrap-field-clause field))]))
 
+(defn- all-references-resolvable? [clause source-metadata]
+  (when source-metadata
+    (let [columns (into #{} (map (some-fn :id :name)) source-metadata)]
+      (every? columns (mbql.u/match clause [:field id-or-name _] id-or-name)))))
+
+(defn- add-filter-at-valid-level [inner-query filter-clause]
+  (let [source-query (:source-query inner-query)
+        source-table (:source-table inner-query)
+        source-metadata (when (or source-query source-table)
+                          (add-source-metadata/mbql-source-query->metadata inner-query))]
+    (cond
+      (all-references-resolvable? filter-clause source-metadata)
+      (mbql.u/add-filter-clause-to-inner-query inner-query filter-clause)
+
+      source-query
+      (when-let [updated-source (add-filter-at-valid-level source-query filter-clause)]
+        (assoc inner-query :source-query updated-source))
+
+      source-table
+      (let [source-metadata (add-source-metadata/mbql-source-query->metadata {:source-table source-table})]
+        (when (all-references-resolvable? filter-clause source-metadata)
+          (mbql.u/add-filter-clause-to-inner-query inner-query filter-clause))))))
+
 (defn expand
   "Expand parameters for MBQL queries in `query` (replacing Dashboard or Card-supplied params with the appropriate
   values in the queries themselves)."
@@ -87,5 +111,8 @@
 
       :else
       (let [filter-clause (build-filter-clause (assoc param :value param-value))
-            query         (mbql.u/add-filter-clause query filter-clause)]
-        (recur query rest)))))
+            updated-query (update query :query add-filter-at-valid-level filter-clause)
+            updated-query (if (:query updated-query)
+                            updated-query
+                            (mbql.u/add-filter-clause query filter-clause))]
+        (recur updated-query rest)))))
