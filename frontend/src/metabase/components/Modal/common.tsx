@@ -15,7 +15,7 @@ export function getModalContent(props: any) {
   }
 }
 
-export function ModalWrapper({
+export function MaybeOnClickOutsideWrapper({
   children,
   noOnClickOutsideWrapper = false,
   ...props
