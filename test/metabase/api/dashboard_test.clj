@@ -1994,7 +1994,7 @@
                :user         (-> (user-details (mt/fetch-user :rasta))
                                  (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
                :diff         nil
-               :description  "added a card."}]
+               :description  "created this."}]
              (doall (for [revision (mt/user-http-request :crowberto :get 200 (format "dashboard/%d/revisions" dashboard-id))]
                       (dissoc revision :timestamp :id))))))))
 
@@ -2031,7 +2031,7 @@
                                 (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
               :diff         {:before {:name "b"}
                              :after  {:name "a"}}
-              :description  "renamed this Dashboard from \"b\" to \"a\"."}
+              :description  "reverted to an earlier revision."}
              (dissoc (mt/user-http-request :crowberto :post 200 (format "dashboard/%d/revert" dashboard-id)
                                            {:revision_id revision-id})
                      :id :timestamp)))
@@ -2043,7 +2043,7 @@
                                  (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
                :diff         {:before {:name "b"}
                               :after  {:name "a"}}
-               :description  "renamed this Dashboard from \"b\" to \"a\"."}
+               :description  "reverted to an earlier revision."}
               {:is_reversion false
                :is_creation  false
                :message      "updated"
@@ -2058,7 +2058,7 @@
                :user         (-> (user-details (mt/fetch-user :rasta))
                                  (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
                :diff         nil
-               :description  "rearranged the cards."}]
+               :description  "created this."}]
              (doall (for [revision (mt/user-http-request :crowberto :get 200 (format "dashboard/%d/revisions" dashboard-id))]
                       (dissoc revision :timestamp :id))))))))
 

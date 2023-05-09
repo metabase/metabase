@@ -64,7 +64,7 @@
              :message      nil
              :user         @rasta-revision-info
              :diff         nil
-             :description  nil}]
+             :description  "created this."}]
            (tt/with-temp Card [{:keys [id] :as card}]
              (create-card-revision card true :rasta)
              (get-revisions :card id))))))
@@ -79,7 +79,7 @@
                :user         @rasta-revision-info
                :diff         {:before {:name "something else"}
                               :after  {:name name}}
-               :description  (format "renamed this Card from \"something else\" to \"%s\"." name)}
+               :description  "reverted to an earlier revision."}
               {:is_reversion false
                :is_creation  false
                :message      nil
@@ -92,7 +92,7 @@
                :message      nil
                :user         @rasta-revision-info
                :diff         nil
-               :description  nil}]
+               :description  "created this."}]
              (do
                (create-card-revision card true :rasta)
                (create-card-revision (assoc card :name "something else") false :rasta)
@@ -133,7 +133,7 @@
       (testing "Revert to the previous revision, allowed because rasta has permissions on parent collection"
         (let [[_ {previous-revision-id :id}] (revision/revisions Dashboard id)]
           (is (=? {:id          int?
-                   :description "added a card."}
+                   :description "reverted to an earlier revision."}
                   (mt/user-http-request :rasta :post 200 "revision/revert" {:entity      :dashboard
                                                                             :id          id
                                                                             :revision_id previous-revision-id})))))
@@ -143,7 +143,7 @@
                :user         @rasta-revision-info
                :diff         {:before {:cards nil}
                               :after  {:cards [{:size_x 4, :size_y 4, :row 0, :col 0, :card_id card-id, :series []}]}}
-               :description  "added a card."}
+               :description  "reverted to an earlier revision."}
               {:is_reversion false
                :is_creation  false
                :message      nil
@@ -163,7 +163,7 @@
                :message      nil
                :user         @rasta-revision-info
                :diff         nil
-               :description  "rearranged the cards and set auto apply filters to true."}]
+               :description  "created this."}]
              (->> (get-revisions :dashboard id)
                   (mapv (fn [rev]
                           (if-not (:diff rev)

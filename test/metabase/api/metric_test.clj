@@ -283,7 +283,7 @@
                                  (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
                :diff         {:name       {:after "b"}
                               :definition {:after {:filter [">" ["field" 1 nil] 25]}}}
-               :description  nil}]
+               :description  "created this."}]
              (for [revision (mt/user-http-request :rasta :get 200 (format "metric/%d/revisions" id))]
                (dissoc revision :timestamp :id)))))))
 
@@ -357,7 +357,7 @@
               :user         (dissoc (user-details (mt/fetch-user :crowberto)) :email :date_joined :last_login :is_superuser :is_qbnewb)
               :diff         {:name {:before "Changed Metric Name"
                                     :after  "One Metric to rule them all, one metric to define them"}}
-              :description  "renamed this Metric from \"Changed Metric Name\" to \"One Metric to rule them all, one metric to define them\"."}
+              :description  "reverted to an earlier revision."}
              (dissoc (mt/user-http-request
                       :crowberto :post 200 (format "metric/%d/revert" id) {:revision_id revision-id}) :id :timestamp))))
     (testing "full list of final revisions, first one should be same as the revision returned by the endpoint"
@@ -367,7 +367,7 @@
                :user         (dissoc (user-details (mt/fetch-user :crowberto)) :email :date_joined :last_login :is_superuser :is_qbnewb)
                :diff         {:name {:before "Changed Metric Name"
                                      :after  "One Metric to rule them all, one metric to define them"}}
-               :description  "renamed this Metric from \"Changed Metric Name\" to \"One Metric to rule them all, one metric to define them\"."}
+               :description  "reverted to an earlier revision."}
               {:is_reversion false
                :is_creation  false
                :message      "updated"
@@ -383,7 +383,7 @@
                               :description {:after "One metric to bring them all, and in the DataModel bind them"}
                               :definition  {:after {:database 123
                                                     :query    {:filter ["=" ["field" 10 nil] 20]}}}}
-               :description  nil}]
+               :description  "created this."}]
              (for [revision (mt/user-http-request
                              :crowberto :get 200 (format "metric/%d/revisions" id))]
                (dissoc revision :timestamp :id)))))))

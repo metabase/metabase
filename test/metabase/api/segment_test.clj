@@ -307,7 +307,7 @@
                                  (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
                :diff         {:name       {:after "b"}
                               :definition {:after {:filter [">" ["field" 1 nil] 25]}}}
-               :description  nil}]
+               :description  "created this."}]
              (for [revision (mt/user-http-request :rasta :get 200 (format "segment/%d/revisions" id))]
                (dissoc revision :timestamp :id)))))))
 
@@ -372,7 +372,7 @@
                                   (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
                 :diff         {:name {:before "Changed Segment Name"
                                       :after  "One Segment to rule them all, one segment to define them"}}
-                :description  "renamed this Segment from \"Changed Segment Name\" to \"One Segment to rule them all, one segment to define them\"."}
+                :description  "reverted to an earlier revision."}
                (-> (mt/user-http-request :crowberto :post 200 (format "segment/%d/revert" id) {:revision_id revision-id})
                    (dissoc :id :timestamp)))))
 
@@ -384,7 +384,7 @@
                                    (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
                  :diff         {:name {:before "Changed Segment Name"
                                        :after  "One Segment to rule them all, one segment to define them"}}
-                 :description  "renamed this Segment from \"Changed Segment Name\" to \"One Segment to rule them all, one segment to define them\"."}
+                 :description  "reverted to an earlier revision."}
                 {:is_reversion false
                  :is_creation  false
                  :message      "updated"
@@ -401,7 +401,7 @@
                  :diff         {:name        {:after "One Segment to rule them all, one segment to define them"}
                                 :description {:after "One segment to bring them all, and in the DataModel bind them"}
                                 :definition  {:after {:filter ["=" ["field" 2 nil] "cans"]}}}
-                 :description  nil}]
+                 :description  "created this."}]
                (for [revision (mt/user-http-request :crowberto :get 200 (format "segment/%d/revisions" id))]
                  (dissoc revision :timestamp :id))))))))
 
