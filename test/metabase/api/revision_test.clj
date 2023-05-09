@@ -14,7 +14,7 @@
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
-(use-fixtures :once (fixtures/initialize :db :test-users :web-server))
+(use-fixtures :once (fixtures/initialize :db :test-users :web-server :events))
 
 (def ^:private rasta-revision-info
   (delay
