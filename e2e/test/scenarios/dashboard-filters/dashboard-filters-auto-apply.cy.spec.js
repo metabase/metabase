@@ -59,7 +59,7 @@ describe("scenarios > dashboards > filters > auto apply", () => {
     });
   });
 
-  it("should not display the toast when auto apply filters is disabled", () => {
+  it("should not display the toast when auto applying filters is disabled", () => {
     cy.clock();
     createDashboard({ auto_apply_filters: false });
     visitSlowDashboard({ [filter.slug]: "Gadget" });
