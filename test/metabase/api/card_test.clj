@@ -536,7 +536,7 @@
                                            (assoc card :result_metadata []))))))))
 
 (deftest save-new-card-with-result-metadata-test
-  (mt/with-model-cleanup [:model/Card]
+  (mt/with-model-cleanup [Card]
     (testing "we should ignore result_metadata on new Cards"
       (let [outdated-metadata (->> (qp/process-query (mt/mbql-query venues))
                                    :data
@@ -552,7 +552,7 @@
                                       :post
                                       200
                                       "card"
-                                      (merge (mt/with-temp-defaults :model/Card)
+                                      (merge (mt/with-temp-defaults Card)
                                              {:dataset_query saved-query
                                               :result_metadata outdated-metadata}))))))
     (testing "we should incorporate result_metadata on new Models"
@@ -571,7 +571,7 @@
                                       :post
                                       200
                                       "card"
-                                      (merge (mt/with-temp-defaults :model/Card)
+                                      (merge (mt/with-temp-defaults Card)
                                              {:dataset true
                                               :dataset_query saved-query
                                               :result_metadata outdated-metadata}))))))))
