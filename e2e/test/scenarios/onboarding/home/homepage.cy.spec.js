@@ -1,4 +1,10 @@
-import { popover, restore, visitDashboard, modal } from "e2e/support/helpers";
+import {
+  popover,
+  restore,
+  visitDashboard,
+  modal,
+  dashboardHeader,
+} from "e2e/support/helpers";
 
 describe("scenarios > home > homepage", () => {
   beforeEach(() => {
@@ -207,10 +213,15 @@ describe("scenarios > home > custom homepage", () => {
       cy.location("pathname").should("equal", "/");
     });
 
-    it("should not redirect you if you do not have permissions for set dashboard", () => {
+    it("should redirect you if you do have permissions for set dashboard", () => {
       cy.visit("/");
 
       cy.location("pathname").should("equal", "/dashboard/1");
+
+      dashboardHeader().within(() => {
+        cy.icon("pencil").click();
+        cy.findByText(/Remember that this dashboard is set as homepage/);
+      });
     });
   });
 });
