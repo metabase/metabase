@@ -58,6 +58,7 @@ import {
   getIsHeaderVisible,
   getIsAdditionalInfoVisible,
 } from "../selectors";
+import { getSelectedTabId } from "../components/DashboardTabs";
 
 function getDashboardId({ dashboardId, params }) {
   if (dashboardId) {
@@ -98,6 +99,7 @@ const mapStateToProps = (state, props) => {
     isHeaderVisible: getIsHeaderVisible(state),
     isAdditionalInfoVisible: getIsAdditionalInfoVisible(state),
     embedOptions: getEmbedOptions(state),
+    selectedTabId: getSelectedTabId(state),
   };
 };
 

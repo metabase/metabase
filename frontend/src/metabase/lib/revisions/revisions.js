@@ -184,6 +184,10 @@ export function getChangedFields(revision) {
   return fields.filter(field => registeredFields.includes(field));
 }
 
+export function getRevisionTitleText(username, message) {
+  return `${username} ${message}`;
+}
+
 export function getRevisionDescription(revision) {
   const { diff, is_creation, is_reversion } = revision;
   if (is_creation) {
@@ -267,10 +271,10 @@ export function getRevisionEventsForTimeline(
       // we want to show the changelog in a description and set a title to just "User edited this"
       // If only one field is changed, we just show everything in the title
       // like "John added a description"
+      let message;
       if (isChangeEvent && isMultipleFieldsChange) {
-        event.title = (
-          <RevisionTitle username={username} message={t`edited this`} />
-        );
+        message = t`edited this`;
+        event.title = <RevisionTitle username={username} message={message} />;
         event.description = (
           <RevisionBatchedDescription
             changes={changes}
@@ -278,8 +282,10 @@ export function getRevisionEventsForTimeline(
           />
         );
       } else {
-        event.title = <RevisionTitle username={username} message={changes} />;
+        message = changes;
+        event.title = <RevisionTitle username={username} message={message} />;
       }
+      event.titleText = getRevisionTitleText(username, message);
 
       return event;
     })

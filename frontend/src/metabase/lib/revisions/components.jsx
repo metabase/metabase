@@ -5,6 +5,7 @@ import { t } from "ttag";
 import { color } from "metabase/lib/colors";
 import { capitalize } from "metabase/lib/formatting";
 import RawEntityLink from "metabase/entities/containers/EntityLink";
+import { getRevisionTitleText } from "./revisions";
 
 export const EntityLink = styled(RawEntityLink)`
   color: ${color("brand")};
@@ -28,7 +29,7 @@ const revisionTitlePropTypes = {
 };
 
 export function RevisionTitle({ username, message }) {
-  return <span>{[username, " ", message]}</span>;
+  return <span>{getRevisionTitleText(username, message)}</span>;
 }
 
 RevisionTitle.propTypes = revisionTitlePropTypes;

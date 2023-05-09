@@ -6,6 +6,7 @@ import {
   visitQuestion,
   questionInfoButton,
   rightSidebar,
+  openQuestionsSidebar,
 } from "e2e/support/helpers";
 
 const PERMISSIONS = {
@@ -67,7 +68,7 @@ describe("revision history", () => {
               cy.createDashboard().then(({ body }) => {
                 visitAndEditDashboard(body.id);
               });
-              cy.icon("add").last().click();
+              openQuestionsSidebar();
               cy.findByText("Orders, Count").click();
               saveDashboard();
               openRevisionHistory();
@@ -165,7 +166,7 @@ describe("revision history", () => {
 });
 
 function clickRevert(event_name, index = 0) {
-  cy.findAllByText(event_name).eq(index).siblings("button").first().click();
+  cy.findAllByLabelText(event_name).eq(index).click();
 }
 
 function visitAndEditDashboard(id) {

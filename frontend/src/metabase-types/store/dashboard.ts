@@ -10,16 +10,29 @@ import type {
 
 export type DashboardSidebarName =
   | "addQuestion"
+  | "action"
   | "clickBehavior"
   | "editParameter"
   | "sharing"
   | "info";
 
+export type StoreDashboard = Omit<Dashboard, "ordered_cards"> & {
+  ordered_cards: DashCardId[];
+};
+
+export type StoreDashcard = DashboardOrderedCard & {
+  isDirty?: boolean;
+  isRemoved?: boolean;
+};
+
+export type SelectedTabId = DashboardId | null;
+
 export interface DashboardState {
   dashboardId: DashboardId | null;
-  dashboards: Record<DashboardId, Dashboard>;
+  selectedTabId: SelectedTabId;
+  dashboards: Record<DashboardId, StoreDashboard>;
 
-  dashcards: Record<DashCardId, DashboardOrderedCard>;
+  dashcards: Record<DashCardId, StoreDashcard>;
   dashcardData: DashCardDataMap;
 
   parameterValues: Record<ParameterId, ParameterValueOrArray>;
@@ -44,4 +57,6 @@ export interface DashboardState {
     name?: DashboardSidebarName;
     props: Record<string, unknown>;
   };
+
+  missingActionParameters: unknown;
 }

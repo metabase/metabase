@@ -91,6 +91,7 @@
     "react-transition-group": "^4.4.5",
     "react-use": "^17.4.0",
     "react-virtualized": "^9.22.3",
+    "reduce-reducers": "^1.0.4",
     "redux-actions": "^2.0.1",
     "redux-auth-wrapper": "^1.0.0",
     "redux-promise": "^0.5.0",
