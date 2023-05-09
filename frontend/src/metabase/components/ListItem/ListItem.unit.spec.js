@@ -51,7 +51,6 @@ describe("ListItem", () => {
       name: ITEM_NAME,
       description: ITEM_DESCRIPTION,
       placeholder: "Placeholder text",
-      width: "200px",
     });
 
     expect(screen.getByText(ITEM_NAME)).toBeInTheDocument();
