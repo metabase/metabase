@@ -35,12 +35,6 @@
   [legacy-query]
   (or
    *skip-conversion-tests*
-   ;; #29904: `:fields` in `:joins` are supposed to be returned even if `:fields` is specified.
-   (mbql.u/match-one legacy-query
-     {:fields fields, :joins joins}
-     (mbql.u/match-one joins
-       {:fields (join-fields :guard (partial not= :none))}
-       "#29904"))
    ;; #29942: missing schema for `:cum-sum` and `:cum-count` aggregations
    (mbql.u/match-one legacy-query
      #{:cum-sum :cum-count}

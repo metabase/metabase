@@ -5,7 +5,7 @@ import Button from "metabase/core/components/Button";
 import Input from "metabase/core/components/Input/Input";
 import Tooltip from "metabase/core/components/Tooltip";
 import MetabaseSettings from "metabase/lib/settings";
-import type { Expression } from "metabase-types/types/Query";
+import type { Expression } from "metabase-types/api";
 import { isExpression } from "metabase-lib/expressions";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 

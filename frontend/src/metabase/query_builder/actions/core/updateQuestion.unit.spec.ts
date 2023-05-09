@@ -1,8 +1,11 @@
 import * as questionActions from "metabase/questions/actions";
+import {
+  ConcreteFieldReference,
+  StructuredDatasetQuery,
+  TemplateTag,
+  UnsavedCard,
+} from "metabase-types/api";
 import { createMockDataset } from "metabase-types/api/mocks";
-import { Card, StructuredDatasetQuery } from "metabase-types/types/Card";
-import { ConcreteField } from "metabase-types/types/Query";
-import { TemplateTag } from "metabase-types/api";
 import { QueryBuilderMode } from "metabase-types/store";
 import {
   createMockState,
@@ -120,25 +123,25 @@ const PRODUCTS_JOIN_CLAUSE = {
   "source-table": PRODUCTS.id,
 };
 
-const PIVOT_TABLE_ORDER_CREATED_AT_FIELD: ConcreteField = [
+const PIVOT_TABLE_ORDER_CREATED_AT_FIELD: ConcreteFieldReference = [
   "field",
   ORDERS.CREATED_AT.id,
   { "temporal-unit": "year" },
 ];
 
-const PIVOT_TABLE_PEOPLE_SOURCE_FIELD: ConcreteField = [
+const PIVOT_TABLE_PEOPLE_SOURCE_FIELD: ConcreteFieldReference = [
   "field",
   PEOPLE.SOURCE.id,
   { "source-field": ORDERS.USER_ID.id },
 ];
 
-const PIVOT_TABLE_PRODUCT_CATEGORY_FIELD: ConcreteField = [
+const PIVOT_TABLE_PRODUCT_CATEGORY_FIELD: ConcreteFieldReference = [
   "field",
   PRODUCTS.CATEGORY.id,
   { "source-field": ORDERS.PRODUCT_ID.id },
 ];
 
-const PIVOT_TABLE_QUESTION: Card<StructuredDatasetQuery> = {
+const PIVOT_TABLE_QUESTION: UnsavedCard<StructuredDatasetQuery> = {
   display: "pivot",
   dataset_query: {
     type: "query",
