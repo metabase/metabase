@@ -348,9 +348,10 @@ export const SHOW_AUTO_APPLY_FILTERS_TOAST =
   "metabase/dashboard/SHOW_AUTO_APPLY_FILTERS_TOAST";
 export const showAutoApplyFiltersToast = createThunkAction(
   SHOW_AUTO_APPLY_FILTERS_TOAST,
-  () => dispatch => {
+  () => (dispatch, getState) => {
     const action = toggleAutoApplyFilters(false);
     const toastId = _.uniqueId();
+    const dashboardId = getDashboardId(getState());
 
     dispatch(
       addUndo({
@@ -363,7 +364,7 @@ export const showAutoApplyFiltersToast = createThunkAction(
       }),
     );
 
-    return { toastId };
+    return { toastId, dashboardId };
   },
 );
 

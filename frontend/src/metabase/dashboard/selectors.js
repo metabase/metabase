@@ -121,8 +121,8 @@ export const getDashboardComplete = createSelector(
 
 export const getAutoApplyFiltersToastId = state =>
   state.dashboard.autoApplyFilters.toastId;
-export const getHasShownAutoApplyFiltersToast = state =>
-  state.dashboard.autoApplyFilters.hasShown;
+export const getAutoApplyFiltersToastDashboardId = state =>
+  state.dashboard.autoApplyFilters.toastDashboardId;
 export const getDraftParameterValues = state =>
   state.dashboard.draftParameterValues;
 
@@ -150,21 +150,27 @@ const getIsParameterValuesEmpty = createSelector(
 
 export const getCanShowAutoApplyParametersToast = createSelector(
   [
+    getDashboardId,
+    getAutoApplyFiltersToastDashboardId,
     getIsAutoApplyFilters,
-    getIsParameterValuesEmpty,
     getIsSlowDashboard,
-    getHasShownAutoApplyFiltersToast,
+    getIsParameterValuesEmpty,
   ],
-  (isAutoApply, isParameterValuesEmpty, isSlowDashboard, hasShownToast) => {
+  (
+    dashboardId,
+    toastDashboardId,
+    isAutoApply,
+    isSlowDashboard,
+    isParameterValuesEmpty,
+  ) => {
     return (
+      dashboardId !== toastDashboardId &&
       isAutoApply &&
-      !isParameterValuesEmpty &&
       isSlowDashboard &&
-      !hasShownToast
+      !isParameterValuesEmpty
     );
   },
 );
-// End auto-apply filters
 
 export const getDocumentTitle = state =>
   state.dashboard.loadingControls.documentTitle;

@@ -437,16 +437,16 @@ const missingActionParameters = handleActions(
 export const autoApplyFilters = handleActions(
   {
     [SHOW_AUTO_APPLY_FILTERS_TOAST]: {
-      next: (state, { payload: { toastId } }) => ({
+      next: (state, { payload: { toastId, dashboardId } }) => ({
         ...state,
         toastId,
-        hasShown: true,
+        toastDashboardId: dashboardId,
       }),
     },
   },
   {
     toastId: null,
-    hasShown: false,
+    toastDashboardId: null,
   },
 );
 
