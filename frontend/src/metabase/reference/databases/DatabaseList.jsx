@@ -59,11 +59,10 @@ class DatabaseList extends Component {
             Object.keys(entities).length > 0 ? (
               <div className="wrapper">
                 <List>
-                  {databases.map((database, index) => (
+                  {databases.map(database => (
                     <li className="relative" key={database.id}>
                       <ListItem
                         id={database.id}
-                        index={index}
                         name={database.name}
                         description={database.description}
                         url={`/reference/databases/${database.id}`}
