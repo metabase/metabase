@@ -4,13 +4,18 @@ import React from "react";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import { metadata } from "__support__/sample_database_fixture";
+import { createMockMetadata } from "__support__/metadata";
 
+import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 import Field from "metabase-lib/metadata/Field";
 import Filter from "metabase-lib/queries/structured/Filter";
 import Question from "metabase-lib/Question";
 
 import { InlineDatePicker } from "./InlineDatePicker";
+
+const metadata = createMockMetadata({
+  databases: [createSampleDatabase()],
+});
 
 const dateField = new Field({
   database_type: "test",
