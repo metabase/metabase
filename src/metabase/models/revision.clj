@@ -88,9 +88,9 @@
 (defn- revision-description
   [model prev-revision revision]
   (cond
-    (:is_creation revision) (deferred-tru "created this.")
+    (:is_creation revision)  (deferred-tru "created this.")
     (:is_reversion revision) (deferred-tru "reverted to an earlier revision.")
-    :else (diff-str model (:object prev-revision) (:object revision))))
+    :else                    (diff-str model (:object prev-revision) (:object revision))))
 
 (defn add-revision-details
   "Add enriched revision data such as `:diff` and `:description` as well as filter out some unnecessary props."

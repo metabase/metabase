@@ -11,7 +11,8 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [toucan.util.test :as tt]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (use-fixtures :once (fixtures/initialize :db :test-users :web-server))
 
@@ -189,3 +190,142 @@
           ;; with-non-admin-groups-no-root-collection-perms wrapper)
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :post "revision/revert" update-req))))))))
+
+
+(deftest dashboard-revision-description-test
+  (testing "revision description for dashboard are generated correctly"
+    (t2.with-temp/with-temp
+      [Card      {card-id-1 :id}    {:name "Card 1"}
+       Card      {card-id-2 :id}    {:name "Card 2"}]
+      ;; 0. create the dashboard
+      (let [{dashboard-id :id} (mt/user-http-request :crowberto :post 200 "dashboard"
+                                                     {:name "A dashboard"})]
+        ;; 1. rename
+        (mt/user-http-request :crowberto :put 200 (format "dashboard/%d" dashboard-id)
+                              {:name "New name"})
+        ;; 2. add description
+        (mt/user-http-request :crowberto :put 200 (format "dashboard/%d" dashboard-id)
+                              {:description "A beautiful dashboard"})
+
+        ;; 3. add 2 cards
+        (mt/user-http-request :crowberto :put 200 (format "dashboard/%d/cards" dashboard-id)
+                              {:cards [{:id      -1
+                                        :size_x  4
+                                        :size_y  4
+                                        :col     1
+                                        :row     1
+                                        :card_id card-id-1}
+                                       {:id      -2
+                                        :size_x  4
+                                        :size_y  4
+                                        :col     1
+                                        :row     1
+                                        :card_id card-id-2}]})
+
+        ;; 4. remove 1 card
+        (let [dash-card-id-1 (t2/select-one-pk DashboardCard :dashboard_id dashboard-id :card_id card-id-1)]
+          (mt/user-http-request :crowberto :put 200 (format "dashboard/%d/cards" dashboard-id)
+                                {:cards [{:id      dash-card-id-1
+                                          :size_x  4
+                                          :size_y  4
+                                          :col     1
+                                          :row     1
+                                          :card_id card-id-1}]})
+
+          ;; 5. rearrange cards
+          (mt/user-http-request :crowberto :put 200 (format "dashboard/%d/cards" dashboard-id)
+                                {:cards [{:id      dash-card-id-1
+                                          :size_x  4
+                                          :size_y  4
+                                          :col     2
+                                          :row     2
+                                          :card_id card-id-1}]}))
+
+        ;; 6. revert to an earlier revision
+        (let [earlier-revision-id (t2/select-one-pk Revision :model "Dashboard" :model_id dashboard-id {:order-by [[:timestamp :desc]]})]
+          (mt/user-http-request :crowberto :post 200 "revision/revert"
+                                {:entity "dashboard" :id dashboard-id :revision_id earlier-revision-id}))
+
+        (is (= ["reverted to an earlier revision."
+                "rearranged the cards."
+                "removed a card."
+                "added 2 cards."
+                "added a description."
+                "renamed this Dashboard from \"A dashboard\" to \"New name\"."
+                "created this."]
+               (map :description
+                    (mt/user-http-request :crowberto :get 200 "revision" :entity "dashboard" :id dashboard-id))))))))
+
+(deftest card-revision-description-test
+  (testing "revision description for card are generated correctly"
+    ;; 0. create the card
+    (let [{card-id :id} (mt/user-http-request :crowberto :post 200 "card"
+                                              {:name                   "A card"
+                                               :display                "table"
+                                               :dataset_query          (mt/mbql-query venues)
+                                               :visualization_settings {}})]
+
+      ;; 1. rename
+      (mt/user-http-request :crowberto :put 200 (format "card/%d" card-id)
+                            {:name "New name"})
+
+      ;; 2. turn to a model
+      (mt/user-http-request :crowberto :put 200 (format "card/%d" card-id)
+                            {:dataset true})
+
+      ;; 3. edit query and metadata
+      (mt/user-http-request :crowberto :put 200 (format "card/%d" card-id)
+                            {:dataset_query (mt/mbql-query venues {:aggregation [[:count]]})
+                             :display       "scalar"})
+
+      ;; 4. add description
+      (mt/user-http-request :crowberto :put 200 (format "card/%d" card-id)
+                            {:description "meaningful number"})
+
+
+      ;; 5. revert to an earlier revision
+      (let [earlier-revision-id (t2/select-one-pk Revision :model "Card" :model_id card-id {:order-by [[:timestamp :desc]]})]
+        (mt/user-http-request :crowberto :post 200 "revision/revert"
+                              {:entity "card" :id card-id :revision_id earlier-revision-id}))
+
+      (is (= ["reverted to an earlier revision."
+              "added a description."
+              "changed the display from :table to :scalar, modified the query and edited the metadata."
+              "turned this into a model and edited the metadata."
+              "renamed this Card from \"A card\" to \"New name\"."
+              "created this."]
+             (map :description
+                  (mt/user-http-request :crowberto :get 200 "revision" :entity "card" :id card-id)))))))
+
+(deftest revision-descriptions-are-i18ned-test
+  (mt/with-mock-i18n-bundles {"fr" {:messages {"created this." "créé ceci"
+                                               "added a description" "ajouté une description"
+                                               "renamed {0} from \"{1}\" to \"{2}\"" "renommé {0} de {1} à {2}"
+                                               "this {0}" "ce {0}"
+                                               "and" "et"
+                                               "reverted to an earlier revision." "est revenu à une révision antérieure"}}}
+    (mt/with-temporary-setting-values [site-locale "fr"]
+      (testing "revisions description are translated"
+        ;; 0. create the card
+        (let [{card-id :id} (mt/user-http-request :crowberto :post 200 "card"
+                                                  {:name                   "A card"
+                                                   :display                "table"
+                                                   :dataset_query          (mt/mbql-query venues)
+                                                   :visualization_settings {}})]
+
+          ;; 1. add description
+          (mt/user-http-request :crowberto :put 200 (format "card/%d" card-id)
+                                {:description "meaningful number"
+                                 :name        "New name"})
+
+
+          ;; 2. revert to an earlier revision
+          (let [earlier-revision-id (t2/select-one-pk Revision :model "Card" :model_id card-id {:order-by [[:timestamp :desc]]})]
+            (mt/user-http-request :crowberto :post 200 "revision/revert"
+                                  {:entity "card" :id card-id :revision_id earlier-revision-id}))
+
+          (is (= ["est revenu à une révision antérieure"                             ;; revert
+                  "renommé ce Card de A card à New name et ajouté une description." ;; add description and rename
+                  "créé ceci"]                                                       ;; create
+                 (map :description
+                      (mt/user-http-request :crowberto :get 200 "revision" :entity "card" :id card-id)))))))))
