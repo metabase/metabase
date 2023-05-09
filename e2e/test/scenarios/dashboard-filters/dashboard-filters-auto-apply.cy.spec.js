@@ -38,7 +38,7 @@ describe("scenarios > dashboards > filters > auto apply", () => {
     cy.intercept("PUT", "/api/dashboard/*").as("updateDashboard");
   });
 
-  it("should display toasts when a dashboard takes longer than 15s to load", () => {
+  it("should display a toast when a dashboard takes longer than 15s to load", () => {
     cy.clock();
     visitSlowDashboard({ [filter.slug]: "Gadget" });
 
