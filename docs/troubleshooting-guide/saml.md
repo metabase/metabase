@@ -43,7 +43,7 @@ After filling out the authentication form with your identity provider, you go ba
 
 ## Is the SSO URL correct?
 
-Verify that the Single Sign On URL (or equivalent) that you enter on your SAML provider’s website has `/auth/sso` appended to it. For instance, if you want your users to end up at `https://metabase.mycompany.com`, the full URL should be `https://metabase.mycompany.com/auth/sso`.
+Verify that the Single Sign On URL (or equivalent) that you enter on your SAML provider’s website has `/auth/sso/` appended to it. For instance, if you want your users to end up at `https://metabase.mycompany.com`, the full URL should be `https://metabase.mycompany.com/auth/sso/`.
 
 ## Searching for private key and found a null
 

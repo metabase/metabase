@@ -11,14 +11,14 @@ import {
 import { getMetadata } from "metabase/selectors/metadata";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
-import { createEntitiesState } from "__support__/store";
+import { createMockEntitiesState } from "__support__/store";
 
 import { DashCardCardParameterMapper } from "./DashCardCardParameterMapper";
 
 const QUESTION_ID = 1;
 
 const state = createMockState({
-  entities: createEntitiesState({
+  entities: createMockEntitiesState({
     databases: [createSampleDatabase()],
     questions: [createMockCard({ id: QUESTION_ID })],
   }),

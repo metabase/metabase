@@ -1,4 +1,4 @@
-import { createEntitiesState } from "__support__/store";
+import { createMockEntitiesState } from "__support__/store";
 import { checkNotNull } from "metabase/core/utils/types";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
@@ -35,7 +35,7 @@ function setup() {
   ];
 
   const state = createMockState({
-    entities: createEntitiesState({
+    entities: createMockEntitiesState({
       databases,
       metrics,
       segments,

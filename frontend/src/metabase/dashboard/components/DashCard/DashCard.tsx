@@ -24,17 +24,15 @@ import ErrorBoundary from "metabase/ErrorBoundary";
 import type {
   Card,
   CardId,
+  DatasetData,
   Dashboard,
   DashboardOrderedCard,
   DashCardId,
-  VisualizationSettings,
-} from "metabase-types/api";
-import type { DatasetData } from "metabase-types/types/Dataset";
-import type {
   ParameterId,
   ParameterValueOrArray,
-} from "metabase-types/types/Parameter";
-import type { Series } from "metabase-types/types/Visualization";
+  Series,
+  VisualizationSettings,
+} from "metabase-types/api";
 
 import { DASHBOARD_SLOW_TIMEOUT } from "metabase/dashboard/constants";
 import { getParameterValuesBySlug } from "metabase-lib/parameters/utils/parameter-values";
@@ -362,4 +360,6 @@ function DashCard({
   );
 }
 
-export default DashCard;
+export default Object.assign(DashCard, {
+  root: DashCardRoot,
+});
