@@ -78,14 +78,13 @@ class TableQuestions extends Component {
               <div className="wrapper wrapper--trim">
                 <List>
                   {Object.values(entities).map(
-                    (entity, index) =>
+                    entity =>
                       entity &&
                       entity.id &&
                       entity.name && (
                         <li className="relative" key={entity.id}>
                           <ListItem
                             id={entity.id}
-                            index={index}
                             name={entity.display_name || entity.name}
                             description={t`Created ${moment(
                               entity.created_at,
