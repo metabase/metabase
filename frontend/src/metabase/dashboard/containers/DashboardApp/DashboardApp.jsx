@@ -59,6 +59,7 @@ import {
   getIsLoadingComplete,
   getIsHeaderVisible,
   getIsAdditionalInfoVisible,
+  getIsAutoApplyFilters,
 } from "../../selectors";
 import { DASHBOARD_SLOW_TIMEOUT } from "../../constants";
 
@@ -101,6 +102,7 @@ const mapStateToProps = (state, props) => {
     isHeaderVisible: getIsHeaderVisible(state),
     isAdditionalInfoVisible: getIsAdditionalInfoVisible(state),
     embedOptions: getEmbedOptions(state),
+    isAutoApplyFilters: getIsAutoApplyFilters(state),
   };
 };
 

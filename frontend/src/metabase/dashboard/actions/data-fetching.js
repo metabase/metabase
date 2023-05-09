@@ -24,7 +24,7 @@ import {
 } from "metabase/services";
 
 import { getMetadata } from "metabase/selectors/metadata";
-import { showAutoApplyParametersToast } from "metabase/dashboard/actions/parameters";
+import { showAutoApplyFiltersToast } from "metabase/dashboard/actions/parameters";
 import { getParameterValuesBySlug } from "metabase-lib/parameters/utils/parameter-values";
 import { applyParameters } from "metabase-lib/queries/utils/card";
 import {
@@ -124,7 +124,7 @@ const loadingComplete = createThunkAction(
     }
 
     if (getCanShowAutoApplyParametersToast(getState())) {
-      dispatch(showAutoApplyParametersToast());
+      dispatch(showAutoApplyFiltersToast());
     }
   },
 );

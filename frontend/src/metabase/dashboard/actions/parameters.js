@@ -22,7 +22,7 @@ import {
   getParameterValues,
   getParameters,
   getDashboardId,
-  getAutoApplyParametersToastId,
+  getAutoApplyFiltersToastId,
 } from "../selectors";
 
 import { isVirtualDashCard } from "../utils";
@@ -327,10 +327,10 @@ export const setParameterValuesFromQueryParams =
     dispatch(setParameterValues(parameterValues));
   };
 
-export const TOGGLE_AUTO_APPLY_PARAMETERS =
-  "metabase/dashboard/TOGGLE_AUTO_APPLY_PARAMETERS";
-export const toggleAutoApplyParameters = createThunkAction(
-  TOGGLE_AUTO_APPLY_PARAMETERS,
+export const TOGGLE_AUTO_APPLY_FILTERS =
+  "metabase/dashboard/TOGGLE_AUTO_APPLY_FILTERS";
+export const toggleAutoApplyFilters = createThunkAction(
+  TOGGLE_AUTO_APPLY_FILTERS,
   isEnabled => (dispatch, getState) => {
     const dashboardId = getDashboardId(getState());
 
@@ -344,12 +344,12 @@ export const toggleAutoApplyParameters = createThunkAction(
   },
 );
 
-export const SHOW_AUTO_APPLY_PARAMETERS_TOAST =
-  "metabase/dashboard/SHOW_AUTO_APPLY_PARAMETERS_TOAST";
-export const showAutoApplyParametersToast = createThunkAction(
-  SHOW_AUTO_APPLY_PARAMETERS_TOAST,
+export const SHOW_AUTO_APPLY_FILTERS_TOAST =
+  "metabase/dashboard/SHOW_AUTO_APPLY_FILTERS_TOAST";
+export const showAutoApplyFiltersToast = createThunkAction(
+  SHOW_AUTO_APPLY_FILTERS_TOAST,
   () => dispatch => {
-    const action = toggleAutoApplyParameters(false);
+    const action = toggleAutoApplyFilters(false);
     const toastId = _.uniqueId();
 
     dispatch(
@@ -368,11 +368,11 @@ export const showAutoApplyParametersToast = createThunkAction(
 );
 
 export const CLOSE_AUTO_APPLY_PARAMETERS_TOAST =
-  "metabase/dashboard/SHOW_AUTO_APPLY_PARAMETERS_TOAST";
+  "metabase/dashboard/SHOW_AUTO_APPLY_FILTERS_TOAST";
 export const closeAutoApplyParametersToast = createThunkAction(
-  SHOW_AUTO_APPLY_PARAMETERS_TOAST,
+  SHOW_AUTO_APPLY_FILTERS_TOAST,
   () => (dispatch, getState) => {
-    const toastId = getAutoApplyParametersToastId(getState());
+    const toastId = getAutoApplyFiltersToastId(getState());
     if (toastId) {
       dispatch(dismissUndo(toastId, false));
     }
