@@ -216,6 +216,7 @@ export const fetchDashboard = createThunkAction(
         dashboard: result,
         dashboardId: dashId,
         parameterValues: parameterValuesById,
+        preserveParameters,
       };
     };
   },

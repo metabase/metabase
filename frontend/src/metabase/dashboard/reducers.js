@@ -317,7 +317,8 @@ const draftParameterValues = handleActions(
       next: (state, { payload: { id } }) => dissoc(state, id),
     },
     [FETCH_DASHBOARD]: {
-      next: (state, { payload: { parameterValues } }) => parameterValues,
+      next: (state, { payload: { parameterValues, preserveParameters } }) =>
+        preserveParameters ? state : parameterValues,
     },
     [SET_PARAMETER_VALUES]: {
       next: (state, { payload }) => payload,
