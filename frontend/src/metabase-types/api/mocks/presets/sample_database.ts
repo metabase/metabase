@@ -80,6 +80,12 @@ export const PRODUCT_VENDOR_VALUES: FieldValues = {
   has_more_values: true,
 };
 
+export const PEOPLE_SOURCE_VALUES: FieldValues = {
+  field_id: PEOPLE.SOURCE,
+  values: [["Affiliate"], ["Facebook"], ["Google"], ["Organic"], ["Twitter"]],
+  has_more_values: false,
+};
+
 export const createSampleDatabase = (opts?: Partial<Database>): Database =>
   createMockDatabase({
     id: SAMPLE_DB_ID,
