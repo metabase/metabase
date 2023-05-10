@@ -17,7 +17,6 @@
    [metabase.models
     :refer [Card
             Collection
-            Database
             Dimension
             Field
             FieldValues
@@ -213,7 +212,7 @@
 
    ;; TODO - `with-temp` doesn't return `Sessions`, probably because their ID is a string?
 
-   Table
+   :model/Table
    (fn [_] {:db_id  (data/id)
             :active true
             :name   (tu.random/random-name)})

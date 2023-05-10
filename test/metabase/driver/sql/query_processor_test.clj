@@ -230,7 +230,7 @@
                                               :engine   driver
                                               :details  {}
                                               :settings {}}))
-      (qp.store/store-table!    (t2/instance :metabase.models.table/Table
+      (qp.store/store-table!    (t2/instance :model/Table
                                              {:id     1
                                               :db_id  1
                                               :schema "public"

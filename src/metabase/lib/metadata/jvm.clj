@@ -12,7 +12,7 @@
 (defn- metadata-type->model [metadata-type]
   (case metadata-type
     :metadata/database :model/Database
-    :metadata/table    :metabase.models.table/Table
+    :metadata/table    :model/Table
     :metadata/field    :metabase.models.field/Field
     :metadata/card     :model/Card
     :metadata/metric   :metabase.models.metric/Metric
@@ -43,7 +43,7 @@
                     {})))
   (log/debugf "Fetching all Tables for Database %d" database-id)
   (mapv #(instance->metadata % :metadata/table)
-        (t2/select :metabase.models.table/Table :db_id database-id)))
+        (t2/select :model/Table :db_id database-id)))
 
 (defn- fields [table-id]
   (log/debugf "Fetching all Fields for Table %d" table-id)

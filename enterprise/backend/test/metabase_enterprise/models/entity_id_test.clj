@@ -23,7 +23,7 @@
   "Entities with external names, so they don't need a generated entity_id."
   #{;; Databases have external names based on their URLs; tables are nested under databases; fields under tables.
     :model/Database
-    :metabase.models.table/Table
+    :model/Table
     :metabase.models.field/Field
     ;; Settings have human-selected unique names.
     :metabase.models.setting/Setting})

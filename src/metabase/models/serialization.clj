@@ -858,7 +858,7 @@
    "collection" :metabase.models.collection/Collection
    "database"   :model/Database
    "dashboard"  :model/Dashboard
-   "table"      :metabase.models.table/Table})
+   "table"      :model/Table})
 
 (defn- export-viz-link-card
   [settings]
