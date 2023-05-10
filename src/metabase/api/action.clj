@@ -92,8 +92,7 @@
       (hydrate :creator)
       api/read-check))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema DELETE "/:action-id"
+(api/defendpoint DELETE "/:action-id"
   [action-id]
   (let [action (api/write-check Action action-id)]
     (snowplow/track-event! ::snowplow/action-deleted api/*current-user-id* {:type      (:type action)

@@ -16,6 +16,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.describe :as umd]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.regex :as u.regex]
    [metabase.util.schema :as su]
    [potemkin.types :as p.types]
    [schema.core :as s])
@@ -274,6 +275,7 @@
        'int? #"-?[0-9]+"
        :uuid u/uuid-regex
        'uuid? u/uuid-regex
+       :enum (u.regex/rx (into [:or] (drop 1 schema)))
        nil)]))
 
 (def ^:private no-regex-schemas #{(mc/type ms/NonBlankString)})

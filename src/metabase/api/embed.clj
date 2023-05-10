@@ -36,10 +36,10 @@
    [metabase.util.embed :as embed]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan2.core :as t2]
-   [metabase.util.malli.schema :as ms]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 

@@ -39,8 +39,7 @@
     (filter mi/can-read? <>)
     (hydrate <> :can_write)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/:id"
+(api/defendpoint GET "/:id"
   "Fetch an alert by ID"
   [id]
   (-> (api/read-check (pulse/retrieve-alert id))
@@ -243,8 +242,7 @@
       ;; Finally, return the updated Alert
       updated-alert)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema DELETE "/:id/subscription"
+(api/defendpoint DELETE "/:id/subscription"
   "For users to unsubscribe themselves from the given alert."
   [id]
   (validation/check-has-application-permission :subscription false)

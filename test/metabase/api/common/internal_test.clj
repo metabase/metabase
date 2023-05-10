@@ -312,6 +312,7 @@
                                          {'id ms/PositiveInt
                                           'card-id ms/PositiveInt
                                           'crazy-id ms/PositiveInt
+                                          'a-fruit-param [:enum "lemon" "orange"]
                                           'uuid ms/UUIDString}
                                          route)]
                              (cond (string? result) result
@@ -324,6 +325,9 @@
     "/:id"                                 ["/:id" :id "#[0-9]+"]
     "/:id/card"                            ["/:id/card" :id "#[0-9]+"]
     "/:card-id"                            ["/:card-id" :card-id "#[0-9]+"]
+    "/:id/:a-fruit-param"                  ["/:id/:a-fruit-param"
+                                            :id "#[0-9]+"
+                                            :a-fruit-param "#(?:(?:lemon)|(?:orange))"]
     "/:fish"                               "/:fish"
     "/:id/tables/:card-id"                 ["/:id/tables/:card-id" :id "#[0-9]+" :card-id "#[0-9]+"]
     ;; don't try to typify route that's already typified
