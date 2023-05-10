@@ -1,3 +1,4 @@
+import _ from "underscore";
 import {
   Dataset,
   DatasetColumn,
@@ -47,7 +48,7 @@ export const createMockDataset = ({
   const columns: DatasetColumn[] = data.cols ?? [createMockColumn()];
 
   return {
-    data: createMockDatasetData(columns),
+    data: createMockDatasetData(columns, _.omit(data, "cols")),
     database_id: 1,
     row_count: 0,
     running_time: 1000,
