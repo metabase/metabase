@@ -4,7 +4,8 @@
    [metabase.models :refer [LoginHistory Session User]]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [schema.core :as s]))
+   [schema.core :as s]
+   [vcr-clj.clj-http :refer [with-cassette]]))
 
 (set! *warn-on-reflection* true)
 
@@ -51,36 +52,37 @@
         ;; The timestamps will also need to be updates (to be in the TZ, not in Zulu time)
         ;;
         ;; A Slack reminder has been set to follow up on this
-        (is (schema= [(s/one
-                       {:timestamp          (s/eq "2021-03-18T20:55:50.955232Z")
-                        :device_description (s/eq "Mobile Browser (Mobile Safari/iOS)")
-                        :ip_address         (s/eq "0:0:0:0:0:0:0:1")
-                        :active             (s/eq false)
-                        :location           (s/eq nil #_"Unknown location")
-                        :timezone           (s/eq nil)}
-                       "localhost ipv6")
-                      (s/one
-                       {:timestamp          (s/eq "2021-03-18T20:04:24.7273Z")
-                        :device_description (s/eq "Library (Apache-HttpClient/JVM (Java))")
-                        :ip_address         (s/eq "127.0.0.1")
-                        :active             (s/eq false)
-                        :location           (s/eq nil #_"Unknown location")
-                        :timezone           (s/eq nil)}
-                       "localhost ipv4")
-                      (s/one
-                       {:timestamp          (s/eq "2021-03-18T19:52:41.808482Z")
-                        :device_description (s/eq "Browser (Chrome/Windows)")
-                        :ip_address         (s/eq "185.233.100.23")
-                        :active             (s/eq true)
-                        :location           (s/eq nil) #_ #"France"
-                        :timezone           (s/eq nil #_ "CET")}
-                       "France")
-                      (s/one
-                       {:timestamp          (s/eq "2021-03-18T19:52:20.172351Z")
-                        :device_description (s/eq "Browser (Chrome/Windows)")
-                        :ip_address         (s/eq "52.206.149.9")
-                        :active             (s/eq false)
-                        :location           (s/eq nil #_ "Ashburn, Virginia, United States")
-                        :timezone           (s/eq nil #_ "ET")}
-                       "Virginia")]
-                     (mt/client session-id :get 200 "login-history/current")))))))
+        (with-cassette :login-history-test
+          (is (schema= [(s/one
+                         {:timestamp          (s/eq "2021-03-18T20:55:50.955232Z")
+                          :device_description (s/eq "Mobile Browser (Mobile Safari/iOS)")
+                          :ip_address         (s/eq "0:0:0:0:0:0:0:1")
+                          :active             (s/eq false)
+                          :location           (s/eq nil #_"Unknown location")
+                          :timezone           (s/eq nil)}
+                         "localhost ipv6")
+                        (s/one
+                         {:timestamp          (s/eq "2021-03-18T20:04:24.7273Z")
+                          :device_description (s/eq "Library (Apache-HttpClient/JVM (Java))")
+                          :ip_address         (s/eq "127.0.0.1")
+                          :active             (s/eq false)
+                          :location           (s/eq nil #_"Unknown location")
+                          :timezone           (s/eq nil)}
+                         "localhost ipv4")
+                        (s/one
+                         {:timestamp          (s/eq "2021-03-18T19:52:41.808482Z")
+                          :device_description (s/eq "Browser (Chrome/Windows)")
+                          :ip_address         (s/eq "185.233.100.23")
+                          :active             (s/eq true)
+                          :location           (s/eq nil) #_ #"France"
+                          :timezone           (s/eq nil #_ "CET")}
+                         "France")
+                        (s/one
+                         {:timestamp          (s/eq "2021-03-18T19:52:20.172351Z")
+                          :device_description (s/eq "Browser (Chrome/Windows)")
+                          :ip_address         (s/eq "52.206.149.9")
+                          :active             (s/eq false)
+                          :location           (s/eq nil #_ "Ashburn, Virginia, United States")
+                          :timezone           (s/eq nil #_ "ET")}
+                         "Virginia")]
+                       (mt/client session-id :get 200 "login-history/current"))))))))
