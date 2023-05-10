@@ -8,166 +8,249 @@ redirect_from:
 
 {% include plans-blockquote.html feature="Data sandboxes" %}
 
-Data sandboxes are a powerful and flexible permissions tool that allow you to grant filtered access to specific tables. If you haven't already, check out our [overview of how permissions work in Metabase](../permissions/introduction.md).
+Data sandboxes let you give granular permissions to rows and columns for different groups of people.
 
-Say you have users who you want to be able to log into your Metabase instance, but who should only be able to view data that pertains to them. For example, you might have some customers or partners who you want to let view your Orders table, but you only want them to see their orders. Sandboxes let you do just that.
+Say you have people who you want to be able to log into your Metabase, but who should only be able to view data that pertains to them. For example, you might want to display an Accounts table to some customers, but each customer should only be able to view the rows that match their customer ID. Sandboxes let you give people a way to [self-serve their own analytics](https://www.metabase.com/learn/customer-facing-analytics/multi-tenant-self-service-analytics), without ever seeing any results that don't pertain to them.
 
-The way they work is that you first pick a table that you want to sandbox for users in a certain group, then customize how exactly you want to filter that table for those users. For this to work in most cases you’ll first need to add attributes to your users, manually or via SSO, so that Metabase will know how to filter things for them specifically.
+## How sandboxes work
 
-## Getting user attributes
+Data sandboxes work by displaying an edited version of a table, instead of the original table, to a specific group.
 
-For Metabase to be able to automatically filter tables based on who's viewing them, your users will need to have distinct attributes associated with their accounts to differentiate them — something like `User_ID`. We'll then use these attributes as the basis for filtering the tables you choose. There are two ways to add these attributes to your users:
+You can think of a data sandbox as a bundle of permissions that includes:
 
-1. If you've already [connected your SSO](../people-and-groups/authenticating-with-saml.md) to Metabase, any user attributes you set there can be automatically passed to Metabase.
-2. You can also add attributes manually to a user by going to the People section of the Admin Panel, and clicking on the “…” menu on the far right of a user’s name in the table you’ll see there. Click on Edit Details from that menu to add and edit a user’s attributes.
+- The edited version of a table that will replace the original table, everywhere that the original table is used in Metabase.
+- The [group](../people-and-groups/managing.md#groups) of people who should see the edited version of the table.
 
-Now that your users have attributes, you’ll be able to sandbox tables, and automatically filter them based on these user attributes.
+You can define up to one data sandbox for each table/group combo in your Metabase. That means you can display different versions of a table for different groups, such as "Sandboxed Accounts for A" to Customer A, and "Sandboxed Accounts for B" to Customer B.
 
-## Filtering a sandboxed table
+## Types of data sandboxes
 
-Metabase gives you two options for filtering a sandboxed table:
+Data sandboxes show specific data to specific people based on their user attributes. You can:
 
-### Option 1: filter using a column in the table
+- Restrict **rows** with a [basic sandbox](#basic-data-sandboxes-filter-by-a-column-in-the-table).
+- Restrict **columns** with a [custom sandbox](#custom-data-sandboxes-use-a-saved-question-to-create-a-custom-view-for-this-table).
 
-The simplest way to filter a sandboxed table is to pick a column in the sandboxed table and match it up with a user attribute so that any time a user with sandboxed access to this table views it, they’ll only see rows in the table where that column’s value is equal to the value that user has for that attribute.
+### Basic data sandboxes: filter by a column in the table
 
-### Option 2: create a custom view of the table with a saved question
+To **restrict rows**, use a basic sandbox. A basic sandbox displays a table that's filtered based on someone's [user attribute value](../people-and-groups/managing.md#adding-user-attributes).
 
-Metabase also gives you the option of creating a custom view for a sandboxed table using a saved question.  For example, you might have columns in your Orders table that you don’t want any of your users to see. You can create a SQL-based saved question that only returns the columns you want users to see. For even more surgical access controls, you can map variables in a SQL question to user attributes in order to customize the view for that user. For example, if you only want users to see _their_ order data, you could map a variable in the `where` clause of the filtering saved question to one of their user attributes, like `where orders.user_id = {% raw %}{{user_id_attr_var}}{% endraw %}`, and the user would only have access to order information related to that user ID.
+For example, you can create a basic sandbox to filter the Accounts table for a sandboxed group so that:
+- A sandboxed person with the user attribute value "Basic" will see the rows where `Plan = "Basic"` (rows where the Plan column contains the value "Basic").
+- A sandboxed person with the user attribute value "Premium" will only see the rows where `Plan = "Premium"`(rows where the Plan column contains the value "Basic").
 
-## An example setup
+For more info, see [Choosing user attributes for sandboxing](#choosing-user-attributes-for-sandboxing).
 
-That was a mouthful, so here’s an example. (The example happens to use a group called "Customers" but this works the same whether you're doing this for internal or external folks.) We’ll sandbox our Orders table so that any user in our Customers group will only be able to see rows in the Orders table where the `User ID` column matches the user’s `user_id` attribute.
+### Custom data sandboxes: use a saved question to create a custom view for this table
 
-First we’ve made sure our example user has an attribute that we’ll be able to use in our filter:
+To **restrict columns** (in addition to rows), use a custom sandbox. A custom sandbox displays the results of a saved SQL question in place of an original table.
 
-![User details](images/edit-user-details.png)
+For example, say your original Accounts table includes the columns: ID, Email, Plan, and Created At. If you want to hide the Email column, you can create a "Sandboxed Accounts" SQL question with the columns: ID, Plan, and Created At. A custom sandbox will display the "Sandboxed Accounts" question result instead of the original Accounts table, to a specific group, everywhere that Accounts is used in Metabase.
 
-Then we’ll head over to the Permissions section of the Admin Panel, and we’ll click on View Tables next to the Sample Database to see the permissions our user groups have for the tables in this database. We want to give the Customers group sandboxed access to the Orders table, so we’ll click on that box in the permissions grid and choose “Grant sandboxed access:”
+You can also use a custom sandbox to:
 
-![Grant sandboxed access](images/grant-sandboxed-access.png)
+- [Display an edited column instead of hiding the column](#displaying-edited-columns-in-an-custom-sandbox).
+- [Pass a user attribute value to a SQL parameter](#how-row-restriction-works-in-an-custom-sandbox).
+- [Pass a user attribute value to a Markdown parameter](https://www.metabase.com/learn/dashboards/markdown#create-a-custom-url-with-a-filter-value).
 
-Metabase will ask us first if we want to restrict this user group to “limited access” to this database. That just means they won’t have full access to all of the tables in this database, which is exactly what we want.
+## Limitations
 
-![Confirm modal](images/change-access-confirm-modal.png)
+Things that don't play well in a sandbox.
 
-Next we’ll see a worksheet that will ask us how we want to filter this table for these users. We’ll leave it on the default selection. Below that, there’s an area where we get to add our filters. We want to filter using the User ID column in the Orders table where the column equals each user’s user_id attribute. So we’ll select that column and that user attribute from the dropdown menus. At the bottom of the worksheet, there’s a summary of how things will work.
+### Groups with native query permissions (access to the SQL editor) cannot be sandboxed
 
-![Sandbox settings](images/select-user-attribute.png)
+People with SQL editor access to a database will always be able to query any original table from that database. This is because Metabase cannot parse a SQL query to identify the tables in that query. 
 
-We’ll click Done, then we’ll click Save Changes at the top of the screen to save the changes we’ve made to our permissions. If we ever want to edit how this table should be filtered for users in this group, we can just click on the __Data access__ dropdown for that group and select __Edit sandboxed access__.
+[Native query permissions](../permissions/data.md) will automatically get **disabled** for any groups that will be added to a data sandbox. If you need to prevent people with SQL access from querying specific tables in a database, you can edit your [database users, roles, and privileges](../databases/users-roles-privileges.md).
 
-To test this out, we’ll open up a new incognito browser window and log in with our test user account. We’ll click on the Sample Database on the home page and then pick the Orders table. As you can see here, this user correctly only sees orders where the User ID column is equal to 1, because that’s what this user’s user_id attribute is.
+### SQL questions cannot be sandboxed
 
-![Filtered table](images/filtered-table.png)
+Since Metabase cannot parse SQL queries, the results of saved SQL questions will always use original tables, not sandboxed tables. Use [collection permissions](../permissions/collections.md) to prevent sandboxed groups from viewing saved SQL questions with restricted data. See [Permissions conflicts: saved SQL questions](#saved-sql-questions).
 
-If this user views any charts, dashboards, or even automated X-ray explorations that include this sandboxed Orders data, those will also be correctly filtered to only show the data they’re allowed to see.
+### Non-SQL databases cannot be sandboxed
 
-Another great thing about sandboxing is that this user can still use all of the easy and powerful exploration and charting features of Metabase to explore this sandboxed data. For example, they can create a chart like this one to see a breakdown of their orders by product type:
+Data sandboxing is unavailable for non-SQL databases such as Apache Druid or MongoDB.
 
-![Filtered pie chart](images/filtered-pie-chart.png)
+## Prerequisites for basic sandboxes
 
-## Advanced sandbox examples
+- A [group](../people-and-groups/managing.md#groups) of people to be added to the basic data sandbox.
+- [User attributes](../people-and-groups/managing.md#adding-a-user-attribute) for each person in the group.
 
-As we mentioned above, the second way you can create a sandbox is by using a saved question to define a customized view of a table to display. When a user with sandboxed access to a table queries that table, behind the scenes they'll really be using that saved question as the source data for their query.
+A basic sandbox displays a filtered table in place of an original table to a specific group. The filter on the table will be specific to each person in the group, depending on the value of their user attribute.
 
-### Example 1: hiding specific columns
+For example, you can [set things up](#choosing-user-attributes-for-sandboxing) so that:
 
-In this example I have a table called `People` that I want users in my Marketing team to be able to see, but I don't want them to see most of these sensitive columns that have personal information in them:
+- Someone with the **user attribute value** "Basic" sees a sandboxed Accounts table filtered on the column `Plan = "Basic"`.
+- Someone with the **user attribute value** "Premium" sees a sandboxed Accounts table filtered on the column `Plan = "Premium"`.
 
-![Original People table](images/advanced-example-1-people-table.png)
+### Choosing user attributes for sandboxing
 
-So what I can do is create a query that only returns the columns in that table that I _do_ want them to see, like this:
+When [adding a new user attribute](../people-and-groups/managing.md#adding-a-user-attribute), you'll set up a key-value pair for each person.
 
-![Filtering question](images/advanced-example-1-filtering-question.png)
+The **user attribute key** is used to look up the **user attribute value** for a specific person. User attribute keys can be mapped to parameters in Metabase, such as [SQL parameters](../questions/native-editor/sql-parameters.md). For an example, see [How row restriction works in an custom sandbox](#how-row-restriction-works-in-an-custom-sandbox).
 
-Now, when I go to the Permissions section and grant this group sandboxed access to this table, I'll select the second option and select the saved question I just created, like so:
+The **user attribute value** must be an exact, case-sensitive match for the filter value of a sandboxed table. For example, if you're creating a [basic sandbox](#basic-data-sandboxes-filter-by-a-column-in-the-table) on the Accounts table with the filter `Plan = "Basic"`, make sure that you enter "Basic" as the user attribute value. If you set the user attribute value to lowercase "basic" (a value which doesn't exist in the Plan column of the Accounts table), the sandboxed person will get an empty result instead of the sandboxed table.
 
-![Sandbox options](images/advanced-example-1-sandbox-modal.png)
+## Creating a basic sandbox
 
-To verify things are working correctly, I'll log in as a test user in the Marketing group, and when I go to open up the `People` table, you'll see that I actually am shown the results of the filtering question instead:
+1. Make sure to do the [prerequisites for basic sandboxes](#prerequisites-for-basic-sandboxes) first.
+2. Go to **Admin settings** > **Permissions**.
+3. Select the database and table that you want to sandbox.
+4. Find the group that you want to put in the sandbox.
+5. Click on the dropdown under **Data access** for that group.
+6. Select "Sandboxed".
+7. Click the dropdown under **Column** and enter the filter name for your table, such as "Plan".
+8. Click the dropdown under **User attribute** and enter the user attribute **key**, such as "User's Plan".
 
-![Sandboxed results](images/advanced-example-1-results.png)
+> If you have saved SQL questions that use sandboxed data, make sure to move all of those questions to admin-only collections. For more info, see [Permissions conflicts: saved SQL questions](#saved-sql-questions).
 
-**Note:** this filtering will also happen when a user with sandboxed access goes to look at a chart that uses data from the sandboxed table. If the chart uses any columns that aren't included in the sandboxed version of the table, the chart will not load for that user.
+For a tutorial, check out [Data sandboxing: setting row-level permissions](https://www.metabase.com/learn/permissions/data-sandboxing-row-permissions).
 
-### Example 2: using variables in a saved question
+## Prerequisites for custom sandboxes
 
-To create even more powerful and nuanced filters, you can use variables in a filtering question in conjunction with user attributes.
+- A [group](../people-and-groups/managing.md#groups) of people to be added to the advanced data sandbox.
+- An admin-only [collection](../exploration-and-organization/collections.md) ([collection permissions](../permissions/collections.md) set to **No access** for all groups except Administrators).
+- A [saved SQL question](../people-and-groups/) with the rows and columns to be displayed to the people in the custom sandbox, stored in the admin-only collection.
+- Optional: [User attributes](../people-and-groups/managing.md#adding-a-user-attribute) for each of the people in the group.
 
-In this example, I'm going to give users in a specific group access to my `Orders` table, but I'll filter out which columns they can see, and I'll also make it so that they only see rows where the "Customer ID" column equals the user's `customer_id` attribute.
+To display different filtered versions of the saved question for each person in an advanced data sandbox, set up [user attributes](../people-and-groups/managing.md#adding-user-attributes) as well.
 
-Here's the table I'm going to filter:
+### Creating a SQL question for Metabase to display in an custom sandbox
 
-![Original Orders table](images/advanced-example-2-orders-table.png)
+In an advanced data sandbox, Metabase will display a saved question in place of an original table to a particular group. 
 
-The filtering question that I'll create will exclude columns that I don't want these users to see, and I'll also add in an optional `WHERE` clause which defines a variable, `cid`, that I can then reference in my sandbox. Here's what it looks like:
+**Use a SQL question** to define the exact rows and columns to be included in the sandbox. If you use a query builder (GUI) question, you might accidentally expose extra data, since GUI questions can include data from other saved questions or models.
 
-![Filtering question](images/advanced-example-2-filtering-question.png)
+> Make sure to save the SQL question in an admin-only collection ([collection permissions](../permissions/collections.md) set to **No access** for all groups except Administrators). For more info, see [Permissions conflicts: saved SQL questions](#saved-sql-questions).
 
-And here's the code:
+### Displaying edited columns in an custom sandbox
 
+Aside from excluding rows and columns from an custom sandbox, you can also **display edited columns** (without changing the columns in your database). 
+
+For example, you can create a "Sandboxed Accounts" SQL question that truncates the Email column to display usernames instead of complete email addresses.
+
+If you edit a column, the schema of the saved SQL question (the question you want to display in the sandbox) must match the schema of the original table. That means the "Sandboxed Accounts" SQL question must return the same number of columns and corresponding data types as the original Accounts table.
+
+You cannot add a column to an custom sandbox.
+
+## Creating a custom sandbox
+
+> [Example custom sandbox setup](./data-sandboxes-examples.md#example-1-hiding-specific-columns)
+
+1. Make sure to do the [prerequisites for custom sandboxes](#prerequisites-for-custom-sandboxes) first.
+2. Go to **Admin settings** > **Permissions**.
+3. Select the database and table that you want to sandbox.
+4. Find the group that you want to put in the sandbox.
+5. Click on the dropdown under **Data access** for that group.
+6. Select "Sandboxed".
+7. Select "Use a saved question to create a custom view for this table".
+8. Select your saved question.
+9. Optional: [restrict rows based on people's user attributes](#restricting-rows-in-an-custom-sandbox-with-user-attributes) to the saved question.
+
+> If you have saved SQL questions that use sandboxed data, make sure to move all of those questions to admin-only collections. For more info, see [Permissions conflicts: saved SQL questions](#saved-sql-questions).
+
+## Restricting rows in an custom sandbox with user attributes
+
+> [Example custom sandbox setup](./data-sandboxes-examples.md#example-2-using-variables-in-a-saved-question)
+
+You can set up an custom sandbox to display different rows to each person depending on their [user attributes](../people-and-groups/managing.md#adding-a-user-attribute). For example, you can display the "Sandboxed Accounts" question with the filter `Plan = "Basic"` for one group, and the filter `Plan = "Premium"` for another group.
+
+1. Make sure you've done all the [prerequisites for custom sandboxes](#prerequisites-for-custom-sandboxes).
+2. Go to the SQL question that will be displayed to the people in the custom sandbox.
+3. Add a [parameterized](../questions/native-editor/sql-parameters.md) `WHERE` clause to your SQL query, such as `{%raw%}[[ WHERE plan = {{ plan_variable }} ]]{%endraw%}`.
+4. Save the SQL question.
+5. Go to **Admin settings** > **Permissions**.
+6. Find the group and table for your custom sandbox.
+7. Open the dropdown under **Data access**.
+8. Click **Edit sandboxed access**.
+9. Scroll down and set **Parameter or variable** to the name of the parameter in your saved SQL question (such as "Plan Variable").
+10. Set the **User attribute** to the **key** of the [user attribute](../people-and-groups/managing.md#adding-a-user-attribute) to be filtered on (such as "User's Plan").
+11. Click **Save**.
+
+### How row restriction works in an custom sandbox
+
+How user attributes, SQL parameters, and custom sandboxes work together to display different rows to different people.
+
+A standard `WHERE` clause filters a table by setting a column to a fixed value:
 ```
-SELECT
-  id,
-  created_at,
-  product_id,
-  quantity,
-  total,
-  user_id
-FROM
-  orders
-[[WHERE user_id = {%raw%}{{cid}}{%endraw%}]]
+WHERE column_name = column_value
 ```
 
-Going back over to the Permissions section, when I open up the sandboxed access modal and select the second option and select my filtering question, I'll see an additional section which allows me to map the variable I defined in my question with a user attribute:
+In step 2 of the [row restricting configuration](#restricting-rows-in-an-custom-sandbox-with-user-attributes) above, you'll add a SQL variable so that the `WHERE` clause will accept a dynamic value. The [SQL variable type](../questions/native-editor/sql-parameters.md#sql-variable-types) must be text, number, or date.
+```
+WHERE plan = {%raw%}{{ plan_variable }}{%endraw%} 
+```
 
-![Sandboxing options](images/advanced-example-2-sandboxing-options.png)
+In steps 9-10 of the [row restricting configuration](#restricting-rows-in-an-custom-sandbox-with-user-attributes) above, you're telling Metabase to map the SQL variable `plan_variable` to a **user attribute key** (such as "User's Plan"):
+```
+WHERE plan = USER_ATTRIBUTE_KEY
+```
 
-My user's attribute is defined like this, and I got here by clicking on the `…` icon next to this user's name in the People section:
+Metabase will use the key to look up the **user attribute value** (for example, the "User's Plan" key can map to the values "Basic", "Business", or "Premium"):
+```
+WHERE plan = USER_ATTRIBUTE_VALUE
+```
 
-![User attributes](images/advanced-example-2-user-attributes.png)
+Metabase replaces the SQL parameter with the specific **user attribute value** (such as "Basic") associated with a sandboxed person. When that person logs into Metabase and uses the sandboxed table, they'll see the query result that uses:
+```
+WHERE plan = "Basic"
+```
 
-Now, when I log in as this user and look at the `Orders` table, I only see the columns I included in the filtering question, and the rows are filtered as I specified in my `WHERE` clause:
+## Preventing data sandboxing permissions conflicts
 
-![Results](images/advanced-example-2-results.png)
+Some Metabase permissions can conflict with data sandboxing to give more permissive or more restrictive data access than you intended. 
 
-## Current limitations
+Say you have an [custom sandbox](#custom-data-sandboxes-use-a-saved-question-to-create-a-custom-view-for-this-table) that hides the Email column from the Accounts table (for a particular group). The Email column may be exposed to a sandboxed person if:
 
-### A user can only have one sandbox per table
+- That sandboxed person belongs to [multiple data sandboxes](#multiple-data-sandboxing-permissions).
+- A non-sandboxed person creates a [saved SQL question](#saved-sql-questions) that includes the Email column.
+- A non-sandboxed person creates a [public link](#public-sharing) that includes the Email column.
 
-I.e., if a user belongs to two user groups, both of which have been given sandboxed access to the same table, that user will not be able to access data from that table. You will either need to remove that user from one of those groups, or remove the sandboxed access from one of those groups.
+### Multiple data sandboxing permissions
 
-### Data sandboxes do not support non-SQL databases
+Multiple data sandboxes on the same table can create a permissions conflict. You can add a person to a maximum of one data sandbox per table (via the person's group membership).
 
-You can't currently create data sandboxes with non-SQL databases such as Google Analytics, Apache Druid, or MongoDB .
+For example, if you have:
 
-### Data sandboxes don't work for groups that can execute SQL/native queries
+- One data sandbox for the group "Basic Accounts" that filters the Accounts table on `Plan = "Basic"`.
+- Another data sandbox for the group "Converted Accounts" that filters the Accounts table on `Trial Converted = true`.
 
-If you're using data sandboxing, groups with people that you want sandboxed should _not_ have access to:
+If you put Vincent Accountman in both groups, he'll be in conflicting sandboxes for the Accounts table, and get an error message whenever he tries to use Accounts in Metabase.
 
-1. The native SQL editor for that data.
-2. Any collections with saved SQL queries that use that data.
+To resolve data sandboxing conflicts for a person in multiple groups:
 
-The reason is that Metabase doesn't currently parse the contents of native SQL queries, and therefore can't know conclusively which table(s) are referenced in a query.
+- Remove the person from all but one of the groups.
+- Remove all but one of the data sandboxes for that table (change the table's data access to **No self-service**).
 
-There are three specific situations to be aware of when it comes to SQL and sandboxes:
+### Saved SQL questions
 
-1. If a user has SQL editor access for a given database, they are able to query any table in that database, and will see unfiltered results for any table included in the query. Admins can grant SQL editor access for some databases but prohibit it on others as needed.
-2. If a user views a saved SQL/native query, data sandboxes will not filter the results of that query, even if the query includes data from a table for which the user only has sandboxed access.
-3. A user can start a new Custom GUI question using any saved question they have access to as the starting data for that new question (a "nested" question). If they have access to view any saved SQL questions, they can use such a question as starting data for their new question, and this new question will not be filtered by data sandboxes.
+Data sandboxing permissions don't apply to the results of SQL questions. Saved SQL questions will always display results from the original table rather than the sandboxed table, because Metabase cannot parse a SQL query to identify the tables in that query.
 
-__Note__: An important distinction to make is that you can use a saved SQL query in the _creation_ of a sandbox. [Advanced data sandboxing][advanced-sandboxing] allows you to display the results of a saved question instead of the raw table. You might choose to use a SQL query to supply the results that you'd like to display to a specific group instead of the raw table itself. In this case, it's you as the admin who crafts the SQL query that dictates what a table looks like to a group; people in that user group aren't viewing or executing the query itself.
+Say that you have an custom sandbox that hides the Email column from the Accounts table:
 
-### Data sandboxes and public sharing don't play well together
+If a person with native query permissions creates a SQL question that includes the Email column, **anyone with collection permissions to view that SQL question** will be able to:
 
-Public questions and dashboards can't be sandboxed. Sandboxing works by filtering data based on the group membership and user attributes of an authenticated user. Since someone can see a public question or dashboard without logging in, Metabase won't know who that person is.
+- See the Email column in the SQL question results.
+- Use the SQL question to start a new question that includes the Email column.
+
+To prevent sandboxed groups from gaining access to the Email column via a SQL question:
+
+- Put any SQL questions that include the Email column in a separate collection.
+- Set the [collection permissions](../permissions/collections.md) to **No access** for sandboxed groups that should not see the Email column.
+
+[Collection permissions](../permissions/collections.md) must be used to prevent sandboxed groups from viewing saved SQL questions that reference sandboxed tables. That's why, when you create an custom sandbox, you have to put the saved SQL question (the one you want to display in the sandbox) in an admin-only collection.
+
+### Public sharing
+
+Data sandboxing permissions don't apply to public questions or public dashboards. 
+
+If someone creates a public link using data from a sandboxed table, the public link may display non-sandboxed data (depending on the question or dashboard in the link).
+
+To prevent this from happening, you'll have to [disable public sharing](../questions/sharing/public-links.md) for your Metabase instance.
+
+Metabase can only create a data sandbox using the group membership or user attributes of people who are logged in. Since public links don’t require logins, Metabase won’t have enough info to create the sandbox.
 
 ## Further reading
 
-- [Learn track on permissions][permissions]
-- [Troubleshooting access to columns and rows][troubleshoot-sandbox]
-
-[advanced-sandboxing]: https://www.metabase.com/learn/permissions/data-sandboxing-column-permissions
-[permissions]: https://www.metabase.com/learn/permissions/
-[troubleshoot-sandbox]: ../troubleshooting-guide/sandboxing.md
+- [Permissions strategies](https://www.metabase.com/learn/permissions/strategy)
+- [Configuring permissions for different customer schemas](https://www.metabase.com/learn/permissions/multi-tenant-permissions)
+- [Securing embedded Metabase](https://www.metabase.com/learn/customer-facing-analytics/securing-embeds)
