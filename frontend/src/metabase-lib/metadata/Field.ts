@@ -591,6 +591,7 @@ class FieldInner extends Base {
   }
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default class Field extends memoizeClass<FieldInner>(
   "filterOperators",
   "filterOperatorsLookup",

@@ -130,6 +130,7 @@ function maybeGetQuestionId(
   return canFetchQuestion ? Urls.extractEntityId(params.slug) : null;
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   connect(mapStateToProps, mapDispatchToProps),
   Questions.load({

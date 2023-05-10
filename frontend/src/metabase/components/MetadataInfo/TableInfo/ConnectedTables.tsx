@@ -65,4 +65,5 @@ function ConnectedTableLink({ table }: { table: Table }) {
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ConnectedTables;

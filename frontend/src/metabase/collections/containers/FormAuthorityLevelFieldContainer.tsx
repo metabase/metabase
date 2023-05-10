@@ -57,6 +57,7 @@ function FormAuthorityLevelFieldContainer({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   // Ensures there's data for the `collectionsMap` prop
   Collections.loadList({ loadingAndErrorWrapper: false }),

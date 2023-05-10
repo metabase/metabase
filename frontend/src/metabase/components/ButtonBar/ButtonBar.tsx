@@ -25,6 +25,7 @@ interface ButtonBarProps extends HTMLAttributes<HTMLDivElement> {
   children?: ReactNode;
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default function ButtonBar({
   children,
   left = children,

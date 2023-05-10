@@ -17,6 +17,7 @@ import stateFixture from "./sample_database_fixture.json";
 
 export const state = stateFixture as unknown as State;
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default state;
 
 export const SAMPLE_DATABASE_ID = 1;

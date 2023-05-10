@@ -52,4 +52,5 @@ function CustomFormSubmit(props: CustomFormSubmitProps) {
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default CustomFormSubmit;

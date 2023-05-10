@@ -29,4 +29,5 @@ const Card = styled.div<CardProps>`
   ${props => props.compact && `box-shadow: 0 1px 2px ${color("shadow")};`};
 `;
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Card;

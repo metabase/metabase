@@ -163,4 +163,5 @@ function CronExpressionInput({ onChange, onBlurChange, ...props }: InputProps) {
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default CronExpressionInput;

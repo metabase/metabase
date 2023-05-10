@@ -5,6 +5,7 @@ import type {
   QueryMode,
 } from "metabase-lib/queries/drills/types";
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default class Mode {
   _question: Question;
   _queryMode: QueryMode;

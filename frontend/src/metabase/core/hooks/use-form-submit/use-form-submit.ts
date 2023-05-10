@@ -58,4 +58,5 @@ const getFormMessage = (error: unknown) => {
   }
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default useFormSubmit;

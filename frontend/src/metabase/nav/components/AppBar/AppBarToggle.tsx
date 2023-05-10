@@ -45,4 +45,5 @@ const getSidebarTooltip = (isNavBarOpen?: boolean) => {
   return `${message} ${shortcut}`;
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default AppBarToggle;

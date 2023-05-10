@@ -21,6 +21,7 @@ const mapStateToProps = (state: State): SlackSetupStateProps => ({
   isValid: isSlackTokenValid(state),
 });
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect<SlackSetupStateProps, unknown, SlackSetupProps, State>(
   mapStateToProps,
 )(SlackSetup);

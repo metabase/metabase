@@ -205,6 +205,7 @@ function getPageTitle({ modelCard }: Props) {
   return modelCard?.name;
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   Questions.load({ id: getModelId, entityAlias: "modelCard" }),
   Databases.loadList(),

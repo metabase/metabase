@@ -85,4 +85,5 @@ function DatasetMetadataStrengthIndicator({ dataset, ...props }: Props) {
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Object.assign(DatasetMetadataStrengthIndicator, { Root });

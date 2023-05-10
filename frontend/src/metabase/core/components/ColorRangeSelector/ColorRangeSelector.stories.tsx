@@ -4,6 +4,7 @@ import { useArgs } from "@storybook/client-api";
 import { color } from "metabase/lib/colors";
 import ColorRangeSelector from "./ColorRangeSelector";
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default {
   title: "Core/ColorRangeSelector",
   component: ColorRangeSelector,

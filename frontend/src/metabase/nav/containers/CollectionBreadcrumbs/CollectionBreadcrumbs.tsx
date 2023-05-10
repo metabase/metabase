@@ -9,4 +9,5 @@ const collectionProps = {
   properties: ["name", "authority_level"],
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Collections.load(collectionProps)(CollectionBreadcrumbs);

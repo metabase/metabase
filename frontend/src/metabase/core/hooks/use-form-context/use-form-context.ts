@@ -5,4 +5,5 @@ const useFormContext = (): FormState => {
   return useContext(FormContext);
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default useFormContext;

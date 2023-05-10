@@ -506,6 +506,7 @@ const mapDispatchToProps = {
   onFetchParameterValues: fetchParameterValues,
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   Tables.load({
     id: (state: State, { sourceConfig: { card_id } }: ModalOwnProps) =>

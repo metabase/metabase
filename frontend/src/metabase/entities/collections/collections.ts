@@ -102,4 +102,5 @@ const Collections = createEntity({
 
 export { getExpandedCollectionsById };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Collections;

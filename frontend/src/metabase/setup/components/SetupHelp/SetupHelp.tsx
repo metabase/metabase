@@ -20,4 +20,5 @@ const SetupHelp = (): JSX.Element => {
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default SetupHelp;

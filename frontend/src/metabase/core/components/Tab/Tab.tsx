@@ -52,4 +52,5 @@ const Tab = forwardRef(function Tab<T>(
   );
 });
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Tab;

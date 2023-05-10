@@ -210,4 +210,5 @@ const hasMultipleSchemas = (field: Field[]) => {
   return schemas.size > 1;
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default SemanticTypeAndTargetPicker;

@@ -15,4 +15,5 @@ const mapStateToProps = (state: State) => ({
   onSubmit: updatePassword,
 });
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(mapStateToProps)(UserPasswordForm);

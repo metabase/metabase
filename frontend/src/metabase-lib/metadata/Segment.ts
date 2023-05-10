@@ -11,6 +11,7 @@ import type Table from "./Table";
  * Wrapper class for a segment. Belongs to a {@link Database} and possibly a {@link Table}
  */
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default class Segment extends Base {
   id: number;
   name: string;

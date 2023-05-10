@@ -81,6 +81,7 @@ const MetadataHeader = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   Databases.loadList({
     query: PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,

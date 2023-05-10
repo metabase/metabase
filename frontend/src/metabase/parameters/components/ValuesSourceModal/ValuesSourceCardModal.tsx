@@ -194,6 +194,7 @@ const mapDispatchToProps: ModalDispatchProps = {
     Tables.actions.fetchMetadata({ id: getQuestionVirtualTableId(cardId) }),
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   Questions.load({
     id: (state: State, { sourceConfig: { card_id } }: ModalOwnProps) => card_id,

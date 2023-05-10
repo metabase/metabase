@@ -50,6 +50,7 @@ const JOIN_STRATEGY_OPTIONS = [
 ];
 const PARENT_DIMENSION_INDEX = 1;
 const JOIN_DIMENSION_INDEX = 2;
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default class Join extends MBQLObjectClause {
   strategy: JoinStrategy | null | undefined;
   alias: JoinAlias | null | undefined;

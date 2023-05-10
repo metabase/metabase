@@ -207,4 +207,5 @@ function shouldRender({
   return result?.data && !isObjectDetail && question.display() === "table";
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Object.assign(ConnectedQuestionRowCount, { shouldRender });

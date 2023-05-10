@@ -9,6 +9,7 @@ import type Table from "./Table";
  * Wrapper class for a {@link Database} schema. Contains {@link Table}s.
  */
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default class Schema extends Base {
   id?: string;
   name: string;

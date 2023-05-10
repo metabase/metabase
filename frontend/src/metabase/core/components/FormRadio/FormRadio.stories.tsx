@@ -10,6 +10,7 @@ const TEST_OPTIONS = [
   { name: "Bar", value: "bar" },
 ];
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default {
   title: "Core/FormRadio",
   component: FormRadio,

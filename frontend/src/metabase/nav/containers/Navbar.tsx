@@ -46,6 +46,7 @@ function Navbar({ isOpen, user, location, params, adminPaths }: NavbarProps) {
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   Database.loadList({
     loadingAndErrorWrapper: false,

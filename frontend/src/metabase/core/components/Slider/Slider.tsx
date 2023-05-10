@@ -155,4 +155,5 @@ const getTooltipPosition = (basePosition: number) =>
 
 const hasDecimal = (value: number) => !isNaN(value) && value % 1 !== 0;
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Slider;

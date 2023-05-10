@@ -23,4 +23,5 @@ const YearPicker = ({ value, onChange }: YearPickerProps) => (
   />
 );
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default YearPicker;

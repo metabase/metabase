@@ -100,4 +100,5 @@ const Month = ({ month, selected, onClick }: MonthProp) => (
   </div>
 );
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default DateMonthYearWidget;

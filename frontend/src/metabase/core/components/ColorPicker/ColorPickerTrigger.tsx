@@ -35,4 +35,5 @@ const ColorPickerTrigger = forwardRef(function ColorPickerTrigger(
   );
 });
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ColorPickerTrigger;

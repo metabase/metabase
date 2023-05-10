@@ -7,6 +7,7 @@ import {
 import { Timeline } from "metabase-types/api";
 import TimelinePicker from "./TimelinePicker";
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default {
   title: "Timelines/TimelinePicker",
   component: TimelinePicker,

@@ -16,4 +16,5 @@ const ButtonGroup = forwardRef(function ButtonGroup(
   );
 });
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ButtonGroup;

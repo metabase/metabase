@@ -26,6 +26,7 @@ function DashActionButton({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Object.assign(DashActionButton, {
   Icon: ActionIcon,
   ICON_SIZE: HEADER_ICON_SIZE,

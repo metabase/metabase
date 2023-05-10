@@ -52,6 +52,7 @@ const HomeRecentSection = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   RecentItems.loadList(),
   connect(mapStateToProps),

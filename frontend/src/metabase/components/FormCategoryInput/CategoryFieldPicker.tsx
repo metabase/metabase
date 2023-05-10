@@ -22,4 +22,5 @@ function CategoryFieldPicker({ value, onChange, field }: CategoryWidgetProps) {
   return <CategoryFieldInput value={value} onChange={onChange} field={field} />;
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default CategoryFieldPicker;

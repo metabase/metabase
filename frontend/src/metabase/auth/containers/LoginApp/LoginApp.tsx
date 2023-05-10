@@ -8,4 +8,5 @@ const mapStateToProps = (state: any, props: any) => ({
   redirectUrl: props.location.query.redirect,
 });
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(mapStateToProps)(Login);

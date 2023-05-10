@@ -31,4 +31,5 @@ const SlackSettings = ({
   return isApp ? <SlackStatus /> : <SlackSetup manifest={manifest} />;
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default SlackSettings;

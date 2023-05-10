@@ -138,4 +138,5 @@ const StaticRowChart = ({ data, settings, getColor }: StaticRowChartProps) => {
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default StaticRowChart;

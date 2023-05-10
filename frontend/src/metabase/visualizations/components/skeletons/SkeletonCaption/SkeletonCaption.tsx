@@ -36,6 +36,7 @@ const SkeletonCaption = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Object.assign(SkeletonCaption, {
   Title: SkeletonTitle,
   Description: SkeletonDescription,

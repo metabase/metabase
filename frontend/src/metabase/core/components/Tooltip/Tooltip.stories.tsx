@@ -2,6 +2,7 @@ import React from "react";
 import type { ComponentStory } from "@storybook/react";
 import Tooltip from "./Tooltip";
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default {
   title: "Core/Tooltip",
   component: Tooltip,

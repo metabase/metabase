@@ -8,4 +8,5 @@ const mapStateToProps = (state: State) => ({
   isWelcome: isStepActive(state, WELCOME_STEP),
 });
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(mapStateToProps)(Setup);

@@ -30,4 +30,5 @@ function FormattedParameterValue({
   return <span>{formatParameterValue(value, parameter)}</span>;
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default FormattedParameterValue;

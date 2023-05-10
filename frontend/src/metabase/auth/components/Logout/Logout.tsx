@@ -11,4 +11,5 @@ const Logout = ({ onLogout }: LogoutProps): JSX.Element | null => {
   return null;
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Logout;

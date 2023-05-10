@@ -83,6 +83,7 @@ export function updateCardTemplateTagNames(
 // QUERY TEXT TAG UTILS END
 ///////////////////////////
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default class NativeQuery extends AtomicQuery {
   // For Flow type completion
   _nativeDatasetQuery: NativeDatasetQuery;

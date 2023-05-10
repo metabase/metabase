@@ -7,4 +7,5 @@ const mapStateToProps = (state: State) => ({
   isLdapEnabled: getSetting(state, "ldap-enabled"),
 });
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(mapStateToProps, null)(PasswordButton);

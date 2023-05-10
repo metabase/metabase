@@ -21,4 +21,5 @@ const mapDispatchToProps = (dispatch: Dispatch): DispatchProps => ({
   onDeactivate: () => dispatch(updateSettings(GOOGLE_SCHEMA.getDefault())),
 });
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(mapStateToProps, mapDispatchToProps)(AuthCard);

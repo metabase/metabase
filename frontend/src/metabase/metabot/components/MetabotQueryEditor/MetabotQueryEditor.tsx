@@ -78,6 +78,7 @@ const MetabotQueryEditor = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   ExplicitSize(),
   connect(mapStateToProps, mapDispatchToProps),

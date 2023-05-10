@@ -32,4 +32,5 @@ const GlobalStyles = ({ font, fontFiles }: GlobalStylesProps): JSX.Element => {
   return <Global styles={styles} />;
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default GlobalStyles;

@@ -19,6 +19,7 @@ const mapStateToProps = (state: State) => ({
   user: getUser(state),
 });
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   Databases.loadList(databasesProps),
   connect(mapStateToProps),

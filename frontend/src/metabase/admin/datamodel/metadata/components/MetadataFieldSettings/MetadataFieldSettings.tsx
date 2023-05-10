@@ -202,6 +202,7 @@ const FieldBreadcrumbs = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   Databases.load({
     id: (_: State, { params }: RouterProps) =>

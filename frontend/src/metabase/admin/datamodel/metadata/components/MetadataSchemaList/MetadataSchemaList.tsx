@@ -120,6 +120,7 @@ const SchemaRow = ({ schema, isSelected, onSelectSchema }: SchemaRowProps) => {
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   Schemas.loadList({
     query: (_: State, { selectedDatabaseId }: OwnProps) => ({

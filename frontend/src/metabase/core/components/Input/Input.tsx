@@ -131,6 +131,7 @@ const Input = forwardRef(function Input(
   );
 });
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Object.assign(Input, {
   Root: InputRoot,
   Field: InputField,

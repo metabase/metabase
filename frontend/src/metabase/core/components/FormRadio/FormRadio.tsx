@@ -54,4 +54,5 @@ const FormRadio = forwardRef(function FormRadio<
   );
 });
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default FormRadio;

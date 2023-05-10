@@ -73,4 +73,5 @@ const validateSchemaInitial = <T extends FormikValues, C>(
   }
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default useFormValidation;

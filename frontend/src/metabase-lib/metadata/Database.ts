@@ -185,6 +185,7 @@ class DatabaseInner extends Base {
   }
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default class Database extends memoizeClass<DatabaseInner>(
   "tablesLookup",
 )(DatabaseInner) {}

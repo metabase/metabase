@@ -3,6 +3,7 @@ import Variable from "metabase-lib/variables/Variable";
 import NativeQuery from "metabase-lib/queries/NativeQuery";
 import { VARIABLE_ICONS } from "./constants";
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default class TemplateTagVariable extends Variable {
   tag(): TemplateTag | null | undefined {
     if (this._query instanceof NativeQuery) {

@@ -82,4 +82,5 @@ const mapStateToProps = (state: State) => ({
   onLoadQuery: getNativeQueryFn(state),
 });
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(mapStateToProps)(ConvertQueryModal);

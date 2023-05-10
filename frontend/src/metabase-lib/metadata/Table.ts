@@ -177,6 +177,7 @@ class TableInner extends Base {
   }
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default class Table extends memoizeClass<TableInner>(
   "aggregationOperators",
   "aggregationOperatorsLookup",

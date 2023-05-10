@@ -7,4 +7,5 @@ const mapStateToProps = (state: State) => ({
   showIllustration: getSetting(state, "show-lighthouse-illustration"),
 });
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(mapStateToProps)(AuthLayout);

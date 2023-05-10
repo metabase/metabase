@@ -157,4 +157,5 @@ const ExpressionWidget = (props: ExpressionWidgetProps): JSX.Element => {
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ExpressionWidget;

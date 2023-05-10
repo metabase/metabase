@@ -16,4 +16,5 @@ function EmptyState({ message = t`Nothing here`, icon = "folder" }: Props) {
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default EmptyState;

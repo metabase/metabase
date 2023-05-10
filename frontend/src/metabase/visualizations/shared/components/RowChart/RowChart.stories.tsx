@@ -5,6 +5,7 @@ import { getStaticChartTheme } from "metabase/static-viz/components/RowChart/the
 import { color } from "metabase/lib/colors";
 import { RowChart } from "./RowChart";
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default {
   title: "Visualizations/shared/RowChart",
   component: RowChart,

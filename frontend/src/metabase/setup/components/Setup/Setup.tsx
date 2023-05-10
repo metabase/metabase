@@ -14,4 +14,5 @@ const Setup = ({ isWelcome, ...props }: SetupProps): JSX.Element => {
   }
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Setup;

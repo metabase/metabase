@@ -77,4 +77,5 @@ const isXraySection = ({
   return databases.some(isSyncCompleted) && isXrayEnabled;
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default HomeContent;

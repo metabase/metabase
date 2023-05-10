@@ -198,4 +198,5 @@ function ModelCacheRefreshJobs({ children, onRefresh }: Props) {
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(null, mapDispatchToProps)(ModelCacheRefreshJobs);

@@ -132,6 +132,7 @@ function GroupMembersTable({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default User.loadList({
   reload: true,
   pageSize: 25,

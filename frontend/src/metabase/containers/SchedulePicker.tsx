@@ -17,6 +17,7 @@ function mapStateToProps(state: State): StateProps {
 
 export * from "metabase/components/SchedulePicker";
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect<
   StateProps,
   unknown,

@@ -63,4 +63,5 @@ export function TableInfoLoader({
   return hasFetchedMetadata ? <> {children} </> : null;
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(null, mapDispatchToProps)(TableInfoLoader);

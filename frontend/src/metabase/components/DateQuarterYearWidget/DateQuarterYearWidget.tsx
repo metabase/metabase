@@ -93,4 +93,5 @@ const Quarter = ({ quarter, selected, onClick }: QuarterProps) => (
   </QuarterRoot>
 );
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default DateQuarterYearWidget;

@@ -69,6 +69,7 @@ type State = {
   isOpen: boolean;
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default class FilterWidget extends Component<Props, State> {
   rootRef: React.RefObject<HTMLDivElement>;
 

@@ -186,4 +186,5 @@ class DateRelativeWidget extends React.Component<DateRelativeWidgetProps> {
   }
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default DateRelativeWidget;

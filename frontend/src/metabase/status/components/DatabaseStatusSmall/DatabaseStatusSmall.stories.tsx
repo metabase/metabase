@@ -3,6 +3,7 @@ import type { ComponentStory } from "@storybook/react";
 import { createMockDatabase } from "metabase-types/api/mocks";
 import DatabaseStatusSmall from "./DatabaseStatusSmall";
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default {
   title: "Status/DatabaseStatusSmall",
   component: DatabaseStatusSmall,

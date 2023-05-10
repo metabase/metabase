@@ -83,4 +83,5 @@ const getErrors = (error: unknown): string[] => {
   return errors ? Object.values(errors) : [];
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default GoogleButton;

@@ -334,6 +334,7 @@ const getToggleTooltip = (isHidden: boolean, hasMultipleTables?: boolean) => {
   }
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   Tables.loadList({
     query: (_: State, { selectedDatabaseId, selectedSchemaId }: OwnProps) => ({

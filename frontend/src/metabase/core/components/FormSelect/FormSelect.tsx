@@ -64,4 +64,5 @@ const FormSelect = forwardRef(function FormSelect<
   );
 });
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default FormSelect;

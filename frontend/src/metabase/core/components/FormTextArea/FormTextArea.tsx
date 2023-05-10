@@ -76,6 +76,7 @@ const FormTextArea = forwardRef(function FormTextArea(
   );
 });
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Object.assign(FormTextArea, {
   Root: TextArea.Root,
 });

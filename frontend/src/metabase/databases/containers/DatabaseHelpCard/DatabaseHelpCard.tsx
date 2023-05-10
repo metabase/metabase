@@ -15,6 +15,7 @@ const mapStateToProps = (state: State): DatabaseHelpCardStateProps => ({
   isHosted: getSetting(state, "is-hosted?"),
 });
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect<
   DatabaseHelpCardStateProps,
   unknown,

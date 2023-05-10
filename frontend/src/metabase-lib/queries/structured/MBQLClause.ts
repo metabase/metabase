@@ -1,6 +1,7 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
 import StructuredQuery from "../StructuredQuery";
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default class MBQLArrayClause extends Array {
   _index: number;
   _query: StructuredQuery;

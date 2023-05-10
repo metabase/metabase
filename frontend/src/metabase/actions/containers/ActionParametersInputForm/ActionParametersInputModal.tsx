@@ -40,4 +40,5 @@ const ConfirmMessage = ({ message }: { message?: string }) => (
   <div>{message ?? t`This action cannot be undone.`}</div>
 );
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ActionParametersInputModal;

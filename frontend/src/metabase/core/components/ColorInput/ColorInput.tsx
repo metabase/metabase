@@ -77,4 +77,5 @@ const getColorHex = (value?: string) => {
   }
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ColorInput;

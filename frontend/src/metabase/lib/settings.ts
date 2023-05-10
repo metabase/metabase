@@ -342,4 +342,5 @@ function makeRegexTest(property: string, regex: RegExp) {
 const initValues =
   typeof window !== "undefined" ? _.clone(window.MetabaseBootstrap) : null;
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default new MetabaseSettings(initValues);

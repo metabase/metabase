@@ -10,6 +10,7 @@ const mapStateToProps = (state: State) => ({
   formattingSettings: getSetting(state, "custom-formatting"),
 });
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect<EventFormStateProps, unknown, EventFormOwnProps, State>(
   mapStateToProps,
 )(EventForm);

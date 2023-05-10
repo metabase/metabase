@@ -331,6 +331,7 @@ class Select<TValue, TOption = SelectOption<TValue>> extends Component<
   }
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Uncontrollable()(Select);
 
 export interface OptionSectionProps {

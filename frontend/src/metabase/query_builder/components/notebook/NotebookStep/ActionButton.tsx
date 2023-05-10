@@ -48,4 +48,5 @@ function ActionButton({
   return large ? button : <Tooltip tooltip={title}>{button}</Tooltip>;
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ActionButton;

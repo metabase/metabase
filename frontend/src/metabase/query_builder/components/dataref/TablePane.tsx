@@ -64,6 +64,7 @@ const TablePane = ({ table, onItemClick, onBack, onClose }: TablePaneProps) => (
   </SidebarContent>
 );
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   Tables.load({
     id: (_state: State, props: TablePaneProps) => props.table.id,

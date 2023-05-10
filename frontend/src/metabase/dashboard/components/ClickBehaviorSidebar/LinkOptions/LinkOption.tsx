@@ -21,4 +21,5 @@ const LinkOption = ({
   </SidebarItem>
 );
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default LinkOption;

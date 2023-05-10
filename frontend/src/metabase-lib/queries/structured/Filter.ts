@@ -33,6 +33,7 @@ interface FilterDisplayNameOpts {
   includeOperator?: boolean;
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default class Filter extends MBQLClause {
   /**
    * Replaces the filter in the parent query and returns the new StructuredQuery

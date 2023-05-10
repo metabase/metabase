@@ -3,6 +3,7 @@ import { t } from "ttag";
 
 import { DragOverlay } from "./UploadOverlay.styled";
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default function UploadOverlay({
   isDragActive,
 }: {

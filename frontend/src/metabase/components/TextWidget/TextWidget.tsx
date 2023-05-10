@@ -103,4 +103,5 @@ class TextWidget extends React.Component<Props, State> {
   }
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default TextWidget;

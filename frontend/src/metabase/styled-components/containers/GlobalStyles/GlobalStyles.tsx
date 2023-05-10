@@ -8,4 +8,5 @@ const mapStateToProps = (state: State) => ({
   fontFiles: getFontFiles(state),
 });
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(mapStateToProps)(GlobalStyles);

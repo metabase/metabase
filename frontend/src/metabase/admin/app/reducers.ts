@@ -102,6 +102,7 @@ const isNoticeEnabled = handleActions(
   Settings.deprecationNoticeEnabled(),
 );
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default combineReducers({
   isNoticeEnabled,
   paths,

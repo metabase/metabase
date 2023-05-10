@@ -111,4 +111,5 @@ function getGroupIcon(groupInfo: Lib.ColumnDisplayInfo | Lib.TableDisplayInfo) {
   return;
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default QueryColumnPicker;
