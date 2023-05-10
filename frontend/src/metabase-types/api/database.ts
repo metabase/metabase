@@ -23,6 +23,7 @@ export type DatabaseFeature =
   | "native-parameters"
   | "nested-queries"
   | "standard-deviation-aggregations"
+  | "percentile-aggregations"
   | "persist-models"
   | "persist-models-enabled"
   | "schemas"

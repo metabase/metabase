@@ -12,6 +12,7 @@ export const COMMON_DATABASE_FEATURES: DatabaseFeature[] = [
   "nested-queries",
   "standard-deviation-aggregations",
   "persist-models",
+  "percentile-aggregations",
   "left-join",
   "right-join",
   "inner-join",
