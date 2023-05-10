@@ -1,7 +1,7 @@
 (ns metabase-enterprise.audit-db
-  "This is here so we can try to require it and see whether or not EE code is on the classpath."
   (:require [metabase.db.env :as mdb.env]
             [metabase.models.database :refer [Database]]
+            [metabase.public-settings.premium-features :refer [defenterprise]]
             [metabase.util :as u]
             [metabase.util.log :as log]
             [toucan2.core :as t2]))
@@ -31,7 +31,9 @@
                            :auto_run_queries true}))))
 
 (defn ensure-db-installed!
-  "Called on app startup to ensure the existance of the audit db in enterprise apps."
+  "Called on app startup to ensure the existance of the audit db in enterprise apps.
+
+  The return values indicate what action was taken."
   []
   (let [audit-db (t2/select-one Database :is_audit true)]
     (cond
@@ -47,4 +49,10 @@
         (ensure-db-installed!))
 
       :else
-      :metabase-enterprise.audit-db/no-op)))
+      ::no-op)))
+
+(defenterprise ensure-audit-db-installed!
+  "EE implementation of `ensure-db-installed!`."
+  :feature :any
+  []
+  (ensure-db-installed!))
