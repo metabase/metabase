@@ -48,6 +48,15 @@ export const AdHocViewHeading = styled(ViewHeading)`
   margin-right: ${space(2)};
 `;
 
+export const BackButton = styled(Button)`
+  color: ${color("brand")};
+  padding: 0.75rem;
+`;
+
+export const BackButtonContainer = styled.span`
+  margin-right: 0.75rem;
+`;
+
 export const SaveButton = styled(Link)`
   color: ${color("brand")};
   font-weight: bold;
