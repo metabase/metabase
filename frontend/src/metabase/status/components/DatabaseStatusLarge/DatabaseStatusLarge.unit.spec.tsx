@@ -31,9 +31,11 @@ describe("DatabaseStatusLarge", () => {
     setup({
       databases: [
         createMockDatabase({
+          id: 1,
           initial_sync_status: "incomplete",
         }),
         createMockDatabase({
+          id: 2,
           initial_sync_status: "complete",
         }),
       ],
