@@ -193,12 +193,13 @@ jobs:
           TERM: xterm
           RECORD_REPLAY_METADATA_FILE: /tmp/replay-metadata.json
           RECORD_REPLAY_METADATA_TEST_RUN_ID: ${{ needs.test-run-id.outputs.testRunId }}
+          RECORD_REPLAY_DISABLE_ASSERTS: 1
 
       - name: Upload Replay.io recordings
         if: always()
         uses: replayio/action-upload@v0.4.7
         with:
-          api-key: ${{ secrets.RECORD_REPLAY_API_KEY }}
+          api-key: rwk_gXbvYctIcR6RZyEzUvby3gtkO4esrB2L321lkY8FSuQ
           public: true
 
       - name: Upload Cypress Artifacts upon failure
