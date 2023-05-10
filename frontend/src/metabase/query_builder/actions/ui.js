@@ -70,3 +70,6 @@ export const closeQbNewbModal = createThunkAction(CLOSE_QB_NEWB_MODAL, () => {
 
 export const SHOW_CHART_SETTINGS = "metabase/query_builder/SHOW_CHART_SETTINGS";
 export const showChartSettings = createAction(SHOW_CHART_SETTINGS);
+
+export const CLOSE_QB = "metabase/qb/CLOSE_QB";
+export const closeQB = createAction(CLOSE_QB);
