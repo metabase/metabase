@@ -728,7 +728,7 @@
      Table     {table-id :id} {:db_id  db-id
                                :schema nil}
      Metric    _              {:table_id table-id
-                                :name     "metric count test 1"}
+                               :name     "metric count test 1"}
      Metric    _              {:table_id table-id
                                :name     "metric count test 1"}
      Metric    _              {:table_id table-id
@@ -739,9 +739,10 @@
                                :name     "segment count test 2"}
      Segment   _              {:table_id table-id
                                :name     "segment count test 3"}]
-    (toucan2.execute/with-call-count [call-count]
-      (#'api.search/search (#'api.search/search-context "count test" nil nil nil 100 0))
-      ;; the call count number here are expected to change if we change the search api
-      ;; we have this test here just to keep tracks this number to remind us to put effort
-      ;; into keep this number as low as we can
-      (is (= 7 (call-count))))))
+    (with-redefs [premium-features/segmented-user? (constantly false)]
+      (toucan2.execute/with-call-count [call-count]
+        (#'api.search/search (#'api.search/search-context "count test" nil nil nil 100 0))
+        ;; the call count number here are expected to change if we change the search api
+        ;; we have this test here just to keep tracks this number to remind us to put effort
+        ;; into keep this number as low as we can
+        (is (= 7 (call-count)))))))
