@@ -24,7 +24,7 @@
   #{;; Databases have external names based on their URLs; tables are nested under databases; fields under tables.
     :model/Database
     :model/Table
-    :metabase.models.field/Field
+    :model/Field
     ;; Settings have human-selected unique names.
     :metabase.models.setting/Setting})
 

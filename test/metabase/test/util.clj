@@ -142,7 +142,7 @@
    (fn [_] {:name (tu.random/random-name)
             :type "internal"})
 
-   Field
+   :model/Field
    (fn [_] {:database_type "VARCHAR"
             :base_type     :type/Text
             :name          (tu.random/random-name)

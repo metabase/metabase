@@ -235,7 +235,7 @@
                                               :db_id  1
                                               :schema "public"
                                               :name   "checkins"}))
-      (qp.store/store-field!    (t2/instance :metabase.models.field/Field
+      (qp.store/store-field!    (t2/instance :model/Field
                                              {:id            1
                                               :table_id      1
                                               :name          "id"

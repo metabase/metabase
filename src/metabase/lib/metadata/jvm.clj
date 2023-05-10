@@ -13,7 +13,7 @@
   (case metadata-type
     :metadata/database :model/Database
     :metadata/table    :model/Table
-    :metadata/field    :metabase.models.field/Field
+    :metadata/field    :model/Field
     :metadata/card     :model/Card
     :metadata/metric   :metabase.models.metric/Metric
     :metadata/segment  :metabase.models.segment/Segment))
@@ -48,7 +48,7 @@
 (defn- fields [table-id]
   (log/debugf "Fetching all Fields for Table %d" table-id)
   (mapv #(instance->metadata % :metadata/field)
-        (t2/select :metabase.models.field/Field :table_id table-id)))
+        (t2/select :model/Field :table_id table-id)))
 
 (p/deftype+ UncachedApplicationDatabaseMetadataProvider [database-id]
   lib.metadata.protocols/MetadataProvider
