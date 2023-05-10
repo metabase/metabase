@@ -7,7 +7,7 @@ import Modal from "metabase/components/Modal";
 
 import * as Urls from "metabase/lib/urls";
 
-import type { Bookmark, Collection, Database, User } from "metabase-types/api";
+import type { Bookmark, Collection, User } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 import Bookmarks, { getOrderedBookmarks } from "metabase/entities/bookmarks";
@@ -27,6 +27,7 @@ import {
   currentUserPersonalCollections,
   nonPersonalOrArchivedCollection,
 } from "metabase/collections/utils";
+import Database from "metabase-lib/metadata/Database";
 
 import { MainNavbarProps, SelectedItem } from "../types";
 import NavbarLoadingView from "../NavbarLoadingView";
