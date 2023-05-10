@@ -18,10 +18,6 @@
 
 (set! *warn-on-reflection* true)
 
-(def Include
-  "Events Query Parameters Schema"
-  (s/enum "events"))
-
 (api/defendpoint POST "/"
   "Create a new [[Timeline]]."
   [:as {{:keys [name default description icon collection_id archived], :as body} :body}]

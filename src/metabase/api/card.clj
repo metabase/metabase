@@ -186,8 +186,7 @@
                      card)))
             cards))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/:id"
+(api/defendpoint GET "/:id"
   "Get `Card` with ID."
   [id ignore_view]
   (let [raw-card (t2/select-one Card :id id)
@@ -207,13 +206,12 @@
       (when-not (Boolean/parseBoolean ignore_view)
         (events/publish-event! :card-read (assoc <> :actor_id api/*current-user-id*))))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/:id/timelines"
+(api/defendpoint GET "/:id/timelines"
   "Get the timelines for card with ID. Looks up the collection the card is in and uses that."
   [id include start end]
-  {include (s/maybe api.timeline/Include)
-   start   (s/maybe su/TemporalString)
-   end     (s/maybe su/TemporalString)}
+  {include [:maybe [:= "events"]]
+   start   [:maybe ms/TemporalString]
+   end     [:maybe ms/TemporalString]}
   (let [{:keys [collection_id] :as _card} (api/read-check Card id)]
     ;; subtlety here. timeline access is based on the collection at the moment so this check should be identical. If
     ;; we allow adding more timelines to a card in the future, we will need to filter on read-check and i don't think
@@ -400,11 +398,10 @@ saved later when it is ready."
   (collection/check-write-perms-for-collection collection_id)
   (create-card! body))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/:id/copy"
+(api/defendpoint POST "/:id/copy"
   "Copy a `Card`, with the new name 'Copy of _name_'"
   [id]
-  {id (s/maybe su/IntGreaterThanZero)}
+  {id [:maybe ms/PositiveInt]}
   (let [orig-card (api/read-check Card id)
         new-name  (str (trs "Copy of ") (:name orig-card))
         new-card  (assoc orig-card :name new-name)]
@@ -662,8 +659,7 @@ saved later when it is ready."
 
 ;; TODO - Pretty sure this endpoint is not actually used any more, since Cards are supposed to get archived (via PUT
 ;;        /api/card/:id) instead of deleted.  Should we remove this?
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema DELETE "/:id"
+(api/defendpoint DELETE "/:id"
   "Delete a Card. (DEPRECATED -- don't delete a Card anymore -- archive it instead.)"
   [id]
   (log/warn (tru "DELETE /api/card/:id is deprecated. Instead, change its `archived` value via PUT /api/card/:id."))
@@ -755,13 +751,12 @@ saved later when it is ready."
 ;;; ------------------------------------------------ Running a Query -------------------------------------------------
 
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/:card-id/query"
+(api/defendpoint POST "/:card-id/query"
   "Run the query associated with a Card."
   [card-id :as {{:keys [parameters ignore_cache dashboard_id collection_preview], :or {ignore_cache false dashboard_id nil}} :body}]
-  {ignore_cache (s/maybe s/Bool)
-   collection_preview (s/maybe s/Bool)
-   dashboard_id (s/maybe su/IntGreaterThanZero)}
+  {ignore_cache       [:maybe :boolean]
+   collection_preview [:maybe :boolean]
+   dashboard_id       [:maybe ms/PositiveInt]}
   ;; TODO -- we should probably warn if you pass `dashboard_id`, and tell you to use the new
   ;;
   ;;    POST /api/dashboard/:dashboard-id/card/:card-id/query
@@ -775,15 +770,14 @@ saved later when it is ready."
    :context      (if collection_preview :collection :question)
    :middleware   {:process-viz-settings? false}))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/:card-id/query/:export-format"
+(api/defendpoint POST "/:card-id/query/:export-format"
   "Run the query associated with a Card, and return its results as a file in the specified format.
 
   `parameters` should be passed as query parameter encoded as a serialized JSON string (this is because this endpoint
   is normally used to power 'Download Results' buttons that use HTML `form` actions)."
   [card-id export-format :as {{:keys [parameters]} :params}]
-  {parameters    (s/maybe su/JSONString)
-   export-format api.dataset/ExportFormat}
+  {parameters    [:maybe ms/JSONString]
+   export-format (into [:enum] api.dataset/export-formats)}
   (qp.card/run-query-for-card-async
    card-id export-format
    :parameters  (json/parse-string parameters keyword)
@@ -797,8 +791,7 @@ saved later when it is ready."
 
 ;;; ----------------------------------------------- Sharing is Caring ------------------------------------------------
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/:card-id/public_link"
+(api/defendpoint POST "/:card-id/public_link"
   "Generate publicly-accessible links for this Card. Returns UUID to be used in public links. (If this Card has
   already been shared, it will return the existing public link rather than creating a new one.)  Public sharing must
   be enabled."
@@ -813,10 +806,10 @@ saved later when it is ready."
                              {:public_uuid       <>
                               :made_public_by_id api/*current-user-id*})))}))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema DELETE "/:card-id/public_link"
+(api/defendpoint DELETE "/:card-id/public_link"
   "Delete the publicly-accessible link to this Card."
   [card-id]
+  {card-id ms/PositiveInt}
   (validation/check-has-application-permission :setting)
   (validation/check-public-sharing-enabled)
   (api/check-exists? Card :id card-id, :public_uuid [:not= nil])
@@ -825,16 +818,14 @@ saved later when it is ready."
                :made_public_by_id nil})
   {:status 204, :body nil})
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/public"
+(api/defendpoint GET "/public"
   "Fetch a list of Cards with public UUIDs. These cards are publicly-accessible *if* public sharing is enabled."
   []
   (validation/check-has-application-permission :setting)
   (validation/check-public-sharing-enabled)
   (t2/select [Card :name :id :public_uuid], :public_uuid [:not= nil], :archived false))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/embeddable"
+(api/defendpoint GET "/embeddable"
   "Fetch a list of Cards where `enable_embedding` is `true`. The cards can be embedded using the embedding endpoints
   and a signed JWT."
   []
@@ -842,35 +833,32 @@ saved later when it is ready."
   (validation/check-embedding-enabled)
   (t2/select [Card :name :id], :enable_embedding true, :archived false))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/:id/related"
+(api/defendpoint GET "/:id/related"
   "Return related entities."
   [id]
+  {id ms/PositiveInt}
   (-> (t2/select-one Card :id id) api/read-check related/related))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/related"
+(api/defendpoint POST "/related"
   "Return related entities for an ad-hoc query."
   [:as {query :body}]
   (related/related (query/adhoc-query query)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/pivot/:card-id/query"
+(api/defendpoint POST "/pivot/:card-id/query"
   "Run the query associated with a Card."
   [card-id :as {{:keys [parameters ignore_cache]
                  :or   {ignore_cache false}} :body}]
-  {ignore_cache (s/maybe s/Bool)}
+  {ignore_cache [:maybe :boolean]}
   (qp.card/run-query-for-card-async card-id :api
                             :parameters parameters,
                             :qp-runner qp.pivot/run-pivot-query
                             :ignore_cache ignore_cache))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/:card-id/persist"
+(api/defendpoint POST "/:card-id/persist"
   "Mark the model (card) as persisted. Runs the query and saves it to the database backing the card and hot swaps this
   query in place of the model's query."
   [card-id]
-  {card-id su/IntGreaterThanZero}
+  {card-id ms/PositiveInt}
   (api/let-404 [{:keys [dataset database_id] :as card} (t2/select-one Card :id card-id)]
     (let [database (t2/select-one Database :id database_id)]
       (api/write-check database)
@@ -890,11 +878,10 @@ saved later when it is ready."
         (task.persist-refresh/schedule-refresh-for-individual! persisted-info))
       api/generic-204-no-content)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/:card-id/refresh"
+(api/defendpoint POST "/:card-id/refresh"
   "Refresh the persisted model caching `card-id`."
   [card-id]
-  {card-id su/IntGreaterThanZero}
+  {card-id ms/PositiveInt}
   (api/let-404 [card           (t2/select-one Card :id card-id)
                 persisted-info (t2/select-one PersistedInfo :card_id card-id)]
     (when (not (:dataset card))
@@ -905,12 +892,11 @@ saved later when it is ready."
     (task.persist-refresh/schedule-refresh-for-individual! persisted-info)
     api/generic-204-no-content))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/:card-id/unpersist"
+(api/defendpoint POST "/:card-id/unpersist"
   "Unpersist this model. Deletes the persisted table backing the model and all queries after this will use the card's
   query rather than the saved version of the query."
   [card-id]
-  {card-id su/IntGreaterThanZero}
+  {card-id ms/PositiveInt}
   (api/let-404 [_card (t2/select-one Card :id card-id)]
     (api/let-404 [persisted-info (t2/select-one PersistedInfo :card_id card-id)]
       (api/write-check (t2/select-one Database :id (:database_id persisted-info)))
