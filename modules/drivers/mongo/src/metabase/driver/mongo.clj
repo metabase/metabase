@@ -270,7 +270,7 @@
 (when-not (get (methods driver/supports?) [:mongo :foreign-keys])
   (defmethod driver/supports? [:mongo :foreign-keys] [_ _] true))
 
-(defmethod driver/database-supports? [:mysql :schemas] [_driver _feat _db] false)
+(defmethod driver/database-supports? [:mongo :schemas] [_driver _feat _db] false)
 
 (defmethod driver/database-supports? [:mongo :expressions]
   [_driver _feature db]
