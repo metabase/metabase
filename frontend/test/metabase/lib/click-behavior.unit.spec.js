@@ -1,11 +1,67 @@
 import _ from "underscore";
-import { metadata, PRODUCTS } from "__support__/sample_database_fixture";
+import { createMockMetadata } from "__support__/metadata";
 import * as dateFormatUtils from "metabase/lib/formatting/date";
+import { createMockField } from "metabase-types/api/mocks";
+import {
+  createOrdersTable,
+  createPeopleTable,
+  createProductsTable,
+  createProductsIdField,
+  createProductsEanField,
+  createProductsTitleField,
+  createProductsCategoryField,
+  createProductsVendorField,
+  createProductsPriceField,
+  createProductsRatingField,
+  createProductsCreatedAtField,
+  createSampleDatabase,
+  PRODUCTS,
+  PRODUCTS_ID,
+} from "metabase-types/api/mocks/presets";
 import {
   getDataFromClicked,
   getTargetsWithSourceFilters,
   formatSourceForTarget,
 } from "metabase-lib/parameters/utils/click-behavior";
+
+const FLOAT_CATEGORY_FIELD = createMockField({
+  id: 100,
+  table_id: PRODUCTS_ID,
+  base_type: "type/Float",
+  effective_type: "type/Float",
+  semantic_type: "type/Category",
+  name: "FLOAT_CATEGORY",
+  display_name: "Float Category",
+});
+
+const metadata = createMockMetadata({
+  databases: [
+    createSampleDatabase({
+      tables: [
+        createOrdersTable(),
+        createProductsTable({
+          fields: [
+            createProductsIdField(),
+            createProductsEanField(),
+            createProductsTitleField(),
+            createProductsCategoryField(),
+            createProductsVendorField(),
+            createProductsPriceField(),
+            createProductsRatingField(),
+            createProductsCreatedAtField(),
+            FLOAT_CATEGORY_FIELD,
+          ],
+        }),
+        createPeopleTable(),
+      ],
+    }),
+  ],
+});
+
+const productId = metadata.field(PRODUCTS.ID);
+const productTitle = metadata.field(PRODUCTS.TITLE);
+const productFloatCategory = metadata.field(FLOAT_CATEGORY_FIELD.id);
+const productCreatedAt = metadata.field(PRODUCTS.CREATED_AT);
 
 describe("metabase/lib/click-behavior", () => {
   describe("getDataFromClicked", () => {
@@ -112,7 +168,7 @@ describe("metabase/lib/click-behavior", () => {
               "template-tags": {
                 my_field_filter: {
                   default: null,
-                  dimension: ["field", PRODUCTS.CATEGORY.id, null],
+                  dimension: ["field", PRODUCTS.CATEGORY, null],
                   "display-name": "My Field Filter",
                   id: "foo123",
                   name: "my_field_filter",
@@ -308,7 +364,7 @@ describe("metabase/lib/click-behavior", () => {
 
       for (const [field, expectedSources] of [
         [
-          PRODUCTS.TITLE,
+          productTitle,
           {
             column: [{ base_type: "type/Text" }],
             parameter: [{ type: "category" }],
@@ -316,7 +372,7 @@ describe("metabase/lib/click-behavior", () => {
           },
         ],
         [
-          PRODUCTS.PRICE,
+          productFloatCategory,
           {
             column: [
               { base_type: "type/Integer" },
@@ -327,7 +383,7 @@ describe("metabase/lib/click-behavior", () => {
           },
         ],
         [
-          PRODUCTS.ID,
+          productId,
           {
             column: [
               { base_type: "type/Integer" },
@@ -338,7 +394,7 @@ describe("metabase/lib/click-behavior", () => {
           },
         ],
         [
-          PRODUCTS.CREATED_AT,
+          productCreatedAt,
           {
             column: [
               { base_type: "type/Time" },
