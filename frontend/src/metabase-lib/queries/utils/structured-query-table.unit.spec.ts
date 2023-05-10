@@ -1,11 +1,13 @@
 import _ from "underscore";
-
+import { createMockMetadata } from "__support__/metadata";
 import {
-  metadata,
-  PRODUCTS,
+  createSampleDatabase,
   ORDERS,
-  SAMPLE_DATABASE,
-} from "__support__/sample_database_fixture";
+  ORDERS_ID,
+  PRODUCTS,
+  PRODUCTS_ID,
+  SAMPLE_DB_ID,
+} from "metabase-types/api/mocks/presets";
 import Question from "metabase-lib/Question";
 import Table from "metabase-lib/metadata/Table";
 import Field from "metabase-lib/metadata/Field";
@@ -14,11 +16,18 @@ import type StructuredQuery from "../StructuredQuery";
 import { getStructuredQueryTable } from "./structured-query-table";
 
 describe("metabase-lib/queries/utils/structured-query-table", () => {
+  const metadata = createMockMetadata({
+    databases: [createSampleDatabase()],
+  });
+
+  const ordersTable = metadata.table(ORDERS_ID) as Table;
+  const productsTable = metadata.table(PRODUCTS_ID) as Table;
+
   describe("Card that relies on another card as its source table", () => {
     const NESTED_CARD_QUESTION = new Question(
       {
         dataset_query: {
-          database: SAMPLE_DATABASE?.id,
+          database: SAMPLE_DB_ID,
           query: {
             "source-table": "card__1",
           },
@@ -26,8 +35,8 @@ describe("metabase-lib/queries/utils/structured-query-table", () => {
         },
         id: 2,
         display: "table",
-        database_id: SAMPLE_DATABASE?.id,
-        table_id: PRODUCTS.id,
+        database_id: SAMPLE_DB_ID,
+        table_id: PRODUCTS_ID,
         name: "Question based on another question",
       },
       metadata,
@@ -35,11 +44,11 @@ describe("metabase-lib/queries/utils/structured-query-table", () => {
 
     const BASE_QUESTION = new Question(
       {
-        ...PRODUCTS.newQuestion().card(),
+        ...productsTable.newQuestion().card(),
         id: 1,
         display: "table",
-        database_id: SAMPLE_DATABASE?.id,
-        table_id: PRODUCTS.id,
+        database_id: SAMPLE_DB_ID,
+        table_id: PRODUCTS_ID,
         name: "Base question",
       },
       metadata,
@@ -76,7 +85,7 @@ describe("metabase-lib/queries/utils/structured-query-table", () => {
         table_id: "card__1",
       }),
       new Field({
-        id: PRODUCTS.CATEGORY.id,
+        id: PRODUCTS.CATEGORY,
         display_name: "~*~ Category ~*~",
       }),
     ];
@@ -106,7 +115,7 @@ describe("metabase-lib/queries/utils/structured-query-table", () => {
 
   describe("Dataset/model card", () => {
     const ORDERS_USER_ID_FIELD = metadata
-      .field(ORDERS.USER_ID.id)
+      .field(ORDERS.USER_ID)
       ?.getPlainObject();
     const OVERWRITTEN_USER_ID_FIELD_METADATA = {
       ...ORDERS_USER_ID_FIELD,
@@ -119,8 +128,9 @@ describe("metabase-lib/queries/utils/structured-query-table", () => {
       },
     };
 
-    const ORDERS_DATASET = ORDERS.question()
-      .setCard({ ...ORDERS.question().card(), id: 3 })
+    const ORDERS_DATASET = ordersTable
+      .question()
+      .setCard({ ...ordersTable.question().card(), id: 3 })
       .setDataset(true)
       .setDisplayName("Dataset Question");
 
@@ -159,14 +169,14 @@ describe("metabase-lib/queries/utils/structured-query-table", () => {
     const SOURCE_QUERY_QUESTION = new Question(
       {
         dataset_query: {
-          database: SAMPLE_DATABASE?.id,
-          query: { "source-query": { "source-table": PRODUCTS.id } },
+          database: SAMPLE_DB_ID,
+          query: { "source-query": { "source-table": PRODUCTS_ID } },
           type: "query",
         },
         id: 2,
         display: "table",
-        database_id: SAMPLE_DATABASE?.id,
-        table_id: PRODUCTS.id,
+        database_id: SAMPLE_DB_ID,
+        table_id: PRODUCTS_ID,
         name: "Question using a nested query",
       },
       metadata,
@@ -182,7 +192,7 @@ describe("metabase-lib/queries/utils/structured-query-table", () => {
 
     it("should return a virtual table based on the nested query", () => {
       expect(table?.getPlainObject()).toEqual({
-        id: 3,
+        id: PRODUCTS_ID,
         display_name: "",
         name: "",
       });
@@ -194,7 +204,7 @@ describe("metabase-lib/queries/utils/structured-query-table", () => {
         "name",
       );
       const nestedQueryProductFields = _.sortBy(
-        PRODUCTS.fields.map((field: Field) => {
+        productsTable.fields.map((field: Field) => {
           const column = field.dimension().column();
           return {
             ...column,
@@ -211,11 +221,11 @@ describe("metabase-lib/queries/utils/structured-query-table", () => {
 
   describe("Card that has a concrete source table", () => {
     const table = getStructuredQueryTable(
-      ORDERS.newQuestion().query() as StructuredQuery,
+      ordersTable.newQuestion().query() as StructuredQuery,
     );
 
     it("should return the concrete table stored on the Metadata object", () => {
-      expect(table).toBe(ORDERS);
+      expect(table).toBe(ordersTable);
     });
   });
 });
