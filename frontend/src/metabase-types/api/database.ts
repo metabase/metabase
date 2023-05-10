@@ -25,7 +25,11 @@ export type DatabaseFeature =
   | "standard-deviation-aggregations"
   | "persist-models"
   | "persist-models-enabled"
-  | "set-timezone";
+  | "set-timezone"
+  | "left-join"
+  | "right-join"
+  | "inner-join"
+  | "full-join";
 
 export interface Database extends DatabaseData {
   id: DatabaseId;
@@ -38,6 +42,8 @@ export interface Database extends DatabaseData {
 
   settings?: DatabaseSettings | null;
 
+  caveats?: string;
+  points_of_interest?: string;
   created_at: ISO8601Time;
   updated_at: ISO8601Time;
 
@@ -70,4 +76,23 @@ export interface DatabaseUsageInfo {
   dataset: number;
   metric: number;
   segment: number;
+}
+
+export interface DatabaseQuery {
+  include?: "tables" | "tables.fields";
+  include_editable_data_model?: boolean;
+  exclude_uneditable_details?: boolean;
+}
+
+export interface DatabaseListQuery {
+  include?: "tables";
+  include_cards?: boolean;
+  include_tables?: boolean;
+  saved?: boolean;
+  include_editable_data_model?: boolean;
+  exclude_uneditable_details?: boolean;
+}
+
+export interface DatabaseIdFieldListQuery {
+  include_editable_data_model?: boolean;
 }

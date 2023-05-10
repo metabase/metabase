@@ -37,17 +37,11 @@
 ;;; |                                          metabase.driver method impls                                          |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-
-(defmethod driver/supports? [:athena :foreign-keys] [_ _] true)
-
-(defmethod driver/database-supports? [:athena :datetime-diff] [_driver _feature _database] true)
-
-(defmethod driver/supports? [:athena :nested-fields] [_ _] false #_true) ; huh? Not sure why this was `true`. Disabled
-                                                                         ; for now.
-
-(defmethod driver/database-supports? [:athena :test/jvm-timezone-setting]
-  [_driver _feature _database]
-  false)
+(doseq [[feature supported?] {:foreign-keys              true
+                              :datetime-diff             true
+                              :nested-fields             false #_true ; huh? Not sure why this was `true`. Disabled for now.
+                              :test/jvm-timezone-setting false}]
+  (defmethod driver/database-supports? [:athena feature] [_driver _feature _db] supported?))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                     metabase.driver.sql-jdbc method impls                                      |

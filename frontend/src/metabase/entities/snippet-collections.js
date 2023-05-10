@@ -1,6 +1,6 @@
 import _ from "underscore";
 import { t } from "ttag";
-import { createSelector } from "reselect";
+import { createSelector } from "@reduxjs/toolkit";
 
 import { createEntity, undo } from "metabase/lib/entities";
 import { SnippetCollectionSchema } from "metabase/schema";

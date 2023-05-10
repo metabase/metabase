@@ -1,11 +1,10 @@
-import { Parameter } from "metabase-types/api/parameters";
-import type { EntityId } from "metabase-types/types";
 import type {
-  ParameterTarget,
+  Parameter,
   ParameterId,
-} from "metabase-types/types/Parameter";
+  ParameterTarget,
+} from "metabase-types/api";
 
-import { ActionDashboardCard } from "./actions";
+import type { ActionDashboardCard } from "./actions";
 import type { SearchModelType } from "./search";
 import type { Card, CardId, CardDisplayType } from "./card";
 import type { Dataset } from "./dataset";
@@ -29,9 +28,10 @@ export interface Dashboard {
     last_name: string;
     timestamp: string;
   };
+  auto_apply_filters: boolean;
 }
 
-export type DashCardId = EntityId;
+export type DashCardId = number;
 
 export type BaseDashboardOrderedCard = {
   id: DashCardId;

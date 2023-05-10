@@ -4,8 +4,10 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.api.field :as api.field]
+   [metabase.driver :as driver]
+   [metabase.driver.mysql-test :as mysql-test]
    [metabase.driver.util :as driver.u]
-   [metabase.models :refer [Database Field FieldValues Table]]
+   [metabase.models :refer [Database Dimension Field FieldValues Table]]
    [metabase.sync :as sync]
    [metabase.sync.concurrent :as sync.concurrent]
    [metabase.test :as mt]
@@ -15,6 +17,8 @@
    [ring.util.codec :as codec]
    [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :plugins))
 
@@ -35,7 +39,7 @@
                 (mt/object-defaults Field)
                 (t2/select-one [Field :created_at :updated_at :last_analyzed :fingerprint :fingerprint_version
                                 :database_position :database_required :database_is_auto_increment]
-                  :id (mt/id :users :name))
+                               :id (mt/id :users :name))
                 {:table_id         (mt/id :users)
                  :table            (merge
                                     (mt/obj->json->obj (mt/object-defaults Table))
@@ -57,6 +61,7 @@
                  :name             "NAME"
                  :display_name     "Name"
                  :position         1
+                 :target           nil
                  :id               (mt/id :users :name)
                  :visibility_type  "normal"
                  :database_type    "CHARACTER VARYING"
@@ -69,7 +74,10 @@
                  :name_field       nil})
                (m/dissoc-in [:table :db :updated_at] [:table :db :created_at] [:table :db :timezone]))
            (-> (mt/user-http-request :rasta :get 200 (format "field/%d" (mt/id :users :name)))
-               (update-in [:table :db] dissoc :updated_at :created_at :timezone :dbms_version))))))
+               (update-in [:table :db] dissoc :updated_at :created_at :timezone :dbms_version))))
+    (testing "target should be hydrated"
+      (is (= (mt/id :categories :id)
+             (:id (:target (mt/user-http-request :rasta :get 200 (format "field/%d" (mt/id :venues :category_id))))))))))
 
 (deftest get-field-summary-test
   (testing "GET /api/field/:id/summary"
@@ -84,6 +92,7 @@
                       :description
                       :visibility_type
                       :semantic_type
+                      :json_unfolding
                       :fk_target_field_id
                       :nfc_path]))
 
@@ -103,23 +112,38 @@
                     :description        nil
                     :semantic_type      nil
                     :visibility_type    :normal
+                    :json_unfolding     false
                     :fk_target_field_id nil
                     :nfc_path           nil}
                    original-val)))
-          ;; set it
-          (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id) {:name            "something else"
-                                                                                  :display_name    "yay"
-                                                                                  :description     "foobar"
-                                                                                  :semantic_type   :type/Name
-                                                                                  :visibility_type :sensitive
-                                                                                  :nfc_path        ["bob" "dobbs"]})
-          (let [updated-val (simple-field-details (t2/select-one Field :id field-id))]
+          (let [;; set it
+                response (mt/user-http-request :crowberto :put 200
+                                               (format "field/%d" field-id)
+                                               {:name            "something else"
+                                                :display_name    "yay"
+                                                :description     "foobar"
+                                                :semantic_type   :type/Name
+                                                :json_unfolding  true
+                                                :visibility_type :sensitive
+                                                :nfc_path        ["bob" "dobbs"]})
+                updated-val (simple-field-details (t2/select-one Field :id field-id))]
+            (testing "response body should be the updated field"
+              (is (= {:name               "Field Test"
+                      :display_name       "yay"
+                      :description        "foobar"
+                      :semantic_type      "type/Name"
+                      :visibility_type    "sensitive"
+                      :json_unfolding     true
+                      :fk_target_field_id nil
+                      :nfc_path           ["bob" "dobbs"]}
+                     (simple-field-details response))))
             (testing "updated value"
               (is (= {:name               "Field Test"
                       :display_name       "yay"
                       :description        "foobar"
                       :semantic_type      :type/Name
                       :visibility_type    :sensitive
+                      :json_unfolding     true
                       :fk_target_field_id nil
                       :nfc_path           ["bob" "dobbs"]}
                      updated-val)))
@@ -133,6 +157,7 @@
                       :description        nil
                       :semantic_type      nil
                       :visibility_type    :sensitive
+                      :json_unfolding     true
                       :fk_target_field_id nil
                       :nfc_path           nil}
                      (simple-field-details (t2/select-one Field :id field-id)))))))))
@@ -176,6 +201,15 @@
     (testing "A field can only be updated by a superuser"
       (mt/with-temp Field [{field-id :id} {:name "Field Test"}]
         (mt/user-http-request :rasta :put 403 (format "field/%d" field-id) {:name "Field Test 2"})))))
+
+(deftest update-field-hydrated-target-test
+  (testing "PUT /api/field/:id"
+    (testing "target should be hydrated"
+      (mt/with-temp* [Field [fk-field-1]
+                      Field [fk-field-2]
+                      Field [field {:semantic_type :type/FK, :fk_target_field_id (:id fk-field-1)}]]
+        (is (= (:id fk-field-2)
+               (:id (:target (mt/user-http-request :crowberto :put 200 (format "field/%d" (:id field)) (assoc field :fk_target_field_id (:id fk-field-2)))))))))))
 
 (deftest remove-fk-semantic-type-test
   (testing "PUT /api/field/:id"
@@ -345,6 +379,28 @@
                            :or   {expected-status-code 200}}]
   (mt/user-http-request :crowberto :post expected-status-code (format "field/%d/dimension" field-id) map-to-post))
 
+(deftest update-display-name-dimension-test
+  (testing "Updating a field's display_name should update the dimension's name"
+    (mt/with-temp* [Database  [db    {:name "field-db" :engine :h2}]
+                    Table     [table1 {:schema "PUBLIC" :name "widget" :db_id (:id db)}]
+                    Table     [table2 {:schema "PUBLIC" :name "orders" :db_id (:id db)}]
+                    Field     [field {:name          "WIDGET_ID"
+                                      :display_name  "Widget ID"
+                                      :table_id      (:id table2)
+                                      :semantic_type :type/FK}]
+                    Field     [human-readable-field {:name "Name" :table_id (:id table1)}]
+                    Dimension [_dim  {:field_id                (:id field)
+                                      :name                    (:display_name field)
+                                      :type                    :external
+                                      :human_readable_field_id (:id human-readable-field)}]]
+      (testing "before update"
+        (is (= "Widget ID"
+               (:name (dimension-for-field (:id field))))))
+      (mt/user-http-request :crowberto :put 200 (format "field/%d" (:id field)) (assoc field :display_name "SKU"))
+      (testing "after update"
+        (is (= "SKU"
+               (:name (dimension-for-field (:id field)))))))))
+
 (deftest create-update-dimension-test
   (mt/with-temp* [Field [{field-id :id} {:name "Field Test"}]]
     (testing "no dimension should exist for a new Field"
@@ -508,6 +564,7 @@
                 :visibility_type    :normal
                 :semantic_type      :type/FK
                 :fk_target_field_id true
+                :json_unfolding     false
                 :nfc_path           nil}
                (mt/boolean-ids-and-timestamps (simple-field-details (t2/select-one Field :id field-id-2))))))
       (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id-2) {:semantic_type nil})
@@ -518,6 +575,7 @@
                 :visibility_type    :normal
                 :semantic_type      nil
                 :fk_target_field_id false
+                :json_unfolding     false
                 :nfc_path           nil}
                (mt/boolean-ids-and-timestamps (simple-field-details (t2/select-one Field :id field-id-2)))))))))
 
@@ -536,6 +594,7 @@
                   :visibility_type    :normal
                   :semantic_type      :type/FK
                   :fk_target_field_id true
+                  :json_unfolding     false
                   :nfc_path           nil}
                  (mt/boolean-ids-and-timestamps before-change))))
         (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id-3) {:fk_target_field_id field-id-2})
@@ -547,6 +606,7 @@
                     :visibility_type    :normal
                     :semantic_type      :type/FK
                     :fk_target_field_id true
+                    :json_unfolding     false
                     :nfc_path           nil}
                    (mt/boolean-ids-and-timestamps after-change)))
             (is (not= (:fk_target_field_id before-change)
@@ -564,6 +624,7 @@
                 :visibility_type    :normal
                 :semantic_type      nil
                 :fk_target_field_id false
+                :json_unfolding     false
                 :nfc_path           nil}
                (mt/boolean-ids-and-timestamps (simple-field-details (t2/select-one Field :id field-id-2))))))
       (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id-2) {:semantic_type      :type/FK
@@ -575,6 +636,7 @@
                 :visibility_type    :normal
                 :semantic_type      :type/FK
                 :fk_target_field_id true
+                :json_unfolding     false
                 :nfc_path           nil}
                (mt/boolean-ids-and-timestamps (simple-field-details (t2/select-one Field :id field-id-2)))))))))
 
@@ -592,6 +654,7 @@
                   :visibility_type    :normal
                   :semantic_type      :type/FK
                   :fk_target_field_id true
+                  :json_unfolding     false
                   :nfc_path           nil}
                  (mt/boolean-ids-and-timestamps (simple-field-details (t2/select-one Field :id field-id-2))))))
         (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id-2) {:description "foo"})
@@ -602,6 +665,7 @@
                   :visibility_type    :normal
                   :semantic_type      :type/FK
                   :fk_target_field_id true
+                  :json_unfolding     false
                   :nfc_path           nil}
                  (mt/boolean-ids-and-timestamps (simple-field-details (t2/select-one Field :id field-id-2))))))))))
 
@@ -726,3 +790,90 @@
                                     [2 "Small Marble Shoes"]
                                     [3 "Synergistic Granite Chair"]]}
                           (mt/user-http-request :crowberto :get 200 (format "field/%d/values" (mt/id :orders :product_id)))))))))))
+
+(deftest json-unfolding-initially-true-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
+    (when-not (mysql-test/is-mariadb? (u/id (mt/db)))
+      (mt/dataset json
+        ;; Create a new database with the same details as the json dataset, with json unfolding enabled
+        (let [database (t2/select-one Database :id (mt/id))]
+          (mt/with-temp* [Database [database {:engine driver/*driver*, :details (assoc (:details database) :json-unfolding true)}]]
+            (mt/with-db database
+              ;; Sync the new database
+              (sync/sync-database! database)
+              (let [field (t2/select-one Field :id (mt/id :json :json_bit))
+                    get-database (fn [] (t2/select-one Database :id (mt/id)))
+                    set-json-unfolding-for-field! (fn [v]
+                                                    (mt/user-http-request :crowberto :put 200 (format "field/%d" (mt/id :json :json_bit))
+                                                                          (assoc field :json_unfolding v)))
+                    set-json-unfolding-for-db! (fn [v]
+                                                 (let [updated-db (into {} (assoc-in database [:details :json-unfolding] v))]
+                                                   (mt/user-http-request :crowberto :put 200 (format "database/%d" (:id database))
+                                                                         updated-db)))
+                    nested-fields          (fn []
+                                             (->> (t2/select Field :table_id (mt/id :json) :active true :nfc_path [:not= nil])
+                                                  (filter (fn [field] (= (first (:nfc_path field)) "json_bit")))))]
+                (testing "json_unfolding is enabled by default at the field level"
+                  (is (true? (:json_unfolding field))))
+                (testing "nested fields are present since json unfolding is enabled by default"
+                  (is (seq (nested-fields))))
+                (testing "nested fields are removed when json unfolding is disabled for the DB"
+                  (set-json-unfolding-for-db! false)
+                  (sync/sync-database! (get-database))
+                  (is (empty? (nested-fields))))
+                (testing "nested fields are added when json unfolding is enabled again for the DB"
+                  (set-json-unfolding-for-db! true)
+                  (sync/sync-database! (get-database))
+                  (is (seq (nested-fields))))
+                (testing "nested fields are removed when json unfolding is disabled for the field"
+                  (set-json-unfolding-for-field! false)
+                  (is (empty? (nested-fields))))
+                (testing "nested fields are added when json unfolding is enabled again for the field"
+                  (set-json-unfolding-for-field! true)
+                  (is (seq (nested-fields))))))))))))
+
+(deftest json-unfolding-initially-false-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
+    (when-not (mysql-test/is-mariadb? (u/id (mt/db)))
+      (mt/dataset json
+        (let [database (t2/select-one Database :id (mt/id))]
+          (testing "When json_unfolding is disabled at the DB level on the first sync"
+            ;; Create a new database with the same details as the json dataset, with json unfolding disabled
+            (mt/with-temp* [Database [database {:engine driver/*driver*, :details (assoc (:details database) :json-unfolding false)}]]
+              (mt/with-db database
+                ;; Sync the new database
+                (sync/sync-database! database)
+                (let [get-field (fn [] (t2/select-one Field :id (mt/id :json :json_bit)))
+                      get-database (fn [] (t2/select-one Database :id (mt/id)))
+                      set-json-unfolding-for-field! (fn [v]
+                                                      (mt/user-http-request :crowberto :put 200 (format "field/%d" (mt/id :json :json_bit))
+                                                                            (assoc (get-field) :json_unfolding v)))
+                      set-json-unfolding-for-db! (fn [v]
+                                                   (let [updated-db (into {} (assoc-in database [:details :json-unfolding] v))]
+                                                     (mt/user-http-request :crowberto :put 200 (format "database/%d" (:id database))
+                                                                           updated-db)))
+                      nested-fields (fn []
+                                      (->> (t2/select Field :table_id (mt/id :json) :active true :nfc_path [:not= nil])
+                                           (filter (fn [field] (= (first (:nfc_path field)) "json_bit")))))]
+                  (testing "nested fields are not created"
+                    (is (empty? (nested-fields))))
+                  (testing "yet json_unfolding is enabled by default at the field level"
+                    (is (true? (:json_unfolding (get-field)))))
+                  (testing "nested fields are added automatically when json unfolding is enabled for the field,
+                            and json unfolding is alread enabled for the DB"
+                    (set-json-unfolding-for-field! false)
+                    (set-json-unfolding-for-db! true)
+                    (set-json-unfolding-for-field! true)
+                    ;; Wait for the sync to finish
+                    (Thread/sleep 500)
+                    (is (seq (nested-fields))))
+                  (testing "nested fields are added when json unfolding is enabled for the DB"
+                    (set-json-unfolding-for-db! true)
+                    (is (true? (:json-unfolding (:details (get-database)))))
+                    (is (true? (:json_unfolding (get-field))))
+                    (sync/sync-database! (get-database))
+                    (is (seq (nested-fields))))
+                  (testing "nested fields are removed when json unfolding is disabled again"
+                    (set-json-unfolding-for-db! false)
+                    (sync/sync-database! (get-database))
+                    (is (empty? (nested-fields)))))))))))))

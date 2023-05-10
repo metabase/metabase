@@ -35,23 +35,6 @@
   [legacy-query]
   (or
    *skip-conversion-tests*
-   ;; #29897: `:datetime-diff` is not handled correctly.
-   (mbql.u/match-one legacy-query
-     :datetime-diff
-     "#29897")
-   ;; #29904: `:fields` in `:joins` are supposed to be returned even if `:fields` is specified.
-   (mbql.u/match-one legacy-query
-     {:fields fields, :joins joins}
-     (mbql.u/match-one joins
-       {:fields (join-fields :guard (partial not= :none))}
-       "#29904"))
-   ;; #29908: native queries do not round trip correctly
-   (when (:native legacy-query)
-     "#29908")
-   ;; #29909: these clauses are not implemented yet.
-   (mbql.u/match-one legacy-query
-     #{:get-year :get-quarter :get-month :get-day :get-day-of-week :get-hour :get-minute :get-second}
-     "#29909")
    ;; #29938: conversion for `:case` with default value does not work correctly
    (mbql.u/match-one legacy-query
      :case
@@ -70,10 +53,6 @@
        (mbql.u/match-one &match
          :field
          "#29946")))
-   ;; #29948: `:substring` is broken
-   (mbql.u/match-one legacy-query
-     :substring
-     "#29948")
    ;; #29949: missing schema
    (mbql.u/match-one legacy-query
      :regex-match-first
@@ -82,10 +61,6 @@
    (mbql.u/match-one legacy-query
      {:case-sensitive _case-sensitive?}
      "#29950")
-   ;; #29953: `:aggregation` and `:expression` refs with `nil` options
-   (mbql.u/match-one legacy-query
-     [:aggregation _index nil] "#29953"
-     [:expression _name nil]   "#29953")
    ;; #29958: `:convert-timezone` with 2 args is broken
    (mbql.u/match-one legacy-query
      [:convert-timezone _expr _source-timezone]

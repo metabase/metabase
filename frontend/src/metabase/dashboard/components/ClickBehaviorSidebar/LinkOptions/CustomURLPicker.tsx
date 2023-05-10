@@ -84,7 +84,7 @@ function CustomURLPicker({
       {({ onClose }: { onClose: () => void }) => (
         <ModalContent
           title={t`Enter a URL to link to`}
-          onClose={hasLinkTemplate ? onClose : null}
+          onClose={hasLinkTemplate ? onClose : undefined}
         >
           <FormDescription>
             {t`You can insert the value of a column or dashboard filter using its name, like this: {{some_column}}`}

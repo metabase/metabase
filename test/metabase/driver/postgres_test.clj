@@ -27,6 +27,7 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.sync :as sync]
    [metabase.sync.sync-metadata :as sync-metadata]
+   [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.sync.util :as sync-util]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -347,14 +348,6 @@
 
 ;;; ----------------------------------------- Tests for exotic column types ------------------------------------------
 
-(deftest ^:parallel json-query-support-test
-  (testing "JSON database support options behave as they're supposed to"
-    (are [details expected] (= expected
-                               (driver/database-supports? :postgres :nested-field-columns {:details details}))
-      {}                      true
-      {:json-unfolding true}  true
-      {:json-unfolding false} false)))
-
 (deftest ^:parallel json-query-test
   (let [boop-identifier (h2x/identifier :field "boop" "bleh -> meh")]
     (testing "Transforming MBQL query with JSON in it to postgres query works"
@@ -496,53 +489,60 @@
             spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
         (jdbc/with-db-connection [_conn (sql-jdbc.conn/connection-details->spec :postgres details)]
           (jdbc/execute! spec [describe-json-table-sql]))
-        (mt/with-temp Database [database {:engine :postgres, :details details}]
-          (is (= [:type/JSON :type/SerializedJSON]
-                 (->> (sql-jdbc.sync/describe-table :postgres database {:name "describe_json_table"})
-                      (:fields)
-                      (:take 1)
-                      (first)
-                      ((juxt :base-type :semantic-type)))))
-          (is (= '#{{:name              "incoherent_json_val → b",
-                     :database-type     "text",
-                     :base-type         :type/Text,
-                     :database-position 0,
-                     :nfc-path          [:incoherent_json_val "b"]
-                     :visibility-type   :normal}
-                    {:name              "coherent_json_val → a",
-                     :database-type     "bigint",
-                     :base-type         :type/Integer,
-                     :database-position 0,
-                     :nfc-path          [:coherent_json_val "a"]
-                     :visibility-type   :normal}
-                    {:name              "coherent_json_val → b",
-                     :database-type     "bigint",
-                     :base-type         :type/Integer,
-                     :database-position 0,
-                     :nfc-path          [:coherent_json_val "b"]
-                     :visibility-type   :normal}
-                    {:name "coherent_json_val → c",
-                     :database-type     "timestamp",
-                     :base-type         :type/DateTime,
-                     :database-position 0,
-                     :visibility-type   :normal,
-                     :nfc-path          [:coherent_json_val "c"]}
-                    {:name              "incoherent_json_val → c",
-                     :database-type     "double precision",
-                     :base-type         :type/Number,
-                     :database-position 0,
-                     :visibility-type   :normal,
-                     :nfc-path          [:incoherent_json_val "c"]}
-                    {:name              "incoherent_json_val → d",
-                     :database-type     "bigint",
-                     :base-type         :type/Integer,
-                     :database-position 0,
-                     :visibility-type   :normal,
-                     :nfc-path          [:incoherent_json_val "d"]}}
-                 (sql-jdbc.sync/describe-nested-field-columns
-                  :postgres
-                  database
-                  {:name "describe_json_table"}))))))))
+        (mt/with-temp* [Database [database {:engine :postgres, :details details}]]
+          (mt/with-db database
+            (is (= [:type/JSON :type/SerializedJSON]
+                   (-> (sql-jdbc.sync/describe-table :postgres database {:name "describe_json_table"})
+                       :fields
+                       first
+                       ((juxt :base-type :semantic-type)))))
+            (sync-tables/sync-tables-and-database! database)
+            (is (= '#{{:name              "incoherent_json_val → b",
+                       :database-type     "text",
+                       :base-type         :type/Text,
+                       :database-position 0,
+                       :json-unfolding    false
+                       :nfc-path          [:incoherent_json_val "b"]
+                       :visibility-type   :normal}
+                      {:name              "coherent_json_val → a",
+                       :database-type     "bigint",
+                       :base-type         :type/Integer,
+                       :database-position 0,
+                       :json-unfolding    false
+                       :nfc-path          [:coherent_json_val "a"]
+                       :visibility-type   :normal}
+                      {:name              "coherent_json_val → b",
+                       :database-type     "bigint",
+                       :base-type         :type/Integer,
+                       :database-position 0,
+                       :json-unfolding    false
+                       :nfc-path          [:coherent_json_val "b"]
+                       :visibility-type   :normal}
+                      {:name "coherent_json_val → c",
+                       :database-type     "timestamp",
+                       :base-type         :type/DateTime,
+                       :database-position 0,
+                       :json-unfolding    false
+                       :visibility-type   :normal,
+                       :nfc-path          [:coherent_json_val "c"]}
+                      {:name              "incoherent_json_val → c",
+                       :database-type     "double precision",
+                       :base-type         :type/Number,
+                       :database-position 0,
+                       :json-unfolding    false
+                       :visibility-type   :normal,
+                       :nfc-path          [:incoherent_json_val "c"]}
+                      {:name              "incoherent_json_val → d",
+                       :database-type     "bigint",
+                       :base-type         :type/Integer,
+                       :database-position 0,
+                       :json-unfolding    false
+                       :visibility-type   :normal,
+                       :nfc-path          [:incoherent_json_val "d"]}}
+                   (sql-jdbc.sync/describe-nested-field-columns
+                    :postgres
+                    database
+                    {:name "describe_json_table" :id (mt/id "describe_json_table")})))))))))
 
 (deftest describe-nested-field-columns-identifier-test
   (mt/test-driver :postgres
@@ -556,16 +556,19 @@
                                     "CREATE TABLE bobdobbs.describe_json_table (trivial_json JSONB NOT NULL);"
                                     "INSERT INTO bobdobbs.describe_json_table (trivial_json) VALUES ('{\"a\": 1}');")]))
         (mt/with-temp Database [database {:engine :postgres, :details details}]
-          (is (= #{{:name              "trivial_json → a",
-                    :database-type     "bigint",
-                    :base-type         :type/Integer,
-                    :database-position 0,
-                    :visibility-type   :normal,
-                    :nfc-path          [:trivial_json "a"]}}
-                 (sql-jdbc.sync/describe-nested-field-columns
-                  :postgres
-                  database
-                  {:schema "bobdobbs" :name "describe_json_table"}))))))))
+          (mt/with-db database
+            (sync-tables/sync-tables-and-database! database)
+            (is (= #{{:name              "trivial_json → a",
+                      :database-type     "bigint",
+                      :base-type         :type/Integer,
+                      :database-position 0,
+                      :json-unfolding    false,
+                      :visibility-type   :normal,
+                      :nfc-path          [:trivial_json "a"]}}
+                   (sql-jdbc.sync/describe-nested-field-columns
+                    :postgres
+                    database
+                    {:schema "bobdobbs" :name "describe_json_table" :id (mt/id "describe_json_table")})))))))))
 
 (deftest describe-funky-name-table-nested-field-columns-test
   (mt/test-driver :postgres
@@ -579,16 +582,19 @@
                                     "CREATE TABLE \"AAAH_#\".\"dESCribe_json_table_%\" (trivial_json JSONB NOT NULL);"
                                     "INSERT INTO \"AAAH_#\".\"dESCribe_json_table_%\" (trivial_json) VALUES ('{\"a\": 1}');")]))
         (mt/with-temp Database [database {:engine :postgres, :details details}]
-          (is (= #{{:name              "trivial_json → a",
-                    :database-type     "bigint",
-                    :base-type         :type/Integer,
-                    :database-position 0,
-                    :visibility-type   :normal,
-                    :nfc-path          [:trivial_json "a"]}}
-                 (sql-jdbc.sync/describe-nested-field-columns
-                  :postgres
-                  database
-                  {:schema "AAAH_#" :name "dESCribe_json_table_%"}))))))))
+          (mt/with-db database
+            (sync-tables/sync-tables-and-database! database)
+            (is (= #{{:name              "trivial_json → a",
+                      :database-type     "bigint",
+                      :base-type         :type/Integer,
+                      :database-position 0,
+                      :json-unfolding    false,
+                      :visibility-type   :normal,
+                      :nfc-path          [:trivial_json "a"]}}
+                   (sql-jdbc.sync/describe-nested-field-columns
+                    :postgres
+                    database
+                    {:schema "AAAH_#" :name "dESCribe_json_table_%" :id (mt/id "dESCribe_json_table_%")})))))))))
 
 (deftest describe-big-nested-field-columns-test
   (mt/test-driver :postgres
@@ -604,19 +610,21 @@
         (jdbc/with-db-connection [_conn (sql-jdbc.conn/connection-details->spec :postgres details)]
           (jdbc/execute! spec [sql]))
         (mt/with-temp Database [database {:engine :postgres, :details details}]
-          (is (= sql-jdbc.describe-table/max-nested-field-columns
-                 (count
-                  (sql-jdbc.sync/describe-nested-field-columns
-                   :postgres
-                   database
-                   {:name "big_json_table"}))))
-          (is (str/includes?
-                (get-in (mt/with-log-messages-for-level :warn
-                              (sql-jdbc.sync/describe-nested-field-columns
-                                :postgres
-                                database
-                                {:name "big_json_table"})) [0 2])
-                "More nested field columns detected than maximum.")))))))
+          (mt/with-db database
+            (sync-tables/sync-tables-and-database! database)
+            (is (= sql-jdbc.describe-table/max-nested-field-columns
+                   (count
+                    (sql-jdbc.sync/describe-nested-field-columns
+                     :postgres
+                     database
+                     {:name "big_json_table" :id (mt/id "big_json_table")}))))
+            (is (str/includes?
+                 (get-in (mt/with-log-messages-for-level :warn
+                           (sql-jdbc.sync/describe-nested-field-columns
+                            :postgres
+                            database
+                            {:name "big_json_table" :id (mt/id "big_json_table")})) [0 2])
+                 "More nested field columns detected than maximum."))))))))
 
 (mt/defdataset with-uuid
   [["users"
@@ -807,25 +815,28 @@
 
         (testing "check that describe-table properly describes the database & base types of the enum fields"
           (is (= {:name   "birds"
-                  :fields #{{:name                      "name"
-                             :database-type             "varchar"
-                             :base-type                 :type/Text
-                             :pk?                       true
-                             :database-position         0
-                             :database-required         true
-                             :database-is-auto-increment false}
-                            {:name                      "status"
-                             :database-type             "bird_status"
-                             :base-type                 :type/PostgresEnum
-                             :database-position         1
-                             :database-required         true
-                             :database-is-auto-increment false}
-                            {:name                      "type"
-                             :database-type             "bird type"
-                             :base-type                 :type/PostgresEnum
-                             :database-position         2
-                             :database-required         true
-                             :database-is-auto-increment false}}}
+                  :fields #{{:name                       "name"
+                             :database-type              "varchar"
+                             :base-type                  :type/Text
+                             :pk?                        true
+                             :database-position          0
+                             :database-required          true
+                             :database-is-auto-increment false
+                             :json-unfolding             false}
+                            {:name                       "status"
+                             :database-type              "bird_status"
+                             :base-type                  :type/PostgresEnum
+                             :database-position          1
+                             :database-required          true
+                             :database-is-auto-increment false
+                             :json-unfolding             false}
+                            {:name                       "type"
+                             :database-type              "bird type"
+                             :base-type                  :type/PostgresEnum
+                             :database-position          2
+                             :database-required          true
+                             :database-is-auto-increment false
+                             :json-unfolding             false}}}
                  (driver/describe-table :postgres db {:name "birds"}))))
 
         (testing "check that when syncing the DB the enum types get recorded appropriately"
@@ -1154,3 +1165,23 @@
               :sslkey
               absolute-path
               (str/ends-with? ".p12"))))))
+
+(deftest syncable-schemas-test
+  (mt/test-driver :postgres
+    (testing "`syncable-schemas` should return schemas that should be synced"
+      (mt/with-empty-db
+        (is (= #{"public"}
+               (driver/syncable-schemas driver/*driver* (mt/id))))))
+    (testing "metabase_cache schemas should be excluded"
+      (mt/dataset test-data
+        (mt/with-persistence-enabled [persist-models!]
+          (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
+            (mt/with-temp* [:model/Card [_ {:name "model"
+                                            :dataset true
+                                            :dataset_query (mt/mbql-query categories)
+                                            :database_id (mt/id)}]]
+              (persist-models!)
+              (is (some (partial re-matches #"metabase_cache(.*)")
+                        (map :schema_name (jdbc/query conn-spec "SELECT schema_name from INFORMATION_SCHEMA.SCHEMATA;"))))
+              (is (nil? (some (partial re-matches #"metabase_cache(.*)")
+                              (driver/syncable-schemas driver/*driver* (mt/id))))))))))))

@@ -15,6 +15,9 @@ import {
   NAV_SIDEBAR_WIDTH,
 } from "metabase/nav/constants";
 
+import { SAVING_DOM_IMAGE_CLASS } from "metabase/visualizations/lib/save-chart-image";
+import Dashcard from "../DashCard";
+
 // Class names are added here because we still use traditional css,
 // see dashboard.css
 export const DashboardLoadingAndErrorWrapper = styled(
@@ -94,7 +97,7 @@ export const ParametersWidgetContainer = styled(FullWidthContainer)`
   background-color: ${color("bg-light")};
   border-bottom: 1px solid ${color("bg-light")};
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   padding-top: ${space(2)};
   padding-bottom: ${space(1)};
   z-index: 3;
@@ -138,4 +141,13 @@ export const CardsContainer = styled(FullWidthContainer)`
     css`
       margin-top: ${space(2)};
     `}
+
+  &.${SAVING_DOM_IMAGE_CLASS} {
+    padding-bottom: 20px;
+
+    ${Dashcard.root} {
+      box-shadow: none;
+      border: 1px solid ${color("border")};
+    }
+  }
 `;

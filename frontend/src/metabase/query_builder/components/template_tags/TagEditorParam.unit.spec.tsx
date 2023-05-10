@@ -5,7 +5,7 @@ import {
   setupDatabasesEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
-import { createEntitiesState } from "__support__/store";
+import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
 import { TemplateTag } from "metabase-types/api";
 import {
@@ -36,7 +36,7 @@ const setup = ({ tag = createMockTemplateTag() }: SetupOpts = {}) => {
         dataset_query: createMockNativeDatasetQuery(),
       }),
     }),
-    entities: createEntitiesState({
+    entities: createMockEntitiesState({
       databases: [database],
     }),
   });

@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import { createSelector } from "reselect";
+import { createSelector } from "@reduxjs/toolkit";
 import { getMetadata } from "metabase/selectors/metadata";
 import { LOAD_COMPLETE_FAVICON } from "metabase/hoc/Favicon";
 
@@ -100,6 +100,20 @@ export const getDashboardComplete = createSelector(
         .map(id => dashcards[id])
         .filter(dc => !dc.isRemoved),
     },
+);
+
+// Auto-apply filters
+export const getDraftParameterValues = state =>
+  state.dashboard.draftParameterValues;
+export const getIsAutoApplyFilters = createSelector(
+  [getDashboard],
+  dashboard => dashboard.auto_apply_filters,
+);
+export const getHasUnappliedParameterValues = createSelector(
+  [getParameterValues, getDraftParameterValues],
+  (parameterValues, draftParameterValues) => {
+    return !_.isEqual(draftParameterValues, parameterValues);
+  },
 );
 
 export const getDocumentTitle = state =>

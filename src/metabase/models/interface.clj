@@ -1,8 +1,6 @@
 (ns metabase.models.interface
   (:require
    [buddy.core.codecs :as codecs]
-   [camel-snake-kebab.core :as csk]
-   [camel-snake-kebab.internals.macros :as csk.macros]
    [cheshire.core :as json]
    [cheshire.generate :as json.generate]
    [clojure.core.memoize :as memoize]
@@ -447,10 +445,6 @@
 
 (methodical/prefer-method! #'t2.before-insert/before-insert :hook/timestamped? :hook/entity-id)
 
-;;; define a custom CSK conversion function so we don't run into problems if the system locale is Turkish
-(declare ^:private ->kebab-case-en) ; so Kondo doesn't complain
-(csk.macros/defconversion "kebab-case-en" u/lower-case-en u/lower-case-en "-")
-
 (methodical/defmethod t2.model/resolve-model :before :default
   "Ensure the namespace for given model is loaded.
   This is a safety mechanism as we moving to toucan2 and we don't need to require the model namespaces in order to use it."
@@ -460,7 +454,7 @@
              ;; don't try to require if it's already registered as a :metabase/model; this way ones defined in EE
              ;; namespaces won't break if they are loaded in some other way.
              (not (isa? x :metabase/model)))
-    (let [model-namespace (str "metabase.models." (->kebab-case-en (name x)))]
+    (let [model-namespace (str "metabase.models." (u/->kebab-case-en (name x)))]
       ;; use `classloader/require` which is thread-safe and plays nice with our plugins system
       (classloader/require model-namespace)))
   x)
@@ -693,4 +687,4 @@
 (methodical/defmethod t2.hydrate/fk-keys-for-automagic-hydration :default
   "In Metabase the FK key used for automagic hydration should use underscores (work around upstream Toucan 2 issue)."
   [_original-model dest-key _hydrated-key]
-  [(csk/->snake_case (keyword (str (name dest-key) "_id")))])
+  [(u/->snake_case_en (keyword (str (name dest-key) "_id")))])

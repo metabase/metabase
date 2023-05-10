@@ -1,10 +1,20 @@
 import React from "react";
 import userEvent from "@testing-library/user-event";
+
 import { render, screen, getIcon, queryIcon } from "__support__/ui";
-import { ORDERS, PRODUCTS } from "__support__/sample_database_fixture";
-import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
-import { createMockNotebookStep, DEFAULT_LEGACY_QUERY } from "../../test-utils";
+
+import * as Lib from "metabase-lib";
+import { createQuery } from "metabase-lib/test-helpers";
+
+import { createMockNotebookStep } from "../../test-utils";
 import SortStep from "./SortStep";
+
+function createQueryWithOrderBy(direction: Lib.OrderByDirection = "asc") {
+  const initialQuery = createQuery();
+  const [column] = Lib.orderableColumns(initialQuery);
+  const query = Lib.orderBy(initialQuery, column, direction);
+  return { query, columnInfo: Lib.displayInfo(query, column) };
+}
 
 function setup(step = createMockNotebookStep()) {
   const updateQuery = jest.fn();
@@ -23,96 +33,110 @@ function setup(step = createMockNotebookStep()) {
 
   function getNextQuery() {
     const [lastCall] = updateQuery.mock.calls.slice(-1);
-    return lastCall[0] as StructuredQuery;
+    return lastCall[0];
   }
 
-  return { getNextQuery, updateQuery };
+  function gerRecentOrderByClause() {
+    const query = getNextQuery();
+    const clause = Lib.orderBys(query)[0];
+    return Lib.displayInfo(query, clause);
+  }
+
+  return { getNextQuery, gerRecentOrderByClause, updateQuery };
 }
 
 describe("SortStep", () => {
-  it("should render correctly without a sort", () => {
+  it("should render correctly without an order by", () => {
     setup();
     expect(getIcon("add")).toBeInTheDocument();
     expect(queryIcon("arrow_up")).not.toBeInTheDocument();
     expect(queryIcon("arrow_down")).not.toBeInTheDocument();
   });
 
-  it("should render correctly with asc sort set", () => {
-    const [field] = ORDERS.fields;
-    const query = DEFAULT_LEGACY_QUERY.sort(["asc", field.reference()]);
-    setup(createMockNotebookStep({ query }));
+  it("should render correctly with ascending order by", () => {
+    const { query, columnInfo } = createQueryWithOrderBy();
 
-    expect(screen.getByText(field.displayName())).toBeInTheDocument();
+    setup(createMockNotebookStep({ topLevelQuery: query }));
+
+    expect(screen.getByText(columnInfo.displayName)).toBeInTheDocument();
     expect(getIcon("arrow_up")).toBeInTheDocument();
     expect(queryIcon("arrow_down")).not.toBeInTheDocument();
   });
 
-  it("should render correctly with desc sort set", () => {
-    const [field] = ORDERS.fields;
-    const query = DEFAULT_LEGACY_QUERY.sort(["desc", field.reference()]);
-    setup(createMockNotebookStep({ query }));
+  it("should render correctly with descending order by", () => {
+    const { query, columnInfo } = createQueryWithOrderBy("desc");
 
-    expect(screen.getByText(field.displayName())).toBeInTheDocument();
+    setup(createMockNotebookStep({ topLevelQuery: query }));
+
+    expect(screen.getByText(columnInfo.displayName)).toBeInTheDocument();
     expect(getIcon("arrow_down")).toBeInTheDocument();
     expect(queryIcon("arrow_up")).not.toBeInTheDocument();
   });
 
-  it("should display sortable columns", () => {
+  it("should display orderable columns", () => {
     setup();
 
     userEvent.click(getIcon("add"));
 
-    expect(screen.getByText(ORDERS.objectName())).toBeInTheDocument();
-    expect(screen.getByText(PRODUCTS.objectName())).toBeInTheDocument();
+    // Tables
+    expect(screen.getByText("Order")).toBeInTheDocument();
+    expect(screen.getByText("Product")).toBeInTheDocument();
     expect(screen.getByText("User")).toBeInTheDocument();
-    ORDERS.fields.forEach(field =>
-      expect(screen.getByText(field.displayName())).toBeInTheDocument(),
-    );
+    // Order columns
+    expect(screen.getByRole("option", { name: "ID" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "User ID" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Total" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("option", { name: "Created At" }),
+    ).toBeInTheDocument();
   });
 
-  it("should add a sort", () => {
-    const { getNextQuery } = setup();
+  it("should add an order by", () => {
+    const { gerRecentOrderByClause } = setup();
 
     userEvent.click(getIcon("add"));
     userEvent.click(screen.getByText("Created At"));
 
-    const [sort] = getNextQuery().sorts();
-    const [direction] = sort.raw();
-    expect(sort.dimension().displayName()).toBe("Created At");
-    expect(direction).toBe("asc");
+    const orderBy = gerRecentOrderByClause();
+    expect(orderBy.displayName).toBe("Created At");
+    expect(orderBy.direction).toBe("asc");
   });
 
-  it("should toggle sort direction", () => {
-    const [field] = ORDERS.fields;
-    const query = DEFAULT_LEGACY_QUERY.sort(["asc", field.reference()]);
-    const { getNextQuery } = setup(createMockNotebookStep({ query }));
+  it("should toggle an order by direction", () => {
+    const { query, columnInfo } = createQueryWithOrderBy();
+    const { gerRecentOrderByClause } = setup(
+      createMockNotebookStep({ topLevelQuery: query }),
+    );
 
     userEvent.click(screen.getByLabelText("Change direction"));
 
-    const [sort] = getNextQuery().sorts();
-    const [direction] = sort.raw();
-    expect(direction).toBe("desc");
+    const orderBy = gerRecentOrderByClause();
+    expect(orderBy.direction).toBe("desc");
+    expect(orderBy.displayName).toBe(columnInfo.displayName);
   });
 
-  it("should change sorting field", () => {
-    const [field] = ORDERS.fields;
-    const query = DEFAULT_LEGACY_QUERY.sort(["asc", field.reference()]);
-    const { getNextQuery } = setup(createMockNotebookStep({ query }));
+  it("should change ordered field", () => {
+    const { query, columnInfo } = createQueryWithOrderBy();
+    const { gerRecentOrderByClause } = setup(
+      createMockNotebookStep({ topLevelQuery: query }),
+    );
 
-    userEvent.click(screen.getByText(field.displayName()));
+    userEvent.click(screen.getByText(columnInfo.displayName));
     userEvent.click(screen.getByText("Created At"));
 
-    const [sort] = getNextQuery().sorts();
-    expect(sort.dimension().displayName()).toBe("Created At");
+    const orderBy = gerRecentOrderByClause();
+    expect(orderBy.displayName).toBe("Created At");
   });
 
-  it("should remove sorting", () => {
-    const [field] = ORDERS.fields;
-    const query = DEFAULT_LEGACY_QUERY.sort(["asc", field.reference()]);
-    const { getNextQuery } = setup(createMockNotebookStep({ query }));
+  it("should remove an order by", () => {
+    const { query } = createQueryWithOrderBy();
+    const { getNextQuery } = setup(
+      createMockNotebookStep({ topLevelQuery: query }),
+    );
 
     userEvent.click(getIcon("close"));
 
-    expect(getNextQuery().sorts()).toHaveLength(0);
+    const nextQuery = getNextQuery();
+    expect(Lib.orderBys(nextQuery)).toHaveLength(0);
   });
 });

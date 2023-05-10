@@ -3,9 +3,8 @@ import {
   PRODUCTS,
   SAMPLE_DATABASE,
 } from "__support__/sample_database_fixture";
-import { ParameterDimensionTarget } from "metabase-types/types/Parameter";
 import { isDimensionTarget } from "metabase-types/guards";
-import type { Card } from "metabase-types/api";
+import type { Card, ParameterDimensionTarget } from "metabase-types/api";
 import Database from "metabase-lib/metadata/Database";
 import {
   getParameterTargetField,

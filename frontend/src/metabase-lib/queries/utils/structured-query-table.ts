@@ -1,4 +1,4 @@
-import type { Field as FieldRef } from "metabase-types/types/Query";
+import type { FieldReference } from "metabase-types/api";
 import { isVirtualCardId } from "metabase-lib/metadata/utils/saved-questions";
 import type Field from "metabase-lib/metadata/Field";
 import type Table from "metabase-lib/metadata/Table";
@@ -39,7 +39,7 @@ function getFieldsForSourceQueryTable(
   const metadata = originalQuery.metadata();
   return sourceQuery.columns().map(column => {
     // Not sure why we build out `id` like this, but it's what the old code did
-    const id: FieldRef = [
+    const id: FieldReference = [
       "field",
       column.name,
       {

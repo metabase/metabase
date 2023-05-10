@@ -91,7 +91,7 @@
 (defn ^:export legacy-query
   "Coerce a CLJS pMBQL query back to (1) a legacy query (2) in vanilla JS."
   [query-map]
-  (-> query-map convert/->legacy-MBQL fix-namespaced-values clj->js))
+  (-> query-map convert/->legacy-MBQL fix-namespaced-values (clj->js :keyword-fn u/qualified-name)))
 
 (defn ^:export orderable-columns
   "Return a sequence of Column metadatas about the columns you can add order bys for in a given stage of `a-query.` To
@@ -103,11 +103,14 @@
 
 (defn ^:export display-info
   "Given an opaque Cljs object, return a plain JS object with info you'd need to implement UI for it.
-  See `:metabase.lib.metadata.calculation/display-info` for the keys this might contain."
+  See `:metabase.lib.metadata.calculation/display-info` for the keys this might contain. Note that the JS versions of
+  the keys are converted to the equivalent `camelCase` strings from the original `:kebab-case`."
   ([a-query x]
    (display-info a-query -1 x))
   ([a-query stage-number x]
    (-> (lib.core/display-info a-query stage-number x)
+       (update-keys u/->camelCaseEn)
+       (update :table update-keys u/->camelCaseEn)
        (clj->js :keyword-fn u/qualified-name))))
 
 (defn ^:export order-by-clause
@@ -140,6 +143,30 @@
   "Flip the direction of `current-order-by` in `a-query`."
   [a-query current-order-by]
   (lib.core/change-direction a-query current-order-by))
+
+(defn ^:export breakoutable-columns
+  "Return an array of Column metadatas about the columns that can be broken out by in a given stage of `a-query.`
+  To break out by a given column, the corresponding element of the result has to be added to the query using
+  [[breakout]]."
+  ([a-query]
+   (breakoutable-columns a-query -1))
+  ([a-query stage-number]
+   (to-array (lib.core/breakoutable-columns a-query stage-number))))
+
+(defn ^:export breakouts
+  "Get the breakout clauses (as an array of opaque objects) in `a-query` at a given `stage-number`.
+  Returns an empty array if there are no order bys in the query."
+  ([a-query]
+   (breakouts a-query -1))
+  ([a-query stage-number]
+   (to-array (lib.core/breakouts a-query stage-number))))
+
+(defn ^:export breakout
+  "Add an `order-by` clause to `a-query`. Returns updated query."
+  ([a-query x]
+   (breakout a-query -1 x))
+  ([a-query stage-number x]
+   (lib.core/breakout a-query stage-number (lib.core/ref x))))
 
 (defn ^:export remove-clause
   "Removes the `target-clause` in the filter of the `query`."
@@ -219,3 +246,23 @@
   "Get the columns associated with a column group"
   [column-group]
   (to-array (lib.core/columns-group-columns column-group)))
+
+(defn ^:export describe-temporal-unit
+  "Get a translated description of a temporal bucketing unit."
+  [n unit]
+  (let [unit (if (string? unit) (keyword unit) unit)]
+    (lib.core/describe-temporal-unit n unit)))
+
+(defn ^:export describe-temporal-interval
+  "Get a translated description of a temporal bucketing interval."
+  [n unit]
+  (let [n    (if (string? n) (keyword n) n)
+        unit (if (string? unit) (keyword unit) unit)]
+    (lib.core/describe-temporal-interval n unit)))
+
+(defn ^:export describe-relative-datetime
+  "Get a translated description of a relative datetime interval."
+  [n unit]
+  (let [n    (if (string? n) (keyword n) n)
+        unit (if (string? unit) (keyword unit) unit)]
+      (lib.core/describe-relative-datetime n unit)))

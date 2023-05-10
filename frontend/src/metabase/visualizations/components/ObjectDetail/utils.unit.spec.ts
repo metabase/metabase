@@ -5,11 +5,19 @@ import {
   PRODUCTS,
 } from "__support__/sample_database_fixture";
 
-import type { DatetimeUnit } from "metabase-types/api";
-import { Card } from "metabase-types/types/Card";
+import { Card } from "metabase-types/api";
+import {
+  createMockColumn,
+  createMockDatasetData,
+} from "metabase-types/api/mocks";
 import Question from "metabase-lib/Question";
 
-import { getObjectName, getDisplayId, getIdValue } from "./utils";
+import {
+  getObjectName,
+  getDisplayId,
+  getIdValue,
+  getSinglePKIndex,
+} from "./utils";
 
 const card = {
   id: 1,
@@ -27,57 +35,51 @@ const card = {
 } as Card;
 
 describe("ObjectDetail utils", () => {
-  const productIdCol = {
+  const productIdCol = createMockColumn({
     name: "product_id",
     display_name: "Product ID",
     base_type: "int",
     effective_type: "int",
     semantic_type: "type/PK",
     table_id: PRODUCTS.id,
-  };
-  const idCol = {
+  });
+
+  const idCol = createMockColumn({
     name: "id",
     display_name: "ID",
     base_type: "int",
     effective_type: "int",
     semantic_type: "type/PK",
     table_id: ORDERS.id,
-  };
-  const remappedIdCol = {
-    name: "id",
-    display_name: "ID",
-    base_type: "int",
-    effective_type: "int",
-    semantic_type: "type/PK",
-    table_id: ORDERS.id,
-    hasRemappedValue: () => true,
-    remappedValue: () => "fooBar",
-  };
-  const qtyCol = {
+  });
+
+  const qtyCol = createMockColumn({
     name: "qty",
     display_name: "qty",
     base_type: "int",
     effective_type: "int",
     semantic_type: "type/int",
     table_id: ORDERS.id,
-  };
-  const nameCol = {
+  });
+
+  const nameCol = createMockColumn({
     name: "id",
     display_name: "ID",
     base_type: "string",
     effective_type: "string",
     semantic_type: "type/Name",
     table_id: ORDERS.id,
-  };
-  const dateCol = {
+  });
+
+  const dateCol = createMockColumn({
     name: "date",
     display_name: "Date",
     base_type: "type/DateTime",
     effective_type: "type/DateTime",
     semantic_type: "type/DateTime",
     table_id: ORDERS.id,
-    unit: "default" as DatetimeUnit,
-  };
+    unit: "default",
+  });
 
   describe("getObjectName", () => {
     const question = new Question(card, metadata);
@@ -166,22 +168,6 @@ describe("ObjectDetail utils", () => {
       expect(id).toBe("33");
     });
 
-    it("should format the id value per column remapping settings", () => {
-      const id = getDisplayId({
-        cols: [remappedIdCol, qtyCol, nameCol],
-        zoomedRow: [11, 33, "Giant Sprocket"],
-        tableId: ORDERS.id,
-        settings: {
-          column: () => ({
-            remap: true,
-            column: remappedIdCol,
-          }),
-        },
-      });
-
-      expect(id).toBe("fooBar");
-    });
-
     it("should format a date value per column remapping settings", () => {
       const id = getDisplayId({
         cols: [dateCol, qtyCol],
@@ -207,17 +193,35 @@ describe("ObjectDetail utils", () => {
     // this code should no longer be reachable now that we always reach object detail by zooming
     it("should return the primary key of the first row if now zoomed row id exists", () => {
       const id = getIdValue({
-        data: {
+        data: createMockDatasetData({
           cols: [productIdCol, idCol, qtyCol, nameCol],
           rows: [
             [11, 22, 33, "Giant Sprocket"],
             [33, 44, 55, "Tiny Sprocket"],
           ],
-        },
+        }),
         tableId: ORDERS.id,
       });
 
       expect(id).toBe(22);
+    });
+  });
+
+  describe("getSinglePKIndex", () => {
+    it("should return the index of the single PK column", () => {
+      expect(getSinglePKIndex([idCol, qtyCol, nameCol])).toBe(0);
+      expect(getSinglePKIndex([qtyCol, idCol, nameCol])).toBe(1);
+      expect(getSinglePKIndex([qtyCol, nameCol, idCol])).toBe(2);
+    });
+
+    it("should return undefined if there are multiple PKs", () => {
+      expect(getSinglePKIndex([idCol, productIdCol, qtyCol, nameCol])).toBe(
+        undefined,
+      );
+    });
+
+    it("should return undefined if there are no PKs", () => {
+      expect(getSinglePKIndex([qtyCol, nameCol])).toBe(undefined);
     });
   });
 });

@@ -30,6 +30,9 @@ import {
   toggleSidebar,
 } from "metabase/dashboard/actions";
 
+import { hasDatabaseActionsEnabled } from "metabase/dashboard/utils";
+import { saveDashboardPdf } from "metabase/visualizations/lib/save-dashboard-pdf";
+
 import Header from "../components/DashboardHeader";
 import { SIDEBAR_NAME } from "../constants";
 import {
@@ -58,7 +61,6 @@ const mapDispatchToProps = {
 class DashboardHeader extends Component {
   constructor(props) {
     super(props);
-
     this.addQuestionModal = React.createRef();
     this.handleToggleBookmark = this.handleToggleBookmark.bind(this);
   }
@@ -97,10 +99,15 @@ class DashboardHeader extends Component {
     onChangeLocation: PropTypes.func.isRequired,
 
     toggleSidebar: PropTypes.func.isRequired,
-    sidebar: PropTypes.string.isRequired,
+    sidebar: PropTypes.shape({
+      name: PropTypes.string,
+      props: PropTypes.object,
+    }).isRequired,
     setSidebar: PropTypes.func.isRequired,
     closeSidebar: PropTypes.func.isRequired,
     addActionToDashboard: PropTypes.func.isRequired,
+
+    databases: PropTypes.object,
   };
 
   handleEdit(dashboard) {
@@ -209,9 +216,14 @@ class DashboardHeader extends Component {
       toggleSidebar,
       isShowingDashboardInfoSidebar,
       closeSidebar,
+      databases,
     } = this.props;
 
     const canEdit = dashboard.can_write && isEditable && !!dashboard;
+
+    const hasModelActionsEnabled = Object.values(databases).some(
+      hasDatabaseActionsEnabled,
+    );
 
     const buttons = [];
     const extraButtons = [];
@@ -297,7 +309,7 @@ class DashboardHeader extends Component {
         </span>,
       );
 
-      if (canEdit) {
+      if (canEdit && hasModelActionsEnabled) {
         buttons.push(
           <>
             <DashboardHeaderActionDivider />
@@ -351,6 +363,14 @@ class DashboardHeader extends Component {
         event: "Dashboard;Copy",
       });
 
+      extraButtons.push({
+        title: t`Export as PDF`,
+        icon: "png",
+        action: () => {
+          this.saveAsImage();
+        },
+      });
+
       if (canEdit) {
         extraButtons.push({
           title: t`Move`,
@@ -394,6 +414,7 @@ class DashboardHeader extends Component {
           </Tooltip>,
           <EntityMenu
             key="dashboard-action-menu-button"
+            triggerAriaLabel="dashboard-menu-button"
             items={extraButtons}
             triggerIcon="ellipsis"
             tooltip={t`Move, archive, and more...`}
@@ -404,6 +425,12 @@ class DashboardHeader extends Component {
 
     return buttons;
   }
+
+  saveAsImage = async () => {
+    const { dashboard } = this.props;
+    const cardNodeSelector = "#Dashboard-Cards-Container";
+    await saveDashboardPdf(cardNodeSelector, dashboard.name);
+  };
 
   render() {
     const {
