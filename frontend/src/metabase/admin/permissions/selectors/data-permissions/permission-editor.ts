@@ -9,7 +9,12 @@ import Groups from "metabase/entities/groups";
 import Tables from "metabase/entities/tables";
 
 import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";
-import { Database, Group, GroupsPermissions, Table } from "metabase-types/api";
+import {
+  DatabaseId,
+  Group,
+  GroupsPermissions,
+  TableId,
+} from "metabase-types/api";
 import { State } from "metabase-types/store";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import Schema from "metabase-lib/metadata/Schema";
@@ -266,9 +271,9 @@ type DataPermissionEditorEntity = {
   name: Group["name"];
   hint: string | null;
   entityId: {
-    databaseId?: Database["id"];
+    databaseId?: DatabaseId;
     schemaName?: Schema["name"];
-    tableId?: Table["id"];
+    tableId?: TableId;
   };
   permissions?: PermissionSectionConfig[];
 };

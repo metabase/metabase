@@ -4,20 +4,22 @@ import { jt, t } from "ttag";
 import { connect } from "react-redux";
 import _ from "underscore";
 
-import Database from "metabase/entities/databases";
+import Databases from "metabase/entities/databases";
 import Schemas from "metabase/entities/schemas";
 
 import { getSetting } from "metabase/selectors/settings";
 import { updateSettings } from "metabase/admin/settings/settings";
 
 import type { State } from "metabase-types/store";
-import type { Schema, Database as DatabaseType } from "metabase-types/api";
+import type { Schema } from "metabase-types/api";
 
 import Link from "metabase/core/components/Link";
 import Select, { SelectChangeEvent } from "metabase/core/components/Select";
 import Input from "metabase/core/components/Input";
 import ActionButton from "metabase/components/ActionButton";
 import EmptyState from "metabase/components/EmptyState/EmptyState";
+
+import Database from "metabase-lib/metadata/Database";
 
 import SettingHeader from "../SettingHeader";
 import {
@@ -33,7 +35,7 @@ const enableErrorMessage = t`There was a problem enabling uploads. Please try ag
 const disableErrorMessage = t`There was a problem disabling uploads. Please try again shortly.`;
 
 export interface UploadSettingProps {
-  databases: DatabaseType[];
+  databases: Database[];
   settings: {
     uploads_enabled: boolean;
     uploads_database_id: number | null;
@@ -275,6 +277,6 @@ export function UploadSettingsView({
 }
 
 export const UploadSettings = _.compose(
-  Database.loadList(),
+  Databases.loadList(),
   connect(mapStateToProps, mapDispatchToProps),
 )(UploadSettingsView);
