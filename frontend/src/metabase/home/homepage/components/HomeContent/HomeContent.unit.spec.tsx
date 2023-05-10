@@ -1,12 +1,17 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { checkNotNull } from "metabase/core/utils/types";
+import { getMetadata } from "metabase/selectors/metadata";
+import { Database, PopularItem, RecentItem, User } from "metabase-types/api";
 import {
   createMockDatabase,
   createMockPopularItem,
   createMockRecentItem,
   createMockUser,
 } from "metabase-types/api/mocks";
-import HomeContent, { HomeContentProps } from "./HomeContent";
+import { createMockState } from "metabase-types/store/mocks";
+import { createMockEntitiesState } from "__support__/store";
+import { renderWithProviders, screen } from "__support__/ui";
+import HomeContent from "./HomeContent";
 
 const PopularSectionMock = () => <div>PopularSection</div>;
 jest.mock("../HomePopularSection", () => PopularSectionMock);
@@ -16,6 +21,40 @@ jest.mock("../HomeRecentSection", () => RecentSectionMock);
 
 const XraySectionMock = () => <div>XraySection</div>;
 jest.mock("../../containers/HomeXraySection", () => XraySectionMock);
+
+interface SetupOpts {
+  user: User;
+  databases?: Database[];
+  recentItems?: RecentItem[];
+  popularItems?: PopularItem[];
+  isXrayEnabled?: boolean;
+}
+
+const setup = ({
+  user,
+  databases,
+  recentItems,
+  popularItems,
+  isXrayEnabled = true,
+}: SetupOpts) => {
+  const state = createMockState({
+    entities: createMockEntitiesState({ databases }),
+  });
+  const metadata = getMetadata(state);
+
+  renderWithProviders(
+    <HomeContent
+      user={user}
+      databases={databases?.map(({ id }) =>
+        checkNotNull(metadata.database(id)),
+      )}
+      recentItems={recentItems}
+      popularItems={popularItems}
+      isXrayEnabled={isXrayEnabled}
+    />,
+    { storeInitialState: state },
+  );
+};
 
 describe("HomeContent", () => {
   beforeEach(() => {
@@ -28,7 +67,7 @@ describe("HomeContent", () => {
   });
 
   it("should render popular items for a new user", () => {
-    const props = getProps({
+    setup({
       user: createMockUser({
         is_installer: false,
         has_question_and_dashboard: true,
@@ -39,13 +78,11 @@ describe("HomeContent", () => {
       popularItems: [createMockPopularItem()],
     });
 
-    render(<HomeContent {...props} />);
-
     expect(screen.getByText("PopularSection")).toBeInTheDocument();
   });
 
   it("should render popular items for a user without recent items", () => {
-    const props = getProps({
+    setup({
       user: createMockUser({
         is_installer: false,
         has_question_and_dashboard: true,
@@ -56,13 +93,11 @@ describe("HomeContent", () => {
       popularItems: [createMockPopularItem()],
     });
 
-    render(<HomeContent {...props} />);
-
     expect(screen.getByText("PopularSection")).toBeInTheDocument();
   });
 
   it("should render recent items for an existing user", () => {
-    const props = getProps({
+    setup({
       user: createMockUser({
         is_installer: false,
         has_question_and_dashboard: true,
@@ -72,13 +107,11 @@ describe("HomeContent", () => {
       recentItems: [createMockRecentItem()],
     });
 
-    render(<HomeContent {...props} />);
-
     expect(screen.getByText("RecentSection")).toBeInTheDocument();
   });
 
   it("should render x-rays for an installer after the setup", () => {
-    const props = getProps({
+    setup({
       user: createMockUser({
         is_installer: true,
         has_question_and_dashboard: false,
@@ -88,13 +121,11 @@ describe("HomeContent", () => {
       recentItems: [],
     });
 
-    render(<HomeContent {...props} />);
-
     expect(screen.getByText("XraySection")).toBeInTheDocument();
   });
 
   it("should render x-rays for the installer when there is no question and dashboard", () => {
-    const props = getProps({
+    setup({
       user: createMockUser({
         is_installer: true,
         has_question_and_dashboard: false,
@@ -104,13 +135,11 @@ describe("HomeContent", () => {
       recentItems: [createMockRecentItem()],
     });
 
-    render(<HomeContent {...props} />);
-
     expect(screen.getByText("XraySection")).toBeInTheDocument();
   });
 
   it("should not render x-rays for the installer when there is no question and dashboard if the x-rays feature is disabled", () => {
-    const props = getProps({
+    setup({
       user: createMockUser({
         is_installer: true,
         has_question_and_dashboard: false,
@@ -121,13 +150,11 @@ describe("HomeContent", () => {
       isXrayEnabled: false,
     });
 
-    render(<HomeContent {...props} />);
-
     expect(screen.queryByText("XraySection")).not.toBeInTheDocument();
   });
 
   it("should render nothing if there are no databases", () => {
-    const props = getProps({
+    setup({
       user: createMockUser({
         is_installer: true,
         has_question_and_dashboard: false,
@@ -137,13 +164,11 @@ describe("HomeContent", () => {
       recentItems: [],
     });
 
-    render(<HomeContent {...props} />);
-
     expect(screen.queryByText("XraySection")).not.toBeInTheDocument();
   });
 
   it("should render loading state if there is not enough data to choose a section", () => {
-    const props = getProps({
+    setup({
       user: createMockUser({
         is_installer: true,
         has_question_and_dashboard: false,
@@ -152,17 +177,6 @@ describe("HomeContent", () => {
       databases: undefined,
     });
 
-    render(<HomeContent {...props} />);
-
     expect(screen.getByText("Loading...")).toBeInTheDocument();
   });
-});
-
-const getProps = (opts?: Partial<HomeContentProps>): HomeContentProps => ({
-  user: createMockUser(),
-  databases: [],
-  recentItems: [],
-  popularItems: [],
-  isXrayEnabled: true,
-  ...opts,
 });
