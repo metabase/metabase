@@ -15,8 +15,9 @@ import {
   getHasDatabaseWithActionsEnabled,
 } from "metabase/selectors/data";
 
-import type { Database, CollectionItem } from "metabase-types/api";
+import type { CollectionItem } from "metabase-types/api";
 import type { State } from "metabase-types/store";
+import Database from "metabase-lib/metadata/Database";
 
 interface MenuDatabaseProps {
   databases?: Database[];

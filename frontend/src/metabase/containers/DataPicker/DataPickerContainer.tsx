@@ -9,8 +9,9 @@ import { getSetting } from "metabase/selectors/settings";
 import Databases from "metabase/entities/databases";
 import Search from "metabase/entities/search";
 
-import type { Database, DatabaseId } from "metabase-types/api";
+import type { DatabaseId } from "metabase-types/api";
 import type { State } from "metabase-types/store";
+import Database from "metabase-lib/metadata/Database";
 
 import {
   getRootCollectionVirtualSchemaId,
