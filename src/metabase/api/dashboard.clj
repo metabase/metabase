@@ -671,7 +671,7 @@
    cards        (ms/maps-with-unique-key [:sequential UpdatedDashboardCard] :id)
    ;; ordered_tabs should be required in production, making it optional because lots of
    ;; e2e tests curerntly doesn't include it
-   ordered_tabs [:maybe [:maybe (ms/maps-with-unique-key [:sequential UpdatedDashboardTab] :id)]]}
+   ordered_tabs [:maybe (ms/maps-with-unique-key [:sequential UpdatedDashboardTab] :id)]}
   (let [dashboard (-> (api/write-check Dashboard id)
                       api/check-not-archived
                       (t2/hydrate [:ordered_cards :series :card] :ordered_tabs))
