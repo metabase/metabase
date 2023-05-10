@@ -12,7 +12,6 @@
    [metabase.api.common.validation :as validation]
    [metabase.api.dataset :as api.dataset]
    [metabase.api.field :as api.field]
-   [metabase.api.timeline :as api.timeline]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.email.messages :as messages]
@@ -20,13 +19,7 @@
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.util :as mbql.u]
    [metabase.models
-    :refer [Card
-            CardBookmark
-            Collection
-            Database
-            PersistedInfo
-            Pulse
-            Table
+    :refer [Card CardBookmark Collection Database PersistedInfo Pulse Table
             ViewLog]]
    [metabase.models.card :as card]
    [metabase.models.collection :as collection]
@@ -156,19 +149,18 @@
 
 ;;; -------------------------------------------- Fetching a Card or Cards --------------------------------------------
 
-(def ^:private CardFilterOption
-  "Schema for a valid card filter option."
-  (apply s/enum (map name (keys (methods cards-for-filter-option*)))))
+(def ^:private card-filter-options
+  "a valid card filter option."
+  (map name (keys (methods cards-for-filter-option*))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/"
+(api/defendpoint GET "/"
   "Get all the Cards. Option filter param `f` can be used to change the set of Cards that are returned; default is
   `all`, but other options include `mine`, `bookmarked`, `database`, `table`, `recent`, `popular`, :using_model
   and `archived`. See corresponding implementation functions above for the specific behavior of each filter
   option. :card_index:"
   [f model_id]
-  {f        (s/maybe CardFilterOption)
-   model_id (s/maybe su/IntGreaterThanZero)}
+  {f        [:maybe (into [:enum] card-filter-options)]
+   model_id [:maybe ms/PositiveInt]}
   (let [f (keyword f)]
     (when (contains? #{:database :table :using_model} f)
       (api/checkp (integer? model_id) "model_id" (format "model_id is a required parameter when filter mode is '%s'"
@@ -189,6 +181,8 @@
 (api/defendpoint GET "/:id"
   "Get `Card` with ID."
   [id ignore_view]
+  {id ms/PositiveInt
+   ignore_view [:maybe :boolean]}
   (let [raw-card (t2/select-one Card :id id)
         card (-> raw-card
                  (hydrate :creator
@@ -203,13 +197,14 @@
                  api/read-check
                  (last-edit/with-last-edit-info :card))]
     (u/prog1 card
-      (when-not (Boolean/parseBoolean ignore_view)
+      (when-not ignore_view
         (events/publish-event! :card-read (assoc <> :actor_id api/*current-user-id*))))))
 
 (api/defendpoint GET "/:id/timelines"
   "Get the timelines for card with ID. Looks up the collection the card is in and uses that."
   [id include start end]
-  {include [:maybe [:= "events"]]
+  {id      ms/PositiveInt
+   include [:maybe [:= "events"]]
    start   [:maybe ms/TemporalString]
    end     [:maybe ms/TemporalString]}
   (let [{:keys [collection_id] :as _card} (api/read-check Card id)]
@@ -662,6 +657,7 @@ saved later when it is ready."
 (api/defendpoint DELETE "/:id"
   "Delete a Card. (DEPRECATED -- don't delete a Card anymore -- archive it instead.)"
   [id]
+  {id ms/PositiveInt}
   (log/warn (tru "DELETE /api/card/:id is deprecated. Instead, change its `archived` value via PUT /api/card/:id."))
   (let [card (api/write-check Card id)]
     (t2/delete! Card :id id)
@@ -754,7 +750,8 @@ saved later when it is ready."
 (api/defendpoint POST "/:card-id/query"
   "Run the query associated with a Card."
   [card-id :as {{:keys [parameters ignore_cache dashboard_id collection_preview], :or {ignore_cache false dashboard_id nil}} :body}]
-  {ignore_cache       [:maybe :boolean]
+  {card-id            ms/PositiveInt
+   ignore_cache       [:maybe :boolean]
    collection_preview [:maybe :boolean]
    dashboard_id       [:maybe ms/PositiveInt]}
   ;; TODO -- we should probably warn if you pass `dashboard_id`, and tell you to use the new
@@ -776,7 +773,8 @@ saved later when it is ready."
   `parameters` should be passed as query parameter encoded as a serialized JSON string (this is because this endpoint
   is normally used to power 'Download Results' buttons that use HTML `form` actions)."
   [card-id export-format :as {{:keys [parameters]} :params}]
-  {parameters    [:maybe ms/JSONString]
+  {card-id       ms/PositiveInt
+   parameters    [:maybe ms/JSONString]
    export-format (into [:enum] api.dataset/export-formats)}
   (qp.card/run-query-for-card-async
    card-id export-format
@@ -796,6 +794,7 @@ saved later when it is ready."
   already been shared, it will return the existing public link rather than creating a new one.)  Public sharing must
   be enabled."
   [card-id]
+  {card-id ms/PositiveInt}
   (validation/check-has-application-permission :setting)
   (validation/check-public-sharing-enabled)
   (api/check-not-archived (api/read-check Card card-id))
@@ -848,7 +847,8 @@ saved later when it is ready."
   "Run the query associated with a Card."
   [card-id :as {{:keys [parameters ignore_cache]
                  :or   {ignore_cache false}} :body}]
-  {ignore_cache [:maybe :boolean]}
+  {card-id      ms/PositiveInt
+   ignore_cache [:maybe :boolean]}
   (qp.card/run-query-for-card-async card-id :api
                             :parameters parameters,
                             :qp-runner qp.pivot/run-pivot-query
@@ -962,6 +962,7 @@ saved later when it is ready."
   syncing and scanning the new data, and creating an appropriate model which is then returned. May throw validation or
   DB errors."
   [collection-id filename csv-file]
+  {collection-id ms/PositiveInt}
   (when (not (public-settings/uploads-enabled))
     (throw (Exception. "Uploads are not enabled.")))
   (collection/check-write-perms-for-collection collection-id)

@@ -261,9 +261,9 @@
 (defn- ->matching-regex
   "Note: this is called in a macro context, so it can potentially be passed a symbol that evaluates to a schema."
   [schema]
-  (let [schema-type (try (mc/type schema)
+  (let [schema-type (try (mc/type #_:clj-kondo/ignore (eval schema))
                          (catch clojure.lang.ExceptionInfo _
-                           (mc/type #_:clj-kondo/ignore (eval schema))))]
+                           (mc/type schema)))]
     [schema-type
      (condp = schema-type
        ;; can use any regex directly
@@ -275,10 +275,11 @@
        'int? #"-?[0-9]+"
        :uuid u/uuid-regex
        'uuid? u/uuid-regex
-       :enum (u.regex/rx (into [:or] (drop 1 schema)))
        nil)]))
 
-(def ^:private no-regex-schemas #{(mc/type ms/NonBlankString)})
+(def ^:private no-regex-schemas #{(mc/type ms/NonBlankString)
+                                  (mc/type (mc/schema [:maybe ms/PositiveInt]))
+                                  (mc/type [:enum "a" "b"])})
 
 (defn add-route-param-schema
   "Expand a `route` string like \"/:id\" into a Compojure route form with regexes to match parameters based on
@@ -340,13 +341,11 @@
    (mtx/string-transformer)
    (mtx/json-transformer)))
 
-(defn- extract-symbols [x]
+(defn- extract-symbols [in]
   (let [*symbols (atom [])]
     (walk/postwalk
-     (fn [x]
-       (when (symbol? x) (swap! *symbols conj x))
-       x)
-     x)
+     (fn [x] (when (symbol? x) (swap! *symbols conj x)) x)
+     in)
     @*symbols))
 
 (defn- mauto-let-form [arg->schema arg-symbol]

@@ -11,8 +11,6 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.malli.schema :as ms]
-   [metabase.util.schema :as su]
-   [schema.core :as s]
    [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2]))
 
@@ -73,7 +71,7 @@
                                                :events/start (when start (u.date/parse start))
                                                :events/end   (when end (u.date/parse end))}))))
 
-(api/defendpoint-schema PUT "/:id"
+(api/defendpoint PUT "/:id"
   "Update the [[Timeline]] with `id`. Returns the timeline without events. Archiving a timeline will archive all of the
   events in that timeline."
   [id :as {{:keys [name default description icon collection_id archived] :as timeline-updates} :body}]

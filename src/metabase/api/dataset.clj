@@ -84,7 +84,7 @@
 
 (def export-formats
   "Valid export formats for downloading query results."
-  (map u/qualified-name (qp.streaming/export-formats)))
+  (mapv u/qualified-name (qp.streaming/export-formats)))
 
 (def ExportFormat
   "Schema for valid export formats for downloading query results."
