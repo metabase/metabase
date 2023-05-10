@@ -1,6 +1,13 @@
-import { getMockModelCacheInfo } from "metabase-types/api/mocks/models";
-import { createMockDatabase } from "metabase-types/api/mocks/database";
-import { ORDERS, metadata } from "__support__/sample_database_fixture";
+import { createMockMetadata } from "__support__/metadata";
+import {
+  createMockDatabase,
+  getMockModelCacheInfo,
+} from "metabase-types/api/mocks";
+import {
+  createSampleDatabase,
+  ORDERS_ID,
+  SAMPLE_DB_ID,
+} from "metabase-types/api/mocks/presets";
 import Question from "metabase-lib/Question";
 import Database from "metabase-lib/metadata/Database";
 
@@ -13,11 +20,18 @@ import {
   getDatasetMetadataCompletenessPercentage,
 } from "metabase-lib/metadata/utils/models";
 
+const noNestedQueriesDB = createMockDatabase({
+  id: SAMPLE_DB_ID + 1,
+  features: [],
+});
+
+const metadata = createMockMetadata({
+  databases: [createSampleDatabase(), noNestedQueriesDB],
+});
+
 describe("data model utils", () => {
-  const DB_WITHOUT_NESTED_QUERIES_SUPPORT = new Database({
-    ...createMockDatabase(),
-    features: [],
-  });
+  const ordersTable = metadata.table(ORDERS_ID);
+  const DB_WITHOUT_NESTED_QUERIES_SUPPORT = new Database(noNestedQueriesDB);
 
   describe("checkCanBeModel", () => {
     const UNSUPPORTED_TEMPLATE_TAG_TYPES = [
@@ -29,12 +43,12 @@ describe("data model utils", () => {
 
     describe("structured queries", () => {
       it("returns true for regular questions", () => {
-        const question = ORDERS.question();
+        const question = ordersTable.question();
         expect(checkCanBeModel(question)).toBe(true);
       });
 
       it("returns false if database does not support nested queries", () => {
-        const question = ORDERS.question();
+        const question = ordersTable.question();
         question.query().database = () => DB_WITHOUT_NESTED_QUERIES_SUPPORT;
         expect(checkCanBeModel(question)).toBe(false);
       });
