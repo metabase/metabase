@@ -228,9 +228,9 @@
   [user]
   (let [enabled? (public-settings/custom-homepage)
         id       (public-settings/custom-homepage-dashboard)
-        can-read? (when (and enabled? id)
-                    (mi/can-read? Dashboard id))]
-    (assoc user :custom_homepage (when can-read?
+        dash     (t2/select-one Dashboard :id id)
+        valid?   (and enabled? id (some? dash) (not (:archived dash)) (mi/can-read? dash))]
+    (assoc user :custom_homepage (when valid?
                                    {:dashboard_id id}))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
