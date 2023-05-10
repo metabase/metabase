@@ -35,6 +35,7 @@ const mapDispatchToProps = {
 class NewModelOptions extends Component {
   componentDidMount() {
     const { location, push } = this.props;
+    this.collectionId = JSON.parse(atob(location.hash.slice(1))).collectionId;
     if (Object.keys(location.query).length > 0) {
       const { database, table, ...options } = location.query;
       push(
@@ -75,6 +76,7 @@ class NewModelOptions extends Component {
                   mode: "query",
                   creationType: "custom_question",
                   dataset: true,
+                  collectionId: this.collectionId,
                 })}
                 data-metabase-event="New Model; Custom Question Start"
               />
@@ -91,6 +93,7 @@ class NewModelOptions extends Component {
                   type: "native",
                   creationType: "native_question",
                   dataset: true,
+                  collectionId: this.collectionId,
                 })}
                 width={180}
                 data-metabase-event="New Model; Native Query Start"

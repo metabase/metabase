@@ -105,12 +105,11 @@ const NewItemMenu = ({
         event: `${analyticsContext};New Collection Click;`,
       },
     );
-
     if (hasNativeWrite) {
       items.push({
         title: t`Model`,
         icon: "model",
-        link: "/model/new",
+        link: `/model/new#${btoa(JSON.stringify({ collectionId }))}`,
         event: `${analyticsContext};New Model Click;`,
         onClose: onCloseNavbar,
       });
