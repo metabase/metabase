@@ -3,7 +3,7 @@ Cypress.Commands.add(
   ({
     name = "Test Dashboard",
     enable_embedding,
-    embedding_params = {},
+    embedding_params,
     auto_apply_filters,
     ...dashboardDetails
   } = {}) => {

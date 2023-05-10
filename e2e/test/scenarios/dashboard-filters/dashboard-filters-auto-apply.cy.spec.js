@@ -28,7 +28,9 @@ const dashboardDetails = {
   parameters: [filter],
 };
 
-const toastTimeout = 20000;
+const TOAST_TIMEOUT = 20000;
+const TOAST_MESSAGE =
+  "You can make this dashboard snappier by turning off auto-applying filters.";
 
 describe("scenarios > dashboards > filters > auto apply", () => {
   beforeEach(() => {
@@ -42,9 +44,10 @@ describe("scenarios > dashboards > filters > auto apply", () => {
     createDashboard();
     visitSlowDashboard({ [filter.slug]: "Gadget" });
 
-    cy.tick(toastTimeout);
+    cy.tick(TOAST_TIMEOUT);
     cy.wait("@cardQuery");
     undoToast().within(() => {
+      cy.findByText(TOAST_MESSAGE).should("be.visible");
       cy.button("Turn off").click();
       cy.wait("@updateDashboard");
     });
@@ -57,6 +60,9 @@ describe("scenarios > dashboards > filters > auto apply", () => {
     filterWidget().within(() => {
       cy.findByText("Gadget").should("be.visible");
     });
+    getDashboardCard().within(() => {
+      cy.findByText("Rows 1-6 of 53").should("be.visible");
+    });
   });
 
   it("should not display the toast when auto applying filters is disabled", () => {
@@ -64,9 +70,15 @@ describe("scenarios > dashboards > filters > auto apply", () => {
     createDashboard({ auto_apply_filters: false });
     visitSlowDashboard({ [filter.slug]: "Gadget" });
 
-    cy.tick(toastTimeout);
+    cy.tick(TOAST_TIMEOUT);
     cy.wait("@cardQuery");
     undoToast().should("not.exist");
+    filterWidget().within(() => {
+      cy.findByText("Gadget").should("be.visible");
+    });
+    getDashboardCard().within(() => {
+      cy.findByText("Rows 1-6 of 53").should("be.visible");
+    });
   });
 
   it("should not display the toast if there are no parameter values", () => {
@@ -74,7 +86,7 @@ describe("scenarios > dashboards > filters > auto apply", () => {
     createDashboard();
     visitSlowDashboard();
 
-    cy.tick(toastTimeout);
+    cy.tick(TOAST_TIMEOUT);
     cy.wait("@cardQuery");
     undoToast().should("not.exist");
   });
@@ -84,7 +96,7 @@ describe("scenarios > dashboards > filters > auto apply", () => {
     createDashboard();
     visitSlowDashboard({ [filter.slug]: "Gadget" });
 
-    cy.tick(toastTimeout);
+    cy.tick(TOAST_TIMEOUT);
     cy.wait("@cardQuery");
     undoToast().within(() => {
       cy.button("Turn off").should("be.visible");
@@ -98,7 +110,7 @@ describe("scenarios > dashboards > filters > auto apply", () => {
       cy.findByText("Update filter").click();
     });
 
-    cy.tick(toastTimeout);
+    cy.tick(TOAST_TIMEOUT);
     cy.wait("@cardQuery");
     undoToast().should("not.exist");
   });
