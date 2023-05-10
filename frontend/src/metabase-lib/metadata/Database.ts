@@ -30,6 +30,7 @@ class DatabaseInner extends Base {
   name: string;
   engine: string;
   description: string;
+  creator_id?: number;
   is_sample: boolean;
   is_saved_questions: boolean;
   tables: Table[];

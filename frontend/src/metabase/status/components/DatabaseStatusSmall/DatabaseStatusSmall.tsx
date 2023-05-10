@@ -2,7 +2,8 @@ import React from "react";
 import { t } from "ttag";
 import { isReducedMotionPreferred } from "metabase/lib/dom";
 import { isSyncAborted, isSyncInProgress } from "metabase/lib/syncing";
-import { Database, InitialSyncStatus } from "metabase-types/api";
+import { InitialSyncStatus } from "metabase-types/api";
+import Database from "metabase-lib/metadata/Database";
 import StatusSmall from "../StatusSmall";
 
 export interface DatabaseStatusSmallProps {

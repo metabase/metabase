@@ -3,8 +3,8 @@ import _ from "underscore";
 import Databases from "metabase/entities/databases";
 import { isSyncInProgress } from "metabase/lib/syncing";
 import { getUser } from "metabase/selectors/user";
-import { Database } from "metabase-types/api";
 import { State } from "metabase-types/store";
+import Database from "metabase-lib/metadata/Database";
 import DatabaseStatus from "../../components/DatabaseStatus";
 
 const RELOAD_INTERVAL = 2000;
