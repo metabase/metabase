@@ -34,14 +34,16 @@ const FEEDBACK_TIMEOUT = 5000;
 const enableErrorMessage = t`There was a problem enabling uploads. Please try again shortly.`;
 const disableErrorMessage = t`There was a problem disabling uploads. Please try again shortly.`;
 
+export interface UploadSettings {
+  uploads_enabled: boolean;
+  uploads_database_id: number | null;
+  uploads_schema_name: string | null;
+  uploads_table_prefix: string | null;
+}
+
 export interface UploadSettingProps {
   databases: Database[];
-  settings: {
-    uploads_enabled: boolean;
-    uploads_database_id: number | null;
-    uploads_schema_name: string | null;
-    uploads_table_prefix: string | null;
-  };
+  settings: UploadSettings;
   updateSettings: (
     settings: Record<string, string | number | boolean | null>,
   ) => Promise<void>;
