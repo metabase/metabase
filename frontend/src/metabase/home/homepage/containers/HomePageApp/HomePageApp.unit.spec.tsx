@@ -3,10 +3,7 @@ import { Route, Router } from "react-router";
 import fetchMock from "fetch-mock";
 import DashboardApp from "metabase/dashboard/containers/DashboardApp";
 
-import {
-  createMockDashboard,
-  createMockSettings,
-} from "metabase-types/api/mocks";
+import { createMockDashboard, createMockUser } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 
 import { renderWithProviders, screen } from "__support__/ui";
@@ -18,20 +15,10 @@ jest.mock("../../components/HomeLayout", () => LayoutMock);
 const DashboardMock = () => <div>Dashboard</div>;
 jest.mock("metabase/dashboard/containers/DashboardApp", () => DashboardMock);
 
-const setupForRedirect = ({
-  hasPermission = true,
-  customDashboardSet = true,
-} = {}) => {
+const setupForRedirect = ({ customDashboardSet = true } = {}) => {
   const dashboard = createMockDashboard();
 
-  fetchMock.get(
-    "path:/api/dashboard/1",
-    hasPermission
-      ? dashboard
-      : {
-          throws: 403,
-        },
-  );
+  fetchMock.get("path:/api/dashboard/1", dashboard);
   fetchMock.get("path:/api/database", []);
   fetchMock.get("path:/api/search", []);
 
@@ -43,12 +30,13 @@ const setupForRedirect = ({
     {
       withRouter: true,
       storeInitialState: createMockState({
-        settings: {
-          values: createMockSettings({
-            "custom-homepage": customDashboardSet,
-            "custom-homepage-dashboard": 1,
-          }),
-        },
+        currentUser: createMockUser({
+          custom_homepage: customDashboardSet
+            ? {
+                dashboard_id: 1,
+              }
+            : null,
+        }),
       }),
     },
   );
@@ -62,13 +50,6 @@ it("should redirect you to a dashboard when one has been defined to be used as a
 it("should render homepage when custom-homepage is false", async () => {
   setupForRedirect({
     customDashboardSet: false,
-  });
-  expect(await screen.findByText("Content")).toBeInTheDocument();
-});
-
-it("should render homepage when user does not have access to custom dashboard", async () => {
-  setupForRedirect({
-    hasPermission: false,
   });
   expect(await screen.findByText("Content")).toBeInTheDocument();
 });
