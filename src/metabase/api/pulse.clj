@@ -143,8 +143,7 @@
      (api/check-500
       (pulse/create-pulse! (map pulse/card->ref cards) channels pulse-data)))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/:id"
+(api/defendpoint GET "/:id"
   "Fetch `Pulse` with ID. If the user is a recipient of the Pulse but does not have read permissions for its collection,
   we still return it but with some sensitive metadata removed."
   [id]
@@ -224,8 +223,7 @@
   ;; return updated Pulse
   (pulse/retrieve-pulse id))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/form_input"
+(api/defendpoint GET "/form_input"
   "Provides relevant configuration information and user choices for creating/updating Pulses."
   []
   (validation/check-has-application-permission :subscription false)
@@ -266,8 +264,7 @@
       :context     :pulse
       :card-id     card-id})))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/preview_card/:id"
+(api/defendpoint GET "/preview_card/:id"
   "Get HTML rendering of a Card with `id`."
   [id]
   (let [card   (api/read-check Card id)

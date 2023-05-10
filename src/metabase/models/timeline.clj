@@ -18,9 +18,13 @@
 
 ;;;; schemas
 
+(def icons
+  "Valid Timeline and TimelineEvent icons"
+  ["star" "balloons" "mail" "warning" "bell" "cloud"])
+
 (def Icons
   "Timeline and TimelineEvent icon string Schema"
-  (s/enum "star" "balloons" "mail" "warning" "bell" "cloud"))
+  (apply s/enum icons))
 
 (def DefaultIcon
   "Timeline default icon"

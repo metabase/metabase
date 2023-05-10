@@ -84,9 +84,13 @@
 
 ;;; ----------------------------------- Downloading Query Results in Other Formats -----------------------------------
 
+(def export-formats
+  "Valid export formats for downloading query results."
+  (map u/qualified-name (qp.streaming/export-formats)))
+
 (def ExportFormat
   "Schema for valid export formats for downloading query results."
-  (apply s/enum (map u/qualified-name (qp.streaming/export-formats))))
+  (apply s/enum export-formats))
 
 (s/defn export-format->context :- mbql.s/Context
   "Return the `:context` that should be used when saving a QueryExecution triggered by a request to download results
