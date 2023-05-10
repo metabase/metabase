@@ -6,7 +6,6 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
-   [metabase.lib.options :as lib.options]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.test-metadata :as meta]
@@ -292,8 +291,8 @@
             :field-metadata   (lib.metadata/field meta/metadata-provider "PUBLIC" "PEOPLE" "LATITUDE")
             :expected-options (lib.binning/coordinate-binning-strategies)}]]
     (testing (str (:semantic-type field-metadata) " Field")
-      (doseq [[what binning-key x] [["column metadata" :metabase.lib.field/binning field-metadata]
-                                    ["field ref"       :binning                    (lib/ref field-metadata)]]]
+      (doseq [[what x] [["column metadata" field-metadata]
+                        ["field ref"       (lib/ref field-metadata)]]]
         (testing (str what "\n\n" (u/pprint-to-str x))
           (is (= expected-options
                  (lib/available-binning-strategies query x)))
