@@ -13,7 +13,7 @@ const objectDetailCard = {
     display: "object",
   },
   data: createMockDatasetData({
-    columns: [
+    cols: [
       createMockColumn({
         name: "details",
         display_name: "Details",
@@ -22,9 +22,7 @@ const objectDetailCard = {
         effective_type: TYPE.SerializedJSON,
       }),
     ],
-    opts: {
-      rows: [[JSON.stringify({ hey: "yo" })]],
-    },
+    rows: [[JSON.stringify({ hey: "yo" })]],
   }),
 };
 
@@ -33,7 +31,7 @@ const invalidObjectDetailCard = {
     display: "object",
   },
   data: createMockDatasetData({
-    columns: [
+    cols: [
       createMockColumn({
         name: "details",
         display_name: "Details",
@@ -42,9 +40,7 @@ const invalidObjectDetailCard = {
         effective_type: TYPE.SerializedJSON,
       }),
     ],
-    opts: {
-      rows: [["i am not json"]],
-    },
+    rows: [["i am not json"]],
   }),
 };
 describe("ObjectDetailsTable", () => {

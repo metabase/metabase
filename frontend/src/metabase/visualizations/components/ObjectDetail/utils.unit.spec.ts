@@ -194,13 +194,11 @@ describe("ObjectDetail utils", () => {
     it("should return the primary key of the first row if now zoomed row id exists", () => {
       const id = getIdValue({
         data: createMockDatasetData({
-          columns: [productIdCol, idCol, qtyCol, nameCol],
-          opts: {
-            rows: [
-              [11, 22, 33, "Giant Sprocket"],
-              [33, 44, 55, "Tiny Sprocket"],
-            ],
-          },
+          cols: [productIdCol, idCol, qtyCol, nameCol],
+          rows: [
+            [11, 22, 33, "Giant Sprocket"],
+            [33, 44, 55, "Tiny Sprocket"],
+          ],
         }),
         tableId: ORDERS.id,
       });

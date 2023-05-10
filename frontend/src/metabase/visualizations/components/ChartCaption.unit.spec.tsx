@@ -30,11 +30,9 @@ const getSeries = ({ card }: { card?: Card } = {}): Series => {
     {
       card: card ?? createMockCard({ name: "" }),
       data: createMockDatasetData({
-        columns: cols,
-        opts: {
-          rows: [["foo", 1]],
-          rows_truncated: 0,
-        },
+        cols,
+        rows: [["foo", 1]],
+        rows_truncated: 0,
       }),
     },
   ];
