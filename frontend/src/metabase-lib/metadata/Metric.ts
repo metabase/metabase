@@ -12,6 +12,7 @@ import type Table from "./Table";
  * Wrapper class for a metric. Belongs to a {@link Database} and possibly a {@link Table}
  */
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default class Metric extends Base {
   name: string;
   table_id: Table["id"];

@@ -180,6 +180,7 @@ function MainNavbarContainer({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   Bookmarks.loadList({
     loadingAndErrorWrapper: false,

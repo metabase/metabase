@@ -170,6 +170,7 @@ const DataPickerContainer = _.compose(
   connect(mapStateToProps),
 )(DataPicker);
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Object.assign(DataPickerContainer, {
   Provider: DataPickerContextProvider,
 });

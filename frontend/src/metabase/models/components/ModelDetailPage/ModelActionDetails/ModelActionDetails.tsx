@@ -221,6 +221,7 @@ function mostRecentFirst(action: WritebackAction) {
   return -createdAt.unix();
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   Actions.loadList({
     query: (state: State, { model }: OwnProps) => ({

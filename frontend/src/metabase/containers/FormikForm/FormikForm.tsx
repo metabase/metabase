@@ -251,4 +251,5 @@ export {
   CustomFormSection as FormSection,
 } from "metabase/components/form/FormikCustomForm";
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Form;

@@ -91,4 +91,5 @@ function pipe(...functions: ((arg: any) => any)[]) {
   return _.compose(...functions.reverse());
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default LineAreaBarChart;
