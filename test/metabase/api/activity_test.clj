@@ -85,10 +85,9 @@
                    (dissoc activity :timestamp)))))))))
 
 (deftest most-recently-viewed-dashboard-views-test
-  (mt/with-temp* [Card      [card-1  {:name                   "rand-name"
-                                      :creator_id             (mt/user->id :crowberto)
-                                      :display                "table"
-                                      :visualization_settings {}}]
+  (mt/with-temp* [Card      [card-1  {:name       "rand-name"
+                                      :creator_id (mt/user->id :crowberto)
+                                      :display    "table"}]
                   Dashboard [dash-1  {:name        "rand-name2"
                                       :description "rand-name2"
                                       :creator_id  (mt/user->id :crowberto)}]
@@ -116,8 +115,9 @@
                    (mt/user-http-request :crowberto :get 200 "activity/most_recently_viewed_dashboard"))))))
       (mt/with-test-user :rasta
         (mt/with-temporary-setting-values [user-recent-views []]
-          (testing "If nothing has been viewed, return a 404"
-            (is (= "Not found." (mt/user-http-request :crowberto :get 404 "activity/most_recently_viewed_dashboard"))))
+          (testing "If nothing has been viewed, return a 204"
+            (is (nil? (mt/user-http-request :crowberto :get 204
+                                            "activity/most_recently_viewed_dashboard"))))
           (view-log/handle-view-event! {:topic :dashboard-read :item (assoc dash-1 :actor_id (mt/user->id :rasta))})
           (testing "Only the user's own views are returned."
             (is (= dash-1
@@ -126,9 +126,10 @@
         (mt/with-temporary-setting-values [user-recent-views []]
           (view-log/handle-view-event! {:topic :dashboard-read
                                         :item  (assoc dash-1 :actor_id (mt/user->id :rasta))})
-          (testing "If the user has no permissions for the dashboard, return a 403"
+          (testing "If the user has no permissions for the dashboard, return a 204"
             (mt/with-non-admin-groups-no-root-collection-perms
-              (is (= "You don't have permissions to do that." (mt/user-http-request :rasta :get 403 "activity/most_recently_viewed_dashboard"))))))))))
+              (is (nil? (mt/user-http-request :rasta :get 204
+                                              "activity/most_recently_viewed_dashboard"))))))))))
 
 (deftest recent-views-test
   (mt/with-temp* [Card      [card1 {:name                   "rand-name"
