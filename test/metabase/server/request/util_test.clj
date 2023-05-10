@@ -77,7 +77,7 @@
             (is (= "1.2.3.4"
                    (request.u/ip-address mock-request)))))))))
 
-(deftest ^:parallel geocode-ip-addresses-test
+(deftest geocode-ip-addresses-test
   (with-cassette :geocode-ip-addresses
     (are [ip-addresses expected] (schema= expected (request.u/geocode-ip-addresses ip-addresses))
       ["8.8.8.8"]
