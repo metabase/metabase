@@ -49,7 +49,7 @@
                                        :ip_address         "52.206.149.9"}]]
         ;; Commented out values are temporary due to this bug with GeoJS:
         ;; https://github.com/jloh/geojs/issues/48
-        ;; The timestamps will also need to be updates (to be in the TZ, not in Zulu time)
+        ;; The timestamps will also need to be updated (to be in the TZ, not in Zulu time)
         ;;
         ;; A Slack reminder has been set to follow up on this
         (with-cassette :login-history-test
