@@ -6,8 +6,8 @@ title: Data sandbox examples
 
 [Data sandboxes](./data-sandboxes.md) are a set of permissions that show different data to different people based on their user attributes. You can:
 
-- Restrict **rows** using a [basic sandbox](#basic-data-sandboxes-filter-by-a-column-in-the-table).
-- Restrict **columns** using a [custom sandbox](#custom-data-sandboxes-use-a-saved-question-to-create-a-custom-view-for-this-table). 
+- Restrict **rows** using a [basic sandbox](./data-sandboxes.md#basic-data-sandboxes-filter-by-a-column-in-the-table).
+- Restrict **columns** using a [custom sandbox](./data-sandboxes.md#custom-data-sandboxes-use-a-saved-question-to-create-a-custom-view-for-this-table). 
 
 Permissions are always a bit pesky to set up, so here are some examples to get you started. (The example happens to use a group called "Customers" but this works the same whether you're doing this for internal or external folks.)
 

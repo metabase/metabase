@@ -201,9 +201,11 @@ Some Metabase permissions can conflict with data sandboxing to give more permiss
 
 Say you have an [custom sandbox](#custom-data-sandboxes-use-a-saved-question-to-create-a-custom-view-for-this-table) that hides the Email column from the Accounts table (for a particular group). The Email column may be exposed to a sandboxed person if:
 
-- That sandboxed person belongs to [multiple data sandboxes](#multiple-data-sandboxing-permissions).
-- A non-sandboxed person creates a [saved SQL question](#saved-sql-questions) that includes the Email column.
-- A non-sandboxed person creates a [public link](#public-sharing) that includes the Email column.
+- the sandboxed person belongs to [multiple data sandboxes](#multiple-data-sandboxing-permissions), or
+- a non-sandboxed person includes the Email column in:
+  - a [saved SQL question](#saved-sql-questions)
+  - a [public link](#public-sharing)
+  - an [alert, or dashboard subscription](../permissions/notifications.md).
 
 ### Multiple data sandboxing permissions
 
