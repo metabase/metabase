@@ -1,11 +1,14 @@
 import {
   dashboardHeader,
   dashboardParametersContainer,
+  editDashboard,
   filterWidget,
   getDashboardCard,
   popover,
   restore,
   rightSidebar,
+  saveDashboard,
+  sidebar,
   undoToast,
   visitDashboard,
 } from "e2e/support/helpers";
@@ -13,12 +16,7 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
-const questionDetails = {
-  name: "Products table",
-  query: { "source-table": PRODUCTS_ID },
-};
-
-const filter = {
+const FILTER = {
   name: "Category",
   slug: "category",
   id: "2a12e66c",
@@ -26,11 +24,17 @@ const filter = {
   sectionId: "string",
 };
 
-const dashboardDetails = {
-  parameters: [filter],
+const QUESTION_DETAILS = {
+  name: "Products table",
+  query: { "source-table": PRODUCTS_ID },
+};
+
+const DASHBOARD_DETAILS = {
+  parameters: [FILTER],
 };
 
 const TOAST_TIMEOUT = 20000;
+
 const TOAST_MESSAGE =
   "You can make this dashboard snappier by turning off auto-applying filters.";
 
@@ -48,7 +52,7 @@ describe("scenarios > dashboards > filters > auto apply", () => {
 
     // changing parameter values by default should reload affected questions
     filterWidget().within(() => {
-      cy.findByText(filter.name).click();
+      cy.findByText(FILTER.name).click();
     });
     popover().within(() => {
       cy.findByText("Gadget").click();
@@ -75,7 +79,7 @@ describe("scenarios > dashboards > filters > auto apply", () => {
       cy.findByText("Rows 1-6 of 53").should("be.visible");
     });
 
-    // draft parameter values should be applied only manually
+    // draft parameter values should be applied manually
     filterWidget().within(() => {
       cy.findByText("Gadget").click();
     });
@@ -131,10 +135,79 @@ describe("scenarios > dashboards > filters > auto apply", () => {
     });
   });
 
+  it("should not preserve draft parameter values when editing the dashboard", () => {
+    createDashboard({ auto_apply_filters: false });
+    openDashboard();
+
+    filterWidget().within(() => {
+      cy.findByText(FILTER.name).click();
+    });
+    popover().within(() => {
+      cy.findByText("Gadget").click();
+      cy.button("Add filter").click();
+    });
+    dashboardParametersContainer().within(() => {
+      cy.button("Apply").should("be.visible");
+    });
+
+    editDashboard();
+    dashboardHeader().within(() => {
+      cy.icon("filter").click();
+    });
+    popover().within(() => {
+      cy.findByText("Text or Category").click();
+      cy.findByText("Is").click();
+    });
+    sidebar().within(() => {
+      cy.findByDisplayValue("Text").clear().type("Vendor");
+    });
+    getDashboardCard().within(() => {
+      cy.findByText("Select…").click();
+    });
+    popover().within(() => {
+      cy.findByText("Vendor").click();
+    });
+    saveDashboard();
+
+    dashboardParametersContainer().within(() => {
+      cy.findByText("Category").should("be.visible");
+      cy.findByText("Vendor").should("be.visible");
+      cy.findByText("Gadget").should("not.exist");
+      cy.button("Apply").should("not.exist");
+    });
+  });
+
+  it("should preserve draft parameter values when editing of the dashboard was cancelled", () => {
+    createDashboard({ auto_apply_filters: false });
+    openDashboard();
+
+    filterWidget().within(() => {
+      cy.findByText(FILTER.name).click();
+    });
+    popover().within(() => {
+      cy.findByText("Gadget").click();
+      cy.button("Add filter").click();
+    });
+    dashboardParametersContainer().within(() => {
+      cy.button("Apply").should("be.visible");
+    });
+
+    editDashboard();
+    dashboardHeader().within(() => {
+      cy.button("Cancel").click();
+    });
+    filterWidget().within(() => {
+      cy.findByText("Gadget").should("be.visible");
+    });
+    dashboardParametersContainer().within(() => {
+      cy.button("Apply").should("be.visible");
+    });
+  });
+
   it("should display a toast when a dashboard takes longer than 15s to load", () => {
     cy.clock();
     createDashboard();
-    openSlowDashboard({ [filter.slug]: "Gadget" });
+    openSlowDashboard({ [FILTER.slug]: "Gadget" });
 
     cy.tick(TOAST_TIMEOUT);
     cy.wait("@cardQuery");
@@ -160,7 +233,7 @@ describe("scenarios > dashboards > filters > auto apply", () => {
   it("should not display the toast when auto applying filters is disabled", () => {
     cy.clock();
     createDashboard({ auto_apply_filters: false });
-    openSlowDashboard({ [filter.slug]: "Gadget" });
+    openSlowDashboard({ [FILTER.slug]: "Gadget" });
 
     cy.tick(TOAST_TIMEOUT);
     cy.wait("@cardQuery");
@@ -186,7 +259,7 @@ describe("scenarios > dashboards > filters > auto apply", () => {
   it("should not display the same toast twice for a dashboard", () => {
     cy.clock();
     createDashboard();
-    openSlowDashboard({ [filter.slug]: "Gadget" });
+    openSlowDashboard({ [FILTER.slug]: "Gadget" });
 
     cy.tick(TOAST_TIMEOUT);
     cy.wait("@cardQuery");
@@ -210,8 +283,8 @@ describe("scenarios > dashboards > filters > auto apply", () => {
 
 const createDashboard = (dashboardOpts = {}) => {
   cy.createQuestionAndDashboard({
-    questionDetails,
-    dashboardDetails: { ...dashboardDetails, ...dashboardOpts },
+    questionDetails: QUESTION_DETAILS,
+    dashboardDetails: { ...DASHBOARD_DETAILS, ...dashboardOpts },
   }).then(({ body: card }) => {
     cy.editDashboardCard(card, getParameterMapping(card));
     cy.wrap(card.dashboard_id).as("dashboardId");
@@ -222,7 +295,7 @@ const getParameterMapping = ({ card_id }) => ({
   parameter_mappings: [
     {
       card_id,
-      parameter_id: filter.id,
+      parameter_id: FILTER.id,
       target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
     },
   ],
