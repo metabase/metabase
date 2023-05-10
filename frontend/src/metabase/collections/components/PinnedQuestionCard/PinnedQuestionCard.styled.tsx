@@ -30,6 +30,7 @@ export interface CardRootProps {
 export const CardRoot = styled(Link)<CardRootProps>`
   position: relative;
   display: block;
+  overflow: hidden;
   height: ${props => props.isPreview && "15.625rem"};
   padding: 0.5rem 0;
   border: 1px solid ${color("border")};

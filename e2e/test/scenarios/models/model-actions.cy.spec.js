@@ -48,7 +48,7 @@ const TEST_TEMPLATE_TAG = {
   id: TEST_PARAMETER.id,
   type: "number",
   name: TEST_PARAMETER.slug,
-  "display-name": "Id",
+  "display-name": TEST_PARAMETER.name,
   slug: TEST_PARAMETER.slug,
 };
 
@@ -405,7 +405,7 @@ describe(
         cy.visit(url);
 
         // team 2 has 10 points, let's give them more
-        cy.findByLabelText("Id").type("2");
+        cy.findByLabelText("ID").type("2");
         cy.findByLabelText(/score/i).type("16");
         cy.findByLabelText(/team name/i).type("Bouncy Bears");
 

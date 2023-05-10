@@ -23,6 +23,7 @@
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.util :as qp.util]
    [metabase.query-processor.util.add-alias-info :as add]
+   [metabase.server.middleware.session :as mw.session]
    [metabase.test :as mt]
    [metabase.test.data.env :as tx.env]
    [metabase.util :as u]
@@ -79,7 +80,7 @@
 
 (defn- venues-category-native-gtap-def []
   (driver/with-driver (or driver/*driver* :h2)
-    (assert (driver/supports? driver/*driver* :native-parameters))
+    (assert (driver/database-supports? driver/*driver* :native-parameters (mt/db)))
     (binding [#_{:clj-kondo/ignore [:deprecated-var]} hx/*honey-sql-version* (sql.qp/honey-sql-version driver/*driver*)]
       {:query (mt/native-query
                 {:query
@@ -97,7 +98,7 @@
 
 (defn- parameterized-sql-with-join-gtap-def []
   (driver/with-driver (or driver/*driver* :h2)
-    (assert (driver/supports? driver/*driver* :native-parameters))
+    (assert (driver/database-supports? driver/*driver* :native-parameters (mt/db)))
     (binding [#_{:clj-kondo/ignore [:deprecated-var]} hx/*honey-sql-version* (sql.qp/honey-sql-version driver/*driver*)]
       {:query (mt/native-query
                 {:query
@@ -340,6 +341,14 @@
         (is (= [[100]]
                (run-venues-count-query)))))
 
+    (testing "A non-admin impersonating an admin (i.e. when running a public or embedded question) should always bypass sandboxes (#30535)"
+      (met/with-gtaps-for-user :rasta {:gtaps      {:venues (venues-category-mbql-gtap-def)}
+                                       :attributes {"cat" 50}}
+        (mt/with-test-user :rasta
+         (mw.session/as-admin
+          (is (= [[100]]
+               (run-venues-count-query)))))))
+
     (testing "Users with view access to the related collection should bypass segmented permissions"
       (mt/with-temp-copy-of-db
         (mt/with-temp* [Collection [collection]
@@ -424,11 +433,11 @@
           (is (= #{[nil "Quentin Sören" 45] [1 "Quentin Sören" 10]}
                  (set
                   (mt/format-rows-by [#(when % (int %)) str int]
-                    (mt/rows
-                     (mt/run-mbql-query checkins
-                       {:aggregation [[:count]]
-                        :order-by    [[:asc $venue_id->venues.price]]
-                        :breakout    [$venue_id->venues.price $user_id->users.name]})))))))))))
+                                     (mt/rows
+                                      (mt/run-mbql-query checkins
+                                        {:aggregation [[:count]]
+                                         :order-by    [[:asc $venue_id->venues.price]]
+                                         :breakout    [$venue_id->venues.price $user_id->users.name]})))))))))))
 
 (defn- run-query-returning-remark [run-query-fn]
   (let [remark (atom nil)

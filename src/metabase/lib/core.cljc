@@ -145,6 +145,8 @@
   [lib.join
    join
    join-clause
+   join-conditions
+   join-fields
    joins
    with-join-alias
    with-join-fields]
@@ -190,4 +192,5 @@
    describe-relative-datetime
    available-temporal-buckets
    temporal-bucket
+   temporal-bucket-option
    with-temporal-bucket])

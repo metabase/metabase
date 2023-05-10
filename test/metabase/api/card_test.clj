@@ -2,6 +2,7 @@
   "Tests for /api/card endpoints."
   (:require
    [cheshire.core :as json]
+   [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -12,6 +13,8 @@
    [medley.core :as m]
    [metabase.api.card :as api.card]
    [metabase.api.pivots :as api.pivots]
+   [metabase.driver :as driver]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.http-client :as client]
    [metabase.models
@@ -19,6 +22,7 @@
             Collection
             Dashboard
             Database
+            Field
             ModerationReview
             PersistedInfo
             Pulse
@@ -44,6 +48,7 @@
    [metabase.task.sync-databases :as task.sync-databases]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
+   [metabase.upload-test :as upload-test]
    [metabase.util :as u]
    [metabase.util.schema :as su]
    [schema.core :as s]
@@ -276,10 +281,11 @@
                         card-3 :rasta]
         (with-cards-in-readable-collection [card-1 card-2 card-3 card-4]
           (testing "\nShould return cards that were recently viewed by current user only"
-            (is (= ["Card 3"
-                    "Card 4"
-                    "Card 1"]
-                   (map :name (mt/user-http-request :rasta :get 200 "card", :f :recent))))))))))
+            (let [recent-card-names (->> (mt/user-http-request :rasta :get 200 "card", :f :recent)
+                                         (map :name)
+                                         (filter #{"Card 1" "Card 2" "Card 3" "Card 4"}))]
+              (is (= ["Card 3" "Card 4" "Card 1"]
+                     recent-card-names)))))))))
 
 (deftest filter-by-popular-test
   (testing "GET /api/card?f=popular"
@@ -295,9 +301,12 @@
         (with-cards-in-readable-collection [card-1 card-2 card-3]
           (testing (str "`f=popular` should return cards sorted by number of ViewLog entries for all users; cards with "
                         "no entries should be excluded")
-            (is (= ["Card 3"
-                    "Card 2"]
-                   (map :name (mt/user-http-request :rasta :get 200 "card", :f :popular))))))))))
+            (let [popular-card-names (->> (mt/user-http-request :rasta :get 200 "card", :f :popular)
+                                          (map :name)
+                                          (filter #{"Card 1" "Card 2" "Card 3"}))]
+              (is (= ["Card 3"
+                      "Card 2"]
+                     popular-card-names)))))))))
 
 (deftest filter-by-archived-test
   (testing "GET /api/card?f=archived"
@@ -345,7 +354,8 @@
                                                                                         [:field 33 {:join-alias alias}]]
                                                                             :alias alias
                                                                             :strategy :inner-join}]
-                                                                   :fields [[:field 9 nil]]}
+                                                                   :fields [[:field 9 nil]]
+                                                                   :source-table (str "card__" other-card-id)}
                                                            :database 1})}]
                     ;; matching native query
                     :model/Card [card-4 {:name "Card 4"
@@ -533,6 +543,47 @@
                                            200
                                            "card"
                                            (assoc card :result_metadata []))))))))
+
+(deftest save-new-card-with-result-metadata-test
+  (mt/with-model-cleanup [:model/Card]
+    (testing "we should ignore result_metadata on new Cards"
+      (let [outdated-metadata (->> (qp/process-query (mt/mbql-query venues))
+                                   :data
+                                   :results_metadata
+                                   :columns
+                                   (mapv #(assoc % :description "User edits")))
+            saved-query (mt/mbql-query venues {:fields [$id $name]})]
+        (is (=? {:result_metadata [{:display_name "ID"
+                                    :description nil}
+                                   {:display_name "Name"
+                                    :description nil}]}
+                (mt/user-http-request :rasta
+                                      :post
+                                      200
+                                      "card"
+                                      (merge (mt/with-temp-defaults :model/Card)
+                                             {:dataset_query saved-query
+                                              :result_metadata outdated-metadata}))))))
+    (testing "we should incorporate result_metadata on new Models"
+      ;; query has changed but we can still preserve user edits
+      (let [outdated-metadata (->> (qp/process-query (mt/mbql-query venues))
+                                   :data
+                                   :results_metadata
+                                   :columns
+                                   (mapv #(assoc % :description "User edits")))
+            saved-query (mt/mbql-query venues {:fields [$id $name]})]
+        (is (=? {:result_metadata [{:display_name "ID"
+                                    :description "User edits"}
+                                   {:display_name "Name"
+                                    :description "User edits"}]}
+                (mt/user-http-request :rasta
+                                      :post
+                                      200
+                                      "card"
+                                      (merge (mt/with-temp-defaults :model/Card)
+                                             {:dataset true
+                                              :dataset_query saved-query
+                                              :result_metadata outdated-metadata}))))))))
 
 (deftest cache-ttl-save
   (testing "POST /api/card/:id"
@@ -2538,3 +2589,116 @@
                  :values_source_type    "static-list"
                  :values_source_config {:values ["BBQ" "Bakery" "Bar"]}}]
                (:parameters card)))))))
+
+(defn- upload-example-csv! [collection-id]
+  (let [file (upload-test/csv-file-with
+              ["id, name"
+               "1, Luke Skywalker"
+               "2, Darth Vader"]
+              "example")]
+    (mt/with-current-user (mt/user->id :rasta)
+      (api.card/upload-csv! collection-id "example.csv" file))))
+
+(deftest upload-csv!-schema-test
+  (mt/test-drivers (disj (mt/normal-drivers-with-feature :uploads) :mysql) ; MySQL doesn't support schemas
+    (mt/with-empty-db
+      (let [db-id (u/the-id (mt/db))]
+        (testing "Happy path with schema, and without table-prefix"
+          ;; create not_public schema in the db
+          (let [details (mt/dbdef->connection-details driver/*driver* :db {:database-name (:name (mt/db))})]
+            (jdbc/execute! (sql-jdbc.conn/connection-details->spec driver/*driver* details)
+                           ["CREATE SCHEMA \"not_public\";"]))
+          (mt/with-temporary-setting-values [uploads-enabled      true
+                                             uploads-database-id  db-id
+                                             uploads-schema-name  "not_public"
+                                             uploads-table-prefix nil]
+            (let [new-model (upload-example-csv! nil)
+                  new-table (t2/select-one Table :db_id db-id)]
+              (is (=? {:display          :table
+                       :database_id      db-id
+                       :dataset_query    {:database db-id
+                                          :query    {:source-table (:id new-table)}
+                                          :type     :query}
+                       :creator_id       (mt/user->id :rasta)
+                       :name             "example"
+                       :collection_id    nil} new-model))
+              (is (=? {:name #"(?i)example(.*)"
+                       :schema #"(?i)not_public"}
+                      new-table))
+              (is (= #{"id" "name"}
+                     (->> (t2/select Field :table_id (:id new-table))
+                          (map (comp #_{:clj-kondo/ignore [:discouraged-var]} str/lower-case :name))
+                          set))))))))))
+
+(deftest upload-csv!-table-prefix-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+    (mt/with-empty-db
+      (let [db-id (u/the-id (mt/db))]
+        (testing "Happy path with table prefix, and without schema"
+          (mt/with-temporary-setting-values [uploads-enabled      true
+                                             uploads-database-id  db-id
+                                             uploads-schema-name  nil
+                                             uploads-table-prefix "uploaded_magic_"]
+            (let [new-model (upload-example-csv! nil)
+                  new-table (t2/select-one Table :db_id db-id)]
+              (is (= "example" (:name new-model)))
+              (is (=? {:name #"(?i)uploaded_magic_example(.*)"}
+                      new-table))
+              (if (= driver/*driver* :mysql)
+                (is (nil? (:schema new-table)))
+                (is (=? {:schema #"(?i)public"} new-table))))))))))
+
+(deftest upload-csv!-failure-test
+  ;; Just test with postgres because failure should be independent of the driver
+  (mt/test-driver :postgres
+    (mt/with-empty-db
+      (let [db-id (u/the-id (mt/db))]
+        (testing "Uploads must be enabled"
+          (doseq [uploads-enabled-value [false nil]]
+            (mt/with-temporary-setting-values [uploads-enabled      uploads-enabled-value
+                                               uploads-database-id  db-id
+                                               uploads-schema-name  "public"
+                                               uploads-table-prefix "uploaded_magic_"]
+              (is (thrown-with-msg?
+                   java.lang.Exception
+                   #"^Uploads are not enabled\.$"
+                   (upload-example-csv! nil))))))
+        (testing "Database ID must be set"
+          (mt/with-temporary-setting-values [uploads-enabled      true
+                                             uploads-database-id  nil
+                                             uploads-schema-name  "public"
+                                             uploads-table-prefix "uploaded_magic_"]
+            (is (thrown-with-msg?
+                 java.lang.Exception
+                 #"^The uploads database does not exist\.$"
+                 (upload-example-csv! nil)))))
+        (testing "Database ID must be valid"
+          (mt/with-temporary-setting-values [uploads-enabled      true
+                                             uploads-database-id  -1
+                                             uploads-schema-name  "public"
+                                             uploads-table-prefix "uploaded_magic_"]
+            (is (thrown-with-msg?
+                 java.lang.Exception
+                 #"^The uploads database does not exist\."
+                 (upload-example-csv! nil)))))
+        (testing "Uploads must be supported"
+          (with-redefs [driver/database-supports? (constantly false)]
+            (mt/with-temporary-setting-values [uploads-enabled      true
+                                               uploads-database-id  db-id
+                                               uploads-schema-name  "public"
+                                               uploads-table-prefix "uploaded_magic_"]
+              (is (thrown-with-msg?
+                   java.lang.Exception
+                   #"^Uploads are not supported on Postgres databases\."
+                   (upload-example-csv! nil))))))
+        (testing "User must have write permissions on the collection"
+          (mt/with-non-admin-groups-no-root-collection-perms
+            (mt/with-temporary-setting-values [uploads-enabled      true
+                                               uploads-database-id  db-id
+                                               uploads-schema-name  "public"
+                                               uploads-table-prefix "uploaded_magic_"]
+              (mt/with-current-user (mt/user->id :lucky)
+                (is (thrown-with-msg?
+                     java.lang.Exception
+                     #"^You do not have curate permissions for this Collection\.$"
+                     (upload-example-csv! nil)))))))))))

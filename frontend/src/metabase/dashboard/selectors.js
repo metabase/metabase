@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import { createSelector } from "reselect";
+import { createSelector } from "@reduxjs/toolkit";
 import { getMetadata } from "metabase/selectors/metadata";
 import { LOAD_COMPLETE_FAVICON } from "metabase/hoc/Favicon";
 
@@ -66,6 +66,11 @@ export const getDashboard = createSelector(
 );
 
 export const getLoadingDashCards = state => state.dashboard.loadingDashCards;
+
+export const getDashboardById = (state, dashboardId) => {
+  const dashboards = getDashboards(state);
+  return dashboards[dashboardId];
+};
 
 export const getDashCardById = (state, dashcardId) => {
   const dashcards = getDashcards(state);

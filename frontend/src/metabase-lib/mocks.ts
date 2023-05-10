@@ -1,10 +1,9 @@
 import {
-  Card,
-  SavedCard,
-  UnsavedCard,
-  StructuredDatasetQuery,
+  Card as SavedCard,
   NativeDatasetQuery,
-} from "metabase-types/types/Card";
+  StructuredDatasetQuery,
+  UnsavedCard,
+} from "metabase-types/api";
 
 import {
   SAMPLE_DATABASE,
@@ -55,7 +54,7 @@ const SAVED_QUESTION = {
   result_metadata: [],
 };
 
-function getQuestion(card: Partial<Card>) {
+function getQuestion(card: Partial<SavedCard>) {
   return new Question(
     {
       ...BASE_GUI_QUESTION,

@@ -4,6 +4,7 @@
    [cheshire.core :as json]
    [clojure.core.async :as a]
    [clojure.data :as data]
+   [clojure.string :as str]
    [clojure.walk :as walk]
    [compojure.core :refer [DELETE GET POST PUT]]
    [medley.core :as m]
@@ -13,6 +14,7 @@
    [metabase.api.field :as api.field]
    [metabase.api.timeline :as api.timeline]
    [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
    [metabase.email.messages :as messages]
    [metabase.events :as events]
    [metabase.mbql.normalize :as mbql.normalize]
@@ -38,13 +40,16 @@
    [metabase.models.query.permissions :as query-perms]
    [metabase.models.revision.last-edit :as last-edit]
    [metabase.models.timeline :as timeline]
+   [metabase.public-settings :as public-settings]
    [metabase.query-processor.async :as qp.async]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.util :as qp.util]
    [metabase.related :as related]
+   [metabase.sync :as sync]
    [metabase.sync.analyze.query-results :as qr]
    [metabase.task.persist-refresh :as task.persist-refresh]
+   [metabase.upload :as upload]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [trs tru]]
@@ -241,11 +246,6 @@
             valid-metadata?)
        ;; only sent valid metadata in the edit. Metadata might be the same, might be different. We save in either case
        (and (nil? query)
-            valid-metadata?)
-
-       ;; copying card and reusing existing metadata
-       (and (nil? original-query)
-            query
             valid-metadata?))
       (do
         (log/debug (trs "Reusing provided metadata"))
@@ -970,5 +970,51 @@ saved later when it is ready."
    param-key ms/NonBlankString
    query     ms/NonBlankString}
   (param-values (api/read-check Card card-id) param-key query))
+
+(defn upload-csv!
+  "Main entry point for CSV uploading. Coordinates detecting the schema, inserting it into an appropriate database,
+  syncing and scanning the new data, and creating an appropriate model which is then returned. May throw validation or
+  DB errors."
+  [collection-id filename csv-file]
+  (when (not (public-settings/uploads-enabled))
+    (throw (Exception. "Uploads are not enabled.")))
+  (collection/check-write-perms-for-collection collection-id)
+  (let [db-id             (public-settings/uploads-database-id)
+        database          (or (t2/select-one Database :id db-id)
+                              (throw (Exception. (tru "The uploads database does not exist."))))
+        schema-name       (public-settings/uploads-schema-name)
+        filename-prefix   (or (second (re-matches #"(.*)\.csv$" filename))
+                              filename)
+        driver            (driver.u/database->driver database)
+        _                 (or (driver/database-supports? driver :uploads nil)
+                              (throw (Exception. (tru "Uploads are not supported on {0} databases." (str/capitalize (name driver))))))
+        table-name        (->> (str (public-settings/uploads-table-prefix) filename-prefix)
+                               (upload/unique-table-name driver))
+        schema+table-name (if (str/blank? schema-name)
+                            table-name
+                            (str schema-name "." table-name))
+        _                 (upload/load-from-csv driver db-id schema+table-name csv-file)
+        _                 (sync/sync-database! database)
+        table-id          (t2/select-one-fn :id Table :db_id db-id :%lower.name table-name)]
+    (create-card!
+     {:collection_id          collection-id,
+      :dataset                true
+      :database_id            db-id
+      :dataset_query          {:database db-id
+                               :query    {:source-table table-id}
+                               :type     :query}
+      :display                :table
+      :name                   filename-prefix
+      :visualization_settings {}})))
+
+(api/defendpoint ^:multipart POST "/from-csv"
+  "Create a table and model populated with the values from the attached CSV. Returns the model ID if successful."
+  [:as {raw-params :params}]
+  ;; parse-long returns nil with "root", which is what we want anyway
+  (let [model-id (:id (upload-csv! (parse-long (get raw-params "collection_id"))
+                                   (get-in raw-params ["file" :filename])
+                                   (get-in raw-params ["file" :tempfile])))]
+    {:status 200
+     :body   model-id}))
 
 (api/define-routes)

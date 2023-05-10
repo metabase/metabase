@@ -103,7 +103,7 @@ const mapStateToProps = (state, props) => {
     user: getUser(state, props),
     canManageSubscriptions: canManageSubscriptions(state, props),
     isAdmin: getUserIsAdmin(state, props),
-    fromUrl: props.location.query.from,
+    fromUrl: props.location.query?.from,
 
     mode: getMode(state),
 
@@ -217,6 +217,7 @@ function QueryBuilder(props) {
     showTimelinesForCollection,
     card,
     isLoadingComplete,
+    closeQB,
   } = props;
 
   const forceUpdate = useForceUpdate();
@@ -301,6 +302,7 @@ function QueryBuilder(props) {
   useUnmount(() => {
     cancelQuery();
     closeModal();
+    closeQB();
     clearTimeout(timeout.current);
   });
 

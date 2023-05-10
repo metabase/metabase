@@ -1,10 +1,10 @@
-import { LocalFieldReference } from "metabase-types/types/Query";
-import { ParameterType } from "metabase-types/types/Parameter";
+import type { LocalFieldReference } from "metabase-types/api";
 import { Card } from "./card";
 import { DatabaseId } from "./database";
-import { FieldId } from "./field";
+import { FieldFingerprint, FieldId, FieldVisibilityType } from "./field";
 import { DatasetQuery, DatetimeUnit, DimensionReference } from "./query";
 import { DownloadPermission } from "./permissions";
+import { TableId } from "./table";
 
 export type RowValue = string | number | null | boolean;
 export type RowValues = RowValue[];
@@ -13,7 +13,11 @@ export interface DatasetColumn {
   id?: FieldId;
   name: string;
   display_name: string;
+  description: string | null;
   source: string;
+  coercion_strategy: string | null;
+  visibility_type: FieldVisibilityType;
+  table_id: TableId;
   // FIXME: this prop does not come from API
   remapped_to_column?: DatasetColumn;
   unit?: DatetimeUnit;
@@ -27,12 +31,16 @@ export interface DatasetColumn {
   binning_info?: {
     bin_width?: number;
   };
+  settings?: Record<string, any>;
+  fingerprint: FieldFingerprint | null;
 }
 
 export interface DatasetData {
   rows: RowValues[];
   cols: DatasetColumn[];
   rows_truncated: number;
+  requested_timezone?: string;
+  results_timezone?: string;
   download_perms?: DownloadPermission;
 }
 
@@ -83,7 +91,7 @@ export interface TemplateTag {
   "display-name": string;
   type: TemplateTagType;
   dimension?: LocalFieldReference;
-  "widget-type"?: ParameterType;
+  "widget-type"?: string;
   required?: boolean;
   default?: string;
 
