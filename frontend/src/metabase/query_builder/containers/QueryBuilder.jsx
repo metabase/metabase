@@ -218,6 +218,7 @@ function QueryBuilder(props) {
     showTimelinesForCollection,
     card,
     isLoadingComplete,
+    closeQB,
   } = props;
 
   const forceUpdate = useForceUpdate();
@@ -302,6 +303,7 @@ function QueryBuilder(props) {
   useUnmount(() => {
     cancelQuery();
     closeModal();
+    closeQB();
     clearTimeout(timeout.current);
   });
 

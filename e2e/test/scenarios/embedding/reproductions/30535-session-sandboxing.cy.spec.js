@@ -13,8 +13,6 @@ const questionDetails = {
 
 describeEE("issue 30535", () => {
   beforeEach(() => {
-    // TODO Remove the following line once the underlying issue is resolved!
-    cy.skipOn(true);
     restore();
     cy.signInAsAdmin();
 
