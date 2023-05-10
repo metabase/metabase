@@ -145,7 +145,9 @@ class FieldInner extends Base {
   } = {}) {
     let displayName = "";
 
-    if (includeTable && this.table) {
+    // It is possible that the table doesn't exist or
+    // that it does, but its `displayName` resolves to an empty string.
+    if (includeTable && this.table?.displayName?.()) {
       displayName +=
         this.table.displayName({
           includeSchema,
