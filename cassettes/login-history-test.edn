@@ -1,0 +1,110 @@
+{:calls [{:arg-key {:query-string "users=6&site-uuid=4f3931d4-27bf-4778-b6d2-2e1012c181ba",
+                    :request-method :get,
+                    :server-name "token-check.metabase.com",
+                    :server-port nil,
+                    :uri "/api/f325eca45593921f844e9f0f913a651bc3465a85b8369be1dcadc20d5524d01a/v2/status"},
+          :return {:body #vcr-clj/input-stream
+                   ["eyJ2YWxpZCI6dHJ1ZSwic3RhdHVzIjoiVG9rZW4gaXMgdmFsaWQuIiwiZmVhdHVyZXMiOlsiYXV"
+                    "kaXQtYXBwIiwiYWR2YW5jZWQtcGVybWlzc2lvbnMiLCJlbWJlZGRpbmciLCJ3aGl0ZWxhYmVsIi"
+                    "wibm8tdXBzZWxsIiwiYWR2YW5jZWQtY29uZmlnIiwiY29udGVudC1tYW5hZ2VtZW50Iiwic3NvI"
+                    "iwic2FuZGJveGVzIl0sInRyaWFsIjpmYWxzZSwidmFsaWQtdGhydSI6IjIwMjMtMTEtMDJUMDA6"
+                    "MDA6MDBaIiwic3RvcmUtdXNlcnMiOltdfQ=="],
+                   :cached nil,
+                   :chunked? false,
+                   :headers #vcr-clj/clj-http-header-map
+                   {"Connection" "close",
+                    "Content-Length" "250",
+                    "Content-Type" "application/json;charset=utf-8",
+                    "Date" "Wed, 10 May 2023 12:52:51 GMT",
+                    "Strict-Transport-Security" "max-age=15724800; includeSubDomains",
+                    "X-Content-Type-Options" "nosniff",
+                    "X-Frame-Options" "SAMEORIGIN",
+                    "X-XSS-Protection" "1; mode=block"},
+                   :http-client "-- clj-http cannot serialize instances of org.apache.http.client.HttpClient --",
+                   :length 250,
+                   :protocol-version {:major 1, :minor 1, :name "HTTP"},
+                   :reason-phrase "OK",
+                   :repeatable? false,
+                   :status 200,
+                   :streaming? true,
+                   :trace-redirects []},
+          :var-name "clj-http.core/request"}
+         {:arg-key {:query-string "ip=185.233.100.23,127.0.0.1,52.206.149.9,0:0:0:0:0:0:0:1",
+                    :request-method :get,
+                    :server-name "get.geojs.io",
+                    :server-port nil,
+                    :uri "/v1/ip/geo.json"},
+          :return {:body #vcr-clj/input-stream
+                   ["PGh0bWw+DQo8aGVhZD48dGl0bGU+NTAwIEludGVybmFsIFNlcnZlciBFcnJvcjwvdGl0bGU+PC9"
+                    "oZWFkPg0KPGJvZHk+DQo8Y2VudGVyPjxoMT41MDAgSW50ZXJuYWwgU2VydmVyIEVycm9yPC9oMT"
+                    "48L2NlbnRlcj4NCjxocj48Y2VudGVyPm9wZW5yZXN0eTwvY2VudGVyPg0KPC9ib2R5Pg0KPC9od"
+                    "G1sPg0K"],
+                   :cached nil,
+                   :chunked? true,
+                   :headers #vcr-clj/clj-http-header-map
+                   {"CF-Cache-Status" "DYNAMIC",
+                    "CF-RAY" "7c52525cec37b432-EDI",
+                    "Cache-Control" "no-store, no-cache, must-revalidate, private, max-age=0",
+                    "Connection" "close",
+                    "Content-Type" "text/html; charset=utf-8",
+                    "Date" "Wed, 10 May 2023 12:52:51 GMT",
+                    "NEL" "{\"success_fraction\":0,\"report_to\":\"cf-nel\",\"max_age\":604800}",
+                    "Report-To" "{\"endpoints\":[{\"url\":\"https:\\/\\/a.nel.cloudflare.com\\/report\\/v3?s=RAaKcIgpPglm3HDDq2AYRlqg5XR5Isj6ozh3XlzbNWiXAbeZf7EyD3hkLeb44VTQfLjkEiTSKIhvx0%2Bzk%2FxJT8rsdSxkO1XR1OkVPhZSdV%2Ff4UfDq8sAWFCtoIqSZQ%3D%3D\"}],\"group\":\"cf-nel\",\"max_age\":604800}",
+                    "Server" "cloudflare",
+                    "Transfer-Encoding" "chunked",
+                    "X-Content-Type-Options" "nosniff",
+                    "access-control-allow-methods" "GET",
+                    "access-control-allow-origin" "*",
+                    "alt-svc" "h3=\":443\"; ma=86400, h3-29=\":443\"; ma=86400",
+                    "pragma" "no-cache",
+                    "strict-transport-security" "max-age=15552000; includeSubDomains; preload",
+                    "x-geojs-location" "AMS",
+                    "x-request-id" "28ce3afacca1be9324eddfa5bbfebd8d-AMS"},
+                   :http-client "-- clj-http cannot serialize instances of org.apache.http.client.HttpClient --",
+                   :length -1,
+                   :protocol-version {:major 1, :minor 1, :name "HTTP"},
+                   :reason-phrase "Internal Server Error",
+                   :repeatable? false,
+                   :status 500,
+                   :streaming? true,
+                   :trace-redirects []},
+          :var-name "clj-http.core/request"}
+         {:arg-key {:query-string nil,
+                    :request-method :get,
+                    :server-name "localhost",
+                    :server-port 3000,
+                    :uri "/api/login-history/current"},
+          :return {:body #vcr-clj/input-stream
+                   ["H4sIAAAAAAAA/62QT0sDMRDFv8qS0xa22WSycXdz016kWDxUFBQp6e6UBvYfSbqi4nc3WJFCqSC"
+                    "VOQxvhjf85j29E29adF63A1EEGPApE1Ne3AFTUirJaCklCHgkCalxNBWuanSVNYM3fRcsi35tGo"
+                    "yubP/i0Ebxt17qjbYmNbfLSXCaYaXr2qJzwcHUYfGw1pU3IxK10Y3DhDR9pffXu13TJF+Eb32He"
+                    "/2R/MbMMgUZzSEXJ4lvzNpq+xrFl4Outji99n6YNQY7n87vF1E816OeHFFzyCkL9Z+8vFQSVMZp"
+                    "wYqsOJ3xT7izre1bTB9MV4fJMWMhKQhBOWOhH4B6uzufE8LzOQjJz+aUQIFdUJ6VtPxznM+fXHv"
+                    "LVrQCAAA="],
+                   :cached nil,
+                   :chunked? false,
+                   :headers #vcr-clj/clj-http-header-map
+                   {"Cache-Control" "max-age=0, no-cache, must-revalidate, proxy-revalidate",
+                    "Connection" "close",
+                    "Content-Encoding" "gzip",
+                    "Content-Security-Policy" "default-src 'none'; script-src 'self' 'unsafe-eval' https://maps.google.com https://accounts.google.com  *:8080 'unsafe-inline'; child-src 'self' https://accounts.google.com; style-src 'self' 'unsafe-inline' https://accounts.google.com; font-src *; img-src * 'self' data:; connect-src 'self' https://accounts.google.com metabase.us10.list-manage.com   *:8080 ws://*:8080; manifest-src 'self';  frame-ancestors 'none';",
+                    "Content-Type" "application/json;charset=utf-8",
+                    "Expires" "Tue, 03 Jul 2001 06:00:00 GMT",
+                    "Last-Modified" "Wed, 10 May 2023 12:52:51 GMT",
+                    "Server" "Jetty(11.0.14)",
+                    "Set-Cookie" "metabase.DEVICE=3c2ef210-4c48-459e-83d2-1a318a32a0b0;HttpOnly;Path=/;Expires=Sun, 10 May 2043 12:52:51 GMT;SameSite=Lax",
+                    "Strict-Transport-Security" "max-age=31536000",
+                    "X-Content-Type-Options" "nosniff",
+                    "X-Frame-Options" "DENY",
+                    "X-Permitted-Cross-Domain-Policies" "none",
+                    "X-XSS-Protection" "1; mode=block"},
+                   :http-client "-- clj-http cannot serialize instances of org.apache.http.client.HttpClient --",
+                   :length -1,
+                   :protocol-version {:major 1, :minor 1, :name "HTTP"},
+                   :reason-phrase "OK",
+                   :repeatable? false,
+                   :status 200,
+                   :streaming? true,
+                   :trace-redirects []},
+          :var-name "clj-http.core/request"}],
+ :recorded-at #inst "2023-05-10T12:52:50.826-00:00"}

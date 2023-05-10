@@ -6,7 +6,8 @@
    [metabase.server.request.util :as request.u]
    [metabase.test :as mt]
    [ring.mock.request :as ring.mock]
-   [schema.core :as s]))
+   [schema.core :as s]
+   [vcr-clj.clj-http :refer [with-cassette]]))
 
 (deftest ^:parallel https?-test
   (doseq [[headers expected] {{"x-forwarded-proto" "https"}    true
@@ -77,41 +78,42 @@
                    (request.u/ip-address mock-request)))))))))
 
 (deftest ^:parallel geocode-ip-addresses-test
-  (are [ip-addresses expected] (schema= expected (request.u/geocode-ip-addresses ip-addresses))
-    ["8.8.8.8"]
-    {(s/required-key "8.8.8.8") {:description (s/eq "Los Angeles, California, United States")
-                                 :timezone    (s/eq (t/zone-id "America/Los_Angeles"))}}
+  (with-cassette :geocode-ip-addresses
+    (are [ip-addresses expected] (schema= expected (request.u/geocode-ip-addresses ip-addresses))
+      ["8.8.8.8"]
+      {(s/required-key "8.8.8.8") {:description (s/eq "Los Angeles, California, United States")
+                                   :timezone    (s/eq (t/zone-id "America/Los_Angeles"))}}
 
-    ;; this is from the MaxMind sample high-risk IP address list https://www.maxmind.com/en/high-risk-ip-sample-list
-    ;;
-    ;; On 10 May, 2023 this was throwing a 500 error, so we commented it out to let the build pass. We should
-    ;; uncomment and test again a little later (Slack reminder has been set)
-    ;; The root issue is https://github.com/jloh/geojs/issues/48
-    ;; See also the comment/changes in the login history test
-    #_#_
-    ["185.233.100.23"]
-    {(s/required-key "185.233.100.23") {:description #"France"
-                                        :timezone    (s/eq (t/zone-id "Europe/Paris"))}}
+      ;; this is from the MaxMind sample high-risk IP address list https://www.maxmind.com/en/high-risk-ip-sample-list
+      ;;
+      ;; On 10 May, 2023 this was throwing a 500 error, so we commented it out to let the build pass. We should
+      ;; uncomment and test again a little later (Slack reminder has been set)
+      ;; The root issue is https://github.com/jloh/geojs/issues/48
+      ;; See also the comment/changes in the login history test
+      #_#_
+      ["185.233.100.23"]
+      {(s/required-key "185.233.100.23") {:description #"France"
+                                          :timezone    (s/eq (t/zone-id "Europe/Paris"))}}
 
-    ["127.0.0.1"]
-    {(s/required-key "127.0.0.1") {:description (s/eq "Unknown location")
-                                   :timezone    (s/eq nil)}}
+      ["127.0.0.1"]
+      {(s/required-key "127.0.0.1") {:description (s/eq "Unknown location")
+                                     :timezone    (s/eq nil)}}
 
-    ["0:0:0:0:0:0:0:1"]
-    {(s/required-key "0:0:0:0:0:0:0:1") {:description (s/eq "Unknown location")
-                                         :timezone    (s/eq nil)}}
+      ["0:0:0:0:0:0:0:1"]
+      {(s/required-key "0:0:0:0:0:0:0:1") {:description (s/eq "Unknown location")
+                                           :timezone    (s/eq nil)}}
 
-    ;; multiple addresses at once
-    ;; store.metabase.com, Google DNS
-    ;; On 10 May, 2023 this was throwing a 500 error too; see above comment
-    #_#_
-    ["52.206.149.9" "2001:4860:4860::8844"]
-    {(s/required-key "52.206.149.9")         {:description (s/eq "Ashburn, Virginia, United States")
-                                              :timezone    (s/eq (t/zone-id "America/New_York"))}
-     (s/required-key "2001:4860:4860::8844") {:description (s/eq "United States")
-                                              :timezone    (s/eq (t/zone-id "America/Chicago"))}}
+      ;; multiple addresses at once
+      ;; store.metabase.com, Google DNS
+      ;; On 10 May, 2023 this was throwing a 500 error too; see above comment
+      #_#_
+      ["52.206.149.9" "2001:4860:4860::8844"]
+      {(s/required-key "52.206.149.9")         {:description (s/eq "Ashburn, Virginia, United States")
+                                                :timezone    (s/eq (t/zone-id "America/New_York"))}
+       (s/required-key "2001:4860:4860::8844") {:description (s/eq "United States")
+                                                :timezone    (s/eq (t/zone-id "America/Chicago"))}}
 
-    ["wow"] (s/eq nil)
-    ["   "] (s/eq nil)
-    []      (s/eq nil)
-    nil     (s/eq nil)))
+      ["wow"] (s/eq nil)
+      ["   "] (s/eq nil)
+      []      (s/eq nil)
+      nil     (s/eq nil))))
