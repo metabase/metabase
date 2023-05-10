@@ -45,6 +45,7 @@ function getCleanCard(card) {
 
   return {
     name: card.name,
+    collectionId: card.collectionId,
     description: card.description,
     dataset_query: dataset_query,
     display: card.display,
