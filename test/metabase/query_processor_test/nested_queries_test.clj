@@ -1,6 +1,7 @@
 (ns metabase.query-processor-test.nested-queries-test
   "Tests for handling queries with nested expressions."
   (:require
+   [clojure.set :as set]
    [clojure.test :refer :all]
    [honey.sql :as sql]
    [java-time :as t]
@@ -19,6 +20,8 @@
    [metabase.query-processor-test :as qp.test]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.test :as mt]
+   [metabase.test.data.interface :as tx]
+   [metabase.test.data.sql :as sql.tx]
    [metabase.util :as u]
    [schema.core :as s]
    [toucan2.core :as t2]))
@@ -78,7 +81,7 @@
           [4  6]]
    :cols [(cond-> (qp.test/breakout-col (qp.test/col :venues :price))
             native-source?
-            (-> (assoc :field_ref [:field "PRICE" {:base-type :type/Integer}]
+            (-> (assoc :field_ref [:field (mt/format-name "price") {:base-type :type/Integer}]
                        :effective_type :type/Integer)
                 (dissoc :description :parent_id :nfc_path :visibility_type))
 
@@ -295,25 +298,28 @@
                  (query-with-source-card card)))))))))
 
 (deftest card-id-native-source-queries-test
-  (let [run-native-query
-        (fn [sql]
-          (mt/with-temp Card [card {:dataset_query {:database (mt/id), :type :native, :native {:query sql}}}]
-            (qp.test/rows-and-cols
-              (mt/format-rows-by [int int]
-                (qp/process-query
+  (mt/test-drivers (set/intersection (mt/normal-drivers-with-feature :nested-queries)
+                                     (descendants driver/hierarchy :sql))
+    (let [table-name (sql.tx/qualify-and-quote (tx/driver) "test-data" "venues")
+          run-native-query
+          (fn [sql]
+            (mt/with-temp Card [card {:dataset_query {:database (mt/id), :type :native, :native {:query sql}}}]
+              (qp.test/rows-and-cols
+               (mt/format-rows-by [int int]
+                 (qp/process-query
                   (query-with-source-card card
                     (mt/$ids venues
-                      {:aggregation [:count]
-                       :breakout    [*price]})))))))]
-    (is (= (breakout-results :has-source-metadata? false :native-source? true)
-           (run-native-query "SELECT * FROM VENUES"))
-        "make sure `card__id`-style queries work with native source queries as well")
-    (is (= (breakout-results :has-source-metadata? false :native-source? true)
-           (run-native-query "SELECT * FROM VENUES -- small comment here"))
-        "Ensure trailing comments are trimmed and don't cause a wrapping SQL query to fail")
-    (is (= (breakout-results :has-source-metadata? false :native-source? true)
-           (run-native-query "SELECT * FROM VENUES -- small comment here\n"))
-        "Ensure trailing comments followed by a newline are trimmed and don't cause a wrapping SQL query to fail")))
+                             {:aggregation [:count]
+                              :breakout    [*price]})))))))]
+      (is (= (breakout-results :has-source-metadata? false :native-source? true)
+             (run-native-query (str "SELECT * FROM " table-name)))
+          "make sure `card__id`-style queries work with native source queries as well")
+      (is (= (breakout-results :has-source-metadata? false :native-source? true)
+             (run-native-query (str "SELECT * FROM " table-name " -- small comment here")))
+          "Ensure trailing comments are trimmed and don't cause a wrapping SQL query to fail")
+      (is (= (breakout-results :has-source-metadata? false :native-source? true)
+             (run-native-query (str "SELECT * FROM " table-name " -- small comment here\n")))
+          "Ensure trailing comments followed by a newline are trimmed and don't cause a wrapping SQL query to fail"))))
 
 (deftest filter-by-field-literal-test
   (testing "make sure we can filter by a field literal"

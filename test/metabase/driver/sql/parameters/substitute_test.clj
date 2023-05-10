@@ -279,10 +279,13 @@
     (let [query ["SELECT * FROM " (param "#123")]]
       (is (= ["SELECT * FROM (SELECT 1 `x`)" []]
              (substitute query {"#123" (params/map->ReferencedCardQuery {:card-id 123, :query "SELECT 1 `x`"})})))))
-  (testing "Referenced card query substitution removes trailing semicolons and whitespace #28218"
+  (testing "Referenced card query substitution removes comments (#29168), trailing semicolons (#28218) and whitespace"
     (let [query ["SELECT * FROM " (param "#123")]]
-      (is (= ["SELECT * FROM (SELECT ';' `x`)" []]
-             (substitute query {"#123" (params/map->ReferencedCardQuery {:card-id 123, :query "SELECT ';' `x`; ; "})}))))))
+      (are [nested expected] (= [(str "SELECT * FROM (" expected ")") []]
+                                (substitute query {"#123" (params/map->ReferencedCardQuery
+                                                           {:card-id 123, :query nested})}))
+        "SELECT ';' `x`; ; "             "SELECT ';' `x`"
+        "SELECT * FROM table\n-- remark" "SELECT * FROM table\n"))))
 
 ;;; --------------------------------------------- Native Query Snippets ----------------------------------------------
 

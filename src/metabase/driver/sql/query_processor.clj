@@ -44,9 +44,11 @@
   nil)
 
 (defn make-nestable-sql
-  "For embedding native sql queries, wraps [sql] in parens and removes any semicolons"
+  "For embedding native sql queries, wraps [sql] in parens and removes any comments and semicolons."
   [sql]
-  (str "(" (str/replace sql #";[\s;]*$" "") ")"))
+  (str "(" (-> sql
+               (str/replace #"--.*(\n|$)" "")
+               (str/replace #";[\s;]*$" "")) ")"))
 
 (defn- format-sql-source-query [_fn [sql params]]
   (into [(make-nestable-sql sql)] params))
@@ -69,7 +71,7 @@
   (case (long hx/*honey-sql-version*)
     1
     #_{:clj-kondo/ignore [:deprecated-var]}
-    (sql.qp.deprecated/->SQLSourceQuery sql params)
+    (sql.qp.deprecated/->SQLSourceQuery (make-nestable-sql sql) params)
 
     2
     [::sql-source-query sql params]))
