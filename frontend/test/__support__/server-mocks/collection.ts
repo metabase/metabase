@@ -67,6 +67,10 @@ export function setupUnauthorizedCollectionEndpoints(collection: Collection) {
   });
 }
 
+export function setupSingleCollectionEndpoint(collection: Collection) {
+  fetchMock.get(`path:/api/collection/${collection.id}`, collection);
+}
+
 export function setupUnauthorizedCollectionsEndpoints(
   collections: Collection[],
 ) {

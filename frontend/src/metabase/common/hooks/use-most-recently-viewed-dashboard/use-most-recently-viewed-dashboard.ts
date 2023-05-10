@@ -24,21 +24,21 @@ export const useMostRecentlyViewedDashboard = () => {
   } = useAsync(async () => {
     let dashboard: Dashboard | undefined;
 
-    try {
+    // try {
       dashboard = await ActivityApi.most_recently_viewed_dashboard();
-    } catch (error) {
-      if (isHttpError(error)) {
-        if (error.status === 404) {
-          // there is no viewed dashboards in the last 24 hours
-          console.warn(
-            "You didn't visit any dashboard during last 24 hours, fallback to the default behavior",
-          );
-        }
-      }
+    // } catch (error) {
+    //   if (isHttpError(error)) {
+    //     if (error.status === 404) {
+    //       // there is no viewed dashboards in the last 24 hours
+    //         console.warn(
+    //         "You didn't visit any dashboard during last 24 hours, fallback to the default behavior",
+    //       );
+    //     }
+    //   }
 
-      // it is not expected
-      throw error;
-    }
+    //   // it is not expected
+    //   throw error;
+    // }
 
     return dashboard;
   });

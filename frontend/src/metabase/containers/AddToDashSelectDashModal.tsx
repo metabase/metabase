@@ -33,7 +33,7 @@ interface AddToDashSelectDashModalProps {
 
 type DashboardPickerProps = ComponentPropsWithoutRef<typeof DashboardPicker>;
 
-const AddToDashSelectDashModal = ({
+export const AddToDashSelectDashModal = ({
   card,
   dashboards,
   onClose,
@@ -50,6 +50,8 @@ const AddToDashSelectDashModal = ({
     id: collectionId || "root",
     enabled: typeof collectionId !== "undefined",
   });
+
+  // console.log({collectionQuery});
 
   const navigateToDashboard: Required<CreateDashboardFormOwnProps>["onCreate"] =
     dashboard => {
@@ -83,6 +85,7 @@ const AddToDashSelectDashModal = ({
   const error = mostRecentDashboardQuery.error ?? collectionQuery.error;
 
   if (isLoading || error) {
+    console.log({isLoading, error});
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
