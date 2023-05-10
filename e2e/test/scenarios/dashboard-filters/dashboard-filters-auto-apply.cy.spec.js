@@ -46,6 +46,7 @@ describe("scenarios > dashboards > filters > auto apply", () => {
     openDashboard();
     cy.wait("@cardQuery");
 
+    // changing parameter values by default should reload affected questions
     filterWidget().within(() => {
       cy.findByText(filter.name).click();
     });
@@ -58,6 +59,7 @@ describe("scenarios > dashboards > filters > auto apply", () => {
       cy.findByText("Rows 1-6 of 53").should("be.visible");
     });
 
+    // parameter values should be preserved when disabling auto applying filters
     dashboardHeader().within(() => {
       cy.icon("info").click();
     });
@@ -73,6 +75,7 @@ describe("scenarios > dashboards > filters > auto apply", () => {
       cy.findByText("Rows 1-6 of 53").should("be.visible");
     });
 
+    // draft parameter values should be applied only manually
     filterWidget().within(() => {
       cy.findByText("Gadget").click();
     });
@@ -91,6 +94,7 @@ describe("scenarios > dashboards > filters > auto apply", () => {
       cy.findByText("Rows 1-6 of 107").should("be.visible");
     });
 
+    // draft parameter values should be discarded when enabling auto-applying filters
     filterWidget().within(() => {
       cy.findByText("2 selections").click();
     });
@@ -114,6 +118,8 @@ describe("scenarios > dashboards > filters > auto apply", () => {
       cy.get("@cardQuery.all").should("have.length", 3);
     });
 
+    // last applied parameter values should be used when disabling auto applying filters,
+    // even if previously there were draft parameter values
     rightSidebar().within(() => {
       cy.findByLabelText("Auto-apply filters").click();
       cy.wait("@updateDashboard");
