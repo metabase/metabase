@@ -6,7 +6,7 @@ import { checkNotNull } from "metabase/core/utils/types";
 import { ClickAction } from "metabase/modes/types";
 import Mode from "metabase-lib/Mode";
 import { getAdHocQuestion } from "metabase-lib/mocks";
-import ChartClickActionsView from "./ChartClickActionsView";
+import { ChartClickActionsView } from "./ChartClickActionsView";
 
 describe("ChartClickActionsView", () => {
   it('renders "See this ..." action as the first item', () => {

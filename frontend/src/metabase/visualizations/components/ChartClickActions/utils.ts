@@ -1,6 +1,7 @@
 import _ from "underscore";
 import { t } from "ttag";
 import type { ClickAction } from "metabase/modes/types";
+import { ClickActionBase } from "metabase/modes/types";
 
 type Section = {
   icon: string;
@@ -26,6 +27,9 @@ export const SECTIONS: Record<string, Section> = {
   breakout: {
     icon: "breakout",
   },
+  "breakout-popover": {
+    icon: "breakout",
+  },
   standalone_filter: {
     icon: "filter",
   },
@@ -44,6 +48,9 @@ export const SECTIONS: Record<string, Section> = {
     icon: "dashboard",
   },
   auto: {
+    icon: "bolt",
+  },
+  "auto-popover": {
     icon: "bolt",
   },
   info: {
@@ -90,13 +97,14 @@ export const getGroupedAndSortedActions = (clickActions: ClickAction[]) => {
     .value();
 };
 
-export const getGALabelForAction = (action: ClickAction) =>
-  action
-    ? `${("section" in action && action.section) || ""}:${action.name || ""}`
-    : null;
+export const getGALabelForAction = (action: ClickActionBase) =>
+  action ? `${action.section || ""}:${action.name || ""}` : null;
+
+const getFilterValueType = (actions: ClickAction[]) =>
+  actions[0]?.extra?.().valueType;
 
 export const getFilterSectionTitle = (actions: ClickAction[]) => {
-  const valueType = actions[0]?.extra?.().valueType;
+  const valueType = getFilterValueType(actions);
 
   if (valueType === "date") {
     return t`Filter by this date`;
@@ -110,16 +118,43 @@ export const getFilterSectionTitle = (actions: ClickAction[]) => {
 };
 
 export const getSectionTitle = (
-  section: string,
+  sectionKey: string,
   actions: ClickAction[],
 ): string | null => {
-  switch (section) {
+  switch (sectionKey) {
     case "filter":
       return getFilterSectionTitle(actions);
 
     case "sum":
       return t`Summarize`;
+
+    case "auto-popover":
+      return t`Automatic insights…`;
+
+    case "breakout-popover":
+      return t`Break out by…`;
   }
 
   return null;
+};
+
+export const getSectionContentDirection = (
+  sectionKey: string,
+  actions: ClickAction[],
+) => {
+  switch (sectionKey) {
+    case "sort":
+    case "sum":
+      return "row";
+
+    case "filter": {
+      const valueType = getFilterValueType(actions);
+
+      if (valueType === "boolean" || valueType === "numeric") {
+        return "row";
+      }
+    }
+  }
+
+  return "column";
 };

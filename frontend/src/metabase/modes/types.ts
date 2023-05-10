@@ -34,6 +34,7 @@ type Dispatcher = (dispatch: Dispatch) => void;
 
 export type ClickActionPopoverProps = {
   series: Series;
+  onClick: (action: ClickAction) => void;
   onChangeCardAndRun: OnChangeCardAndRun;
   onChange: (settings: VisualizationSettings) => void;
   onResize: (...args: unknown[]) => void;
@@ -72,7 +73,7 @@ export type PopoverClickAction = ClickActionBase & {
   popover: (props: ClickActionPopoverProps) => JSX.Element;
 };
 
-type UrlClickAction = ClickActionBase & {
+export type UrlClickAction = ClickActionBase & {
   ignoreSiteUrl?: boolean;
   url: () => string;
 };

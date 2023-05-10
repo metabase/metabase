@@ -11,13 +11,13 @@ import {
 import {
   ClickAction,
   isPopoverClickAction,
+  isRegularClickAction,
   PopoverClickAction,
 } from "metabase/modes/types";
 import { Dispatch } from "metabase-types/store";
 import { Series } from "metabase-types/api";
 
-import "./ChartClickActions.css";
-import ChartClickActionsView from "./ChartClickActionsView";
+import { ChartClickActionsView } from "./ChartClickActionsView";
 import { getGALabelForAction } from "./utils";
 import { FlexTippyPopover } from "./ChartClickActions.styled";
 
@@ -64,11 +64,14 @@ class ChartClickActions extends Component<ChartClickActionsProps, State> {
         onChangeCardAndRun,
       });
       if (didPerform) {
-        MetabaseAnalytics.trackStructEvent(
-          "Actions",
-          "Executed Click Action",
-          getGALabelForAction(action),
-        );
+        if (isRegularClickAction(action)) {
+          MetabaseAnalytics.trackStructEvent(
+            "Actions",
+            "Executed Click Action",
+            getGALabelForAction(action),
+          );
+        }
+
         this.close();
       } else {
         console.warn("No action performed", action);
@@ -109,6 +112,7 @@ class ChartClickActions extends Component<ChartClickActionsProps, State> {
       const PopoverContent = popoverAction.popover;
       popover = (
         <PopoverContent
+          onClick={this.handleClickAction}
           onResize={() => {
             this.instance?.popperInstance?.update();
           }}
