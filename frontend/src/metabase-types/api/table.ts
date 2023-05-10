@@ -1,6 +1,6 @@
 import type { Database, DatabaseId, InitialSyncStatus } from "./database";
 import type { ForeignKey } from "./foreign-key";
-import type { Field } from "./field";
+import type { Field, FieldDimensionOption } from "./field";
 import type { Metric } from "./metric";
 import type { Segment } from "./segment";
 
@@ -38,6 +38,7 @@ export interface Table {
   fields?: Field[];
   metrics?: Metric[];
   segments?: Segment[];
+  dimension_options?: Record<string, FieldDimensionOption>;
   field_order: TableFieldOrder;
 
   active: boolean;
