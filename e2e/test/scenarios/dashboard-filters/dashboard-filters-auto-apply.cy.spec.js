@@ -1,11 +1,13 @@
 import {
   dashboardHeader,
+  dashboardParametersContainer,
   filterWidget,
   getDashboardCard,
   popover,
   restore,
   rightSidebar,
   undoToast,
+  visitDashboard,
 } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
@@ -39,10 +41,94 @@ describe("scenarios > dashboards > filters > auto apply", () => {
     cy.intercept("PUT", "/api/dashboard/*").as("updateDashboard");
   });
 
+  it("should handle toggling auto applying filters on and off", () => {
+    createDashboard();
+    openDashboard();
+    cy.wait("@cardQuery");
+
+    filterWidget().within(() => {
+      cy.findByText(filter.name).click();
+    });
+    popover().within(() => {
+      cy.findByText("Gadget").click();
+      cy.button("Add filter").click();
+      cy.wait("@cardQuery");
+    });
+    getDashboardCard().within(() => {
+      cy.findByText("Rows 1-6 of 53").should("be.visible");
+    });
+
+    dashboardHeader().within(() => {
+      cy.icon("info").click();
+    });
+    rightSidebar().within(() => {
+      cy.findByLabelText("Auto-apply filters").click();
+      cy.wait("@updateDashboard");
+      cy.findByLabelText("Auto-apply filters").should("not.be.checked");
+    });
+    filterWidget().within(() => {
+      cy.findByText("Gadget").should("be.visible");
+    });
+    getDashboardCard().within(() => {
+      cy.findByText("Rows 1-6 of 53").should("be.visible");
+    });
+
+    filterWidget().within(() => {
+      cy.findByText("Gadget").click();
+    });
+    popover().within(() => {
+      cy.findByText("Widget").click();
+      cy.button("Update filter").click();
+    });
+    getDashboardCard().within(() => {
+      cy.findByText("Rows 1-6 of 53").should("be.visible");
+    });
+    dashboardParametersContainer().within(() => {
+      cy.button("Apply").click();
+      cy.wait("@cardQuery");
+    });
+    getDashboardCard().within(() => {
+      cy.findByText("Rows 1-6 of 107").should("be.visible");
+    });
+
+    filterWidget().within(() => {
+      cy.findByText("2 selections").click();
+    });
+    popover().within(() => {
+      cy.findByText("Gadget").click();
+      cy.button("Update filter").click();
+    });
+    filterWidget().within(() => {
+      cy.findByText("Widget").should("be.visible");
+    });
+    dashboardParametersContainer().within(() => {
+      cy.button("Apply").should("be.visible");
+    });
+    rightSidebar().within(() => {
+      cy.findByLabelText("Auto-apply filters").click();
+      cy.wait("@updateDashboard");
+      cy.findByLabelText("Auto-apply filters").should("be.checked");
+    });
+    filterWidget().within(() => {
+      cy.findByText("2 selections").should("be.visible");
+      cy.get("@cardQuery.all").should("have.length", 3);
+    });
+
+    rightSidebar().within(() => {
+      cy.findByLabelText("Auto-apply filters").click();
+      cy.wait("@updateDashboard");
+      cy.findByLabelText("Auto-apply filters").should("not.be.checked");
+    });
+    filterWidget().within(() => {
+      cy.findByText("2 selections").should("be.visible");
+      cy.get("@cardQuery.all").should("have.length", 3);
+    });
+  });
+
   it("should display a toast when a dashboard takes longer than 15s to load", () => {
     cy.clock();
     createDashboard();
-    visitSlowDashboard({ [filter.slug]: "Gadget" });
+    openSlowDashboard({ [filter.slug]: "Gadget" });
 
     cy.tick(TOAST_TIMEOUT);
     cy.wait("@cardQuery");
@@ -68,7 +154,7 @@ describe("scenarios > dashboards > filters > auto apply", () => {
   it("should not display the toast when auto applying filters is disabled", () => {
     cy.clock();
     createDashboard({ auto_apply_filters: false });
-    visitSlowDashboard({ [filter.slug]: "Gadget" });
+    openSlowDashboard({ [filter.slug]: "Gadget" });
 
     cy.tick(TOAST_TIMEOUT);
     cy.wait("@cardQuery");
@@ -84,7 +170,7 @@ describe("scenarios > dashboards > filters > auto apply", () => {
   it("should not display the toast if there are no parameter values", () => {
     cy.clock();
     createDashboard();
-    visitSlowDashboard();
+    openSlowDashboard();
 
     cy.tick(TOAST_TIMEOUT);
     cy.wait("@cardQuery");
@@ -94,7 +180,7 @@ describe("scenarios > dashboards > filters > auto apply", () => {
   it("should not display the same toast twice for a dashboard", () => {
     cy.clock();
     createDashboard();
-    visitSlowDashboard({ [filter.slug]: "Gadget" });
+    openSlowDashboard({ [filter.slug]: "Gadget" });
 
     cy.tick(TOAST_TIMEOUT);
     cy.wait("@cardQuery");
@@ -136,7 +222,17 @@ const getParameterMapping = ({ card_id }) => ({
   ],
 });
 
-const visitSlowDashboard = (params = {}) => {
+const openDashboard = (params = {}) => {
+  cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
+    "cardQuery",
+  );
+
+  cy.get("@dashboardId").then(dashboardId => {
+    visitDashboard(dashboardId, { params });
+  });
+};
+
+const openSlowDashboard = (params = {}) => {
   cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query", req => {
     return Cypress.Promise.delay().then(() => req.reply());
   }).as("cardQuery");

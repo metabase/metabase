@@ -283,6 +283,9 @@ const slowCards = handleActions(
 const parameterValues = handleActions(
   {
     [INITIALIZE]: { next: () => ({}) }, // reset values
+    [FETCH_DASHBOARD]: {
+      next: (state, { payload: { parameterValues } }) => parameterValues,
+    },
     [SET_PARAMETER_VALUE]: {
       next: (state, { payload: { id, value, isDraft } }) => {
         if (!isDraft) {
@@ -292,14 +295,11 @@ const parameterValues = handleActions(
         return state;
       },
     },
-    [REMOVE_PARAMETER]: {
-      next: (state, { payload: { id } }) => dissoc(state, id),
-    },
-    [FETCH_DASHBOARD]: {
-      next: (state, { payload: { parameterValues } }) => parameterValues,
-    },
     [SET_PARAMETER_VALUES]: {
       next: (state, { payload }) => payload,
+    },
+    [REMOVE_PARAMETER]: {
+      next: (state, { payload: { id } }) => dissoc(state, id),
     },
     [RESET]: { next: state => ({}) },
   },
@@ -309,19 +309,24 @@ const parameterValues = handleActions(
 const draftParameterValues = handleActions(
   {
     [INITIALIZE]: { next: () => ({}) },
+    [FETCH_DASHBOARD]: {
+      next: (
+        state,
+        { payload: { dashboard, parameterValues, preserveParameters } },
+      ) =>
+        preserveParameters && !dashboard.auto_apply_filters
+          ? state
+          : parameterValues,
+    },
     [SET_PARAMETER_VALUE]: {
       next: (state, { payload: { id, value } }) =>
         assoc(state ?? {}, id, value),
     },
-    [REMOVE_PARAMETER]: {
-      next: (state, { payload: { id } }) => dissoc(state, id),
-    },
-    [FETCH_DASHBOARD]: {
-      next: (state, { payload: { parameterValues, preserveParameters } }) =>
-        preserveParameters ? state : parameterValues,
-    },
     [SET_PARAMETER_VALUES]: {
       next: (state, { payload }) => payload,
+    },
+    [REMOVE_PARAMETER]: {
+      next: (state, { payload: { id } }) => dissoc(state, id),
     },
     [RESET]: { next: () => ({}) },
   },

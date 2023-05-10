@@ -104,6 +104,10 @@ export const dashboardHeader = () => {
   return cy.get("main header");
 };
 
+export const dashboardParametersContainer = () => {
+  return cy.findByTestId("dashboard-parameters-widget-container");
+};
+
 export const undoToast = () => {
   return cy.findByTestId("toast-undo");
 };
