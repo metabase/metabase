@@ -107,11 +107,12 @@
 (defmethod lib.metadata.calculation/metadata-method :mbql/join
   [query stage-number {:keys [fields stages], join-alias :alias, :or {fields :none}, :as _join}]
   (when-not (= fields :none)
-    (let [field-metadatas (if (= fields :all)
-                            (lib.metadata.calculation/metadata (assoc query :stages stages) -1 (last stages))
-                            (for [field-ref fields]
-                              ;; resolve the field ref in the context of the join. Not sure if this is right.
-                              (lib.metadata.calculation/metadata query stage-number field-ref)))]
+    (let [join-query (assoc query :stages stages)
+          field-metadatas (if (= fields :all)
+                            (lib.metadata.calculation/metadata join-query -1 (peek stages))
+                            (for [field-ref fields
+                                  :let [join-field (lib.options/update-options field-ref dissoc :join-alias)]]
+                              (lib.metadata.calculation/metadata join-query -1 join-field)))]
       (mapv (fn [field-metadata]
               (column-from-join-fields query stage-number field-metadata join-alias))
             field-metadatas))))
