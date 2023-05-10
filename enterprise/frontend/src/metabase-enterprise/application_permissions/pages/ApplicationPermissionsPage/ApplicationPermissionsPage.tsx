@@ -81,6 +81,7 @@ const ApplicationPermissionsPage = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   Groups.loadList(),
   connect(mapStateToProps, mapDispatchToProps),
