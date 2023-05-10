@@ -856,7 +856,7 @@
   {"card"       :model/Card
    "dataset"    :model/Card
    "collection" :metabase.models.collection/Collection
-   "database"   :metabase.models.database/Database
+   "database"   :model/Database
    "dashboard"  :model/Dashboard
    "table"      :metabase.models.table/Table})
 

@@ -133,7 +133,7 @@
    :model/DashboardCardSeries
    (constantly {:position 0})
 
-   Database
+   :model/Database
    (fn [_] {:details   {}
             :engine    :h2
             :is_sample false

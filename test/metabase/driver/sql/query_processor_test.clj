@@ -224,7 +224,7 @@
 (defn- compile-join [driver]
   (driver/with-driver driver
     (qp.store/with-store
-      (qp.store/store-database! (t2/instance :metabase.models.database/Database
+      (qp.store/store-database! (t2/instance :model/Database
                                              {:id       1
                                               :name     "test-data"
                                               :engine   driver

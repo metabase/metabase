@@ -11,7 +11,7 @@
 
 (defn- metadata-type->model [metadata-type]
   (case metadata-type
-    :metadata/database :metabase.models.database/Database
+    :metadata/database :model/Database
     :metadata/table    :metabase.models.table/Table
     :metadata/field    :metabase.models.field/Field
     :metadata/card     :model/Card
