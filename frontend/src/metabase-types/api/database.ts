@@ -17,6 +17,7 @@ export type DatabaseFeature =
   | "basic-aggregations"
   | "binning"
   | "case-sensitivity-string-filter-options"
+  | "dynamic-schema"
   | "expression-aggregations"
   | "expressions"
   | "foreign-keys"
