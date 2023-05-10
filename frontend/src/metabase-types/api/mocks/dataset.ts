@@ -1,4 +1,3 @@
-import _ from "underscore";
 import {
   Dataset,
   DatasetColumn,
@@ -28,15 +27,15 @@ export type MockDatasetOpts = Partial<Omit<Dataset, "data">> & {
   data?: Partial<DatasetData>;
 };
 
-export const createMockDatasetData = (
-  columns: DatasetColumn[] = [createMockColumn()],
-  opts?: Partial<DatasetData>,
-) => {
+export const createMockDatasetData = ({
+  cols = [createMockColumn()],
+  ...opts
+}: Partial<DatasetData>) => {
   return {
     rows: [],
-    cols: columns,
+    cols,
     rows_truncated: 0,
-    results_metadata: createMockResultsMetadata(columns),
+    results_metadata: createMockResultsMetadata(cols),
     ...opts,
   };
 };
@@ -48,7 +47,10 @@ export const createMockDataset = ({
   const columns: DatasetColumn[] = data.cols ?? [createMockColumn()];
 
   return {
-    data: createMockDatasetData(columns, _.omit(data, "cols")),
+    data: createMockDatasetData({
+      ...data,
+      cols: columns,
+    }),
     database_id: 1,
     row_count: 0,
     running_time: 1000,
