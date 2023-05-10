@@ -303,13 +303,13 @@
 
 (defn do-with-current-user
   "Impl for `with-current-user`."
-  [{:keys [metabase-user-id is-superuser? user-locale settings is-group-manager?]} thunk]
+  [{:keys [metabase-user-id is-superuser? permissions-set user-locale settings is-group-manager?]} thunk]
   (binding [*current-user-id*              metabase-user-id
             i18n/*user-locale*             user-locale
             *is-group-manager?*            (boolean is-group-manager?)
             *is-superuser?*                (boolean is-superuser?)
             *current-user*                 (delay (find-user metabase-user-id))
-            *current-user-permissions-set* (delay (some-> metabase-user-id user/permissions-set))
+            *current-user-permissions-set* (delay (or permissions-set (some-> metabase-user-id user/permissions-set)))
             *user-local-values*            (delay (atom (or settings
                                                             (user-local-settings metabase-user-id))))]
     (thunk)))
@@ -328,7 +328,7 @@
                                         Overrides `site-locale` if set.
   *  `*is-superuser?*`                  Boolean stating whether current user is a superuser.
   *  `*is-group-manager?*`              Boolean stating whether current user is a group manager of at least one group.
-  *  `current-user-permissions-set*`    delay that returns the set of permissions granted to the current user from DB
+  *  `*current-user-permissions-set*`   delay that returns the set of permissions granted to the current user from DB
   *  `*user-local-values*`              atom containing a map of user-local settings and values for the current user"
   [handler]
   (fn [request respond raise]
@@ -342,8 +342,19 @@
     (db/select-one [User [:id :metabase-user-id] [:is_superuser :is-superuser?] [:locale :user-locale] :settings]
       :id current-user-id)))
 
+(defmacro as-admin
+  "Execude code in body as an admin user."
+  {:style/indent :defn}
+  [& body]
+  `(do-with-current-user
+    (merge
+      (with-current-user-fetch-user-for-id ~'api/*current-user-id*)
+      {:is-superuser? true
+       :permissions-set #{"/"}})
+    (fn [] ~@body)))
+
 (defmacro with-current-user
-  "Execute code in body with User with `current-user-id` bound as the current user. (This is not used in the middleware
+  "Execute code in body with `current-user-id` bound as the current user. (This is not used in the middleware
   itself but elsewhere where we want to simulate a User context, such as when rendering Pulses or in tests.) "
   {:style/indent :defn}
   [current-user-id & body]

@@ -328,20 +328,22 @@
   "Pre-processing middleware. Replaces source tables a User was querying against with source queries that (presumably)
   restrict the rows returned, based on presence of sandboxes."
   [query]
-  (or (when-let [table-id->gtap (when *current-user-id*
-                                  (query->table-id->gtap query))]
-        (let [gtapped-query (gtapped-query query table-id->gtap)]
-          (if (not= query gtapped-query)
-            ;; Applying GTAPs to the query may have introduced references to tables that are also sandboxed,
-            ;; so we need to recursively appby the middleware until new queries are not returned.
-            (if (= *recursion-limit* 0)
-              (throw (ex-info (trs "Reached recursion limit of {0} in \"apply-sandboxing\" middleware"
-                                   default-recursion-limit)
-                              query))
-              (binding [*recursion-limit* (dec *recursion-limit*)]
-                (apply-sandboxing gtapped-query)))
-            gtapped-query)))
-      query))
+  (if-not api/*is-superuser?*
+    (or (when-let [table-id->gtap (when *current-user-id*
+                                    (query->table-id->gtap query))]
+          (let [gtapped-query (gtapped-query query table-id->gtap)]
+            (if (not= query gtapped-query)
+              ;; Applying GTAPs to the query may have introduced references to tables that are also sandboxed,
+              ;; so we need to recursively appby the middleware until new queries are not returned.
+              (if (= *recursion-limit* 0)
+                (throw (ex-info (trs "Reached recursion limit of {0} in \"apply-sandboxing\" middleware"
+                                     default-recursion-limit)
+                                query))
+                (binding [*recursion-limit* (dec *recursion-limit*)]
+                  (apply-sandboxing gtapped-query)))
+              gtapped-query)))
+        query)
+    query))
 
 
 ;;;; Post-processing
