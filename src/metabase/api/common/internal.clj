@@ -16,7 +16,6 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.describe :as umd]
    [metabase.util.malli.schema :as ms]
-   [metabase.util.regex :as u.regex]
    [metabase.util.schema :as su]
    [potemkin.types :as p.types]
    [schema.core :as s])
@@ -261,9 +260,9 @@
 (defn- ->matching-regex
   "Note: this is called in a macro context, so it can potentially be passed a symbol that evaluates to a schema."
   [schema]
-  (let [schema-type (try (mc/type #_:clj-kondo/ignore (eval schema))
+  (let [schema-type (try (mc/type schema)
                          (catch clojure.lang.ExceptionInfo _
-                           (mc/type schema)))]
+                           (mc/type #_:clj-kondo/ignore (eval schema))))]
     [schema-type
      (condp = schema-type
        ;; can use any regex directly
