@@ -57,6 +57,7 @@
                               :percentile-aggregations false
                               :full-join               false
                               :uploads                 true
+                              :schemas                 false
                               ;; MySQL LIKE clauses are case-sensitive or not based on whether the collation of the server and the columns
                               ;; themselves. Since this isn't something we can really change in the query itself don't present the option to the
                               ;; users in the UI
@@ -68,8 +69,6 @@
 ;; But since JSON unfolding will only apply columns with JSON types, this won't cause any problems during sync.
 (defmethod driver/database-supports? [:mysql :nested-field-columns] [_driver _feat db]
   (driver.common/json-unfolding-default db))
-
-(defmethod driver/database-supports? [:mysql :schemas] [_driver _feat _db] true)
 
 (defmethod driver/database-supports? [:mysql :persist-models-enabled]
   [_driver _feat db]
