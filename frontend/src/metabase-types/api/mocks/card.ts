@@ -12,6 +12,7 @@ export const createMockCard = (opts?: Partial<Card>): Card => ({
   name: "Question",
   description: null,
   display: "table",
+  public_uuid: null,
   dataset_query: createMockStructuredDatasetQuery(),
   visualization_settings: createMockVisualizationSettings(),
   result_metadata: [],

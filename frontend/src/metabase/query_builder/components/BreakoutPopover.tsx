@@ -1,6 +1,6 @@
 import React from "react";
 
-import type { ConcreteField } from "metabase-types/types/Query";
+import type { ConcreteFieldReference } from "metabase-types/api";
 import type Breakout from "metabase-lib/queries/structured/Breakout";
 import type DimensionOptions from "metabase-lib/DimensionOptions";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
@@ -15,7 +15,7 @@ interface BreakoutPopoverProps {
   width?: number;
   maxHeight?: number;
   alwaysExpanded?: boolean;
-  onChangeBreakout: (breakout: ConcreteField) => void;
+  onChangeBreakout: (breakout: ConcreteFieldReference) => void;
   onClose?: () => void;
 }
 
@@ -46,7 +46,7 @@ const BreakoutPopover = ({
       query={query}
       metadata={query.metadata()}
       fieldOptions={fieldOptions}
-      onFieldChange={(field: ConcreteField) => {
+      onFieldChange={(field: ConcreteFieldReference) => {
         onChangeBreakout(field);
         if (onClose) {
           onClose();

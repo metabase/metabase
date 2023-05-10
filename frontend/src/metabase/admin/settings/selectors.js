@@ -1,7 +1,7 @@
 /* eslint-disable react/display-name */
 import React from "react";
 import _ from "underscore";
-import { createSelector } from "reselect";
+import { createSelector } from "@reduxjs/toolkit";
 import { t, jt } from "ttag";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import MetabaseSettings from "metabase/lib/settings";
@@ -11,7 +11,7 @@ import { getUserIsAdmin } from "metabase/selectors/user";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import SettingCommaDelimitedInput from "./components/widgets/SettingCommaDelimitedInput";
 import CustomGeoJSONWidget from "./components/widgets/CustomGeoJSONWidget";
-import { UploadDbWidget } from "./components/widgets/UploadSettingsWidget";
+import { UploadSettings } from "./components/UploadSettings";
 import SettingsLicense from "./components/SettingsLicense";
 import SiteUrlWidget from "./components/widgets/SiteUrlWidget";
 import HttpsOnlyWidget from "./components/widgets/HttpsOnlyWidget";
@@ -310,6 +310,7 @@ const SECTIONS = updateSectionsWithPlugins({
     name: t`Uploads`,
     order: 85,
     adminOnly: true,
+    component: UploadSettings,
     settings: [
       {
         key: "uploads-enabled",
@@ -323,12 +324,9 @@ const SECTIONS = updateSectionsWithPlugins({
         display_name: t`Database`,
         description: t`Identify a database where upload tables will be created.`,
         placeholder: t`Select a database`,
-        widget: UploadDbWidget,
       },
       {
         key: "uploads-schema-name",
-        getHidden: settings =>
-          !settings["uploads-enabled"] || !settings["uploads-database-id"],
         display_name: t`Schema name`,
         description: t`Identify a database schema where data upload tables will be created.`,
         type: "string",
@@ -336,8 +334,6 @@ const SECTIONS = updateSectionsWithPlugins({
       },
       {
         key: "uploads-table-prefix",
-        getHidden: settings =>
-          !settings["uploads-enabled"] || !settings["uploads-database-id"],
         display_name: t`Table prefix`,
         description: t`Identify a table prefix for tables created by data uploads.`,
         placeholder: "uploaded_",
@@ -346,6 +342,7 @@ const SECTIONS = updateSectionsWithPlugins({
       },
     ],
   },
+
   "public-sharing": {
     name: t`Public Sharing`,
     order: 90,

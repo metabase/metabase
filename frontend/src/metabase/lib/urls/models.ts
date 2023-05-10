@@ -1,10 +1,9 @@
 import slugg from "slugg";
 import type { Card } from "metabase-types/api";
-import type { Card as LegacyCard } from "metabase-types/types/Card";
 import { question, QuestionUrlBuilderParams } from "./questions";
 import { appendSlug } from "./utils";
 
-type CardOrSearchResult = (Partial<Card> | Partial<LegacyCard>) & {
+type CardOrSearchResult = Partial<Card> & {
   id?: number | string;
   card_id?: number | string;
   name?: string;
@@ -14,7 +13,7 @@ export function model(
   card: CardOrSearchResult,
   opts?: QuestionUrlBuilderParams,
 ) {
-  return question(card as LegacyCard, opts);
+  return question(card, opts);
 }
 
 export function modelDetail(card: CardOrSearchResult, tab = "") {

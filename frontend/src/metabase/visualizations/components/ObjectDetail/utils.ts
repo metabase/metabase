@@ -2,8 +2,12 @@ import { t } from "ttag";
 
 import { singularize, formatValue } from "metabase/lib/formatting";
 
-import type { DatasetData, Column } from "metabase-types/types/Dataset";
-import type { TableId, VisualizationSettings } from "metabase-types/api";
+import type {
+  DatasetColumn,
+  DatasetData,
+  TableId,
+  VisualizationSettings,
+} from "metabase-types/api";
 
 import {
   getIsPKFromTablePredicate,
@@ -18,7 +22,7 @@ import { ObjectId } from "./types";
 export interface GetObjectNameArgs {
   table?: Table | null;
   question?: Question;
-  cols: Column[];
+  cols: DatasetColumn[];
   zoomedRow: unknown[] | undefined;
 }
 
@@ -46,7 +50,7 @@ export const getObjectName = ({
 };
 
 export interface GetDisplayIdArgs {
-  cols: Column[];
+  cols: DatasetColumn[];
   zoomedRow: unknown[] | undefined;
   tableId?: TableId;
   settings: VisualizationSettings;
@@ -114,7 +118,7 @@ export function getSingleResultsRow(data: DatasetData) {
   return data.rows.length === 1 ? data.rows[0] : null;
 }
 
-export const getSinglePKIndex = (cols: Column[]) => {
+export const getSinglePKIndex = (cols: DatasetColumn[]) => {
   const pkCount = cols?.filter(isPK)?.length;
   if (pkCount !== 1) {
     return undefined;

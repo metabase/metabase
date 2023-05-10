@@ -42,6 +42,8 @@ export interface Database extends DatabaseData {
 
   settings?: DatabaseSettings | null;
 
+  caveats?: string;
+  points_of_interest?: string;
   created_at: ISO8601Time;
   updated_at: ISO8601Time;
 
@@ -74,6 +76,12 @@ export interface DatabaseUsageInfo {
   dataset: number;
   metric: number;
   segment: number;
+}
+
+export interface DatabaseQuery {
+  include?: "tables" | "tables.fields";
+  include_editable_data_model?: boolean;
+  exclude_uneditable_details?: boolean;
 }
 
 export interface DatabaseListQuery {
