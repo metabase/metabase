@@ -91,75 +91,55 @@ export function getDefaultTab({
 export const tabsReducer = createReducer<DashboardState>(
   INITIAL_DASHBOARD_STATE,
   builder => {
-    builder.addCase(createNewTabAction, (state, { payload: { tabId } }) => {
-      const { dashId, prevDash, prevTabs } = getPrevDashAndTabs(state);
-      if (!dashId || !prevDash) {
-        throw Error(
-          `CREATE_NEW_TAB was dispatched but either dashId (${dashId}) or prevDash (${prevDash}) are null`,
-        );
-      }
+    builder.addCase<typeof createNewTabAction>(
+      createNewTabAction,
+      (state, { payload: { tabId } }) => {
+        const { dashId, prevDash, prevTabs } = getPrevDashAndTabs(state);
+        if (!dashId || !prevDash) {
+          throw Error(
+            `CREATE_NEW_TAB was dispatched but either dashId (${dashId}) or prevDash (${prevDash}) are null`,
+          );
+        }
 
-      // Case 1: Dashboard already has tabs
-      if (prevTabs.length !== 0) {
-        // 1. Create new tab, add to dashboard
-        const newTab = getDefaultTab({
-          tabId,
-          dashId,
-          name: t`Page ${prevTabs.length + 1}`,
-        });
-        const dashboards: DashboardState["dashboards"] = {
-          ...state.dashboards,
-          [dashId]: {
-            ...prevDash,
-            ordered_tabs: [...prevTabs, newTab],
-          },
-        };
+        // Case 1: Dashboard already has tabs
+        if (prevTabs.length !== 0) {
+          // 1. Create new tab, add to dashboard
+          const newTab = getDefaultTab({
+            tabId,
+            dashId,
+            name: t`Page ${prevTabs.length + 1}`,
+          });
+          prevDash.ordered_tabs = [...prevTabs, newTab];
 
-        // 2. Select new tab
-        const selectedTabId = tabId;
+          // 2. Select new tab
+          state.selectedTabId = tabId;
+          return;
+        }
 
-        return { ...state, dashboards, selectedTabId };
-      }
+        // Case 2: Dashboard doesn't have tabs
 
-      // Case 2: Dashboard doesn't have tabs
+        // 1. Create two new tabs, add to dashboard
+        const firstTabId = tabId + 1;
+        const secondTabId = tabId;
+        const newTabs = [
+          getDefaultTab({ tabId: firstTabId, dashId, name: t`Page 1` }),
+          getDefaultTab({ tabId: secondTabId, dashId, name: t`Page 2` }),
+        ];
+        prevDash.ordered_tabs = [...prevTabs, ...newTabs];
 
-      // 1. Create two new tabs, add to dashboard
-      const firstTabId = tabId + 1;
-      const secondTabId = tabId;
-      const newTabs = [
-        getDefaultTab({ tabId: firstTabId, dashId, name: t`Page 1` }),
-        getDefaultTab({ tabId: secondTabId, dashId, name: t`Page 2` }),
-      ];
-      const dashboards: DashboardState["dashboards"] = {
-        ...state.dashboards,
-        [dashId]: {
-          ...prevDash,
-          ordered_tabs: [...prevTabs, ...newTabs],
-        },
-      };
+        // 2. Select second tab
+        state.selectedTabId = secondTabId;
 
-      // 2. Select second tab
-      const selectedTabId = secondTabId;
-
-      // 3. Assign existing dashcards to first tab
-      const dashcards: DashboardState["dashcards"] = { ...state.dashcards };
-      if (prevTabs.length === 0) {
+        // 3. Assign existing dashcards to first tab
         prevDash.ordered_cards.forEach(id => {
-          dashcards[id] = {
+          state.dashcards[id] = {
             ...state.dashcards[id],
             isDirty: true,
             dashboard_tab_id: firstTabId,
           };
         });
-      }
-
-      return {
-        ...state,
-        dashboards,
-        selectedTabId,
-        dashcards,
-      };
-    });
+      },
+    );
 
     builder.addCase(
       deleteTab,
@@ -228,34 +208,21 @@ export const tabsReducer = createReducer<DashboardState>(
 
     builder.addCase(renameTab, (state, { payload: { tabId, name } }) => {
       const { dashId, prevDash, prevTabs } = getPrevDashAndTabs(state);
-      const tabToRename = prevTabs.find(({ id }) => id === tabId);
-      if (!dashId || !prevDash || !tabToRename) {
+      const tabToRenameIndex = prevTabs.findIndex(({ id }) => id === tabId);
+      if (!dashId || !prevDash || tabToRenameIndex === -1) {
         throw Error(
-          `RENAME_TAB was dispatched but either dashId (${dashId}), prevDash (${prevDash}), or tabToRename (${tabToRename}) is null/undefined`,
+          `RENAME_TAB was dispatched but either dashId (${dashId}), prevDash (${JSON.stringify(
+            prevDash,
+          )}), or tabToRenameIndex (${tabToRenameIndex}) is invalid`,
         );
       }
 
-      const tabToRenameIndex = prevTabs.findIndex(
-        ({ id }) => id === tabToRename.id,
-      );
-      const newTabs = [...prevTabs];
-      newTabs[tabToRenameIndex] = { ...tabToRename, name };
-
-      const dashboards: DashboardState["dashboards"] = {
-        ...state.dashboards,
-        [dashId]: {
-          ...prevDash,
-          ordered_tabs: newTabs,
-        },
-      };
-
-      return { ...state, dashboards };
+      prevTabs[tabToRenameIndex].name = name;
     });
 
-    builder.addCase(selectTab, (state, { payload: { tabId } }) => ({
-      ...state,
-      selectedTabId: tabId,
-    }));
+    builder.addCase(selectTab, (state, { payload: { tabId } }) => {
+      state.selectedTabId = tabId;
+    });
 
     builder.addCase(
       saveCardsAndTabs,
@@ -268,29 +235,24 @@ export const tabsReducer = createReducer<DashboardState>(
         }
 
         // 1. Replace temporary with real dashcard ids
-        const dashcardData: DashboardState["dashcardData"] = {};
         const prevCards = prevDash.ordered_cards.filter(
           id => !state.dashcards[id].isRemoved,
         );
         prevCards.forEach((oldId, index) => {
-          dashcardData[newCards[index].id] = state.dashcardData[oldId];
+          state.dashcardData[newCards[index].id] = state.dashcardData[oldId];
         });
 
         // 2. Re-select the currently selected tab with its real id
         const selectedTabIndex = prevTabs.findIndex(
           tab => tab.id === state.selectedTabId,
         );
-        const selectedTabId = newTabs[selectedTabIndex]?.id ?? null;
-
-        return { ...state, dashcardData, selectedTabId };
+        state.selectedTabId = newTabs[selectedTabIndex]?.id ?? null;
       },
     );
 
     builder.addCase(initTabs, state => {
       const { prevTabs } = getPrevDashAndTabs(state);
-      const selectedTabId = prevTabs[0]?.id ?? null;
-
-      return { ...state, selectedTabId };
+      state.selectedTabId = prevTabs[0]?.id ?? null;
     });
   },
 );
