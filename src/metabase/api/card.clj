@@ -228,16 +228,16 @@
   (and (#{:area :line :bar} (:display second-card))
        (let [initial-dimensions (cols->kebab-case
                                   (card-columns-from-names
-                                         first-card
-                                         (get-in first-card [:visualization_settings :graph.dimensions])))
+                                    first-card
+                                    (get-in first-card [:visualization_settings :graph.dimensions])))
              new-dimensions     (cols->kebab-case
                                   (card-columns-from-names
-                                         second-card
-                                         (get-in second-card [:visualization_settings :graph.dimensions])))
+                                    second-card
+                                    (get-in second-card [:visualization_settings :graph.dimensions])))
              new-metrics        (cols->kebab-case
                                   (card-columns-from-names
-                                         second-card
-                                         (get-in second-card [:visualization_settings :graph.metrics])))]
+                                    second-card
+                                    (get-in second-card [:visualization_settings :graph.metrics])))]
          (cond
            ;; must have at least one dimension and one metric
            (or (zero? (count new-dimensions))
@@ -302,7 +302,6 @@
 
                                      (seq exclude-ids)
                                      (update :where conj [:not [:in :id exclude-ids]])
-
 
                                      query
                                      (update :where conj [:like :%lower.name (str "%" (u/lower-case-en query) "%")])
