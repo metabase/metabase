@@ -35,7 +35,6 @@ import Dashboards from "metabase/entities/dashboards";
 import { useDispatch } from "metabase/lib/redux";
 import { addUndo, dismissUndo } from "metabase/redux/undo";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
-import useAutoApplyFiltersToast from "metabase/dashboard/hooks/useAutoApplyFiltersToast";
 import * as dashboardActions from "../../actions";
 import {
   getIsEditing,
@@ -60,6 +59,7 @@ import {
   getIsLoadingComplete,
   getIsHeaderVisible,
   getIsAdditionalInfoVisible,
+  getIsAutoApplyFilters,
 } from "../../selectors";
 import { DASHBOARD_SLOW_TIMEOUT } from "../../constants";
 
@@ -102,6 +102,7 @@ const mapStateToProps = (state, props) => {
     isHeaderVisible: getIsHeaderVisible(state),
     isAdditionalInfoVisible: getIsAdditionalInfoVisible(state),
     embedOptions: getEmbedOptions(state),
+    isAutoApplyFilters: getIsAutoApplyFilters(state),
   };
 };
 
@@ -116,7 +117,7 @@ const mapDispatchToProps = {
 
 // NOTE: should use DashboardControls and DashboardData HoCs here?
 const DashboardApp = props => {
-  const { isRunning, isLoadingComplete, dashboard } = props;
+  const { isRunning, isLoadingComplete, dashboard, closeDashboard } = props;
 
   const options = parseHashOptions(window.location.hash);
   const editingOnLoad = options.edit;
@@ -178,7 +179,9 @@ const DashboardApp = props => {
     onTimeout,
   });
 
-  useAutoApplyFiltersToast();
+  useUnmount(() => {
+    closeDashboard();
+  });
 
   return (
     <div className="shrink-below-content-size full-height">

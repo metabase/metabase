@@ -11,12 +11,12 @@ let nextUndoId = 0;
 
 export const addUndo = createThunkAction(ADD_UNDO, undo => {
   return (dispatch, getState) => {
-    const { timeout = 5000 } = undo;
+    const { icon = "check", timeout = 5000 } = undo;
     const id = undo.id ?? nextUndoId++;
-    if (timeout !== false) {
+    if (timeout) {
       setTimeout(() => dispatch(dismissUndo(id, false)), timeout);
     }
-    return { ...undo, id, _domId: id };
+    return { ...undo, id, _domId: id, icon };
   };
 });
 
@@ -27,9 +27,8 @@ function getUndo(state, undoId) {
 export const dismissUndo = createThunkAction(
   DISMISS_UNDO,
   (undoId, track = true) => {
-    return (_dispatch, getState) => {
-      const undo = getUndo(getState(), undoId);
-      if (track && !undo.actionLabel) {
+    return () => {
+      if (track) {
         MetabaseAnalytics.trackStructEvent("Undo", "Dismiss Undo");
       }
       return undoId;

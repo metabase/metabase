@@ -24,12 +24,14 @@ import {
 } from "metabase/services";
 
 import { getMetadata } from "metabase/selectors/metadata";
+import { showAutoApplyFiltersToast } from "metabase/dashboard/actions/parameters";
 import { getParameterValuesBySlug } from "metabase-lib/parameters/utils/parameter-values";
 import { applyParameters } from "metabase-lib/queries/utils/card";
 import {
   getDashboardComplete,
   getParameterValues,
   getLoadingDashCards,
+  getCanShowAutoApplyFiltersToast,
 } from "../selectors";
 
 import {
@@ -101,6 +103,7 @@ const loadingComplete = createThunkAction(
   SET_LOADING_DASHCARDS_COMPLETE,
   () => (dispatch, getState) => {
     dispatch(setShowLoadingCompleteFavicon(true));
+
     if (!document.hidden) {
       dispatch(setDocumentTitle(""));
       setTimeout(() => {
@@ -118,6 +121,10 @@ const loadingComplete = createThunkAction(
         },
         { once: true },
       );
+    }
+
+    if (getCanShowAutoApplyFiltersToast(getState())) {
+      dispatch(showAutoApplyFiltersToast());
     }
   },
 );
@@ -209,6 +216,7 @@ export const fetchDashboard = createThunkAction(
         dashboard: result,
         dashboardId: dashId,
         parameterValues: parameterValuesById,
+        preserveParameters,
       };
     };
   },

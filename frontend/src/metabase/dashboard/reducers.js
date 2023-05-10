@@ -36,6 +36,7 @@ import {
   RESET,
   SET_PARAMETER_VALUES,
   UNDO_REMOVE_CARD_FROM_DASH,
+  SHOW_AUTO_APPLY_FILTERS_TOAST,
 } from "./actions";
 
 import { isVirtualDashCard, syncParametersAndEmbeddingParams } from "./utils";
@@ -282,6 +283,9 @@ const slowCards = handleActions(
 const parameterValues = handleActions(
   {
     [INITIALIZE]: { next: () => ({}) }, // reset values
+    [FETCH_DASHBOARD]: {
+      next: (state, { payload: { parameterValues } }) => parameterValues,
+    },
     [SET_PARAMETER_VALUE]: {
       next: (state, { payload: { id, value, isDraft } }) => {
         if (!isDraft) {
@@ -291,14 +295,11 @@ const parameterValues = handleActions(
         return state;
       },
     },
-    [REMOVE_PARAMETER]: {
-      next: (state, { payload: { id } }) => dissoc(state, id),
-    },
-    [FETCH_DASHBOARD]: {
-      next: (state, { payload: { parameterValues } }) => parameterValues,
-    },
     [SET_PARAMETER_VALUES]: {
       next: (state, { payload }) => payload,
+    },
+    [REMOVE_PARAMETER]: {
+      next: (state, { payload: { id } }) => dissoc(state, id),
     },
     [RESET]: { next: state => ({}) },
   },
@@ -307,35 +308,27 @@ const parameterValues = handleActions(
 
 const draftParameterValues = handleActions(
   {
-    [INITIALIZE]: { next: _state => ({}) }, // reset values
-    [SET_PARAMETER_VALUE]: {
-      next: (state, { payload: { id, value, isDraft } }) => {
-        if (isDraft) {
-          return assoc(state ?? {}, id, value);
-        }
-
-        return state;
-      },
-    },
+    [INITIALIZE]: { next: () => ({}) },
     [FETCH_DASHBOARD]: {
-      next: (state, { payload }) => {
-        if (payload.dashboard.auto_apply_filters) {
-          return state;
-        }
-
-        return payload.parameterValues;
-      },
+      next: (
+        state,
+        { payload: { dashboard, parameterValues, preserveParameters } },
+      ) =>
+        preserveParameters && !dashboard.auto_apply_filters
+          ? state
+          : parameterValues,
     },
-    [RESET]: { next: _state => ({}) },
-    [Dashboards.actionTypes.UPDATE]: {
-      next: (state, { payload }) => {
-        if (payload.dashboard.auto_apply_filters) {
-          return {};
-        }
-
-        return state;
-      },
+    [SET_PARAMETER_VALUE]: {
+      next: (state, { payload: { id, value } }) =>
+        assoc(state ?? {}, id, value),
     },
+    [SET_PARAMETER_VALUES]: {
+      next: (state, { payload }) => payload,
+    },
+    [REMOVE_PARAMETER]: {
+      next: (state, { payload: { id } }) => dissoc(state, id),
+    },
+    [RESET]: { next: () => ({}) },
   },
   {},
 );
@@ -446,6 +439,22 @@ const missingActionParameters = handleActions(
   null,
 );
 
+export const autoApplyFilters = handleActions(
+  {
+    [SHOW_AUTO_APPLY_FILTERS_TOAST]: {
+      next: (state, { payload: { toastId, dashboardId } }) => ({
+        ...state,
+        toastId,
+        toastDashboardId: dashboardId,
+      }),
+    },
+  },
+  {
+    toastId: null,
+    toastDashboardId: null,
+  },
+);
+
 export default combineReducers({
   dashboardId,
   isEditing,
@@ -459,5 +468,6 @@ export default combineReducers({
   loadingDashCards,
   isAddParameterPopoverOpen,
   sidebar,
+  autoApplyFilters,
   missingActionParameters,
 });

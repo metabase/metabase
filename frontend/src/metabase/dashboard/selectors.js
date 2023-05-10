@@ -119,9 +119,13 @@ export const getDashboardComplete = createSelector(
     },
 );
 
-// Auto-apply filters
+export const getAutoApplyFiltersToastId = state =>
+  state.dashboard.autoApplyFilters.toastId;
+export const getAutoApplyFiltersToastDashboardId = state =>
+  state.dashboard.autoApplyFilters.toastDashboardId;
 export const getDraftParameterValues = state =>
   state.dashboard.draftParameterValues;
+
 export const getIsAutoApplyFilters = createSelector(
   [getDashboard],
   dashboard => dashboard?.auto_apply_filters,
@@ -144,23 +148,29 @@ const getIsParameterValuesEmpty = createSelector(
   },
 );
 
-export const getIsReadyToShowAutoApplyFiltersToast = createSelector(
+export const getCanShowAutoApplyFiltersToast = createSelector(
   [
-    getDashboard,
-    getIsParameterValuesEmpty,
+    getDashboardId,
+    getAutoApplyFiltersToastDashboardId,
+    getIsAutoApplyFilters,
     getIsSlowDashboard,
-    getIsLoadingComplete,
+    getIsParameterValuesEmpty,
   ],
-  (dashboard, isParameterValuesEmpty, isSlowDashboard, isLoadingComplete) => {
+  (
+    dashboardId,
+    toastDashboardId,
+    isAutoApply,
+    isSlowDashboard,
+    isParameterValuesEmpty,
+  ) => {
     return (
-      dashboard?.auto_apply_filters &&
-      !isParameterValuesEmpty &&
+      dashboardId !== toastDashboardId &&
+      isAutoApply &&
       isSlowDashboard &&
-      isLoadingComplete
+      !isParameterValuesEmpty
     );
   },
 );
-// End auto-apply filters
 
 export const getDocumentTitle = state =>
   state.dashboard.loadingControls.documentTitle;

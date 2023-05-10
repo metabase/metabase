@@ -37,6 +37,10 @@ describe("dashboard reducers", () => {
       slowCards: {},
       loadingControls: {},
       missingActionParameters: null,
+      autoApplyFilters: {
+        toastId: null,
+        toastDashboardId: null,
+      },
     });
   });
 
