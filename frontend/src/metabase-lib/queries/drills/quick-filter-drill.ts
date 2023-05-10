@@ -3,6 +3,7 @@ import type { FilterClause, OrderableValue } from "metabase-types/types/Query";
 import type { DatasetColumn, RowValue } from "metabase-types/api";
 import {
   isa,
+  isBoolean,
   isDate,
   isNumeric,
   isTypeFK,
@@ -16,11 +17,18 @@ import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
 const INVALID_TYPES = [TYPE.Structured];
 
+export type QuickFilterOperatorType = "<" | ">" | "=" | "≠";
+
 type QuickFilterDrillOperator = {
-  name: string;
+  name: QuickFilterOperatorType;
   filter: FilterClause;
 };
-type ValueType = "null" | "date" | "numeric" | "text";
+export type QuickFilterDataValueType =
+  | "null"
+  | "date"
+  | "numeric"
+  | "boolean"
+  | "text";
 
 export function quickFilterDrill({
   question,
@@ -93,7 +101,7 @@ function getOperatorsForColumn(
   value: RowValue,
 ): {
   operators: QuickFilterDrillOperator[];
-  valueType: ValueType;
+  valueType: QuickFilterDataValueType;
 } | null {
   const fieldRef = getColumnFieldRef(column);
 
@@ -121,7 +129,7 @@ function getOperatorsForColumn(
     };
   } else {
     return {
-      valueType: "text",
+      valueType: isBoolean(column) ? "boolean" : "text",
       operators: [
         { name: "=", filter: ["=", fieldRef, value] },
         { name: "≠", filter: ["!=", fieldRef, value] },

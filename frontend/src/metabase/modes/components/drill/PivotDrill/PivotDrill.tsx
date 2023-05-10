@@ -1,25 +1,21 @@
-import React, { useState } from "react";
+/* eslint-disable react/display-name */
+import React from "react";
 import { t } from "ttag";
 import type {
+  ClickActionBase,
   ClickActionPopoverProps,
   DrillOptions,
   PopoverClickAction,
 } from "metabase/modes/types";
 import { Card } from "metabase-types/api";
-import { DimensionValue } from "metabase-types/types/Visualization";
+import { ChartClickActionsView } from "metabase/visualizations/components/ChartClickActions/ChartClickActionsView";
 import {
   pivotByCategoryDrill,
   pivotByLocationDrill,
   pivotByTimeDrill,
+  PivotDrillResult,
 } from "metabase-lib/queries/drills/pivot-drill";
-import StructuredQuery from "metabase-lib/queries/StructuredQuery";
-import DimensionOptions from "metabase-lib/DimensionOptions";
-import DrillActionsListPopover from "../common/DrillActionsListPopover";
-import {
-  ActionIcon,
-  ClickActionButton,
-  StyledBreakoutPopover,
-} from "../common/DrillActionsListPopover.styled";
+import { StyledBreakoutPopover } from "../common/BreakoutPopover.styled";
 
 type PivotDrillTypesConfig = {
   withCategory?: false;
@@ -27,12 +23,10 @@ type PivotDrillTypesConfig = {
   withTime?: false;
 };
 
-type PivotDrillTypeOption = {
+type PivotDrillTypeOption = PivotDrillResult & {
+  name: string;
   title: string;
   icon: "string" | "location" | "calendar";
-  query: StructuredQuery;
-  dimensions: DimensionValue[];
-  breakoutOptions: DimensionOptions;
 };
 
 export const getPivotDrill =
@@ -50,6 +44,7 @@ export const getPivotDrill =
       const drillResults = pivotByCategoryDrill({ question, clicked });
       if (drillResults) {
         drillOptions.push({
+          name: "pivot-by-category",
           title: t`Category`,
           icon: "string",
           ...drillResults,
@@ -61,6 +56,7 @@ export const getPivotDrill =
       const drillResults = pivotByLocationDrill({ question, clicked });
       if (drillResults) {
         drillOptions.push({
+          name: "pivot-by-location",
           title: t`Location`,
           icon: "location",
           ...drillResults,
@@ -72,6 +68,7 @@ export const getPivotDrill =
       const drillResults = pivotByTimeDrill({ question, clicked });
       if (drillResults) {
         drillOptions.push({
+          name: "pivot-by-time",
           title: t`Time`,
           icon: "calendar",
           ...drillResults,
@@ -83,18 +80,9 @@ export const getPivotDrill =
       return [];
     }
 
-    const Component = ({
-      onChangeCardAndRun,
-      onClose,
-    }: ClickActionPopoverProps) => {
-      const [activeDrillOption, setActiveDrillOption] =
-        useState<PivotDrillTypeOption | null>(
-          drillOptions.length === 1 ? drillOptions[0] : null,
-        );
-
-      if (activeDrillOption) {
-        const { query, dimensions, breakoutOptions } = activeDrillOption;
-
+    const getSingleDrillComponent =
+      ({ query, dimensions, breakoutOptions }: PivotDrillResult) =>
+      ({ onChangeCardAndRun, onClose }: ClickActionPopoverProps) => {
         return (
           <StyledBreakoutPopover
             query={query}
@@ -110,36 +98,41 @@ export const getPivotDrill =
             onClose={onClose}
           />
         );
-      }
+      };
 
+    const baseClickAction: ClickActionBase = {
+      name: "breakout-by",
+      section: "breakout",
+      buttonType: "horizontal",
+    };
+
+    const clickActions = drillOptions.map(
+      ({ name, title, icon, breakoutOptions, query, dimensions }) => ({
+        ...baseClickAction,
+        name,
+        title,
+        icon,
+        section: "breakout-popover",
+        popover: getSingleDrillComponent({
+          query,
+          dimensions,
+          breakoutOptions,
+        }),
+      }),
+    );
+
+    const Component = ({ onClick }: ClickActionPopoverProps) => {
       return (
-        <DrillActionsListPopover title={t`Break out by…`}>
-          {drillOptions.map(option => {
-            const { icon, title } = option;
-
-            return (
-              <ClickActionButton
-                key={icon}
-                icon={<ActionIcon name={icon} />}
-                small
-                onClick={() => setActiveDrillOption(option)}
-              >
-                {title}
-              </ClickActionButton>
-            );
-          })}
-        </DrillActionsListPopover>
+        <ChartClickActionsView clickActions={clickActions} onClick={onClick} />
       );
     };
 
     return [
       {
-        name: "breakout-by",
-        title: t`Break out by…`,
-        section: "breakout",
+        ...baseClickAction,
         icon: "arrow_split",
-        buttonType: "horizontal",
-        popover: Component,
+        title: t`Break out by…`,
+        popover: clickActions.length > 1 ? Component : clickActions[0].popover,
       },
     ];
   };

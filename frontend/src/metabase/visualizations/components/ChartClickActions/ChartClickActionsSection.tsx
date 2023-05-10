@@ -1,52 +1,82 @@
 import React from "react";
 import styled from "@emotion/styled";
+import { css } from "@emotion/react";
 import { color } from "metabase/lib/colors";
 
+type ContentDirectionType = "column" | "row";
+
 interface Props {
+  type: string;
+
   title?: string | null;
-  withDivider?: boolean;
+  contentDirection?: ContentDirectionType;
 
   children: React.ReactNode;
 }
 
-const ChartClickActionsSection = ({
+const testId = "drill-through-section";
+
+export const ChartClickActionsSection = ({
+  type,
   title,
-  withDivider,
+  contentDirection = "column",
   children,
 }: Props): JSX.Element => {
   if (title) {
     return (
-      <SectionWithTitle data-testid="drill-through-section">
+      <SectionWithTitle
+        childrenDirection={contentDirection}
+        data-testid={testId}
+      >
         <SectionTitle>{title}</SectionTitle>
-        <div>{children}</div>
+        <Section type={type} direction={contentDirection}>
+          {children}
+        </Section>
       </SectionWithTitle>
     );
   }
 
   return (
-    <Section data-testid="drill-through-section">
+    <Section type={type} direction={contentDirection} data-testid={testId}>
       {children}
-      {withDivider && <Divider />}
     </Section>
   );
 };
 
-export default ChartClickActionsSection;
+const Section = styled.div<{ type: string; direction?: ContentDirectionType }>`
+  display: flex;
 
-const Section = styled.div`
+  ${({ type }) =>
+    type === "sort" &&
+    css`
+      margin-bottom: 0.5rem;
+    `}
+
+  ${({ direction }) =>
+    direction === "row"
+      ? css`
+          flex-direction: row;
+        `
+      : css`
+          flex-direction: column;
+          align-items: stretch;
+        `}
+
+  gap: 0.5rem;
+`;
+
+const SectionWithTitle = styled.div<{
+  childrenDirection?: ContentDirectionType;
+}>`
   display: flex;
   flex-direction: column;
   align-items: stretch;
 
-  gap: 0.5rem;
+  gap: ${({ childrenDirection }) =>
+    childrenDirection === "row" ? `0.75rem` : `1rem`};
 
-  &:not(:last-child):not(:first-child) {
-    padding-bottom: 1rem;
-  }
-`;
-
-const SectionWithTitle = styled(Section)`
-  padding-left: 0.5rem;
+  margin: ${({ childrenDirection }) =>
+    childrenDirection === "row" ? `0.5rem 0` : `0.5rem 0 0`};
 `;
 
 const SectionTitle = styled.p`
@@ -54,10 +84,4 @@ const SectionTitle = styled.p`
 
   font-size: 0.875em;
   color: ${color("text-medium")};
-`;
-
-export const Divider = styled.div`
-  height: 1px;
-  background-color: ${color("border")};
-  margin: 1rem -1.5rem 1rem;
 `;

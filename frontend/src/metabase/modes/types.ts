@@ -8,7 +8,6 @@ import type {
 import type { Dispatch, ReduxAction } from "metabase-types/store";
 import type { OnChangeCardAndRun } from "metabase/visualizations/types";
 import type Question from "metabase-lib/Question";
-// import type {ClickAction as ClickActionBase} from "metabase-types/types/Visualization";
 
 type DimensionValue = {
   value: RowValue;
@@ -34,6 +33,7 @@ type Dispatcher = (dispatch: Dispatch) => void;
 
 export type ClickActionPopoverProps = {
   series: Series;
+  onClick: (action: ClickAction) => void;
   onChangeCardAndRun: OnChangeCardAndRun;
   onChange: (settings: VisualizationSettings) => void;
   onResize: (...args: unknown[]) => void;
@@ -72,7 +72,7 @@ export type PopoverClickAction = ClickActionBase & {
   popover: (props: ClickActionPopoverProps) => JSX.Element;
 };
 
-type UrlClickAction = ClickActionBase & {
+export type UrlClickAction = ClickActionBase & {
   ignoreSiteUrl?: boolean;
   url: () => string;
 };
