@@ -41,7 +41,7 @@ To add a user attribute manually:
 
 You can also sync user attributes from your identity provider [via SSO](./start.md#authentication).
 
-User attributes are required for [data sandboxing](../permissions/data-sandboxes.md) permissions.
+User attributes are required for [data sandbox](../permissions/data-sandboxes.md) permissions.
 
 ## Deactivating an account
 
