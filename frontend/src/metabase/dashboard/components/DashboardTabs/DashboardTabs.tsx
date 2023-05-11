@@ -47,6 +47,7 @@ export function DashboardTabs({ isEditing }: DashboardTabsProps) {
                   action: (_, value) => deleteTab(value),
                 },
               ]}
+              draggable={isEditing}
             />
           ))
         )}

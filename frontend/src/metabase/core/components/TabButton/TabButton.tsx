@@ -49,6 +49,7 @@ export interface TabButtonProps<T> extends HTMLAttributes<HTMLDivElement> {
   onEdit?: ChangeEventHandler<HTMLInputElement>;
   onFinishEditing?: () => void;
   isEditing?: boolean;
+  draggable?: boolean;
   disabled?: boolean;
 }
 
@@ -60,9 +61,10 @@ const TabButton = forwardRef(function TabButton<T>(
     onClick,
     onEdit,
     onFinishEditing,
-    disabled = false,
-    isEditing = false,
     showMenu: showMenuProp = true,
+    isEditing = false,
+    draggable = false,
+    disabled = false,
     ...props
   }: TabButtonProps<T>,
   inputRef: Ref<HTMLInputElement>,
