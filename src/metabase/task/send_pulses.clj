@@ -65,7 +65,7 @@
 
 (s/defn ^:private clear-pulse-channels!
   []
-  (for [channel (t2/select PulseChannel)]
+  (doseq [channel (t2/select PulseChannel)]
     (let [pulse-channel-id (:id channel)]
       (when (and (nil? (get-in channel [:details :emails]))
                  (nil? (get-in channel [:details :channel]))
