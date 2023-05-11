@@ -104,7 +104,6 @@
 (when config/ee-available?
   (classloader/require
    '[metabase-enterprise.advanced-permissions.query-processor.middleware.permissions :as ee.perms]
-   '[metabase-enterprise.advanced-permissions.query-processor.middleware.impersonation :as ee.impersonation]
    '[metabase-enterprise.audit-app.query-processor.middleware.handle-audit-queries :as ee.audit]
    '[metabase-enterprise.sandbox.query-processor.middleware
      [column-level-perms-check :as ee.sandbox.columns]
@@ -183,7 +182,6 @@
 
     (f (f query rff context)) -> (f query rff context)"
   [#'cache/maybe-return-cached-results
-   (resolve 'ee.impersonation/maybe-change-role)
    #'qp.perms/check-query-permissions
    (resolve 'ee.perms/check-download-permissions)
    (resolve 'ee.sandbox.columns/maybe-apply-column-level-perms-check)])

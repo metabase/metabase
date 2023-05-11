@@ -15,9 +15,9 @@
    [metabase.driver.sql-jdbc.execute.legacy-impl :as sql-jdbc.legacy]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql-jdbc.sync.common :as sql-jdbc.sync.common]
-   [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
+   [metabase.driver.sql-jdbc.sync.describe-table
+    :as sql-jdbc.describe-table]
    [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.driver.sql.query-processor.util :as sql.qp.util]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sql.util.unprepare :as unprepare]
    [metabase.driver.sync :as driver.s]
@@ -37,7 +37,8 @@
    (java.io File)
    (java.nio.charset StandardCharsets)
    (java.sql Connection DatabaseMetaData ResultSet Types)
-   (java.time OffsetDateTime ZonedDateTime)))
+   (java.time OffsetDateTime ZonedDateTime)
+   (net.snowflake.client.jdbc SnowflakeStatement)))
 
 (set! *warn-on-reflection* true)
 
