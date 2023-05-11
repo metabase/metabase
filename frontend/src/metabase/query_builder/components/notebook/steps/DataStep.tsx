@@ -30,22 +30,7 @@ function DataStep({
   const table = query.table();
   const canSelectTableColumns = table && query.isRaw() && !readOnly;
 
-  console.log(question);
-  console.log(rest);
-
-  const hasCollectionDatasetsStep =
-    question &&
-    !question.isSaved() &&
-    !question.databaseId() &&
-    !question.tableId() &&
-    question.collectionId() !== undefined;
-
-  console.table({
-    isSaved: question.isSaved(),
-    databaseId: question.databaseId(),
-    tableId: question.tableId(),
-    collectionId: question.collectionId(),
-  });
+  const hasCollectionDatasetsStep = false;
 
   return (
     <NotebookCell color={color}>
