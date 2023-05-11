@@ -5,15 +5,25 @@ import type Database from "./Database";
 import type Table from "./Table";
 
 export default class Schema {
-  id: string;
-  name: string;
+  private readonly schema: NormalizedSchema;
   metadata?: Metadata;
   database?: Database;
   tables?: Table[];
 
   constructor(schema: NormalizedSchema) {
-    this.id = schema.id;
-    this.name = schema.name;
+    this.schema = schema;
+  }
+
+  get id() {
+    return this.schema.id;
+  }
+
+  get name() {
+    return this.schema.name;
+  }
+
+  getPlainObject() {
+    return this.schema;
   }
 
   displayName() {
