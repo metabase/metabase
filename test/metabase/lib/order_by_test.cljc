@@ -473,13 +473,23 @@
               :display-name             "ID"
               :table-id                 (meta/id :categories)
               :lib/source-column-alias  "Cat__ID"
-              :lib/desired-column-alias "Cat__ID"}]
+              :lib/desired-column-alias "Cat__ID"}
+             {:id                       (meta/id :categories :name)
+              :name                     "NAME"
+              :lib/source               :source/previous-stage
+              :lib/type                 :metadata/field
+              :base-type                :type/Text
+              :effective-type           :type/Text
+              :display-name             "Name"
+              :table-id                 (meta/id :categories)
+              :lib/source-column-alias  "Cat__NAME"
+              :lib/desired-column-alias "Cat__NAME"}]
             (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
                 (lib/join (-> (lib/join-clause
-                                (meta/table-metadata :categories)
-                                [(lib/=
-                                   (lib/field "VENUES" "CATEGORY_ID")
-                                   (lib/with-join-alias (lib/field "CATEGORIES" "ID") "Cat"))])
+                               (meta/table-metadata :categories)
+                               [(lib/=
+                                 (lib/field "VENUES" "CATEGORY_ID")
+                                 (lib/with-join-alias (lib/field "CATEGORIES" "ID") "Cat"))])
                               (lib/with-join-alias "Cat")
                               (lib/with-join-fields :all)))
                 (lib/with-fields [(lib/field "VENUES" "ID")
