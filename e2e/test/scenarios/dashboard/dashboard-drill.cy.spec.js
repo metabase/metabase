@@ -980,27 +980,31 @@ describe("scenarios > dashboard > dashboard drill", () => {
 
     visitDashboard(1);
     cy.wait("@dashboard");
-    cy.findByText("Orders").click();
+    cy.findByTestId("dashcard").findByText("Orders").click();
     cy.wait("@cardQuery");
     cy.findByLabelText(buttonLabel).should("be.visible");
     cy.icon("notebook").click();
     summarize({ mode: "notebook" });
-    cy.findByText("Count of rows").click();
+    popover().findByText("Count of rows").click();
     cy.findByLabelText(buttonLabel).should("be.visible");
     visualize();
     cy.findByLabelText(buttonLabel).click();
     cy.wait("@dashboard");
-    cy.findByText(dashboardName).should("be.visible");
+    cy.findByTestId("dashboard-header")
+      .findByText(dashboardName)
+      .should("be.visible");
 
     getDashboardCard().realHover();
     getDashboardCardMenu().click();
     popover().findByText("Edit question").click();
     cy.findByLabelText(buttonLabel).click();
     cy.wait("@dashboard");
-    cy.findByText(dashboardName).should("be.visible");
+    cy.findByTestId("dashboard-header")
+      .findByText(dashboardName)
+      .should("be.visible");
 
     appBar().findByText("Our analytics").click();
-    cy.findByText("Orders").click();
+    cy.findByTestId("collection-table").findByText("Orders").click();
     cy.findByLabelText(buttonLabel).should("not.exist");
   });
 });
