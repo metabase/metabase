@@ -7,6 +7,7 @@
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.driver :as driver]
+   [metabase.models :refer [PulseChannel PulseChannelRecipient]]
    [metabase.models.pulse :as pulse]
    [metabase.models.pulse-channel :as pulse-channel]
    [metabase.models.task-history :as task-history]
@@ -14,7 +15,8 @@
    [metabase.task :as task]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
-   [schema.core :as s]))
+   [schema.core :as s]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -61,6 +63,14 @@
          (catch Throwable e
            (on-error pulse-id e)))))))
 
+(s/defn ^:private clear-pulse-channels!
+  []
+  (for [channel (t2/select PulseChannel)]
+    (let [pulse-channel-id (:id channel)]
+      (when (and (nil? (get-in channel [:details :emails]))
+                 (nil? (get-in channel [:details :channel]))
+                 (zero? (t2/count PulseChannelRecipient :pulse_channel_id pulse-channel-id)))
+        (t2/delete! PulseChannel :id pulse-channel-id)))))
 
 ;;; ------------------------------------------------------ Task ------------------------------------------------------
 
@@ -121,4 +131,25 @@
                     ;;
                     ;; See https://www.nurkiewicz.com/2012/04/quartz-scheduler-misfire-instructions.html
                     (cron/with-misfire-handling-instruction-fire-and-proceed))))]
+    (task/schedule-task! job trigger)))
+
+(jobs/defjob ^{:doc "Clear empty PulseChannels"} ClearPulseChannel [_]
+  (try
+    (task-history/with-task-history {:task "clear-pulse-channels"} (clear-pulse-channels!))
+    (catch Throwable e
+      (log/error e (trs "ClearPulseChannel task failed")))))
+
+(def ^:private clear-pulse-channel-job-key     "metabase.task.send-pulses.clear-pulse-channel.job")
+(def ^:private clear-pulse-channel-trigger-key "metabase.task.send-pulses.clear-pulse-channel.trigger")
+
+(defmethod task/init! ::ClearPulseChannel [_]
+  (let [job     (jobs/build
+                 (jobs/of-type ClearPulseChannel)
+                 (jobs/with-identity (jobs/key clear-pulse-channel-job-key)))
+        trigger (triggers/build
+                 (triggers/with-identity (triggers/key clear-pulse-channel-trigger-key))
+                 (triggers/start-now)
+                 (triggers/with-schedule
+                   ;; run every day at midnight
+                   (cron/cron-schedule "0 0 0 * * ? *")))]
     (task/schedule-task! job trigger)))

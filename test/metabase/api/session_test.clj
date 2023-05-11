@@ -8,11 +8,8 @@
    [metabase.driver.h2 :as h2]
    [metabase.http-client :as client]
    [metabase.models
-    :refer [LoginHistory
-            PermissionsGroup
-            PermissionsGroupMembership
-            Session
-            User]]
+    :refer [LoginHistory PermissionsGroup PermissionsGroupMembership Pulse
+            PulseChannel Session User]]
    [metabase.models.setting :as setting]
    [metabase.public-settings :as public-settings]
    [metabase.server.middleware.session :as mw.session]
@@ -486,3 +483,59 @@
              clojure.lang.ExceptionInfo
              #"Password did not match stored password"
              (#'api.session/login (:email user) "password" device-info)))))))
+
+;;; ------------------------------------------- TESTS FOR UNSUBSCRIBING NONUSERS STUFF --------------------------------------------
+
+(deftest unsubscribe-test
+  (testing "POST /pulse/unsubscribe"
+    (let [email "test@metabase.com"]
+      (testing "Invalid hash"
+        (is (= "Invalid hash."
+               (mt/client :post 400 "session/pulse/unsubscribe" {:pulse-id 1
+                                                                 :email    email
+                                                                 :hash     "fake-hash"}))))
+
+      (testing "Valid hash but not email"
+        (mt/with-temp* [Pulse        [{pulse-id :id} {}]
+                        PulseChannel [_ {:pulse_id pulse-id}]]
+          (is (= "Email for pulse-id doesnt exist."
+                 (mt/client :post 400 "session/pulse/unsubscribe" {:pulse-id pulse-id
+                                                                   :email    email
+                                                                   :hash     (api.session/generate-hash pulse-id email)})))))
+
+      (testing "Valid hash and email"
+        (mt/with-temp* [Pulse        [{pulse-id :id} {}]
+                        PulseChannel [_ {:pulse_id     pulse-id
+                                         :channel_type "email"
+                                         :details      {:emails [email]}}]]
+          (is (= {:status "success"}
+                 (mt/client :post 200 "session/pulse/unsubscribe" {:pulse-id pulse-id
+                                                                   :email    email
+                                                                   :hash     (api.session/generate-hash pulse-id email)}))))))))
+
+(deftest unsubscribe-undo-test
+  (testing "POST /pulse/unsubscribe/undo"
+    (let [email "test@metabase.com"]
+      (testing "Invalid hash"
+        (is (= "Invalid hash."
+               (mt/client :post 400 "session/pulse/unsubscribe/undo" {:pulse-id 1
+                                                                      :email    email
+                                                                      :hash     "fake-hash"}))))
+
+      (testing "Valid hash and email doesn't exist"
+        (mt/with-temp* [Pulse        [{pulse-id :id} {}]
+                        PulseChannel [_ {:pulse_id pulse-id}]]
+          (is (= {:status "success"}
+                 (mt/client :post 200 "session/pulse/unsubscribe/undo" {:pulse-id pulse-id
+                                                                        :email    email
+                                                                        :hash     (api.session/generate-hash pulse-id email)})))))
+
+      (testing "Valid hash and email already exists"
+        (mt/with-temp* [Pulse        [{pulse-id :id} {}]
+                        PulseChannel [_ {:pulse_id     pulse-id
+                                         :channel_type "email"
+                                         :details      {:emails [email]}}]]
+          (is (= "Email for pulse-id already exists."
+                 (mt/client :post 400 "session/pulse/unsubscribe/undo" {:pulse-id pulse-id
+                                                                        :email    email
+                                                                        :hash     (api.session/generate-hash pulse-id email)}))))))))

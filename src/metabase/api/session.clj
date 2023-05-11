@@ -2,6 +2,7 @@
   "/api/session endpoints"
   (:require
    [buddy.core.codecs :as codecs]
+   [cheshire.core :as json]
    [compojure.core :refer [DELETE GET POST]]
    [java-time :as t]
    [metabase.analytics.snowplow :as snowplow]
@@ -14,6 +15,7 @@
    [metabase.integrations.ldap :as ldap]
    [metabase.models :refer [PulseChannel]]
    [metabase.models.login-history :refer [LoginHistory]]
+   [metabase.models.pulse-channel :as pulse-channel]
    [metabase.models.session :refer [Session]]
    [metabase.models.setting :as setting]
    [metabase.models.user :as user :refer [User]]
@@ -29,8 +31,7 @@
    [metabase.util.schema :as su]
    [schema.core :as s]
    [throttle.core :as throttle]
-   [toucan2.core :as t2]
-   [metabase.models.pulse-channel :as pulse-channel])
+   [toucan2.core :as t2])
   (:import
    (com.unboundid.util LDAPSDKException)
    (java.util UUID)))
@@ -320,40 +321,56 @@
 
 ;;; ----------------------------------------------------- Unsubscribe non-users from pulses -----------------------------------------------
 
+(def ^:private unsubscribe-throttler (throttle/make-throttler :email, :attempts-threshold 50))
+
+(defn generate-hash
+  "Generates hash to allow for non-users to unsubscribe from pulses/subscriptions."
+  [pulse-id email]
+  (codecs/bytes->hex
+   (encryption/validate-and-hash-secret-key
+    (json/generate-string {:salt public-settings/site-uuid-for-unsubscribing-url
+                           :email email
+                           :pulse-id pulse-id}))))
+
 (defn- check-hash [pulse-id email hash]
-  (when (not= hash
-              (codecs/bytes->hex
-               (encryption/validate-and-hash-secret-key
-                (str (public-settings/site-uuid-for-unsubscribing-url) " " email " " pulse-id))))
+  (throttle-check unsubscribe-throttler email)
+  (when (not= hash (generate-hash pulse-id email))
     (throw (ex-info (tru "Invalid hash.")
                     {:type        type
                      :status-code 400}))))
 
 (api/defendpoint POST "/pulse/unsubscribe"
-  "Allow non-users to unsubscribe from pulses/subscriptions,
-
- hash given through email."
+  "Allow non-users to unsubscribe from pulses/subscriptions, with the hash given through email."
   [:as {{:keys [email hash pulse-id]} :body}]
   {pulse-id ms/PositiveInt
    email    :string
    hash     :string}
   (check-hash pulse-id email hash)
-  (api/let-404 [pulse-channel    (t2/select-one PulseChannel :pulse_id pulse-id :channel_type "email")]
-               (let [emails (get-in pulse-channel [:details :emails])]
-                 (t2/update! PulseChannel (:id pulse-channel) (assoc-in pulse-channel [:details :emails] (remove #(= % email) emails)))))
-  {:status :success})
+  (api/let-404 [pulse-channel (t2/select-one PulseChannel :pulse_id pulse-id :channel_type "email")]
+               (let [emails       (get-in pulse-channel [:details :emails])
+                     given-email? #(= % email)]
+                 (if (some given-email? emails)
+                   (t2/update! PulseChannel (:id pulse-channel) (assoc-in pulse-channel [:details :emails] (remove given-email? emails)))
+                   (throw (ex-info (tru "Email for pulse-id doesn't exist.")
+                                   {:type        type
+                                    :status-code 400}))))
+               {:status :success}))
 
 (api/defendpoint POST "/pulse/unsubscribe/undo"
-  "Update SAML related settings. You must be a superuser to do this."
+  "Allow non-users to undo an unsubscribe from pulses/subscriptions, with the hash given through email."
   [:as {{:keys [email hash pulse-id]} :body}]
   {pulse-id ms/PositiveInt
    email    :string
    hash     :string}
   (check-hash pulse-id email hash)
-  (api/let-404 [pulse-channel    (t2/select-one PulseChannel :pulse_id pulse-id :channel_type "email")]
-               (let [emails (get-in pulse-channel [:details :emails])]
-                 (when (not (some #(= email %) emails))
-                   (t2/update! PulseChannel (:id pulse-channel) (update pulse-channel [:details :emails] (conj emails email))))))
+  (api/let-404 [pulse-channel (t2/select-one PulseChannel :pulse_id pulse-id :channel_type "email")]
+               (let [emails       (get-in pulse-channel [:details :emails])
+                     given-email? #(= % email)]
+                 (if (some given-email? emails)
+                   (throw (ex-info (tru "Email for pulse-id already exists.")
+                                   {:type        type
+                                    :status-code 400}))
+                   (t2/update! PulseChannel (:id pulse-channel) (update-in pulse-channel [:details :emails] #(conj % email))))))
   {:status :success})
 
 (api/define-routes +log-all-request-failures)
