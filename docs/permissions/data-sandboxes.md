@@ -82,7 +82,7 @@ A basic sandbox displays a filtered table in place of an original table, to a sp
 
 For example, you can set up a basic sandbox so that:
 
-- Someone with the user attribute value "Basic" will see a version of the Accounts table with a filter for `Plan = "Basic"` (rows where the Plan column matches the value "Basic")
+- Someone with the user attribute value "Basic" will see a version of the Accounts table with a filter for `Plan = "Basic"` (rows where the Plan column matches the value "Basic").
 - Someone with a "Premium" attribute will see a version of the Accounts table with the filter `Plan = "Premium"`.
 
 ## Choosing user attributes for data sandboxes
@@ -143,8 +143,8 @@ You cannot add a column to a custom sandbox.
 
 1. Make sure to do the [prerequisites for custom sandboxes](#prerequisites-for-custom-sandboxes) first.
 2. Go to **Admin settings** > **Permissions**.
-3. Select the database and table that you want to sandbox (the table to be filtered).
-4. Find the group that you want to put in the sandbox (the group who should see the filtered table).
+3. Select the database and table that you want to sandbox.
+4. Find the group that you want to put in the sandbox.
 5. Click on the dropdown under **Data access** for that group.
 6. Select "Sandboxed".
 7. Select "Use a saved question to create a custom view for this table".
@@ -168,7 +168,7 @@ You can set up an custom sandbox to restrict different rows for each person depe
 7. Open the dropdown under **Data access**.
 8. Click **Edit sandboxed access**.
 9. Scroll down and set **Parameter or variable** to the name of the parameter in your saved SQL question (such as "Plan Variable").
-10. Set the **User attribute** to the **key** of the [user attribute](#choosing-user-attributes-for-data-sandboxes) to be filtered on (such as "User's Plan").
+10. Set the **User attribute** to a [user attribute key](#choosing-user-attributes-for-data-sandboxes) (such as the key "User's Plan", _not_ the value "Basic").
 11. Click **Save**.
 
 For a sample SQL variable and user attribute setup, see the [Data sandbox examples](./data-sandbox-examples.md).
@@ -183,7 +183,7 @@ A standard `WHERE` clause filters a table by setting a column to a fixed value:
 WHERE column_name = column_value
 ```
 
-In step 2 of the [row restriction setup](#restricting-rows-in-an-custom-sandbox-with-user-attributes) above, you'll add a SQL variable so that the `WHERE` clause will accept a dynamic value. The [SQL variable type](../questions/native-editor/sql-parameters.md#sql-variable-types) must be text, number, or date.
+In step 2 of the [row restriction setup](#restricting-rows-in-an-custom-sandbox-with-user-attributes) above, you'll add a SQL variable so that the `WHERE` clause will accept a dynamic value. The [SQL variable type](../questions/native-editor/sql-parameters.md#sql-variable-types) must be text, number, or date:
 
 ```
 WHERE plan = {%raw%}{{ plan_variable }}{%endraw%}
@@ -195,13 +195,13 @@ In steps 9-10 of the [row restriction setup](#restricting-rows-in-an-custom-sand
 WHERE plan = USER_ATTRIBUTE_KEY
 ```
 
-Metabase will use the user attribute key to look up the **user attribute value** (for example, the "User's Plan" key can map to the values "Basic", "Business", or "Premium"):
+Metabase will use the user attribute key to look up the **user attribute value** (for example, the "User's Plan" key can map to the values "Basic", "Business", or "Premium" for different people):
 
 ```
 WHERE plan = USER_ATTRIBUTE_VALUE
 ```
 
-Metabase will replace the SQL parameter with the specific **user attribute value** (such as "Basic") associated with a sandboxed person. When that person logs into Metabase and uses the sandboxed table, they'll see the query result that uses:
+Metabase will replace the SQL parameter with the specific **user attribute value** (such as "Basic") associated with a person's Metabase account. When that person logs into Metabase and uses the sandboxed table, they'll see the query result that is filtered on:
 
 ```
 WHERE plan = "Basic"
@@ -239,14 +239,14 @@ To resolve data sandbox permissions conflicts:
 
 ### Saved SQL questions
 
-Data sandbox permissions don't apply to the results of SQL questions. Saved SQL questions will always display results from the original table rather than the sandboxed table.
+Data sandbox permissions don't apply to the results of SQL questions. That is, saved SQL questions will always display results from the original table rather than the sandboxed table.
 
 Say that you have an custom sandbox which hides the Email column from the Accounts table. If a non-sandboxed person creates a SQL question that includes the Email column, **anyone with collection permissions to view that SQL question** will be able to:
 
 - See the Email column in the SQL question results.
 - Use the SQL question to start a new question that includes the Email column.
 
-To prevent sandboxed data from being exposed via SQL questions:
+To prevent the Email column from being exposed via a SQL question:
 
 - Put any SQL questions that include the Email column in a separate collection.
 - Set the [collection permissions](../permissions/collections.md) to **No access** for sandboxed groups that should not see the Email column.
@@ -255,7 +255,7 @@ To prevent sandboxed data from being exposed via SQL questions:
 
 ### Public sharing
 
-Data sandbox permissions don't apply to public questions or public dashboards. If a non-sandboxed person creates a public link using an original table, the original table will be displayed to anyone with the public link URL.
+Data sandbox permissions don't apply to public questions or public dashboards. If a non-sandboxed person creates a public link using an original table, the original table will be displayed to anyone who has the public link URL.
 
 To prevent this from happening, you'll have to [disable public sharing](../questions/sharing/public-links.md) for your Metabase instance.
 
