@@ -493,6 +493,10 @@
     ;; Does the driver support uploading files
     :uploads
 
+    ;; Does the driver support schemas (aka namespaces) for tables
+    ;; DEFAULTS TO TRUE
+    :schemas
+
     ;; Does the driver support custom writeback actions. Drivers that support this must
     ;; implement [[execute-write-query!]]
     :actions/custom
@@ -515,6 +519,8 @@
   :hierarchy #'hierarchy)
 
 (defmethod supports? :default [_ _] false)
+
+(defmethod supports? [::driver :schemas] [_ _] true)
 
 (defmulti database-supports?
   "Does this driver and specific instance of a database support a certain `feature`?
