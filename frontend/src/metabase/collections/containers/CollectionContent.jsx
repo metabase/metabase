@@ -204,7 +204,7 @@ function CollectionContent({
 
   const canUpload = uploadsEnabled && collection.can_write;
 
-  const rootProps = canUpload ? getRootProps() : {};
+  const dropzoneProps = canUpload ? getRootProps() : {};
 
   const unpinnedQuery = {
     collection: collectionId,
@@ -233,8 +233,13 @@ function CollectionContent({
         const hasPinnedItems = pinnedItems.length > 0;
 
         return (
-          <CollectionRoot {...rootProps}>
-            {canUpload && <UploadOverlay isDragActive={isDragActive} />}
+          <CollectionRoot {...dropzoneProps}>
+            {canUpload && (
+              <UploadOverlay
+                isDragActive={isDragActive}
+                collection={collection}
+              />
+            )}
             <CollectionMain>
               <ErrorBoundary>
                 <Header
