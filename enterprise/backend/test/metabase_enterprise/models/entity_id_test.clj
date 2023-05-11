@@ -37,7 +37,7 @@
     :metabase.models.action/HTTPAction
     :metabase.models.action/ImplicitAction
     :metabase.models.action/QueryAction
-    :metabase.models.activity/Activity
+    :model/Activity
     :metabase.models.application-permissions-revision/ApplicationPermissionsRevision
     :metabase.models.bookmark/BookmarkOrdering
     :metabase.models.bookmark/CardBookmark
