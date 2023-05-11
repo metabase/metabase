@@ -276,6 +276,8 @@
     (let [[header & rows] (csv/read-csv reader)]
       (rows->schema header (sample-rows rows)))))
 
+(def ^:dynamic *instrumenting* "nice" false)
+
 (defn load-from-csv
   "Loads a table from a CSV file. If the table already exists, it will throw an error. Returns nil."
   [driver db-id table-name csv-file]
@@ -286,17 +288,20 @@
     (try
       (let [rows       (parsed-rows col->upload-type csv-file)
             start-time (t/local-date-time)]
+        (def xr rows)
         (driver/insert-into driver db-id table-name column-names rows)
-        (printf "CSV-PERF\t%s\t%.2f\n" (.getName ^java.io.File csv-file) (float (/ (t/as (t/duration start-time (t/local-date-time))
-                                                                                         :millis)
-                                                                                   1000)))
-        (flush))
+        (when *instrumenting*
+          (printf "CSV-PERF: %s\t%.2f\n" (.getName ^java.io.File csv-file) (float (/ (t/as (t/duration start-time (t/local-date-time))
+                                                                                           :millis)
+                                                                                     1000)))
+          (flush)))
       (catch Throwable e
         (driver/drop-table driver db-id table-name)
         (throw (ex-info (ex-message e) {}))))
     nil))
 
 (defn run-test!
+  "cool"
   []
   (let [files+names (map (fn [f] [(io/file (str "/home/tmacdonald/fun-csvs/" f ".csv"))
                                   f])
@@ -304,5 +309,6 @@
                           "canada_housing_data"
                           "pokedex_ver_sv1"])]
     (println "CSV-PERF\tFilename\tTime (s)")
-    (doseq [[f name] files+names]
-      (load-from-csv :postgres 2 name f))))
+    (binding [*instrumenting* true]
+      (doseq [[f name] files+names]
+        (load-from-csv :postgres 2 name f)))))
