@@ -1,6 +1,6 @@
-title: A look at your [[this]]
-transient_title: Here''s an overview of your [[this]]
-description: A look at [[GenericTable]] across your [[this]], and how it changes over time.
+title: A look at [[this]]
+transient_title: Here''s an overview of [[this]]
+description: A look at [[GenericTable]] across [[this]], and how it changes over time.
 applies_to: GenericTable.*
 metrics:
 - Sum: [sum, [dimension, GenericNumber]]

@@ -1,6 +1,6 @@
-title: "A look at your [[this]]"
-transient_title: "Here''s a quick look at your [[this]]"
-description: An overview of your [[this]] and how it''s distributed across time, place, and categories.
+title: "A look at [[this]]"
+transient_title: "Here''s a quick look at [[this]]"
+description: An overview of [[this]] and how it''s distributed across time, place, and categories.
 metrics:
   - Count: ["count"]
   - CountDistinctFKs: [distinct, [dimension, FK]]
@@ -83,12 +83,12 @@ groups:
 - Overview:
     title: Summary
 - Singletons:
-    title: These are the same for all your [[this.short-name]]
+    title: These are the same for all [[this.short-name]]
 - ByTime:
     title: "These [[this.short-name]] across time"
     comparison_title: How they compare across time
 - Geographical:
-    title: Where your [[this.short-name]] are
+    title: Where [[this.short-name]] are
     comparison_title: How they compare across location
 - General:
     title: How these [[this.short-name]] are distributed
