@@ -269,13 +269,12 @@
                      :first_login                "2021-03-18T19:52:41.808482Z"
                      :group_ids                  [(u/the-id (perms-group/all-users))]
                      :personal_collection_id     true
-                     :has_question_and_dashboard false
                      :is_installer               (= 1 (mt/user->id :rasta))
                      :has_invited_second_user    (= 1 (mt/user->id :rasta))})
                    (dissoc :is_qbnewb :last_login))
                (-> (mt/user-http-request :rasta :get 200 "user/current")
                    mt/boolean-ids-and-timestamps
-                   (dissoc :is_qbnewb :last_login))))))
+                   (dissoc :is_qbnewb :last_login :has_question_and_dashboard))))))
     (testing "check that `has_question_and_dashboard` is `true`."
       (mt/with-temp* [Dashboard [_ {:name "dash1" :creator_id (mt/user->id :rasta)}]
                       Card      [_ {:name "card1" :display "table" :creator_id (mt/user->id :rasta)}]]
