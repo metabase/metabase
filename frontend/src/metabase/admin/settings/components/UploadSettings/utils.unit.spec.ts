@@ -10,7 +10,7 @@ interface SetupOpts {
 }
 
 const setup = ({ databases, schemas }: SetupOpts) => {
-  const metadata = createMockMetadata({ databases });
+  const metadata = createMockMetadata({ databases, schemas });
 
   return {
     databases: databases.map(({ id }) => checkNotNull(metadata.database(id))),
