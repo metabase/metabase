@@ -15,7 +15,6 @@
    [metabase.integrations.ldap :as ldap]
    [metabase.models :refer [PulseChannel]]
    [metabase.models.login-history :refer [LoginHistory]]
-   [metabase.models.pulse-channel :as pulse-channel]
    [metabase.models.session :refer [Session]]
    [metabase.models.setting :as setting]
    [metabase.models.user :as user :refer [User]]
