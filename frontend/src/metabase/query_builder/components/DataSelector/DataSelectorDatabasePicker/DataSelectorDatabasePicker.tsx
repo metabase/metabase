@@ -4,8 +4,8 @@ import Icon from "metabase/components/Icon";
 import AccordionList from "metabase/core/components/AccordionList";
 
 import type { Database } from "metabase-types/api/database";
+import Schema from "metabase-lib/metadata/Schema";
 
-import type { Schema } from "../types";
 import DataSelectorLoading from "../DataSelectorLoading";
 import { RawDataBackButton } from "../DataSelector.styled";
 

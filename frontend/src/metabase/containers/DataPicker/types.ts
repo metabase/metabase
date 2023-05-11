@@ -1,4 +1,9 @@
-import type { Collection } from "metabase-types/api";
+import type {
+  CollectionId,
+  DatabaseId,
+  SchemaId,
+  TableId,
+} from "metabase-types/api";
 
 import type Database from "metabase-lib/metadata/Database";
 import type Table from "metabase-lib/metadata/Table";
@@ -8,17 +13,17 @@ export type DataPickerDataType = "models" | "raw-data" | "questions";
 
 export type DataPickerValue = {
   type?: DataPickerDataType;
-  databaseId?: Database["id"];
-  schemaId?: Schema["id"];
-  collectionId?: Collection["id"];
-  tableIds: Table["id"][];
+  databaseId?: DatabaseId;
+  schemaId?: SchemaId;
+  collectionId?: CollectionId;
+  tableIds: TableId[];
 };
 
 export interface VirtualTable {
-  id: Table["id"];
+  id: TableId;
   display_name: string;
   schema: {
-    id: Schema["id"];
+    id: SchemaId;
   };
 }
 
