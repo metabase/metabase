@@ -21,6 +21,7 @@
    [metabase.lib.schema.literal.jvm :as lib.schema.literal.jvm]
    [metabase.models.database :refer [Database]]
    [metabase.models.setting :refer [defsetting]]
+   [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.query-processor.context :as qp.context]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.limit :as limit]
@@ -225,6 +226,11 @@
         (catch Throwable e
           (log/error e (trs "Failed to set timezone ''{0}'' for {1} database" timezone-id driver)))))))
 
+(defenterprise set-role-if-supported!
+  "OSS no-op implementation of `set-role-if-supported!`."
+  metabase-enterprise.advanced-permissions.driver.impersonation
+  [_ _ _])
+
 ;; TODO - since we're not running the queries in a transaction, does this make any difference at all?
 (defn set-best-transaction-level!
   "Set the connection transaction isolation level to the least-locking level supported by the DB. See
@@ -332,12 +338,16 @@
   Connection."
   {:added "0.47.0"}
   [driver                                                 :- :keyword
+   db-or-id-or-spec
    ^Connection conn                                       :- (lib.schema.literal.jvm/instance-of Connection)
    {:keys [^String session-timezone write?], :as options} :- ConnectionOptions]
   (when-not (recursive-connection?)
     (log/tracef "Setting default connection options with options %s" (pr-str options))
     (set-best-transaction-level! driver conn)
     (set-time-zone-if-supported! driver conn session-timezone)
+    (set-role-if-supported! driver conn (when (u/id db-or-id-or-spec) (if (integer? db-or-id-or-spec)
+                                                                        (t2/select-one Database db-or-id-or-spec)
+                                                                        db-or-id-or-spec)))
     (let [read-only? (not write?)]
       (try
         ;; Setting the connection to read-only does not prevent writes on some databases, and is meant
@@ -346,23 +356,23 @@
         (log/trace (pr-str (list '.setReadOnly 'conn read-only?)))
         (.setReadOnly conn read-only?)
         (catch Throwable e
-          (log/debugf e "Error setting connection readOnly to %s" (pr-str read-only?)))))
-    ;; if this is (supposedly) a read-only connection, enable auto-commit so this IS NOT ran inside of a transaction.
-    ;;
-    ;; TODO -- for `write?` connections, we should probably disable autoCommit and then manually call `.commit` at after
-    ;; `f`... we need to check and make sure that won't mess anything up, since some existing code is already doing it
-    ;; manually.
-    (when-not write?
+          (log/debugf e "Error setting connection readOnly to %s" (pr-str read-only?))))
+      ;; if this is (supposedly) a read-only connection, enable auto-commit so this IS NOT ran inside of a transaction.
+      ;;
+      ;; TODO -- for `write?` connections, we should probably disable autoCommit and then manually call `.commit` at after
+      ;; `f`... we need to check and make sure that won't mess anything up, since some existing code is already doing it
+      ;; manually.
+      (when-not write?
+        (try
+          (log/trace (pr-str '(.setAutoCommit conn true)))
+          (.setAutoCommit conn true)
+          (catch Throwable e
+            (log/debug e "Error enabling connection autoCommit"))))
       (try
-        (log/trace (pr-str '(.setAutoCommit conn true)))
-        (.setAutoCommit conn true)
+        (log/trace (pr-str '(.setHoldability conn ResultSet/CLOSE_CURSORS_AT_COMMIT)))
+        (.setHoldability conn ResultSet/CLOSE_CURSORS_AT_COMMIT)
         (catch Throwable e
-          (log/debug e "Error enabling connection autoCommit"))))
-    (try
-      (log/trace (pr-str '(.setHoldability conn ResultSet/CLOSE_CURSORS_AT_COMMIT)))
-      (.setHoldability conn ResultSet/CLOSE_CURSORS_AT_COMMIT)
-      (catch Throwable e
-        (log/debug e (trs "Error setting default holdability for connection"))))))
+          (log/debug e (trs "Error setting default holdability for connection")))))))
 
 (defmethod do-with-connection-with-options :sql-jdbc
   [driver db-or-id-or-spec options f]
@@ -371,7 +381,7 @@
    db-or-id-or-spec
    options
    (fn [^Connection conn]
-     (set-default-connection-options! driver conn options)
+     (set-default-connection-options! driver db-or-id-or-spec conn options)
      (f conn))))
 
 ;; TODO - would a more general method to convert a parameter to the desired class (and maybe JDBC type) be more
