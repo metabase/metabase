@@ -44,4 +44,9 @@ export interface DashboardState {
     name?: DashboardSidebarName;
     props: Record<string, unknown>;
   };
+
+  autoApplyFilters: {
+    toastId: string | null;
+    toastDashboardId: DashboardId | null;
+  };
 }

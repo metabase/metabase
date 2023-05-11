@@ -21,5 +21,9 @@ export const createMockDashboardState = (
   sidebar: {
     props: {},
   },
+  autoApplyFilters: {
+    toastId: null,
+    toastDashboardId: null,
+  },
   ...opts,
 });
