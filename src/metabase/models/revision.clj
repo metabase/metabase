@@ -107,6 +107,7 @@
                                     (> (count changes) 1))
                              (deferred-tru "edited this.")
                              (build-sentence changes))
+     ;; this is used on FE
      :has_multiple_changes (> (count changes) 1)}))
 
 (defn add-revision-details

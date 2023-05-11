@@ -60,6 +60,7 @@
   The directionality of the statement should indicate that `o1` changed into `o2`."
   [model before after]
   (let [ks (keys (or after before))]
-    (filter identity (map-indexed (fn [i k]
-                                      (diff-strings* k (k before) (k after)
-                                                    (if (zero? i) (deferred-tru "this {0}" model) (deferred-tru "it")))) ks))))
+    (filter identity
+            (map-indexed (fn [i k]
+                           (diff-strings* k (k before) (k after)
+                                          (if (zero? i) (deferred-tru "this {0}" model) (deferred-tru "it")))) ks))))

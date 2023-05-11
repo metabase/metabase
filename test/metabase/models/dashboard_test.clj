@@ -130,7 +130,44 @@
                              :col     0
                              :id      2
                              :card_id 2
-                             :series  [3 4 5]}]})))))
+                             :series  [3 4 5]}]}))))
+
+ (is (= "added a card."
+        (build-sentence
+          (revision/diff-strs
+            Dashboard
+            {:cards [{:id 1} {:id 2}]}
+            {:cards [{:id 1} {:id 2} {:id 3}]}))))
+
+ (is (= "removed a card."
+        (build-sentence
+          (revision/diff-strs
+            Dashboard
+            {:cards [{:id 1} {:id 2}]}
+            {:cards [{:id 1}]}))))
+
+ (is (= "rearranged the cards."
+        (build-sentence
+          (revision/diff-strs
+            Dashboard
+            {:cards [{:id 1 :row 0} {:id 2 :row 1}]}
+            {:cards [{:id 1 :row 1} {:id 2 :row 2}]}))))
+
+ (is (= "modified the cards."
+        (build-sentence
+          (revision/diff-strs
+            Dashboard
+            {:cards [{:id 1} {:id 2}]}
+            {:cards [{:id 1} {:id 3}]}))))
+
+ (is (= "renamed it from \"Apple\" to \"Next\" and modified the cards."
+        (build-sentence
+          (revision/diff-strs
+            Dashboard
+            {:name "Apple"
+             :cards [{:id 1} {:id 2}]}
+            {:name "Next"
+             :cards [{:id 1} {:id 3}]})))))
 
 (deftest revert-dashboard!-test
   (tt/with-temp* [Dashboard           [{dashboard-id :id, :as dashboard}    {:name "Test Dashboard"}]

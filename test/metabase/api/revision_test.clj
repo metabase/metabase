@@ -262,14 +262,28 @@
           (mt/user-http-request :crowberto :post 200 "revision/revert"
                                 {:entity "dashboard" :id dashboard-id :revision_id earlier-revision-id}))
 
-        (is (= ["reverted to an earlier revision."
-                "rearranged the cards."
-                "removed a card."
-                "added 2 cards."
-                "added a description."
-                "renamed this Dashboard from \"A dashboard\" to \"New name\"."
-                "created this."]
-               (map :description
+        (is (= [{:description          "reverted to an earlier revision."
+                 :title                "reverted to an earlier revision."
+                 :has_multiple_changes false}
+                {:description          "rearranged the cards."
+                 :title                "rearranged the cards."
+                 :has_multiple_changes false}
+                {:description          "removed a card."
+                 :title                "removed a card."
+                 :has_multiple_changes false}
+                {:description          "added 2 cards."
+                 :title                "added 2 cards."
+                 :has_multiple_changes false}
+                {:description          "added a description."
+                 :title                "added a description."
+                 :has_multiple_changes false}
+                {:description          "renamed this Dashboard from \"A dashboard\" to \"New name\"."
+                 :title                "renamed this Dashboard from \"A dashboard\" to \"New name\"."
+                 :has_multiple_changes false}
+                {:description          "created this."
+                 :title                "created this."
+                 :has_multiple_changes false}]
+               (map #(select-keys % [:description :title :has_multiple_changes])
                     (mt/user-http-request :crowberto :get 200 "revision" :entity "dashboard" :id dashboard-id))))
 
        #_(t2/delete! Dashboard :id dashboard-id)))))
@@ -306,13 +320,23 @@
         (mt/user-http-request :crowberto :post 200 "revision/revert"
                               {:entity "card" :id card-id :revision_id earlier-revision-id}))
 
-      (is (= ["reverted to an earlier revision."
-              "added a description."
-              "changed the display from :table to :scalar, modified the query and edited the metadata."
-              "turned this into a model and edited the metadata."
-              "renamed this Card from \"A card\" to \"New name\"."
-              "created this."]
-             (map :description
+      (is (= [{:description          "reverted to an earlier revision.",
+               :title                "reverted to an earlier revision.",
+               :has_multiple_changes false}
+              {:description          "added a description."
+               :title                "added a description."
+               :has_multiple_changes false}
+              {:description          "changed the display from :table to :scalar, modified the query and edited the metadata."
+               :title                "edited this."
+               :has_multiple_changes true}
+              {:description          "turned this into a model and edited the metadata."
+               :title                "edited this."
+               :has_multiple_changes true}
+              {:description          "renamed this Card from \"A card\" to \"New name\"."
+               :title                "renamed this Card from \"A card\" to \"New name\"."
+               :has_multiple_changes false}
+              {:description "created this.", :title "created this.", :has_multiple_changes false}]
+             (map #(select-keys % [:description :title :has_multiple_changes])
                   (mt/user-http-request :crowberto :get 200 "revision" :entity "card" :id card-id))))
       ;; cleanup once we're done
       (t2/delete! :model/Card :id card-id))))
@@ -322,6 +346,7 @@
                                                "added a description" "ajouté une description"
                                                "renamed {0} from \"{1}\" to \"{2}\"" "renommé {0} de {1} à {2}"
                                                "this {0}" "ce {0}"
+                                               "edited this." "édité ceci."
                                                "and" "et"
                                                "reverted to an earlier revision" "est revenu à une révision antérieure"}}}
     (mt/with-temporary-setting-values [site-locale "fr"]
@@ -333,20 +358,25 @@
                                                    :dataset_query          (mt/mbql-query venues)
                                                    :visualization_settings {}})]
 
-          ;; 1. add description
+          ;; 1. add description + change name
           (mt/user-http-request :crowberto :put 200 (format "card/%d" card-id)
                                 {:description "meaningful number"
                                  :name        "New name"})
-
 
           ;; 2. revert to an earlier revision
           (let [earlier-revision-id (t2/select-one-pk Revision :model "Card" :model_id card-id {:order-by [[:timestamp :desc]]})]
             (mt/user-http-request :crowberto :post 200 "revision/revert"
                                   {:entity "card" :id card-id :revision_id earlier-revision-id}))
 
-          (is (= ["est revenu à une révision antérieure."                            ;; revert
-                  "renommé ce Card de A card à New name et ajouté une description." ;; add description and rename
-                  "créé ceci."]                                                      ;; create
-                 (map :description
+          (is (= [{:description          "est revenu à une révision antérieure."
+                   :title                "est revenu à une révision antérieure."
+                   :has_multiple_changes false}
+                  {:description          "renommé ce Card de A card à New name et ajouté une description."
+                   :title                "édité ceci."
+                   :has_multiple_changes true}
+                  {:description          "créé ceci."
+                   :title                "créé ceci."
+                   :has_multiple_changes false}]
+                 (map #(select-keys % [:description :title :has_multiple_changes])
                       (mt/user-http-request :crowberto :get 200 "revision" :entity "card" :id card-id))))
           (t2/delete! :model/Card :id card-id))))))

@@ -6,6 +6,7 @@
    [metabase.models.revision :as revision :refer [Revision]]
    [metabase.models.revision.diff :refer [build-sentence]]
    [metabase.test :as mt]
+   [metabase.util.i18n :refer [deferred-tru]]
    [toucan.models :as models]
    [toucan2.core :as t2]))
 
@@ -285,3 +286,56 @@
                 :message      nil})]
              (->> (revision/revisions FakedCard card-id)
                   (map #(dissoc % :timestamp :id :model_id)))))))))
+
+(deftest generic-models-revision-title+description-test
+  (doseq [model [nil "Card" "Dashboard"]]
+   (testing (format "revision for %s models" (if (nil? model) "generic" model))
+     (testing "creation"
+       (is (= {:has_multiple_changes false
+               :title                "created this."
+               :description          "created this."}
+              (#'revision/revision-title+description :default
+                                                     nil
+                                                     {:object       {:name "New Object"}
+                                                      :is_reversion false
+                                                      :is_creation  true}))))
+
+     (testing "reversion"
+       (is (= {:has_multiple_changes false
+               :title                "reverted to an earlier revision."
+               :description          "reverted to an earlier revision."}
+              (#'revision/revision-title+description :default
+                                                     {:object       {:name "New Object"}
+                                                      :is_reversion false
+                                                      :is_creation  false}
+                                                     {:object       {:name "New Object"}
+                                                      :is_reversion true
+                                                      :is_creation  false}))))
+
+     (testing "multiple changes"
+       (is (= {:title                (deferred-tru "edited this.")
+               :description          "changed the display from :table to :bar and turned this into a model."
+               :has_multiple_changes true}
+              (#'revision/revision-title+description :default
+                                                     {:object       {:dataset false
+                                                                     :display :table}
+                                                      :is_reversion false
+                                                      :is_creation  false}
+                                                     {:object       {:dataset true
+                                                                     :display :bar}
+                                                      :is_reversion false
+                                                      :is_creation  false}))))
+
+     (testing "changes contains unspecified keys will not be mentioned"
+       (is (= {:description          "turned this into a model."
+               :title                "turned this into a model."
+               :has_multiple_changes false}
+              (#'revision/revision-title+description :default
+                                                     {:object       {:dataset     false
+                                                                     :unknown_key false}
+                                                      :is_reversion false
+                                                      :is_creation  false}
+                                                     {:object       {:dataset     true
+                                                                     :unknown_key false}
+                                                      :is_reversion false
+                                                      :is_creation  false})))))))
