@@ -58,8 +58,6 @@ const setup = ({
   dashboard = DASHBOARD,
   error,
 }: SetupOpts = {}) => {
-  const onChangeLocationMocked = jest.fn();
-  const onCloseMocked = jest.fn();
   setupMostRecentlyViewedDashboard(dashboard ?? undefined);
   setupSearchEndpoints([]);
   setupCollectionsEndpoints(collections);
@@ -76,19 +74,14 @@ const setup = ({
       component={() => (
         <AddToDashSelectDashModal
           card={card}
-          onChangeLocation={onChangeLocationMocked}
-          onClose={onCloseMocked}
+          onChangeLocation={() => undefined}
+          onClose={() => undefined}
           dashboards={dashboards}
         />
       )}
     />,
     { withRouter: true },
   );
-
-  return {
-    onChangeLocationMocked,
-    onCloseMocked,
-  };
 };
 
 describe("AddToDashSelectDashModal", () => {
