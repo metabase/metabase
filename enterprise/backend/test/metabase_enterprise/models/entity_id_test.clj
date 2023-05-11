@@ -34,9 +34,9 @@
   - exported as a child of something else (eg. timeline_event under timeline)
   so they don't need a generated entity_id."
   #{:metabase.db.data-migrations/DataMigrations
-    :metabase.models.action/HTTPAction
-    :metabase.models.action/ImplicitAction
-    :metabase.models.action/QueryAction
+    :model/HTTPAction
+    :model/ImplicitAction
+    :model/QueryAction
     :metabase.models.activity/Activity
     :metabase.models.application-permissions-revision/ApplicationPermissionsRevision
     :metabase.models.bookmark/BookmarkOrdering
