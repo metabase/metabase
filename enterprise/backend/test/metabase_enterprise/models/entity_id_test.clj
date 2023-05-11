@@ -47,7 +47,7 @@
     :metabase.models.collection-permission-graph-revision/CollectionPermissionGraphRevision
     :model/DashboardCardSeries
     :metabase.models.field-values/FieldValues
-    :metabase.models.login-history/LoginHistory
+    :model/LoginHistory
     :metabase.models.metric-important-field/MetricImportantField
     :metabase.models.moderation-review/ModerationReview
     :metabase.models.parameter-card/ParameterCard
@@ -69,7 +69,7 @@
     :metabase.models.task-history/TaskHistory
     :metabase.models.timeline-event/TimelineEvent
     :metabase.models.user/User
-    :metabase.models.view-log/ViewLog
+    :model/ViewLog
     :metabase-enterprise.sandbox.models.group-table-access-policy/GroupTableAccessPolicy})
 
 (deftest ^:parallel comprehensive-entity-id-test
