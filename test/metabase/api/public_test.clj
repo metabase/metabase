@@ -166,7 +166,8 @@
                                                                      :widget-type  "category"
                                                                      :required     true}}}}}]
      (is (= {(mt/id :categories :name) {:values                (t2/select-one-fn (comp count :values)
-                                                                                 'FieldValues :field_id category-name-id)
+                                                                                 'FieldValues :field_id category-name-id
+                                                                                 :type :full)
                                         :human_readable_values []
                                         :field_id              category-name-id}}
             (-> (:param_values (#'api.public/public-card :id (u/the-id card)))
