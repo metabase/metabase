@@ -34,9 +34,13 @@
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log])
   (:import
+   (java.io StringReader)
    (java.sql ResultSet ResultSetMetaData Time Types)
    (java.time LocalDateTime OffsetDateTime OffsetTime)
-   (java.util Date UUID)))
+   (java.util Date UUID)
+   (javax.sql DataSource)
+   (org.postgresql.copy CopyManager)
+   (org.postgresql.jdbc PgConnection)))
 
 (set! *warn-on-reflection* true)
 
@@ -770,3 +774,21 @@
   ;; This could be incorrect if Postgres has been compiled with a value for NAMEDATALEN other than the default (64), but
   ;; that seems unlikely and there's not an easy way to find out.
   63)
+
+(defn- db->connection
+  [db-or-id]
+  (.unwrap (.getConnection ^DataSource (:datasource (sql-jdbc.conn/db->pooled-connection-spec db-or-id)))
+           PgConnection))
+
+(defmethod driver/insert-into :postgres
+  [_driver db-id table-name column-names values]
+  (let [copy-manager (CopyManager. (db->connection db-id))
+        sql          (format "COPY %s (%s) FROM STDIN NULL ''" table-name (str/join "," column-names))
+        tsv          (->> values
+                          (map (fn [row] (str/join "\t" row #_(map (comp
+                                                              (fn [v] (if (str/blank? v) "NULL" v))
+                                                              str)
+                                                             row))))
+                          (str/join "\n")
+                          (StringReader.))]
+    (.copyIn copy-manager sql tsv)))
