@@ -10,8 +10,7 @@
    [toucan2.model :as t2.model]))
 
 (defn toucan-model?
-  "Check if `model` is a toucan model.
-  In toucan2 any keywords can be a model so it's always true for keyword."
+  "Check if `model` is a toucan model."
   [model]
   (or
     ;; toucan 2 models

@@ -6,3 +6,5 @@ export const SIDEBAR_NAME = {
   sharing: "sharing",
   info: "info",
 };
+
+export const DASHBOARD_SLOW_TIMEOUT = 15 * 1000;
