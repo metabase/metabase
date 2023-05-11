@@ -286,7 +286,7 @@
                (map #(select-keys % [:description :title :has_multiple_changes])
                     (mt/user-http-request :crowberto :get 200 "revision" :entity "dashboard" :id dashboard-id))))
 
-       #_(t2/delete! Dashboard :id dashboard-id)))))
+       (t2/delete! Dashboard :id dashboard-id)))))
 
 (deftest card-revision-description-test
   (testing "revision description for card are generated correctly"
