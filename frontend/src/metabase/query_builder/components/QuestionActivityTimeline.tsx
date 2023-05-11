@@ -1,59 +1,53 @@
 import React, { useMemo } from "react";
-import PropTypes from "prop-types";
 import { t } from "ttag";
-import { connect } from "react-redux";
 import _ from "underscore";
 
+import type {
+  Revision as RevisionType,
+  User as UserType,
+} from "metabase-types/api";
 import { PLUGIN_MODERATION } from "metabase/plugins";
-import { getRevisionEventsForTimeline } from "metabase/lib/revisions";
 import { revertToRevision } from "metabase/query_builder/actions";
 import { getUser } from "metabase/selectors/user";
 
 import Revision from "metabase/entities/revisions";
 import User from "metabase/entities/users";
+import { useDispatch, useSelector } from "metabase/lib/redux";
+import { State } from "metabase-types/store";
+import { getTimelineEvents } from "metabase/components/Timeline/utils";
+import type Question from "metabase-lib/Question";
 import { Timeline, Header } from "./QuestionActivityTimeline.styled";
 
 const { getModerationTimelineEvents } = PLUGIN_MODERATION;
 
-const mapStateToProps = (state, props) => ({
-  currentUser: getUser(state),
-});
+interface QuestionActivityTimelineProps {
+  question: Question;
+  revisions: RevisionType[];
+  users: UserType[];
+}
 
-const mapDispatchToProps = {
-  revertToRevision,
-};
-
-export default _.compose(
+export const QuestionActivityTimeline = _.compose(
   User.loadList({
     loadingAndErrorWrapper: false,
   }),
   Revision.loadList({
-    query: (state, props) => ({
+    query: (state: State, props: QuestionActivityTimelineProps) => ({
       model_type: "card",
       model_id: props.question.id(),
     }),
     wrapped: true,
   }),
-  connect(mapStateToProps, mapDispatchToProps),
-)(QuestionActivityTimeline);
+)(_QuestionActivityTimeline);
 
-QuestionActivityTimeline.propTypes = {
-  question: PropTypes.object.isRequired,
-  revisions: PropTypes.array,
-  users: PropTypes.array,
-  currentUser: PropTypes.object.isRequired,
-  revertToRevision: PropTypes.func.isRequired,
-};
-
-export function QuestionActivityTimeline({
+function _QuestionActivityTimeline({
   question,
   revisions,
   users,
-  currentUser,
-  revertToRevision,
-}) {
+}: QuestionActivityTimelineProps) {
+  const currentUser = useSelector(getUser);
+  const dispatch = useDispatch();
+
   const usersById = useMemo(() => _.indexBy(users, "id"), [users]);
-  const canWrite = question.canWrite();
   const moderationReviews = question.getModerationReviews();
 
   const events = useMemo(() => {
@@ -62,32 +56,20 @@ export function QuestionActivityTimeline({
       usersById,
       currentUser,
     );
-    const revisionEvents = getRevisionEventsForTimeline(
-      revisions,
-      {
-        currentUser,
-        canWrite,
-      },
-      revertToRevision,
-    );
+    const revisionEvents = getTimelineEvents({ revisions, currentUser });
 
+    // TODO sort these by timestamp
     return [...revisionEvents, ...moderationEvents];
-  }, [
-    canWrite,
-    moderationReviews,
-    revisions,
-    usersById,
-    currentUser,
-    revertToRevision,
-  ]);
+  }, [moderationReviews, revisions, usersById, currentUser]);
 
   return (
     <div>
       <Header>{t`History`}</Header>
       <Timeline
-        items={events}
+        events={events}
         data-testid="saved-question-history-list"
-        revertFn={revertToRevision}
+        revert={revision => dispatch(revertToRevision(revision))}
+        canWrite={question.canWrite()}
       />
     </div>
   );

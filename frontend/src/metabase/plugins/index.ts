@@ -19,12 +19,10 @@ import type {
   User,
 } from "metabase-types/api";
 import type { AdminPathKey, State } from "metabase-types/store";
+import type { TimelineEvent } from "metabase/components/Timeline";
 import type Question from "metabase-lib/Question";
 
 import { PluginGroupManagersType } from "./types";
-
-// Plugin integration points. All exports must be objects or arrays so they can be mutated by plugins.
-const array = () => [];
 
 // functions called when the application is started
 export const PLUGIN_APP_INIT_FUCTIONS = [];
@@ -153,7 +151,11 @@ export const PLUGIN_MODERATION = {
   ModerationStatusIcon: PluginPlaceholder,
   getStatusIcon: (moderated_status?: string): string | IconProps | undefined =>
     undefined,
-  getModerationTimelineEvents: array,
+  getModerationTimelineEvents: (
+    reviews: any,
+    usersById: Record<string, User>,
+    currentUser: User | null,
+  ) => [] as TimelineEvent[],
   getMenuItems: (
     question?: Question,
     isModerator?: boolean,
