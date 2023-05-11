@@ -117,7 +117,7 @@ describe("binning related reproductions", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Sort").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Created At (month)").click();
+    cy.findByText("Created At: Month").click();
 
     // Change the binning of the breakout field
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -128,7 +128,7 @@ describe("binning related reproductions", () => {
     cy.findByText("Quarter").click();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Created At (quarter)");
+    cy.findByText("Created At: Quarter");
   });
 
   it("should render binning options when joining on the saved native question (metabase#18646)", () => {
