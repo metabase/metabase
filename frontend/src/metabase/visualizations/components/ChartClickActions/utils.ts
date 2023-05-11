@@ -121,6 +121,15 @@ export const getSectionTitle = (sectionKey: string): string | null => {
 
 export type ContentDirectionType = "column" | "row";
 
-export const getSectionContentDirection = (): ContentDirectionType => {
-  return "row";
+export const getSectionContentDirection = (
+  sectionKey: string,
+): ContentDirectionType => {
+  switch (sectionKey) {
+    case "sort":
+    case "sum":
+    case "filter":
+      return "row";
+  }
+
+  return "column";
 };

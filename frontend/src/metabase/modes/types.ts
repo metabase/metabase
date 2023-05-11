@@ -20,7 +20,7 @@ export type ClickActionButtonType =
   | "token-filter"
   | "sort";
 
-export interface ClickActionBase {
+export type ClickActionBase = {
   name: string;
   title?: React.ReactNode;
   section: string; // TODO [26836]: add strict typings
@@ -29,7 +29,7 @@ export interface ClickActionBase {
   default?: boolean;
   tooltip?: string;
   extra?: () => Record<string, unknown>;
-}
+};
 
 type ReduxClickAction = ClickActionBase & {
   action: () => ReduxAction | Dispatcher;

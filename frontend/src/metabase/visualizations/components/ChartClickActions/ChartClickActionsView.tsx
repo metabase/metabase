@@ -26,8 +26,8 @@ export const ChartClickActionsView = ({
   return (
     <Container>
       {sections.map(([key, actions]) => {
-        const sectionTitle = getSectionTitle(key, actions);
-        const contentDirection = getSectionContentDirection(key, actions);
+        const sectionTitle = getSectionTitle(key);
+        const contentDirection = getSectionContentDirection(key);
         const withBottomDivider = key === "records" && !hasOnlyOneSection;
 
         return (
