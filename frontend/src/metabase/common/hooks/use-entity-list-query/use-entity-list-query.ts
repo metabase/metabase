@@ -54,7 +54,8 @@ export const useEntityListQuery = <TItem, TQuery>(
   const dispatch = useDispatch();
   useEffect(() => {
     if (enabled) {
-      dispatch(fetchList(entityQuery, { reload }));
+      const action = dispatch(fetchList(entityQuery, { reload }));
+      Promise.resolve(action).catch(() => undefined);
     }
   }, [dispatch, fetchList, entityQuery, reload, enabled]);
 

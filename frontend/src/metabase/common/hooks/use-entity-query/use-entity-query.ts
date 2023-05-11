@@ -64,7 +64,8 @@ export const useEntityQuery = <TId, TItem, TQuery>(
   useEffect(() => {
     if (entityId != null && enabled) {
       const query = { ...entityQuery, id: entityId };
-      dispatch(fetch(query, { reload, requestType }));
+      const action = dispatch(fetch(query, { reload, requestType }));
+      Promise.resolve(action).catch(() => undefined);
     }
   }, [dispatch, fetch, entityId, entityQuery, enabled, reload, requestType]);
 
