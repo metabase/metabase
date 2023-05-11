@@ -30,8 +30,8 @@ const SchemaPane = ({
   schema,
 }: SchemaPaneProps) => {
   const tables = useMemo(
-    () => schema.getTables().sort((a, b) => a.name.localeCompare(b.name)) ?? [],
-    [schema],
+    () => schema.tables.sort((a, b) => a.name.localeCompare(b.name)),
+    [schema.tables],
   );
   return (
     <SidebarContent

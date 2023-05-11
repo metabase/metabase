@@ -8,7 +8,7 @@ export default class Schema {
   private readonly schema: NormalizedSchema;
   metadata?: Metadata;
   database?: Database;
-  tables?: Table[];
+  tables: Table[] = [];
 
   constructor(schema: NormalizedSchema) {
     this.schema = schema;
@@ -31,6 +31,6 @@ export default class Schema {
   }
 
   getTables() {
-    return this.tables ?? [];
+    return this.tables;
   }
 }
