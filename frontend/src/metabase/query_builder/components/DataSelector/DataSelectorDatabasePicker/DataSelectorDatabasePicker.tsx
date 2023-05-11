@@ -3,7 +3,7 @@ import React, { useCallback, useMemo } from "react";
 import Icon from "metabase/components/Icon";
 import AccordionList from "metabase/core/components/AccordionList";
 
-import type { Database } from "metabase-types/api/database";
+import Database from "metabase-lib/metadata/Database";
 import Schema from "metabase-lib/metadata/Schema";
 
 import DataSelectorLoading from "../DataSelectorLoading";
