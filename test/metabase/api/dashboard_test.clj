@@ -1976,25 +1976,29 @@
                                                              :card_id 123
                                                              :series  [8 9]}]}
                                   :message  "updated"}]]
-      (is (= [{:is_reversion false
-               :is_creation  false
-               :message      "updated"
-               :user         (-> (user-details (mt/fetch-user :crowberto))
-                                 (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
-               :diff         {:before {:name        "b"
-                                       :description nil
-                                       :cards       [{:series nil, :size_y 4, :size_x 4}]}
-                              :after  {:name        "c"
-                                       :description "something"
-                                       :cards       [{:series [8 9], :size_y 3, :size_x 5}]}}
-               :description  "added a description and renamed it from \"b\" to \"c\", rearranged the cards and added some series to card 123."}
-              {:is_reversion false
-               :is_creation  true
-               :message      nil
-               :user         (-> (user-details (mt/fetch-user :rasta))
-                                 (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
-               :diff         nil
-               :description  "created this."}]
+      (is (= [{:is_reversion          false
+               :is_creation           false
+               :message               "updated"
+               :user                  (-> (user-details (mt/fetch-user :crowberto))
+                                          (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
+               :diff                  {:before {:name        "b"
+                                                :description nil
+                                                :cards       [{:series nil, :size_y 4, :size_x 4}]}
+                                       :after  {:name        "c"
+                                                :description "something"
+                                                :cards       [{:series [8 9], :size_y 3, :size_x 5}]}}
+               :has_multiple_changes true
+               :title                "edited this."
+               :description          "added a description and renamed it from \"b\" to \"c\", rearranged the cards and added some series to card 123."}
+              {:is_reversion         false
+               :is_creation          true
+               :message              nil
+               :user                 (-> (user-details (mt/fetch-user :rasta))
+                                         (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
+               :diff                 nil
+               :has_multiple_changes false
+               :title                "created this."
+               :description          "created this."}]
              (doall (for [revision (mt/user-http-request :crowberto :get 200 (format "dashboard/%d/revisions" dashboard-id))]
                       (dissoc revision :timestamp :id))))))))
 
@@ -2024,41 +2028,49 @@
                                                              :description nil
                                                              :cards       []}
                                                   :message  "updated"}]]
-      (is (= {:is_reversion true
-              :is_creation  false
-              :message      nil
-              :user         (-> (user-details (mt/fetch-user :crowberto))
-                                (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
-              :diff         {:before {:name "b"}
-                             :after  {:name "a"}}
-              :description  "reverted to an earlier revision."}
+      (is (= {:is_reversion         true
+              :is_creation          false
+              :message              nil
+              :user                 (-> (user-details (mt/fetch-user :crowberto))
+                                        (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
+              :diff                 {:before {:name "b"}
+                                     :after  {:name "a"}}
+              :has_multiple_changes false
+              :title                "reverted to an earlier revision."
+              :description          "reverted to an earlier revision."}
              (dissoc (mt/user-http-request :crowberto :post 200 (format "dashboard/%d/revert" dashboard-id)
                                            {:revision_id revision-id})
                      :id :timestamp)))
 
-      (is (= [{:is_reversion true
-               :is_creation  false
-               :message      nil
-               :user         (-> (user-details (mt/fetch-user :crowberto))
-                                 (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
-               :diff         {:before {:name "b"}
-                              :after  {:name "a"}}
-               :description  "reverted to an earlier revision."}
-              {:is_reversion false
-               :is_creation  false
-               :message      "updated"
-               :user         (-> (user-details (mt/fetch-user :crowberto))
-                                 (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
-               :diff         {:before {:name "a"}
-                              :after  {:name "b"}}
-               :description  "renamed this Dashboard from \"a\" to \"b\"."}
-              {:is_reversion false
-               :is_creation  true
-               :message      nil
-               :user         (-> (user-details (mt/fetch-user :rasta))
-                                 (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
-               :diff         nil
-               :description  "created this."}]
+      (is (= [{:is_reversion         true
+               :is_creation          false
+               :message              nil
+               :user                 (-> (user-details (mt/fetch-user :crowberto))
+                                         (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
+               :diff                 {:before {:name "b"}
+                                      :after  {:name "a"}}
+               :has_multiple_changes false
+               :title                "reverted to an earlier revision."
+               :description          "reverted to an earlier revision."}
+              {:is_reversion         false
+               :is_creation          false
+               :message              "updated"
+               :user                 (-> (user-details (mt/fetch-user :crowberto))
+                                         (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
+               :diff                 {:before {:name "a"}
+                                      :after  {:name "b"}}
+               :has_multiple_changes false
+               :title                "renamed this Dashboard from \"a\" to \"b\"."
+               :description          "renamed this Dashboard from \"a\" to \"b\"."}
+              {:is_reversion         false
+               :is_creation          true
+               :message              nil
+               :user                 (-> (user-details (mt/fetch-user :rasta))
+                                         (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
+               :diff                 nil
+               :has_multiple_changes false
+               :title                "created this."
+               :description          "created this."}]
              (doall (for [revision (mt/user-http-request :crowberto :get 200 (format "dashboard/%d/revisions" dashboard-id))]
                       (dissoc revision :timestamp :id))))))))
 

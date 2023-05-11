@@ -208,7 +208,7 @@
 
   serialized-dashboard)
 
-(defmethod revision/diff-str Dashboard
+(defmethod revision/diff-strs Dashboard
   [_model dashboard1 dashboard2]
   (let [[removals changes]  (diff dashboard1 dashboard2)
         check-series-change (fn [idx card-changes]
@@ -225,7 +225,7 @@
 
                                     :else
                                     (deferred-tru "modified the series on card {0}" (get-in dashboard1 [:cards idx :card_id]))))))]
-    (-> [(when-let [default-description ((get-method revision/diff-str :default) Dashboard dashboard1 dashboard2)]
+    (-> [(when-let [default-description (build-sentence ((get-method revision/diff-strs :default) Dashboard dashboard1 dashboard2))]
            (cond-> default-description
              (str/ends-with? default-description ".") (subs 0 (dec (count default-description)))))
          (when (:cache_ttl changes)
@@ -251,8 +251,7 @@
            (when (not= (f dashboard1) (f dashboard2))
              (deferred-tru "set auto apply filters to {0}" (str (f dashboard2)))))]
         (concat (map-indexed check-series-change (:cards changes)))
-        (->> (filter identity)
-             build-sentence))))
+        (->> (filter identity)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 OTHER CRUD FNS                                                 |

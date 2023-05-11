@@ -247,7 +247,7 @@ export function getRevisionEventsForTimeline(
     .map((revision, index) => {
       const isRevertable = canWrite && index !== 0;
       const username = getRevisionUsername(revision, currentUser);
-      const changes = getRevisionDescription(revision);
+      //const changes = getRevisionDescription(revision);
 
       const event = {
         timestamp: getRevisionEpochTimestamp(revision),
@@ -261,8 +261,8 @@ export function getRevisionEventsForTimeline(
       // For some events, like moving an item to another collection,
       // the `changes` object are an array, however they represent a single change
       // This happens when we need to have JSX inside a message (e.g. a link to a new collection)
-      const isMultipleFieldsChange =
-        Array.isArray(changes) && changes.length > 1;
+      //const isMultipleFieldsChange =
+      //  Array.isArray(changes) && changes.length > 1;
 
       // If > 1 item's fields are changed in a single revision,
       // the changes are batched into a single string like:
@@ -272,15 +272,10 @@ export function getRevisionEventsForTimeline(
       // If only one field is changed, we just show everything in the title
       // like "John added a description"
       let message;
-      if (isChangeEvent && isMultipleFieldsChange) {
-        message = t`edited this`;
-        event.title = <RevisionTitle username={username} message={message} />;
-        event.description = (
-          <RevisionBatchedDescription
-            changes={changes}
-            fallback={revision.description}
-          />
-        );
+      if (isChangeEvent && revision.has_multiple_changes) {
+        message = revision.title;
+        event.title = <RevisionTitle username={username} message={revision.title} />;
+        event.description = <span>{revision.description}</span>;
       } else {
         event.title = (
           <RevisionTitle username={username} message={revision.description} />

@@ -4,6 +4,7 @@
    [metabase.models.card :refer [Card]]
    [metabase.models.interface :as mi]
    [metabase.models.revision :as revision :refer [Revision]]
+   [metabase.models.revision.diff :refer [build-sentence]]
    [metabase.test :as mt]
    [toucan.models :as models]
    [toucan2.core :as t2]))
@@ -25,10 +26,10 @@
   [_model o1 o2]
   {:o1 (when o1 (into {} o1)), :o2 (when o2 (into {} o2))})
 
-(defmethod revision/diff-str FakedCard
+(defmethod revision/diff-strs FakedCard
   [_model o1 o2]
   (when o1
-    (str "BEFORE=" (into {} o1) ",AFTER=" (into {} o2))))
+    [(str "BEFORE=" (into {} o1) ",AFTER=" (into {} o2))]))
 
 (defn- push-fake-revision! [card-id & {:keys [message] :as object}]
   (revision/push-revision!
@@ -52,31 +53,35 @@
   (testing (str "Check that pattern matching allows specialization and that string only reflects the keys that have "
                 "changed")
     (is (= "renamed this Card from \"Tips by State\" to \"Spots by State\"."
-           ((get-method revision/diff-str :default)
-            Card
-            {:name "Tips by State", :private false}
-            {:name "Spots by State", :private false})))
+           (build-sentence
+             ((get-method revision/diff-strs :default)
+              Card
+              {:name "Tips by State", :private false}
+              {:name "Spots by State", :private false}))))
 
     (is (= "made this Card private."
-           ((get-method revision/diff-str :default)
-            Card
-            {:name "Spots by State", :private false}
-            {:name "Spots by State", :private true})))))
+           (build-sentence
+             ((get-method revision/diff-strs :default)
+              Card
+              {:name "Spots by State", :private false}
+              {:name "Spots by State", :private true}))))))
 
 (deftest multiple-changes-test
   (testing "Check that 2 changes are handled nicely"
     (is (= "made this Card private and renamed it from \"Tips by State\" to \"Spots by State\"."
-           ((get-method revision/diff-str :default)
-            Card
-            {:name "Tips by State", :private false}
-            {:name "Spots by State", :private true}))))
+           (build-sentence
+             ((get-method revision/diff-strs :default)
+              Card
+              {:name "Tips by State", :private false}
+              {:name "Spots by State", :private true})))))
 
   (testing "Check that several changes are handled nicely"
     (is (= (str "turned this into a model, made it private and renamed it from \"Tips by State\" to \"Spots by State\".")
-           ((get-method revision/diff-str :default)
-            Card
-            {:name "Tips by State", :private false, :dataset false}
-            {:name "Spots by State", :private true, :dataset true})))))
+           (build-sentence
+             ((get-method revision/diff-strs :default)
+              Card
+              {:name "Tips by State", :private false, :dataset false}
+              {:name "Spots by State", :private true, :dataset true}))))))
 
 ;;; # REVISIONS + PUSH-REVISION!
 
@@ -158,13 +163,15 @@
     (mt/with-temp Card [{card-id :id}]
       (push-fake-revision! card-id, :name "Initial Name")
       (push-fake-revision! card-id, :name "Modified Name")
-      (is (= {:is_creation  false
-              :is_reversion false
-              :message      nil
-              :user         {:id (mt/user->id :rasta), :common_name "Rasta Toucan", :first_name "Rasta", :last_name "Toucan"}
-              :diff         {:o1 {:name "Initial Name", :serialized true}
-                             :o2 {:name "Modified Name", :serialized true}}
-              :description  "BEFORE={:name \"Initial Name\", :serialized true},AFTER={:name \"Modified Name\", :serialized true}"}
+      (is (= {:is_creation          false
+              :is_reversion         false
+              :message              nil
+              :user                 {:id (mt/user->id :rasta), :common_name "Rasta Toucan", :first_name "Rasta", :last_name "Toucan"}
+              :diff                 {:o1 {:name "Initial Name", :serialized true}
+                                     :o2 {:name "Modified Name", :serialized true}}
+              :has_multiple_changes false
+              :title                "BEFORE={:name \"Initial Name\", :serialized true},AFTER={:name \"Modified Name\", :serialized true}."
+              :description          "BEFORE={:name \"Initial Name\", :serialized true},AFTER={:name \"Modified Name\", :serialized true}."}
              (let [revisions (revision/revisions FakedCard card-id)]
                (assert (= 2 (count revisions)))
                (-> (revision/add-revision-details FakedCard (first revisions) (last revisions))
@@ -177,13 +184,15 @@
       (push-fake-revision! card-id, :name "Tips Created by Day")
       (is (= [(mi/instance
                Revision
-               {:is_reversion false,
-                :is_creation  false,
-                :message      nil,
-                :user         {:id (mt/user->id :rasta), :common_name "Rasta Toucan", :first_name "Rasta", :last_name "Toucan"},
-                :diff         {:o1 nil
-                               :o2 {:name "Tips Created by Day", :serialized true}}
-                :description  nil})]
+               {:is_reversion         false,
+                :is_creation          false,
+                :message              nil,
+                :user                 {:id (mt/user->id :rasta), :common_name "Rasta Toucan", :first_name "Rasta", :last_name "Toucan"},
+                :diff                 {:o1 nil
+                                       :o2 {:name "Tips Created by Day", :serialized true}}
+                :title                nil
+                :has_multiple_changes false
+                :description          nil})]
              (->> (revision/revisions+details FakedCard card-id)
                   (map #(dissoc % :timestamp :id :model_id))))))))
 
@@ -194,23 +203,28 @@
       (push-fake-revision! card-id, :name "Spots Created by Day")
       (is (= [(mi/instance
                Revision
-               {:is_reversion false,
-                :is_creation  false,
-                :message      nil
-                :user         {:id (mt/user->id :rasta), :common_name "Rasta Toucan", :first_name "Rasta", :last_name "Toucan"},
-                :diff         {:o1 {:name "Tips Created by Day", :serialized true}
-                               :o2 {:name "Spots Created by Day", :serialized true}}
-                :description  (str "BEFORE={:name \"Tips Created by Day\", :serialized true},AFTER="
-                                   "{:name \"Spots Created by Day\", :serialized true}")})
+               {:is_reversion         false,
+                :is_creation          false,
+                :message              nil
+                :user                 {:id (mt/user->id :rasta), :common_name "Rasta Toucan", :first_name "Rasta", :last_name "Toucan"},
+                :diff                 {:o1 {:name "Tips Created by Day", :serialized true}
+                                       :o2 {:name "Spots Created by Day", :serialized true}}
+                :has_multiple_changes false
+                :title                (str "BEFORE={:name \"Tips Created by Day\", :serialized true},AFTER="
+                                           "{:name \"Spots Created by Day\", :serialized true}.")
+                :description          (str "BEFORE={:name \"Tips Created by Day\", :serialized true},AFTER="
+                                           "{:name \"Spots Created by Day\", :serialized true}.")})
               (mi/instance
                Revision
-               {:is_reversion false,
-                :is_creation  false,
-                :message      nil
-                :user         {:id (mt/user->id :rasta), :common_name "Rasta Toucan", :first_name "Rasta", :last_name "Toucan"},
-                :diff         {:o1 nil
-                               :o2 {:name "Tips Created by Day", :serialized true}}
-                :description  nil})]
+               {:is_reversion         false,
+                :is_creation          false,
+                :message              nil
+                :user                 {:id (mt/user->id :rasta), :common_name "Rasta Toucan", :first_name "Rasta", :last_name "Toucan"},
+                :diff                 {:o1 nil
+                                       :o2 {:name "Tips Created by Day", :serialized true}}
+                :has_multiple_changes false
+                :title                nil
+                :description          nil})]
              (->> (revision/revisions+details FakedCard card-id)
                   (map #(dissoc % :timestamp :id :model_id))))))))
 

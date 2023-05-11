@@ -11,6 +11,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.models.revision :as revision]
+   [metabase.models.revision.diff :refer [build-sentence]]
    [metabase.models.serialization :as serdes]
    [metabase.models.user :as user]
    [metabase.test :as mt]
@@ -56,76 +57,80 @@
 
 (deftest diff-dashboards-str-test
   (is (= "added a description and renamed it from \"Diff Test\" to \"Diff Test Changed\"."
-         (revision/diff-str
-          Dashboard
-          {:name        "Diff Test"
-           :description nil
-           :cards       []}
-          {:name        "Diff Test Changed"
-           :description "foobar"
-           :cards       []})))
+         (build-sentence
+           (revision/diff-strs
+             Dashboard
+             {:name        "Diff Test"
+              :description nil
+              :cards       []}
+             {:name        "Diff Test Changed"
+              :description "foobar"
+              :cards       []}))))
 
   (is (= "added a card."
-         (revision/diff-str
-          Dashboard
-          {:name        "Diff Test"
-           :description nil
-           :cards       []}
-          {:name        "Diff Test"
-           :description nil
-           :cards       [{:size_x  4
-                          :size_y  4
-                          :row     0
-                          :col     0
-                          :id      1
-                          :card_id 1
-                          :series  []}]})))
+         (build-sentence
+           (revision/diff-strs
+             Dashboard
+             {:name        "Diff Test"
+              :description nil
+              :cards       []}
+             {:name        "Diff Test"
+              :description nil
+              :cards       [{:size_x  4
+                             :size_y  4
+                             :row     0
+                             :col     0
+                             :id      1
+                             :card_id 1
+                             :series  []}]}))))
 
   (is (= "set auto apply filters to false."
-         (revision/diff-str
-          Dashboard
-          {:name               "Diff Test"
-           :auto_apply_filters true}
-          {:name               "Diff Test"
-           :auto_apply_filters false})))
+         (build-sentence
+           (revision/diff-strs
+             Dashboard
+             {:name               "Diff Test"
+              :auto_apply_filters true}
+             {:name               "Diff Test"
+              :auto_apply_filters false}))))
 
   (is (= "changed the cache ttl from \"333\" to \"1,227\", rearranged the cards, modified the series on card 1 and added some series to card 2."
-         (revision/diff-str
-          Dashboard
-          {:name        "Diff Test"
-           :description nil
-           :cache_ttl   333
-           :cards       [{:size_x  4
-                          :size_y  4
-                          :row     0
-                          :col     0
-                          :id      1
-                          :card_id 1
-                          :series  [5 6]}
-                         {:size_x  4
-                          :size_y  4
-                          :row     0
-                          :col     0
-                          :id      2
-                          :card_id 2
-                          :series  []}]}
-          {:name        "Diff Test"
-           :description nil
-           :cache_ttl   1227
-           :cards       [{:size_x  4
-                          :size_y  4
-                          :row     0
-                          :col     0
-                          :id      1
-                          :card_id 1
-                          :series  [4 5]}
-                         {:size_x  4
-                          :size_y  4
-                          :row     2
-                          :col     0
-                          :id      2
-                          :card_id 2
-                          :series  [3 4 5]}]}))))
+         (build-sentence
+           (revision/diff-strs
+             Dashboard
+             {:name        "Diff Test"
+              :description nil
+              :cache_ttl   333
+              :cards       [{:size_x  4
+                             :size_y  4
+                             :row     0
+                             :col     0
+                             :id      1
+                             :card_id 1
+                             :series  [5 6]}
+                            {:size_x  4
+                             :size_y  4
+                             :row     0
+                             :col     0
+                             :id      2
+                             :card_id 2
+                             :series  []}]}
+             {:name        "Diff Test"
+              :description nil
+              :cache_ttl   1227
+              :cards       [{:size_x  4
+                             :size_y  4
+                             :row     0
+                             :col     0
+                             :id      1
+                             :card_id 1
+                             :series  [4 5]}
+                            {:size_x  4
+                             :size_y  4
+                             :row     2
+                             :col     0
+                             :id      2
+                             :card_id 2
+                             :series  [3 4 5]}]})))))
 
 (deftest revert-dashboard!-test
   (tt/with-temp* [Dashboard           [{dashboard-id :id, :as dashboard}    {:name "Test Dashboard"}]

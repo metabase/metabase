@@ -3,7 +3,7 @@
    [clojure.data :as data]
    [metabase.db.util :as mdb.u]
    [metabase.models.interface :as mi]
-   [metabase.models.revision.diff :refer [diff-string]]
+   [metabase.models.revision.diff :refer [build-sentence diff-strings]]
    [metabase.models.user :refer [User]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
@@ -45,17 +45,17 @@
       {:before before
        :after  after})))
 
-(defmulti diff-str
-  "Return a string describing the difference between `object-1` and `object-2`.
+(defmulti diff-strs
+  "Return a seq of string describing the difference between `object-1` and `object-2`.
 
-  The returned string should be i18n-ed."
+  Each string in the seq should be i18n-ed."
   {:arglists '([model object-1 object-2])}
   mi/dispatch-on-model)
 
-(defmethod diff-str :default
+(defmethod diff-strs :default
   [model o1 o2]
   (when-let [[before after] (data/diff o1 o2)]
-    (diff-string (name model) before after)))
+    (diff-strings (name model) before after)))
 
 ;;; # Revision Entity
 
@@ -85,19 +85,36 @@
 
 ;;; # Functions
 
-(defn- revision-description
+(defn- revision-changes
   [model prev-revision revision]
   (cond
-    (:is_creation revision)  (deferred-tru "created this.")
-    (:is_reversion revision) (deferred-tru "reverted to an earlier revision.")
-    :else                    (diff-str model (:object prev-revision) (:object revision))))
+    (:is_creation revision)  [(deferred-tru "created this")]
+    (:is_reversion revision) [(deferred-tru "reverted to an earlier revision")]
+    :else                    (diff-strs model (:object prev-revision) (:object revision))))
+
+(defn- revision-title+description
+  [model prev-revision {:keys [is_creation is_reversion] :as revision}]
+  (let [changes (revision-changes model prev-revision revision)]
+    {:description          (build-sentence changes)
+     ;; If > 1 item's fields are changed in a single revision,
+     ;; the changes are batched into a single string like:
+     ;; "added a description, moved cards around and archived this"
+     ;; Batched messages can be long, so if the revision's diff contains > 1 field,
+     ;; we want to show the changelog in a description and set a title to just "User edited this"
+     ;; If only one field is changed, we just show everything in the title
+     ;; like "John added a description"
+     :title                (if (and (every? false? [is_creation is_reversion])
+                                    (> (count changes) 1))
+                             (deferred-tru "edited this.")
+                             (build-sentence changes))
+     :has_multiple_changes (> (count changes) 1)}))
 
 (defn add-revision-details
   "Add enriched revision data such as `:diff` and `:description` as well as filter out some unnecessary props."
   [model revision prev-revision]
   (-> revision
-      (assoc :diff        (diff-map model (:object prev-revision) (:object revision))
-             :description (revision-description model prev-revision revision))
+      (assoc :diff (diff-map model (:object prev-revision) (:object revision)))
+      (merge (revision-title+description model prev-revision revision))
       ;; add revision user details
       (hydrate :user)
       (update :user select-keys [:id :first_name :last_name :common_name])
