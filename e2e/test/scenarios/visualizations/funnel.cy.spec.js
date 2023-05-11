@@ -80,6 +80,7 @@ describe("scenarios > visualizations > funnel chart", () => {
         cy.icon("eye_outline").click();
       });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Filter").click();
 
     cy.findByTestId("filter-field-Source").within(() => {
@@ -94,6 +95,7 @@ describe("scenarios > visualizations > funnel chart", () => {
       cy.findByText("Facebook").click();
     });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Apply Filters").click();
 
     getDraggableElements().should("have.length", 4);

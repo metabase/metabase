@@ -177,6 +177,7 @@ describe("scenarios > question > object details", () => {
     cy.findByTestId("qb-filters-panel").findByText(
       `Product ID is ${PRODUCT_ID}`,
     );
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(`Showing ${EXPECTED_LINKED_ORDERS_COUNT} rows`);
   });
 
@@ -253,7 +254,9 @@ describe("scenarios > question > object details", () => {
     cy.findByTestId("object-detail");
 
     cy.log("metabase(#29023)");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("People → Name").scrollIntoView().should("be.visible");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Item 1 of/i).should("be.visible");
   });
 });

@@ -25,7 +25,9 @@ describe("postgres > user > query", { tags: "@external" }, () => {
     // Assertions
     cy.log("Fails in v0.36.6");
     // This could be omitted because real test is searching for "37.65" on the page
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("There was a problem with your question").should("not.exist");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("37.65");
   });
 });

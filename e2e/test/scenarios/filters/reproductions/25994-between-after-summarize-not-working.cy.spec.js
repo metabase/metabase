@@ -33,8 +33,10 @@ describe("issue 25994", () => {
   });
 
   it("should be possible to use 'between' dates filter after aggregation (metabase#25994)", () => {
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Filter").click();
     popover().findByText("Min of Created At: Day").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Specific dates...").click();
 
     // It doesn't really matter which dates we select so let's go with whatever is offered
