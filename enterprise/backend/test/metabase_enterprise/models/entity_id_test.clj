@@ -62,7 +62,7 @@
     :metabase.models.query/Query
     :metabase.models.query-cache/QueryCache
     :metabase.models.query-execution/QueryExecution
-    :metabase.models.revision/Revision
+    :model/Revision
     :metabase.models.revision-test/FakedCard
     :metabase.models.secret/Secret
     :metabase.models.session/Session
