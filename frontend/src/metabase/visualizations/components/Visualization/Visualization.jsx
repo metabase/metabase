@@ -342,6 +342,9 @@ class Visualization extends React.PureComponent {
     let { style } = this.props;
 
     const clickActions = this.getClickActions(clicked);
+    const regularClickActions = clickActions.filter(
+      ({ defaultAlways }) => !defaultAlways,
+    );
     // disable hover when click action is active
     if (clickActions.length > 0) {
       hovered = null;
@@ -517,7 +520,7 @@ class Visualization extends React.PureComponent {
           {this.props.onChangeCardAndRun && (
             <ChartClickActions
               clicked={clicked}
-              clickActions={clickActions}
+              clickActions={regularClickActions}
               onChangeCardAndRun={this.handleOnChangeCardAndRun}
               onClose={this.hideActions}
               series={series}

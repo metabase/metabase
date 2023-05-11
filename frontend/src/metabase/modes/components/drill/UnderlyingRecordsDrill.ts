@@ -1,10 +1,10 @@
-import { ngettext, msgid } from "ttag";
+import { msgid, ngettext } from "ttag";
 import { inflect } from "metabase/lib/formatting/strings";
+import type { Drill } from "metabase/modes/types";
 import {
   underlyingRecordsDrill,
   underlyingRecordsDrillQuestion,
 } from "metabase-lib/queries/drills/underlying-records-drill";
-import type { Drill } from "../../types";
 
 const isShortTableName = (tableName: string) => tableName.length <= 20;
 

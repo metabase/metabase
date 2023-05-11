@@ -1,9 +1,9 @@
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 import { alpha, color } from "metabase/lib/colors";
-import type { ClickActionButtonType } from "metabase/modes/types";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 import Icon from "metabase/components/Icon/Icon";
+import type { ClickActionButtonType } from "metabase/modes/types";
 
 export type SectionType = "records" | string;
 

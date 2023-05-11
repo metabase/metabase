@@ -2,9 +2,8 @@ import {
   setOrUnsetParameterValues,
   setParameterValue,
 } from "metabase/dashboard/actions";
-
+import type { ClickAction, ClickObject, Drill } from "metabase/modes/types";
 import type Question from "metabase-lib/Question";
-
 import {
   getDashboardDrillLinkUrl,
   getDashboardDrillParameters,
@@ -12,8 +11,6 @@ import {
   getDashboardDrillType,
   getDashboardDrillUrl,
 } from "metabase-lib/queries/drills/dashboard-click-drill";
-
-import type { ClickAction, ClickObject, Drill } from "../../types";
 
 type DashboardDrillType =
   | "link-url"

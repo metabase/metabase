@@ -1,10 +1,8 @@
 import React from "react";
 import { t } from "ttag";
-
 import FilterPopover from "metabase/query_builder/components/filters/FilterPopover";
+import type { ClickActionPopoverProps, Drill } from "metabase/modes/types";
 import { columnFilterDrill } from "metabase-lib/queries/drills/column-filter-drill";
-
-import type { Drill, ClickActionPopoverProps } from "../../types";
 
 const ColumnFilterDrill: Drill = ({ question, clicked }) => {
   const drill = columnFilterDrill({ question, clicked });

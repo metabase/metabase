@@ -1,9 +1,9 @@
 import React from "react";
+import { Drill } from "metabase/modes/types";
 import {
   quickFilterDrill,
   quickFilterDrillQuestion,
 } from "metabase-lib/queries/drills/quick-filter-drill";
-import type { Drill } from "../../types";
 
 const QuickFilterDrill: Drill = ({ question, clicked }) => {
   const drill = quickFilterDrill({ question, clicked });

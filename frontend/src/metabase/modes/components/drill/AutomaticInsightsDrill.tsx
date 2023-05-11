@@ -1,17 +1,17 @@
 import React from "react";
 import { t } from "ttag";
-import type {
-  ClickActionBase,
-  DrillOptions,
-  PopoverClickAction,
-} from "metabase/modes/types";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { getGALabelForAction } from "metabase/visualizations/components/ChartClickActions/utils";
 import Link from "metabase/core/components/Link/Link";
 import MetabaseSettings from "metabase/lib/settings";
+import type {
+  ClickActionBase,
+  ClickActionProps,
+  PopoverClickAction,
+} from "metabase/modes/types";
 import {
-  automaticInsightsDrill,
   automaticDashboardDrillUrl,
+  automaticInsightsDrill,
   compareToRestDrillUrl,
 } from "metabase-lib/queries/drills/automatic-insights-drill";
 import {
@@ -29,7 +29,7 @@ type AutoInsightsDrillOption = {
 const AutomaticInsightsDrill = ({
   question,
   clicked,
-}: DrillOptions): PopoverClickAction[] => {
+}: ClickActionProps): PopoverClickAction[] => {
   const enableXrays = MetabaseSettings.get("enable-xrays");
 
   if (!automaticInsightsDrill({ question, clicked, enableXrays })) {

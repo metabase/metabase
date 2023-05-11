@@ -1,6 +1,5 @@
 import _ from "underscore";
-import type { ClickAction } from "metabase-types/types/Visualization";
-import type { ClickActionButtonType } from "metabase/modes/types";
+import type { ClickActionBase, RegularClickAction } from "metabase/modes/types";
 
 type Section = {
   icon: string;
@@ -57,13 +56,13 @@ Object.values(SECTIONS).map((section, index) => {
   section.index = index;
 });
 
-type ClickActionWithButtonType = ClickAction & {
-  buttonType?: ClickActionButtonType;
-};
-
-export const getGroupedAndSortedActions = (clickActions: ClickAction[]) => {
-  const groupedClickActions: Record<string, ClickActionWithButtonType[]> =
-    _.groupBy(clickActions, "section");
+export const getGroupedAndSortedActions = (
+  clickActions: RegularClickAction[],
+) => {
+  const groupedClickActions: Record<string, RegularClickAction[]> = _.groupBy(
+    clickActions,
+    "section",
+  );
 
   if (groupedClickActions?.["sum"]?.length === 1) {
     // if there's only one "sum" click action, merge it into "summarize" and change its button type and icon
@@ -92,5 +91,5 @@ export const getGroupedAndSortedActions = (clickActions: ClickAction[]) => {
     .value();
 };
 
-export const getGALabelForAction = (action: ClickAction) =>
+export const getGALabelForAction = (action: ClickActionBase) =>
   action ? `${action.section || ""}:${action.name || ""}` : null;

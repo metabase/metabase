@@ -5,7 +5,7 @@ import React from "react";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import Tooltip from "metabase/core/components/Tooltip";
-import { ClickAction } from "metabase-types/types/Visualization";
+import type { RegularClickAction } from "metabase/modes/types";
 import {
   ActionIcon,
   ClickActionButton,
@@ -19,9 +19,9 @@ import {
 } from "./utils";
 
 interface Props {
-  clickActions: ClickAction[];
+  clickActions: RegularClickAction[];
 
-  onClick: (action: ClickAction) => void;
+  onClick: (action: RegularClickAction) => void;
 }
 
 const ChartClickActionsView = ({
@@ -82,7 +82,7 @@ const ChartClickActionsView = ({
               const key = action.name;
               const isLastItem = index === actions.length - 1;
 
-              if (action.url) {
+              if ("url" in action) {
                 return (
                   <div
                     key={key}
@@ -149,7 +149,7 @@ const ChartClickActionsView = ({
                         name={action.icon}
                       />
                     )}
-                    {action.title && action.title}
+                    {action.title}
                   </ClickActionButton>
                 );
               }

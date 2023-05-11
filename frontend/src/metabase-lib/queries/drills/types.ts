@@ -2,6 +2,7 @@ import {
   Card,
   DatasetColumn,
   RowValue,
+  Series,
   VisualizationSettings,
 } from "metabase-types/api";
 import Question from "metabase-lib/Question";
@@ -13,7 +14,7 @@ type OnChangeCardAndRunOpts = {
 
 export type OnChangeCardAndRun = (opts: OnChangeCardAndRunOpts) => void;
 
-type ClickActionProps = {
+export type ClickActionProps = {
   question: Question;
   clicked?: ClickObject;
   settings?: VisualizationSettings;
@@ -40,28 +41,27 @@ export interface ClickObject {
   event?: MouseEvent;
   element?: HTMLElement;
   seriesIndex?: number;
-  settings?: Record<string, any>;
+  settings?: Record<string, unknown>;
   origin?: {
     row: RowValue;
     cols: DatasetColumn[];
   };
-  extraData?: Record<string, any>;
+  extraData?: Record<string, unknown>;
 }
 
-type ClickActionPopoverProps = {
+export type ClickActionPopoverProps = {
+  series: Series;
   onChangeCardAndRun: OnChangeCardAndRun;
+  onChange: (settings: VisualizationSettings) => void;
+  onResize: (...args: unknown[]) => void;
   onClose: () => void;
 };
 
 export interface ClickAction {
+  name: string;
   title?: any; // React Element
-  icon?: string;
-  popover?: (props: ClickActionPopoverProps) => any; // React Element
-  question?: () => Question | undefined;
-  url?: () => string;
-  action?: () => any; // redux action
   section?: string;
-  name?: string;
+  icon?: string;
+  buttonType?: string;
   default?: boolean;
-  defaultAlways?: boolean;
 }

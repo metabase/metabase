@@ -2,9 +2,9 @@ import React from "react";
 import { t } from "ttag";
 import { isWithinIframe } from "metabase/lib/dom";
 import { getEngineNativeType } from "metabase/lib/engine";
+import type { ClickAction, Drill } from "metabase/modes/types";
 import { nativeDrillFallback } from "metabase-lib/queries/drills/native-drill-fallback";
 
-import type { ClickAction, Drill } from "../../../types";
 import { DrillMessage, DrillRoot } from "./NativeDrillFallback.styled";
 
 const NativeDrillFallback: Drill = ({ question }) => {

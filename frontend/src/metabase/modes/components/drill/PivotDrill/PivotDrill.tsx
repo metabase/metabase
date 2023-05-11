@@ -1,12 +1,11 @@
 import React, { useState } from "react";
 import { t } from "ttag";
+import { Card } from "metabase-types/api";
 import type {
   ClickActionPopoverProps,
-  DrillOptions,
+  ClickActionProps,
   PopoverClickAction,
 } from "metabase/modes/types";
-import { Card } from "metabase-types/api";
-import { DimensionValue } from "metabase-types/types/Visualization";
 import {
   pivotByCategoryDrill,
   pivotByLocationDrill,
@@ -14,6 +13,7 @@ import {
 } from "metabase-lib/queries/drills/pivot-drill";
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import DimensionOptions from "metabase-lib/DimensionOptions";
+import type { ClickObjectDimension } from "metabase-lib/queries/drills/types";
 import DrillActionsListPopover from "../common/DrillActionsListPopover";
 import {
   ActionIcon,
@@ -31,13 +31,13 @@ type PivotDrillTypeOption = {
   title: string;
   icon: "string" | "location" | "calendar";
   query: StructuredQuery;
-  dimensions: DimensionValue[];
+  dimensions: ClickObjectDimension[];
   breakoutOptions: DimensionOptions;
 };
 
 export const getPivotDrill =
   (options: PivotDrillTypesConfig = {}) =>
-  ({ question, clicked }: DrillOptions): PopoverClickAction[] => {
+  ({ question, clicked }: ClickActionProps): PopoverClickAction[] => {
     const {
       withCategory = true,
       withLocation = true,

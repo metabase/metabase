@@ -1,10 +1,10 @@
-import { ClickObject } from "metabase-types/types/Visualization";
 import { isAddress, isCategory, isDate } from "metabase-lib/types/utils/isa";
 import Question from "metabase-lib/Question";
 import Field from "metabase-lib/metadata/Field";
 import StructuredQuery, {
   FieldFilterFn,
 } from "metabase-lib/queries/StructuredQuery";
+import type { ClickObject } from "metabase-lib/queries/drills/types";
 
 type DrillOptions = {
   question: Question;
