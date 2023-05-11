@@ -284,9 +284,25 @@
         column-names       (keys col->upload-type)]
     (driver/create-table driver db-id table-name col->database-type)
     (try
-      (let [rows (parsed-rows col->upload-type csv-file)]
-        (driver/insert-into driver db-id table-name column-names rows))
+      (let [rows       (parsed-rows col->upload-type csv-file)
+            start-time (t/local-date-time)]
+        (driver/insert-into driver db-id table-name column-names rows)
+        (printf "CSV-PERF\t%s\t%.2f\n" (.getName ^java.io.File csv-file) (float (/ (t/as (t/duration start-time (t/local-date-time))
+                                                                                         :millis)
+                                                                                   1000)))
+        (flush))
       (catch Throwable e
         (driver/drop-table driver db-id table-name)
         (throw (ex-info (ex-message e) {}))))
     nil))
+
+(defn run-test!
+  []
+  (let [files+names (map (fn [f] [(io/file (str "/home/tmacdonald/fun-csvs/" f ".csv"))
+                                  f])
+                         ["top_100_streamed_songs"
+                          "canada_housing_data"
+                          "pokedex_ver_sv1"])]
+    (println "CSV-PERF\tFilename\tTime (s)")
+    (doseq [[f name] files+names]
+      (load-from-csv :postgres 2 name f))))
