@@ -44,7 +44,7 @@
                                                                           {:table-name table-name
                                                                            :field-definitions [{:field-name "field"
                                                                                                 :base-type :type/Text}]}
-                                                                          "SLECT 1 tmp")]))]
+                                                                          "SELECT 1 tmp")]))]
                      [:persist.check/read-table
                       (fn read-table [conn]
                         (sql.ddl/jdbc-query conn [(format "SELECT * FROM %s.%s"
