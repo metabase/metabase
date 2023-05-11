@@ -1,8 +1,9 @@
 name: E2E Cross-version Tests
 
+
 on:
-  schedule:
-    - cron: '0 9 * * 0'
+  workflow_dispatch: {}
+
 
 jobs:
   cross-version-testing:
