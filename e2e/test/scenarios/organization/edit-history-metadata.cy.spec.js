@@ -14,12 +14,14 @@ describe("scenarios > collection items metadata", () => {
     it("should display last edit moment for dashboards", () => {
       visitDashboard(1);
       changeDashboard();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(/Edited a few seconds ago/i);
     });
 
     it("should display last edit moment for questions", () => {
       visitQuestion(1);
       changeQuestion();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(/Edited a few seconds ago/i);
     });
   });
@@ -28,8 +30,10 @@ describe("scenarios > collection items metadata", () => {
     it("should display if user is the last editor", () => {
       cy.signInAsAdmin();
       visitDashboard(1);
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(/Edited .* by you/i);
       visitQuestion(1);
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(/Edited .* by you/i);
     });
 
@@ -40,8 +44,10 @@ describe("scenarios > collection items metadata", () => {
 
       cy.signIn("normal");
       visitDashboard(1);
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(new RegExp(`Edited .* by ${expectedName}`, "i"));
       visitQuestion(1);
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(new RegExp(`Edited .* by ${expectedName}`, "i"));
     });
 
@@ -53,12 +59,15 @@ describe("scenarios > collection items metadata", () => {
       cy.visit("/collection/root");
       // Ensure nothing is edited by current user,
       // Otherwise, the test is irrelevant
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(fullName).should("not.exist");
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Orders").click();
       changeQuestion();
 
       cy.visit("/collection/root");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Orders in a dashboard").click();
       changeDashboard();
 

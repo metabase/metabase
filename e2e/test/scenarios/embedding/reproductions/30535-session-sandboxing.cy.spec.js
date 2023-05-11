@@ -32,6 +32,7 @@ describeEE("issue 30535", () => {
 
   it("user session should not apply sandboxing to a signed embedded question (metabase#30535)", () => {
     cy.icon("share").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Embed in your application").click();
 
     cy.document().then(doc => {
