@@ -5,10 +5,11 @@ import { isSyncCompleted } from "metabase/lib/syncing";
 
 import Icon from "metabase/components/Icon";
 import AccordionList from "metabase/core/components/AccordionList";
-import DataSelectorLoading from "../DataSelectorLoading";
+import Database from "metabase-lib/metadata/Database";
+import Schema from "metabase-lib/metadata/Schema";
 
+import DataSelectorLoading from "../DataSelectorLoading";
 import { RawDataBackButton } from "../DataSelector.styled";
-import type { Database, Schema } from "../types";
 import { PickerSpinner } from "./DataSelectorDatabaseSchemaPicker.styled";
 
 type DataSelectorDatabaseSchemaPicker = {
@@ -61,7 +62,7 @@ const DataSelectorDatabaseSchemaPicker = ({
       !database.is_saved_questions && database.schemas.length > 1
         ? database.schemas.map(schema => ({
             schema,
-            name: schema.displayName(),
+            name: schema.displayName() ?? "",
           }))
         : [],
     className: database.is_saved_questions ? "bg-light" : null,
