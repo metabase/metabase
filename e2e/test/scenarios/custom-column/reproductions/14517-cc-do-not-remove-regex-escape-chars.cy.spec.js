@@ -15,6 +15,7 @@ describe.skip(
       cy.signInAsAdmin();
 
       startNewQuestion();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(PG_DB_NAME).should("be.visible").click();
       cy.findByTextEnsureVisible("People").click();
     });

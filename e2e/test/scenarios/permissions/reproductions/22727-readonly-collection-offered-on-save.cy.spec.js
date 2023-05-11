@@ -23,10 +23,12 @@ describe("issue 22727", () => {
     // We already have a reproduction that makes sure "Our analytics" is not offered when starting from an ad-hoc question (table).
     visitQuestion(1);
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("31.44").click();
     popover().contains("=").click();
     cy.wait("@dataset");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
 
     cy.get(".Modal").within(() => {

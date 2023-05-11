@@ -59,11 +59,14 @@ describe("issue 25248", () => {
     createDashboard();
     editDashboard();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(parameterDetails.name).click();
     cy.findAllByText("Select…").first().click();
     popover().findAllByText("Created At").first().click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Order.Created At").should("be.visible");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Select…").should("be.visible");
   });
 });

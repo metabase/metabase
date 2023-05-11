@@ -19,6 +19,7 @@ describe("issue 22730", () => {
   });
 
   it("allows filtering by time column (metabase#22730)", () => {
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Explore results").click();
     cy.wait("@dataset");
 
@@ -37,7 +38,9 @@ describe("issue 22730", () => {
       cy.button("Add filter").click();
     });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("before-row");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("after-row").should("not.exist");
   });
 });
