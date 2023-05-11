@@ -415,6 +415,11 @@
   {:in  (comp encryption/maybe-encrypt-bytes codecs/to-bytes)
    :out (comp encryption/maybe-decrypt maybe-blob->bytes)})
 
+(def transform-encrypted-text
+  "Transform for encrypted text."
+  {:in  encryption/maybe-encrypt
+   :out encryption/maybe-decrypt})
+
 ;; --- predefined hooks
 
 (t2/define-before-insert :hook/timestamped?

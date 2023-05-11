@@ -89,6 +89,7 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [deferred-trs deferred-tru trs tru]]
    [metabase.util.log :as log]
+   [methodical.core :as methodical]
    [schema.core :as s]
    [toucan.models :as models]
    [toucan2.core :as t2])
@@ -137,14 +138,22 @@
 
 (declare admin-writable-site-wide-settings get-value-of-type set-value-of-type!)
 
-(models/defmodel Setting :setting)
+(def Setting
+  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], not it's a reference to the toucan2 model name.
+  We'll keep this till we replace all the symbols in our codebase."
+  :model/Setting)
 
-(mi/define-methods
- Setting
- {:types       (constantly {:value :encrypted-text})
-  :primary-key (constantly :key)})
+(methodical/defmethod t2/table-name :model/Setting [_model] :setting)
 
-(defmethod serdes/hash-fields Setting
+(doto :model/Setting
+  (derive :metabase/model))
+
+(methodical/defmethod t2/primary-keys :model/Setting [_model] [:key])
+
+(t2/deftransforms :model/Setting
+  {:value mi/transform-encrypted-text})
+
+(defmethod serdes/hash-fields :model/Setting
   [_setting]
   [:key])
 
