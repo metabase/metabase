@@ -102,11 +102,13 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (when config/ee-available?
-  (classloader/require '[metabase-enterprise.advanced-permissions.query-processor.middleware.permissions :as ee.perms]
-                       '[metabase-enterprise.audit-app.query-processor.middleware.handle-audit-queries :as ee.audit]
-                       '[metabase-enterprise.sandbox.query-processor.middleware
-                         [column-level-perms-check :as ee.sandbox.columns]
-                         [row-level-restrictions :as ee.sandbox.rows]]))
+  (classloader/require
+   '[metabase-enterprise.advanced-permissions.query-processor.middleware.permissions :as ee.perms]
+   '[metabase-enterprise.advanced-permissions.query-processor.middleware.impersonation :as ee.impersonation]
+   '[metabase-enterprise.audit-app.query-processor.middleware.handle-audit-queries :as ee.audit]
+   '[metabase-enterprise.sandbox.query-processor.middleware
+     [column-level-perms-check :as ee.sandbox.columns]
+     [row-level-restrictions :as ee.sandbox.rows]]))
 
 ;;; This is a namespace that adds middleware to test MLv2 stuff every time we run a query. It lives in a `./test`
 ;;; namespace, so it's only around when running with `:dev` or the like.
@@ -181,6 +183,7 @@
 
     (f (f query rff context)) -> (f query rff context)"
   [#'cache/maybe-return-cached-results
+   (resolve 'ee.impersonation/maybe-change-role)
    #'qp.perms/check-query-permissions
    (resolve 'ee.perms/check-download-permissions)
    (resolve 'ee.sandbox.columns/maybe-apply-column-level-perms-check)])
