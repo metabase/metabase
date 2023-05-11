@@ -32,7 +32,7 @@ type DashboardAttributeType = string | number | null | boolean;
 interface DashboardInfoSidebarProps {
   dashboard: Dashboard;
   setDashboardAttribute: (name: string, value: DashboardAttributeType) => void;
-  saveDashboardAndCards: (id: number) => void;
+  saveDashboardAndCards: (preserveParameters?: boolean) => void;
   revisions: RevisionType[];
   currentUser: User;
   revertToRevision: (revision: RevisionType) => void;
@@ -54,25 +54,25 @@ const DashboardInfoSidebar = ({
   const handleDescriptionChange = useCallback(
     (description: string) => {
       setDashboardAttribute("description", description);
-      saveDashboardAndCards(dashboard.id);
+      saveDashboardAndCards(true);
     },
-    [dashboard.id, saveDashboardAndCards, setDashboardAttribute],
+    [saveDashboardAndCards, setDashboardAttribute],
   );
 
   const handleUpdateCacheTTL = useCallback(
     (cache_ttl: number | null) => {
       setDashboardAttribute("cache_ttl", cache_ttl);
-      saveDashboardAndCards(dashboard.id);
+      saveDashboardAndCards(true);
     },
-    [dashboard.id, saveDashboardAndCards, setDashboardAttribute],
+    [saveDashboardAndCards, setDashboardAttribute],
   );
 
   const handleToggleAutoApplyFilters = useCallback(
     (isAutoApplyingFilters: boolean) => {
       setDashboardAttribute("auto_apply_filters", isAutoApplyingFilters);
-      saveDashboardAndCards(dashboard.id);
+      saveDashboardAndCards(true);
     },
-    [dashboard.id, saveDashboardAndCards, setDashboardAttribute],
+    [saveDashboardAndCards, setDashboardAttribute],
   );
 
   const events = useMemo(

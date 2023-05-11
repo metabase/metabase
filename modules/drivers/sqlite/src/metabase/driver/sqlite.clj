@@ -38,6 +38,7 @@
                               :percentile-aggregations                false
                               :advanced-math-expressions              false
                               :standard-deviation-aggregations        false
+                              :schemas                                false
                               :datetime-diff                          true
                               :now                                    true
                               ;; SQLite `LIKE` clauses are case-insensitive by default, and thus cannot be made case-sensitive. So let people know
