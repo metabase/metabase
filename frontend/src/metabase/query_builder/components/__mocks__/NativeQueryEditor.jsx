@@ -10,7 +10,9 @@ const MockNativeQueryEditor = ({ query, setParameterValue, ...props }) => {
 
   return (
     <div data-testid="mock-native-query-editor">
-      <textarea value={query.queryText()} onChange={onChange} />
+      {query.queryText && (
+        <textarea value={query.queryText()} onChange={onChange} />
+      )}
       <SyncedParametersList
         className="mt1"
         parameters={query.question().parameters()}
