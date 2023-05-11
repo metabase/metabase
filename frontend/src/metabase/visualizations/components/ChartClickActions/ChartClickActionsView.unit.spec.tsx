@@ -6,7 +6,7 @@ import type { RegularClickAction } from "metabase/modes/types";
 import Mode from "metabase-lib/Mode";
 import { getAdHocQuestion } from "metabase-lib/mocks";
 import { QueryMode } from "metabase-lib/queries/drills/types";
-import ChartClickActionsView from "./ChartClickActionsView";
+import { ChartClickActionsView } from "./ChartClickActionsView";
 
 describe("ChartClickActionsView", () => {
   it('renders "See this ..." action as the first item', () => {

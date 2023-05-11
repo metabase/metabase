@@ -2,7 +2,6 @@ import {
   Card,
   DatasetColumn,
   RowValue,
-  Series,
   VisualizationSettings,
 } from "metabase-types/api";
 import Question from "metabase-lib/Question";
@@ -48,14 +47,6 @@ export interface ClickObject {
   };
   extraData?: Record<string, unknown>;
 }
-
-export type ClickActionPopoverProps = {
-  series: Series;
-  onChangeCardAndRun: OnChangeCardAndRun;
-  onChange: (settings: VisualizationSettings) => void;
-  onResize: (...args: unknown[]) => void;
-  onClose: () => void;
-};
 
 export interface ClickAction {
   name: string;

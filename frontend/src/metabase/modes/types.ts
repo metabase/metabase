@@ -1,15 +1,12 @@
 import type React from "react";
 import type { Dispatch, ReduxAction } from "metabase-types/store";
+import type { Series, VisualizationSettings } from "metabase-types/api";
 import type Question from "metabase-lib/Question";
-import type {
-  ClickAction as ClickActionBaseI,
-  ClickActionPopoverProps,
-  ClickActionProps,
-} from "metabase-lib/queries/drills/types";
+import type { ClickActionProps } from "metabase-lib/queries/drills/types";
+import { OnChangeCardAndRun } from "metabase-lib/queries/drills/types";
 
 export type {
   ClickActionProps,
-  ClickActionPopoverProps,
   ClickObject,
 } from "metabase-lib/queries/drills/types";
 
@@ -23,11 +20,11 @@ export type ClickActionButtonType =
   | "token-filter"
   | "sort";
 
-export interface ClickActionBase extends ClickActionBaseI {
+export interface ClickActionBase {
   name: string;
   title?: React.ReactNode;
-  section: string;
-  icon?: string;
+  section: string; // TODO [26836]: add strict typings
+  icon?: React.ReactNode;
   buttonType: ClickActionButtonType;
   default?: boolean;
   tooltip?: string;
@@ -47,7 +44,7 @@ export type PopoverClickAction = ClickActionBase & {
   popover: (props: ClickActionPopoverProps) => JSX.Element;
 };
 
-type UrlClickAction = ClickActionBase & {
+export type UrlClickAction = ClickActionBase & {
   ignoreSiteUrl?: boolean;
   url: () => string;
 };
@@ -68,3 +65,36 @@ type AlwaysDefaultClickAction = Omit<
 export type ClickAction = RegularClickAction | AlwaysDefaultClickAction;
 
 export type Drill = (options: ClickActionProps) => ClickAction[];
+
+export type ClickActionPopoverProps = {
+  series: Series;
+  onClick: (action: RegularClickAction) => void;
+  onChangeCardAndRun: OnChangeCardAndRun;
+  onChange: (settings: VisualizationSettings) => void;
+  onResize: (...args: unknown[]) => void;
+  onClose: () => void;
+};
+
+export const isReduxClickAction = (
+  clickAction: ClickAction,
+): clickAction is ReduxClickAction => "action" in clickAction;
+
+export const isQuestionChangeClickAction = (
+  clickAction: ClickAction,
+): clickAction is QuestionChangeClickAction => "question" in clickAction;
+
+export const isPopoverClickAction = (
+  clickAction: ClickAction,
+): clickAction is PopoverClickAction => "popover" in clickAction;
+
+export const isUrlClickAction = (
+  clickAction: ClickAction,
+): clickAction is UrlClickAction => "url" in clickAction;
+
+export const isRegularClickAction = (
+  clickAction: ClickAction,
+): clickAction is RegularClickAction =>
+  isReduxClickAction(clickAction) ||
+  isQuestionChangeClickAction(clickAction) ||
+  isPopoverClickAction(clickAction) ||
+  isUrlClickAction(clickAction);

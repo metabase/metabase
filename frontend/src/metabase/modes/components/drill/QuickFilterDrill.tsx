@@ -1,4 +1,3 @@
-import React from "react";
 import { Drill } from "metabase/modes/types";
 import {
   quickFilterDrill,
@@ -13,7 +12,7 @@ const QuickFilterDrill: Drill = ({ question, clicked }) => {
 
   return drill.operators.map(({ name, filter }) => ({
     name,
-    title: <span className="h2">{name}</span>,
+    title: name,
     section: "filter",
     buttonType: "token-filter",
     question: () => quickFilterDrillQuestion({ question, clicked, filter }),

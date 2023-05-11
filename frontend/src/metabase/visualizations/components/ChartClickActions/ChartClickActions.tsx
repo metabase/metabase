@@ -11,10 +11,11 @@ import {
   RegularClickAction,
   ClickObject,
   PopoverClickAction,
+  isPopoverClickAction,
+  isRegularClickAction,
 } from "metabase/modes/types";
 
-import "./ChartClickActions.css";
-import ChartClickActionsView from "./ChartClickActionsView";
+import { ChartClickActionsView } from "./ChartClickActionsView";
 import { getGALabelForAction } from "./utils";
 import { FlexTippyPopover } from "./ChartClickActions.styled";
 
@@ -48,8 +49,7 @@ class ChartClickActions extends Component<ChartClickActionsProps, State> {
 
   handleClickAction = (action: RegularClickAction) => {
     const { dispatch, onChangeCardAndRun } = this.props;
-    if ("popover" in action) {
-      // TODO [26836]: Add a typeguard here
+    if (isPopoverClickAction(action)) {
       MetabaseAnalytics.trackStructEvent(
         "Actions",
         "Open Click Action Popover",
@@ -62,11 +62,14 @@ class ChartClickActions extends Component<ChartClickActionsProps, State> {
         onChangeCardAndRun,
       });
       if (didPerform) {
-        MetabaseAnalytics.trackStructEvent(
-          "Actions",
-          "Executed Click Action",
-          getGALabelForAction(action),
-        );
+        if (isRegularClickAction(action)) {
+          MetabaseAnalytics.trackStructEvent(
+            "Actions",
+            "Executed Click Action",
+            getGALabelForAction(action),
+          );
+        }
+
         this.close();
       } else {
         console.warn("No action performed", action);
@@ -107,6 +110,7 @@ class ChartClickActions extends Component<ChartClickActionsProps, State> {
       const PopoverContent = popoverAction.popover;
       popover = (
         <PopoverContent
+          onClick={this.handleClickAction}
           onResize={() => {
             this.instance?.popperInstance?.update();
           }}

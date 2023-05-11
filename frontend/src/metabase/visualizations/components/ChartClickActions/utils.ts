@@ -1,4 +1,5 @@
 import _ from "underscore";
+import { t } from "ttag";
 import type { ClickActionBase, RegularClickAction } from "metabase/modes/types";
 
 type Section = {
@@ -25,6 +26,9 @@ export const SECTIONS: Record<string, Section> = {
   breakout: {
     icon: "breakout",
   },
+  "breakout-popover": {
+    icon: "breakout",
+  },
   standalone_filter: {
     icon: "filter",
   },
@@ -43,6 +47,9 @@ export const SECTIONS: Record<string, Section> = {
     icon: "dashboard",
   },
   auto: {
+    icon: "bolt",
+  },
+  "auto-popover": {
     icon: "bolt",
   },
   info: {
@@ -64,9 +71,9 @@ export const getGroupedAndSortedActions = (
     "section",
   );
 
-  if (groupedClickActions?.["sum"]?.length === 1) {
+  if (groupedClickActions["sum"]?.length === 1) {
     // if there's only one "sum" click action, merge it into "summarize" and change its button type and icon
-    if (!groupedClickActions?.["summarize"]) {
+    if (!groupedClickActions["summarize"]) {
       groupedClickActions["summarize"] = [];
     }
     groupedClickActions["summarize"].push({
@@ -93,3 +100,27 @@ export const getGroupedAndSortedActions = (
 
 export const getGALabelForAction = (action: ClickActionBase) =>
   action ? `${action.section || ""}:${action.name || ""}` : null;
+
+export const getSectionTitle = (sectionKey: string): string | null => {
+  switch (sectionKey) {
+    case "filter":
+      return t`Filter by this value`;
+
+    case "sum":
+      return t`Summarize`;
+
+    case "auto-popover":
+      return t`Automatic insights…`;
+
+    case "breakout-popover":
+      return t`Break out by…`;
+  }
+
+  return null;
+};
+
+export type ContentDirectionType = "column" | "row";
+
+export const getSectionContentDirection = (): ContentDirectionType => {
+  return "row";
+};
