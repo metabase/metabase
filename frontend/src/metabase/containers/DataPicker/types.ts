@@ -19,19 +19,11 @@ export type DataPickerValue = {
   tableIds: TableId[];
 };
 
-export interface VirtualTable {
-  id: TableId;
-  display_name: string;
-  schema: {
-    id: SchemaId;
-  };
-}
-
 export interface DataPickerFilters {
   types: (type: DataPickerDataType) => boolean;
   databases: (database: Database) => boolean;
   schemas: (schema: Schema) => boolean;
-  tables: (table: Table | VirtualTable) => boolean;
+  tables: (table: Table) => boolean;
 }
 
 export type DataPickerFiltersProp = Partial<DataPickerFilters>;
