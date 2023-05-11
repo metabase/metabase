@@ -51,7 +51,7 @@ You can also use a custom sandbox to:
 
 - [Display an edited column instead of hiding the column](#displaying-edited-columns-in-an-custom-sandbox).
 - [Pass a user attribute to a SQL parameter](#restricting-rows-in-an-custom-sandbox-with-user-attributes).
-- [Pass a user attribute to a Markdown parameter](https://www.metabase.com/learn/dashboards/markdown#create-a-custom-url-with-a-filter-value).
+- [Pass a user attribute to a Markdown parameter](https://www.metabase.com/learn/dashboards/markdown#custom-url-with-a-sandboxing-attribute).
 
 ## Limitations
 
@@ -97,7 +97,7 @@ Examples of user attributes in play:
 
 - [Restricting rows in basic sandboxes](./data-sandbox-examples.md#basic-sandbox-setup)
 - [Restricting rows in custom sandboxes](./data-sandbox-examples.md#example-2-using-variables-in-a-saved-question)
-- [Displaying custom text in Markdown dashboard cards](http://localhost:4000/learn/dashboards/markdown#create-a-custom-url-with-a-filter-value)
+- [Displaying custom text in Markdown dashboard cards](https://www.metabase.com/learn/dashboards/markdown#custom-url-with-a-sandboxing-attribute)
 
 ## Creating a basic sandbox
 
