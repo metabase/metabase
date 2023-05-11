@@ -138,6 +138,7 @@ function CollectionContent({
     maxFiles: 1,
     noClick: true,
     noDragEventsBubbling: true,
+    ignoreNonFileDragEvents: true,
     accept: { "text/csv": [".csv"] },
   });
 
