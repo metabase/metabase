@@ -44,8 +44,8 @@
 ;; the new style. Feel free to give them better names - Cam
 (deftest maybe-upsert-many!-skip-test
   (mt/with-model-cleanup [Card]
-    (let [existing-ids (t2/insert-returning-pks! Card @cards)
-          inserted-ids (vec (upsert/maybe-upsert-many! {:mode :skip} Card @cards))]
+    (let [existing-ids (sort (t2/insert-returning-pks! Card @cards))
+          inserted-ids (sort (vec (upsert/maybe-upsert-many! {:mode :skip} Card @cards)))]
       (is (= existing-ids inserted-ids)))))
 
 (deftest maybe-upsert-many!-same-objects-test
