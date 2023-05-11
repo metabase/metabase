@@ -64,7 +64,7 @@
     :metabase.models.query-execution/QueryExecution
     :model/Revision
     :metabase.models.revision-test/FakedCard
-    :metabase.models.secret/Secret
+    :model/Secret
     :metabase.models.session/Session
     :metabase.models.task-history/TaskHistory
     :metabase.models.timeline-event/TimelineEvent

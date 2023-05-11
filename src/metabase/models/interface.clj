@@ -227,10 +227,6 @@
     (blob->bytes v)
     v))
 
-(models/add-type! :secret-value
-  :in  (comp encryption/maybe-encrypt-bytes codecs/to-bytes)
-  :out (comp encryption/maybe-decrypt maybe-blob->bytes))
-
 (defn decompress
   "Decompress `compressed-bytes`."
   [compressed-bytes]
@@ -414,6 +410,10 @@
   {:in  (comp json-in normalize-parameters-list)
    :out (comp (catch-normalization-exceptions normalize-parameters-list) json-out-with-keywordization)})
 
+(def transform-secret-value
+  "Transform for secret value."
+  {:in  (comp encryption/maybe-encrypt-bytes codecs/to-bytes)
+   :out (comp encryption/maybe-decrypt maybe-blob->bytes)})
 
 ;; --- predefined hooks
 
