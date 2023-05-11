@@ -215,7 +215,7 @@ Say you have an [custom sandbox](#custom-data-sandboxes-use-a-saved-question-to-
 
 The Email column may get exposed to a sandboxed person if:
 
-- The sandboxed person belongs to [multiple data sandboxes](#multiple-data-sandboxing-permissions).
+- The sandboxed person belongs to [multiple data sandboxes](#multiple-data-sandbox-permissions).
 - A non-sandboxed person shares the Email column from:
   - A [saved SQL question](#saved-sql-questions)
   - A [public link](#public-sharing)
