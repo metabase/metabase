@@ -985,7 +985,7 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           context: resources/docker/trino
-          tags: localhost:5000/metabase:${{ env.IMAGE_NAME }}
+          tags: localhost:5000/metabase/${{ env.IMAGE_NAME }}
           push: true
 
       - name: Launch Trino
