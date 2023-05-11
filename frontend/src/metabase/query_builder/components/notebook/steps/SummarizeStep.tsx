@@ -10,6 +10,7 @@ function SummarizeStep({
   color,
   query,
   isLastOpened,
+  step,
   ...props
 }: NotebookStepUiComponentProps) {
   return (
@@ -18,6 +19,7 @@ function SummarizeStep({
         <AggregateStep
           color={color}
           query={query}
+          step={step}
           isLastOpened={isLastOpened}
           {...props}
         />
@@ -29,6 +31,13 @@ function SummarizeStep({
           query={query}
           isLastOpened={false}
           {...props}
+          step={{
+            ...step,
+            // Temporal workaround as BreakoutStep uses MLv2 and AggregateStep uses MLv1
+            // Once AggregationStep is migrated, "summarize" should be added to
+            // MLV2_STEPS in notebook/lib/steps
+            stageIndex: step.isLastStage ? -1 : step.stageIndex,
+          }}
         />
       </StepContainer>
     </StepRoot>
