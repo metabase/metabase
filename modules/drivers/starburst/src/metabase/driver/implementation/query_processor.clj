@@ -242,38 +242,29 @@
   (let [report-zone (qp.timezone/report-timezone-id-if-supported :starburst)]
     [:from_unixtime expr (h2x/literal (or report-zone "UTC"))]))
 
+(defn- timestamp-with-time-zone? [expr]
+  (let [type (h2x/database-type expr)]
+    (and type (re-find #"(?i)^timestamp(?:\(\d+\))? with time zone$" type))))
 
-(defn- safe-datetime [x]
-  (cond
-    (nil? x) x
-    (= (type x) java.time.LocalDate) (hx/->timestamp x)
-    (= (keyword (hx/type-info->db-type (hx/type-info x))) :date) (hx/->timestamp x)
-    :else x))
+(defn- ->timestamp-with-time-zone [expr]
+  (if (timestamp-with-time-zone? expr)
+    expr
+    (h2x/cast timestamp-with-time-zone-db-type expr)))
 
-(defmethod sql.qp/->honeysql [:starburst :datetime-diff]
-  [driver [_ x y unit]]
-  (let [x (sql.qp/->honeysql driver x)
-        y (sql.qp/->honeysql driver y)
-        disallowed-types (keep
-                          (fn [v]
-                            (when-let [db-type (keyword (hx/type-info->db-type (hx/type-info v)))]
-                              (let [base-type (sql-jdbc.sync/database-type->base-type driver db-type)]
-                                (when-not (some #(isa? base-type %) [:type/Date :type/DateTime])
-                                  (name db-type)))))
-                          [x y])]
-    (when (seq disallowed-types)
-      (throw (ex-info (tru "Only datetime, timestamp, or date types allowed. Found {0}"
-                           (pr-str disallowed-types))
-                      {:found disallowed-types
-                       :type  qp.error-type/invalid-query})))
-    (case unit
-      (:year :quarter :month :week :day)
-      (let [x-date (hsql/call :date (->AtTimeZone (safe-datetime x) (qp.timezone/results-timezone-id)))
-            y-date (hsql/call :date (->AtTimeZone (safe-datetime y) (qp.timezone/results-timezone-id)))]
-        (hsql/call :date_diff (hx/literal unit) x-date y-date))
+(defn- ->at-time-zone [expr]
+  (h2x/at-time-zone (->timestamp-with-time-zone expr) (qp.timezone/results-timezone-id)))
 
-      (:hour :minute :second)
-      (hsql/call :date_diff (hx/literal unit) x y))))
+(doseq [unit [:year :quarter :month :week :day]]
+  (defmethod sql.qp/datetime-diff [:starburst unit] [_driver unit x y]
+    [:date_diff (h2x/literal unit)
+     (h2x/->date (->at-time-zone x))
+     (h2x/->date (->at-time-zone y))]))
+
+(doseq [unit [:hour :minute :second]]
+  (defmethod sql.qp/datetime-diff [:starburst unit] [_driver unit x y]
+    [:date_diff (h2x/literal unit)
+     (->at-time-zone x)
+     (->at-time-zone y)]))
 
 (defmethod sql.qp/->honeysql [:starburst :convert-timezone]
   [driver [_ arg target-timezone source-timezone]]
