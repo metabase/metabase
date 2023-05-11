@@ -81,12 +81,6 @@ const getNormalizedMetrics = (state: State) => state.entities.metrics;
 const getNormalizedSegments = (state: State) => state.entities.segments;
 const getNormalizedQuestions = (state: State) => state.entities.questions;
 
-export const getShallowDatabases = getNormalizedDatabases;
-export const getShallowTables = getNormalizedTables;
-export const getShallowFields = getNormalizedFields;
-export const getShallowMetrics = getNormalizedMetrics;
-export const getShallowSegments = getNormalizedSegments;
-
 export const getMetadata: (
   state: State,
   props?: MetadataSelectorOpts,
