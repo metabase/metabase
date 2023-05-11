@@ -49,7 +49,7 @@
     :metabase.models.field-values/FieldValues
     :metabase.models.login-history/LoginHistory
     :metabase.models.metric-important-field/MetricImportantField
-    :metabase.models.moderation-review/ModerationReview
+    :metabase/ModerationReview
     :metabase.models.parameter-card/ParameterCard
     :metabase.models.permissions/Permissions
     :metabase.models.permissions-group/PermissionsGroup
