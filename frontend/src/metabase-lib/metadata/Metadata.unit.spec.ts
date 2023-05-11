@@ -4,7 +4,6 @@ import Metadata from "./Metadata";
 import Base from "./Base";
 import Database from "./Database";
 import Table from "./Table";
-import Schema from "./Schema";
 import Segment from "./Segment";
 import Metric from "./Metric";
 import { createMockConcreteField } from "./mocks";
@@ -144,7 +143,6 @@ describe("Metadata", () => {
     ["segment", obj => new Segment(obj)],
     ["metric", obj => new Metric(obj)],
     ["database", obj => new Database(obj)],
-    ["schema", obj => new Schema(obj)],
     ["table", obj => new Table(obj)],
   ].forEach(([fnName, instantiate]) => {
     describe(fnName, () => {

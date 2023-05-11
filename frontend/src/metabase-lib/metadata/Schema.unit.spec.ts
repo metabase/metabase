@@ -1,19 +1,19 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
 import Schema from "./Schema";
-import Base from "./Base";
+
 describe("Schema", () => {
   describe("instantiation", () => {
     it("should create an instance of Schema", () => {
-      expect(new Schema()).toBeInstanceOf(Schema);
+      expect(new Schema({})).toBeInstanceOf(Schema);
     });
     it("should add `object` props to the instance (because it extends Base)", () => {
-      expect(new Schema()).toBeInstanceOf(Base);
+      expect(new Schema({ name: "public" })).toBeInstanceOf(Schema);
       expect(
         new Schema({
-          foo: "bar",
+          name: "public",
         }),
-      ).toHaveProperty("foo", "bar");
+      ).toHaveProperty("name", "public");
     });
   });
   describe("displayName", () => {

@@ -7,14 +7,13 @@ import type Table from "./Table";
 export default class Schema {
   id: string;
   name: string;
-  metadata: Metadata;
+  metadata?: Metadata;
   database?: Database;
   tables?: Table[];
 
-  constructor(schema: NormalizedSchema, metadata: Metadata) {
+  constructor(schema: NormalizedSchema) {
     this.id = schema.id;
     this.name = schema.name;
-    this.metadata = metadata;
   }
 
   displayName() {
