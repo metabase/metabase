@@ -39,7 +39,7 @@ describe("order by", () => {
           name: "TITLE",
           displayName: "Title",
           effectiveType: "type/Text",
-          semanticType: "type/Category",
+          semanticType: "type/Title",
           isCalculated: false,
           isFromJoin: false,
           isFromPreviousStage: false,

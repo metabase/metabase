@@ -34,6 +34,7 @@ export const setupSchemaEndpoints = (db: Database) => {
   const schemas = _.groupBy(db.tables ?? [], table => table.schema);
   const schemaNames = Object.keys(schemas);
   fetchMock.get(`path:/api/database/${db.id}/schemas`, schemaNames);
+  fetchMock.get(`path:/api/database/${db.id}/syncable_schemas`, schemaNames);
 
   schemaNames.forEach(schema => {
     fetchMock.get(
