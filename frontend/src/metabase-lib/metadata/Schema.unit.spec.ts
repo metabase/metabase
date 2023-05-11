@@ -7,7 +7,7 @@ describe("Schema", () => {
         Schema,
       );
     });
-    it("should add `object` props to the instance (because it extends Base)", () => {
+    it("should add `object` props to the instance", () => {
       expect(
         new Schema({
           id: "1:public",
