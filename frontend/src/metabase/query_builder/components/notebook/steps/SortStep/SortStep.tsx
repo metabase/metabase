@@ -20,9 +20,22 @@ function SortStep({
   const { stageIndex } = step;
 
   const clauses = Lib.orderBys(topLevelQuery, stageIndex);
-  const groupedColumns = Lib.groupColumns(
-    Lib.orderableColumns(topLevelQuery, stageIndex),
-  );
+
+  const getColumnGroups = (clause?: Lib.OrderByClause) => {
+    const columns = Lib.orderableColumns(topLevelQuery, stageIndex);
+
+    const filteredColumns = columns.filter(column => {
+      const isSelected =
+        clause && Lib.isClauseColumn(topLevelQuery, clause, column);
+
+      const isAlreadyUsed =
+        Lib.displayInfo(topLevelQuery, column).orderByPosition != null;
+
+      return isSelected || !isAlreadyUsed;
+    });
+
+    return Lib.groupColumns(filteredColumns);
+  };
 
   const handleAddOrderBy = (column: Lib.ColumnMetadata) => {
     const nextQuery = Lib.orderBy(topLevelQuery, stageIndex, column, "asc");
@@ -68,7 +81,7 @@ function SortStep({
       renderPopover={clause => (
         <SortColumnPicker
           query={topLevelQuery}
-          columnGroups={groupedColumns}
+          columnGroups={getColumnGroups(clause)}
           onSelect={(column: Lib.ColumnMetadata) => {
             const isUpdate = clause != null;
             if (isUpdate) {
