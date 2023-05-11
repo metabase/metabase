@@ -29,6 +29,7 @@ export function createMockNotebookStep({
     id,
     type,
     stageIndex,
+    isLastStage: true,
     itemIndex,
     testID: `step-${type}-${stageIndex}-${itemIndex}`,
     topLevelQuery: DEFAULT_QUERY,
