@@ -2,19 +2,27 @@
   (:require
    [java-time :as t]
    [metabase.models.collection :as collection]
-   [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.models.serialization :as serdes]
    [metabase.models.timeline-event :as timeline-event]
    [metabase.util.date-2 :as u.date]
+   [methodical.core :as methodical]
    [schema.core :as s]
    [toucan.hydrate :refer [hydrate]]
-   [toucan.models :as models]
    [toucan2.core :as t2]))
 
-(models/defmodel Timeline :timeline)
+(def Timeline
+  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], not it's a reference to the toucan2 model name.
+  We'll keep this till we replace all the symbols in our codebase."
+  :model/Timeline)
 
-(derive Timeline ::perms/use-parent-collection-perms)
+(methodical/defmethod t2/table-name :model/Timeline  [_model] :timeline)
+
+(doto :model/Timeline
+  (derive :metabase/model)
+  (derive ::perms/use-parent-collection-perms)
+  (derive :hook/timestamped?)
+  (derive :hook/entity-id))
 
 ;;;; schemas
 
@@ -52,12 +60,7 @@
     (nil? collection-id) (->> (map hydrate-root-collection))
     events? (timeline-event/include-events options)))
 
-(mi/define-methods
- Timeline
- {:properties (constantly {::mi/timestamped? true
-                           ::mi/entity-id true})})
-
-(defmethod serdes/hash-fields Timeline
+(defmethod serdes/hash-fields :model/Timeline
   [_timeline]
   [:name (serdes/hydrated-hash :collection) :created_at])
 
