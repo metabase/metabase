@@ -39,10 +39,10 @@
     :metabase.models.action/QueryAction
     :metabase.models.activity/Activity
     :metabase.models.application-permissions-revision/ApplicationPermissionsRevision
-    :metabase.models.bookmark/BookmarkOrdering
-    :metabase.models.bookmark/CardBookmark
-    :metabase.models.bookmark/CollectionBookmark
-    :metabase.models.bookmark/DashboardBookmark
+    :model/BookmarkOrdering
+    :model/CardBookmark
+    :model/CollectionBookmark
+    :model/DashboardBookmark
     :metabase.models.collection.root/RootCollection
     :metabase.models.collection-permission-graph-revision/CollectionPermissionGraphRevision
     :model/DashboardCardSeries
