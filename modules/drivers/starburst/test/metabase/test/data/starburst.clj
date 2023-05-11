@@ -31,6 +31,7 @@
 ;; JDBC SQL
 (sql-jdbc.tx/add-test-extensions! :starburst)
 
+(def ^:private test-catalog-name "test_data")
 
 (defmethod tx/sorts-nil-first? :starburst [_ _] false)
 
@@ -53,7 +54,7 @@
   (defmethod sql.tx/field-base-type->sql-type [:starburst base-type] [_ _] db-type))
 
 (defmethod tx/dbdef->connection-details :starburst
-  [_ _ {:keys [database-name]}]
+  [_ _ {:keys [_database-name]}]
   {:host                               (tx/db-test-env-var-or-throw :starburst :host "localhost")
    :port                               (tx/db-test-env-var :starburst :port "8082")
    :user                               (tx/db-test-env-var-or-throw :starburst :user "metabase")
@@ -67,7 +68,7 @@
    :kerberos-keytab-path               (tx/db-test-env-var :starburst :kerberos-keytab-path nil)
    :kerberos-config-path               (tx/db-test-env-var :starburst :kerberos-config-path nil)
    :kerberos-service-principal-pattern (tx/db-test-env-var :starburst :kerberos-service-principal-pattern nil)
-   :catalog                            (u/snake-key database-name)
+   :catalog                            test-catalog-name
    :schema                             (tx/db-test-env-var :starburst :schema nil)})
 
 (defmethod execute/execute-sql! :starburst
@@ -126,9 +127,10 @@
 
 (defmethod sql.tx/qualified-name-components :starburst
   ;; use the default schema from the in-memory connector
-  ([_ db-name]                       [(u/snake-key db-name) "default"])
-  ([_ db-name table-name]            [(u/snake-key db-name) "default" (u/snake-key table-name)])
-  ([_ db-name table-name field-name] [(u/snake-key db-name) "default" (u/snake-key table-name) field-name]))
+  ([_ _db-name]                      [test-catalog-name "default"])
+  ([_ db-name table-name]            [test-catalog-name "default" (tx/db-qualified-table-name db-name table-name)])
+  ([_ db-name table-name field-name] [test-catalog-name "default" (tx/db-qualified-table-name db-name table-name) field-name]))
+
 
 (defmethod sql.tx/pk-sql-type :starburst
   [_]
