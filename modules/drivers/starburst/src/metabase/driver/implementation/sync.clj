@@ -15,16 +15,13 @@
   "Sync implementation for Starburst driver."
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.set :as set]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [java-time :as t]
             [metabase.driver :as driver]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+            [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
-            [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.driver.sql.util :as sql.u]
-            [metabase.util.i18n :refer [trs]]))
+            [metabase.util.log :as log]))
 
 (def starburst-type->base-type
   "Function that returns a `base-type` for the given `straburst-type` (can be a keyword or string)."
@@ -102,13 +99,13 @@
   (with-open [stmt (.createStatement conn)]
     (let [sql (describe-schema-sql driver catalog schema)
           rs (sql-jdbc.execute/execute-statement! driver stmt sql)]
-      (into 
-       #{} 
+      (into
+       #{}
        (comp (filter (fn [{table-name :table}]
                                 (have-select-privilege? driver conn schema table-name)))
                       (map (fn [{table-name :table}]
                              {:name        table-name
-                              :schema      schema}))) 
+                              :schema      schema})))
        (jdbc/reducible-result-set rs {})))))
 
 (defn- all-schemas
@@ -122,7 +119,7 @@
                    (when-not (contains? excluded-schemas schema)
                      (describe-schema driver conn catalog schema))))
             (jdbc/reducible-result-set rs {})))))
-  
+
 (defmethod driver/describe-database :starburst
   [driver {{:keys [catalog schema] :as details} :details :as database}]
   (with-open [conn (-> (sql-jdbc.conn/db->pooled-connection-spec database)
@@ -134,8 +131,8 @@
 (defmethod driver/describe-table :starburst
   [driver {{:keys [catalog] :as details} :details :as database} {schema :schema, table-name :name}]
   (with-open [conn (-> (sql-jdbc.conn/db->pooled-connection-spec database)
-                       jdbc/get-connection) 
-              stmt (.createStatement conn)] 
+                       jdbc/get-connection)
+              stmt (.createStatement conn)]
     (let [sql (describe-table-sql driver catalog schema table-name)
           rs (sql-jdbc.execute/execute-statement! driver stmt sql)]
       {:schema schema

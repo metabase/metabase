@@ -14,14 +14,14 @@
 (ns metabase.driver.implementation.execute
   "Execute implementation for Starburst driver."
   (:require [clojure.string :as str]
-            [clojure.tools.logging :as log]
             [java-time :as t]
             [metabase.driver.implementation.sync :refer [starburst-type->base-type]]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.util.date-2 :as u.date]
-            [metabase.util.i18n :refer [trs]])
+            [metabase.util.i18n :refer [trs]]
+            [metabase.util.log :as log])
   (:import com.mchange.v2.c3p0.C3P0ProxyConnection
            io.trino.jdbc.TrinoConnection
            [java.sql ResultSet Time Types Connection PreparedStatement ResultSetMetaData]

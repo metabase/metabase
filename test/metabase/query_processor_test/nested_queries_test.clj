@@ -606,11 +606,11 @@
       (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-for-queries
                                         [(mt/mbql-query checkins)])
         (is (= :completed
-               (-> (query-with-source-card 1
-                     (mt/$ids checkins
-                       {:aggregation [[:count]]
-                        :breakout    [!week.*date]
-                        :filter      [:between !week.*date "2014-02-01T00:00:00-08:00" "2014-05-01T00:00:00-07:00"]}))
+               (-> (query-with-source-card card
+                                           (mt/$ids checkins
+                                                    {:aggregation [[:count]]
+                                                     :breakout    [!week.*date]
+                                                     :filter      [:between !week.*date "2014-02-01T00:00:00-08:00" "2014-05-01T00:00:00-07:00"]}))
                    (qp/process-query)
                    (completed-status))))))))
 

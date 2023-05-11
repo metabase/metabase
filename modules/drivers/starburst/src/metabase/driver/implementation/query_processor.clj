@@ -17,10 +17,7 @@
             [java-time :as t]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util :as sql.u]
-            [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
-            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.timezone :as qp.timezone]
-            [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
             [metabase.util.honey-sql-2 :as h2x])
     (:import [java.time OffsetDateTime ZonedDateTime]))

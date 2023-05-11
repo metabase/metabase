@@ -15,14 +15,4 @@
  ["src" "resources"]
 
  :deps
- {io.trino/trino-jdbc {:mvn/version "384"}}
-
- ;; build the driver with clojure -X:build
- :aliases
- {:build
-  {:extra-deps {metabase/metabase-core {:local/root "../metabase"}
-                metabase/build-drivers {:local/root "../metabase/bin/build-drivers"}}
-   :exec-fn    build-drivers.build-driver/build-driver!
-   :exec-args  {:driver      :starburst
-                :project-dir "."
-                :target-dir  "./target"}}}}
+ {io.trino/trino-jdbc {:mvn/version "384"}}}
