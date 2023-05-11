@@ -502,7 +502,11 @@
     :actions/custom
 
     ;; Does changing the JVM timezone allow producing correct results? (See #27876 for details.)
-    :test/jvm-timezone-setting})
+    :test/jvm-timezone-setting
+
+    ;; Does the driver support connection impersonation (i.e. overriding the role used for individual queries)?
+    :connection-impersonation})
+
 
 (defmulti supports?
   "Does this driver support a certain `feature`? (A feature is a keyword, and can be any of the ones listed above in
