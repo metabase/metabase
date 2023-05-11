@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useDeepCompareEffect } from "react-use";
 import type { Action } from "@reduxjs/toolkit";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { State } from "metabase-types/store";
@@ -61,7 +61,7 @@ export const useEntityQuery = <TId, TItem, TQuery>(
   const error = useSelector(state => getError(state, options));
 
   const dispatch = useDispatch();
-  useEffect(() => {
+  useDeepCompareEffect(() => {
     if (entityId != null && enabled) {
       const query = { ...entityQuery, id: entityId };
       const action = dispatch(fetch(query, { reload, requestType }));

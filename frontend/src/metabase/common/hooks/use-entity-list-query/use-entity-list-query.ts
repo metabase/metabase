@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useDeepCompareEffect } from "react-use";
 import type { Action } from "@reduxjs/toolkit";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { State } from "metabase-types/store";
@@ -52,7 +52,7 @@ export const useEntityListQuery = <TItem, TQuery>(
   const error = useSelector(state => getError(state, options));
 
   const dispatch = useDispatch();
-  useEffect(() => {
+  useDeepCompareEffect(() => {
     if (enabled) {
       const action = dispatch(fetchList(entityQuery, { reload }));
       Promise.resolve(action).catch(() => undefined);
