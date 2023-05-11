@@ -6,22 +6,30 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.util.date-2 :as u.date]
-   [toucan.models :as models]))
+   [methodical.core :as methodical]
+   [toucan2.core :as t2]))
 
 ;;; Possible values for Dimension.type :
 ;;;
 ;;; :internal
 ;;; :external
 
-(models/defmodel Dimension :dimension)
+(def Dimension
+  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], not it's a reference to the toucan2 model name.
+  We'll keep this till we replace all the symbols in our codebase."
+  :model/Dimension)
 
-(mi/define-methods
- Dimension
- {:types      (constantly {:type :keyword})
-  :properties (constantly {::mi/timestamped? true
-                           ::mi/entity-id    true})})
+(methodical/defmethod t2/table-name :model/Dimension [_model] :dimension)
 
-(defmethod serdes/hash-fields Dimension
+(doto :model/Dimension
+  (derive :metabase/model)
+  (derive :hook/entity-id)
+  (derive :hook/timestamped?))
+
+(t2/deftransforms :model/Dimension
+  {:type mi/transform-keyword})
+
+(defmethod serdes/hash-fields :model/Dimension
   [_dimension]
   [(serdes/hydrated-hash :field)
    (serdes/hydrated-hash :human_readable_field)
