@@ -14,7 +14,7 @@ Say you have people who you want to be able to log into your Metabase, but who s
 
 ## How sandboxes work
 
-Data sandboxes work by displaying an edited version of a table, instead of the original table, to a specific group.
+Data sandboxes work by displaying an edited version of a table, instead of the original table, to a specific group. 
 
 You can think of a data sandbox as a bundle of permissions that includes:
 
@@ -25,7 +25,7 @@ You can define up to one data sandbox for each table/group combo in your Metabas
 
 ## Types of data sandboxes
 
-Data sandboxes show specific data to specific people based on their [user attributes](../people-and-groups/managing.md#adding-a-user-attribute). You can:
+Data sandboxes show specific data to each person based on their [user attributes](../people-and-groups/managing.md#adding-a-user-attribute). You can:
 
 - Restrict **rows** for specific people with a [basic sandbox](#basic-data-sandboxes-filter-by-a-column-in-the-table).
 - Restrict **columns** for specific people with a [custom sandbox](#custom-data-sandboxes-use-a-saved-question-to-create-a-custom-view-for-this-table) (also known as an advanced sandbox).
