@@ -12,7 +12,7 @@ import TemporalBucketPickerPopover from "./TemporalBucketPickerPopover";
 
 const DEFAULT_MAX_HEIGHT = 610;
 
-interface QueryColumnPickerProps {
+export interface QueryColumnPickerProps {
   className?: string;
   query: Lib.Query;
   clause?: Lib.Clause;
@@ -66,14 +66,21 @@ function QueryColumnPicker({
   );
 
   const handleSelect = useCallback(
-    (item: ColumnListItem) => {
-      onSelect(item.column);
+    (column: Lib.ColumnMetadata) => {
+      onSelect(column);
       onClose?.();
     },
     [onSelect, onClose],
   );
 
-  const itemIsSelected = useCallback(
+  const handleSelectColumn = useCallback(
+    (item: ColumnListItem) => {
+      handleSelect(item.column);
+    },
+    [handleSelect],
+  );
+
+  const checkIsItemSelected = useCallback(
     (item: ColumnListItem) =>
       clause && Lib.isClauseColumn(query, clause, item.column),
     [query, clause],
@@ -97,8 +104,7 @@ function QueryColumnPicker({
             selectedBucket={Lib.binning(query, item.column)}
             buckets={binningStrategies}
             onSelect={nextBucket => {
-              onSelect(Lib.withBinning(item.column, nextBucket));
-              onClose?.();
+              handleSelect(Lib.withBinning(item.column, nextBucket));
             }}
           />
         );
@@ -113,8 +119,7 @@ function QueryColumnPicker({
             selectedBucket={Lib.temporalBucket(query, item.column)}
             buckets={temporalBuckets}
             onSelect={nextBucket => {
-              onSelect(Lib.withTemporalBucket(item.column, nextBucket));
-              onClose?.();
+              handleSelect(Lib.withTemporalBucket(item.column, nextBucket));
             }}
           />
         );
@@ -122,7 +127,7 @@ function QueryColumnPicker({
 
       return null;
     },
-    [query, hasBucketing, onSelect, onClose],
+    [query, hasBucketing, handleSelect],
   );
 
   return (
@@ -131,8 +136,8 @@ function QueryColumnPicker({
       sections={sections}
       maxHeight={maxHeight}
       alwaysExpanded={false}
-      onChange={handleSelect}
-      itemIsSelected={itemIsSelected}
+      onChange={handleSelectColumn}
+      itemIsSelected={checkIsItemSelected}
       renderItemName={renderItemName}
       renderItemDescription={omitItemDescription}
       renderItemIcon={renderItemIcon}
