@@ -160,9 +160,9 @@ const GroupDetail = ({
           {getGroupNameLocalized(group ?? {})}
           <span className="text-light ml1">
             {ngettext(
-              msgid`${groupMemberships.length} member`,
-              `${groupMemberships.length} members`,
-              groupMemberships.length,
+              msgid`${group.members.length} member`,
+              `${group.members.length} members`,
+              group.members.length,
             )}
           </span>
         </React.Fragment>
