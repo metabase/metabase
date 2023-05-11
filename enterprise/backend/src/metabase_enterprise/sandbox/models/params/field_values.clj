@@ -10,6 +10,7 @@
    [metabase.models.field-values :as field-values]
    [metabase.models.params.field-values :as params.field-values]
    [metabase.public-settings.premium-features :refer [defenterprise]]
+   [metabase.util :as u]
    [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2]))
 
@@ -74,6 +75,26 @@
                         :when (contains? field-ids
                                          (mbql.u/match-one v [:dimension [:field field-id _]] field-id))]
                     {k (get login-attributes k)})))])))
+
+(defenterprise field-id->field-values-for-current-user
+  "Fetch *existing* FieldValues for a sequence of `field-ids` for the current User. Values are returned as a map of
+    {field-id FieldValues-instance}
+  Returns `nil` if `field-ids` is empty or no matching FieldValues exist."
+  :feature :sandboxes
+  [field-ids]
+  (let [fields                   (when (seq field-ids)
+                                   (hydrate (t2/select Field :id [:in (set field-ids)]) :table))
+        {unsandboxed-fields false
+         sandboxed-fields   true} (group-by (comp boolean field-is-sandboxed?) fields)]
+    (merge
+     ;; use the normal OSS batched implementation for any Fields that aren't subject to sandboxing.
+     (when (seq unsandboxed-fields)
+       (params.field-values/default-field-id->field-values-for-current-user
+         (map u/the-id unsandboxed-fields)))
+     ;; for sandboxed fields, fetch the sandboxed values individually.
+     (into {} (for [{field-id :id, :as field} sandboxed-fields]
+                [field-id (select-keys (params.field-values/get-or-create-advanced-field-values! :sandbox field)
+                                       [:values :human_readable_values :field_id])])))))
 
 (defenterprise get-or-create-field-values-for-current-user!*
   "Fetch cached FieldValues for a `field`, creating them if needed if the Field should have FieldValues. These
