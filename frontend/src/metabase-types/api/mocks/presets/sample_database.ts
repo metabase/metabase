@@ -1,4 +1,4 @@
-import { Database, Field, Table } from "metabase-types/api";
+import { Database, Field, FieldValues, Table } from "metabase-types/api";
 import {
   createMockDatabase,
   createMockTable,
@@ -62,6 +62,28 @@ export const REVIEWS = {
   RATING: 66,
   BODY: 70,
   CREATED_AT: 71,
+};
+
+// Note: don't assign field values to the field object itself
+// Field values are not included in the field object in the API response
+// Please use `setupFieldValuesEndpoints` utility from `__support__/server-mocks`
+
+export const PRODUCT_CATEGORY_VALUES: FieldValues = {
+  field_id: PRODUCTS.CATEGORY,
+  values: [["Doohickey"], ["Gadget"], ["Gizmo"], ["Widget"]],
+  has_more_values: false,
+};
+
+export const PRODUCT_VENDOR_VALUES: FieldValues = {
+  field_id: PRODUCTS.VENDOR,
+  values: [["Vendor 1"], ["Vendor 2"], ["Vendor 3"], ["Vendor 4"]],
+  has_more_values: true,
+};
+
+export const PEOPLE_SOURCE_VALUES: FieldValues = {
+  field_id: PEOPLE.SOURCE,
+  values: [["Affiliate"], ["Facebook"], ["Google"], ["Organic"], ["Twitter"]],
+  has_more_values: false,
 };
 
 export const createSampleDatabase = (opts?: Partial<Database>): Database =>
@@ -171,6 +193,7 @@ export const createOrdersIdField = (opts?: Partial<Field>): Field =>
     base_type: "type/BigInteger",
     effective_type: "type/BigInteger",
     semantic_type: "type/PK",
+    has_field_values: "none",
     fingerprint: null,
     ...opts,
   });
@@ -185,6 +208,7 @@ export const createOrdersUserIdField = (opts?: Partial<Field>): Field =>
     effective_type: "type/Integer",
     semantic_type: "type/FK",
     fk_target_field_id: PEOPLE.ID,
+    has_field_values: "none",
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
         "distinct-count": 929,
@@ -203,6 +227,7 @@ export const createOrdersProductIdField = (opts?: Partial<Field>): Field =>
     effective_type: "type/Integer",
     semantic_type: "type/FK",
     fk_target_field_id: PRODUCTS.ID,
+    has_field_values: "none",
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
         "distinct-count": 200,
@@ -220,6 +245,7 @@ export const createOrdersSubtotalField = (opts?: Partial<Field>): Field =>
     base_type: "type/Float",
     effective_type: "type/Float",
     semantic_type: null,
+    has_field_values: "none",
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
         "distinct-count": 340,
@@ -247,6 +273,7 @@ export const createOrdersTaxField = (opts?: Partial<Field>): Field =>
     base_type: "type/Float",
     effective_type: "type/Float",
     semantic_type: null,
+    has_field_values: "none",
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
         "distinct-count": 797,
@@ -274,6 +301,7 @@ export const createOrdersTotalField = (opts?: Partial<Field>): Field =>
     base_type: "type/Float",
     effective_type: "type/Float",
     semantic_type: null,
+    has_field_values: "none",
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
         "distinct-count": 4426,
@@ -301,6 +329,7 @@ export const createOrdersDiscountField = (opts?: Partial<Field>): Field =>
     base_type: "type/Float",
     effective_type: "type/Float",
     semantic_type: "type/Discount",
+    has_field_values: "none",
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
         "distinct-count": 701,
@@ -329,6 +358,7 @@ export const createOrdersCreatedAtField = (opts?: Partial<Field>): Field =>
     base_type: "type/DateTime",
     effective_type: "type/DateTime",
     semantic_type: "type/CreationTimestamp",
+    has_field_values: "none",
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
         "distinct-count": 9998,
@@ -380,6 +410,7 @@ export const createPeopleIdField = (opts?: Partial<Field>): Field =>
     effective_type: "type/BigInteger",
     semantic_type: "type/PK",
     fingerprint: null,
+    has_field_values: "none",
     ...opts,
   });
 
@@ -392,6 +423,7 @@ export const createPeopleAddressField = (opts?: Partial<Field>): Field =>
     base_type: "type/Text",
     effective_type: "type/Text",
     semantic_type: null,
+    has_field_values: "search",
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
         "distinct-count": 2490,
@@ -414,6 +446,7 @@ export const createPeopleEmailField = (opts?: Partial<Field>): Field =>
     base_type: "type/Text",
     effective_type: "type/Text",
     semantic_type: "type/Email",
+    has_field_values: "search",
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
         "distinct-count": 2500,
@@ -437,6 +470,11 @@ export const createPeoplePasswordField = (opts?: Partial<Field>): Field =>
     base_type: "type/Text",
     effective_type: "type/Text",
     semantic_type: null,
+
+    // It's actually set to "search" in the original sample database,
+    // but it's handy having a string field with no values for testing
+    has_field_values: "none",
+
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
         "distinct-count": 2500,
@@ -459,6 +497,7 @@ export const createPeopleNameField = (opts?: Partial<Field>): Field =>
     base_type: "type/Text",
     effective_type: "type/Text",
     semantic_type: "type/Name",
+    has_field_values: "search",
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
         "distinct-count": 2499,
@@ -481,6 +520,7 @@ export const createPeopleCityField = (opts?: Partial<Field>): Field =>
     base_type: "type/Text",
     effective_type: "type/Text",
     semantic_type: "type/City",
+    has_field_values: "search",
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
         "distinct-count": 1966,
@@ -504,6 +544,7 @@ export const createPeopleLongitudeField = (opts?: Partial<Field>): Field =>
     base_type: "type/Float",
     effective_type: "type/Float",
     semantic_type: "type/Longitude",
+    has_field_values: "none",
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
         "distinct-count": 2491,
@@ -576,6 +617,7 @@ export const createPeopleBirthDateField = (opts?: Partial<Field>): Field =>
     base_type: "type/Date",
     effective_type: "type/Date",
     semantic_type: null,
+    has_field_values: "none",
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
         "distinct-count": 2308,
@@ -599,6 +641,7 @@ export const createPeopleZipField = (opts?: Partial<Field>): Field =>
     base_type: "type/Text",
     effective_type: "type/Text",
     semantic_type: "type/ZipCode",
+    has_field_values: "search",
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
         "distinct-count": 2234,
@@ -621,6 +664,7 @@ export const createPeopleLatitudeField = (opts?: Partial<Field>): Field =>
     base_type: "type/Float",
     effective_type: "type/Float",
     semantic_type: "type/Latitude",
+    has_field_values: "none",
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
         "distinct-count": 2491,
@@ -672,6 +716,7 @@ export const createProductsIdField = (opts?: Partial<Field>): Field =>
     base_type: "type/BigInteger",
     effective_type: "type/BigInteger",
     semantic_type: "type/PK",
+    has_field_values: "none",
     fingerprint: null,
     ...opts,
   });
@@ -685,6 +730,7 @@ export const createProductsEanField = (opts?: Partial<Field>): Field =>
     base_type: "type/Text",
     effective_type: "type/Text",
     semantic_type: null,
+    has_field_values: "none",
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
         "distinct-count": 200,
@@ -751,6 +797,7 @@ export const createProductsVendorField = (opts?: Partial<Field>): Field =>
     base_type: "type/Text",
     effective_type: "type/Text",
     semantic_type: "type/Company",
+    has_field_values: "search",
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
         "distinct-count": 200,
@@ -773,6 +820,7 @@ export const createProductsPriceField = (opts?: Partial<Field>): Field =>
     base_type: "type/Float",
     effective_type: "type/Float",
     semantic_type: null,
+    has_field_values: "none",
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
         "distinct-count": 170,
@@ -800,6 +848,7 @@ export const createProductsRatingField = (opts?: Partial<Field>): Field =>
     base_type: "type/Float",
     effective_type: "type/Float",
     semantic_type: "type/Score",
+    has_field_values: "none",
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
         "distinct-count": 23,
@@ -827,6 +876,7 @@ export const createProductsCreatedAtField = (opts?: Partial<Field>): Field =>
     base_type: "type/DateTime",
     effective_type: "type/DateTime",
     semantic_type: "type/CreationTimestamp",
+    has_field_values: "none",
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
         "distinct-count": 200,
@@ -849,6 +899,7 @@ export const createReviewsIdField = (opts?: Partial<Field>): Field =>
     display_name: "ID",
     base_type: "type/BigInteger",
     semantic_type: "type/PK",
+    has_field_values: "none",
     fingerprint: null,
     ...opts,
   });
@@ -863,6 +914,7 @@ export const createReviewsProductIdField = (opts?: Partial<Field>): Field =>
     effective_type: "type/Integer",
     semantic_type: "type/FK",
     fk_target_field_id: PRODUCTS.ID,
+    has_field_values: "none",
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
         "distinct-count": 176,
@@ -881,6 +933,7 @@ export const createReviewsReviewerField = (opts?: Partial<Field>): Field =>
     base_type: "type/Text",
     effective_type: "type/Text",
     semantic_type: null,
+    has_field_values: "search",
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
         "distinct-count": 1076,
@@ -931,6 +984,7 @@ export const createReviewsBodyField = (opts?: Partial<Field>): Field =>
     base_type: "type/Text",
     effective_type: "type/Text",
     semantic_type: "type/Description",
+    has_field_values: "search",
     fingerprint: createMockFingerprint({
       global: createMockGlobalFieldFingerprint({
         "distinct-count": 1112,

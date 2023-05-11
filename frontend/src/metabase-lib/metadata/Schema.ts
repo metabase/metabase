@@ -10,7 +10,7 @@ import type Table from "./Table";
  */
 
 export default class Schema extends Base {
-  id?: string;
+  id: string;
   name: string;
   database: Database;
   tables: Table[];
