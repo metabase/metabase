@@ -6,6 +6,7 @@ export default class ErrorBoundary extends React.Component<
   {
     onError?: (errorInfo: ErrorInfo) => void;
     errorComponent?: ComponentType;
+    message?: string;
   },
   {
     hasError: boolean;
@@ -38,7 +39,7 @@ export default class ErrorBoundary extends React.Component<
       const ErrorComponent = this.props.errorComponent
         ? this.props.errorComponent
         : SmallGenericError;
-      return <ErrorComponent />;
+      return <ErrorComponent message={this.props.message} />;
     }
 
     return this.props.children;

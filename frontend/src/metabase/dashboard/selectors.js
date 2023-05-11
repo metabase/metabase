@@ -67,6 +67,11 @@ export const getDashboard = createSelector(
 
 export const getLoadingDashCards = state => state.dashboard.loadingDashCards;
 
+export const getDashboardById = (state, dashboardId) => {
+  const dashboards = getDashboards(state);
+  return dashboards[dashboardId];
+};
+
 export const getDashCardById = (state, dashcardId) => {
   const dashcards = getDashcards(state);
   return dashcards[dashcardId];
