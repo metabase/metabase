@@ -130,19 +130,19 @@
 
 (deftest ^:parallel unresolved-lib-field-with-temporal-bucket-test
   (let [query (lib/query-for-table-name meta/metadata-provider "CHECKINS")
-        f (lib/with-temporal-bucket (lib/field (meta/id :checkins :date)) :year)]
+        f (lib/with-temporal-bucket (lib/field (meta/id :checkins :date)) :day-of-month)]
     (is (fn? f))
     (let [field (f query -1)]
-      (is (=? [:field {:temporal-unit :year} (meta/id :checkins :date)]
+      (is (=? [:field {:temporal-unit :day-of-month} (meta/id :checkins :date)]
               field))
       (testing "(lib/temporal-bucket <column-metadata>)"
-        (is (= :year
+        (is (= :day-of-month
                (lib/temporal-bucket (lib.metadata.calculation/metadata query -1 field)))))
       (testing "(lib/temporal-bucket <field-ref>)"
         (is (= {:lib/type :type/temporal-bucketing-option
-                :unit :year}
+                :unit :day-of-month}
                (lib/temporal-bucket-option field))))
-      (is (= "Date (year)"
+      (is (= "Date: Day of month"
              (lib.metadata.calculation/display-name query -1 field))))))
 
 (def ^:private temporal-bucketing-mock-metadata

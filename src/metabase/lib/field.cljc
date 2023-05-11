@@ -1,5 +1,6 @@
 (ns metabase.lib.field
   (:require
+   [clojure.string :as str]
    [medley.core :as m]
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.expression :as lib.expression]
@@ -17,6 +18,7 @@
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
    [metabase.shared.util.i18n :as i18n]
+   [metabase.util :as u]
    [metabase.util.humanization :as u.humanization]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
@@ -189,7 +191,9 @@
                              (str join-display-name " → " field-display-name)
                              field-display-name)]
     (if temporal-unit
-      (lib.util/format "%s (%s)" display-name (name temporal-unit))
+      (lib.util/format "%s: %s" display-name (-> (name temporal-unit)
+                                                 (str/replace \- \space)
+                                                 u/capitalize-en))
       display-name)))
 
 (defmethod lib.metadata.calculation/display-name-method :field
