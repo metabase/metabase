@@ -241,16 +241,17 @@
           id))
    (cards->card-param-field-ids (map :card dashcards))))
 
+
 (defn- dashboard->param-field-values
   "Return a map of Field ID to FieldValues (if any) for any Fields referenced by Cards in `dashboard`,
    or `nil` if none are referenced or none of them have FieldValues."
   [dashboard]
   (field-ids->param-field-values (dashcards->param-field-ids (:ordered_cards dashboard))))
 
-(defmethod param-values :metabase.models.dashboard/Dashboard [dashboard]
+(defmethod param-values :model/Dashboard [dashboard]
   (dashboard->param-field-values dashboard))
 
-(defmethod param-fields :metabase.models.dashboard/Dashboard [dashboard]
+(defmethod param-fields :model/Dashboard [dashboard]
   (-> (hydrate dashboard [:ordered_cards :card])
       :ordered_cards
       dashcards->param-field-ids
