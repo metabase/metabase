@@ -335,7 +335,7 @@ describe("DatePicker", () => {
 
             expect(changeSpy).toHaveBeenLastCalledWith([
               "time-interval",
-              ["field", ORDERS.CREATED_AT.id, null],
+              ["field", ORDERS.CREATED_AT, null],
               (direction === "past" ? -1 : 1) * relativeTimeValue,
               unit.slice(0, -1), // without the 's'
             ]);
@@ -390,7 +390,7 @@ describe("DatePicker", () => {
 
         expect(onChangeMock).toHaveBeenCalledWith([
           "!=",
-          ["field", 1, { "temporal-unit": "hour-of-day" }],
+          ["field", ORDERS.CREATED_AT, { "temporal-unit": "hour-of-day" }],
           0,
         ]);
 
