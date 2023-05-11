@@ -4,11 +4,11 @@ import { createSelector } from "@reduxjs/toolkit";
 import type {
   Card,
   NormalizedDatabase,
-  NormalizedSchema,
-  NormalizedTable,
   NormalizedField,
   NormalizedMetric,
+  NormalizedSchema,
   NormalizedSegment,
+  NormalizedTable,
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
@@ -225,9 +225,7 @@ function createDatabase(db: NormalizedDatabase, metadata: Metadata) {
 }
 
 function createSchema(schema: NormalizedSchema, metadata: Metadata) {
-  const instance = new Schema(schema);
-  instance.metadata = metadata;
-  return instance;
+  return new Schema(schema, metadata);
 }
 
 function createTable(table: NormalizedTable, metadata: Metadata) {

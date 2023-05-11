@@ -87,8 +87,7 @@ const getTablesSidebar = (
         name: schema.name,
         entityId: getSchemaEntityId(schema),
         icon: "folder",
-        children: schema
-          .getTables()
+        children: (schema.getTables() ?? [])
           .sort((a, b) => a.displayName().localeCompare(b.displayName()))
           .map(table => ({
             id: getTableId(table.id),
