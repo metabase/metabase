@@ -67,7 +67,7 @@
     :metabase.models.secret/Secret
     :metabase.models.session/Session
     :metabase.models.task-history/TaskHistory
-    :metabase.models.timeline-event/TimelineEvent
+    :model/TimelineEvent
     :metabase.models.user/User
     :metabase.models.view-log/ViewLog
     :metabase-enterprise.sandbox.models.group-table-access-policy/GroupTableAccessPolicy})
