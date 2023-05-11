@@ -24,10 +24,14 @@ function DataStep({
   query,
   updateQuery,
   readOnly,
+  ...rest
 }: NotebookStepUiComponentProps) {
   const question = query.question();
   const table = query.table();
   const canSelectTableColumns = table && query.isRaw() && !readOnly;
+
+  console.log(question);
+  console.log(rest);
 
   const hasCollectionDatasetsStep =
     question &&
@@ -35,6 +39,13 @@ function DataStep({
     !question.databaseId() &&
     !question.tableId() &&
     question.collectionId() !== undefined;
+
+  console.table({
+    isSaved: question.isSaved(),
+    databaseId: question.databaseId(),
+    tableId: question.tableId(),
+    collectionId: question.collectionId(),
+  });
 
   return (
     <NotebookCell color={color}>
