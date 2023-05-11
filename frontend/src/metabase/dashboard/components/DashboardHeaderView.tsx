@@ -137,6 +137,7 @@ function DashboardHeaderView({
         <HeaderRow
           isNavBarOpen={isNavBarOpen}
           className={cx("QueryBuilder-section", headerClassName)}
+          data-testid="dashboard-header"
           ref={header}
         >
           <HeaderContent hasSubHeader showSubHeader={showSubHeader}>
