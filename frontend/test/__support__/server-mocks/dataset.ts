@@ -16,6 +16,7 @@ export function setupCardDataset(
   options: MockDatasetOpts = {},
   overwriteRoutes = false,
 ) {
+  console.log(options);
   fetchMock.post("path:/api/dataset", createMockDataset(options), {
     overwriteRoutes,
   });
