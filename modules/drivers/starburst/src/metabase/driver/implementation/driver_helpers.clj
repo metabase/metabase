@@ -35,5 +35,6 @@
                               :binning                         true
                               :foreign-keys                    true
                               :datetime-diff                   true
-                              :convert-timezone                true}]
+                              :convert-timezone                true
+                              :now                             true}]
   (defmethod driver/supports? [:starburst feature] [_ _] supported?))
