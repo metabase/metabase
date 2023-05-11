@@ -12,9 +12,8 @@
 ;; limitations under the License.
 ;;
 (ns metabase.driver.implementation.query-processor  "Query processor implementations for Starburst driver."
-  (:require [honeysql.core :as hsql]
-            [honeysql.format :as hformat]
-            [honeysql.helpers :as hh]
+  (:require [honey.sql :as sql]
+            [honey.sql.helpers :as sql.helpers]
             [java-time :as t]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util :as sql.u]
@@ -23,11 +22,14 @@
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
-            [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.i18n :refer [tru]])
+            [metabase.util.honey-sql-2 :as h2x])
     (:import [java.time OffsetDateTime ZonedDateTime]))
 
 (def ^:private ^:const timestamp-with-time-zone-db-type "timestamp with time zone")
+
+(defmethod sql.qp/honey-sql-version :starburst
+  [_driver]
+  2)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          Misc Implementations                                                       |
@@ -35,32 +37,43 @@
 
 (defmethod sql.qp/->float :starburst
   [_ value]
-  (hx/cast :double value))
+  (h2x/cast :double value))
 
-(defmethod hformat/fn-handler (u/qualified-name ::mod)
-  [_ x y]
-  ;; Trino mod is a function like mod(x, y) rather than an operator like x mod y
-  (format "mod(%s, %s)" (hformat/to-sql x) (hformat/to-sql y)))
+
+(defn- format-mod
+  [_fn [x y]]
+  (let [[x-sql & x-args] (sql/format-expr x {:nested true})
+        [y-sql & y-args] (sql/format-expr y {:nested true})]
+    (into [(format "mod(%s, %s)" x-sql y-sql)]
+          cat
+          [x-args y-args])))
+
+(sql/register-fn! ::mod #'format-mod)
+
 
 (defmethod sql.qp/add-interval-honeysql-form :starburst
   [_ hsql-form amount unit]
-  (hsql/call :date_add (hx/literal unit) amount hsql-form))
+  (let [type-info   (h2x/type-info hsql-form)
+        out-form [:date_add (h2x/literal unit) [:inline amount] hsql-form]]
+  (if (some? type-info)
+    (h2x/with-type-info out-form type-info)
+    out-form)))
 
 (defmethod sql.qp/apply-top-level-clause [:starburst :page]
   [_ _ honeysql-query {{:keys [items page]} :page}]
   (let [offset (* (dec page) items)]
     (if (zero? offset)
       ;; if there's no offset we can simply use limit
-      (hh/limit honeysql-query items)
+      (sql.helpers/limit honeysql-query items)
       ;; if we need to do an offset we have to do nesting to generate a row number and where on that
       (let [over-clause (format "row_number() OVER (%s)"
-                                (first (hsql/format (select-keys honeysql-query [:order-by])
+                                (first (sql/format (select-keys honeysql-query [:order-by])
                                                     :allow-dashed-names? true
                                                     :quoting :ansi)))]
-        (-> (apply hh/select (map last (:select honeysql-query)))
-            (hh/from (hh/merge-select honeysql-query [(hsql/raw over-clause) :__rownum__]))
-            (hh/where [:> :__rownum__ offset])
-            (hh/limit items))))))
+        (-> (apply sql.helpers/select (map last (:select honeysql-query)))
+            (sql.helpers/from (sql.helpers/select honeysql-query [[:raw over-clause] :__rownum__]))
+            (sql.helpers/where [:> :__rownum__ offset])
+            (sql.helpers/limit items))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          Temporal Casting                                                       |
@@ -68,25 +81,16 @@
 
 (defmethod sql.qp/cast-temporal-string [:starburst :Coercion/YYYYMMDDHHMMSSString->Temporal]
   [_ _coercion-strategy expr]
-  (hsql/call :date_parse expr (hx/literal "%Y%m%d%H%i%s")))
+  [:date_parse expr (h2x/literal "%Y%m%d%H%i%s")])
 
 (defmethod sql.qp/cast-temporal-byte [:starburst :Coercion/YYYYMMDDHHMMSSBytes->Temporal]
   [driver _coercion-strategy expr]
   (sql.qp/cast-temporal-string driver :Coercion/YYYYMMDDHHMMSSString->Temporal
-                               (hsql/call :from_utf8 expr)))
+                               [:from_utf8 expr]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          Date Truncation                                                       |
 ;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defrecord AtTimeZone
-  ;; record type to support applying Starburst's `AT TIME ZONE` operator to an expression
-           [expr zone]
-  hformat/ToSql
-  (to-sql [_]
-    (format "%s AT TIME ZONE %s"
-            (hformat/to-sql expr)
-            (hformat/to-sql (hx/literal zone)))))
 
 (defn- in-report-zone
   "Returns a HoneySQL form to interpret the `expr` (a temporal value) in the current report time zone, via Trino's
@@ -94,15 +98,15 @@
   [expr]
   (let [report-zone (qp.timezone/report-timezone-id-if-supported :starburst)
         ;; if the expression itself has type info, use that, or else use a parent expression's type info if defined
-        type-info   (hx/type-info expr)
-        db-type     (hx/type-info->db-type type-info)]
+        type-info   (h2x/type-info expr)
+        db-type     (h2x/type-info->db-type type-info)]
     (if (and ;; AT TIME ZONE is only valid on these Trino types; if applied to something else (ex: `date`), then
              ;; an error will be thrown by the query analyzer
          (and db-type (re-find #"(?i)^time(?:stamp)?(?:\(\d+\))?(?: with time zone)?$" db-type))
              ;; if one has already been set, don't do so again
          (not (::in-report-zone? (meta expr)))
          report-zone)
-      (-> (hx/with-database-type-info (->AtTimeZone expr report-zone) timestamp-with-time-zone-db-type)
+      (-> (h2x/with-database-type-info (h2x/at-time-zone expr report-zone) timestamp-with-time-zone-db-type)
           (vary-meta assoc ::in-report-zone? true))
       expr)))
 
@@ -114,76 +118,76 @@
 
 (defmethod sql.qp/date [:starburst :second-of-minute]
   [_ _ expr]
-  (hsql/call :second (in-report-zone expr)))
+  [:second (in-report-zone expr)])
 
 (defmethod sql.qp/date [:starburst :minute]
   [_ _ expr]
-  (hsql/call :date_trunc (hx/literal :minute) (in-report-zone expr)))
+  [:date_trunc (h2x/literal :minute) (in-report-zone expr)])
 
 (defmethod sql.qp/date [:starburst :minute-of-hour]
   [_ _ expr]
-  (hsql/call :minute (in-report-zone expr)))
+  [:minute (in-report-zone expr)])
 
 (defmethod sql.qp/date [:starburst :hour]
   [_ _ expr]
-  (hsql/call :date_trunc (hx/literal :hour) (in-report-zone expr)))
+  [:date_trunc (h2x/literal :hour) (in-report-zone expr)])
 
 (defmethod sql.qp/date [:starburst :hour-of-day]
   [_ _ expr]
-  (hsql/call :hour (in-report-zone expr)))
+  [:hour (in-report-zone expr)])
 
 (defmethod sql.qp/date [:starburst :day]
   [_ _ expr]
-  (hsql/call :date (in-report-zone expr)))
+  [:date (in-report-zone expr)])
 
 (defmethod sql.qp/date [:starburst :day-of-week]
   [_ _ expr]
-  (sql.qp/adjust-day-of-week :starburst (hsql/call :day_of_week (in-report-zone expr))))
+  (sql.qp/adjust-day-of-week :starburst [:day_of_week (in-report-zone expr)]))
 
 (defmethod sql.qp/date [:starburst :day-of-month]
   [_ _ expr]
-  (hsql/call :day (in-report-zone expr)))
+  [:day (in-report-zone expr)])
 
 (defmethod sql.qp/date [:starburst :day-of-year]
   [_ _ expr]
-  (hsql/call :day_of_year (in-report-zone expr)))
+  [:day_of_year (in-report-zone expr)])
 
 (defmethod sql.qp/date [:starburst :week]
   [_ _ expr]
-  (sql.qp/adjust-start-of-week :starburst (partial hsql/call :date_trunc (hx/literal :week)) (in-report-zone expr)))
+  (sql.qp/adjust-start-of-week :starburst (fn [expr] [:date_trunc (h2x/literal :week) (in-report-zone expr)]) expr))
 
 (defmethod sql.qp/date [:starburst :week-of-year-iso]
   [_ _ expr]
-  (hsql/call :week (in-report-zone expr)))
+  [:week (in-report-zone expr)])
 
 (defmethod sql.qp/date [:starburst :month]
   [_ _ expr]
-  (hsql/call :date_trunc (hx/literal :month) (in-report-zone expr)))
+  [:date_trunc (h2x/literal :month) (in-report-zone expr)])
 
 (defmethod sql.qp/date [:starburst :month-of-year]
   [_ _ expr]
-  (hsql/call :month (in-report-zone expr)))
+  [:month (in-report-zone expr)])
 
 (defmethod sql.qp/date [:starburst :quarter]
   [_ _ expr]
-  (hsql/call :date_trunc (hx/literal :quarter) (in-report-zone expr)))
+  [:date_trunc (h2x/literal :quarter) (in-report-zone expr)])
 
 (defmethod sql.qp/date [:starburst :quarter-of-year]
   [_ _ expr]
-  (hsql/call :quarter (in-report-zone expr)))
+  [:quarter (in-report-zone expr)])
 
 (defmethod sql.qp/date [:starburst :year]
   [_ _ expr]
-  (hsql/call :date_trunc (hx/literal :year) (in-report-zone expr)))
+  [:date_trunc (h2x/literal :year) (in-report-zone expr)])
 
 (defmethod sql.qp/date [:starburst :year-of-era]
   [_ _ expr]
-  (hsql/call :year (in-report-zone expr)))
+  [:year (in-report-zone expr)])
 
 (defmethod sql.qp/current-datetime-honeysql-form :starburst
   [_]
   ;; the current_timestamp in Starburst returns a `timestamp with time zone`, so this needs to be overridden
-  (hx/with-type-info :%now {::hx/database-type timestamp-with-time-zone-db-type}))
+  (h2x/with-type-info :%now {::h2x/database-type timestamp-with-time-zone-db-type}))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          Custom HoneySQL Clause Impls                                          |
@@ -191,24 +195,24 @@
 
 (defmethod sql.qp/->honeysql [:starburst Boolean]
   [_ bool]
-  (hsql/raw (if bool "TRUE" "FALSE")))
+  [:raw (if bool "TRUE" "FALSE")])
 
 (defmethod sql.qp/->honeysql [:starburst :regex-match-first]
   [driver [_ arg pattern]]
-  (hsql/call :regexp_extract (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)))
+  [:regexp_extract (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)])
 
 (defmethod sql.qp/->honeysql [:starburst :median]
   [driver [_ arg]]
-  (hsql/call :approx_percentile (sql.qp/->honeysql driver arg) 0.5))
+  [:approx_percentile (sql.qp/->honeysql driver arg) 0.5])
 
 (defmethod sql.qp/->honeysql [:starburst :percentile]
   [driver [_ arg p]]
-  (hsql/call :approx_percentile (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver p)))
+  [:approx_percentile (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver p)])
 
 (defmethod sql.qp/->honeysql [:starburst :log]
   [driver [_ field]]
   ;; recent Trino versions have a `log10` function (not `log`)
-  (hsql/call :log10 (sql.qp/->honeysql driver field)))
+  [:log10 (sql.qp/->honeysql driver field)])
 
 (defmethod sql.qp/->honeysql [:starburst :count-where]
   [driver [_ pred]]
@@ -219,24 +223,25 @@
 (defmethod sql.qp/->honeysql [:starburst :time]
   [_ [_ t]]
   ;; Convert t to locale time, then format as sql. Then add cast.
-  (hx/cast :time (u.date/format-sql (t/local-time t))))
+  (h2x/cast :time (u.date/format-sql (t/local-time t))))
 
 (defmethod sql.qp/->honeysql [:starburst ZonedDateTime]
   [_ ^ZonedDateTime t]
   ;; use the Trino cast to `timestamp with time zone` operation to interpret in the correct TZ, regardless of
   ;; connection zone
-  (hx/cast timestamp-with-time-zone-db-type (u.date/format-sql t)))
+  (h2x/cast timestamp-with-time-zone-db-type (u.date/format-sql t)))
 
 (defmethod sql.qp/->honeysql [:starburst OffsetDateTime]
   [_ ^OffsetDateTime t]
   ;; use the Trino cast to `timestamp with time zone` operation to interpret in the correct TZ, regardless of
   ;; connection zone
-  (hx/cast timestamp-with-time-zone-db-type (u.date/format-sql t)))
+  (h2x/cast timestamp-with-time-zone-db-type (u.date/format-sql t)))
 
 (defmethod sql.qp/unix-timestamp->honeysql [:starburst :seconds]
   [_ _ expr]
   (let [report-zone (qp.timezone/report-timezone-id-if-supported :starburst)]
-    (hsql/call :from_unixtime expr (hx/literal (or report-zone "UTC")))))
+    [:from_unixtime expr (h2x/literal (or report-zone "UTC"))]))
+
 
 (defn- safe-datetime [x]
   (cond
@@ -274,11 +279,11 @@
   [driver [_ arg target-timezone source-timezone]]
   (let [expr         (sql.qp/->honeysql driver (cond-> arg
                                                  (string? arg) u.date/parse))
-        with_timezone? (hx/is-of-type? expr #"(?i)^timestamp(?:\(\d+\))? with time zone$")
+        with_timezone? (h2x/is-of-type? expr #"(?i)^timestamp(?:\(\d+\))? with time zone$")
         _ (sql.u/validate-convert-timezone-args with_timezone? target-timezone source-timezone)
-        expr (hsql/call :at_timezone
+        expr [:at_timezone
                         (if with_timezone?
                           expr
-                          (hsql/call :with_timezone expr (or source-timezone (qp.timezone/results-timezone-id))))
-                        target-timezone)]
-    (hx/with-database-type-info (hx/->timestamp expr) "timestamp")))
+                          [:with_timezone expr (or source-timezone (qp.timezone/results-timezone-id))])
+                        target-timezone]]
+    (h2x/with-database-type-info (h2x/->timestamp expr) "timestamp")))
