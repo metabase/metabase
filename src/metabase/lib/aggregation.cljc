@@ -10,6 +10,7 @@
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.aggregation :as lib.schema.aggregation]
+   [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
@@ -190,8 +191,9 @@
    ((get-method lib.metadata.calculation/metadata-method :default) query stage-number clause)))
 
 (lib.common/defop count       [] [x])
-(lib.common/defop avg         [x])
+(lib.common/defop cum-count   [] [x])
 (lib.common/defop count-where [x y])
+(lib.common/defop avg         [x])
 (lib.common/defop distinct    [x])
 (lib.common/defop max         [x])
 (lib.common/defop median      [x])
@@ -200,6 +202,7 @@
 (lib.common/defop share       [x])
 (lib.common/defop stddev      [x])
 (lib.common/defop sum         [x])
+(lib.common/defop cum-sum     [x])
 (lib.common/defop sum-where   [x y])
 (lib.common/defop var         [x])
 
@@ -226,3 +229,40 @@
                             (-> (lib.metadata.calculation/metadata query stage-number aggregation)
                                 (assoc :lib/source :source/aggregations
                                        ::aggregation-uuid (:lib/uuid (second aggregation))))))))))
+
+(def ^:private OperatorWithColumns
+  [:merge
+   ::lib.schema.aggregation/operator
+   [:map
+    [:columns {:optional true} [:sequential lib.metadata/ColumnMetadata]]]])
+
+(mu/defn available-aggregation-operators :- [:maybe [:sequential OperatorWithColumns]]
+  ([query]
+   (available-aggregation-operators query -1))
+
+  ([query :- ::lib.schema/query
+    stage-number :- :int]
+   (let [db-features (or (:features (lib.metadata/database query)) #{})
+         stage (lib.util/query-stage query stage-number)
+         columns (lib.metadata.calculation/visible-columns query stage-number stage)
+         with-columns (fn [{:keys [requires-field? supported-field] :as operator}]
+                        (cond
+                          (not requires-field?)
+                          operator
+
+                          (= supported-field :any)
+                          (assoc operator :columns columns)
+
+                          :else
+                          (when-let [cols (->> columns
+                                               (filterv #(lib.types.isa/field-type? supported-field %))
+                                               not-empty)]
+                            (assoc operator :columns cols))))]
+     (not-empty
+      (into []
+            (comp (filter (fn [op]
+                            (let [feature (:driver-feature op)]
+                              (or (nil? feature) (db-features feature)))))
+                  (keep with-columns)
+                  (map #(assoc % :lib/type :mbql.aggregation/operator)))
+            lib.schema.aggregation/aggregation-operators)))))

@@ -56,6 +56,7 @@
   [lib.aggregation
    aggregations
    aggregate
+   available-aggregation-operators
    count
    avg
    count-where

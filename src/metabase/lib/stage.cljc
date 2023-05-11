@@ -154,10 +154,14 @@
    unique-name-fn  :- fn?]
   (not-empty
    (for [expression (lib.expression/expressions query stage-number)]
-     (assoc expression
-            :lib/source               :source/expressions
-            :lib/source-column-alias  (:name expression)
-            :lib/desired-column-alias (unique-name-fn (:name expression))))))
+     (let [base-type (:base-type expression)]
+       (cond-> (assoc expression
+                      :lib/source               :source/expressions
+                      :lib/source-column-alias  (:name expression)
+                      :lib/desired-column-alias (unique-name-fn (:name expression)))
+         (and (not (:effective-type expression))
+              base-type)
+         (assoc :effective-type base-type))))))
 
 ;;; Calculate the columns to return if `:aggregations`/`:breakout`/`:fields` are unspecified.
 ;;;
