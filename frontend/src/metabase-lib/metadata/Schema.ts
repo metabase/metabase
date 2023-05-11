@@ -31,6 +31,6 @@ export default class Schema {
   }
 
   getTables() {
-    return this.tables;
+    return this.tables ?? [];
   }
 }
