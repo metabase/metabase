@@ -14,39 +14,30 @@
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [metabase.util.schema :as su]
+   [methodical.core :as methodical]
    [schema.core :as s]
    [toucan.models :as models]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
+;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 (models/defmodel TaskHistory :task_history)
 
-(doto TaskHistory
+(def TaskHistory
+  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], not it's a reference to the toucan2 model name.
+  We'll keep this till we replace all the symbols in our codebase."
+  :model/TaskHistory)
+
+(methodical/defmethod t2/table-name :model/TaskHistory [_model] :task_history)
+
+(doto :model/TaskHistory
+  (derive :metabase/model)
   (derive ::mi/read-policy.full-perms-for-perms-set)
   (derive ::mi/write-policy.full-perms-for-perms-set))
 
-(defn cleanup-task-history!
-  "Deletes older TaskHistory rows. Will order TaskHistory by `ended_at` and delete everything after `num-rows-to-keep`.
-  This is intended for a quick cleanup of old rows. Returns `true` if something was deleted."
-  [num-rows-to-keep]
-  ;; Ideally this would be one query, but MySQL does not allow nested queries with a limit. The query below orders the
-  ;; tasks by the time they finished, newest first. Then finds the first row after skipping `num-rows-to-keep`. Using
-  ;; the date that task finished, it deletes everything after that. As we continue to add TaskHistory entries, this
-  ;; ensures we'll have a good amount of history for debugging/troubleshooting, but not grow too large and fill the
-  ;; disk.
-  (when-let [clean-before-date (t2/select-one-fn :ended_at TaskHistory {:limit    1
-                                                                        :offset   num-rows-to-keep
-                                                                        :order-by [[:ended_at :desc]]})]
-    (t2/delete! (t2/table-name TaskHistory) :ended_at [:<= clean-before-date])))
-
-;;; Permissions to read or write Task. If `advanced-permissions` is enabled it requires superusers or non-admins with
-;;; monitoring permissions, Otherwise it requires superusers.
-(defmethod mi/perms-objects-set TaskHistory
-  [_task _read-or-write]
-  #{(if (premium-features/enable-advanced-permissions?)
-      (perms/application-perms-path :monitoring)
-      "/")})
+(t2/deftransforms :model/TaskHistory
+  {:task_details mi/transform-json})
 
 (defn- task-details-for-snowplow
   "Ensure task_details is less than 2048 characters.
@@ -91,15 +82,32 @@
              {:db_id     db-id
               :db_engine (t2/select-one-fn :engine Database :id db-id)}))))
 
-(defn- post-insert
+(t2/define-after-insert :model/TaskHistory
   [task]
   (u/prog1 task
     (snowplow/track-event! ::snowplow/new-task-history *current-user-id* (task->snowplow-event <>))))
 
-(mi/define-methods
- TaskHistory
- {:types      (constantly {:task_details :json})
-  :post-insert post-insert})
+;;; Permissions to read or write Task. If `advanced-permissions` is enabled it requires superusers or non-admins with
+;;; monitoring permissions, Otherwise it requires superusers.
+(defmethod mi/perms-objects-set :model/TaskHistory
+  [_task _read-or-write]
+  #{(if (premium-features/enable-advanced-permissions?)
+      (perms/application-perms-path :monitoring)
+      "/")})
+
+(defn cleanup-task-history!
+  "Deletes older TaskHistory rows. Will order TaskHistory by `ended_at` and delete everything after `num-rows-to-keep`.
+  This is intended for a quick cleanup of old rows. Returns `true` if something was deleted."
+  [num-rows-to-keep]
+  ;; Ideally this would be one query, but MySQL does not allow nested queries with a limit. The query below orders the
+  ;; tasks by the time they finished, newest first. Then finds the first row after skipping `num-rows-to-keep`. Using
+  ;; the date that task finished, it deletes everything after that. As we continue to add TaskHistory entries, this
+  ;; ensures we'll have a good amount of history for debugging/troubleshooting, but not grow too large and fill the
+  ;; disk.
+  (when-let [clean-before-date (t2/select-one-fn :ended_at TaskHistory {:limit    1
+                                                                        :offset   num-rows-to-keep
+                                                                        :order-by [[:ended_at :desc]]})]
+    (t2/delete! (t2/table-name TaskHistory) :ended_at [:<= clean-before-date])))
 
 (s/defn all
   "Return all TaskHistory entries, applying `limit` and `offset` if not nil"

@@ -66,7 +66,7 @@
     :metabase.models.revision-test/FakedCard
     :metabase.models.secret/Secret
     :metabase.models.session/Session
-    :metabase.models.task-history/TaskHistory
+    :model/TaskHistory
     :metabase.models.timeline-event/TimelineEvent
     :metabase.models.user/User
     :model/ViewLog
