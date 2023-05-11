@@ -54,6 +54,7 @@ const stepShape = {
   valid: PropTypes.bool.isRequired,
   visible: PropTypes.bool.isRequired,
   stageIndex: PropTypes.number.isRequired,
+  isLastStage: PropTypes.bool,
   itemIndex: PropTypes.number,
   testID: PropTypes.string.isRequired,
   update: PropTypes.func.isRequired,

@@ -209,6 +209,7 @@ function getStageSteps(
       id: id,
       type: STEP.type,
       stageIndex: stageIndex,
+      isLastStage,
       itemIndex: itemIndex,
       topLevelQuery,
       query: stageQuery,
