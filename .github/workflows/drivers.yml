@@ -955,6 +955,48 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
+  be-tests-starburst-ee:
+    needs: files-changed
+    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    env:
+      CI: 'true'
+      DRIVERS: starburst
+      IMAGE_NAME: trino:latest
+      MB_STARBURST_TEST_HOST: localhost
+      MB_STARBURST_TEST_PORT: 8080
+      MB_STARBURST_TEST_CATALOG: test_data
+    services:
+      registry:
+        image: registry:2
+        ports:
+          - 5000:5000
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+        with:
+          driver-opts: network=host
+
+      - name: Build Trino image
+        uses: docker/build-push-action@v4
+        with:
+          context: resources/docker/trino
+          tags: localhost:5000/metabase:${{ env.IMAGE_NAME }}
+          push: true
+
+      - name: Launch Trino
+        run: docker run --rm -dp ${{ env.MB_STARBURST_TEST_PORT }}:8080 localhost:5000/metabase:${{ env.IMAGE_NAME }}
+
+      - name: Test Starburst driver
+        uses: ./.github/actions/test-driver
+        with:
+          junit-name: 'be-tests-starburst-ee'
+          test-args: ":exclude-tags '[:mb/once]'"
+
   be-tests-vertica-ee:
     needs: files-changed
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
