@@ -85,7 +85,6 @@ export const AddToDashSelectDashModal = ({
   const error = mostRecentDashboardQuery.error ?? collectionQuery.error;
 
   if (isLoading || error) {
-    console.log({isLoading, error});
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
