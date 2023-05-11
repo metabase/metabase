@@ -150,8 +150,8 @@ class DashboardHeader extends Component {
     );
   }
 
-  async onSave() {
-    await this.props.saveDashboardAndCards(this.props.dashboard.id);
+  async onSave(preserveParameters) {
+    await this.props.saveDashboardAndCards(preserveParameters);
     this.onDoneEditing();
   }
 
@@ -461,7 +461,7 @@ class DashboardHeader extends Component {
         editingButtons={this.getEditingButtons()}
         setDashboardAttribute={setDashboardAttribute}
         onLastEditInfoClick={() => setSidebar({ name: SIDEBAR_NAME.info })}
-        onSave={() => this.onSave()}
+        onSave={() => this.onSave(true)}
       />
     );
   }

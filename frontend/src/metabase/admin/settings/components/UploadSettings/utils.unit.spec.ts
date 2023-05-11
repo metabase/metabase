@@ -1,9 +1,16 @@
+import { checkNotNull } from "metabase/core/utils/types";
+import { Database } from "metabase-types/api";
 import { createMockDatabase, createMockSchema } from "metabase-types/api/mocks";
-
+import { createMockMetadata } from "__support__/metadata";
 import { getDatabaseOptions, getSchemaOptions, dbHasSchema } from "./utils";
 
+const setup = (databases: Database[]) => {
+  const metadata = createMockMetadata({ databases });
+  return databases.map(({ id }) => checkNotNull(metadata.database(id)));
+};
+
 describe("Admin > UploadSettings > utils", () => {
-  const dbs = [
+  const dbs = setup([
     createMockDatabase({
       id: 100,
       settings: { "database-enable-actions": true },
@@ -19,7 +26,7 @@ describe("Admin > UploadSettings > utils", () => {
       settings: { "database-enable-actions": true },
       engine: "mysql",
     }),
-  ];
+  ]);
 
   const schema = [
     createMockSchema({ id: "a", name: "schema1" }),

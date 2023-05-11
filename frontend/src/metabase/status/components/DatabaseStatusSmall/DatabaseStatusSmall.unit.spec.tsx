@@ -1,50 +1,79 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { checkNotNull } from "metabase/core/utils/types";
+import { getMetadata } from "metabase/selectors/metadata";
+import { Database } from "metabase-types/api";
 import { createMockDatabase } from "metabase-types/api/mocks";
+import { createMockState } from "metabase-types/store/mocks";
+import { renderWithProviders, screen } from "__support__/ui";
+import { createMockEntitiesState } from "__support__/store";
 import DatabaseStatusSmall from "./DatabaseStatusSmall";
+
+interface SetupOpts {
+  databases: Database[];
+}
+
+const setup = ({ databases }: SetupOpts) => {
+  const state = createMockState({
+    entities: createMockEntitiesState({ databases }),
+  });
+  const metadata = getMetadata(state);
+
+  renderWithProviders(
+    <DatabaseStatusSmall
+      databases={databases.map(({ id }) => checkNotNull(metadata.database(id)))}
+    />,
+    { storeInitialState: state },
+  );
+};
 
 describe("DatabaseStatusSmall", () => {
   it("should render in-progress status", () => {
-    const databases = [
-      createMockDatabase({
-        initial_sync_status: "incomplete",
-      }),
-      createMockDatabase({
-        initial_sync_status: "complete",
-      }),
-    ];
-
-    render(<DatabaseStatusSmall databases={databases} />);
+    setup({
+      databases: [
+        createMockDatabase({
+          id: 1,
+          initial_sync_status: "incomplete",
+        }),
+        createMockDatabase({
+          id: 2,
+          initial_sync_status: "complete",
+        }),
+      ],
+    });
 
     expect(screen.getByLabelText("Syncing database…")).toBeInTheDocument();
   });
 
   it("should render complete status", () => {
-    const databases = [
-      createMockDatabase({
-        initial_sync_status: "complete",
-      }),
-      createMockDatabase({
-        initial_sync_status: "complete",
-      }),
-    ];
-
-    render(<DatabaseStatusSmall databases={databases} />);
+    setup({
+      databases: [
+        createMockDatabase({
+          id: 1,
+          initial_sync_status: "complete",
+        }),
+        createMockDatabase({
+          id: 2,
+          initial_sync_status: "complete",
+        }),
+      ],
+    });
 
     expect(screen.getByLabelText("Done!")).toBeInTheDocument();
   });
 
   it("should render error status", () => {
-    const databases = [
-      createMockDatabase({
-        initial_sync_status: "aborted",
-      }),
-      createMockDatabase({
-        initial_sync_status: "complete",
-      }),
-    ];
-
-    render(<DatabaseStatusSmall databases={databases} />);
+    setup({
+      databases: [
+        createMockDatabase({
+          id: 1,
+          initial_sync_status: "aborted",
+        }),
+        createMockDatabase({
+          id: 2,
+          initial_sync_status: "complete",
+        }),
+      ],
+    });
 
     expect(screen.getByLabelText("Error syncing")).toBeInTheDocument();
   });

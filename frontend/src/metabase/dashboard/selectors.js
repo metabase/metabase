@@ -7,7 +7,10 @@ import { LOAD_COMPLETE_FAVICON } from "metabase/hoc/Favicon";
 import { getDashboardUiParameters } from "metabase/parameters/utils/dashboards";
 import { getParameterMappingOptions as _getParameterMappingOptions } from "metabase/parameters/utils/mapping-options";
 
-import { SIDEBAR_NAME } from "metabase/dashboard/constants";
+import {
+  DASHBOARD_SLOW_TIMEOUT,
+  SIDEBAR_NAME,
+} from "metabase/dashboard/constants";
 
 import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
 
@@ -41,6 +44,20 @@ export const getIsLoadingComplete = state =>
 
 export const getLoadingStartTime = state =>
   state.dashboard.loadingDashCards.startTime;
+export const getLoadingEndTime = state =>
+  state.dashboard.loadingDashCards.endTime;
+
+export const getIsSlowDashboard = createSelector(
+  [getLoadingStartTime, getLoadingEndTime],
+  (startTime, endTime) => {
+    if (startTime != null && endTime != null) {
+      return endTime - startTime > DASHBOARD_SLOW_TIMEOUT;
+    } else {
+      return false;
+    }
+  },
+);
+
 export const getIsAddParameterPopoverOpen = state =>
   state.dashboard.isAddParameterPopoverOpen;
 
@@ -107,17 +124,56 @@ export const getDashboardComplete = createSelector(
     },
 );
 
-// Auto-apply filters
+export const getAutoApplyFiltersToastId = state =>
+  state.dashboard.autoApplyFilters.toastId;
+export const getAutoApplyFiltersToastDashboardId = state =>
+  state.dashboard.autoApplyFilters.toastDashboardId;
 export const getDraftParameterValues = state =>
   state.dashboard.draftParameterValues;
+
 export const getIsAutoApplyFilters = createSelector(
   [getDashboard],
-  dashboard => dashboard.auto_apply_filters,
+  dashboard => dashboard?.auto_apply_filters,
 );
 export const getHasUnappliedParameterValues = createSelector(
   [getParameterValues, getDraftParameterValues],
   (parameterValues, draftParameterValues) => {
     return !_.isEqual(draftParameterValues, parameterValues);
+  },
+);
+
+const getIsParameterValuesEmpty = createSelector(
+  [getParameterValues],
+  parameterValues => {
+    return Object.values(parameterValues).every(parameterValue =>
+      Array.isArray(parameterValue)
+        ? parameterValue.length === 0
+        : parameterValue == null,
+    );
+  },
+);
+
+export const getCanShowAutoApplyFiltersToast = createSelector(
+  [
+    getDashboardId,
+    getAutoApplyFiltersToastDashboardId,
+    getIsAutoApplyFilters,
+    getIsSlowDashboard,
+    getIsParameterValuesEmpty,
+  ],
+  (
+    dashboardId,
+    toastDashboardId,
+    isAutoApply,
+    isSlowDashboard,
+    isParameterValuesEmpty,
+  ) => {
+    return (
+      dashboardId !== toastDashboardId &&
+      isAutoApply &&
+      isSlowDashboard &&
+      !isParameterValuesEmpty
+    );
   },
 );
 

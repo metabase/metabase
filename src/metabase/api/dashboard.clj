@@ -50,11 +50,11 @@
 (set! *warn-on-reflection* true)
 
 (defn- dashboards-list [filter-option]
-  (as-> (t2/select Dashboard {:where    [:and (case (or (keyword filter-option) :all)
-                                                (:all :archived)  true
-                                                :mine [:= :creator_id api/*current-user-id*])
-                                         [:= :archived (= (keyword filter-option) :archived)]]
-                              :order-by [:%lower.name]}) <>
+  (as-> (t2/select :model/Dashboard {:where    [:and (case (or (keyword filter-option) :all)
+                                                      (:all :archived)  true
+                                                      :mine [:= :creator_id api/*current-user-id*])
+                                                [:= :archived (= (keyword filter-option) :archived)]]
+                                     :order-by [:%lower.name]}) <>
     (hydrate <> :creator)
     (filter mi/can-read? <>)))
 
@@ -100,7 +100,7 @@
                         ;; position, check that and fix up if needed
                         (api/maybe-reconcile-collection-position! dashboard-data)
                         ;; Ok, now save the Dashboard
-                        (first (t2/insert-returning-instances! Dashboard dashboard-data)))]
+                        (first (t2/insert-returning-instances! :model/Dashboard dashboard-data)))]
     (events/publish-event! :dashboard-create dash)
     (snowplow/track-event! ::snowplow/dashboard-created api/*current-user-id* {:dashboard-id (u/the-id dash)})
     (assoc dash :last-edit-info (last-edit/edit-information-for-user @api/*current-user*))))
@@ -212,13 +212,13 @@
 (defn- get-dashboard
   "Get Dashboard with ID."
   [id]
-  (-> (t2/select-one Dashboard :id id)
+  (-> (t2/select-one :model/Dashboard :id id)
       api/check-404
       ;; i'm a bit worried that this is an n+1 situation here. The cards can be batch hydrated i think because they
       ;; have a hydration key and an id. moderation_reviews currently aren't batch hydrated but i'm worried they
       ;; cannot be in this situation
       (hydrate [:ordered_cards [:card [:moderation_reviews :moderator_details]] :series :dashcard/action :dashcard/linkcard-info]
-               :collection_authority_level :can_write :param_fields)
+               :collection_authority_level :can_write :param_fields :param_values)
       api/read-check
       api/check-not-archived
       hide-unreadable-cards
@@ -339,7 +339,7 @@
                         ;; collection to change position, check that and fix up if needed
                         (api/maybe-reconcile-collection-position! dashboard-data)
                         ;; Ok, now save the Dashboard
-                        (let [dash (first (t2/insert-returning-instances! Dashboard dashboard-data))
+                        (let [dash (first (t2/insert-returning-instances! :model/Dashboard dashboard-data))
                               {id->new-card :copied uncopied :uncopied}
                               (when is_deep_copy
                                 (duplicate-cards existing-dashboard collection_id))]
@@ -401,7 +401,7 @@
    collection_id           (s/maybe su/IntGreaterThanZero)
    collection_position     (s/maybe su/IntGreaterThanZero)
    cache_ttl               (s/maybe su/IntGreaterThanZero)}
-  (let [dash-before-update (api/write-check Dashboard id)]
+  (let [dash-before-update (api/write-check :model/Dashboard id)]
     ;; Do various permissions checks as needed
     (collection/check-allowed-to-change-collection dash-before-update dash-updates)
     (check-allowed-to-change-embedding dash-before-update dash-updates)
@@ -415,9 +415,9 @@
                                       :present #{:description :position :collection_id :collection_position :cache_ttl}
                                       :non-nil #{:name :parameters :caveats :points_of_interest :show_in_getting_started :enable_embedding
                                                  :embedding_params :archived :auto_apply_filters}))]
-        (t2/update! Dashboard id updates))))
+        (t2/update! :model/Dashboard id updates))))
   ;; now publish an event and return the updated Dashboard
-  (let [dashboard (t2/select-one Dashboard :id id)]
+  (let [dashboard (t2/select-one :model/Dashboard :id id)]
     (events/publish-event! :dashboard-update (assoc dashboard :actor_id api/*current-user-id*))
     (assoc dashboard :last-edit-info (last-edit/edit-information-for-user @api/*current-user*))))
 
@@ -431,8 +431,8 @@
   [id]
   (log/warn (str "DELETE /api/dashboard/:id is deprecated. Instead of deleting a Dashboard, you should change its "
                  "`archived` value via PUT /api/dashboard/:id."))
-  (let [dashboard (api/write-check Dashboard id)]
-    (t2/delete! Dashboard :id id)
+  (let [dashboard (api/write-check :model/Dashboard id)]
+    (t2/delete! :model/Dashboard :id id)
     (events/publish-event! :dashboard-delete (assoc dashboard :actor_id api/*current-user-id*)))
   api/generic-204-no-content)
 
@@ -616,17 +616,17 @@
 (api/defendpoint-schema GET "/:id/revisions"
   "Fetch `Revisions` for Dashboard with ID."
   [id]
-  (api/read-check Dashboard id)
-  (revision/revisions+details Dashboard id))
+  (api/read-check :model/Dashboard id)
+  (revision/revisions+details :model/Dashboard id))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/:id/revert"
   "Revert a Dashboard to a prior `Revision`."
   [id :as {{:keys [revision_id]} :body}]
   {revision_id su/IntGreaterThanZero}
-  (api/write-check Dashboard id)
+  (api/write-check :model/Dashboard id)
   (revision/revert!
-    :entity      Dashboard
+    :entity      :model/Dashboard
     :id          id
     :user-id     api/*current-user-id*
     :revision-id revision_id))
@@ -641,10 +641,10 @@
   [dashboard-id]
   (api/check-superuser)
   (validation/check-public-sharing-enabled)
-  (api/check-not-archived (api/read-check Dashboard dashboard-id))
-  {:uuid (or (t2/select-one-fn :public_uuid Dashboard :id dashboard-id)
+  (api/check-not-archived (api/read-check :model/Dashboard dashboard-id))
+  {:uuid (or (t2/select-one-fn :public_uuid :model/Dashboard :id dashboard-id)
              (u/prog1 (str (UUID/randomUUID))
-               (t2/update! Dashboard dashboard-id
+               (t2/update! :model/Dashboard dashboard-id
                            {:public_uuid       <>
                             :made_public_by_id api/*current-user-id*})))})
 
@@ -654,8 +654,8 @@
   [dashboard-id]
   (validation/check-has-application-permission :setting)
   (validation/check-public-sharing-enabled)
-  (api/check-exists? Dashboard :id dashboard-id, :public_uuid [:not= nil], :archived false)
-  (t2/update! Dashboard dashboard-id
+  (api/check-exists? :model/Dashboard :id dashboard-id, :public_uuid [:not= nil], :archived false)
+  (t2/update! :model/Dashboard dashboard-id
               {:public_uuid       nil
                :made_public_by_id nil})
   {:status 204, :body nil})
@@ -667,7 +667,7 @@
   []
   (validation/check-has-application-permission :setting)
   (validation/check-public-sharing-enabled)
-  (t2/select [Dashboard :name :id :public_uuid], :public_uuid [:not= nil], :archived false))
+  (t2/select [:model/Dashboard :name :id :public_uuid], :public_uuid [:not= nil], :archived false))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/embeddable"
@@ -676,13 +676,13 @@
   []
   (validation/check-has-application-permission :setting)
   (validation/check-embedding-enabled)
-  (t2/select [Dashboard :name :id], :enable_embedding true, :archived false))
+  (t2/select [:model/Dashboard :name :id], :enable_embedding true, :archived false))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:id/related"
   "Return related entities."
   [id]
-  (-> (t2/select-one Dashboard :id id) api/read-check related/related))
+  (-> (t2/select-one :model/Dashboard :id id) api/read-check related/related))
 
 ;;; ---------------------------------------------- Transient dashboards ----------------------------------------------
 
@@ -811,7 +811,7 @@
     ;; fetch values for Dashboard 1 parameter 'abc' that are possible when parameter 'def' is set to 100
     GET /api/dashboard/1/params/abc/values?def=100"
   [id param-key :as {:keys [query-params]}]
-  (let [dashboard (api/read-check Dashboard id)]
+  (let [dashboard (api/read-check :model/Dashboard id)]
     ;; If a user can read the dashboard, then they can lookup filters. This also works with sandboxing.
     (binding [qp.perms/*param-values-query* true]
       (param-values dashboard param-key query-params))))
@@ -827,7 +827,7 @@
 
   Currently limited to first 1000 results."
   [id param-key query :as {:keys [query-params]}]
-  (let [dashboard (api/read-check Dashboard id)]
+  (let [dashboard (api/read-check :model/Dashboard id)]
     ;; If a user can read the dashboard, then they can lookup filters. This also works with sandboxing.
     (binding [qp.perms/*param-values-query* true]
       (param-values dashboard param-key query-params query))))
@@ -887,7 +887,7 @@
   {dashboard-id su/IntGreaterThanZero
    dashcard-id su/IntGreaterThanZero
    parameters su/JSONString}
-  (api/read-check Dashboard dashboard-id)
+  (api/read-check :model/Dashboard dashboard-id)
   (actions.execution/fetch-values dashboard-id dashcard-id (json/parse-string parameters)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
@@ -900,7 +900,7 @@
   {dashboard-id su/IntGreaterThanZero
    dashcard-id su/IntGreaterThanZero
    parameters (s/maybe {s/Keyword s/Any})}
-  (api/read-check Dashboard dashboard-id)
+  (api/read-check :model/Dashboard dashboard-id)
   ;; Undo middleware string->keyword coercion
   (actions.execution/execute-dashcard! dashboard-id dashcard-id (update-keys parameters name)))
 
