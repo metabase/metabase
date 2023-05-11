@@ -644,7 +644,7 @@
   (qp/process-query
     (apply assoc {:database (mt/id), :type :native} kvs)))
 
-(deftest ^:paralllel e2e-basic-test
+(deftest ^:parallel e2e-basic-test
   (mt/test-drivers (sql-parameters-engines)
     (is (= [29]
            (mt/first-row
