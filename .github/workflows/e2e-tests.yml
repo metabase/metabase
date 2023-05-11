@@ -182,6 +182,9 @@ jobs:
           --spec './e2e/test/scenarios/**/*.cy.spec.js'
         env:
           TERM: xterm
+          RECORD_REPLAY_METADATA_FILE: /tmp/replay-metadata.json
+          RECORD_REPLAY_METADATA_TEST_RUN_ID: ${{ needs.test-run-id.outputs.testRunId }}
+          RECORD_REPLAY_DISABLE_ASSERTS: 1
 
       - name: Run EE Cypress tests on ${{ matrix.folder }}
         if: matrix.edition == 'ee'
