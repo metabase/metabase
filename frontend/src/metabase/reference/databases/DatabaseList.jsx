@@ -64,7 +64,7 @@ class DatabaseList extends Component {
                       <ListItem
                         id={database.id}
                         index={index}
-                        name={database.display_name || database.name}
+                        name={database.name}
                         description={database.description}
                         url={`/reference/databases/${database.id}`}
                         icon="database"
