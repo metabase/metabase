@@ -16,6 +16,7 @@
    [metabase.driver.sql-jdbc.execute.old-impl :as sql-jdbc.execute.old]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.models.setting :refer [defsetting]]
+   [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.query-processor.context :as qp.context]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.limit :as limit]
@@ -191,12 +192,18 @@
         (seq more)
         (recur more)))))
 
+(defenterprise set-role-if-supported!
+  "OSS no-op implementation of `set-role-if-supported!`."
+  metabase-enterprise.advanced-permissions.driver.impersonation
+  [_ _ _])
+
 (defmethod connection-with-timezone :sql-jdbc
   [driver database ^String timezone-id]
   (let [conn (.getConnection (datasource-with-diagnostic-info! driver database))]
     (try
       (set-best-transaction-level! driver conn)
       (set-time-zone-if-supported! driver conn timezone-id)
+      (set-role-if-supported! driver conn database)
       (try
         ;; Setting the connection to read-only does not prevent writes on some databases, and is meant
         ;; to be a hint to the driver to enable database optimizations
