@@ -140,10 +140,11 @@
                  :stages   [{:lib/type     :mbql.stage/mbql
                              :source-table 1
                              :aggregation  [[:sum {:lib/uuid ag-uuid}
-                                             [:field {:lib/uuid string?} 1]]]
+                                             [:field {:lib/uuid string?
+                                                      :effective-type :type/Integer} 1]]]
                              :breakout     [[:aggregation
                                              {:display-name   "Revenue"
-                                              :effective_type :type/Integer}
+                                              :effective-type :type/Integer}
                                              ag-uuid]]}]}))))))
 
 (deftest ^:parallel round-trip-test

@@ -326,7 +326,7 @@
                     [id opts])]
     [:field
      (->legacy-MBQL id)
-     (not-empty (disqualify opts))]))
+     (options->legacy-MBQL opts)]))
 
 (defmethod ->legacy-MBQL :value
   [[_tag opts value]]

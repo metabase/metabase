@@ -41,5 +41,30 @@ describe("EntityMenuItem", () => {
         expect(screen.getByTestId("entity-menu-link")).toBeInTheDocument();
       });
     });
+
+    it("should not render if both action and link props are present", () => {
+      render(
+        <div data-testid="container">
+          <EntityMenuItem
+            title="A pencil icon"
+            icon="pencil"
+            link="/derp"
+            action={() => ({})}
+          />
+        </div>,
+      );
+
+      expect(screen.getByTestId("container")).toBeEmptyDOMElement();
+    });
+
+    it("should not render if neither action nor link props are present", () => {
+      render(
+        <div data-testid="container">
+          <EntityMenuItem title="A pencil icon" icon="pencil" />
+        </div>,
+      );
+
+      expect(screen.getByTestId("container")).toBeEmptyDOMElement();
+    });
   });
 });

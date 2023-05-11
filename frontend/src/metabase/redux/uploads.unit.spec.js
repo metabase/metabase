@@ -6,6 +6,7 @@ import {
   UPLOAD_FILE_TO_COLLECTION_END,
   UPLOAD_FILE_TO_COLLECTION_ERROR,
   UPLOAD_FILE_TO_COLLECTION_START,
+  MAX_UPLOAD_STRING,
 } from "./uploads";
 
 const now = Date.now();
@@ -124,7 +125,7 @@ describe("csv uploads", () => {
         type: UPLOAD_FILE_TO_COLLECTION_ERROR,
         payload: {
           id: now,
-          message: "You cannot upload files larger than 200MB",
+          message: `You cannot upload files larger than ${MAX_UPLOAD_STRING}`,
         },
       });
 
