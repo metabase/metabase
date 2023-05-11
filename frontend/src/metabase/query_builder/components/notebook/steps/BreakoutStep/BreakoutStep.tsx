@@ -1,10 +1,11 @@
 import React from "react";
 import { t } from "ttag";
 
-import BreakoutPopover from "metabase/query_builder/components/BreakoutPopover";
+import * as Lib from "metabase-lib";
 
 import type { NotebookStepUiComponentProps } from "../../types";
 import ClauseStep from "../ClauseStep";
+import { BreakoutColumnPicker } from "./BreakoutStep.styled";
 
 const breakoutTetherOptions = {
   attachment: "top left",
@@ -19,33 +20,87 @@ const breakoutTetherOptions = {
 };
 
 function BreakoutStep({
+  topLevelQuery,
+  step,
   color,
-  query,
-  updateQuery,
   isLastOpened,
   readOnly,
+  updateQuery,
 }: NotebookStepUiComponentProps) {
+  const { stageIndex } = step;
+
+  const clauses = Lib.breakouts(topLevelQuery, stageIndex);
+
+  const getColumnGroups = (clause?: Lib.BreakoutClause) => {
+    const columns = Lib.breakoutableColumns(topLevelQuery, stageIndex);
+
+    const filteredColumns = columns.filter(column => {
+      const isSelected =
+        clause && Lib.isClauseColumn(topLevelQuery, clause, column);
+
+      const isAlreadyUsed =
+        Lib.displayInfo(topLevelQuery, column).breakoutPosition != null;
+
+      return isSelected || !isAlreadyUsed;
+    });
+
+    return Lib.groupColumns(filteredColumns);
+  };
+
+  const handleAddBreakout = (column: Lib.ColumnMetadata) => {
+    const nextQuery = Lib.breakout(topLevelQuery, stageIndex, column);
+    updateQuery(nextQuery);
+  };
+
+  const handleUpdateBreakoutField = (
+    clause: Lib.BreakoutClause,
+    column: Lib.ColumnMetadata,
+  ) => {
+    const nextQuery = Lib.replaceClause(
+      topLevelQuery,
+      stageIndex,
+      clause,
+      column,
+    );
+    updateQuery(nextQuery);
+  };
+
+  const handleRemoveBreakout = (clause: Lib.BreakoutClause) => {
+    const nextQuery = Lib.removeClause(topLevelQuery, stageIndex, clause);
+    updateQuery(nextQuery);
+  };
+
+  const renderBreakoutName = (clause: Lib.BreakoutClause) =>
+    Lib.displayInfo(topLevelQuery, clause).displayName;
+
   return (
     <ClauseStep
-      items={query.breakouts()}
+      items={clauses}
       initialAddText={t`Pick a column to group by`}
       readOnly={readOnly}
       color={color}
       isLastOpened={isLastOpened}
       tetherOptions={breakoutTetherOptions}
-      renderName={item => item.displayName() ?? ""}
-      renderPopover={breakout => (
-        <BreakoutPopover
-          query={query}
-          breakout={breakout}
-          onChangeBreakout={newBreakout =>
-            breakout
-              ? updateQuery(breakout.replace(newBreakout))
-              : updateQuery(query.breakout(newBreakout))
-          }
-        />
-      )}
-      onRemove={breakout => updateQuery(breakout.remove())}
+      renderName={renderBreakoutName}
+      renderPopover={breakout => {
+        return (
+          <BreakoutColumnPicker
+            query={topLevelQuery}
+            clause={breakout}
+            columnGroups={getColumnGroups(breakout)}
+            hasBucketing
+            onSelect={(column: Lib.ColumnMetadata) => {
+              const isUpdate = breakout != null;
+              if (isUpdate) {
+                handleUpdateBreakoutField(breakout, column);
+              } else {
+                handleAddBreakout(column);
+              }
+            }}
+          />
+        );
+      }}
+      onRemove={handleRemoveBreakout}
       data-testid="breakout-step"
     />
   );
