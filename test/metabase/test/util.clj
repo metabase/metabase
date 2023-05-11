@@ -139,7 +139,7 @@
             :is_sample false
             :name      (tu.random/random-name)})
 
-   Dimension
+   :model/Dimension
    (fn [_] {:name (tu.random/random-name)
             :type "internal"})
 
