@@ -8,6 +8,7 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :as i18n :refer [trs tru]]
    [metabase.util.log :as log]
+   [methodical.core :as methodical]
    [toucan.models :as models]
    [toucan2.connection :as t2.conn]
    [toucan2.core :as t2]))
@@ -50,9 +51,18 @@
   :setter     :none
   :default    true)
 
-(models/defmodel LoginHistory :login_history)
+(def LoginHistory
+  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], not it's a reference to the toucan2 model name.
+  We'll keep this till we replace all the symbols in our codebase."
+  :model/LoginHistory)
 
-(defn- post-select [{session-id :session_id, :as login-history}]
+(methodical/defmethod t2/table-name :model/LoginHistory [_model] :login_history)
+
+(doto :model/LoginHistory
+  (derive :metabase/model))
+
+(t2/define-after-select :model/LoginHistory
+  [{session-id :session_id, :as login-history}]
   ;; session ID is sensitive, so it's better if we don't even return it. Replace it with a more generic `active` key.
   (cond-> login-history
     (contains? login-history :session_id) (assoc :active (boolean session-id))
@@ -86,15 +96,10 @@
           (catch Throwable e
             (log/error e (trs "Error sending ''login from new device'' notification email"))))))))
 
-(defn- post-insert [login-history]
+(t2/define-after-select :model/LoginHistory
+  [login-history]
   (maybe-send-login-from-new-device-email login-history)
   login-history)
 
-(defn- pre-update [_login-history]
+(t2/define-before-update :model/LoginHistory [_login-history]
   (throw (RuntimeException. (tru "You can''t update a LoginHistory after it has been created."))))
-
-(mi/define-methods
- LoginHistory
- {:post-select post-select
-  :post-insert post-insert
-  :pre-update  pre-update})
