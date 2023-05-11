@@ -25,7 +25,8 @@
             [metabase.test.data.sql-jdbc.execute :as execute]
             [metabase.test.data.sql-jdbc.load-data :as load-data]
             [metabase.test.data.sql.ddl :as ddl]
-            [metabase.util :as u])
+            [metabase.util :as u]
+            [metabase.util.log :as log])
   (:import [java.sql Connection DriverManager PreparedStatement]))
 
 ;; JDBC SQL
@@ -114,9 +115,8 @@
         (try
           (with-open [^PreparedStatement stmt (.prepareStatement conn sql)]
             (sql-jdbc.execute/set-parameters! driver stmt params)
-            (let [tbl-nm        ((comp last :components) (into {} table-identifier))
-                  rows-affected (.executeUpdate stmt)]
-              (println (format "[%s] Inserted %d rows into starburst table %s." driver rows-affected tbl-nm))))
+            (let [rows-affected (.executeUpdate stmt)]
+              (log/infof "[%s] Inserted %d rows into starburst table %s" driver rows-affected table-identifier)))
           (catch Throwable e
             (throw (ex-info (format "[%s] Error executing SQL: %s" driver (ex-message e))
                             {:driver driver, :sql sql, :params params}

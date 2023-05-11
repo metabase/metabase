@@ -15,7 +15,6 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
             [clojure.test :refer :all]
-            [honeysql.core :as hsql]
             [java-time :as t]
             [metabase.api.database :as api.database]
             [metabase.db.metadata-queries :as metadata-queries]
@@ -86,9 +85,9 @@
                           [3 "The Apple Pan"]
                           [4 "Wurstküche"]
                           [5 "Brite Spot Family Restaurant"]]
-                         (->> (metadata-queries/table-rows-sample (Table (mt/id :venues))
-                                                                  [(Field (mt/id :venues :id))
-                                                                   (Field (mt/id :venues :name))]
+                         (->> (metadata-queries/table-rows-sample (db/select-one Table :id (mt/id :venues))
+                                                                  [(db/select-one Field :id (mt/id :venues :id))
+                                                                   (db/select-one Field :id (mt/id :venues :name))]
                                                                   (constantly conj))
                               (sort-by first)
                               (take 5))))))
