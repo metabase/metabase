@@ -57,6 +57,7 @@
                               :percentile-aggregations false
                               :full-join               false
                               :uploads                 true
+                              :schemas                 false
                               ;; MySQL LIKE clauses are case-sensitive or not based on whether the collation of the server and the columns
                               ;; themselves. Since this isn't something we can really change in the query itself don't present the option to the
                               ;; users in the UI
