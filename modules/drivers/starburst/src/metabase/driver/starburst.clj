@@ -16,8 +16,16 @@
   (:require [metabase.driver :as driver]
                         [metabase.driver.sql-jdbc.execute.legacy-impl :as sql-jdbc.legacy]))
 (driver/register! :starburst, :parent #{::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
- 
+
 (prefer-method driver/supports? [:starburst :set-timezone] [:sql-jdbc :set-timezone])
+
+(defmethod driver/database-supports? [:starburst :persist-models]
+  [_driver _feat _db]
+  true)
+
+(defmethod driver/database-supports? [:starburst :persist-models-enabled]
+  [_driver _feat db]
+  (-> db :options :persist-models-enabled))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  Load implemetation files                                      |
@@ -28,3 +36,4 @@
 (load "implementation/connectivity")
 (load "implementation/unprepare")
 (load "implementation/driver_helpers")
+(load "implementation/ddl")
