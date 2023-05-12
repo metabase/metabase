@@ -181,7 +181,7 @@
             :created_at    (t/zoned-date-time)
             :creator_id    (rasta-id)})
 
-   PermissionsGroup
+   :model/PermissionsGroup
    (fn [_] {:name (tu.random/random-name)})
 
    Pulse
