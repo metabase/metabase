@@ -21,7 +21,7 @@
 (methodical/defmethod t2/table-name :model/HTTPAction [_model] :http_action)
 (methodical/defmethod t2/table-name :model/ImplicitAction [_model] :implicit_action)
 
-;; Used to be the toucan1 model name defined using [[toucan.models/defmodel]], not it's a reference to the toucan2 model name.
+;; Used to be the toucan1 model name defined using [[toucan.models/defmodel]], now it's a reference to the toucan2 model name.
 ;; We'll keep this till we replace all the Actions symbol in our codebase.
 (def Action         "Action model"         :model/Action)
 (def QueryAction    "QueryAction model"    :model/QueryAction)
