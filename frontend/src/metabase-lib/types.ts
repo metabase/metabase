@@ -23,12 +23,6 @@ export type ColumnMetadata = unknown & { _opaque: typeof ColumnMetadata };
 declare const ColumnGroup: unique symbol;
 export type ColumnGroup = unknown & { _opaque: typeof ColumnGroup };
 
-declare const Binning: unique symbol;
-export type Binning = unknown & { _opaque: typeof Binning };
-
-declare const BinningStrategy: unique symbol;
-export type BinningStrategy = unknown & { _opaque: typeof BinningStrategy };
-
 export type TableDisplayInfo = {
   name: string;
   displayName: string;

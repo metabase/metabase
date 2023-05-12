@@ -191,12 +191,10 @@
   Returns `nil` if none are available."
   ([a-query x]
    (-> (lib.core/available-binning-strategies a-query x)
-       to-array
-       not-empty))
+       to-array))
   ([a-query stage-number x]
    (-> (available-binning-strategies a-query stage-number x)
-       to-array
-       not-empty)))
+       to-array)))
 
 (defn ^:export remove-clause
   "Removes the `target-clause` in the filter of the `query`."
