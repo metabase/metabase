@@ -1,6 +1,6 @@
 import React from "react";
 import { t } from "ttag";
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger/PopoverWithTrigger";
+import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import DashboardPicker from "metabase/containers/DashboardPicker";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { useDashboardQuery } from "metabase/common/hooks";
@@ -22,20 +22,25 @@ const DashboardSelector = ({ onChange, value }: DashboardSelectorProps) => {
   } = useDashboardQuery({ id: value });
   return (
     <LoadingAndErrorWrapper loading={isLoading}>
-      <PopoverWithTrigger
-        triggerElement={
-          <DashboardPickerButton>
+      <TippyPopoverWithTrigger
+        maxWidth={600}
+        renderTrigger={({ onClick }) => (
+          <DashboardPickerButton onClick={onClick}>
             {dashboard?.name || t`Select a Dashboard`}
           </DashboardPickerButton>
-        }
-      >
-        <DashboardPickerContainer>
-          <DashboardPicker
-            value={error ? undefined : dashboard?.id}
-            onChange={onChange}
-          />
-        </DashboardPickerContainer>
-      </PopoverWithTrigger>
+        )}
+        popoverContent={({ closePopover }) => (
+          <DashboardPickerContainer>
+            <DashboardPicker
+              value={error ? undefined : dashboard?.id}
+              onChange={value => {
+                closePopover();
+                onChange(value);
+              }}
+            />
+          </DashboardPickerContainer>
+        )}
+      />
     </LoadingAndErrorWrapper>
   );
 };
