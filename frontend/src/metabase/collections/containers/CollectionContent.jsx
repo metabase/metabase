@@ -32,6 +32,7 @@ import { isSmallScreen } from "metabase/lib/dom";
 import Databases from "metabase/entities/databases";
 
 import UploadOverlay from "../components/UploadOverlay";
+import { getComposedDragProps } from "./utils";
 
 import {
   CollectionEmptyContent,
@@ -138,7 +139,6 @@ function CollectionContent({
     maxFiles: 1,
     noClick: true,
     noDragEventsBubbling: true,
-    ignoreNonFileDragEvents: true,
     accept: { "text/csv": [".csv"] },
   });
 
@@ -202,7 +202,7 @@ function CollectionContent({
 
   const canUpload = uploadsEnabled && collection.can_write;
 
-  const dropzoneProps = canUpload ? getRootProps() : {};
+  const dropzoneProps = canUpload ? getComposedDragProps(getRootProps()) : {};
 
   const unpinnedQuery = {
     collection: collectionId,

@@ -229,7 +229,17 @@ describe("scenarios > collection pinned items overview", () => {
     // this will not guarantee that the drag and drop functionality will work in the real world, e.g
     // when our various drag + drop libraries start interfering with events on one another.
     // for example, this test would not have caught https://github.com/metabase/metabase/issues/30614
+    // even libraries like https://github.com/dmtrKovalenko/cypress-real-events rely on firing events
+    // on specific elements rather than truly simulating mouse movements across the screen
     dragAndDrop("draggingViz", "pinnedItems");
+
+    cy.findByTestId("collection-table")
+      .findByText("Orders, Count, Grouped by Created At (year)")
+      .should("not.exist");
+
+    cy.findByTestId("pinned-items")
+      .findByText("Orders, Count, Grouped by Created At (year)")
+      .should("exist");
   });
 });
 
