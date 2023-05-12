@@ -1,4 +1,4 @@
-import { popover, restore } from "e2e/support/helpers";
+import { popover, restore, dragAndDrop } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -198,6 +198,28 @@ describe("scenarios > collection pinned items overview", () => {
       cy.findByText(SQL_QUESTION_DETAILS.name).should("be.visible");
       cy.findByText("A question").should("be.visible");
     });
+  });
+
+  it("should be able to pin a visualization by dragging it up", () => {
+    cy.request("PUT", "/api/card/2", {
+      collection_position: 1,
+      collection_preview: false,
+    });
+    openRootCollection();
+
+    cy.findByTestId("collection-table")
+      .findByText("Orders, Count, Grouped by Created At (year)")
+      .as("draggingViz");
+
+    cy.findByTestId("pinned-items").as("pinnedItems");
+
+    // this test can give us some degree of confidence, but its effectiveness is limited
+    // because we are manually firing events on the correct elements. It doesn't seem that there's
+    // a way to actually simulate the raw user interaction of dragging a certain distance in cypress.
+    // this will not guarantee that the drag and drop functionality will work in the real world, e.g
+    // when our various drag + drop libraries start interfering with events on one another.
+    // for example, this test would not have caught https://github.com/metabase/metabase/issues/30614
+    dragAndDrop("draggingViz", "pinnedItems");
   });
 });
 

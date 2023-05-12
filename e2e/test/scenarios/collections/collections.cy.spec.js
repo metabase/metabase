@@ -11,6 +11,7 @@ import {
   closeNavigationSidebar,
   openCollectionMenu,
   visitCollection,
+  dragAndDrop,
 } from "e2e/support/helpers";
 import { USERS, USER_GROUPS } from "e2e/support/cypress_data";
 import { displaySidebarChildOf } from "./helpers/e2e-collections-sidebar.js";
@@ -619,14 +620,6 @@ function moveOpenedCollectionTo(newParent) {
   });
   // Make sure modal closed
   modal().should("not.exist");
-}
-
-function dragAndDrop(subjectAlias, targetAlias) {
-  const dataTransfer = new DataTransfer();
-
-  cy.get("@" + subjectAlias).trigger("dragstart", { dataTransfer });
-  cy.get("@" + targetAlias).trigger("drop", { dataTransfer });
-  cy.get("@" + subjectAlias).trigger("dragend");
 }
 
 function moveItemToCollection(itemName, collectionName) {
