@@ -68,6 +68,7 @@ describe("managing dashboard from the dashboard's edit menu", () => {
             it("should be able to duplicate a dashboard", () => {
               cy.intercept("POST", "/api/dashboard/1/copy").as("copyDashboard");
 
+              // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
               cy.findByText("Duplicate").click();
               cy.location("pathname").should("eq", "/dashboard/1/copy");
               cy.get(".Modal").within(() => {
@@ -79,6 +80,7 @@ describe("managing dashboard from the dashboard's edit menu", () => {
                 "eq",
                 "/dashboard/2-orders-in-a-dashboard-duplicate",
               );
+              // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
               cy.findByText(`Orders in a dashboard - Duplicate`);
             });
 
@@ -96,12 +98,15 @@ describe("managing dashboard from the dashboard's edit menu", () => {
               });
 
               assertOnRequest("updateDashboard");
+              // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
               cy.contains("37.65");
               // it should update dashboard's collection after the move without the page reload (metabase#13059)
               appBar().contains("First collection");
 
               // Why do we use "Dashboard moved to" here (without its location, btw) vs. "Moved dashboard" for the same action?
+              // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
               cy.findByText("Dashboard moved to");
+              // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
               cy.findByText("Undo").click();
               assertOnRequest("updateDashboard");
 
@@ -113,12 +118,16 @@ describe("managing dashboard from the dashboard's edit menu", () => {
                 cy.findByText("Archive").click();
               });
               cy.location("pathname").should("eq", "/dashboard/1/archive");
+              // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
               cy.findByText("Archive this dashboard?"); //Without this, there is some race condition and the button click fails
               clickButton("Archive");
               assertOnRequest("updateDashboard");
               cy.location("pathname").should("eq", "/collection/root");
+              // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
               cy.findByText("Orders in a dashboard").should("not.exist");
+              // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
               cy.findByText("Archived dashboard");
+              // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
               cy.findByText("Undo").click();
               assertOnRequest("updateDashboard");
             });

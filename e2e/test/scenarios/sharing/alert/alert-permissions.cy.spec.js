@@ -46,9 +46,12 @@ describe("scenarios > alert > alert permissions", { tags: "@external" }, () => {
       // Change alert
       visitQuestion(1);
       cy.icon("bell").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Edit").click();
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Daily").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Weekly").click();
 
       cy.button("Save changes").click();
@@ -67,7 +70,9 @@ describe("scenarios > alert > alert permissions", { tags: "@external" }, () => {
       visitQuestion(1);
       cy.icon("bell").click();
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Unsubscribe").should("not.exist");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Set up an alert");
     });
 
@@ -75,7 +80,9 @@ describe("scenarios > alert > alert permissions", { tags: "@external" }, () => {
       visitQuestion(2);
       cy.icon("bell").click();
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(`You're receiving ${getFullName(admin)}'s alerts`);
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Set up your own alert");
     });
 
@@ -83,6 +90,7 @@ describe("scenarios > alert > alert permissions", { tags: "@external" }, () => {
       visitQuestion(3);
       cy.icon("bell").click();
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("You set up an alert");
     });
 
@@ -90,15 +98,19 @@ describe("scenarios > alert > alert permissions", { tags: "@external" }, () => {
       // Unsubscribe from your own alert
       visitQuestion(3);
       cy.icon("bell").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Unsubscribe").click();
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Okay, you're unsubscribed");
 
       // Unsubscribe from others' alerts
       visitQuestion(2);
       cy.icon("bell").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Unsubscribe").click();
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Okay, you're unsubscribed");
     });
   });

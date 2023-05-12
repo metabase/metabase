@@ -6,12 +6,17 @@ title: Driver interface changelog
 
 ## Metabase 0.47.0
 
-- The multimethod `metabase.driver/syncable-schemas` has been added. This method is used to list schemas to upload 
+- The multimethod `metabase.driver/syncable-schemas` has been added. This method is used to list schemas to upload
   CSVs to, and it should include all schemas that are able to be synced to. Currently it only needs to be implemented
   if the database has schema, and the database supports the `uploads` feature.
 
+- A new driver feature has been added: `:schemas`. This feature signals whether the database organizes tables in
+  schemas (also known as namespaces) or not. Most databases have schemas so this feature is supported on by default.
+  An implemention of the multimethod `metabase.driver/database-supports?` for `:schemas` is required only if the
+  database doesn't store tables in schemas.
+
 - The multimethod `metabase.driver/supports?` has been deprecated in favor of `metabase.driver/database-supports?`. The existing default implementation of `database-supports?` currently calls `supports?`, but it will be removed in 0.55.0.
-  
+
 ## Metabase 0.46.0
 
 - The process for building a driver has changed slightly in Metabase 0.46.0. Your build command should now look

@@ -92,6 +92,7 @@ import {
   getCardAutocompleteResultsFn,
 } from "../selectors";
 import * as actions from "../actions";
+import { VISUALIZATION_SLOW_TIMEOUT } from "../constants";
 
 const timelineProps = {
   query: { include: "events" },
@@ -217,6 +218,7 @@ function QueryBuilder(props) {
     showTimelinesForCollection,
     card,
     isLoadingComplete,
+    closeQB,
   } = props;
 
   const forceUpdate = useForceUpdate();
@@ -301,6 +303,7 @@ function QueryBuilder(props) {
   useUnmount(() => {
     cancelQuery();
     closeModal();
+    closeQB();
     clearTimeout(timeout.current);
   });
 
@@ -359,7 +362,7 @@ function QueryBuilder(props) {
   }, []);
 
   useLoadingTimer(isRunning, {
-    timer: 15000,
+    timer: VISUALIZATION_SLOW_TIMEOUT,
     onTimeout,
   });
 

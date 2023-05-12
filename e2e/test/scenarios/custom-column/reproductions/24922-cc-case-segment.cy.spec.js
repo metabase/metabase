@@ -34,11 +34,13 @@ describe("issue 24922", () => {
   it("should allow segments in case custom expressions (metabase#24922)", () => {
     openOrdersTable({ mode: "notebook" });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Custom column").click();
     enterCustomColumnDetails(customColumnDetails);
     cy.button("Done").click();
 
     visualize();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("CustomColumn").should("be.visible");
   });
 });

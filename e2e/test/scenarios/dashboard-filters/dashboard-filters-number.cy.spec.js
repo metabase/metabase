@@ -51,6 +51,7 @@ describe("scenarios > dashboard > filters > number", () => {
 
   it(`should work when set as the default filter`, () => {
     setFilter("Number", "Equal to");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Default value").next().click();
 
     addWidgetNumberFilter("2.07");

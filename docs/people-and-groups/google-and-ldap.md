@@ -137,5 +137,5 @@ On paid plans, you can require people to log in with SSO by disabling password a
 [google-saml-docs]: ./saml-google.md
 [jwt-docs]: ./authenticating-with-jwt.md
 [saml-docs]: ./authenticating-with-saml.md
-[user-attributes-docs]: ../permissions/data-sandboxes.md#getting-user-attributes
+[user-attributes-docs]: ../permissions/data-sandboxes.md#choosing-user-attributes-for-data-sandboxes
 [user-attributes-def]: https://www.metabase.com/glossary/attribute#user-attributes-in-metabase

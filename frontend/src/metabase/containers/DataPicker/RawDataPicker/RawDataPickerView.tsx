@@ -5,12 +5,13 @@ import SelectList from "metabase/components/SelectList";
 
 import type { ITreeNodeItem } from "metabase/components/tree/types";
 
+import { DatabaseId, SchemaId, TableId } from "metabase-types/api";
 import type Database from "metabase-lib/metadata/Database";
 import type Table from "metabase-lib/metadata/Table";
+
 import type Schema from "metabase-lib/metadata/Schema";
 
 import type { DataPickerSelectedItem } from "../types";
-
 import EmptyState from "../EmptyState";
 import LoadingState from "../LoadingState";
 import PanePicker from "../PanePicker";
@@ -21,9 +22,9 @@ interface RawDataPickerViewProps {
   tables?: Table[];
   selectedItems: DataPickerSelectedItem[];
   isLoading: boolean;
-  onSelectDatabase: (id: Database["id"]) => void;
-  onSelectSchema: (id: Schema["id"]) => void;
-  onSelectedTable: (id: Table["id"]) => void;
+  onSelectDatabase: (id: DatabaseId) => void;
+  onSelectSchema: (id: SchemaId) => void;
+  onSelectedTable: (id: TableId) => void;
   onBack?: () => void;
 }
 

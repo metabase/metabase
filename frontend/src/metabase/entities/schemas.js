@@ -4,6 +4,7 @@ import { MetabaseApi } from "metabase/services";
 
 import { SchemaSchema } from "metabase/schema";
 import Questions from "metabase/entities/questions";
+import { getMetadata } from "metabase/selectors/metadata";
 import {
   generateSchemaId,
   parseSchemaId,
@@ -53,6 +54,10 @@ export default createEntity({
         database: { id: dbId },
       };
     },
+  },
+
+  selectors: {
+    getObject: (state, { entityId }) => getMetadata(state).schema(entityId),
   },
 
   reducer: (state = {}, { type, payload, error }) => {
