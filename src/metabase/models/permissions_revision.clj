@@ -17,8 +17,8 @@
   (derive :hook/created-at-timestamped?))
 
 (t2/deftransforms :model/PermissionsRevision
- {:before mi/transform-json
-  :after  mi/transform-json})
+  {:before mi/transform-json
+   :after  mi/transform-json})
 
 (t2/define-before-update :model/PermissionsRevision
   [_]
