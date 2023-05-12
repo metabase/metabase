@@ -49,7 +49,7 @@ function QuestionDataSource({ question, originalQuestion, subHead, ...props }) {
   if (originalQuestion?.id() === sourceQuestionId) {
     return (
       <SourceDatasetBreadcrumbs
-        dataset={originalQuestion.card()}
+        model={originalQuestion}
         variant={variant}
         {...props}
       />
