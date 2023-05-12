@@ -2,11 +2,11 @@ import React, { useMemo, useCallback } from "react";
 import _ from "underscore";
 import { t } from "ttag";
 
-import { Filter as FilterExpression } from "metabase-types/types/Query";
 import Icon from "metabase/components/Icon";
 import { DATE_SHORTCUT_OPTIONS as ALL_DATE_OPTIONS } from "metabase/query_builder/components/filters/pickers/DatePicker/DatePickerShortcutOptions";
-import Filter from "metabase-lib/queries/structured/Filter";
 
+import type { Filter as FilterExpression } from "metabase-types/api";
+import Filter from "metabase-lib/queries/structured/Filter";
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import Dimension from "metabase-lib/Dimension";
 

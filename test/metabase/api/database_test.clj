@@ -541,7 +541,7 @@
                   :parent :sql-jdbc
                   :abstract? true)
 
-(defmethod driver/supports? [::no-nested-query-support :nested-queries] [_ _] false)
+(defmethod driver/database-supports? [::no-nested-query-support :nested-queries] [_driver _feature _db] false)
 
 (deftest databases-list-test
   (testing "GET /api/database"
@@ -700,11 +700,11 @@
               (check-tables-not-included response (virtual-table-for-card bad-card)))))
 
         (testing "should work when there are no DBs that support nested queries"
-          (with-redefs [metabase.driver/supports? (constantly false)]
+          (with-redefs [metabase.driver/database-supports? (constantly false)]
             (is (nil? (fetch-virtual-database)))))
 
         (testing "should work when there are no DBs that support nested queries"
-          (with-redefs [metabase.driver/supports? (constantly false)]
+          (with-redefs [metabase.driver/database-supports? (constantly false)]
             (is (nil? (fetch-virtual-database)))))
 
         (testing "should remove Cards that use cumulative-sum and cumulative-count aggregations"
@@ -1024,6 +1024,17 @@
                       Table    [_ {:db_id db-id, :schema " "}]]
         (is (= ["" " "]
                (mt/user-http-request :lucky :get 200 (format "database/%d/schemas" db-id))))))))
+
+(deftest get-syncable-schemas-test
+  (testing "GET /api/database/:id/syncable_schemas"
+    (testing "Multiple schemas are ordered by name"
+      ;; We need to redef driver/syncable-schemas here because different databases might have different schemas
+      (with-redefs [driver/syncable-schemas (constantly #{"PUBLIC"})]
+        (is (= ["PUBLIC"]
+               (mt/user-http-request :crowberto :get 200 (format "database/%d/syncable_schemas" (mt/id)))))
+        (testing "Non-admins don't have permission to see syncable schemas"
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :get 403 (format "database/%d/syncable_schemas" (mt/id))))))))))
 
 (deftest get-schemas-for-schemas-with-no-visible-tables
   (mt/with-temp* [Database [{db-id :id}]

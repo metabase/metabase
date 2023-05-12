@@ -111,7 +111,7 @@
   (let [default (:default options)]
     (cond-> [:case (dissoc options :default) (mapv ->pMBQL pred-expr-pairs)]
       :always lib.options/ensure-uuid
-      default (conj (->pMBQL default)))))
+      (some? default) (conj (->pMBQL default)))))
 
 (defmethod ->pMBQL :expression
   [[tag value opts]]
@@ -275,7 +275,7 @@
                     [id opts])]
     [:field
      (->legacy-MBQL id)
-     (not-empty (disqualify opts))]))
+     (options->legacy-MBQL opts)]))
 
 (defmethod ->legacy-MBQL :value
   [[_tag opts value]]

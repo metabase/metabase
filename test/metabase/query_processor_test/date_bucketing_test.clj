@@ -74,7 +74,7 @@
                                       [id (u.date/format-sql (t/local-date-time (u.date/parse s))) cnt])
 
                                     (or (= timezone :utc)
-                                        (not (driver/supports? driver/*driver* :set-timezone)))
+                                        (not (driver/database-supports? driver/*driver* :set-timezone (mt/db))))
                                     utc-results
 
                                     :else
@@ -1257,30 +1257,31 @@
       ;; `:relative-datetime` expression and do this directly in MBQL.
       (mt/test-drivers (filter #(isa? driver/hierarchy (driver/the-initialized-driver %) :sql)
                                (mt/normal-drivers))
-        (doseq [[n unit] [[3 :month]
-                          [1 :quarter]]
-                t        [#t "2022-03-31"
-                          #t "2022-03-31T00:00:00"
-                          #t "2022-03-31T00:00:00-00:00"]]
-          (testing (format "%d %s ^%s %s" n unit (.getCanonicalName (class t)) (pr-str t))
-            (sql.qp/with-driver-honey-sql-version driver/*driver*
-              (let [march-31     (sql.qp/->honeysql driver/*driver* [:absolute-datetime t :day])
-                    june-31      (sql.qp/add-interval-honeysql-form driver/*driver* march-31 n unit)
-                    checkins     (mt/with-everything-store
-                                   (sql.qp/->honeysql driver/*driver* (t2/select-one Table :id (mt/id :checkins))))
-                    honeysql     {:select [[june-31 :june_31]]
-                                  :from   [(sql.qp/maybe-wrap-unaliased-expr checkins)]}
-                    honeysql     (sql.qp/apply-top-level-clause driver/*driver* :limit honeysql {:limit 1})
-                    [sql & args] (sql.qp/format-honeysql driver/*driver* honeysql)
-                    query        (mt/native-query {:query sql, :params args})]
-                (mt/with-native-query-testing-context query
-                  (is (re= (u.regex/rx #"^2022-"
+        (mt/with-everything-store
+          (doseq [[n unit] [[3 :month]
+                            [1 :quarter]]
+                  t        [#t "2022-03-31"
+                            #t "2022-03-31T00:00:00"
+                            #t "2022-03-31T00:00:00-00:00"]]
+            (testing (format "%d %s ^%s %s" n unit (.getCanonicalName (class t)) (pr-str t))
+              (sql.qp/with-driver-honey-sql-version driver/*driver*
+                (let [march-31     (sql.qp/->honeysql driver/*driver* [:absolute-datetime t :day])
+                      june-31      (sql.qp/add-interval-honeysql-form driver/*driver* march-31 n unit)
+                      checkins     (mt/with-everything-store
+                                     (sql.qp/->honeysql driver/*driver* (t2/select-one Table :id (mt/id :checkins))))
+                      honeysql     {:select [[june-31 :june_31]]
+                                    :from   [(sql.qp/maybe-wrap-unaliased-expr checkins)]}
+                      honeysql     (sql.qp/apply-top-level-clause driver/*driver* :limit honeysql {:limit 1})
+                      [sql & args] (sql.qp/format-honeysql driver/*driver* honeysql)
+                      query        (mt/native-query {:query sql, :params args})]
+                  (mt/with-native-query-testing-context query
+                    (is (re= (u.regex/rx #"^2022-"
                                        ;; We don't really care if someone returns June 29th or 30th or July 1st here. I
                                        ;; guess you could make a case for either June 30th or July 1st. I don't really know
                                        ;; how you can get June 29th from this, but that's what Vertica returns. :shrug: The
                                        ;; main thing here is that it's not barfing.
-                                       [:or [:and "06-" [:or "29" "30"]] "07-01"]
+                                         [:or [:and "06-" [:or "29" "30"]] "07-01"]
                                        ;; We also don't really care if this is returned as a date or a timestamp with or
                                        ;; without time zone.
-                                       [:? [:or "T" #"\s"] "00:00:00" [:? "Z"]])
-                           (first (mt/first-row (qp/process-query query))))))))))))))
+                                         [:? [:or "T" #"\s"] "00:00:00" [:? "Z"]])
+                             (first (mt/first-row (qp/process-query query)))))))))))))))

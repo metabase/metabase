@@ -20,6 +20,7 @@ describe("issue 20393", () => {
     popover().contains("CREATED_AT").click();
 
     // save the dashboard
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
 
     // open the sharing modal and enable sharing
@@ -27,6 +28,7 @@ describe("issue 20393", () => {
     cy.findByRole("switch").click();
 
     // navigate to the public dashboard link
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Public link")
       .parent()
       .within(() => {
@@ -36,6 +38,7 @@ describe("issue 20393", () => {
       });
 
     // verify that the card is visible on the page
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Q2");
   });
 });

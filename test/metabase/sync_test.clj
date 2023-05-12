@@ -84,8 +84,8 @@
                                :schema nil}
             :dest-column-name "studio"}})))
 
-(defmethod driver/supports? [::sync-test :foreign-keys]
-  [_ _]
+(defmethod driver/database-supports? [::sync-test :foreign-keys]
+  [_driver _feature _db]
   true)
 
 (defmethod driver/mbql->native ::sync-test

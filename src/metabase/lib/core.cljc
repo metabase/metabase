@@ -5,6 +5,7 @@
                             + - * / time abs concat replace ref var])
   (:require
    [metabase.lib.aggregation :as lib.aggregation]
+   [metabase.lib.binning :as lib.binning]
    [metabase.lib.breakout :as lib.breakout]
    [metabase.lib.card :as lib.card]
    [metabase.lib.column-group :as lib.column-group]
@@ -29,6 +30,7 @@
    [metabase.shared.util.namespaces :as shared.ns]))
 
 (comment lib.aggregation/keep-me
+         lib.binning/keep-me
          lib.breakout/keep-me
          lib.card/keep-me
          lib.column-group/keep-me
@@ -68,6 +70,10 @@
    sum
    sum-where
    var]
+  [lib.binning
+   available-binning-strategies
+   binning
+   with-binning]
   [lib.breakout
    breakout
    breakoutable-columns

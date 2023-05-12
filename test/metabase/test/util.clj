@@ -17,9 +17,6 @@
    [metabase.models
     :refer [Card
             Collection
-            Dashboard
-            DashboardCard
-            DashboardCardSeries
             Database
             Dimension
             Field
@@ -123,18 +120,23 @@
    (fn [_] {:name  (tu.random/random-name)
             :color "#ABCDEF"})
 
-   Dashboard
+   :model/Dashboard
    (fn [_] {:creator_id (rasta-id)
             :name       (tu.random/random-name)})
 
-   DashboardCard
+   :model/DashboardCard
    (fn [_] {:row    0
             :col    0
             :size_x 4
             :size_y 4})
 
-   DashboardCardSeries
+   :model/DashboardCardSeries
    (constantly {:position 0})
+
+   :model/DashboardTab
+   (fn [_]
+     {:name     (tu.random/random-name)
+      :position 0})
 
    Database
    (fn [_] {:details   {}

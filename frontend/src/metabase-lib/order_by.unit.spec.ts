@@ -39,7 +39,7 @@ describe("order by", () => {
           name: "TITLE",
           displayName: "Title",
           effectiveType: "type/Text",
-          semanticType: "type/Category",
+          semanticType: "type/Title",
           isCalculated: false,
           isFromJoin: false,
           isFromPreviousStage: false,
@@ -96,6 +96,32 @@ describe("order by", () => {
           table: { name: "Product Model", displayName: "Product Model" },
         }),
       );
+    });
+
+    it("should preserve order-by positions between v1-v2 roundtrip", () => {
+      const query = createQuery();
+      const taxColumn = findOrderableColumn("ORDERS", "TAX");
+      const nextQuery = ML.orderBy(query, taxColumn);
+      const nextQueryColumns = ML.orderableColumns(nextQuery);
+      const nextTaxColumn = columnFinder(nextQuery, nextQueryColumns)(
+        "ORDERS",
+        "TAX",
+      );
+
+      expect(ML.displayInfo(nextQuery, nextTaxColumn).orderByPosition).toBe(0);
+
+      const roundtripQuery = createQuery({
+        query: ML.toLegacyQuery(nextQuery),
+      });
+      const roundtripQueryColumns = ML.orderableColumns(roundtripQuery);
+      const roundtripTaxColumn = columnFinder(
+        roundtripQuery,
+        roundtripQueryColumns,
+      )("ORDERS", "TAX");
+
+      expect(
+        ML.displayInfo(roundtripQuery, roundtripTaxColumn).orderByPosition,
+      ).toBe(0);
     });
   });
 

@@ -6,8 +6,8 @@ import title from "metabase/hoc/Title";
 const SECONDS_UNTIL_DISPLAY = 10;
 
 export default startTimePropName => ComposedComponent =>
-  title(({ [startTimePropName]: startTime }) => {
-    if (startTime == null) {
+  title(({ [startTimePropName]: startTime, isRunning }) => {
+    if (startTime == null || !isRunning) {
       return "";
     }
     const totalSeconds = (performance.now() - startTime) / 1000;

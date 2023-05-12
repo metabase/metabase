@@ -16,7 +16,11 @@ import {
 import { FieldSchema } from "metabase/schema";
 import { MetabaseApi } from "metabase/services";
 
-import { getMetadata } from "metabase/selectors/metadata";
+import {
+  getMetadata,
+  getMetadataUnfiltered,
+} from "metabase/selectors/metadata";
+
 import { UPDATE_TABLE_FIELD_ORDER } from "metabase/entities/tables";
 
 import {
@@ -25,10 +29,7 @@ import {
   has_field_values_options,
 } from "metabase/lib/core";
 import { TYPE } from "metabase-lib/types/constants";
-import {
-  getFieldValues,
-  getRemappings,
-} from "metabase-lib/queries/utils/field";
+import { getFieldValues } from "metabase-lib/queries/utils/field";
 
 // ADDITIONAL OBJECT ACTIONS
 
@@ -56,17 +57,8 @@ const Fields = createEntity({
 
     // getMetadata filters out sensitive fields by default.
     // This selector is used in the data model when we want to show them.
-    getObjectUnfiltered: (state, { entityId }) => {
-      const field = state.entities.fields[entityId];
-      return (
-        field && {
-          ...field,
-          values: getFieldValues(field),
-          remapping: new Map(getRemappings(field)),
-          target: state.entities.fields[field.fk_target_field_id],
-        }
-      );
-    },
+    getObjectUnfiltered: (state, { entityId }) =>
+      getMetadataUnfiltered(state).field(entityId),
     getFieldValues: (state, { entityId }) => {
       const field = state.entities.fields[entityId];
       return field ? getFieldValues(field) : [];
@@ -84,30 +76,33 @@ const Fields = createEntity({
         entityQuery => Fields.getQueryKey(entityQuery),
       ),
       withNormalize(FieldSchema),
-    )(({ id: fieldId }) => async (dispatch, getState) => {
+    )(({ id: fieldId, ...params }) => async (dispatch, getState) => {
       const {
         field_id: id,
         values,
         has_more_values,
       } = await MetabaseApi.field_values({
         fieldId,
+        ...params,
       });
       return { id, values, has_more_values };
     }),
 
-    updateField(field, opts) {
-      return async dispatch => {
+    updateField(field, values, opts) {
+      return async (dispatch, getState) => {
         const result = await dispatch(
           Fields.actions.update(
             { id: field.id },
-            field,
-            notify(opts, field.display_name, t`updated`),
+            values,
+            notify(opts, field.displayName(), t`updated`),
           ),
         );
-        // Field values needs to be fetched again once the field is updated metabase#16322
+
+        // field values needs to be fetched again once the field is updated metabase#16322
         await dispatch(
-          Fields.actions.fetchFieldValues(field, { reload: true }),
+          Fields.actions.fetchFieldValues({ id: field.id }, { reload: true }),
         );
+
         return result;
       };
     },
@@ -133,30 +128,20 @@ const Fields = createEntity({
     updateFieldDimension: createThunkAction(
       UPDATE_FIELD_DIMENSION,
       ({ id }, dimension) =>
-        (dispatch, getState) =>
-          updateData({
-            dispatch,
-            getState,
-            requestStatePath: ["entities", "fields", id, "dimension"],
-            existingStatePath: ["entities", "fields", id],
-            putData: () =>
-              MetabaseApi.field_dimension_update({
-                fieldId: id,
-                ...dimension,
-              }),
-          }),
+        () => {
+          return MetabaseApi.field_dimension_update({
+            fieldId: id,
+            ...dimension,
+          });
+        },
     ),
     deleteFieldDimension: createThunkAction(
       DELETE_FIELD_DIMENSION,
       ({ id }) =>
-        (dispatch, getState) =>
-          updateData({
-            dispatch,
-            getState,
-            requestStatePath: ["entities", "fields", id, "dimension"],
-            existingStatePath: ["entities", "fields", id],
-            putData: () => MetabaseApi.field_dimension_delete({ fieldId: id }),
-          }),
+        async () => {
+          await MetabaseApi.field_dimension_delete({ fieldId: id });
+          return { id };
+        },
     ),
 
     addRemappings: createAction(ADD_REMAPPINGS, ({ id }, remappings) => ({
@@ -199,6 +184,10 @@ const Fields = createEntity({
 
         return state;
       },
+      [UPDATE_FIELD_DIMENSION]: (state, { payload: dimension }) =>
+        assocIn(state, [dimension.field_id, "dimensions"], [dimension]),
+      [DELETE_FIELD_DIMENSION]: (state, { payload: { id } }) =>
+        assocIn(state, [id, "dimensions"], []),
     },
     {},
   ),

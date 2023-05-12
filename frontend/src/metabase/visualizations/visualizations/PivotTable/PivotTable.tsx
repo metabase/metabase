@@ -24,8 +24,7 @@ import {
   multiLevelPivot,
 } from "metabase/lib/data_grid";
 
-import type { DatasetData } from "metabase-types/types/Dataset";
-import type { VisualizationSettings } from "metabase-types/api";
+import type { DatasetData, VisualizationSettings } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 import type { PivotTableClicked, HeaderWidthType } from "./types";
