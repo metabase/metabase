@@ -1,12 +1,12 @@
-import QuickFilterDrill from "metabase/modes/components/drill/QuickFilterDrill";
-import { createMockColumn } from "metabase-types/api/mocks";
 import {
   ORDERS,
   PEOPLE,
   SAMPLE_DATABASE,
   metadata,
 } from "__support__/sample_database_fixture";
+import { createMockColumn } from "metabase-types/api/mocks";
 import Question from "metabase-lib/Question";
+import QuickFilterDrill from "./QuickFilterDrill";
 
 const NUMBER_AND_DATE_FILTERS = [
   { name: "<", operator: "<" },
