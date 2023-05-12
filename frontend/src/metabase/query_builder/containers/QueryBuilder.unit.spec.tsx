@@ -59,7 +59,7 @@ const TEST_MODEL_CARD = createMockCard({
   },
   dataset: true,
   display: "scalar",
-  description: "Test description",
+  description: "Test description", 
 });
 
 const TEST_NATIVE_CARD = createMockCard({
