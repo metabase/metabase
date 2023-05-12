@@ -1,4 +1,6 @@
 import { assoc, dissoc, assocIn, updateIn, chain, merge } from "icepick";
+import reduceReducers from "reduce-reducers";
+
 import { handleActions, combineReducers } from "metabase/lib/redux";
 import Dashboards from "metabase/entities/dashboards";
 
@@ -22,7 +24,6 @@ import {
   REMOVE_PARAMETER,
   FETCH_CARD_DATA,
   CLEAR_CARD_DATA,
-  UPDATE_DASHCARD_IDS,
   MARK_CARD_AS_SLOW,
   SET_PARAMETER_VALUE,
   FETCH_DASHBOARD_CARD_DATA,
@@ -37,9 +38,11 @@ import {
   SET_PARAMETER_VALUES,
   UNDO_REMOVE_CARD_FROM_DASH,
   SHOW_AUTO_APPLY_FILTERS_TOAST,
+  tabsReducer,
 } from "./actions";
 
 import { isVirtualDashCard, syncParametersAndEmbeddingParams } from "./utils";
+import { INITIAL_DASHBOARD_STATE } from "./constants";
 
 const dashboardId = handleActions(
   {
@@ -49,7 +52,7 @@ const dashboardId = handleActions(
     },
     [RESET]: { next: state => null },
   },
-  null,
+  INITIAL_DASHBOARD_STATE.dashboardId,
 );
 
 const isEditing = handleActions(
@@ -60,7 +63,7 @@ const isEditing = handleActions(
     },
     [RESET]: { next: state => null },
   },
-  null,
+  INITIAL_DASHBOARD_STATE.isEditing,
 );
 
 const loadingControls = handleActions(
@@ -75,7 +78,7 @@ const loadingControls = handleActions(
     }),
     [RESET]: { next: state => ({}) },
   },
-  {},
+  INITIAL_DASHBOARD_STATE.loadingControls,
 );
 
 function newDashboard(before, after, isDirty) {
@@ -146,7 +149,7 @@ const dashboards = handleActions(
         ),
     },
   },
-  {},
+  INITIAL_DASHBOARD_STATE.dashboards,
 );
 
 const dashcards = handleActions(
@@ -164,7 +167,7 @@ const dashcards = handleActions(
       }),
     },
     [SET_MULTIPLE_DASHCARD_ATTRIBUTES]: {
-      next: (state, { payload: dashcards }) => {
+      next: (state, { payload: { dashcards } }) => {
         const nextState = { ...state };
         dashcards.forEach(({ id, attributes }) => {
           nextState[id] = {
@@ -226,7 +229,7 @@ const dashcards = handleActions(
       [dashcardId]: { ...state[dashcardId], justAdded: false },
     }),
   },
-  {},
+  INITIAL_DASHBOARD_STATE.dashcards,
 );
 
 const isAddParameterPopoverOpen = handleActions(
@@ -236,7 +239,7 @@ const isAddParameterPopoverOpen = handleActions(
     [INITIALIZE]: () => false,
     [RESET]: () => false,
   },
-  false,
+  INITIAL_DASHBOARD_STATE.isAddParameterPopoverOpen,
 );
 
 const dashcardData = handleActions(
@@ -251,21 +254,9 @@ const dashcardData = handleActions(
       next: (state, { payload: { cardId, dashcardId } }) =>
         assocIn(state, [dashcardId, cardId]),
     },
-    [UPDATE_DASHCARD_IDS]: {
-      next: (state, { payload: { oldDashcardIds, newDashcardIds } }) =>
-        oldDashcardIds
-          .reduce(
-            (wrappedState, oldDcId, index) =>
-              wrappedState
-                .dissoc(oldDcId)
-                .assoc(newDashcardIds[index], state[oldDcId]),
-            chain(state),
-          )
-          .value(),
-    },
     [RESET]: { next: state => ({}) },
   },
-  {},
+  INITIAL_DASHBOARD_STATE.dashcardData,
 );
 
 const slowCards = handleActions(
@@ -277,7 +268,7 @@ const slowCards = handleActions(
       }),
     },
   },
-  {},
+  INITIAL_DASHBOARD_STATE.slowCards,
 );
 
 const parameterValues = handleActions(
@@ -303,7 +294,7 @@ const parameterValues = handleActions(
     },
     [RESET]: { next: state => ({}) },
   },
-  {},
+  INITIAL_DASHBOARD_STATE.parameterValues,
 );
 
 const draftParameterValues = handleActions(
@@ -390,13 +381,7 @@ const loadingDashCards = handleActions(
       }),
     },
   },
-  {
-    dashcardIds: [],
-    loadingIds: [],
-    startTime: null,
-    endTime: null,
-    loadingStatus: "idle",
-  },
+  INITIAL_DASHBOARD_STATE.loadingDashCards,
 );
 
 const DEFAULT_SIDEBAR = { props: {} };
@@ -424,7 +409,7 @@ const sidebar = handleActions(
       next: () => DEFAULT_SIDEBAR,
     },
   },
-  DEFAULT_SIDEBAR,
+  INITIAL_DASHBOARD_STATE.sidebar,
 );
 
 const missingActionParameters = handleActions(
@@ -436,7 +421,7 @@ const missingActionParameters = handleActions(
       next: (state, payload) => null,
     },
   },
-  null,
+  INITIAL_DASHBOARD_STATE.missingActionParameters,
 );
 
 export const autoApplyFilters = handleActions(
@@ -449,25 +434,28 @@ export const autoApplyFilters = handleActions(
       }),
     },
   },
-  {
-    toastId: null,
-    toastDashboardId: null,
-  },
+  INITIAL_DASHBOARD_STATE.autoApplyFilters,
 );
 
-export default combineReducers({
-  dashboardId,
-  isEditing,
-  loadingControls,
-  dashboards,
-  dashcards,
-  dashcardData,
-  slowCards,
-  parameterValues,
-  draftParameterValues,
-  loadingDashCards,
-  isAddParameterPopoverOpen,
-  sidebar,
-  autoApplyFilters,
-  missingActionParameters,
-});
+export default reduceReducers(
+  INITIAL_DASHBOARD_STATE,
+  combineReducers({
+    dashboardId,
+    isEditing,
+    loadingControls,
+    dashboards,
+    dashcards,
+    dashcardData,
+    slowCards,
+    parameterValues,
+    draftParameterValues,
+    loadingDashCards,
+    isAddParameterPopoverOpen,
+    sidebar,
+    missingActionParameters,
+    autoApplyFilters,
+    // Combined reducer needs to init state for every slice
+    selectedTabId: (state = INITIAL_DASHBOARD_STATE.selectedTabId) => state,
+  }),
+  tabsReducer,
+);
