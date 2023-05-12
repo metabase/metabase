@@ -1,55 +1,57 @@
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-nocheck
-import Base from "./Base";
+import { Filter, NormalizedSegment } from "metabase-types/api";
 import type Metadata from "./Metadata";
 import type Table from "./Table";
-/**
- * @typedef { import("./Metadata").FilterClause } FilterClause
- */
 
-/**
- * Wrapper class for a segment. Belongs to a {@link Database} and possibly a {@link Table}
- */
+export default class Segment {
+  private readonly segment: NormalizedSegment;
+  table?: Table;
+  metadata?: Metadata;
 
-export default class Segment extends Base {
-  id: number;
-  name: string;
-  table_id: Table["id"];
-  table: Table;
-  metadata: Metadata;
+  constructor(segment: NormalizedSegment) {
+    this.segment = segment;
+  }
+
+  get id() {
+    return this.segment.id;
+  }
+
+  get name() {
+    return this.segment.name;
+  }
+
+  get description() {
+    return this.segment.description;
+  }
+
+  get table_id() {
+    return this.segment.table_id;
+  }
+
+  get definition() {
+    return this.segment.definition;
+  }
+
+  get revision_message() {
+    return this.segment.revision_message;
+  }
+
+  get archived() {
+    return this.segment.archived;
+  }
+
+  getPlainObject() {
+    return this.segment;
+  }
 
   displayName() {
     return this.name;
   }
 
-  /**
-   * @returns {FilterClause}
-   */
-  filterClause() {
+  filterClause(): Filter {
     return ["segment", this.id];
   }
 
   isActive() {
     return !this.archived;
-  }
-
-  /**
-   * @private
-   * @param {string} name
-   * @param {string} description
-   * @param {Database} database
-   * @param {Table} table
-   * @param {number} id
-   * @param {boolean} archived
-   */
-
-  /* istanbul ignore next */
-  _constructor(name, description, database, table, id, archived) {
-    this.name = name;
-    this.description = description;
-    this.database = database;
-    this.table = table;
-    this.id = id;
-    this.archived = archived;
   }
 }
