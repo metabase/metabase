@@ -86,7 +86,7 @@ export default function ActionCreatorView({
 
   return (
     <ModalRoot>
-      <ActionCreatorBodyContainer>
+      <ActionCreatorBodyContainer data-testid="action-creator-body-container">
         <ModalLeft>
           <ActionCreatorHeader
             type="query"
