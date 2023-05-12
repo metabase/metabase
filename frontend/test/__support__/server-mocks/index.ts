@@ -10,6 +10,7 @@ export * from "./database";
 export * from "./dataset";
 export * from "./field";
 export * from "./search";
+export * from "./segment";
 export * from "./session";
 export * from "./settings";
 export * from "./setup";
