@@ -1,12 +1,11 @@
 import React, { ChangeEvent, ReactNode, useCallback, useState } from "react";
 import { connect } from "react-redux";
-import { useAsync } from "react-use";
 import { t } from "ttag";
+import _ from "underscore";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import Databases from "metabase/entities/databases";
 import Tables from "metabase/entities/tables";
 import Radio from "metabase/core/components/Radio/Radio";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import {
   DatabaseId,
   SchemaId,
@@ -33,97 +32,46 @@ const METADATA_TAB_OPTIONS = [
   { name: t`Original schema`, value: "original_schema" },
 ];
 
-interface HasDatabaseId {
-  id: DatabaseId;
-}
-
-interface HasTableId {
-  id: TableId;
-}
-
-interface HasRequestParams {
-  params: unknown;
-}
-
 interface OwnProps {
   selectedDatabaseId: DatabaseId;
   selectedSchemaId: SchemaId;
   selectedTableId: TableId;
 }
 
+interface TableLoaderProps {
+  table: Table;
+}
+
 interface StateProps {
-  table?: Table;
-  idFields?: Field[];
+  idFields: Field[];
 }
 
 interface DispatchProps {
-  onFetchMetadata: (table: HasTableId, opts: HasRequestParams) => Promise<void>;
-  onFetchIdFields: (database: HasDatabaseId, params: unknown) => Promise<void>;
   onUpdateTable: (table: Table, name: string, value: unknown) => void;
 }
 
-type MetadataTableProps = OwnProps & StateProps & DispatchProps;
+type MetadataTableProps = OwnProps &
+  TableLoaderProps &
+  StateProps &
+  DispatchProps;
 
 const mapStateToProps = (
   state: State,
-  { selectedDatabaseId, selectedTableId }: OwnProps,
+  { table }: TableLoaderProps,
 ): StateProps => ({
-  table: Tables.selectors.getObjectUnfiltered(state, {
-    entityId: selectedTableId,
-  }),
-  idFields: Databases.selectors.getIdfields(state, {
-    databaseId: selectedDatabaseId,
-  }),
+  idFields: Databases.selectors.getIdFields(state, { databaseId: table.db_id }),
 });
 
 const mapDispatchToProps: DispatchProps = {
-  onFetchMetadata: Tables.actions.fetchMetadata,
-  onFetchIdFields: Databases.objectActions.fetchIdfields,
   onUpdateTable: Tables.actions.updateProperty,
 };
 
 const MetadataTable = ({
   table,
-  idFields = [],
-  selectedDatabaseId,
-  selectedSchemaId,
-  selectedTableId,
-  onFetchMetadata,
-  onFetchIdFields,
-  onUpdateTable,
-}: MetadataTableProps) => {
-  const { loading, error } = useAsync(async () => {
-    await onFetchIdFields({ id: selectedDatabaseId }, getFieldsQuery());
-    await onFetchMetadata({ id: selectedTableId }, { params: getTableQuery() });
-  }, [selectedDatabaseId, selectedTableId]);
-
-  if (table == null || loading || error != null) {
-    return <LoadingAndErrorWrapper loading={loading} error={error} />;
-  }
-
-  return (
-    <MetadataTableView
-      table={table}
-      idFields={idFields}
-      selectedSchemaId={selectedSchemaId}
-      onUpdateTable={onUpdateTable}
-    />
-  );
-};
-
-interface MetadataTableViewProps {
-  table: Table;
-  idFields: Field[];
-  selectedSchemaId: SchemaId;
-  onUpdateTable: (table: Table, name: string, value: unknown) => void;
-}
-
-const MetadataTableView = ({
-  table,
   idFields,
   selectedSchemaId,
   onUpdateTable,
-}: MetadataTableViewProps) => {
+}: MetadataTableProps) => {
   const [tab, setTab] = useState<MetadataTabType>("columns");
 
   const handleChangeName = useCallback(
@@ -351,12 +299,22 @@ const TableTabSection = ({ tab, onChangeTab }: MetadataTabSectionProps) => {
   );
 };
 
-const getTableQuery = () => ({
-  include_sensitive_fields: true,
-  ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
-});
-
-const getFieldsQuery = () =>
-  PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps;
-
-export default connect(mapStateToProps, mapDispatchToProps)(MetadataTable);
+export default _.compose(
+  Databases.load({
+    id: (_: State, { selectedDatabaseId }: OwnProps) => selectedDatabaseId,
+    query: PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
+    fetchType: "fetchIdFields",
+    requestType: "idFields",
+  }),
+  Tables.load({
+    id: (state: State, { selectedTableId }: OwnProps) => selectedTableId,
+    query: {
+      include_sensitive_fields: true,
+      ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
+    },
+    fetchType: "fetchMetadata",
+    requestType: "fetchMetadata",
+    selectorName: "getObjectUnfiltered",
+  }),
+  connect(mapStateToProps, mapDispatchToProps),
+)(MetadataTable);

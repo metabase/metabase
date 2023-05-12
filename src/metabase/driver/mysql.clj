@@ -49,31 +49,30 @@
 
 (defmethod driver/display-name :mysql [_] "MySQL")
 
+(doseq [[feature supported?] {:persist-models          true
+                              :convert-timezone        true
+                              :datetime-diff           true
+                              :now                     true
+                              :regex                   false
+                              :percentile-aggregations false
+                              :full-join               false
+                              :uploads                 true
+                              :schemas                 false
+                              ;; MySQL LIKE clauses are case-sensitive or not based on whether the collation of the server and the columns
+                              ;; themselves. Since this isn't something we can really change in the query itself don't present the option to the
+                              ;; users in the UI
+                              :case-sensitivity-string-filter-options false}]
+  (defmethod driver/database-supports? [:mysql feature] [_driver _feature _db] supported?))
+
 ;; This is a bit of a lie since the JSON type was introduced for MySQL since 5.7.8.
 ;; And MariaDB doesn't have the JSON type at all, though `JSON` was introduced as an alias for LONGTEXT in 10.2.7.
 ;; But since JSON unfolding will only apply columns with JSON types, this won't cause any problems during sync.
 (defmethod driver/database-supports? [:mysql :nested-field-columns] [_driver _feat db]
   (driver.common/json-unfolding-default db))
 
-(defmethod driver/database-supports? [:mysql :uploads] [_driver _feat _db] true)
-
-(defmethod driver/database-supports? [:mysql :persist-models] [_driver _feat _db] true)
-
 (defmethod driver/database-supports? [:mysql :persist-models-enabled]
   [_driver _feat db]
   (-> db :options :persist-models-enabled))
-
-(defmethod driver/database-supports? [:mysql :convert-timezone]
-  [_driver _feature _db]
-  true)
-
-(defmethod driver/database-supports? [:mysql :datetime-diff]
-  [_driver _feature _db]
-  true)
-
-(defmethod driver/database-supports? [:mysql :now] [_ _ _] true)
-(defmethod driver/supports? [:mysql :regex] [_ _] false)
-(defmethod driver/supports? [:mysql :percentile-aggregations] [_ _] false)
 
 (doseq [feature [:actions :actions/custom]]
   (defmethod driver/database-supports? [:mysql feature]
@@ -120,8 +119,6 @@
   (when ((get-method driver/can-connect? :sql-jdbc) driver details)
     (warn-on-unsupported-versions driver details)
     true))
-
-(defmethod driver/supports? [:mysql :full-join] [_ _] false)
 
 (def default-ssl-cert-details
   "Server SSL certificate chain, in PEM format."
@@ -207,11 +204,6 @@
      (if (str/starts-with? offset "-")
        offset
        (str \+ offset)))))
-
-;; MySQL LIKE clauses are case-sensitive or not based on whether the collation of the server and the columns
-;; themselves. Since this isn't something we can really change in the query itself don't present the option to the
-;; users in the UI
-(defmethod driver/supports? [:mysql :case-sensitivity-string-filter-options] [_ _] false)
 
 (defmethod driver/db-start-of-week :mysql
   [_]

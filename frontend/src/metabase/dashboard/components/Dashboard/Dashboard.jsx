@@ -96,6 +96,7 @@ class Dashboard extends Component {
     closeSidebar: PropTypes.func.isRequired,
     closeNavbar: PropTypes.func.isRequired,
     embedOptions: PropTypes.object,
+    isAutoApplyFilters: PropTypes.bool,
   };
 
   static defaultProps = {
@@ -252,6 +253,7 @@ class Dashboard extends Component {
       setEditingParameter,
       isHeaderVisible,
       embedOptions,
+      isAutoApplyFilters,
     } = this.props;
 
     const { error, isParametersWidgetSticky } = this.state;
@@ -265,9 +267,7 @@ class Dashboard extends Component {
       <SyncedParametersList
         parameters={getValuePopulatedParameters(
           parameters,
-          _.isEmpty(draftParameterValues)
-            ? parameterValues
-            : draftParameterValues,
+          isAutoApplyFilters ? parameterValues : draftParameterValues,
         )}
         editingParameter={editingParameter}
         dashboard={dashboard}
@@ -345,6 +345,7 @@ class Dashboard extends Component {
 
                 <CardsContainer
                   addMarginTop={cardsContainerShouldHaveMarginTop}
+                  id="Dashboard-Cards-Container"
                 >
                   {dashboardHasCards ? (
                     <DashboardGrid

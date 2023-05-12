@@ -40,7 +40,7 @@ interface CreateDashboardProperties {
 }
 
 export interface CreateDashboardFormOwnProps {
-  collectionId?: CollectionId; // can be used by `getInitialCollectionId`
+  collectionId?: CollectionId | null; // can be used by `getInitialCollectionId`
   onCreate?: (dashboard: Dashboard) => void;
   onCancel?: () => void;
 }

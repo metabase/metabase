@@ -510,6 +510,7 @@ export default _.compose(
   Tables.load({
     id: (state: State, { sourceConfig: { card_id } }: ModalOwnProps) =>
       card_id ? getQuestionVirtualTableId(card_id) : undefined,
+    fetchType: "fetchMetadata",
     requestType: "fetchMetadata",
     LoadingAndErrorWrapper: ModalLoadingAndErrorWrapper,
   }),

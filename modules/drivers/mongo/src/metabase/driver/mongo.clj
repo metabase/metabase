@@ -250,16 +250,17 @@
                         [#{} 0]
                         column-info))})))
 
-(doseq [feature [:basic-aggregations
-                 :expression-aggregations
-                 :inner-join
-                 :left-join
-                 :nested-fields
-                 :nested-queries
-                 :native-parameters
-                 :set-timezone
-                 :standard-deviation-aggregations]]
-  (defmethod driver/supports? [:mongo feature] [_driver _feature] true))
+(doseq [[feature supported?] {:basic-aggregations              true
+                              :expression-aggregations         true
+                              :inner-join                      true
+                              :left-join                       true
+                              :nested-fields                   true
+                              :nested-queries                  true
+                              :native-parameters               true
+                              :set-timezone                    true
+                              :standard-deviation-aggregations true
+                              :test/jvm-timezone-setting       false}]
+  (defmethod driver/database-supports? [:mongo feature] [_driver _feature _db] supported?))
 
 ;; We say Mongo supports foreign keys so that the front end can use implicit
 ;; joins. In reality, Mongo doesn't support foreign keys.
@@ -268,6 +269,8 @@
 ;; to stomp over that if it was loaded already.
 (when-not (get (methods driver/supports?) [:mongo :foreign-keys])
   (defmethod driver/supports? [:mongo :foreign-keys] [_ _] true))
+
+(defmethod driver/database-supports? [:mongo :schemas] [_driver _feat _db] false)
 
 (defmethod driver/database-supports? [:mongo :expressions]
   [_driver _feature db]
@@ -293,10 +296,6 @@
   (-> (:dbms_version db)
       :semantic-version
       (driver.u/semantic-version-gte [4 2])))
-
-(defmethod driver/database-supports? [:mongo :test/jvm-timezone-setting]
-  [_driver _feature _database]
-  false)
 
 (defmethod driver/mbql->native :mongo
   [_ query]

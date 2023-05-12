@@ -1,5 +1,6 @@
 (ns metabase.lib.breakout-test
   (:require
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [deftest is testing]]
    [medley.core :as m]
    [metabase.lib.core :as lib]
@@ -7,8 +8,7 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.util :as lib.util]
-   [metabase.util :as u]
-   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
+   [metabase.util :as u]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -247,11 +247,6 @@
                   (for [col columns]
                     (lib/display-info query col)))))))))
 
-(defn- breakout-column-excluded? [query column query']
-  (let [breakoutable-columns  (lib/breakoutable-columns query)
-        breakoutable-columns' (lib/breakoutable-columns query')]
-    (= (disj (set breakoutable-columns) column) (set breakoutable-columns'))))
-
 (deftest ^:parallel breakoutable-columns-e2e-test
   (testing "Use the metadata returned by `breakoutable-columns` to add a new breakout to a query."
     (let [query (lib/query-for-table-name meta/metadata-provider "VENUES")]
@@ -271,8 +266,7 @@
                                :breakout     [[:field {:lib/uuid string? :base-type :type/Text} (meta/id :venues :name)]]}]}
                   query'))
           (is (=? [[:field {:lib/uuid string? :base-type :type/Text} (meta/id :venues :name)]]
-                  (lib/breakouts query')))
-          (is (true? (breakout-column-excluded? query col query'))))))))
+                  (lib/breakouts query'))))))))
 
 (deftest ^:parallel breakoutable-columns-own-and-implicitly-joinable-columns-e2e-test
   (testing "An implicitly joinable column can be broken out by."
@@ -283,7 +277,8 @@
                                       (lib/breakoutable-columns query))
           query' (-> query
                      (lib/breakout cat-name-col)
-                     (lib/breakout ven-price-col))]
+                     (lib/breakout ven-price-col))
+          breakoutables' (lib/breakoutable-columns query')]
       (is (=? {:stages [{:breakout [[:field
                                      {:source-field (meta/id :venues :category-id)}
                                      (meta/id :categories :name)]
@@ -298,8 +293,86 @@
                {:display-name "Category ID", :lib/source :source/table-defaults}
                {:display-name "Latitude",    :lib/source :source/table-defaults}
                {:display-name "Longitude",   :lib/source :source/table-defaults}
-               {:display-name "ID",          :lib/source :source/implicitly-joinable}]
-              (lib/breakoutable-columns query'))))))
+               {:display-name "Price"        :lib/source :source/table-defaults, :breakout-position 1}
+               {:display-name "ID",          :lib/source :source/implicitly-joinable}
+               {:display-name "Name",        :lib/source :source/implicitly-joinable, :breakout-position 0}]
+              breakoutables'))
+      (is (= 2 (count (filter :breakout-position breakoutables'))))
+      (is (=? [{:table {:name "VENUES", :display-name "Venues", :is-source-table true}
+                :semantic-type :type/PK
+                :name "ID"
+                :effective-type :type/BigInteger
+                :is-from-join false
+                :display-name "ID"
+                :is-from-previous-stage false
+                :is-calculated false
+                :is-implicitly-joinable false}
+               {:table {:name "VENUES", :display-name "Venues", :is-source-table true}
+                :semantic-type :type/Name
+                :name "NAME"
+                :effective-type :type/Text
+                :is-from-join false
+                :display-name "Name"
+                :is-from-previous-stage false
+                :is-calculated false
+                :is-implicitly-joinable false}
+               {:table {:name "VENUES", :display-name "Venues", :is-source-table true}
+                :semantic-type :type/FK
+                :name "CATEGORY_ID"
+                :effective-type :type/Integer
+                :is-from-join false
+                :display-name "Category ID"
+                :is-from-previous-stage false
+                :is-calculated false
+                :is-implicitly-joinable false}
+               {:table {:name "VENUES", :display-name "Venues", :is-source-table true}
+                :semantic-type :type/Latitude
+                :name "LATITUDE"
+                :effective-type :type/Float
+                :is-from-join false
+                :display-name "Latitude"
+                :is-from-previous-stage false
+                :is-calculated false
+                :is-implicitly-joinable false}
+               {:table {:name "VENUES", :display-name "Venues", :is-source-table true}
+                :semantic-type :type/Longitude
+                :name "LONGITUDE"
+                :effective-type :type/Float
+                :is-from-join false
+                :display-name "Longitude"
+                :is-from-previous-stage false
+                :is-calculated false
+                :is-implicitly-joinable false}
+               {:table {:name "VENUES", :display-name "Venues", :is-source-table true}
+                :semantic-type :type/Category
+                :name "PRICE"
+                :effective-type :type/Integer
+                :is-from-join false
+                :display-name "Price"
+                :is-from-previous-stage false
+                :is-calculated false
+                :is-implicitly-joinable false
+                :breakout-position 1}
+               {:table {:name "CATEGORIES", :display-name "Categories", :is-source-table false}
+                :semantic-type :type/PK
+                :name "ID"
+                :effective-type :type/BigInteger
+                :is-from-join false
+                :display-name "ID"
+                :is-from-previous-stage false
+                :is-calculated false
+                :is-implicitly-joinable true}
+               {:table {:name "CATEGORIES", :display-name "Categories", :is-source-table false}
+                :semantic-type :type/Name
+                :name "NAME"
+                :effective-type :type/Text
+                :is-from-join false
+                :display-name "Name"
+                :is-from-previous-stage false
+                :is-calculated false
+                :is-implicitly-joinable true
+                :breakout-position 0}]
+              (map #(lib/display-info query' %) breakoutables'))))))
 
 (deftest ^:parallel breakoutable-columns-with-source-card-e2e-test
   (testing "A column that comes from a source Card (Saved Question/Model/etc) can be broken out by."
@@ -319,8 +392,7 @@
                    (lib/describe-query query')))
             (is (= ["User ID"]
                    (for [breakout (lib/breakouts query')]
-                     (lib/display-name query' breakout))))
-          (is (true? (breakout-column-excluded? query name-col query')))))))))
+                     (lib/display-name query' breakout))))))))))
 
 (deftest ^:parallel breakoutable-columns-expression-e2e-test
   (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
@@ -346,14 +418,13 @@
                 query'))
         (testing "description"
           (is (= "Venues, Grouped by expr"
-                 (lib/describe-query query'))))
-        (is (true? (breakout-column-excluded? query expr query')))))))
+                 (lib/describe-query query'))))))))
 
 (deftest ^:parallel breakoutable-columns-new-stage-e2e-test
   (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
                   (lib/expression "expr" (lib/absolute-datetime "2020" :month))
                   (lib/with-fields [(lib/field "VENUES" "ID")
-                                    (lib.dev/expression-ref "expr")])
+                                    (lib.dev/ref-lookup :expression "expr")])
                   (lib/append-stage))]
     (is (=? [{:id (meta/id :venues :id), :name "ID", :display-name "ID", :lib/source :source/previous-stage}
              {:name "expr", :display-name "expr", :lib/source :source/previous-stage}]
@@ -369,5 +440,4 @@
                 query'))
         (testing "description"
           (is (= "Grouped by Expr"
-                 (lib/describe-query query'))))
-        (is (true? (breakout-column-excluded? query expr query')))))))
+                 (lib/describe-query query'))))))))

@@ -59,6 +59,7 @@ describe("issue 18630", () => {
     // The query runs and we assert the page is not blank,
     // rather than an infinite loop and stack overflow.
     // 'test question' is the name of the question.
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("test question");
   });
 });

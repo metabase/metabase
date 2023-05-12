@@ -14,6 +14,7 @@ import Base from "./Base";
 import Table from "./Table";
 import Schema from "./Schema";
 import Metadata from "./Metadata";
+
 /**
  * @typedef { import("./Metadata").SchemaName } SchemaName
  */
@@ -29,11 +30,14 @@ class DatabaseInner extends Base {
   name: string;
   engine: string;
   description: string;
+  creator_id?: number;
+  is_sample: boolean;
   is_saved_questions: boolean;
   tables: Table[];
   schemas: Schema[];
   metadata: Metadata;
   features: DatabaseFeature[];
+  details: Record<string, unknown>;
   settings?: DatabaseSettings;
   native_permissions: NativePermissions;
 

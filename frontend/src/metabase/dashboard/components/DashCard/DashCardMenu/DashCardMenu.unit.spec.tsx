@@ -17,7 +17,7 @@ import {
 } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
 import { setupCardQueryDownloadEndpoint } from "__support__/server-mocks";
-import { createEntitiesState } from "__support__/store";
+import { createMockEntitiesState } from "__support__/store";
 import { getIcon, renderWithProviders, screen } from "__support__/ui";
 import DashCardMenu from "./DashCardMenu";
 
@@ -60,7 +60,7 @@ interface SetupOpts {
 
 const setup = ({ card = TEST_CARD, result = TEST_RESULT }: SetupOpts = {}) => {
   const storeInitialState = createMockState({
-    entities: createEntitiesState({
+    entities: createMockEntitiesState({
       databases: [createSampleDatabase()],
       questions: [card],
     }),

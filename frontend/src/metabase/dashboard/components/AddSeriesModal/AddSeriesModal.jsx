@@ -4,7 +4,7 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 import { getIn } from "icepick";
 import { connect } from "react-redux";
-import { createSelector } from "reselect";
+import { createSelector } from "@reduxjs/toolkit";
 import _ from "underscore";
 
 import Visualization from "metabase/visualizations/components/Visualization";

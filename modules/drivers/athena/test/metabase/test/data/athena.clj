@@ -22,7 +22,7 @@
 (sql-jdbc.tx/add-test-extensions! :athena)
 
 ;; during unit tests don't treat athena as having FK support
-(defmethod driver/supports? [:athena :foreign-keys] [_ _] (not config/is-test?))
+(defmethod driver/database-supports? [:athena :foreign-keys] [_driver _feature _db] (not config/is-test?))
 
 ;;; ----------------------------------------------- Connection Details -----------------------------------------------
 

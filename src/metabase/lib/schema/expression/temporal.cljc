@@ -35,6 +35,12 @@
   #_:datetime2 [:schema [:ref ::expression/temporal]]
   #_:unit [:ref ::temporal-bucketing/unit.date-time.truncate])
 
+(doseq [temporal-extract-op #{:get-second :get-minute :get-hour
+                              :get-day :get-day-of-week
+                              :get-month :get-quarter :get-year}]
+  (mbql-clause/define-tuple-mbql-clause temporal-extract-op :- :type/Integer
+  #_:datetime [:schema [:ref ::expression/temporal]]))
+
 (mbql-clause/define-tuple-mbql-clause :get-week :- :type/Integer
   #_:datetime [:schema [:ref ::expression/temporal]]
   ;; TODO should this be in the options map?

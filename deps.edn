@@ -128,6 +128,7 @@
   org.clojure/java.jmx                      {:mvn/version "1.0.0"}              ; JMX bean library, for exporting diagnostic info
   org.clojure/math.combinatorics            {:mvn/version "0.1.6"}              ; combinatorics functions
   org.clojure/math.numeric-tower            {:mvn/version "0.0.5"}              ; math functions like `ceil`
+  org.clojure/tools.cli                     {:mvn/version "1.0.214"}            ; command-line argument parsing
   org.clojure/tools.logging                 {:mvn/version "1.2.4"}              ; logging framework
   org.clojure/tools.macro                   {:mvn/version "0.1.5"}              ; local macros
   org.clojure/tools.namespace               {:mvn/version "1.4.4"}
@@ -414,7 +415,6 @@
                                    "./deps.edn"
                                    "./package.json"
                                    "./shadow-cljs.edn"
-                                   ".circleci"
                                    ".clj-kondo"
                                    ".github"
                                    "bin"

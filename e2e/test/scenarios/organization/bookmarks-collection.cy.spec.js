@@ -76,6 +76,7 @@ describe("scenarios > organization > bookmarks > collection", () => {
     cy.visit("/collection/root");
 
     pin(name);
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Rows/);
     bookmarkPinnedItem(name);
   });
@@ -89,6 +90,7 @@ describe("scenarios > organization > bookmarks > collection", () => {
     cy.visit("/collection/root");
 
     pin(name);
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("A dashboard");
     bookmarkPinnedItem(name);
   });

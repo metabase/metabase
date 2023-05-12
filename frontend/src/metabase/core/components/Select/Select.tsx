@@ -9,7 +9,7 @@ import React, {
 
 import _ from "underscore";
 import cx from "classnames";
-import { createSelector } from "reselect";
+import { createSelector } from "@reduxjs/toolkit";
 import Icon from "metabase/components/Icon";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import SelectButton, {

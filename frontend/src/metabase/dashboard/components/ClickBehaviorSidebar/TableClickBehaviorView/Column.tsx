@@ -8,9 +8,9 @@ import Questions from "metabase/entities/questions";
 import type {
   ClickBehavior,
   CustomDestinationClickBehavior,
+  DatasetColumn,
   EntityCustomDestinationClickBehavior,
 } from "metabase-types/api";
-import type { Column as IColumn } from "metabase-types/types/Dataset";
 import { getIconForField } from "metabase-lib/metadata/utils/fields";
 
 import { SidebarItem } from "../SidebarItem";
@@ -51,7 +51,7 @@ function getClickBehaviorDescription({
   column,
   clickBehavior,
 }: {
-  column: IColumn;
+  column: DatasetColumn;
   clickBehavior: ClickBehavior;
 }) {
   if (!clickBehavior) {
@@ -78,7 +78,7 @@ function getClickBehaviorDescription({
 }
 
 interface ColumnProps {
-  column: IColumn;
+  column: DatasetColumn;
   clickBehavior: ClickBehavior;
   onClick: () => void;
 }

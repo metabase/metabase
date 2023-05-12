@@ -75,6 +75,7 @@ describe("issue 22788", () => {
     openFilterSettings();
 
     // Make sure the filter is still connected to the custom column
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Column to filter on")
       .parent()
       .within(() => {
@@ -83,8 +84,8 @@ describe("issue 22788", () => {
 
     // need to actually change the dashboard to test a real save
     sidebar().within(() => {
-      cy.findByDisplayValue("Text").clear().type('my filter text');
-      cy.button('Done').click();
+      cy.findByDisplayValue("Text").clear().type("my filter text");
+      cy.button("Done").click();
     });
 
     saveDashboard();

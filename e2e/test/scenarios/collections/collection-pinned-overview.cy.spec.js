@@ -128,6 +128,7 @@ describe("scenarios > collection pinned items overview", () => {
     openPinnedItemMenu(DASHBOARD_NAME);
     popover().findByText("Move").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(`Move "${DASHBOARD_NAME}"?`).should("be.visible");
   });
 
@@ -138,6 +139,7 @@ describe("scenarios > collection pinned items overview", () => {
     openPinnedItemMenu(DASHBOARD_NAME);
     popover().findByText("Duplicate").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(`Duplicate "${DASHBOARD_NAME}" and its questions`).should(
       "be.visible",
     );
@@ -152,6 +154,7 @@ describe("scenarios > collection pinned items overview", () => {
     cy.wait("@getPinnedItems");
 
     getPinnedSection().should("not.exist");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(DASHBOARD_NAME).should("not.exist");
   });
 

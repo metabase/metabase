@@ -1,11 +1,12 @@
 import { connect } from "react-redux";
-import { createSelector } from "reselect";
+import { createSelector } from "@reduxjs/toolkit";
 import _ from "underscore";
 import Databases from "metabase/entities/databases";
 import DatabaseCandidates from "metabase/entities/database-candidates";
 import { getSetting } from "metabase/selectors/settings";
-import { Database, DatabaseCandidate } from "metabase-types/api";
+import { DatabaseCandidate } from "metabase-types/api";
 import { State } from "metabase-types/store";
+import Database from "metabase-lib/metadata/Database";
 import DatabaseSyncModal from "../../components/DatabaseSyncModal";
 
 interface DatabaseProps {

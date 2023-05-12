@@ -186,7 +186,7 @@
                mbql->native
                sql.qp-test-util/sql->sql-map)))))
 
-(deftest ^:paralell handle-source-query-params-test
+(deftest ^:parallel handle-source-query-params-test
   (driver/with-driver :h2
     (mt/with-everything-store
       (testing "params from source queries should get passed in to the top-level. Semicolons should be removed"
@@ -1044,20 +1044,21 @@
   (testing "Numbers should be returned inline, even when targeting Honey SQL 2."
     (mt/test-drivers (filter #(isa? driver/hierarchy (driver/the-driver %) :sql)
                              (tx.env/test-drivers))
-      (doseq [day [:sunday
-                   :monday
-                   :tuesday
-                   :wednesday
-                   :thursday
-                   :friday
-                   :saturday]]
-        (metabase.test/with-temporary-setting-values [start-of-week day]
-          (sql.qp/with-driver-honey-sql-version driver/*driver*
-            (let [sql-args (-> (sql.qp/format-honeysql driver/*driver* (sql.qp/date driver/*driver* :day-of-week :x))
-                               vec
-                               (update 0 #(str/split-lines (mdb.query/format-sql % driver/*driver*))))]
-              (testing "this query should not have any parameters"
-                (is (mc/validate [:cat [:sequential :string]] sql-args))))))))))
+      (mt/with-everything-store
+        (doseq [day [:sunday
+                     :monday
+                     :tuesday
+                     :wednesday
+                     :thursday
+                     :friday
+                     :saturday]]
+          (metabase.test/with-temporary-setting-values [start-of-week day]
+            (sql.qp/with-driver-honey-sql-version driver/*driver*
+              (let [sql-args (-> (sql.qp/format-honeysql driver/*driver* (sql.qp/date driver/*driver* :day-of-week :x))
+                                 vec
+                                 (update 0 #(str/split-lines (mdb.query/format-sql % driver/*driver*))))]
+                (testing "this query should not have any parameters"
+                  (is (mc/validate [:cat [:sequential :string]] sql-args)))))))))))
 
 (deftest ^:parallel binning-optimize-math-expressions-test
   (testing "Don't include nonsense like `+ 0.0` and `- 0.0` when generating expressions for binning"

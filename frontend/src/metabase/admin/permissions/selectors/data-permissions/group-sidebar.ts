@@ -1,4 +1,4 @@
-import { createSelector } from "reselect";
+import { createSelector } from "@reduxjs/toolkit";
 import { t } from "ttag";
 
 import { State } from "metabase-types/store";

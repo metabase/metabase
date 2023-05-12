@@ -11,7 +11,7 @@ const propTypes = {
   to: PropTypes.oneOfType([PropTypes.string, PropTypes.bool]),
   activeColor: PropTypes.string,
   inactiveColor: PropTypes.string,
-  isSingleLine: PropTypes.boolean,
+  isSingleLine: PropTypes.bool,
 };
 
 function RawMaybeLink({

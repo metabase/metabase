@@ -45,7 +45,8 @@ export type FieldVisibilityType =
   | "details-only"
   | "hidden"
   | "normal"
-  | "retired";
+  | "retired"
+  | "sensitive";
 
 type HumanReadableFieldValue = string;
 export type FieldValue = [RowValue] | [RowValue, HumanReadableFieldValue];
@@ -54,6 +55,12 @@ export type FieldValuesType = "list" | "search" | "none";
 
 export type FieldDimension = {
   name: string;
+};
+
+export type FieldDimensionOption = {
+  name: string;
+  mbql: unknown[] | null;
+  type: string;
 };
 
 export interface ConcreteField {
@@ -77,8 +84,11 @@ export interface ConcreteField {
   fk_target_field_id: FieldId | null;
   target?: Field;
   values?: FieldValue[];
-  dimensions?: FieldDimension[];
   settings?: FieldFormattingSettings;
+
+  dimensions?: FieldDimension[];
+  default_dimension_option?: FieldDimensionOption;
+  dimension_options?: FieldDimensionOption[];
 
   max_value?: number;
   min_value?: number;
@@ -88,6 +98,8 @@ export interface ConcreteField {
   points_of_interest?: string;
 
   nfc_path: string[] | null;
+  json_unfolding: boolean | null;
+  coercion_strategy: string | null;
   fingerprint: FieldFingerprint | null;
 
   last_analyzed: string;

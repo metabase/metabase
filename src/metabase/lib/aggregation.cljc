@@ -2,13 +2,14 @@
   (:refer-clojure :exclude [count distinct max min var])
   (:require
    [clojure.math :as math]
+   [medley.core :as m]
    [metabase.lib.common :as lib.common]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.aggregation :as lib.schema.aggregation]
-   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.util :as lib.util]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
@@ -18,22 +19,23 @@
   [metadata :- lib.metadata/ColumnMetadata]
   (let [options {:lib/uuid       (str (random-uuid))
                  :effective-type ((some-fn :effective-type :base-type) metadata)}
-        index   (::aggregation-index metadata)]
-    (assert (integer? index) "Metadata for an aggregation reference should include ::aggregation-index")
-    [:aggregation options index]))
+        ag-uuid (::aggregation-uuid metadata)]
+    (assert ag-uuid "Metadata for an aggregation reference should include ::aggregation-uuid")
+    [:aggregation options ag-uuid]))
 
 (mu/defn resolve-aggregation :- ::lib.schema.aggregation/aggregation
   "Resolve an aggregation with a specific `index`."
   [query        :- ::lib.schema/query
    stage-number :- :int
-   index        :- ::lib.schema.common/int-greater-than-or-equal-to-zero]
-  (let [{aggregations :aggregation} (lib.util/query-stage query stage-number)]
-    (when (<= (clojure.core/count aggregations) index)
-      (throw (ex-info (i18n/tru "No aggregation at index {0}" index)
-                      {:index        index
+   ag-uuid      :- :string]
+  (let [{aggregations :aggregation} (lib.util/query-stage query stage-number)
+        found (m/find-first (comp #{ag-uuid} :lib/uuid second) aggregations)]
+    (when-not found
+      (throw (ex-info (i18n/tru "No aggregation with uuid {0}" ag-uuid)
+                      {:uuid         ag-uuid
                        :query        query
                        :stage-number stage-number})))
-    (nth aggregations index)))
+    found))
 
 (defmethod lib.metadata.calculation/describe-top-level-key-method :aggregation
   [query stage-number _k]
@@ -48,8 +50,8 @@
   (let [aggregation (resolve-aggregation query stage-number index)]
     (merge
      (lib.metadata.calculation/metadata query stage-number aggregation)
-     {:lib/source         :source/aggregations
-      ::aggregation-index index}
+     {:lib/source :source/aggregations
+      ::aggregation-uuid (:lib/uuid (second aggregation))}
      (when base-type
        {:base-type base-type})
      (when effective-type
@@ -83,8 +85,6 @@
 (defmethod lib.metadata.calculation/column-name-method :case
   [_query _stage-number _case]
   "case")
-
-(lib.hierarchy/derive :case ::aggregation)
 
 (lib.hierarchy/derive ::unary-aggregation ::aggregation)
 
@@ -203,6 +203,10 @@
 (lib.common/defop sum-where   [x y])
 (lib.common/defop var         [x])
 
+(defmethod lib.ref/ref-method :aggregation
+  [aggregation-clause]
+  aggregation-clause)
+
 (mu/defn aggregate :- ::lib.schema/query
   "Adds an aggregation to query."
   ([query an-aggregate-clause]
@@ -218,6 +222,7 @@
   ([query        :- ::lib.schema/query
     stage-number :- :int]
    (some->> (not-empty (:aggregation (lib.util/query-stage query stage-number)))
-            (into [] (map-indexed (fn [i aggregation]
-                                    (-> (lib.metadata.calculation/metadata query stage-number aggregation)
-                                        (assoc :lib/source :source/aggregations, ::aggregation-index i))))))))
+            (into [] (map (fn [aggregation]
+                            (-> (lib.metadata.calculation/metadata query stage-number aggregation)
+                                (assoc :lib/source :source/aggregations
+                                       ::aggregation-uuid (:lib/uuid (second aggregation))))))))))

@@ -21,7 +21,9 @@ describe("scenarios > admin > datamodel > segments", () => {
   describe("with no segments", () => {
     it("should show no segments in UI", () => {
       cy.visit("/admin/datamodel/segments");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Segments").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(
         "Create segments to add them to the Filter dropdown in the query builder",
       );
@@ -29,7 +31,9 @@ describe("scenarios > admin > datamodel > segments", () => {
 
     it("should have 'Custom expression' in a filter list (metabase#13069)", () => {
       cy.visit("/admin/datamodel/segments");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("New segment").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Select a table").click();
 
       // Ugly hack to prevent failures that started after https://github.com/metabase/metabase/pull/24682 has been merged.
@@ -43,6 +47,7 @@ describe("scenarios > admin > datamodel > segments", () => {
         cy.findByText("Orders").click();
       });
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Add filters to narrow your answer").click();
 
       cy.log("Fails in v0.36.0 and v0.36.3. It exists in v0.35.4");
@@ -53,7 +58,9 @@ describe("scenarios > admin > datamodel > segments", () => {
 
     it("should show no segments", () => {
       cy.visit("/reference/segments");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Segments are interesting subsets of tables");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Learn how to create segments");
     });
   });
@@ -78,35 +85,47 @@ describe("scenarios > admin > datamodel > segments", () => {
     it("should show the segment fields list and detail view", () => {
       // In the list
       cy.visit("/reference/segments");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(SEGMENT_NAME);
 
       // Detail view
       cy.visit("/reference/segments/1");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Description");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("See this segment");
 
       // Segment fields
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Fields in this segment").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("See this segment").should("not.exist");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(`Fields in ${SEGMENT_NAME}`);
       cy.findAllByText("Discount");
     });
 
     it("should show up in UI list", () => {
       cy.visit("/admin/datamodel/segments");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains(SEGMENT_NAME);
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Filtered by Total");
     });
 
     it("should show the segment details of a specific id", () => {
       cy.visit("/admin/datamodel/segment/1");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Edit Your Segment");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Preview");
     });
 
     it("should show no questions based on a new segment", () => {
       cy.visit("/reference/segments/1/questions");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(`Questions about ${SEGMENT_NAME}`);
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(
         "Questions about this segment will appear here as they're added",
       );
@@ -124,34 +143,46 @@ describe("scenarios > admin > datamodel > segments", () => {
       });
       cy.findByTestId("apply-filters").click();
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Product ID is 14");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Save").click();
       cy.findAllByText("Save").last().click();
 
       // Check list
       cy.visit("/reference/segments/1/questions");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(
         "Questions about this segment will appear here as they're added",
       ).should("not.exist");
-      cy.findByText(`Orders, Filtered by ${SEGMENT_NAME} and Product ID equals 14`);
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText(
+        `Orders, Filtered by ${SEGMENT_NAME} and Product ID equals 14`,
+      );
     });
 
     it("should update that segment", () => {
       cy.visit("/admin");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Data Model").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Segments").click();
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains(SEGMENT_NAME)
         .parent()
         .parent()
         .parent()
         .find(".Icon-ellipsis")
         .click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Edit Segment").click();
 
       // update the filter from "< 100" to "> 10"
       cy.url().should("match", /segment\/1$/);
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Edit Your Segment");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains(/Total\s+is less than/).click();
       popover().contains("Less than").click();
       popover().contains("Greater than").click();
@@ -159,6 +190,7 @@ describe("scenarios > admin > datamodel > segments", () => {
       popover().contains("Update filter").click();
 
       // confirm that the preview updated
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("18758 rows");
 
       // update name and description, set a revision note, and save the update
@@ -167,19 +199,23 @@ describe("scenarios > admin > datamodel > segments", () => {
         .clear()
         .type("All orders with a total over $10.");
       cy.get('[name="revision_message"]').type("time for a change");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Save changes").click();
 
       // get redirected to previous page and see the new segment name
       cy.url().should("match", /datamodel\/segments$/);
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Orders > 10");
 
       // clean up
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Orders > 10")
         .parent()
         .parent()
         .parent()
         .find(".Icon-ellipsis")
         .click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Retire Segment").click();
       modal().find("textarea").type("delete it");
       modal().contains("button", "Retire").click();

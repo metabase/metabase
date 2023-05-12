@@ -5,8 +5,8 @@ import type {
   DashCardId,
   DashCardDataMap,
   ParameterId,
+  ParameterValueOrArray,
 } from "metabase-types/api";
-import { ParameterValueOrArray } from "metabase-types/types/Parameter";
 
 export type DashboardSidebarName =
   | "addQuestion"
@@ -42,6 +42,7 @@ export interface DashboardState {
     loadingIds: DashCardId[];
     loadingStatus: "idle" | "running" | "complete";
     startTime: number | null;
+    endTime: number | null;
   };
   loadingControls: {
     documentTitle?: string;
@@ -59,4 +60,9 @@ export interface DashboardState {
   };
 
   missingActionParameters: unknown;
+
+  autoApplyFilters: {
+    toastId: number | null;
+    toastDashboardId: number | null;
+  };
 }

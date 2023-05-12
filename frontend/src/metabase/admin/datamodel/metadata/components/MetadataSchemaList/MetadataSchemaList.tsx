@@ -8,8 +8,9 @@ import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import * as Urls from "metabase/lib/urls";
 import Schemas from "metabase/entities/schemas";
 import Icon from "metabase/components/Icon/Icon";
-import { DatabaseId, Schema, SchemaId } from "metabase-types/api";
+import { DatabaseId, SchemaId } from "metabase-types/api";
 import { Dispatch, State } from "metabase-types/store";
+import Schema from "metabase-lib/metadata/Schema";
 
 interface OwnProps {
   selectedDatabaseId: DatabaseId;

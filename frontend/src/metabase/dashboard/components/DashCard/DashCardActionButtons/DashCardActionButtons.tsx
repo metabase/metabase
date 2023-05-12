@@ -5,12 +5,12 @@ import Icon from "metabase/components/Icon";
 
 import { getVisualizationRaw } from "metabase/visualizations";
 
-import {
+import type {
   Dashboard,
   DashboardOrderedCard,
+  Series,
   VisualizationSettings,
 } from "metabase-types/api";
-import { Series } from "metabase-types/types/Visualization";
 
 import { isActionDashCard } from "metabase/actions/utils";
 import { isLinkDashCard } from "metabase/dashboard/utils";

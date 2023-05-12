@@ -1,6 +1,6 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
-import { Breakout as BreakoutObject } from "metabase-types/types/Query";
+import type { Breakout as BreakoutObject } from "metabase-types/api";
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import Dimension from "metabase-lib/Dimension";
 import Field from "metabase-lib/metadata/Field";

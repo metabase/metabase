@@ -24,18 +24,17 @@ import ErrorBoundary from "metabase/ErrorBoundary";
 import type {
   Card,
   CardId,
+  DatasetData,
   Dashboard,
   DashboardOrderedCard,
   DashCardId,
-  VisualizationSettings,
-} from "metabase-types/api";
-import type { DatasetData } from "metabase-types/types/Dataset";
-import type {
   ParameterId,
   ParameterValueOrArray,
-} from "metabase-types/types/Parameter";
-import type { Series } from "metabase-types/types/Visualization";
+  Series,
+  VisualizationSettings,
+} from "metabase-types/api";
 
+import { DASHBOARD_SLOW_TIMEOUT } from "metabase/dashboard/constants";
 import { getParameterValuesBySlug } from "metabase-lib/parameters/utils/parameter-values";
 
 import type Mode from "metabase-lib/Mode";
@@ -49,8 +48,6 @@ import {
 import DashCardActionButtons from "./DashCardActionButtons";
 import DashCardVisualization from "./DashCardVisualization";
 import { DashCardRoot, DashboardCardActionsPanel } from "./DashCard.styled";
-
-const DATASET_USUALLY_FAST_THRESHOLD = 15 * 1000;
 
 function preventDragging(event: React.SyntheticEvent) {
   event.stopPropagation();
@@ -187,7 +184,7 @@ function DashCard({
       isSlow: slowCards[card.id],
       isUsuallyFast:
         card.query_average_duration &&
-        card.query_average_duration < DATASET_USUALLY_FAST_THRESHOLD,
+        card.query_average_duration < DASHBOARD_SLOW_TIMEOUT,
     }));
   }, [cards, dashcard.id, dashcardData, slowCards]);
 
@@ -363,4 +360,6 @@ function DashCard({
   );
 }
 
-export default DashCard;
+export default Object.assign(DashCard, {
+  root: DashCardRoot,
+});

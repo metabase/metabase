@@ -1,7 +1,8 @@
 import React from "react";
 import { isSyncCompleted } from "metabase/lib/syncing";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import { Database, PopularItem, RecentItem, User } from "metabase-types/api";
+import { PopularItem, RecentItem, User } from "metabase-types/api";
+import Database from "metabase-lib/metadata/Database";
 import HomePopularSection from "../HomePopularSection";
 import HomeRecentSection from "../HomeRecentSection";
 import HomeXraySection from "../../containers/HomeXraySection";

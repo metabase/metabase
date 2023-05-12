@@ -3,6 +3,7 @@ import { connect } from "react-redux";
 import { t } from "ttag";
 import { getEngineNativeType } from "metabase/lib/engine";
 import Button from "metabase/core/components/Button";
+import { checkNotNull } from "metabase/core/utils/types";
 import {
   getNativeQueryFn,
   getQuestion,
@@ -50,7 +51,7 @@ const ConvertQueryModal = ({
     const newQuestion = question.setDatasetQuery({
       type: "native",
       native: { query, "template-tags": {} },
-      database: question.databaseId() || undefined,
+      database: checkNotNull(question.databaseId()),
     });
 
     onUpdateQuestion?.(newQuestion, { shouldUpdateUrl: true });

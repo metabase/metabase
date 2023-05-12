@@ -59,12 +59,12 @@ function mapStateToProps(
 ) {
   const { databaseId } = formField;
   return {
-    IDFields: Databases.selectors.getIdfields(state, { databaseId }),
+    IDFields: Databases.selectors.getIdFields(state, { databaseId }),
   };
 }
 
 const mapDispatchToProps = {
-  fetchDatabaseIDFields: Databases.objectActions.fetchIdfields,
+  fetchDatabaseIDFields: Databases.objectActions.fetchIdFields,
 };
 
 function FKTargetPicker({

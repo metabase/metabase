@@ -19,6 +19,7 @@
                 metabase.lib.column-group
                 metabase.lib.js
                 metabase.lib.limit
+                metabase.lib.types.isa
                 metabase.mbql.js
                 metabase.shared.formatting.constants
                 metabase.shared.formatting.date

@@ -105,6 +105,6 @@
                                                                    %
                                                                    ;; database-position isn't stable since they are
                                                                    ;; defined in sets. changing keys will change the
-                                                                   ;; order in the set implementation
-                                                                   (m/filter-vals some? (dissoc % :id :database-position))))]
+                                                                   ;; order in the set implementation. (and position depends on database-position)
+                                                                   (m/filter-vals some? (dissoc % :id :database-position :position))))]
              (remove-ids-and-nil-vals (#'fetch-metadata/our-metadata (t2/select-one Table :id transactions-table-id))))))))

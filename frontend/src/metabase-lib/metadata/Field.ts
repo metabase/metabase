@@ -2,18 +2,21 @@
 // @ts-nocheck
 import _ from "underscore";
 import moment from "moment-timezone";
+import { is_coerceable, coercions_for_type } from "cljs/metabase.types";
 
 import { formatField, stripId } from "metabase/lib/formatting";
 import type {
   DatasetColumn,
-  Field as IField,
+  FieldReference,
   FieldFingerprint,
   FieldId,
   FieldFormattingSettings,
   FieldVisibilityType,
+  FieldValuesType,
 } from "metabase-types/api";
-import type { Field as FieldRef } from "metabase-types/types/Query";
+import { TYPE } from "metabase-lib/types/constants";
 import {
+  isa,
   isAddress,
   isBoolean,
   isCategory,
@@ -21,6 +24,7 @@ import {
   isComment,
   isCoordinate,
   isCountry,
+  isCurrency,
   isDate,
   isDateWithoutTime,
   isDescription,
@@ -37,10 +41,14 @@ import {
   isString,
   isSummable,
   isTime,
+  isTypeFK,
   isZipCode,
 } from "metabase-lib/types/utils/isa";
 import { getFilterOperators } from "metabase-lib/operators/utils";
-import { getFieldValues } from "metabase-lib/queries/utils/field";
+import {
+  getFieldValues,
+  getRemappings,
+} from "metabase-lib/queries/utils/field";
 import { createLookupByProperty, memoizeClass } from "metabase-lib/utils";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import type NativeQuery from "metabase-lib/queries/NativeQuery";
@@ -61,7 +69,7 @@ const LONG_TEXT_MIN = 80;
  */
 
 class FieldInner extends Base {
-  id: number | FieldRef;
+  id: number | FieldReference;
   name: string;
   display_name: string;
   description: string | null;
@@ -71,13 +79,18 @@ class FieldInner extends Base {
   table?: Table;
   table_id?: Table["id"];
   target?: Field;
-  has_field_values?: "list" | "search" | "none";
+  fk_target_field_id?: Field["id"] | null;
+  name_field?: Field["id"];
+  remapping?: unknown;
+  has_field_values?: FieldValuesType;
   has_more_values?: boolean;
   values: any[];
   position: number;
   metadata?: Metadata;
   source?: string;
   nfc_path?: string[];
+  json_unfolding: boolean | null;
+  coercion_strategy: string | null;
   fk_target_field_id: FieldId | null;
   settings?: FieldFormattingSettings;
   visibility_type: FieldVisibilityType;
@@ -132,7 +145,9 @@ class FieldInner extends Base {
   } = {}) {
     let displayName = "";
 
-    if (includeTable && this.table) {
+    // It is possible that the table doesn't exist or
+    // that it does, but its `displayName` resolves to an empty string.
+    if (includeTable && this.table?.displayName?.()) {
       displayName +=
         this.table.displayName({
           includeSchema,
@@ -175,6 +190,10 @@ class FieldInner extends Base {
 
   isNumeric() {
     return isNumeric(this);
+  }
+
+  isCurrency() {
+    return isCurrency(this);
   }
 
   isBoolean() {
@@ -283,6 +302,10 @@ class FieldInner extends Base {
 
   hasFieldValues() {
     return !_.isEmpty(this.fieldValues());
+  }
+
+  remappedValues() {
+    return getRemappings(this);
   }
 
   icon() {
@@ -512,6 +535,29 @@ class FieldInner extends Base {
 
   isVirtual() {
     return typeof this.id !== "number";
+  }
+
+  isJsonUnfolded() {
+    const database = this.table?.database;
+    return this.json_unfolding ?? database?.details["json-unfolding"] ?? true;
+  }
+
+  canUnfoldJson() {
+    const database = this.table?.database;
+
+    return (
+      isa(this.base_type, TYPE.JSON) &&
+      database != null &&
+      database.hasFeature("nested-field-columns")
+    );
+  }
+
+  canCoerceType() {
+    return !isTypeFK(this.semantic_type) && is_coerceable(this.base_type);
+  }
+
+  coercionStrategyOptions(): string[] {
+    return coercions_for_type(this.base_type);
   }
 
   /**

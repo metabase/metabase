@@ -93,6 +93,8 @@ DataPermissionsPage.propTypes = propTypes;
 
 export default _.compose(
   Groups.loadList(),
-  Databases.loadList(),
+  Databases.loadList({
+    selectorName: "getListUnfiltered",
+  }),
   connect(mapStateToProps, mapDispatchToProps),
 )(DataPermissionsPage);

@@ -8,8 +8,7 @@ import {
   setupUnauthorizedDatabasesEndpoints,
 } from "__support__/server-mocks";
 
-import type { ActionDashboardCard } from "metabase-types/api";
-import type { ParameterTarget } from "metabase-types/types/Parameter";
+import type { ActionDashboardCard, ParameterTarget } from "metabase-types/api";
 import {
   createMockActionDashboardCard as _createMockActionDashboardCard,
   createMockActionParameter,
@@ -39,15 +38,29 @@ const ACTION = createMockQueryAction({
   parameters: [
     createMockActionParameter({
       id: "parameter_1",
-      type: "type/Text",
+      name: "Parameter 1",
+      type: "string/=",
       target: ["variable", ["template-tag", "1"]],
     }),
     createMockActionParameter({
       id: "parameter_2",
-      type: "type/Integer",
+      name: "Parameter 2",
+      type: "number/=",
       target: ["variable", ["template-tag", "2"]],
     }),
   ],
+  visualization_settings: {
+    fields: {
+      parameter_1: createMockFieldSettings({
+        fieldType: "string",
+        inputType: "string",
+      }),
+      parameter_2: createMockFieldSettings({
+        fieldType: "number",
+        inputType: "number",
+      }),
+    },
+  },
 });
 
 function createMockActionDashboardCard(

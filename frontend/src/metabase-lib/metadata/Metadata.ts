@@ -1,13 +1,14 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
 import _ from "underscore";
-import Metric from "metabase-lib/metadata/Metric";
 import type Question from "../Question";
 import Base from "./Base";
 import type Database from "./Database";
 import type Table from "./Table";
 import type Schema from "./Schema";
 import type Field from "./Field";
+import type Metric from "./Metric";
+import type Segment from "./Segment";
 import { getUniqueFieldId } from "./utils/fields";
 
 /**
@@ -24,9 +25,13 @@ import { getUniqueFieldId } from "./utils/fields";
  */
 
 export default class Metadata extends Base {
-  databases: { [databaseId: string]: Database };
-  questions: { [cardId: string]: Question };
-  tables: { [tableId: string]: Table };
+  databases: Record<string, Database>;
+  schemas: Record<string, Schema>;
+  tables: Record<string, TableId>;
+  fields: Record<string, Field>;
+  metrics: Record<string, Metric>;
+  segments: Record<string, Segment>;
+  questions: Record<string, Question>;
 
   /**
    * @deprecated this won't be sorted or filtered in a meaningful way

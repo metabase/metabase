@@ -47,41 +47,38 @@
 
 (driver/register! :postgres, :parent :sql-jdbc)
 
+(doseq [[feature supported?] {:convert-timezone true
+                              :datetime-diff    true
+                              :now              true
+                              :persist-models   true
+                              :schemas          true}]
+  (defmethod driver/database-supports? [:postgres feature] [_driver _feature _db] supported?))
+
+(defmethod driver/database-supports? [:postgres :nested-field-columns]
+  [_driver _feat db]
+  (driver.common/json-unfolding-default db))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             metabase.driver impls                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defmethod driver/display-name :postgres [_] "PostgreSQL")
 
-(defmethod driver/database-supports? [:postgres :nested-field-columns]
-  [_driver _feat db]
-  (driver.common/json-unfolding-default db))
-
-(defmethod driver/database-supports? [:postgres :datetime-diff]
-  [_driver _feat _db]
-  true)
-
-(defmethod driver/database-supports? [:postgres :persist-models]
-  [_driver _feat _db]
-  true)
-
 (defmethod driver/database-supports? [:postgres :persist-models-enabled]
   [_driver _feat db]
   (-> db :options :persist-models-enabled))
-
-(defmethod driver/database-supports? [:postgres :convert-timezone]
-  [_driver _feat _db]
-  true)
-
-(defmethod driver/database-supports? [:postgres :now]
-  [_driver _feat _db]
-  true)
 
 (doseq [feature [:actions :actions/custom :uploads]]
   (defmethod driver/database-supports? [:postgres feature]
     [driver _feat _db]
     ;; only supported for Postgres for right now. Not supported for child drivers like Redshift or whatever.
     (= driver :postgres)))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                             metabase.driver impls                                              |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defmethod driver/display-name :postgres [_] "PostgreSQL")
 
 (defmethod driver/humanize-connection-error-message :postgres
   [_ message]
@@ -700,6 +697,8 @@
                 (mdb.spec/spec :postgres it)
                 (sql-jdbc.common/handle-additional-options it details-map))]
     props))
+
+(defmethod sql-jdbc.sync/excluded-schemas :postgres [_driver] #{"information_schema" "pg_catalog"})
 
 (defmethod sql-jdbc.execute/set-timezone-sql :postgres
   [_]

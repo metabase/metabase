@@ -267,7 +267,8 @@
 (deftest ^:parallel aggregation-ref-display-info-test
   (let [query  (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
                    (lib/aggregate (lib/avg (lib/+ (lib/field "VENUES" "PRICE") 1))))
-        ag-ref [:aggregation {:lib/uuid "8e76cd35-465d-4a2b-a03a-55857f07c4e0", :effective-type :type/Float} 0]]
+        ag-uuid (:metabase.lib.aggregation/aggregation-uuid (first (lib/aggregations query)))
+        ag-ref [:aggregation {:lib/uuid "8e76cd35-465d-4a2b-a03a-55857f07c4e0", :effective-type :type/Float} ag-uuid]]
     (is (= :type/Float
            (lib.metadata.calculation/type-of query ag-ref)))
     (is (= "Average of Price + 1"
@@ -276,7 +277,7 @@
              :lib/source                                 :source/aggregations
              :display-name                               "Average of Price + 1"
              :effective-type                             :type/Float
-             :metabase.lib.aggregation/aggregation-index 0}
+             :metabase.lib.aggregation/aggregation-uuid ag-uuid}
             (lib.metadata.calculation/metadata query ag-ref)))
     (is (=? {:display-name   "Average of Price + 1"
              :effective-type :type/Float}

@@ -30,10 +30,6 @@ jobs:
             const MAX_ATTEMPTS = 2;
             const ATTEMPT = ${{ github.event.workflow_run.run_attempt }};
 
-            const author = `@${context.actor}`;
-            const breaking_commit = context.sha;
-            const branch = context.ref;
-
             if (ATTEMPT <= MAX_ATTEMPTS) {
               github.rest.actions.reRunWorkflowFailedJobs({
                 owner: context.repo.owner,
@@ -42,8 +38,12 @@ jobs:
               });
             } else {
               // notify slack of repeated failure
-              const WebClient = require('@slack/web-api');
-              const slack = new WebClient(${{ secrets.SLACK_BOT_TOKEN }});
+              const { WebClient } = require('@slack/web-api');
+              const slack = new WebClient('${{ secrets.SLACK_BOT_TOKEN }}');
+
+              const author = `@${context.actor}`;
+              const breaking_commit = context.sha;
+              const branch = context.ref;
 
               await slack.chat.postMessage({
                 channel: 'engineering-ci',

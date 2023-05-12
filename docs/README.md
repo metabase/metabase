@@ -148,6 +148,7 @@ Metabase's reference documentation.
 - [Collection permissions](./permissions/collections.md)
 - [Application permissions](./permissions/application.md)
 - [Data sandboxes](./permissions/data-sandboxes.md)
+- [Data sandbox examples](./permissions/data-sandbox-examples.md)
 - [SQL snippets folder permissions](./permissions/snippets.md)
 
 ### Embedding

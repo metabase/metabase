@@ -12,6 +12,12 @@
    [metabase.util :as u]
    [metabase.util.log :as log]))
 
+(def ^:private ^:dynamic *pMBQL-uuid->legacy-index*
+  {})
+
+(def ^:private ^:dynamic *legacy-index->pMBQL-uuid*
+  {})
+
 (defn- clean-location [almost-stage error-type error-location]
   (let [operate-on-parent? #{:malli.core/missing-key :malli.core/end-of-input}
         location (if (operate-on-parent? error-type)
@@ -92,13 +98,18 @@
 
 (defmethod ->pMBQL :mbql.stage/mbql
   [stage]
-  (reduce
-   (fn [stage k]
-     (if-not (get stage k)
-       stage
-       (update stage k ->pMBQL)))
-   stage
-   stage-keys))
+  (let [aggregations (->pMBQL (:aggregation stage))]
+    (binding [*legacy-index->pMBQL-uuid* (into {}
+                                               (map-indexed (fn [idx [_tag {ag-uuid :lib/uuid}]]
+                                                              [idx ag-uuid]))
+                                               aggregations)]
+      (reduce
+        (fn [stage k]
+          (if-not (get stage k)
+            stage
+            (update stage k ->pMBQL)))
+        (m/assoc-some stage :aggregation aggregations)
+        (disj stage-keys :aggregation)))))
 
 (defmethod ->pMBQL :mbql/join
   [join]
@@ -151,14 +162,24 @@
   (let [default (:default options)]
     (cond-> [:case (dissoc options :default) (mapv ->pMBQL pred-expr-pairs)]
       :always lib.options/ensure-uuid
-      default (conj (->pMBQL default)))))
+      (some? default) (conj (->pMBQL default)))))
 
-(doseq [tag [:aggregation :expression]]
-  (lib.hierarchy/derive tag ::aggregation-or-expression-ref))
-
-(defmethod ->pMBQL ::aggregation-or-expression-ref
+(defmethod ->pMBQL :expression
   [[tag value opts]]
   (lib.options/ensure-uuid [tag opts value]))
+
+(defn- get-or-throw!
+  [m k]
+  (let [result (get m k ::not-found)]
+    (if-not (= result ::not-found)
+      result
+      (throw (ex-info (str "Unable to find " (pr-str k) " in map.")
+                      {:m m
+                       :k k})))))
+
+(defmethod ->pMBQL :aggregation
+  [[tag value opts]]
+  (lib.options/ensure-uuid [tag opts (get-or-throw! *legacy-index->pMBQL-uuid* value)]))
 
 (defmethod ->pMBQL :aggregation-options
   [[_tag aggregation options]]
@@ -286,6 +307,14 @@
                      [k (->legacy-MBQL v)])))
         m))
 
+(defmethod ->legacy-MBQL :aggregation [[_ opts agg-uuid :as ag]]
+  (if (map? opts)
+    (let [opts (options->legacy-MBQL opts)]
+      (cond-> [:aggregation (get-or-throw! *pMBQL-uuid->legacy-index* agg-uuid)]
+        opts (conj opts)))
+    ;; Our conversion is a bit too aggressive and we're hitting legacy refs like [:aggregation 0] inside source_metadata that are only used for legacy and thus can be ignored
+    ag))
+
 (defmethod ->legacy-MBQL :dispatch-type/sequential [xs]
   (mapv ->legacy-MBQL xs))
 
@@ -297,7 +326,7 @@
                     [id opts])]
     [:field
      (->legacy-MBQL id)
-     (not-empty (disqualify opts))]))
+     (options->legacy-MBQL opts)]))
 
 (defmethod ->legacy-MBQL :value
   [[_tag opts value]]
@@ -329,12 +358,16 @@
            (chain-stages base))))
 
 (defmethod ->legacy-MBQL :mbql.stage/mbql [stage]
-  (reduce #(m/update-existing %1 %2 ->legacy-MBQL)
-          (-> stage
-              disqualify
-              (m/update-existing :aggregation #(mapv aggregation->legacy-MBQL %))
-              (update-list->legacy-boolean-expression :filters :filter))
-          (remove #{:aggregation :filters} stage-keys)))
+  (binding [*pMBQL-uuid->legacy-index* (into {}
+                                             (map-indexed (fn [idx [_tag {ag-uuid :lib/uuid}]]
+                                                            [ag-uuid idx]))
+                                             (:aggregation stage))]
+    (reduce #(m/update-existing %1 %2 ->legacy-MBQL)
+            (-> stage
+                disqualify
+                (m/update-existing :aggregation #(mapv aggregation->legacy-MBQL %))
+                (update-list->legacy-boolean-expression :filters :filter))
+            (disj stage-keys :aggregation :filters))))
 
 (defmethod ->legacy-MBQL :mbql.stage/native [stage]
   (-> stage
