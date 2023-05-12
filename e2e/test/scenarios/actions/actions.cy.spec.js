@@ -3,6 +3,7 @@ import {
   editDashboard,
   restore,
   setActionsEnabledForDB,
+  startNewNativeQuestion,
 } from "e2e/support/helpers";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { PRODUCTS_ID } from "metabase-types/api/mocks/presets";
@@ -13,7 +14,7 @@ describe("scenarios > actions", () => {
     cy.signInAsAdmin();
   });
 
-  it("should not close Action Creator modal on outside click", () => {
+  it("should not close Action Creator modal on outside click when editing dashboard", () => {
     setActionsEnabledForDB(SAMPLE_DB_ID);
     addModelDashboard("GUI Dashboard", "dashboardId");
     cy.get("@dashboardId").then(id => {
@@ -36,6 +37,54 @@ describe("scenarios > actions", () => {
     cy.get("body").click("bottomRight");
 
     cy.findByTestId("action-creator-body-container").should("exist");
+  });
+
+  it("should not close Action Creator modal on outside click when creating new action", () => {
+    setActionsEnabledForDB(SAMPLE_DB_ID);
+    addModelDashboard("GUI Dashboard", "dashboardId");
+    cy.visit("/");
+    cy.findByTestId("new-item-button").click();
+    cy.findAllByTestId("action-menu-item").contains("Action").click();
+    cy.get("body").click("topLeft");
+    cy.get("body").click("bottomRight");
+    cy.findByTestId("action-creator-body-container").should("exist");
+  });
+
+  it("should not close SQL Snippet editor when clicking outside modal", () => {
+    setActionsEnabledForDB(SAMPLE_DB_ID);
+
+    startNewNativeQuestion();
+
+    cy.findByLabelText("snippet icon").click();
+    cy.findByTestId("sidebar-content").within(() => {
+      cy.findByText("Create a snippet").click();
+    });
+
+    cy.get("body").click("topLeft");
+    cy.get("body").click("bottomRight");
+
+    cy.get(".Modal").contains("Create your new snippet").should("exist");
+  });
+
+  it("should only close SQL Snippet editor modal when clicking `cancel` or `X` ", () => {
+    setActionsEnabledForDB(SAMPLE_DB_ID);
+
+    startNewNativeQuestion();
+
+    cy.findByLabelText("snippet icon").click();
+    cy.findByTestId("sidebar-content").within(() => {
+      cy.findByText("Create a snippet").click();
+    });
+
+    cy.get(".Modal")
+      .contains("Create your new snippet")
+      .parent()
+      .parent()
+      .within(() => {
+        cy.findByText("Cancel").click();
+      });
+
+    cy.get(".Modal").should("not.exist");
   });
 });
 
