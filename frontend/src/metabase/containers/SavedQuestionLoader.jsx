@@ -1,13 +1,10 @@
-import { useState, useEffect } from "react";
 import _ from "underscore";
 import { useAsync } from "react-use";
 
-import { useSelector, useDispatch } from "metabase/lib/redux";
+import { useDispatch } from "metabase/lib/redux";
 import { loadMetadataForCard } from "metabase/questions/actions";
-import { getMetadata } from "metabase/selectors/metadata";
 
 import Questions from "metabase/entities/questions";
-import Question from "metabase-lib/Question";
 
 // type annotations
 
@@ -36,42 +33,23 @@ import Question from "metabase-lib/Question";
  *
  * @example
  */
-const SavedQuestionLoader = ({ children, card, error, loading }) => {
-  const metadata = useSelector(getMetadata);
+const SavedQuestionLoader = ({ children, question, error, loading }) => {
   const dispatch = useDispatch();
-  const [question, setQuestion] = useState(null);
 
-  const cardMetadataState = useAsync(async () => {
-    if (card?.id == null) {
-      return;
+  const metadataState = useAsync(async () => {
+    if (question) {
+      await dispatch(loadMetadataForCard(question.card()));
     }
+  }, [question.id()]);
 
-    await dispatch(loadMetadataForCard(card));
-  }, [card?.id]);
-
-  useEffect(() => {
-    if (card?.id == null) {
-      return;
-    }
-
-    const hasCardMetadataLoaded =
-      !cardMetadataState.loading && cardMetadataState.error == null;
-
-    if (!hasCardMetadataLoaded) {
-      setQuestion(null);
-      return;
-    }
-
-    if (!question) {
-      setQuestion(new Question(card, metadata));
-    }
-  }, [card, metadata, cardMetadataState, question]);
+  const isMetadataLoaded =
+    !metadataState.loading && metadataState.error == null;
 
   return (
     children?.({
-      question,
-      loading: loading || cardMetadataState.loading,
-      error: error ?? cardMetadataState.error,
+      question: isMetadataLoaded ? question : null,
+      loading: loading || isMetadataLoaded.loading,
+      error: error ?? isMetadataLoaded.error,
     }) ?? null
   );
 };
@@ -80,6 +58,5 @@ export default _.compose(
   Questions.load({
     id: (_state, props) => props.questionId,
     loadingAndErrorWrapper: false,
-    entityAlias: "card",
   }),
 )(SavedQuestionLoader);
