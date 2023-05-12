@@ -8,6 +8,7 @@ import {
   FormattingControl,
   HorizontalClickActionButton,
   IconWrapper,
+  InfoControl,
   SortControl,
   TokenActionButton,
   TokenFilterActionButton,
@@ -74,7 +75,6 @@ export const ChartClickActionControl = ({
       );
 
     case "horizontal":
-    default: {
       return (
         <HorizontalClickActionButton
           small
@@ -91,6 +91,10 @@ export const ChartClickActionControl = ({
           {action.title}
         </HorizontalClickActionButton>
       );
-    }
+
+    case "info":
+      return <InfoControl>{action.title}</InfoControl>;
   }
+
+  return null;
 };

@@ -2,7 +2,12 @@ import {
   setOrUnsetParameterValues,
   setParameterValue,
 } from "metabase/dashboard/actions";
-import type { ClickAction, ClickObject, Drill } from "metabase/modes/types";
+import type {
+  ClickObject,
+  Drill,
+  AlwaysDefaultClickAction,
+  AlwaysDefaultClickActionSubAction,
+} from "metabase/modes/types";
 import type Question from "metabase-lib/Question";
 import {
   getDashboardDrillLinkUrl,
@@ -23,7 +28,7 @@ function getAction(
   type: DashboardDrillType,
   question: Question,
   clicked: ClickObject,
-): Partial<ClickAction> {
+): AlwaysDefaultClickActionSubAction {
   switch (type) {
     case "link-url":
       return {
@@ -55,7 +60,10 @@ function getAction(
   }
 }
 
-const DashboardClickDrill: Drill = ({ question, clicked = {} }) => {
+const DashboardClickDrill: Drill = ({
+  question,
+  clicked = {},
+}): AlwaysDefaultClickAction[] => {
   const type = getDashboardDrillType(clicked);
   if (!type) {
     return [];

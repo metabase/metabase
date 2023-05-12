@@ -16,14 +16,29 @@ export type ClickActionButtonType =
   | "formatting"
   | "horizontal"
   | "info"
+  | "sort"
   | "token"
-  | "token-filter"
-  | "sort";
+  | "token-filter";
+
+export type ClickActionSection =
+  | "auto"
+  | "auto-popover"
+  | "breakout"
+  | "breakout-popover"
+  | "details"
+  | "filter"
+  | "info"
+  | "records"
+  | "sort"
+  | "standalone_filter"
+  | "sum"
+  | "summarize"
+  | "zoom";
 
 export type ClickActionBase = {
   name: string;
   title?: React.ReactNode;
-  section: string; // TODO [26836]: add strict typings
+  section: ClickActionSection;
   icon?: React.ReactNode;
   buttonType: ClickActionButtonType;
   default?: boolean;
@@ -31,9 +46,11 @@ export type ClickActionBase = {
   extra?: () => Record<string, unknown>;
 };
 
-type ReduxClickAction = ClickActionBase & {
+type ReduxClickActionBase = {
   action: () => ReduxAction | Dispatcher;
 };
+
+type ReduxClickAction = ClickActionBase & ReduxClickActionBase;
 
 export type QuestionChangeClickAction = ClickActionBase & {
   question: () => Question;
@@ -44,10 +61,12 @@ export type PopoverClickAction = ClickActionBase & {
   popover: (props: ClickActionPopoverProps) => JSX.Element;
 };
 
-export type UrlClickAction = ClickActionBase & {
+type UrlClickActionBase = {
   ignoreSiteUrl?: boolean;
   url: () => string;
 };
+
+export type UrlClickAction = ClickActionBase & UrlClickActionBase;
 
 export type RegularClickAction =
   | ReduxClickAction
@@ -55,12 +74,14 @@ export type RegularClickAction =
   | PopoverClickAction
   | UrlClickAction;
 
-type AlwaysDefaultClickAction = Omit<
-  RegularClickAction,
-  "title" | "section" | "default" | "buttonType" | "tooltip"
-> & {
+export type AlwaysDefaultClickActionSubAction =
+  | ReduxClickActionBase
+  | UrlClickActionBase;
+
+export type AlwaysDefaultClickAction = {
+  name: string;
   defaultAlways: true;
-};
+} & AlwaysDefaultClickActionSubAction;
 
 export type ClickAction = RegularClickAction | AlwaysDefaultClickAction;
 
@@ -75,26 +96,15 @@ export type ClickActionPopoverProps = {
   onClose: () => void;
 };
 
-export const isReduxClickAction = (
-  clickAction: ClickAction,
-): clickAction is ReduxClickAction => "action" in clickAction;
-
-export const isQuestionChangeClickAction = (
-  clickAction: ClickAction,
-): clickAction is QuestionChangeClickAction => "question" in clickAction;
-
 export const isPopoverClickAction = (
   clickAction: ClickAction,
 ): clickAction is PopoverClickAction => "popover" in clickAction;
 
-export const isUrlClickAction = (
+export const AlwaysDefaultClickAction = (
   clickAction: ClickAction,
-): clickAction is UrlClickAction => "url" in clickAction;
+): clickAction is AlwaysDefaultClickAction =>
+  "defaultAlways" in clickAction && clickAction.defaultAlways;
 
 export const isRegularClickAction = (
   clickAction: ClickAction,
-): clickAction is RegularClickAction =>
-  isReduxClickAction(clickAction) ||
-  isQuestionChangeClickAction(clickAction) ||
-  isPopoverClickAction(clickAction) ||
-  isUrlClickAction(clickAction);
+): clickAction is RegularClickAction => !AlwaysDefaultClickAction(clickAction);

@@ -5,9 +5,9 @@ import type {
   ClickActionProps,
   PopoverClickAction,
 } from "metabase/modes/types";
-import { ClickActionPopoverProps } from "metabase/modes/types";
+import { ClickActionPopoverProps, UrlClickAction } from "metabase/modes/types";
 import MetabaseSettings from "metabase/lib/settings";
-import { ChartClickActionsView } from "metabase/visualizations/components/ChartClickActions/ChartClickActionsView";
+import { ChartClickActionsView } from "metabase/visualizations/components/ChartClickActions";
 import {
   automaticDashboardDrillUrl,
   automaticInsightsDrill,
@@ -32,7 +32,7 @@ const AutomaticInsightsDrill = ({
     buttonType: "horizontal",
   };
 
-  const drillOptions = [
+  const drillOptions: UrlClickAction[] = [
     {
       ...baseClickAction,
       name: "exploratory-dashboard",

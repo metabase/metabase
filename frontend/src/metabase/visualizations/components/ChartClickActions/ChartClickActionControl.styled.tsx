@@ -108,3 +108,10 @@ export const FormattingControl = styled(Button)`
     background-color: transparent;
   }
 `;
+
+export const InfoControl = styled.div`
+  color: ${color("text-dark")};
+  font-weight: bold;
+  line-height: 1.5rem;
+  max-width: 10.75rem;
+`;

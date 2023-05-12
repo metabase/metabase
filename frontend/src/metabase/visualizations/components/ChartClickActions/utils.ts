@@ -1,13 +1,14 @@
 import _ from "underscore";
 import { t } from "ttag";
-import type { ClickActionBase, RegularClickAction } from "metabase/modes/types";
+import type { RegularClickAction } from "metabase/modes/types";
+import { ClickActionSection } from "metabase/modes/types";
 
 type Section = {
   icon: string;
   index?: number;
 };
 
-export const SECTIONS: Record<string, Section> = {
+export const SECTIONS: Record<ClickActionSection, Section> = {
   records: {
     icon: "table2",
   },
@@ -19,9 +20,6 @@ export const SECTIONS: Record<string, Section> = {
   },
   sort: {
     icon: "sort",
-  },
-  formatting: {
-    icon: "gear",
   },
   breakout: {
     icon: "breakout",
@@ -39,12 +37,6 @@ export const SECTIONS: Record<string, Section> = {
   },
   sum: {
     icon: "sum",
-  },
-  averages: {
-    icon: "curve",
-  },
-  dashboard: {
-    icon: "dashboard",
   },
   auto: {
     icon: "bolt",
@@ -66,10 +58,9 @@ Object.values(SECTIONS).map((section, index) => {
 export const getGroupedAndSortedActions = (
   clickActions: RegularClickAction[],
 ) => {
-  const groupedClickActions: Record<string, RegularClickAction[]> = _.groupBy(
-    clickActions,
-    "section",
-  );
+  const groupedClickActions = _.groupBy(clickActions, "section") as {
+    [key in ClickActionSection]?: RegularClickAction[];
+  };
 
   if (groupedClickActions["sum"]?.length === 1) {
     // if there's only one "sum" click action, merge it into "summarize" and change its button type and icon
@@ -83,8 +74,7 @@ export const getGroupedAndSortedActions = (
     });
     delete groupedClickActions["sum"];
   }
-  const hasOnlyOneSortAction = groupedClickActions["sort"]?.length === 1;
-  if (hasOnlyOneSortAction) {
+  if (groupedClickActions["sort"]?.length === 1) {
     // restyle the Formatting action when there is only one option
     groupedClickActions["sort"][0] = {
       ...groupedClickActions["sort"][0],
@@ -98,7 +88,7 @@ export const getGroupedAndSortedActions = (
     .value();
 };
 
-export const getGALabelForAction = (action: ClickActionBase) =>
+export const getGALabelForAction = (action: RegularClickAction) =>
   action ? `${action.section || ""}:${action.name || ""}` : null;
 
 export const getSectionTitle = (sectionKey: string): string | null => {

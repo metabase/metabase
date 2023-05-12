@@ -64,7 +64,7 @@ const SummarizeColumnDrill: Drill = opts => {
   const { aggregationOperators } = drill;
 
   return aggregationOperators
-    .filter(operator => operator)
+    .filter(Boolean)
     .map(operator => getAction(operator as AggregationOperator, opts));
 };
 

@@ -8,7 +8,7 @@ import type {
   PopoverClickAction,
 } from "metabase/modes/types";
 import { Card } from "metabase-types/api";
-import { ChartClickActionsView } from "metabase/visualizations/components/ChartClickActions/ChartClickActionsView";
+import { ChartClickActionsView } from "metabase/visualizations/components/ChartClickActions";
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import {
   pivotByCategoryDrill,
@@ -112,12 +112,13 @@ export const getPivotDrill =
       buttonType: "horizontal",
     };
 
-    const clickActions = drillOptions.map(
+    const clickActions: PopoverClickAction[] = drillOptions.map(
       ({ name, title, icon, breakoutOptions, query, dimensions }) => ({
         ...baseClickAction,
         name,
         title,
         icon,
+        type: "popover",
         section: "breakout-popover",
         popover: getSingleDrillComponent({
           query,

@@ -1,7 +1,9 @@
 import React from "react";
-import styled from "@emotion/styled";
-import { css } from "@emotion/react";
-import { color } from "metabase/lib/colors";
+import {
+  Section,
+  SectionTitle,
+  SectionWithTitle,
+} from "metabase/visualizations/components/ChartClickActions/ChartClickActionsSection.styled";
 import { ContentDirectionType } from "./utils";
 
 interface Props {
@@ -41,46 +43,3 @@ export const ChartClickActionsSection = ({
     </Section>
   );
 };
-
-const Section = styled.div<{ type: string; direction?: ContentDirectionType }>`
-  display: flex;
-
-  ${({ type }) =>
-    type === "sort" &&
-    css`
-      margin-bottom: 0.5rem;
-    `}
-
-  ${({ direction }) =>
-    direction === "row"
-      ? css`
-          flex-direction: row;
-        `
-      : css`
-          flex-direction: column;
-          align-items: stretch;
-        `}
-
-  gap: 0.5rem;
-`;
-
-const SectionWithTitle = styled.div<{
-  childrenDirection?: ContentDirectionType;
-}>`
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-
-  gap: ${({ childrenDirection }) =>
-    childrenDirection === "row" ? `0.75rem` : `1rem`};
-
-  margin: ${({ childrenDirection }) =>
-    childrenDirection === "row" ? `0.5rem 0` : `0.5rem 0 0`};
-`;
-
-const SectionTitle = styled.p`
-  margin: 0;
-
-  font-size: 0.875em;
-  color: ${color("text-medium")};
-`;
