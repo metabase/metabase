@@ -51,8 +51,6 @@ export const AddToDashSelectDashModal = ({
     enabled: typeof collectionId !== "undefined",
   });
 
-  // console.log({collectionQuery});
-
   const navigateToDashboard: Required<CreateDashboardFormOwnProps>["onCreate"] =
     dashboard => {
       onChangeLocation(
