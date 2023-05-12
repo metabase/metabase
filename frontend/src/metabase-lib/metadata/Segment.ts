@@ -31,6 +31,10 @@ export default class Segment {
     return this.segment.definition;
   }
 
+  get definition_description() {
+    return this.segment.definition_description;
+  }
+
   get revision_message() {
     return this.segment.revision_message;
   }
