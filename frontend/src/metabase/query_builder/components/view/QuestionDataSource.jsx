@@ -4,6 +4,7 @@ import PropTypes from "prop-types";
 
 import { color } from "metabase/lib/colors";
 import * as Urls from "metabase/lib/urls";
+import Collections from "metabase/entities/collections";
 import Questions from "metabase/entities/questions";
 
 import Tooltip from "metabase/core/components/Tooltip";
@@ -57,23 +58,35 @@ function QuestionDataSource({ question, originalQuestion, subHead, ...props }) {
 
   return (
     <Questions.Loader id={sourceQuestionId} loadingAndErrorWrapper={false}>
-      {({ question: sourceQuestion }) => {
-        if (!sourceQuestion) {
-          return null;
-        }
-        if (sourceQuestion.dataset) {
-          return (
-            <SourceDatasetBreadcrumbs
-              dataset={sourceQuestion}
-              variant={variant}
-              {...props}
-            />
-          );
-        }
-        return (
-          <DataSourceCrumbs question={question} variant={variant} {...props} />
-        );
-      }}
+      {({ question: sourceQuestion }) => (
+        <Collections.Loader
+          id={sourceQuestion?.collectionId()}
+          loadingAndErrorWrapper={false}
+        >
+          {({ collection, loading }) => {
+            if (!sourceQuestion || loading) {
+              return null;
+            }
+            if (sourceQuestion.isDataset()) {
+              return (
+                <SourceDatasetBreadcrumbs
+                  model={sourceQuestion}
+                  collection={collection}
+                  variant={variant}
+                  {...props}
+                />
+              );
+            }
+            return (
+              <DataSourceCrumbs
+                question={question}
+                variant={variant}
+                {...props}
+              />
+            );
+          }}
+        </Collections.Loader>
+      )}
     </Questions.Loader>
   );
 }
@@ -94,11 +107,11 @@ function DataSourceCrumbs({ question, variant, isObjectDetail, ...props }) {
 }
 
 SourceDatasetBreadcrumbs.propTypes = {
-  dataset: PropTypes.object.isRequired,
+  model: PropTypes.object.isRequired,
+  collection: PropTypes.object.isRequired,
 };
 
-function SourceDatasetBreadcrumbs({ dataset, ...props }) {
-  const { collection } = dataset;
+function SourceDatasetBreadcrumbs({ model, collection, ...props }) {
   return (
     <HeadBreadcrumbs
       {...props}
@@ -111,7 +124,7 @@ function SourceDatasetBreadcrumbs({ dataset, ...props }) {
         >
           {collection?.name || t`Our analytics`}
         </HeadBreadcrumbs.Badge>,
-        dataset.archived ? (
+        model.isArchived() ? (
           <Tooltip
             key="dataset-name"
             tooltip={t`This model is archived and shouldn't be used.`}
@@ -122,15 +135,15 @@ function SourceDatasetBreadcrumbs({ dataset, ...props }) {
               inactiveColor="text-light"
               icon={{ name: "warning", color: color("danger") }}
             >
-              {dataset.name}
+              {model.displayName()}
             </HeadBreadcrumbs.Badge>
           </Tooltip>
         ) : (
           <HeadBreadcrumbs.Badge
-            to={Urls.question(dataset)}
+            to={Urls.question(model.card())}
             inactiveColor="text-light"
           >
-            {dataset.name}
+            {model.displayName()}
           </HeadBreadcrumbs.Badge>
         ),
       ]}
