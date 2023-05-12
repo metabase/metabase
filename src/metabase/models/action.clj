@@ -39,8 +39,11 @@
   (derive :hook/timestamped?))
 
 (doseq [model action-sub-models]
-  (derive model :metabase/model)
-  (methodical/defmethod t2/primary-keys model [_model] [:action_id]))
+  (derive model :metabase/model))
+
+(methodical/defmethod t2/primary-keys :model/QueryAction    [_model] [:action_id])
+(methodical/defmethod t2/primary-keys :model/HTTPAction     [_model] [:action_id])
+(methodical/defmethod t2/primary-keys :model/ImplicitAction [_model] [:action_id])
 
 (t2/deftransforms :model/Action
   {:type                   mi/transform-keyword
