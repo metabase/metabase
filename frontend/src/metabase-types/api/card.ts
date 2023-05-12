@@ -1,42 +1,46 @@
 import type { DatabaseId } from "./database";
+import type { DashboardId, DashCardId } from "./dashboard";
 import type { Field } from "./field";
-import type {
-  DatasetQuery,
-  FieldReference,
-  AggregationReference,
-} from "./query";
+import type { Parameter } from "./parameters";
+import type { DatasetQuery, FieldReference } from "./query";
+import type { UserInfo } from "./user";
 
-export interface Card extends UnsavedCard {
+export interface Card<Q = DatasetQuery> extends UnsavedCard<Q> {
   id: CardId;
-  collection_id: number | null;
   name: string;
   description: string | null;
   dataset: boolean;
-  database_id?: DatabaseId;
+  public_uuid: string | null;
   can_write: boolean;
-  cache_ttl: number | null;
+
+  database_id?: DatabaseId;
+  collection_id: number | null;
+
+  result_metadata: Field[];
+
   query_average_duration?: number | null;
   last_query_start: string | null;
-  result_metadata: Field[];
+  cache_ttl: number | null;
+
   archived: boolean;
 
-  creator?: {
-    id: number;
-    common_name: string;
-    first_name: string | null;
-    last_name: string | null;
-    email: string;
-    last_login: string;
-    date_joined: string;
-  };
+  creator?: UserInfo;
 }
 
 export type CardDisplayType = string;
 
-export interface UnsavedCard {
+export interface UnsavedCard<Q = DatasetQuery> {
   display: CardDisplayType;
-  dataset_query: DatasetQuery;
+  dataset_query: Q;
+  parameters?: Parameter[];
   visualization_settings: VisualizationSettings;
+
+  // If coming from dashboard
+  dashboardId?: DashboardId;
+  dashcardId?: DashCardId;
+
+  // Not part of the card API contract, a field used by query builder for showing lineage
+  original_card_id?: number;
 }
 
 export type SeriesSettings = {
@@ -62,7 +66,7 @@ export type ColumnFormattingSetting = {
 };
 
 export type PivotTableCollapsedRowsSetting = {
-  rows: (FieldReference | AggregationReference)[];
+  rows: FieldReference[];
   value: string[]; // identifiers for collapsed rows
 };
 

@@ -246,11 +246,6 @@
             valid-metadata?)
        ;; only sent valid metadata in the edit. Metadata might be the same, might be different. We save in either case
        (and (nil? query)
-            valid-metadata?)
-
-       ;; copying card and reusing existing metadata
-       (and (nil? original-query)
-            query
             valid-metadata?))
       (do
         (log/debug (trs "Reusing provided metadata"))

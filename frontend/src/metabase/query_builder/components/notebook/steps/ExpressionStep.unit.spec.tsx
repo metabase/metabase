@@ -3,12 +3,13 @@ import userEvent from "@testing-library/user-event";
 import { render, screen, within } from "__support__/ui";
 import { createMockEntitiesState } from "__support__/store";
 import { getMetadata } from "metabase/selectors/metadata";
+
+import type { Expression } from "metabase-types/api";
 import { createMockState } from "metabase-types/store/mocks";
 import {
   createSampleDatabase,
   ORDERS_ID,
 } from "metabase-types/api/mocks/presets";
-import { Expression } from "metabase-types/types/Query";
 
 import type { NotebookStepUiComponentProps } from "../types";
 import { createMockNotebookStep } from "../test-utils";

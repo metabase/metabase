@@ -5,12 +5,12 @@ import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 
 import { ChartSettingsWithState } from "metabase/visualizations/components/ChartSettings";
 
-import {
+import type {
   Dashboard,
   DashboardOrderedCard,
+  Series,
   VisualizationSettings,
 } from "metabase-types/api";
-import { Series } from "metabase-types/types/Visualization";
 
 import DashCardActionButton from "./DashCardActionButton";
 

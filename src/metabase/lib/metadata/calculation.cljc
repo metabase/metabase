@@ -271,7 +271,11 @@
    ;; already joined, but could implicitly join against?
    [:is-implicitly-joinable {:optional true} [:maybe :boolean]]
    ;; For the `:table` field of a Column, is this the source table, or a joined table?
-   [:is-source-table {:optional true} [:maybe :boolean]]])
+   [:is-source-table {:optional true} [:maybe :boolean]]
+   ;; does this column occur in the breakout clause?
+   [:is-breakout-column {:optional true} [:maybe :boolean]]
+   ;; does this column occur in the order-by clause?
+   [:is-order-by-column {:optional true} [:maybe :boolean]]])
 
 (mu/defn display-info :- ::display-info
   "Given some sort of Cljs object, return a map with the info you'd need to implement UI for it. This is mostly meant to
@@ -311,7 +315,8 @@
        {:is-from-previous-stage (= source :source/previous-stage)
         :is-from-join           (= source :source/joins)
         :is-calculated          (= source :source/expressions)
-        :is-implicitly-joinable (= source :source/implicitly-joinable)}))))
+        :is-implicitly-joinable (= source :source/implicitly-joinable)})
+     (select-keys x-metadata [:breakout-position :order-by-position]))))
 
 (defmethod display-info-method :default
   [query stage-number x]

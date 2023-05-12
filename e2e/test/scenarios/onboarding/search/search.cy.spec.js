@@ -28,6 +28,7 @@ describe("scenarios > auth > search", () => {
       cy.signInAsNormalUser();
       cy.visit("/");
       cy.findByPlaceholderText("Search…").type("product{enter}");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Products");
     });
 
@@ -35,6 +36,7 @@ describe("scenarios > auth > search", () => {
       cy.signIn("nodata");
       cy.visit("/");
       cy.findByPlaceholderText("Search…").type("product{enter}");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Didn't find anything");
     });
 
