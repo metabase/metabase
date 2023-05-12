@@ -153,7 +153,7 @@
    stage-number    :- :int
    unique-name-fn  :- fn?]
   (not-empty
-   (for [expression (lib.expression/expressions query stage-number)]
+   (for [expression (lib.expression/expressions-meta query stage-number)]
      (assoc expression
             :lib/source               :source/expressions
             :lib/source-column-alias  (:name expression)

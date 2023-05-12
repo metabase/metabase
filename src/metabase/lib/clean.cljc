@@ -60,8 +60,3 @@
           almost-query
           (recur almost-query (inc stage-index)))
         (recur (update almost-query :stages assoc stage-index new-stage) stage-index)))))
-
-{:env '{and and
-        a true
-        b false}
- :program '(and a b)}
