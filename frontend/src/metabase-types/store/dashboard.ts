@@ -5,8 +5,8 @@ import type {
   DashCardId,
   DashCardDataMap,
   ParameterId,
+  ParameterValueOrArray,
 } from "metabase-types/api";
-import { ParameterValueOrArray } from "metabase-types/types/Parameter";
 
 export type DashboardSidebarName =
   | "addQuestion"

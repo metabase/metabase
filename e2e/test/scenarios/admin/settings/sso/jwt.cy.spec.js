@@ -66,6 +66,7 @@ describeEE("scenarios > admin > settings > SSO > JWT", () => {
     cy.button("Save changes").click();
     cy.wait("@updateSettings");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Success").should("exist");
   });
 

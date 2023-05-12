@@ -25,12 +25,17 @@ describe("issue 20627", () => {
   it("nested queries should handle long column and/or table names (metabase#20627)", () => {
     openOrdersTable({ mode: "notebook" });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Join data").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(newTableName).click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Summarize").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Count of rows").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Pick a column to group by").click();
     popover().within(() => {
       cy.contains(newTableName).click();
@@ -38,6 +43,7 @@ describe("issue 20627", () => {
       cy.findByText("Category").click();
     });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Custom column").click();
     enterCustomColumnDetails({ formula: "1 + 1", name: "Math" });
     cy.button("Done").click();

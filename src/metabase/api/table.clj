@@ -270,6 +270,7 @@
 (defn- supports-numeric-binning? [db]
   (and db (driver/database-supports? (:engine db) :binning db)))
 
+;; TODO: Remove all this when the FE is fully ported to [[metabase.lib.binning/available-binning-strategies]].
 (defn- assoc-field-dimension-options [{:keys [base_type semantic_type fingerprint] :as field} db]
   (let [{min_value :min, max_value :max} (get-in fingerprint [:type :type/Number])
         [default-option all-options] (cond

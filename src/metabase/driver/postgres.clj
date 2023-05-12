@@ -47,10 +47,11 @@
 
 (driver/register! :postgres, :parent :sql-jdbc)
 
-(doseq [[feature supported?] {:datetime-dff true
-                              :persist-models true
-                              :convert-timezone true
-                              :now true}]
+(doseq [[feature supported?] {:convert-timezone true
+                              :datetime-diff    true
+                              :now              true
+                              :persist-models   true
+                              :schemas          true}]
   (defmethod driver/database-supports? [:postgres feature] [_driver _feature _db] supported?))
 
 (defmethod driver/database-supports? [:postgres :nested-field-columns]
@@ -696,6 +697,8 @@
                 (mdb.spec/spec :postgres it)
                 (sql-jdbc.common/handle-additional-options it details-map))]
     props))
+
+(defmethod sql-jdbc.sync/excluded-schemas :postgres [_driver] #{"information_schema" "pg_catalog"})
 
 (defmethod sql-jdbc.execute/set-timezone-sql :postgres
   [_]

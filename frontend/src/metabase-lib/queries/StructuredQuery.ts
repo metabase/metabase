@@ -7,23 +7,20 @@ import _ from "underscore";
 import { chain, updateIn } from "icepick";
 import { t } from "ttag";
 import {
-  StructuredQuery as StructuredQueryObject,
   Aggregation,
   Breakout,
+  DatabaseId,
+  DatasetColumn,
+  DatasetQuery,
+  DependentMetadataItem,
+  ExpressionClause,
   Filter,
   Join,
   OrderBy,
-  DependentMetadataItem,
-  ExpressionClause,
-} from "metabase-types/types/Query";
-import {
-  DatasetQuery,
+  TableId,
   StructuredDatasetQuery,
-} from "metabase-types/types/Card";
-import { AggregationOperator } from "metabase-types/types/Metadata";
-import { DatabaseEngine, DatabaseId } from "metabase-types/types/Database";
-import { TableId } from "metabase-types/types/Table";
-import { Column } from "metabase-types/types/Dataset";
+  StructuredQuery as StructuredQueryObject,
+} from "metabase-types/api";
 import {
   format as formatExpression,
   DISPLAY_QUOTES,
@@ -48,6 +45,7 @@ import Dimension, {
   AggregationDimension,
 } from "metabase-lib/Dimension";
 import DimensionOptions from "metabase-lib/DimensionOptions";
+import type { AggregationOperator } from "metabase-lib/deprecated-types";
 
 import * as ML from "../v2";
 import type { Limit, Query } from "../types";
@@ -196,7 +194,7 @@ class StructuredQueryInner extends AtomicQuery {
   /**
    * @returns the database engine object, if a database is selected and loaded.
    */
-  engine(): DatabaseEngine | null | undefined {
+  engine(): string | null | undefined {
     const database = this.database();
     return database && database.engine;
   }
@@ -1514,7 +1512,7 @@ class StructuredQueryInner extends AtomicQuery {
     return null;
   }
 
-  dimensionForColumn(column: Column) {
+  dimensionForColumn(column: DatasetColumn) {
     if (column) {
       const fieldRef = this.fieldReferenceForColumn(column);
 
@@ -1533,7 +1531,7 @@ class StructuredQueryInner extends AtomicQuery {
   /**
    * Returns the corresponding {Column} in the "top-level" {StructuredQuery}
    */
-  topLevelColumn(column: Column): Column | null | undefined {
+  topLevelColumn(column: DatasetColumn): DatasetColumn | null | undefined {
     const dimension = this.topLevelDimensionForColumn(column);
 
     if (dimension) {

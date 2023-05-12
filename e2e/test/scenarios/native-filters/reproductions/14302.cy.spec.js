@@ -31,6 +31,7 @@ describe("issue 14302", () => {
   it("should not make the question dirty when there are no changes (metabase#14302)", () => {
     cy.log("Reported on v0.37.5 - Regression since v0.37.0");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").should("not.exist");
   });
 });

@@ -274,3 +274,10 @@
                     (mt/user-http-request :crowberto
                                           :post 200
                                           (format "action/%s/execute" action-id))))))))))
+
+(deftest syncable-schemas-test
+  (mt/test-driver :h2
+    (testing "`syncable-schemas` should return schemas that should be synced"
+      (mt/with-empty-db
+        (is (= #{"PUBLIC"}
+               (driver/syncable-schemas driver/*driver* (mt/id))))))))

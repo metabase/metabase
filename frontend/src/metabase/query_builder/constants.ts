@@ -24,3 +24,5 @@ export const SIDEBAR_SIZES = {
   NORMAL: 355,
   TIMELINE: 300,
 };
+
+export const VISUALIZATION_SLOW_TIMEOUT = 15 * 1000;

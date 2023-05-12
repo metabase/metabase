@@ -1,6 +1,4 @@
-import { Parameter } from "metabase-types/api";
-import { ParameterTarget } from "metabase-types/types/Parameter";
-import { Card } from "metabase-types/types/Card";
+import { Card, Parameter, ParameterTarget } from "metabase-types/api";
 import {
   ParameterWithTarget,
   UiParameter,

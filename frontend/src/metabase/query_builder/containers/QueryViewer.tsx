@@ -8,7 +8,7 @@ import ReadOnlyNotebook from "metabase/query_builder/components/notebook/ReadOnl
 import { getMetadata } from "metabase/selectors/metadata";
 import { loadMetadataForCard } from "metabase/questions/actions";
 
-import type { DatasetQuery } from "metabase-types/types/Card";
+import type { DatasetQuery } from "metabase-types/api";
 
 import Question from "metabase-lib/Question";
 
