@@ -78,7 +78,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (def FieldValues
-  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], not it's a reference to the toucan2 model name.
+  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], now it's a reference to the toucan2 model name.
   We'll keep this till we replace all the symbols in our codebase."
   :model/FieldValues)
 
@@ -142,8 +142,8 @@
       (clear-advanced-field-values-for-field! field_id))))
 
 (t2/define-before-update :model/FieldValues
-  [{:keys [id] :as field-values}]
-  (let [{:keys [type field_id values hash_key]} (t2/changes field-values)]
+  [field-values]
+  (let [{:keys [type values hash_key]} (t2/changes field-values)]
     (u/prog1 field-values
       (assert-valid-human-readable-values field-values)
       (when (or type hash_key)
@@ -153,10 +153,8 @@
                          :status-code 400})))
       ;; if we're updating the values of a Full FieldValues, delete all Advanced FieldValues of this field
       (when (and values
-                 (= (or type (t2/select-one-fn :type FieldValues :id id))
-                    :full))
-        (clear-advanced-field-values-for-field! (or field_id
-                                                    (t2/select-one-fn :field_id FieldValues :id id)))))))
+                 (= (:type field-values) :full))
+        (clear-advanced-field-values-for-field! (:field_id field-values))))))
 
 (t2/define-after-select :model/FieldValues
   [field-values]

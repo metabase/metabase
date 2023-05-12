@@ -46,7 +46,7 @@
     :metabase.models.collection.root/RootCollection
     :metabase.models.collection-permission-graph-revision/CollectionPermissionGraphRevision
     :model/DashboardCardSeries
-    :metabase.models.field-values/FieldValues
+    :model/FieldValues
     :metabase.models.login-history/LoginHistory
     :metabase.models.metric-important-field/MetricImportantField
     :metabase.models.moderation-review/ModerationReview
