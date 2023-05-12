@@ -35,6 +35,7 @@ import Dashboards from "metabase/entities/dashboards";
 import { useDispatch } from "metabase/lib/redux";
 import { addUndo, dismissUndo } from "metabase/redux/undo";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
+import { getSelectedTabId } from "metabase/dashboard/components/DashboardTabs";
 import * as dashboardActions from "../../actions";
 import {
   getIsEditing,
@@ -102,6 +103,7 @@ const mapStateToProps = (state, props) => {
     isHeaderVisible: getIsHeaderVisible(state),
     isAdditionalInfoVisible: getIsAdditionalInfoVisible(state),
     embedOptions: getEmbedOptions(state),
+    selectedTabId: getSelectedTabId(state),
     isAutoApplyFilters: getIsAutoApplyFilters(state),
   };
 };
