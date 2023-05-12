@@ -16,6 +16,7 @@ const NewItemButton = ({ collectionId }: NewItemButtonProps) => {
           primary
           icon="add"
           iconSize={14}
+          data-testid="new-item-button"
           data-metabase-event="NavBar;Create Menu Click"
         >
           <NewButtonText>{t`New`}</NewButtonText>
