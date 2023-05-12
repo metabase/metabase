@@ -199,6 +199,10 @@ Metabase's reference documentation.
 
 - [Developer guide](./developers-guide/start.md)
 
+### Paid features
+
+Some Metabase plans offer [additional features](./paid-features/start.md).
+
 ## Getting help
 
 ### Troubleshooting
@@ -216,10 +220,6 @@ Metabase's reference documentation.
 ### [Discussion](https://discourse.metabase.com)
 
 Share and connect with other Metabasers.
-
-### [Paid features](./paid-features/start.md)
-
-Some [Metabase plans](https://www.metabase.com/pricing) offer additional features.
 
 ### [Metabase Cloud](https://www.metabase.com/cloud/docs)
 
