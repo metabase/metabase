@@ -163,15 +163,15 @@
               (-> query
                   (lib/append-stage)
                   ;; TODO Should be able to create a ref with lib/field [#29763]
-                  (lib/filter (lib/= [:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} "PRICE"] 1))
+                  (lib/filter (lib/= [:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} "Venues__PRICE"] 1))
                   (lib/remove-clause 0 (first fields)))))
       (is (=? {:stages [{:joins [{:fields [(second fields)]}]} (complement :fields) (complement :filters)]}
             (-> query
                 (lib/append-stage)
-                (lib/with-fields [[:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} "PRICE"]])
+                (lib/with-fields [[:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} "Venues__PRICE"]])
                 (lib/append-stage)
                 ;; TODO Should be able to create a ref with lib/field [#29763]
-                (lib/filter (lib/= [:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} "PRICE"] 1))
+                (lib/filter (lib/= [:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} "Venues__PRICE"] 1))
                 (lib/remove-clause 0 (first fields))))))))
 
 (deftest ^:parallel remove-clause-aggregation-test
