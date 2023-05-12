@@ -33,7 +33,9 @@ describe("scenarios > question > bookmarks", () => {
 
     // Convert to model
     openQuestionActions();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Turn into a model").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Turn this into a model").click();
 
     navigationSidebar().within(() => {
@@ -42,6 +44,7 @@ describe("scenarios > question > bookmarks", () => {
 
     // Convert back to question
     openQuestionActions();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Turn back to saved question").click();
 
     navigationSidebar().within(() => {

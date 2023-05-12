@@ -1,20 +1,30 @@
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-nocheck
-import { titleize, humanize } from "metabase/lib/formatting";
-import Base from "./Base";
+import { humanize, titleize } from "metabase/lib/formatting";
+import { NormalizedSchema } from "metabase-types/api";
 import type Metadata from "./Metadata";
 import type Database from "./Database";
 import type Table from "./Table";
-/**
- * Wrapper class for a {@link Database} schema. Contains {@link Table}s.
- */
 
-export default class Schema extends Base {
-  id?: string;
-  name: string;
-  database: Database;
-  tables: Table[];
-  metadata: Metadata;
+export default class Schema {
+  private readonly schema: NormalizedSchema;
+  metadata?: Metadata;
+  database?: Database;
+  tables: Table[] = [];
+
+  constructor(schema: NormalizedSchema) {
+    this.schema = schema;
+  }
+
+  get id() {
+    return this.schema.id;
+  }
+
+  get name() {
+    return this.schema.name;
+  }
+
+  getPlainObject() {
+    return this.schema;
+  }
 
   displayName() {
     return this.name ? titleize(humanize(this.name)) : null;
@@ -22,19 +32,5 @@ export default class Schema extends Base {
 
   getTables() {
     return this.tables;
-  }
-
-  /**
-   * @private
-   * @param {string} name
-   * @param {Database} database
-   * @param {Table[]} tables
-   */
-
-  /* istanbul ignore next */
-  _constructor(name, database, tables) {
-    this.name = name;
-    this.database = database;
-    this.tables = tables;
   }
 }

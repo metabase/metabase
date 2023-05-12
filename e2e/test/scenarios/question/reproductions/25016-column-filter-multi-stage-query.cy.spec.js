@@ -37,6 +37,7 @@ describe("issue 25016", () => {
 
   it("should be possible to filter by a column in a multi-stage query (metabase#25016)", () => {
     visitQuestionAdhoc(questionDetails);
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Category").click();
 
     popover().within(() => {
@@ -46,6 +47,7 @@ describe("issue 25016", () => {
     });
 
     cy.wait("@dataset");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Showing 1 row").should("be.visible");
   });
 });

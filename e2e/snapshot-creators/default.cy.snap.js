@@ -173,22 +173,11 @@ describe("snapshots", () => {
     // dashboard 1: Orders in a dashboard
     const dashboardDetails = { name: "Orders in a dashboard" };
 
-    cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
-      ({ body: { id, card_id, dashboard_id } }) => {
-        cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
-          cards: [
-            {
-              id,
-              card_id,
-              row: 0,
-              col: 0,
-              size_x: 12,
-              size_y: 8,
-            },
-          ],
-        });
-      },
-    );
+    cy.createQuestionAndDashboard({
+      questionDetails,
+      dashboardDetails,
+      cardDetails: { size_x: 12, size_y: 8 },
+    });
 
     // question 2: Orders, Count
     cy.createQuestion({
