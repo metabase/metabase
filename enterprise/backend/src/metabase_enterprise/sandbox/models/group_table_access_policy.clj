@@ -19,17 +19,24 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.schema :as su]
+   [methodical.core :as methodical]
    [schema.core :as s]
-   [toucan.models :as models]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
-(models/defmodel GroupTableAccessPolicy :sandboxes)
+(def GroupTableAccessPolicy
+  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], now it's a reference to the toucan2 model name.
+  We'll keep this till we replace all the symbols in our codebase."
+  :model/GroupTableAccessPolicy)
 
-;;; only admins can work with GTAPs
-(derive GroupTableAccessPolicy ::mi/read-policy.superuser)
-(derive GroupTableAccessPolicy ::mi/write-policy.superuser)
+(methodical/defmethod t2/table-name :model/GroupTableAccessPolicy [_model] :sandboxes)
+
+(doto :model/PermissionsRevision
+  (derive :metabase/model)
+  ;;; only admins can work with GTAPs
+  (derive ::mi/read-policy.superuser)
+  (derive ::mi/write-policy.superuser))
 
 ;; This guard is to make sure this file doesn't get compiled twice when building the uberjar -- that will totally
 ;; screw things up because Toucan models use Potemkin `defrecord+` under the hood.
@@ -49,10 +56,10 @@
    mbql.normalize/normalize
    attribute-remappings))
 
-;; for GTAPs
-(models/add-type! ::attribute-remappings
-  :in  (comp mi/json-in normalize-attribute-remapping-targets)
-  :out (comp normalize-attribute-remapping-targets mi/json-out-without-keywordization))
+(t2/deftransforms :model/GroupTableAccessPolicy
+  {:attribute_remappings {:in  (comp mi/json-in normalize-attribute-remapping-targets)
+                          :out (comp normalize-attribute-remapping-targets mi/json-out-without-keywordization)}})
+
 
 (defn table-field-names->cols
   "Return a mapping of field names to corresponding cols for given table."
@@ -143,11 +150,13 @@
         (when-let [permission-path-id (t2/select-one-fn :id Permissions :object expected-permission-path)]
           (first (t2/insert-returning-instances! GroupTableAccessPolicy (assoc sandbox :permission_id permission-path-id))))))))
 
-(defn- pre-insert [gtap]
+(t2/define-before-insert :model/GroupTableAccessPolicy
+  [gtap]
   (u/prog1 gtap
     (check-columns-match-table gtap)))
 
-(defn- pre-update [{:keys [id], :as updates}]
+(t2/define-before-update :model/GroupTableAccessPolicy
+  [{:keys [id], :as updates}]
   (u/prog1 updates
     (let [original (t2/original updates)
           updated  (merge original updates)]
@@ -157,9 +166,3 @@
                          :status-code 400})))
       (when (:card_id updates)
         (check-columns-match-table updated)))))
-
-(mi/define-methods
- GroupTableAccessPolicy
- {:types      (constantly {:attribute_remappings ::attribute-remappings})
-  :pre-insert pre-insert
-  :pre-update pre-update})
