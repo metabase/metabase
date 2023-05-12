@@ -30,7 +30,7 @@ export async function loadCard(cardId, { dispatch, getState }) {
     const question = Questions.selectors.getObject(getState(), {
       entityId: cardId,
     });
-    return question.card();
+    return question?.card();
   } catch (error) {
     console.error("error loading card", error);
     throw error;
