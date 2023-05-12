@@ -26,7 +26,7 @@
     :metabase.models.table/Table
     :metabase.models.field/Field
     ;; Settings have human-selected unique names.
-    :metabase.models.setting/Setting})
+    :model/Setting})
 
 (def ^:private entities-not-exported
   "Entities that are either:
@@ -49,7 +49,7 @@
     :metabase.models.field-values/FieldValues
     :metabase.models.login-history/LoginHistory
     :metabase.models.metric-important-field/MetricImportantField
-    :metabase/ModerationReview
+    :model/ModerationReview
     :metabase.models.parameter-card/ParameterCard
     :metabase.models.permissions/Permissions
     :metabase.models.permissions-group/PermissionsGroup
