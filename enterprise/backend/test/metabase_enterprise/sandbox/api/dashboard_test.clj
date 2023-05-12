@@ -89,7 +89,7 @@
                                                     s/Keyword     s/Any}
                                                    "mapping")]
                             s/Keyword           s/Any}]
-                          (add-card! 200)))
+                          (:cards (add-card! 200))))
              (is (schema= [(s/one {:card_id            (s/eq card-id)
                                    :parameter_mappings (s/eq mappings)
                                    s/Keyword           s/Any}
