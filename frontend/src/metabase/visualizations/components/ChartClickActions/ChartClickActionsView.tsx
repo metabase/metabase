@@ -1,30 +1,21 @@
-import cx from "classnames";
-import { t } from "ttag";
-import { Link } from "react-router";
 import React from "react";
-
-import * as MetabaseAnalytics from "metabase/lib/analytics";
-import Tooltip from "metabase/core/components/Tooltip";
-import { ClickAction } from "metabase-types/types/Visualization";
+import type { RegularClickAction } from "metabase/modes/types";
+import { Container, Divider } from "./ChartClickActions.styled";
 import {
-  ActionIcon,
-  ClickActionButton,
-  Container,
-  Section,
-} from "./ChartClickActions.styled";
-import {
-  getGALabelForAction,
   getGroupedAndSortedActions,
-  SECTIONS,
+  getSectionContentDirection,
+  getSectionTitle,
 } from "./utils";
+import { ChartClickActionsSection } from "./ChartClickActionsSection";
+import { ChartClickActionControl } from "./ChartClickActionControl";
 
 interface Props {
-  clickActions: ClickAction[];
+  clickActions: RegularClickAction[];
 
-  onClick: (action: ClickAction) => void;
+  onClick: (action: RegularClickAction) => void;
 }
 
-const ChartClickActionsView = ({
+export const ChartClickActionsView = ({
   clickActions,
   onClick,
 }: Props): JSX.Element => {
@@ -34,131 +25,29 @@ const ChartClickActionsView = ({
 
   return (
     <Container>
-      {sections.map(([key, actions]) => (
-        <Section
-          key={key}
-          type={key}
-          hasOnlyOneSection={hasOnlyOneSection}
-          className={cx({
-            ml1:
-              SECTIONS[key].icon === "sum" ||
-              (SECTIONS[key].icon === "funnel_outline" && !hasOnlyOneSection),
-          })}
-          data-testid="drill-through-section"
-        >
-          {SECTIONS[key].icon === "sum" && (
-            <p className="mt0 text-medium text-small">{t`Summarize`}</p>
-          )}
-          {SECTIONS[key].icon === "funnel_outline" && (
-            <p
-              className={cx(
-                "text-small",
-                "mt1",
-                hasOnlyOneSection ? "text-dark" : "text-medium",
-              )}
-            >
-              {t`Filter by this value`}
-            </p>
-          )}
+      {sections.map(([key, actions]) => {
+        const sectionTitle = getSectionTitle(key);
+        const contentDirection = getSectionContentDirection(key);
+        const withBottomDivider = key === "records" && !hasOnlyOneSection;
 
-          <div
-            className={cx(
-              "flex",
-              {
-                "justify-end": SECTIONS[key].icon === "gear",
-              },
-              {
-                "align-center justify-center": SECTIONS[key].icon === "gear",
-              },
-              { "flex-column my1": SECTIONS[key].icon === "summarize" },
-            )}
+        return (
+          <ChartClickActionsSection
+            key={key}
+            type={key}
+            title={sectionTitle}
+            contentDirection={contentDirection}
           >
-            {actions.map((action, index) => {
-              const className = cx("no-decoration", {
-                "cursor-pointer": action.buttonType !== "info",
-                sort: action.buttonType === "sort",
-                "formatting-button": action.buttonType === "formatting",
-              });
-              const key = action.name;
-              const isLastItem = index === actions.length - 1;
-
-              if (action.url) {
-                return (
-                  <div
-                    key={key}
-                    className={cx({
-                      full: action.buttonType === "horizontal",
-                    })}
-                  >
-                    <ClickActionButton
-                      as={Link}
-                      className={className}
-                      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-                      // @ts-ignore // TODO [#26836]: remove this after styled component is done
-                      to={action.url()}
-                      type={action.buttonType}
-                      onClick={() =>
-                        MetabaseAnalytics.trackStructEvent(
-                          "Actions",
-                          "Executed Click Action",
-                          getGALabelForAction(action),
-                        )
-                      }
-                    >
-                      {action.title}
-                    </ClickActionButton>
-                  </div>
-                );
-              } else if (
-                action.buttonType === "sort" ||
-                action.buttonType === "formatting"
-              ) {
-                return (
-                  <Tooltip key={key} tooltip={action.tooltip}>
-                    <ClickActionButton
-                      className={cx(className, "flex flex-row align-center")}
-                      type={action.buttonType}
-                      onClick={() => onClick(action)}
-                    >
-                      {action.icon && (
-                        <ActionIcon
-                          className={cx({
-                            "text-brand text-white-hover":
-                              action.buttonType !== "formatting",
-                          })}
-                          size={action.buttonType === "formatting" ? 16 : 12}
-                          name={action.icon}
-                        />
-                      )}
-                    </ClickActionButton>
-                  </Tooltip>
-                );
-              } else {
-                return (
-                  <ClickActionButton
-                    key={key}
-                    className={cx(className, {
-                      mb1: action.buttonType === "horizontal" && !isLastItem,
-                    })}
-                    type={action.buttonType}
-                    onClick={() => onClick(action)}
-                  >
-                    {action.icon && (
-                      <ActionIcon
-                        size={action.buttonType === "horizontal" ? 14 : 12}
-                        name={action.icon}
-                      />
-                    )}
-                    {action.title && action.title}
-                  </ClickActionButton>
-                );
-              }
-            })}
-          </div>
-        </Section>
-      ))}
+            {actions.map((action, index) => (
+              <ChartClickActionControl
+                key={action.name}
+                action={action}
+                onClick={() => onClick(action)}
+              />
+            ))}
+            {withBottomDivider && <Divider />}
+          </ChartClickActionsSection>
+        );
+      })}
     </Container>
   );
 };
-
-export default ChartClickActionsView;

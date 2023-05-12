@@ -1,16 +1,13 @@
 import { t } from "ttag";
 import { zoomInRow } from "metabase/query_builder/actions";
-
 import type { RowValue } from "metabase-types/api";
+import type { Drill, ClickActionProps } from "metabase/modes/types";
 import type Question from "metabase-lib/Question";
-
 import {
   objectDetailDrill,
   objectDetailFKDrillQuestion,
   objectDetailPKDrillQuestion,
 } from "metabase-lib/queries/drills/object-detail-drill";
-
-import type { Drill, DrillOptions } from "../../types";
 
 type DrillType = "pk" | "fk" | "zoom" | "dashboard";
 
@@ -19,7 +16,11 @@ function getAction({
   clicked,
   type,
   objectId,
-}: DrillOptions & { question: Question; type: DrillType; objectId: RowValue }) {
+}: ClickActionProps & {
+  question: Question;
+  type: DrillType;
+  objectId: RowValue;
+}) {
   switch (type) {
     case "pk":
       return {

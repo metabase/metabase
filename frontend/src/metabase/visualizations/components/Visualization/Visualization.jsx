@@ -31,6 +31,7 @@ import { getMode } from "metabase/modes/lib/modes";
 import { getFont } from "metabase/styled-components/selectors";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
+import { isRegularClickAction } from "metabase/modes/types";
 import Question from "metabase-lib/Question";
 import Mode from "metabase-lib/Mode";
 import { datasetContainsNoResults } from "metabase-lib/queries/utils/dataset";
@@ -342,6 +343,7 @@ class Visualization extends React.PureComponent {
     let { style } = this.props;
 
     const clickActions = this.getClickActions(clicked);
+    const regularClickActions = clickActions.filter(isRegularClickAction);
     // disable hover when click action is active
     if (clickActions.length > 0) {
       hovered = null;
@@ -517,7 +519,7 @@ class Visualization extends React.PureComponent {
           {this.props.onChangeCardAndRun && (
             <ChartClickActions
               clicked={clicked}
-              clickActions={clickActions}
+              clickActions={regularClickActions}
               onChangeCardAndRun={this.handleOnChangeCardAndRun}
               onClose={this.hideActions}
               series={series}

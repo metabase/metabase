@@ -13,7 +13,7 @@ type OnChangeCardAndRunOpts = {
 
 export type OnChangeCardAndRun = (opts: OnChangeCardAndRunOpts) => void;
 
-type ClickActionProps = {
+export type ClickActionProps = {
   question: Question;
   clicked?: ClickObject;
   settings?: VisualizationSettings;
@@ -40,28 +40,19 @@ export interface ClickObject {
   event?: MouseEvent;
   element?: HTMLElement;
   seriesIndex?: number;
-  settings?: Record<string, any>;
+  settings?: Record<string, unknown>;
   origin?: {
     row: RowValue;
     cols: DatasetColumn[];
   };
-  extraData?: Record<string, any>;
+  extraData?: Record<string, unknown>;
 }
 
-type ClickActionPopoverProps = {
-  onChangeCardAndRun: OnChangeCardAndRun;
-  onClose: () => void;
-};
-
 export interface ClickAction {
+  name: string;
   title?: any; // React Element
-  icon?: string;
-  popover?: (props: ClickActionPopoverProps) => any; // React Element
-  question?: () => Question | undefined;
-  url?: () => string;
-  action?: () => any; // redux action
   section?: string;
-  name?: string;
+  icon?: string;
+  buttonType?: string;
   default?: boolean;
-  defaultAlways?: boolean;
 }

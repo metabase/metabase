@@ -72,6 +72,7 @@ function setup() {
 
   const props = {
     series: [],
+    onClick: jest.fn(),
     onChangeCardAndRun: jest.fn(),
     onChange: jest.fn(),
     onResize: jest.fn(),

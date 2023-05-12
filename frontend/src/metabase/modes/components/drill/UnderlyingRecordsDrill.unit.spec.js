@@ -2,7 +2,7 @@ import { assocIn } from "icepick";
 import moment from "moment-timezone";
 import { ORDERS, PEOPLE } from "__support__/sample_database_fixture";
 import { createMockState } from "metabase-types/store/mocks";
-import { createEntitiesState } from "__support__/store";
+import { createMockEntitiesState } from "__support__/store";
 import {
   createSampleDatabase,
   ORDERS_ID,
@@ -187,7 +187,7 @@ function getActionProps(query, value) {
 
 function getMockTable(tableDisplayName) {
   const state = createMockState({
-    entities: createEntitiesState({
+    entities: createMockEntitiesState({
       databases: [createSampleDatabase()],
     }),
   });

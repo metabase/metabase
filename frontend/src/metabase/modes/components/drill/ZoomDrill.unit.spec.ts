@@ -1,7 +1,10 @@
 import { ORDERS, PEOPLE } from "__support__/sample_database_fixture";
-import { DatasetColumn, DatetimeUnit } from "metabase-types/api";
-import { ClickObject } from "metabase/modes/types";
-import { StructuredDatasetQuery } from "metabase-types/types/Card";
+import {
+  DatasetColumn,
+  DatetimeUnit,
+  StructuredDatasetQuery,
+} from "metabase-types/api";
+import type { ClickObject } from "metabase/modes/types";
 import type Question from "metabase-lib/Question";
 import ZoomDrill from "./ZoomDrill";
 

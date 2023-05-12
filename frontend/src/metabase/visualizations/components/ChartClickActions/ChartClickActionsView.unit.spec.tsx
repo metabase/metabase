@@ -1,11 +1,12 @@
 import React from "react";
 import { render, screen } from "__support__/ui";
 import DefaultMode from "metabase/modes/components/modes/DefaultMode";
-import { QueryMode } from "metabase-types/types/Visualization";
 import { checkNotNull } from "metabase/core/utils/types";
+import type { RegularClickAction } from "metabase/modes/types";
 import Mode from "metabase-lib/Mode";
 import { getAdHocQuestion } from "metabase-lib/mocks";
-import ChartClickActionsView from "./ChartClickActionsView";
+import { QueryMode } from "metabase-lib/queries/drills/types";
+import { ChartClickActionsView } from "./ChartClickActionsView";
 
 describe("ChartClickActionsView", () => {
   it('renders "See this ..." action as the first item', () => {
@@ -37,7 +38,10 @@ function setup(queryMode: QueryMode = DefaultMode as QueryMode) {
     ],
   };
 
-  const clickActions = mode.actionsForClick(clicked, {});
+  const clickActions = mode.actionsForClick(
+    clicked,
+    {},
+  ) as RegularClickAction[];
   const onClick = jest.fn();
 
   render(

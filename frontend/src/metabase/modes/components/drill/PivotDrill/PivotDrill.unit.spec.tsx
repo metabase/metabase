@@ -1,6 +1,6 @@
 import React from "react";
 import { createMockState } from "metabase-types/store/mocks";
-import { createEntitiesState } from "__support__/store";
+import { createMockEntitiesState } from "__support__/store";
 import { render, screen } from "__support__/ui";
 import {
   createSampleDatabase,
@@ -39,7 +39,7 @@ describe("PivotDrill", () => {
 
 function setupUnaggregatedQuery() {
   const state = createMockState({
-    entities: createEntitiesState({
+    entities: createMockEntitiesState({
       databases: [createSampleDatabase()],
     }),
   });
@@ -91,6 +91,7 @@ function setup() {
 
   const props = {
     series: [],
+    onClick: jest.fn(),
     onChangeCardAndRun: jest.fn(),
     onChange: jest.fn(),
     onResize: jest.fn(),

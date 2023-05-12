@@ -1,9 +1,9 @@
 import { t } from "ttag";
+import type { ClickActionBase, Drill } from "metabase/modes/types";
 import {
   sortDrill,
   sortDrillQuestion,
 } from "metabase-lib/queries/drills/sort-drill";
-import type { ClickActionBase, Drill } from "../../types";
 
 const ACTIONS: Record<string, ClickActionBase> = {
   asc: {

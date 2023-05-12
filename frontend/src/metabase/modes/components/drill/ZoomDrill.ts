@@ -1,14 +1,17 @@
+import type {
+  ClickActionProps,
+  QuestionChangeClickAction,
+} from "metabase/modes/types";
 import {
   getNextZoomDrilldown,
   getZoomDrillTitle,
   zoomDrillQuestion,
 } from "metabase-lib/queries/drills/zoom-drill";
-import { DrillOptions, QuestionChangeClickAction } from "../../types";
 
 const ZoomDrill = ({
   question,
   clicked,
-}: DrillOptions): QuestionChangeClickAction[] => {
+}: ClickActionProps): QuestionChangeClickAction[] => {
   const result = getNextZoomDrilldown(question, clicked);
 
   if (!result) {

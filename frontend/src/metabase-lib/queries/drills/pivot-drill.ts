@@ -1,14 +1,24 @@
-import { ClickObject } from "metabase-types/types/Visualization";
 import { isAddress, isCategory, isDate } from "metabase-lib/types/utils/isa";
 import Question from "metabase-lib/Question";
 import Field from "metabase-lib/metadata/Field";
 import StructuredQuery, {
   FieldFilterFn,
 } from "metabase-lib/queries/StructuredQuery";
+import type {
+  ClickObject,
+  ClickObjectDimension,
+} from "metabase-lib/queries/drills/types";
+import type DimensionOptions from "metabase-lib/DimensionOptions";
 
 type DrillOptions = {
   question: Question;
   clicked: ClickObject | undefined;
+};
+
+export type PivotDrillResult = {
+  query: StructuredQuery;
+  dimensions: ClickObjectDimension[];
+  breakoutOptions: DimensionOptions;
 };
 
 function pivotDrill({
@@ -17,7 +27,7 @@ function pivotDrill({
   fieldFilter,
 }: DrillOptions & {
   fieldFilter: FieldFilterFn;
-}) {
+}): PivotDrillResult | null {
   const query = question.query() as StructuredQuery;
   if (!question.isStructured() || !query.isEditable()) {
     return null;

@@ -4,22 +4,24 @@ import * as tippy from "tippy.js";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { getEventTarget } from "metabase/lib/dom";
 import { performAction } from "metabase/visualizations/lib/action";
-import {
-  ClickAction,
-  ClickObject,
-  OnChangeCardAndRun,
-} from "metabase-types/types/Visualization";
+import { OnChangeCardAndRun } from "metabase/visualizations/types";
 import { Dispatch } from "metabase-types/store";
 import { Series } from "metabase-types/api";
+import {
+  RegularClickAction,
+  ClickObject,
+  PopoverClickAction,
+  isPopoverClickAction,
+  isRegularClickAction,
+} from "metabase/modes/types";
 
-import "./ChartClickActions.css";
-import ChartClickActionsView from "./ChartClickActionsView";
+import { ChartClickActionsView } from "./ChartClickActionsView";
 import { getGALabelForAction } from "./utils";
 import { FlexTippyPopover } from "./ChartClickActions.styled";
 
 interface ChartClickActionsProps {
   clicked: ClickObject;
-  clickActions: ClickAction[];
+  clickActions: RegularClickAction[];
   series: Series;
   dispatch: Dispatch;
   onChangeCardAndRun: OnChangeCardAndRun;
@@ -28,7 +30,7 @@ interface ChartClickActionsProps {
 }
 
 interface State {
-  popoverAction: ClickAction | null;
+  popoverAction: PopoverClickAction | null;
 }
 
 class ChartClickActions extends Component<ChartClickActionsProps, State> {
@@ -45,9 +47,9 @@ class ChartClickActions extends Component<ChartClickActionsProps, State> {
     }
   };
 
-  handleClickAction = (action: ClickAction) => {
+  handleClickAction = (action: RegularClickAction) => {
     const { dispatch, onChangeCardAndRun } = this.props;
-    if (action.popover) {
+    if (isPopoverClickAction(action)) {
       MetabaseAnalytics.trackStructEvent(
         "Actions",
         "Open Click Action Popover",
@@ -60,11 +62,14 @@ class ChartClickActions extends Component<ChartClickActionsProps, State> {
         onChangeCardAndRun,
       });
       if (didPerform) {
-        MetabaseAnalytics.trackStructEvent(
-          "Actions",
-          "Executed Click Action",
-          getGALabelForAction(action),
-        );
+        if (isRegularClickAction(action)) {
+          MetabaseAnalytics.trackStructEvent(
+            "Actions",
+            "Executed Click Action",
+            getGALabelForAction(action),
+          );
+        }
+
         this.close();
       } else {
         console.warn("No action performed", action);
@@ -105,6 +110,7 @@ class ChartClickActions extends Component<ChartClickActionsProps, State> {
       const PopoverContent = popoverAction.popover;
       popover = (
         <PopoverContent
+          onClick={this.handleClickAction}
           onResize={() => {
             this.instance?.popperInstance?.update();
           }}

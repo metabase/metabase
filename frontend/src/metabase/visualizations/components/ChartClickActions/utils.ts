@@ -1,13 +1,14 @@
 import _ from "underscore";
-import type { ClickAction } from "metabase-types/types/Visualization";
-import type { ClickActionButtonType } from "metabase/modes/types";
+import { t } from "ttag";
+import type { RegularClickAction } from "metabase/modes/types";
+import { ClickActionSection } from "metabase/modes/types";
 
 type Section = {
   icon: string;
   index?: number;
 };
 
-export const SECTIONS: Record<string, Section> = {
+export const SECTIONS: Record<ClickActionSection, Section> = {
   records: {
     icon: "table2",
   },
@@ -20,10 +21,10 @@ export const SECTIONS: Record<string, Section> = {
   sort: {
     icon: "sort",
   },
-  formatting: {
-    icon: "gear",
-  },
   breakout: {
+    icon: "breakout",
+  },
+  "breakout-popover": {
     icon: "breakout",
   },
   standalone_filter: {
@@ -37,13 +38,10 @@ export const SECTIONS: Record<string, Section> = {
   sum: {
     icon: "sum",
   },
-  averages: {
-    icon: "curve",
-  },
-  dashboard: {
-    icon: "dashboard",
-  },
   auto: {
+    icon: "bolt",
+  },
+  "auto-popover": {
     icon: "bolt",
   },
   info: {
@@ -57,17 +55,16 @@ Object.values(SECTIONS).map((section, index) => {
   section.index = index;
 });
 
-type ClickActionWithButtonType = ClickAction & {
-  buttonType?: ClickActionButtonType;
-};
+export const getGroupedAndSortedActions = (
+  clickActions: RegularClickAction[],
+) => {
+  const groupedClickActions = _.groupBy(clickActions, "section") as {
+    [key in ClickActionSection]?: RegularClickAction[];
+  };
 
-export const getGroupedAndSortedActions = (clickActions: ClickAction[]) => {
-  const groupedClickActions: Record<string, ClickActionWithButtonType[]> =
-    _.groupBy(clickActions, "section");
-
-  if (groupedClickActions?.["sum"]?.length === 1) {
+  if (groupedClickActions["sum"]?.length === 1) {
     // if there's only one "sum" click action, merge it into "summarize" and change its button type and icon
-    if (!groupedClickActions?.["summarize"]) {
+    if (!groupedClickActions["summarize"]) {
       groupedClickActions["summarize"] = [];
     }
     groupedClickActions["summarize"].push({
@@ -77,8 +74,7 @@ export const getGroupedAndSortedActions = (clickActions: ClickAction[]) => {
     });
     delete groupedClickActions["sum"];
   }
-  const hasOnlyOneSortAction = groupedClickActions["sort"]?.length === 1;
-  if (hasOnlyOneSortAction) {
+  if (groupedClickActions["sort"]?.length === 1) {
     // restyle the Formatting action when there is only one option
     groupedClickActions["sort"][0] = {
       ...groupedClickActions["sort"][0],
@@ -92,5 +88,38 @@ export const getGroupedAndSortedActions = (clickActions: ClickAction[]) => {
     .value();
 };
 
-export const getGALabelForAction = (action: ClickAction) =>
+export const getGALabelForAction = (action: RegularClickAction) =>
   action ? `${action.section || ""}:${action.name || ""}` : null;
+
+export const getSectionTitle = (sectionKey: string): string | null => {
+  switch (sectionKey) {
+    case "filter":
+      return t`Filter by this value`;
+
+    case "sum":
+      return t`Summarize`;
+
+    case "auto-popover":
+      return t`Automatic insights…`;
+
+    case "breakout-popover":
+      return t`Break out by…`;
+  }
+
+  return null;
+};
+
+export type ContentDirectionType = "column" | "row";
+
+export const getSectionContentDirection = (
+  sectionKey: string,
+): ContentDirectionType => {
+  switch (sectionKey) {
+    case "sort":
+    case "sum":
+    case "filter":
+      return "row";
+  }
+
+  return "column";
+};

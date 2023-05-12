@@ -1,66 +1,56 @@
-import React from "react";
-import type {
-  DatasetColumn,
-  RowValue,
-  Series,
-  VisualizationSettings,
-} from "metabase-types/api";
+import type React from "react";
 import type { Dispatch, ReduxAction } from "metabase-types/store";
-import type { OnChangeCardAndRun } from "metabase/visualizations/types";
+import type { Series, VisualizationSettings } from "metabase-types/api";
 import type Question from "metabase-lib/Question";
+import type { ClickActionProps } from "metabase-lib/queries/drills/types";
+import { OnChangeCardAndRun } from "metabase-lib/queries/drills/types";
 
-type DimensionValue = {
-  value: RowValue;
-  column: DatasetColumn;
-};
-
-export type ClickObject = {
-  value?: RowValue;
-  column?: DatasetColumn;
-  dimensions?: DimensionValue[];
-  event?: MouseEvent;
-  element?: HTMLElement;
-  seriesIndex?: number;
-  settings?: Record<string, unknown>;
-  origin?: {
-    row: RowValue;
-    cols: DatasetColumn[];
-  };
-  extraData?: Record<string, unknown>;
-};
+export type {
+  ClickActionProps,
+  ClickObject,
+} from "metabase-lib/queries/drills/types";
 
 type Dispatcher = (dispatch: Dispatch) => void;
-
-export type ClickActionPopoverProps = {
-  series: Series;
-  onChangeCardAndRun: OnChangeCardAndRun;
-  onChange: (settings: VisualizationSettings) => void;
-  onResize: (...args: unknown[]) => void;
-  onClose: () => void;
-};
 
 export type ClickActionButtonType =
   | "formatting"
   | "horizontal"
   | "info"
+  | "sort"
   | "token"
-  | "token-filter"
-  | "sort";
+  | "token-filter";
+
+export type ClickActionSection =
+  | "auto"
+  | "auto-popover"
+  | "breakout"
+  | "breakout-popover"
+  | "details"
+  | "filter"
+  | "info"
+  | "records"
+  | "sort"
+  | "standalone_filter"
+  | "sum"
+  | "summarize"
+  | "zoom";
 
 export type ClickActionBase = {
   name: string;
   title?: React.ReactNode;
-  section: string;
-  icon?: string;
+  section: ClickActionSection;
+  icon?: React.ReactNode;
   buttonType: ClickActionButtonType;
   default?: boolean;
   tooltip?: string;
   extra?: () => Record<string, unknown>;
 };
 
-type ReduxClickAction = ClickActionBase & {
+type ReduxClickActionBase = {
   action: () => ReduxAction | Dispatcher;
 };
+
+type ReduxClickAction = ClickActionBase & ReduxClickActionBase;
 
 export type QuestionChangeClickAction = ClickActionBase & {
   question: () => Question;
@@ -71,30 +61,50 @@ export type PopoverClickAction = ClickActionBase & {
   popover: (props: ClickActionPopoverProps) => JSX.Element;
 };
 
-type UrlClickAction = ClickActionBase & {
+type UrlClickActionBase = {
   ignoreSiteUrl?: boolean;
   url: () => string;
 };
 
-type RegularClickAction =
+export type UrlClickAction = ClickActionBase & UrlClickActionBase;
+
+export type RegularClickAction =
   | ReduxClickAction
   | QuestionChangeClickAction
   | PopoverClickAction
   | UrlClickAction;
 
-type AlwaysDefaultClickAction = Omit<
-  RegularClickAction,
-  "title" | "section" | "default" | "buttonType" | "tooltip"
-> & {
-  defaultAlways: true;
-};
+export type AlwaysDefaultClickActionSubAction =
+  | ReduxClickActionBase
+  | UrlClickActionBase;
 
-// TODO [#26836]: unify this and frontend/src/metabase-types/types/Visualization.ts
+export type AlwaysDefaultClickAction = {
+  name: string;
+  defaultAlways: true;
+} & AlwaysDefaultClickActionSubAction;
+
 export type ClickAction = RegularClickAction | AlwaysDefaultClickAction;
 
-export type DrillOptions = {
-  question: Question;
-  clicked?: ClickObject;
+export type Drill = (options: ClickActionProps) => ClickAction[];
+
+export type ClickActionPopoverProps = {
+  series: Series;
+  onClick: (action: RegularClickAction) => void;
+  onChangeCardAndRun: OnChangeCardAndRun;
+  onChange: (settings: VisualizationSettings) => void;
+  onResize: (...args: unknown[]) => void;
+  onClose: () => void;
 };
 
-export type Drill = (options: DrillOptions) => ClickAction[];
+export const isPopoverClickAction = (
+  clickAction: ClickAction,
+): clickAction is PopoverClickAction => "popover" in clickAction;
+
+export const AlwaysDefaultClickAction = (
+  clickAction: ClickAction,
+): clickAction is AlwaysDefaultClickAction =>
+  "defaultAlways" in clickAction && clickAction.defaultAlways;
+
+export const isRegularClickAction = (
+  clickAction: ClickAction,
+): clickAction is RegularClickAction => !AlwaysDefaultClickAction(clickAction);
