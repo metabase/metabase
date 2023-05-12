@@ -46,7 +46,7 @@ interface ActionLoaderProps {
 }
 
 interface ModelLoaderProps {
-  model: Question;
+  model?: Question;
 }
 
 interface StateProps {
@@ -95,7 +95,7 @@ function ActionCreator({
 
   const [isSaveModalShown, setShowSaveModal] = useState(false);
 
-  const isEditable = isNew || model.canWriteActions();
+  const isEditable = isNew || (model != null && model.canWriteActions());
 
   const handleCreate = async (values: CreateActionFormValues) => {
     if (action.type !== "query") {
@@ -121,7 +121,7 @@ function ActionCreator({
     if (isSavedAction(action)) {
       const reduxAction = await onUpdateAction({
         ...action,
-        model_id: model.id(),
+        model_id: model?.id(),
         visualization_settings: formSettings,
       });
       const updatedAction = Actions.HACK_getObjectFromAction(reduxAction);
@@ -167,7 +167,7 @@ function ActionCreator({
             initialValues={{
               name: action.name,
               description: action.description,
-              model_id: model.id(),
+              model_id: model?.id(),
             }}
             onCreate={handleCreate}
             onCancel={handleCloseNewActionModal}
