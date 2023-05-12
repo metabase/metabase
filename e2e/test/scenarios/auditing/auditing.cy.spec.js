@@ -55,17 +55,23 @@ describeEE("audit > auditing", () => {
 
     cy.log("View normal user's dashboard");
     cy.visit("/collection/root?type=dashboard");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(NORMAL_DASHBOARD).click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("This dashboard is looking empty.");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("My personal collection").should("not.exist");
 
     cy.log("View old existing question");
     visitQuestion(2);
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("18,760");
 
     cy.log("View newly created admin's question");
     cy.visit("/collection/root?type");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(ADMIN_QUESTION).click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/ID/i);
   });
 
@@ -76,7 +82,9 @@ describeEE("audit > auditing", () => {
       cy.visit("/admin/audit/members/overview");
 
       // We haven't created any new members yet so this should be empty
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Active members and new members per day");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("No results!");
 
       // Wait for both of the charts to show up
@@ -116,6 +124,7 @@ describeEE("audit > auditing", () => {
       cy.findAllByText("Orders, Count").should("have.length", 1);
       cy.findAllByText(ADMIN_QUESTION).should("have.length", 1);
       cy.findAllByText("Sample Database").should("have.length", 4);
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(NORMAL_DASHBOARD);
     });
   });
@@ -124,7 +133,9 @@ describeEE("audit > auditing", () => {
     it("should load both tabs in Databases", () => {
       // Overview tab
       cy.visit("/admin/audit/databases/overview");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Total queries and their average speed");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("No results!").should("not.exist");
       cy.get(".LineAreaBarChart");
       cy.get("rect");
@@ -132,9 +143,13 @@ describeEE("audit > auditing", () => {
       // All databases tab
       cy.visit("/admin/audit/databases/all");
       cy.findByPlaceholderText("Database name");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("No results!").should("not.exist");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Sample Database");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(/Sync Schedule/i);
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains(year);
     });
 
@@ -148,13 +163,16 @@ describeEE("audit > auditing", () => {
 
       // All schemas tab
       cy.visit("/admin/audit/schemas/all");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("PUBLIC");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Saved Queries");
     });
 
     it("should load both tabs in Tables", () => {
       // Overview tab
       cy.visit("/admin/audit/tables/overview");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Most-queried tables");
       cy.findAllByText("No results!").should("not.exist");
       cy.findAllByText("Sample Database PUBLIC ORDERS");
@@ -176,7 +194,9 @@ describeEE("audit > auditing", () => {
       cy.visit("/admin/audit/tables/all");
       cy.findByPlaceholderText("Table name");
       cy.findAllByText("PUBLIC").should("have.length", 4);
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("REVIEWS"); // Table name in DB
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Reviews"); // Table display name
     });
   });
@@ -185,7 +205,9 @@ describeEE("audit > auditing", () => {
     it("should load both tabs in Questions", () => {
       // Overview tab
       cy.visit("/admin/audit/questions/overview");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Slowest queries");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Query views and speed per day");
       cy.findAllByText("No results!").should("not.exist");
       cy.get(".LineAreaBarChart").should("have.length", 3);
@@ -196,24 +218,33 @@ describeEE("audit > auditing", () => {
       cy.visit("/admin/audit/questions/all");
       cy.findByPlaceholderText("Question name");
       cy.findAllByText("Sample Database").should("have.length", 5);
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(NORMAL_QUESTION);
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Orders, Count, Grouped by Created At (year)");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("4").should("not.exist");
     });
 
     it("should load both tabs in Dashboards", () => {
       // Overview tab
       cy.visit("/admin/audit/dashboards/overview");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Most popular dashboards and their avg loading times");
       cy.findAllByText("Avg. Question Load Time (ms)");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(NORMAL_DASHBOARD);
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Orders");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Orders, Count").should("not.exist");
 
       // All dashboards tab
       cy.visit("/admin/audit/dashboards/all");
       cy.findByPlaceholderText("Dashboard name");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(ADMIN_DASHBOARD);
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(normal.first_name + " " + normal.last_name);
       cy.get("tr")
         .eq(1)
@@ -226,12 +257,16 @@ describeEE("audit > auditing", () => {
     it("should load both tabs in Downloads", () => {
       // Overview tab
       cy.visit("/admin/audit/downloads/overview");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("No results!").should("not.exist");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Largest downloads in the last 30 days");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(normal.first_name + " " + normal.last_name);
 
       // All downloads tab
       cy.visit("/admin/audit/downloads/all");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("No results").should("not.exist");
       cy.get("tr")
         .last()

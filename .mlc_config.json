@@ -1,13 +1,13 @@
 {
   "ignorePatterns": [
     {
-      "pattern": "^https://downloads.metabase.com"
+      "pattern": "^https?://downloads.metabase.com"
     },
     {
-      "pattern": "^https://docs.cypress.io/"
+      "pattern": "^https?://docs.cypress.io/"
     },
     {
-      "pattern": "^https://twitter.com/"
+      "pattern": "^https?://twitter.com/"
     }
   ],
   "timeout": "180s",
