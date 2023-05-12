@@ -94,7 +94,7 @@
           (catch Throwable e
             (log/error e (trs "Error sending ''login from new device'' notification email"))))))))
 
-(t2/define-after-select :model/LoginHistory
+(t2/define-after-insert :model/LoginHistory
   [login-history]
   (maybe-send-login-from-new-device-email login-history)
   login-history)
