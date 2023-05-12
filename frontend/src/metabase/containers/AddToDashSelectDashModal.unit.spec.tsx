@@ -58,76 +58,14 @@ const PERSONAL_COLLECTION = createMockCollection({
   personal_owner_id: CURRENT_USER.id,
 });
 
+const COLLECTIONS = [COLLECTION_1, COLLECTION_2, PERSONAL_COLLECTION];
+
 interface SetupOpts {
   collections?: Collection[];
   error?: string;
   dashboard?: Dashboard;
   noRecentDashboard?: boolean;
   waitForContent?: boolean;
-}
-
-const COLLECTIONS = [COLLECTION_1, COLLECTION_2, PERSONAL_COLLECTION];
-
-function mockCollectionItemsEndpoint(dashboards: Dashboard[]) {
-  fetchMock.get(/api\/collection\/\d+\/items/, url => {
-    const collectionIdParam = url.split("/")[5];
-    const collectionId = Number(collectionIdParam);
-
-    const dashboardsOfCollection = dashboards.filter(
-      dashboard => dashboard.collection_id === collectionId,
-    );
-
-    return {
-      total: dashboardsOfCollection.length,
-      data: dashboardsOfCollection,
-    };
-  });
-}
-
-function mockRootCollectionItemsEndpoint(
-  collections: Collection[],
-  dashboards: Dashboard[],
-) {
-  fetchMock.get("path:/api/collection/root/items", () => {
-    const rootDashboards = dashboards.filter(
-      dashboard => dashboard.collection_id === null,
-    );
-    const rootCollections = collections.filter(
-      collection => collection.location !== "/",
-    );
-    const data = [...rootDashboards, ...rootCollections];
-
-    return {
-      total: data.length,
-      data,
-    };
-  });
-}
-
-function mockCollectionByIdEndpoint({
-  collections,
-  error,
-}: {
-  collections: Collection[];
-  error?: string;
-}) {
-  fetchMock.get(/api\/collection\/\d+/, url => {
-    if (error) {
-      return {
-        status: 500,
-        body: error,
-      };
-    }
-
-    const collectionIdParam = url.split("/")[5];
-    const collectionId = Number(collectionIdParam);
-
-    const collection = collections.find(
-      collection => collection.id === collectionId,
-    );
-
-    return collection;
-  });
 }
 
 const setup = async ({
@@ -233,3 +171,65 @@ describe("AddToDashSelectDashModal", () => {
     });
   });
 });
+
+function mockCollectionItemsEndpoint(dashboards: Dashboard[]) {
+  fetchMock.get(/api\/collection\/\d+\/items/, url => {
+    const collectionIdParam = url.split("/")[5];
+    const collectionId = Number(collectionIdParam);
+
+    const dashboardsOfCollection = dashboards.filter(
+      dashboard => dashboard.collection_id === collectionId,
+    );
+
+    return {
+      total: dashboardsOfCollection.length,
+      data: dashboardsOfCollection,
+    };
+  });
+}
+
+function mockRootCollectionItemsEndpoint(
+  collections: Collection[],
+  dashboards: Dashboard[],
+) {
+  fetchMock.get("path:/api/collection/root/items", () => {
+    const rootDashboards = dashboards.filter(
+      dashboard => dashboard.collection_id === null,
+    );
+    const rootCollections = collections.filter(
+      collection => collection.location !== "/",
+    );
+    const data = [...rootDashboards, ...rootCollections];
+
+    return {
+      total: data.length,
+      data,
+    };
+  });
+}
+
+function mockCollectionByIdEndpoint({
+  collections,
+  error,
+}: {
+  collections: Collection[];
+  error?: string;
+}) {
+  fetchMock.get(/api\/collection\/\d+/, url => {
+    if (error) {
+      return {
+        status: 500,
+        body: error,
+      };
+    }
+
+    const collectionIdParam = url.split("/")[5];
+    const collectionId = Number(collectionIdParam);
+
+    const collection = collections.find(
+      collection => collection.id === collectionId,
+    );
+
+    return collection;
+  });
+}
