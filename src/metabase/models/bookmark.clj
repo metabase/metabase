@@ -13,7 +13,7 @@
    [toucan.db :as db]
    [toucan2.core :as t2]))
 
-;; Used to be the toucan1 model name defined using [[toucan.models/defmodel]], not it's a reference to the toucan2 model name.
+;; Used to be the toucan1 model name defined using [[toucan.models/defmodel]], now it's a reference to the toucan2 model name.
 ;; We'll keep this till we replace all the symbols in our codebase."
 (def CardBookmark       "CardBookmark model"       :model/CardBookmark)
 (def DashboardBookmark  "DashboardBookmark model"  :model/DashboardBookmark)
