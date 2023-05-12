@@ -4,7 +4,10 @@ import { updateIn } from "icepick";
 import { createEntity, undo } from "metabase/lib/entities";
 import * as Urls from "metabase/lib/urls";
 import { color } from "metabase/lib/colors";
-import { getMetadata } from "metabase/selectors/metadata";
+import {
+  getMetadata,
+  getMetadataUnfiltered,
+} from "metabase/selectors/metadata";
 
 import Collections, {
   getCollectionType,
@@ -85,6 +88,15 @@ const Questions = createEntity({
 
   selectors: {
     getObject: (state, { entityId }) => getMetadata(state).question(entityId),
+    getObjectUnfiltered: (state, { entityId }) =>
+      getMetadataUnfiltered(state).question(entityId),
+    getListUnfiltered: (state, { entityQuery }) => {
+      const entityIds =
+        Questions.selectors.getEntityIds(state, { entityQuery }) ?? [];
+      return entityIds.map(entityId =>
+        Questions.selectors.getObjectUnfiltered(state, { entityId }),
+      );
+    },
   },
 
   objectSelectors: {
