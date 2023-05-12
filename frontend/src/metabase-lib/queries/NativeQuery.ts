@@ -6,17 +6,15 @@ import _ from "underscore";
 import slugg from "slugg";
 import * as ML from "cljs/metabase.lib.js";
 import {
+  Card,
+  DatabaseId,
+  DatasetQuery,
+  DependentMetadataItem,
+  NativeDatasetQuery,
   ParameterValuesConfig,
   TemplateTag,
   TemplateTags,
 } from "metabase-types/api";
-import {
-  Card,
-  DatasetQuery,
-  NativeDatasetQuery,
-} from "metabase-types/types/Card";
-import { DependentMetadataItem } from "metabase-types/types/Query";
-import { DatabaseEngine, DatabaseId } from "metabase-types/types/Database";
 import Question from "metabase-lib/Question";
 import Table from "metabase-lib/metadata/Table";
 import Database from "metabase-lib/metadata/Database";
@@ -146,7 +144,7 @@ export default class NativeQuery extends AtomicQuery {
     return databaseId != null ? this._metadata.database(databaseId) : null;
   }
 
-  engine(): DatabaseEngine | null | undefined {
+  engine(): string | null | undefined {
     const database = this.database();
     return database && database.engine;
   }

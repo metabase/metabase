@@ -32,6 +32,7 @@ describe("visual tests > visualizations > pie", () => {
       },
     });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("2,610");
     cy.createPercySnapshot();
   });

@@ -17,23 +17,40 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
+   [methodical.core :as methodical]
    [schema.core :as s]
    [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
-   [toucan.models :as models]
    [toucan2.core :as t2]))
 
-(models/defmodel DashboardCard :report_dashboardcard)
+(def DashboardCard
+  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], not it's a reference to the toucan2 model name.
+   We'll keep this till we replace all the DashboardCard symbol in our codebase."
+  :model/DashboardCard)
 
-(doto DashboardCard
+(methodical/defmethod t2/table-name :model/DashboardCard [_model] :report_dashboardcard)
+
+(doto :model/DashboardCard
+  (derive :metabase/model)
   (derive ::mi/read-policy.full-perms-for-perms-set)
-  (derive ::mi/write-policy.full-perms-for-perms-set))
+  (derive ::mi/write-policy.full-perms-for-perms-set)
+  (derive :hook/timestamped?)
+  (derive :hook/entity-id))
+
+(t2/deftransforms :model/DashboardCard
+  {:parameter_mappings     mi/transform-parameters-list
+   :visualization_settings mi/transform-visualization-settings})
+
+(t2/define-before-insert :model/DashboardCard
+ [dashcard]
+ (merge {:parameter_mappings     []
+         :visualization_settings {}} dashcard))
 
 (declare series)
 
 ;;; Return the set of permissions required to `read-or-write` this DashboardCard. If `:card` and `:series` are already
 ;;; hydrated this method doesn't need to make any DB calls.
-(defmethod mi/perms-objects-set DashboardCard
+(defmethod mi/perms-objects-set :model/DashboardCard
   [dashcard read-or-write]
   (let [card   (or (:card dashcard)
                    (t2/select-one [Card :dataset_query] :id (u/the-id (:card_id dashcard))))
@@ -41,19 +58,6 @@
                    (series dashcard))]
     (apply set/union (mi/perms-objects-set card read-or-write) (for [series-card series]
                                                                  (mi/perms-objects-set series-card read-or-write)))))
-
-(defn- pre-insert [dashcard]
-  (let [defaults {:parameter_mappings     []
-                  :visualization_settings {}}]
-    (merge defaults dashcard)))
-
-(mi/define-methods
- DashboardCard
- {:properties (constantly {::mi/timestamped? true
-                           ::mi/entity-id    true})
-  :types      (constantly {:parameter_mappings     :parameters-list
-                           :visualization_settings :visualization-settings})
-  :pre-insert pre-insert})
 
 (defn from-parsed-json
   "Convert a map with dashboard-card into a Toucan instance assuming it came from parsed JSON and the map keys have
@@ -71,12 +75,12 @@
    true
    ```"
   [dashboard-card]
-  (t2/instance DashboardCard
+  (t2/instance :model/DashboardCard
                (-> dashboard-card
                    (m/update-existing :parameter_mappings mi/normalize-parameters-list)
                    (m/update-existing :visualization_settings mi/normalize-visualization-settings))))
 
-(defmethod serdes/hash-fields DashboardCard
+(defmethod serdes/hash-fields :model/DashboardCard
   [_dashboard-card]
   [(serdes/hydrated-hash :card) ; :card is optional, eg. text cards
    (comp serdes/identity-hash
@@ -105,7 +109,7 @@
 (s/defn retrieve-dashboard-card
   "Fetch a single DashboardCard by its ID value."
   [id :- su/IntGreaterThanZero]
-  (-> (t2/select-one DashboardCard :id id)
+  (-> (t2/select-one :model/DashboardCard :id id)
       (hydrate :series)))
 
 (defn dashcard->multi-cards
@@ -182,7 +186,7 @@
          updates (shallow-updates (select-keys dashboard-card update-ks)
                                   (select-keys old-dashboard-card update-ks))]
      (when (seq updates)
-       (t2/update! DashboardCard id updates))
+       (t2/update! :model/DashboardCard id updates))
      (when (not= (:series dashboard-card [])
                  (:series old-dashboard-card []))
        (update-dashboard-cards-series! {(:id dashboard-card) (:series dashboard-card)}))

@@ -1,7 +1,6 @@
 import _ from "underscore";
 import {
-  AggregationReference,
-  ColumnName,
+  AggregateFieldReference,
   DimensionReference,
   DimensionReferenceWithOptions,
   ExpressionReference,
@@ -23,7 +22,7 @@ export const isExpressionReference = (
 
 export const isAggregationReference = (
   mbql: any,
-): mbql is AggregationReference => {
+): mbql is AggregateFieldReference => {
   return Array.isArray(mbql) && mbql[0] === "aggregation";
 };
 
@@ -34,8 +33,8 @@ export const isTemplateTagReference = (
 };
 
 export const createFieldReference = (
-  columnNameOrFieldId: ColumnName | FieldId,
-): FieldReference => ["field", columnNameOrFieldId, null];
+  columnNameOrFieldId: string | FieldId,
+): FieldReference => ["field", columnNameOrFieldId, null] as FieldReference;
 
 export const isValidDimensionReference = (
   mbql: any,

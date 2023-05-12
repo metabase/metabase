@@ -12,7 +12,6 @@ import Questions, {
 
 import type { Card } from "metabase-types/api";
 import type { State } from "metabase-types/store";
-import type { Card as LegacyCardType } from "metabase-types/types/Card";
 import type Question from "metabase-lib/Question";
 
 import {
@@ -56,10 +55,7 @@ function ModelUsageDetails({ model, cards, hasNewQuestionLink }: Props) {
     <ul>
       {cards.map(card => (
         <li key={card.id}>
-          <CardListItem
-            to={Urls.question(card as LegacyCardType)}
-            aria-label={card.name}
-          >
+          <CardListItem to={Urls.question(card)} aria-label={card.name}>
             <Icon name={getQuestionIcon(card).name} />
             <CardTitle>{card.name}</CardTitle>
           </CardListItem>

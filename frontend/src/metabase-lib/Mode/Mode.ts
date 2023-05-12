@@ -1,9 +1,9 @@
-import {
+import Question from "metabase-lib/Question";
+import type {
   ClickAction,
   ClickObject,
   QueryMode,
-} from "metabase-types/types/Visualization";
-import Question from "metabase-lib/Question";
+} from "metabase-lib/queries/drills/types";
 
 export default class Mode {
   _question: Question;
