@@ -145,10 +145,11 @@
 
 ;;; TODO -- base type should be affected by `temporal-unit`, right?
 (defmethod lib.metadata.calculation/metadata-method :field
-  [query stage-number [_tag {:keys [source-field effective-type base-type temporal-unit join-alias], :as opts} :as field-ref]]
+  [query stage-number [_tag {source-uuid :lib/uuid :keys [source-field effective-type base-type temporal-unit join-alias], :as opts} :as field-ref]]
   (let [field-metadata (resolve-field-metadata query stage-number field-ref)
         metadata       (merge
-                        {:lib/type :metadata/field}
+                        {:lib/type :metadata/field
+                         :lib/source-uuid source-uuid}
                         field-metadata
                         {:display-name (or (:display-name opts)
                                            (lib.metadata.calculation/display-name query stage-number field-ref))}

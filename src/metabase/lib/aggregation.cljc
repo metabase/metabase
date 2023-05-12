@@ -51,6 +51,7 @@
     (merge
      (lib.metadata.calculation/metadata query stage-number aggregation)
      {:lib/source :source/aggregations
+      :lib/source-uuid (:lib/uuid (second aggregation))
       ::aggregation-uuid (:lib/uuid (second aggregation))}
      (when base-type
        {:base-type base-type})
@@ -216,10 +217,19 @@
   ([query stage-number an-aggregate-clause]
    (lib.util/add-summary-clause query stage-number :aggregation an-aggregate-clause)))
 
-(mu/defn aggregations :- [:maybe [:sequential lib.metadata/ColumnMetadata]]
-  "Get metadata about the aggregations in a given stage of a query."
+(mu/defn aggregations :- [:maybe [:sequential ::lib.schema.aggregation/aggregation]]
+  "Get the aggregations in a given stage of a query."
   ([query]
    (aggregations query -1))
+
+  ([query        :- ::lib.schema/query
+    stage-number :- :int]
+   (not-empty (:aggregation (lib.util/query-stage query stage-number)))))
+
+(mu/defn aggregations-meta :- [:maybe [:sequential lib.metadata/ColumnMetadata]]
+  "Get metadata about the aggregations in a given stage of a query."
+  ([query]
+   (aggregations-meta query -1))
 
   ([query        :- ::lib.schema/query
     stage-number :- :int]
@@ -227,4 +237,5 @@
             (into [] (map (fn [aggregation]
                             (-> (lib.metadata.calculation/metadata query stage-number aggregation)
                                 (assoc :lib/source :source/aggregations
+                                       :lib/source-uuid (:lib/uuid (second aggregation))
                                        ::aggregation-uuid (:lib/uuid (second aggregation))))))))))

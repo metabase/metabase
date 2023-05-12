@@ -47,12 +47,13 @@
     (lib.metadata.calculation/type-of query stage-number expression)))
 
 (defmethod lib.metadata.calculation/metadata-method :expression
-  [query stage-number [_expression _opts expression-name, :as expression-ref]]
-  {:lib/type     :metadata/field
-   :name         expression-name
-   :display-name (lib.metadata.calculation/display-name query stage-number expression-ref)
-   :base-type    (lib.metadata.calculation/type-of query stage-number expression-ref)
-   :lib/source   :source/expressions})
+  [query stage-number [_expression opts expression-name, :as expression-ref]]
+  {:lib/type        :metadata/field
+   :lib/source-uuid (:lib/uuid opts)
+   :name            expression-name
+   :display-name    (lib.metadata.calculation/display-name query stage-number expression-ref)
+   :base-type       (lib.metadata.calculation/type-of query stage-number expression-ref)
+   :lib/source      :source/expressions})
 
 (defmethod lib.metadata.calculation/display-name-method :dispatch-type/integer
   [_query _stage-number n _style]
@@ -238,10 +239,10 @@
 (lib.common/defop upper [s])
 (lib.common/defop lower [s])
 
-(mu/defn expressions :- [:maybe [:sequential lib.metadata/ColumnMetadata]]
+(mu/defn expressions-meta :- [:maybe [:sequential lib.metadata/ColumnMetadata]]
   "Get metadata about the expressions in a given stage of a `query`."
   ([query]
-   (expressions query -1))
+   (expressions-meta query -1))
 
   ([query        :- ::lib.schema/query
     stage-number :- :int]
@@ -251,6 +252,15 @@
                         (assoc :lib/source   :source/expressions
                                :name         expression-name
                                :display-name expression-name)))))))
+
+(mu/defn expressions :- [:maybe ::lib.schema.expression/expressions]
+  "Get the expressions map from a given stage of a `query`."
+  ([query]
+   (expressions query -1))
+
+  ([query        :- ::lib.schema/query
+    stage-number :- :int]
+   (not-empty (:expressions (lib.util/query-stage query stage-number)))))
 
 (defmethod lib.ref/ref-method :expression
   [expression-clause]

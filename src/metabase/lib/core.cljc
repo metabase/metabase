@@ -53,6 +53,7 @@
 (shared.ns/import-fns
   [lib.aggregation
    aggregations
+   aggregations-meta
    aggregate
    count
    avg
@@ -82,6 +83,7 @@
   [lib.expression
    expression
    expressions
+   expressions-meta
    +
    -
    *

@@ -82,7 +82,7 @@
    stage-number   :- :int
    unique-name-fn :- fn?]
   (not-empty
-   (for [ag (lib.aggregation/aggregations query stage-number)]
+   (for [ag (lib.aggregation/aggregations-meta query stage-number)]
      (assoc ag
             :lib/source               :source/aggregations
             :lib/source-column-alias  (:name ag)
