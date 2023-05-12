@@ -35,11 +35,11 @@ interface OwnProps {
   className?: string;
   style?: React.CSSProperties;
   onChange: (value: PickerValue) => void;
-  initialOpenCollectionId?: CollectionId | "root";
+  initialOpenCollectionId?: CollectionId;
 }
 
 interface StateProps {
-  collectionsById: Record<Collection["id"], Collection>;
+  collectionsById: Record<CollectionId, Collection>;
   getCollectionIcon: (collection: Collection) => IconProps;
 }
 
@@ -86,7 +86,7 @@ function ItemPicker({
   getCollectionIcon,
   initialOpenCollectionId = "root",
 }: Props) {
-  const [openCollectionId, setOpenCollectionId] = useState<Collection["id"]>(
+  const [openCollectionId, setOpenCollectionId] = useState<CollectionId>(
     initialOpenCollectionId,
   );
   const [searchString, setSearchString] = useState("");
