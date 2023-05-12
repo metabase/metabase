@@ -30,9 +30,6 @@ import { getEmbedOptions } from "metabase/selectors/embed";
 import { parseHashOptions } from "metabase/lib/browser";
 import * as Urls from "metabase/lib/urls";
 
-import Dashboards from "metabase/entities/dashboards";
-
-import { useDispatch } from "metabase/lib/redux";
 import { addUndo, dismissUndo } from "metabase/redux/undo";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
 import * as dashboardActions from "../../actions";
@@ -109,10 +106,11 @@ const mapStateToProps = (state, props) => {
 const mapDispatchToProps = {
   ...dashboardActions,
   closeNavbar,
-  archiveDashboard: id => Dashboards.actions.setArchived({ id }, true),
   fetchDatabaseMetadata,
   setErrorPage,
   onChangeLocation: push,
+  dismissUndo,
+  addUndo,
 };
 
 // NOTE: should use DashboardControls and DashboardData HoCs here?
@@ -124,13 +122,13 @@ const DashboardApp = props => {
     isEditing,
     isDirty,
     closeDashboard,
+    dismissUndo,
+    addUndo,
   } = props;
 
   const options = parseHashOptions(window.location.hash);
   const editingOnLoad = options.edit;
   const addCardOnLoad = options.add && parseInt(options.add);
-
-  const dispatch = useDispatch();
 
   const [requestPermission, showNotification] = useWebNotification();
 
@@ -154,11 +152,11 @@ const DashboardApp = props => {
     }
 
     return () => {
-      dispatch(dismissUndo(slowToastId));
+      dismissUndo(slowToastId);
     };
   }, [
     dashboard?.name,
-    dispatch,
+    dismissUndo,
     isLoadingComplete,
     showNotification,
     slowToastId,
@@ -166,22 +164,20 @@ const DashboardApp = props => {
 
   const onConfirmToast = useCallback(async () => {
     await requestPermission();
-    dispatch(dismissUndo(slowToastId));
-  }, [dispatch, requestPermission, slowToastId]);
+    dismissUndo(slowToastId);
+  }, [dismissUndo, requestPermission, slowToastId]);
 
   const onTimeout = useCallback(() => {
     if ("Notification" in window && Notification.permission === "default") {
-      dispatch(
-        addUndo({
-          id: slowToastId,
-          timeout: false,
-          message: t`Would you like to be notified when this dashboard is done loading?`,
-          action: onConfirmToast,
-          actionLabel: t`Turn on`,
-        }),
-      );
+      addUndo({
+        id: slowToastId,
+        timeout: false,
+        message: t`Would you like to be notified when this dashboard is done loading?`,
+        action: onConfirmToast,
+        actionLabel: t`Turn on`,
+      });
     }
-  }, [dispatch, onConfirmToast, slowToastId]);
+  }, [addUndo, onConfirmToast, slowToastId]);
 
   useLoadingTimer(isRunning, {
     timer: DASHBOARD_SLOW_TIMEOUT,
