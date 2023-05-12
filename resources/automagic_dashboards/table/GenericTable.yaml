@@ -88,7 +88,7 @@ groups:
     title: "These [[this.short-name]] across time"
     comparison_title: How they compare across time
 - Geographical:
-    title: Where [[this.short-name]] are
+    title: Where these [[this.short-name]] are
     comparison_title: How they compare across location
 - General:
     title: How these [[this.short-name]] are distributed
