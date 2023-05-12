@@ -13,6 +13,7 @@ export const createMockDashboardState = (
     loadingIds: [],
     loadingStatus: "idle",
     startTime: null,
+    endTime: null,
   },
   loadingControls: {},
   isEditing: null,
@@ -20,6 +21,12 @@ export const createMockDashboardState = (
   slowCards: {},
   sidebar: {
     props: {},
+  },
+  selectedTabId: null,
+  missingActionParameters: null,
+  autoApplyFilters: {
+    toastId: null,
+    toastDashboardId: null,
   },
   ...opts,
 });

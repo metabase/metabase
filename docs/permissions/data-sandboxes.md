@@ -12,6 +12,8 @@ Data sandboxes let you give granular permissions to rows and columns for differe
 
 Say you have people who need to log into your Metabase for [self-service analytics](https://www.metabase.com/learn/customer-facing-analytics/multi-tenant-self-service-analytics), but should only be able to view data that pertains to them. For example, you might want to display an Accounts table to some customers, but each customer should only be able to view the rows that match their customer ID. Sandboxes let people ask their own questions in Metabase, without ever seeing any sensitive or irrelevant results.
 
+If you're ready to jump in, try our [Data sandbox examples](./data-sandbox-examples.md).
+
 ## How sandboxes work
 
 Data sandboxes work by displaying an edited version of a table, instead of the original table, to a specific group. 
