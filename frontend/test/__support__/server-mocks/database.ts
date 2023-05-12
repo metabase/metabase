@@ -45,9 +45,11 @@ export const setupSchemaEndpoints = (db: Database) => {
 };
 
 export function setupDatabaseIdFieldsEndpoints({ id, tables = [] }: Database) {
-  const fields = tables
-    .flatMap(table => table.fields ?? [])
-    .filter(field => isTypeFK(field.semantic_type));
+  const fields = tables.flatMap(table =>
+    (table.fields ?? [])
+      .filter(field => isTypeFK(field.semantic_type))
+      .map(field => ({ ...field, table })),
+  );
 
   fetchMock.get(`path:/api/database/${id}/idfields`, fields);
 }
