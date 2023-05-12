@@ -44,7 +44,7 @@
     :metabase.models.bookmark/CollectionBookmark
     :metabase.models.bookmark/DashboardBookmark
     :metabase.models.collection.root/RootCollection
-    :metabase.models.collection-permission-graph-revision/CollectionPermissionGraphRevision
+    :model/CollectionPermissionGraphRevision
     :model/DashboardCardSeries
     :metabase.models.field-values/FieldValues
     :metabase.models.login-history/LoginHistory
