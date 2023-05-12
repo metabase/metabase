@@ -32,9 +32,9 @@ import {
 
 import { hasDatabaseActionsEnabled } from "metabase/dashboard/utils";
 import { saveDashboardPdf } from "metabase/visualizations/lib/save-dashboard-pdf";
+import { getSetting } from "metabase/selectors/settings";
 
 import DashboardHeaderView from "../components/DashboardHeaderView";
-import { getSetting } from "metabase/selectors/settings";
 import { SIDEBAR_NAME } from "../constants";
 import {
   DashboardHeaderButton,

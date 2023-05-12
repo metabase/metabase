@@ -156,44 +156,26 @@ describe("scenarios > home > custom homepage", () => {
 
     it("should give you the option to set a custom home page in settings", () => {
       cy.visit("/admin/settings/general");
-      cy.findByTestId("custom-homepage-setting").within(() => {
-        cy.findByRole("switch").click();
-      });
+      cy.findByTestId("custom-homepage-setting").findByRole("switch").click();
 
-      cy.findByTestId("custom-homepage-dashboard-setting").within(() => {
-        cy.findByRole("button").click();
-      });
+      cy.findByTestId("custom-homepage-dashboard-setting")
+        .findByRole("button")
+        .click();
 
-      popover().within(() => {
-        cy.findByText("Orders in a dashboard").click();
-      });
+      popover().findByText("Orders in a dashboard").click();
 
-      cy.findByText("Saved");
+      cy.get("main").findByText("Saved");
 
-      cy.findByRole("navigation").within(() => {
-        cy.findByText("Exit admin").click();
-      });
-
+      cy.findByRole("navigation").findByText("Exit admin").click();
       cy.location("pathname").should("equal", "/dashboard/1");
     });
 
     it("should give you the option to set a custom home page using home page CTA", () => {
       cy.visit("/");
-
-      cy.get("main").within(() => {
-        cy.findByText("Customize").click();
-      });
-
-      modal().within(() => {
-        cy.findByText("Select a Dashboard").click();
-      });
-
-      popover().within(() => {
-        cy.findByText("Orders in a dashboard").click();
-      });
-      modal().within(() => {
-        cy.findByText("Save").click();
-      });
+      cy.get("main").findByText("Customize").click();
+      modal().findByText("Select a Dashboard").click();
+      popover().findByText("Orders in a dashboard").click();
+      modal().findByText("Save").click();
       cy.location("pathname").should("equal", "/dashboard/1");
     });
   });

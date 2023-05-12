@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import { t } from "ttag";
 import { useDispatch } from "metabase/lib/redux";
 import { updateSettings } from "metabase/admin/settings/settings";
@@ -19,7 +19,7 @@ interface CustomHomePageModalProps {
 }
 
 const CustomHomePageModal = ({ isOpen, onClose }: CustomHomePageModalProps) => {
-  const [dashboard, setDashboard] = useState();
+  const [dashboard, setDashboard] = useState<number | undefined>();
   const dispatch = useDispatch();
 
   const handleSave = async () => {
@@ -31,6 +31,17 @@ const CustomHomePageModal = ({ isOpen, onClose }: CustomHomePageModalProps) => {
     );
     await dispatch(refreshCurrentUser());
   };
+
+  const handleChange = useCallback(
+    (value: number | null | undefined) => {
+      if (value) {
+        setDashboard(value);
+      } else {
+        setDashboard(undefined);
+      }
+    },
+    [setDashboard],
+  );
 
   return (
     <Modal isOpen={isOpen} onClose={onClose}>
@@ -48,7 +59,7 @@ const CustomHomePageModal = ({ isOpen, onClose }: CustomHomePageModalProps) => {
       >
         <p>{t`Pick one of your dashboards to serve as a homepage. to reset, go to
           Admin Settings / Settings / General to disable it.`}</p>
-        <DashboardSelector value={dashboard} onChange={setDashboard} />
+        <DashboardSelector value={dashboard} onChange={handleChange} />
       </ModalContent>
     </Modal>
   );
