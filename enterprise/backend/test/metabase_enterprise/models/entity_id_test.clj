@@ -51,10 +51,10 @@
     :metabase.models.metric-important-field/MetricImportantField
     :metabase.models.moderation-review/ModerationReview
     :metabase.models.parameter-card/ParameterCard
-    :metabase.models.permissions/Permissions
-    :metabase.models.permissions-group/PermissionsGroup
-    :metabase.models.permissions-group-membership/PermissionsGroupMembership
-    :metabase.models.permissions-revision/PermissionsRevision
+    :model/Permissions
+    :model/PermissionsGroup
+    :model/PermissionsGroupMembership
+    :model/PermissionsRevision
     :metabase.models.persisted-info/PersistedInfo
     :metabase.models.pulse-card/PulseCard
     :metabase.models.pulse-channel/PulseChannel
