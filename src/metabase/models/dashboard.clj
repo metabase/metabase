@@ -45,10 +45,10 @@
 (methodical/defmethod t2/table-name :model/Dashboard [_model] :report_dashboard)
 
 (doto :model/Dashboard
- (derive ::perms/use-parent-collection-perms)
- (derive :metabase/model)
- (derive :hook/timestamped?)
- (derive :hook/entity-id))
+  (derive :metabase/model)
+  (derive ::perms/use-parent-collection-perms)
+  (derive :hook/timestamped?)
+  (derive :hook/entity-id))
 
 (t2/deftransforms :model/Dashboard
   {:parameters       mi/transform-parameters-list
@@ -136,6 +136,12 @@
   [:name (serdes/hydrated-hash :collection) :created_at])
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
+
+(mi/define-simple-hydration-method ordered-tabs
+  :ordered_tabs
+  "Return the ordered DashboardTabs associated with `dashboard-or-id`, sorted by tab position."
+  [dashboard-or-id]
+  (t2/select :model/DashboardTab :dashboard_id (u/the-id dashboard-or-id) {:order-by [[:position :asc]]}))
 
 (mi/define-simple-hydration-method ordered-cards
   :ordered_cards

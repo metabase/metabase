@@ -13,6 +13,7 @@ import {
   rightSidebar,
   getDashboardCardMenu,
   addOrUpdateDashboardCard,
+  openQuestionsSidebar,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -191,7 +192,7 @@ describe("scenarios > dashboard", () => {
   it("should add a question", () => {
     visitDashboard(1);
     cy.icon("pencil").click();
-    cy.get(".QueryBuilder-section .Icon-add").click();
+    openQuestionsSidebar();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Orders, Count").click();
     saveDashboard();
@@ -233,7 +234,7 @@ describe("scenarios > dashboard", () => {
     cy.findByText("This dashboard is looking empty.");
     // add previously created question to it
     cy.icon("pencil").click();
-    cy.icon("add").last().click();
+    openQuestionsSidebar();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("11007").click();
 
@@ -535,7 +536,7 @@ describe("scenarios > dashboard", () => {
     cy.intercept("GET", "/api/search*").as("search");
     visitDashboard(1);
     cy.icon("pencil").click();
-    cy.icon("add").last().click();
+    openQuestionsSidebar();
 
     sidebar().within(() => {
       // From the list

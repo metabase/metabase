@@ -7,6 +7,7 @@ import {
   saveDashboard,
   visitDashboard,
   getFullName,
+  openQuestionsSidebar,
 } from "e2e/support/helpers";
 
 import { USERS } from "e2e/support/cypress_data";
@@ -75,8 +76,7 @@ describe("metabase > scenarios > home > activity-page", () => {
     cy.wait("@dashboard");
 
     editDashboard();
-
-    cy.icon("add").last().click();
+    openQuestionsSidebar();
 
     sidebar().within(() => {
       cy.findByTestId("loading-spinner").should("not.exist");
