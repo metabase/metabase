@@ -2,49 +2,21 @@ import { Filter, NormalizedSegment } from "metabase-types/api";
 import type Metadata from "./Metadata";
 import type Table from "./Table";
 
-export default class Segment {
-  private readonly segment: NormalizedSegment;
+interface Segment extends Omit<NormalizedSegment, "table"> {
   table?: Table;
   metadata?: Metadata;
+}
+
+class Segment {
+  private readonly _plainObject: NormalizedSegment;
 
   constructor(segment: NormalizedSegment) {
-    this.segment = segment;
-  }
-
-  get id() {
-    return this.segment.id;
-  }
-
-  get name() {
-    return this.segment.name;
-  }
-
-  get description() {
-    return this.segment.description;
-  }
-
-  get table_id() {
-    return this.segment.table_id;
-  }
-
-  get definition() {
-    return this.segment.definition;
-  }
-
-  get definition_description() {
-    return this.segment.definition_description;
-  }
-
-  get revision_message() {
-    return this.segment.revision_message;
-  }
-
-  get archived() {
-    return this.segment.archived;
+    this._plainObject = segment;
+    Object.assign(this, segment);
   }
 
   getPlainObject() {
-    return this.segment;
+    return this._plainObject;
   }
 
   displayName() {
@@ -59,3 +31,5 @@ export default class Segment {
     return !this.archived;
   }
 }
+
+export default Segment;
