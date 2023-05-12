@@ -262,7 +262,7 @@ jobs:
   visual-regression-tests:
     runs-on: ubuntu-22.04
     timeout-minutes: 45
-    needs: build
+    needs: [build, test-run-id]
     name: percy-visual-regression-tests
     env:
       MB_EDITION: ${{ matrix.edition }}
@@ -304,3 +304,7 @@ jobs:
         run: yarn run test-visual-run
         env:
           PERCY_TOKEN: ${{ env.PERCY_TOKEN }}
+          RECORD_REPLAY_METADATA_FILE: /tmp/replay-metadata.json
+          RECORD_REPLAY_METADATA_TEST_RUN_ID: ${{ needs.test-run-id.outputs.testRunId }}
+          RECORD_REPLAY_DISABLE_ASSERTS: 1
+          RECORD_REPLAY_DISABLE_SOURCEMAP_COLLECTION: 1
