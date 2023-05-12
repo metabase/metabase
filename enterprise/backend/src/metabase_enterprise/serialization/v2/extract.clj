@@ -19,19 +19,19 @@
 
 (defn- model-set
   "Returns a set of models to export based on export opts"
-  [{:keys [include-field-values targets no-data-model]}]
+  [opts]
   (cond-> #{}
-    include-field-values
+    (:include-field-values opts)
     (conj "FieldValues")
 
-    ;; If `targets` is not specified, or if it is a non-empty collection, then we
-    ;; extract all content models. If `targets` is an empty collection, then do not export
-    ;; any content.
-    (or (nil? targets) (seq targets))
+    (not (:no-collections opts))
     (into serdes.models/content)
 
-    (not no-data-model)
-    (into serdes.models/data-model)))
+    (not (:no-data-model opts))
+    (into serdes.models/data-model)
+
+    (not (:no-settings opts))
+    (conj "Setting")))
 
 (defn targets-of-type
   "Returns target seq filtered on given model name"
@@ -178,15 +178,19 @@ Eg. if Dashboard B includes a Card A that is derived from a
     (escape-report analysis)
     ;; If it's nil, there are no errors, and we can proceed to do the dump.
     (let [closure  (descendants-closure targets)
+          models   (model-set opts)
           ;; filter the selected models based on user options
           by-model (-> (group-by first closure)
-                       (select-keys (model-set opts))
+                       (select-keys models)
                        (update-vals #(set (map second %))))]
-      (eduction (map (fn [[model ids]]
-                       (eduction (map #(serdes/extract-one model opts %))
-                                 (db/select-reducible (symbol model) :id [:in ids]))))
-                cat
-                by-model))))
+      (concat
+       (eduction (map (fn [[model ids]]
+                        (eduction (map #(serdes/extract-one model opts %))
+                                  (db/select-reducible (symbol model) :id [:in ids]))))
+                 cat
+                 by-model)
+       ;; extract all non-content entities like data model and settings if necessary
+       (eduction (map #(serdes/extract-all % opts)) cat (remove (set serdes.models/content) models))))))
 
 (defn extract
   "Returns a reducible stream of entities to serialize"

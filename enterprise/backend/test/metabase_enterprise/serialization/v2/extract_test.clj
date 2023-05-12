@@ -1287,12 +1287,16 @@
                        DashboardCard [_                       {:card_id      c4-id
                                                                :dashboard_id dash4-id}]]
 
+      (testing "selecting a collection includes settings and data model by default"
+        (is (= #{"Card" "Collection" "Dashboard" "Database" "Setting"}
+               (set (map (comp :model first serdes/path) (extract/extract {:targets [["Collection" coll1-id]]}))))))
+
       (testing "selecting a dashboard gets all cards its dashcards depend on"
         (testing "grandparent dashboard"
           (is (= #{[{:model "Dashboard" :id dash1-eid :label "dashboard_1"}]
                    [{:model "Card"      :id c1-1-eid  :label "question_1_1"}]
                    [{:model "Card"      :id c1-2-eid  :label "question_1_2"}]}
-                 (->> (extract/extract {:targets [["Dashboard" dash1-id]]})
+                 (->> (extract/extract {:targets [["Dashboard" dash1-id]] :no-settings true :no-data-model true})
                       (map serdes/path)
                       set))))
 
@@ -1300,7 +1304,7 @@
           (is (= #{[{:model "Dashboard" :id dash2-eid :label "dashboard_2"}]
                    [{:model "Card"      :id c2-1-eid  :label "question_2_1"}]
                    [{:model "Card"      :id c2-2-eid  :label "question_2_2"}]}
-                 (->> (extract/extract {:targets [["Dashboard" dash2-id]]})
+                 (->> (extract/extract {:targets [["Dashboard" dash2-id]] :no-settings true :no-data-model true})
                       (map serdes/path)
                       set))))
 
@@ -1308,7 +1312,7 @@
           (is (= #{[{:model "Dashboard" :id dash3-eid :label "dashboard_3"}]
                    [{:model "Card"      :id c3-1-eid  :label "question_3_1"}]
                    [{:model "Card"      :id c3-2-eid  :label "question_3_2"}]}
-                 (->> (extract/extract {:targets [["Dashboard" dash3-id]]})
+                 (->> (extract/extract {:targets [["Dashboard" dash3-id]] :no-settings true :no-data-model true})
                       (map serdes/path)
                       set))))
 
@@ -1319,7 +1323,7 @@
                     [{:model "Card"          :id c1-1-eid  :label "question_1_1"}]
                     ;; card that the card on dashboard linked to
                     [{:model "Card"          :id c1-2-eid  :label "question_1_2"}]}
-               (->> (extract/extract {:targets [["Dashboard" dash4-id]]})
+               (->> (extract/extract {:targets [["Dashboard" dash4-id]] :no-settings true :no-data-model true})
                     (map serdes/path)
                     set)))))
 
@@ -1341,17 +1345,17 @@
                                   [{:model "Card"          :id c1-3-eid  :label "question_1_3"}]}]
           (testing "grandchild collection has all its own contents"
             (is (= grandchild-paths ; Includes the third card not found in the collection
-                   (->> (extract/extract {:targets [["Collection" coll3-id]]})
+                   (->> (extract/extract {:targets [["Collection" coll3-id]] :no-settings true :no-data-model true})
                         (map serdes/path)
                         set))))
           (testing "middle collection has all its own plus the grandchild and its contents"
             (is (= (set/union middle-paths grandchild-paths)
-                   (->> (extract/extract {:targets [["Collection" coll2-id]]})
+                   (->> (extract/extract {:targets [["Collection" coll2-id]] :no-settings true :no-data-model true})
                         (map serdes/path)
                         set))))
           (testing "grandparent collection has all its own plus the grandchild and middle collections with contents"
             (is (= (set/union grandparent-paths middle-paths grandchild-paths)
-                   (->> (extract/extract {:targets [["Collection" coll1-id]]})
+                   (->> (extract/extract {:targets [["Collection" coll1-id]] :no-settings true :no-data-model true})
                         (map serdes/path)
                         set))))
 
@@ -1363,7 +1367,7 @@
                       [{:model "Card"          :id c1-1-eid  :label "question_1_1"}]
                       ;; card that the card on dashboard linked to
                       [{:model "Card"          :id c1-2-eid  :label "question_1_2"}]}
-                 (->> (extract/extract {:targets [["Collection" coll4-id]]})
+                 (->> (extract/extract {:targets [["Collection" coll4-id]] :no-settings true :no-data-model true})
                       (map serdes/path)
                       set)))))))))
 
