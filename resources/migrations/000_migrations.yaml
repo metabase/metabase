@@ -14532,12 +14532,6 @@ databaseChangeLog:
                   name: model_id
                   type: int
                   remarks: 'The ID of the indexed model.'
-                  constraints:
-                    nullable: false
-                    referencedTableName: report_card
-                    referencedColumnNames: id
-                    foreignKeyName: fk_model_index_model_id
-                    deleteCascade: true
               - column:
                   name: pk_ref
                   type: ${text.type}
@@ -14687,6 +14681,19 @@ databaseChangeLog:
         - dropIndex:
             tableName: model_index
             indexName: idx_model_index_model_id
+
+  - changeSet:
+      id: v47.00-024
+      author: dpsutton
+      comment: Added 0.47.0 -- model_index foriegn key to report_card
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: model_index
+            baseColumnNames: model_id
+            referencedTableName: report_card
+            referencedColumnNames: id
+            constraintName: fk_model_index_model_id
+            nullable: false
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
