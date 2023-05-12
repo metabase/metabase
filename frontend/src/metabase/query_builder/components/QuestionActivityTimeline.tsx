@@ -58,8 +58,10 @@ function _QuestionActivityTimeline({
     );
     const revisionEvents = getTimelineEvents({ revisions, currentUser });
 
-    // TODO sort these by timestamp
-    return [...revisionEvents, ...moderationEvents];
+    return [...revisionEvents, ...moderationEvents].sort(
+      (a, b) =>
+        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
+    );
   }, [moderationReviews, revisions, usersById, currentUser]);
 
   return (
