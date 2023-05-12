@@ -4,8 +4,6 @@ import { Route } from "react-router";
 import {
   setupMostRecentlyViewedDashboard,
   setupCollectionsEndpoints,
-  setupSearchEndpoints,
-  setupSingleCollectionEndpoint,
 } from "__support__/server-mocks";
 
 import {
@@ -18,55 +16,132 @@ import {
   createMockCard,
   createMockCollection,
   createMockDashboard,
+  createMockUser,
 } from "metabase-types/api/mocks";
 import { Collection, Dashboard } from "metabase-types/api";
 import { AddToDashSelectDashModal } from "./AddToDashSelectDashModal";
 
 const card = createMockCard({ id: 1, name: "Model Uno", dataset: true });
-const DASHBOARD = createMockDashboard({
+
+const CURRENT_USER = createMockUser({
   id: 1,
+  personal_collection_id: 100,
+  is_superuser: true,
+});
+
+const DASHBOARD = createMockDashboard({
+  id: 3,
   name: "Test dashboard",
   collection_id: 2,
+  model: "dashboard",
 });
 
 const dashboards = {
-  1: DASHBOARD,
+  [DASHBOARD.id]: DASHBOARD,
 };
 
 const COLLECTION_1 = createMockCollection({
-  id: 2,
+  id: 1,
   name: "C1",
   can_write: true,
 });
 
 const COLLECTION_2 = createMockCollection({
-  id: 3,
+  id: 2,
   name: "C2",
   can_write: true,
+});
+
+const PERSONAL_COLLECTION = createMockCollection({
+  id: CURRENT_USER.personal_collection_id,
+  name: "My personal collection",
+  personal_owner_id: CURRENT_USER.id,
 });
 
 interface SetupOpts {
   collections?: Collection[];
   error?: string;
-  dashboard?: Dashboard | null;
+  dashboard?: Dashboard;
+  noRecentDashboard?: boolean;
+  waitForContent?: boolean;
 }
 
-const COLLECTIONS = [COLLECTION_1, COLLECTION_2];
+const COLLECTIONS = [COLLECTION_1, COLLECTION_2, PERSONAL_COLLECTION];
 
-const setup = ({
+function mockCollectionItemsEndpoint(dashboards: Dashboard[]) {
+  fetchMock.get(/api\/collection\/\d+\/items/, url => {
+    const collectionIdParam = url.split("/")[5];
+    const collectionId = Number(collectionIdParam);
+
+    const dashboardsOfCollection = dashboards.filter(
+      dashboard => dashboard.collection_id === collectionId,
+    );
+
+    return {
+      total: dashboardsOfCollection.length,
+      data: dashboardsOfCollection,
+    };
+  });
+}
+
+function mockRootCollectionItemsEndpoint(
+  collections: Collection[],
+  dashboards: Dashboard[],
+) {
+  fetchMock.get("path:/api/collection/root/items", () => {
+    const rootDashboards = dashboards.filter(
+      dashboard => dashboard.collection_id === null,
+    );
+    const rootCollections = collections.filter(
+      collection => collection.location !== "/",
+    );
+    const data = [...rootDashboards, ...rootCollections];
+
+    return {
+      total: data.length,
+      data,
+    };
+  });
+}
+
+function mockCollectionByIdEndpoint({
+  collections,
+  error,
+}: {
+  collections: Collection[];
+  error?: string;
+}) {
+  fetchMock.get(/api\/collection\/\d+/, url => {
+    if (error) {
+      return {
+        status: 500,
+        body: error,
+      };
+    }
+
+    const collectionIdParam = url.split("/")[5];
+    const collectionId = Number(collectionIdParam);
+
+    const collection = collections.find(
+      collection => collection.id === collectionId,
+    );
+
+    return collection;
+  });
+}
+
+const setup = async ({
   collections = COLLECTIONS,
   dashboard = DASHBOARD,
+  noRecentDashboard = false,
   error,
+  waitForContent = true,
 }: SetupOpts = {}) => {
-  setupMostRecentlyViewedDashboard(dashboard ?? undefined);
-  setupSearchEndpoints([]);
   setupCollectionsEndpoints(collections);
-
-  if (!error) {
-    setupSingleCollectionEndpoint(COLLECTION_1);
-  } else {
-    fetchMock.get("path:/api/collection/2", { status: 500, body: error });
-  }
+  mockCollectionItemsEndpoint([dashboard]);
+  mockRootCollectionItemsEndpoint(collections, [dashboard]);
+  mockCollectionByIdEndpoint({ collections: COLLECTIONS, error });
+  setupMostRecentlyViewedDashboard(noRecentDashboard ? undefined : dashboard);
 
   renderWithProviders(
     <Route
@@ -80,21 +155,23 @@ const setup = ({
         />
       )}
     />,
-    { withRouter: true },
+    {
+      withRouter: true,
+      storeInitialState: {
+        currentUser: CURRENT_USER,
+      },
+    },
   );
+
+  if (waitForContent) {
+    await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
+  }
 };
 
 describe("AddToDashSelectDashModal", () => {
   describe("Create new Dashboard", () => {
     it("should open CreateDashboardModal", async () => {
-      fetchMock.get("path:/api/collection/1", 200);
-      fetchMock.get("path:/api/collection/2/items", []);
-
-      setup();
-
-      await waitForElementToBeRemoved(() =>
-        screen.queryByTestId("loading-spinner"),
-      );
+      await setup();
 
       const createNewDashboard = screen.getByRole("heading", {
         name: /create a new dashboard/i,
@@ -112,45 +189,31 @@ describe("AddToDashSelectDashModal", () => {
   });
 
   describe("Add to existing Dashboard", () => {
-    it("should show loading", () => {
-      fetchMock.get("path:/api/collection/2/items", []);
-      setup();
+    it("should show loading", async () => {
+      await setup({ waitForContent: false });
 
-      expect(screen.getByTestId("loading-spinner")).toBeInTheDocument();
+      expect(screen.getByText("Loading...")).toBeInTheDocument();
     });
 
     it("should show error", async () => {
       const ERROR = "Server Error!";
-      fetchMock.get("path:/api/collection/2/items", []);
-      setup({ error: ERROR });
-
-      await waitForElementToBeRemoved(() =>
-        screen.queryByTestId("loading-spinner"),
-      );
+      await setup({ error: ERROR });
 
       expect(screen.getByText(ERROR)).toBeInTheDocument();
     });
 
     describe("when user visited some dashboard in last 24hrs", () => {
       it("should preselected last visited dashboard in the picker", async () => {
-        fetchMock.get("path:/api/collection/2/items", {
-          data: [
-            {
-              name: DASHBOARD.name,
-              id: DASHBOARD.id,
-              model: "dashboard",
-            },
-          ],
-        });
+        await setup();
 
-        setup();
-
-        await waitForElementToBeRemoved(() =>
-          screen.queryByTestId("loading-spinner"),
+        const collectionToPresent = COLLECTIONS.find(
+          collection => collection.id === DASHBOARD.collection_id,
         );
 
         // breadcrumbs
-        expect(screen.getByText(COLLECTION_1.name)).toBeInTheDocument();
+        expect(
+          screen.getByText(`${collectionToPresent?.name}`),
+        ).toBeInTheDocument();
         // dashboard item
         expect(screen.getByText(DASHBOARD.name)).toBeInTheDocument();
       });
@@ -158,19 +221,14 @@ describe("AddToDashSelectDashModal", () => {
 
     describe("when user didn't visit any dashboard during last 24hrs", () => {
       it("should render root collection without preselection", async () => {
-        fetchMock.get("path:/api/collection/root/items", []);
-
-        setup({
-          dashboard: null,
+        await setup({
+          noRecentDashboard: true,
         });
 
-        await waitForElementToBeRemoved(() =>
-          screen.queryByTestId("loading-spinner"),
+        // breadcrumbs show root collection only
+        expect(screen.getByTestId("item-picker-header")).toHaveTextContent(
+          "Collections",
         );
-
-        // list of collections on the root screen
-        expect(screen.getByText(COLLECTION_1.name)).toBeInTheDocument();
-        expect(screen.getByText(COLLECTION_2.name)).toBeInTheDocument();
       });
     });
   });
