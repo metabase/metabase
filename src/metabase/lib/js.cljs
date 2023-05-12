@@ -168,6 +168,36 @@
   ([a-query stage-number x]
    (lib.core/breakout a-query stage-number (lib.core/ref x))))
 
+(defn ^:export binning
+  "Retrieve the current binning state of a `:field` clause, field metadata, etc. as an opaque object, or `nil` if it
+  does not have binning options set."
+  [x]
+  (lib.core/binning x))
+
+(defn ^:export with-binning
+  "Given `x` (a field reference) and a `binning` value, return a new `:field` clause with its `:binning` options set.
+
+  If `binning` is `nil`, removes any `:binning` options currently present.
+
+  `binning` can be one of the opaque values returned by [[available-binning-strategies]], or a literal
+  [[metabase.lib.schema.binning/binning]] value."
+  [x binning]
+  (lib.core/with-binning x binning))
+
+(defn ^:export available-binning-strategies
+  "Get a list of available binning strategies for `x` (a field reference, generally) in the context of `a-query` and
+  optionally `stage-number`. The returned list contains opaque objects which should be passed to [[display-info]].
+
+  Returns `nil` if none are available."
+  ([a-query x]
+   (-> (lib.core/available-binning-strategies a-query x)
+       to-array
+       not-empty))
+  ([a-query stage-number x]
+   (-> (available-binning-strategies a-query stage-number x)
+       to-array
+       not-empty)))
+
 (defn ^:export remove-clause
   "Removes the `target-clause` in the filter of the `query`."
   ([a-query clause]
