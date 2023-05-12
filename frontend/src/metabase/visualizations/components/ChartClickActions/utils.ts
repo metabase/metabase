@@ -136,7 +136,6 @@ export const getSectionContentDirection = (
   actions: RegularClickAction[],
 ): ContentDirectionType => {
   switch (sectionKey) {
-    case "sort":
     case "sum":
       return "row";
 
@@ -144,6 +143,13 @@ export const getSectionContentDirection = (
       const valueType = getFilterValueType(actions);
 
       if (["boolean", "numeric", "null"].includes(valueType)) {
+        return "row";
+      }
+      break;
+    }
+
+    case "sort": {
+      if (actions.length > 1) {
         return "row";
       }
     }
