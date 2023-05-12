@@ -22,11 +22,11 @@
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
    [metabase.util.schema :as su]
+   [methodical.core :as methodical]
    [potemkin :as p]
    [schema.core :as s]
    [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
-   [toucan.models :as models]
    [toucan2.core :as t2]
    [toucan2.protocols :as t2.protocols])
   (:import
@@ -43,9 +43,24 @@
   "Maximum number of characters allowed in a Collection `slug`."
   254)
 
-(models/defmodel Collection :collection)
+(def Collection
+  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], no2 it's a reference to the toucan2 model name.
+  We'll keep this till we replace all the Card symbol in our codebase."
+  :model/Collection)
+
+(methodical/defmethod t2/table-name :model/Collection [_model] :collection)
+
+(methodical/defmethod t2/model-for-automagic-hydration [#_model :default #_k :collection]
+  [_original-model _k]
+  :model/Collection)
+
+(t2/deftransforms :model/Collection
+  {:namespace       mi/transform-keyword
+   :authority_level mi/transform-keyword})
 
 (doto Collection
+  (derive :metabase/model)
+  (derive :hook/entity-id)
   (derive ::mi/read-policy.full-perms-for-perms-set)
   (derive ::mi/write-policy.full-perms-for-perms-set))
 
@@ -678,7 +693,8 @@
 
 ;;; ----------------------------------------------------- INSERT -----------------------------------------------------
 
-(defn- pre-insert [{collection-name :name, color :color, :as collection}]
+(t2/define-before-insert :model/Collection
+  [{collection-name :name, color :color, :as collection}]
   (assert-valid-location collection)
   (assert-valid-namespace (merge {:namespace nil} collection))
   (assert-valid-hex-color color)
@@ -723,10 +739,10 @@
       (copy-collection-permissions! (or parent-collection-id (assoc root-collection :namespace collection-namespace))
                                     [id]))))
 
-(defn- post-insert [collection]
+(t2/define-after-insert :model/Collection
+  [collection]
   (u/prog1 collection
     (copy-parent-permissions! collection)))
-
 
 ;;; ----------------------------------------------------- UPDATE -----------------------------------------------------
 
@@ -841,8 +857,12 @@
                  (if (keyword? v) (name v) (str v)))]
     (apply = (map std-fn namespaces))))
 
-(defn- pre-update [{collection-name :name, id :id, color :color, :as collection-updates}]
-  (let [collection-before-updates (t2/select-one Collection :id id)]
+(t2/define-before-update :model/Collection
+  [collection]
+  (let [collection-before-updates (t2/original collection)
+        {collection-name :name
+         color           :color
+         :as collection-updates}  (t2/changes collection)]
     ;; VARIOUS CHECKS BEFORE DOING ANYTHING:
     ;; (1) if this is a personal Collection, check that the 'propsed' changes are allowed
     (when (:personal_owner_id collection-before-updates)
@@ -861,7 +881,7 @@
       (update-perms-when-moving-across-personal-boundry! collection-before-updates collection-updates))
     ;; (5) make sure hex color is valid
     (when (api/column-will-change? :color collection-before-updates collection-updates)
-     (assert-valid-hex-color color))
+      (assert-valid-hex-color color))
     ;; OK, AT THIS POINT THE CHANGES ARE VALIDATED. NOW START ISSUING UPDATES
     ;; (1) archive or unarchive as appropriate
     (maybe-archive-or-unarchive! collection-before-updates collection-updates)
@@ -880,7 +900,8 @@
   *allow-deleting-personal-collections*
   false)
 
-(defn- pre-delete [collection]
+(t2/define-before-delete :model/Collection
+  [collection]
   ;; Delete all the Children of this Collection
   (t2/delete! Collection :location (children-location collection))
   ;; You can't delete a Personal Collection! Unless we enable it because we are simultaneously deleting the User
@@ -925,17 +946,6 @@
 (defmethod serdes/hash-fields Collection
   [_collection]
   [:name :namespace parent-identity-hash :created_at])
-
-(mi/define-methods
- Collection
- {:hydration-keys (constantly [:collection])
-  :types          (constantly {:namespace       :keyword
-                               :authority_level :keyword})
-  :properties     (constantly {::mi/entity-id true})
-  :pre-insert     pre-insert
-  :post-insert    post-insert
-  :pre-update     pre-update
-  :pre-delete     pre-delete})
 
 (defmethod serdes/extract-query "Collection" [_model {:keys [collection-set]}]
   (if (seq collection-set)

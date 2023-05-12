@@ -855,7 +855,7 @@
   It's here instead of [metabase.models.dashboard_card] to avoid cyclic deps."
   {"card"       :model/Card
    "dataset"    :model/Card
-   "collection" :metabase.models.collection/Collection
+   "collection" :model/Collection
    "database"   :metabase.models.database/Database
    "dashboard"  :model/Dashboard
    "table"      :metabase.models.table/Table})
