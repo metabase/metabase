@@ -9,6 +9,11 @@ export function setupPopularItemsEndpoints(popularItems: PopularItem[]) {
   fetchMock.get("path:/api/activity/popular_items", popularItems);
 }
 
-export function setupMostRecentlyViewedDashboard(mostRecentlyViewedDashboard?: Dashboard) {
-    fetchMock.get("path:/api/activity/most_recently_viewed_dashboard", mostRecentlyViewedDashboard ?? 204); 
+export function setupMostRecentlyViewedDashboard(
+  mostRecentlyViewedDashboard?: Dashboard,
+) {
+  fetchMock.get(
+    "path:/api/activity/most_recently_viewed_dashboard",
+    mostRecentlyViewedDashboard ?? 204,
+  );
 }
