@@ -10,7 +10,7 @@ redirect_from:
 
 Data sandboxes let you give granular permissions to rows and columns for different groups of people.
 
-Say you have an Accounts table with information about your customers. If you want to reuse one dashboard for different teams (say that Marketing should see customer emails, but everyone else should not), you can use a sandbox to customize the data that's shown to each person.
+Say you have an Accounts table with information about your customers. If you want to reuse one dashboard for different teams (say that the Customer Success team should see account emails, but everyone else should not), you can use a sandbox to automatically filter that dashboard for each team.
 
 Or, if your customers want to log into your Metabase themselves for [self-service analytics](https://www.metabase.com/learn/customer-facing-analytics/multi-tenant-self-service-analytics), you can use a sandbox to make sure each customer can only view the rows that match their customer ID.
 
