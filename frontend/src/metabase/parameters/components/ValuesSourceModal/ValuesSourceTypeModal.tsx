@@ -19,9 +19,7 @@ import ModalContent from "metabase/components/ModalContent";
 import { useSafeAsyncFunction } from "metabase/hooks/use-safe-async-function";
 import Tables from "metabase/entities/tables";
 import Questions from "metabase/entities/questions";
-import { getMetadata } from "metabase/selectors/metadata";
 import {
-  Card,
   ValuesSourceConfig,
   ValuesSourceType,
   Parameter,
@@ -62,11 +60,7 @@ interface ModalOwnProps {
   onClose: () => void;
 }
 
-interface ModalCardProps {
-  card: Card | undefined;
-}
-
-interface ModalStateProps {
+interface ModalQuestionProps {
   question: Question | undefined;
 }
 
@@ -76,10 +70,7 @@ interface ModalDispatchProps {
   ) => Promise<ParameterValues>;
 }
 
-type ModalProps = ModalOwnProps &
-  ModalCardProps &
-  ModalStateProps &
-  ModalDispatchProps;
+type ModalProps = ModalOwnProps & ModalQuestionProps & ModalDispatchProps;
 
 const ValuesSourceTypeModal = ({
   parameter,
@@ -495,13 +486,6 @@ const useParameterValues = ({
   return state;
 };
 
-const mapStateToProps = (
-  state: State,
-  { card }: ModalOwnProps & ModalCardProps,
-): ModalStateProps => ({
-  question: card ? new Question(card, getMetadata(state)) : undefined,
-});
-
 const mapDispatchToProps = {
   onFetchParameterValues: fetchParameterValues,
 };
@@ -516,8 +500,7 @@ export default _.compose(
   }),
   Questions.load({
     id: (state: State, { sourceConfig: { card_id } }: ModalOwnProps) => card_id,
-    entityAlias: "card",
     LoadingAndErrorWrapper: ModalLoadingAndErrorWrapper,
   }),
-  connect(mapStateToProps, mapDispatchToProps),
+  connect(null, mapDispatchToProps),
 )(ValuesSourceTypeModal);
