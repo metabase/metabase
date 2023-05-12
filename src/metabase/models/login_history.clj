@@ -2,14 +2,12 @@
   (:require
    [java-time :as t]
    [metabase.email.messages :as messages]
-   [metabase.models.interface :as mi]
    [metabase.models.setting :refer [defsetting]]
    [metabase.server.request.util :as request.u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :as i18n :refer [trs tru]]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
-   [toucan.models :as models]
    [toucan2.connection :as t2.conn]
    [toucan2.core :as t2]))
 
