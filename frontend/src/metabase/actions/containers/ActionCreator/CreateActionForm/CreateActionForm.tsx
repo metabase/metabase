@@ -59,7 +59,7 @@ function CreateActionForm({
       onSubmit={onCreate}
     >
       {({ isValid }) => (
-        <Form disabled={!isValid}>
+        <Form disabled={!isValid} data-testid="create-action-form">
           <FormInput
             name="name"
             title={t`Name`}

@@ -118,7 +118,7 @@ You can find a sample basic sandbox setup in the [Data sandbox examples](./data-
 
 - A [group](../people-and-groups/managing.md#groups) of people to be added to the advanced data sandbox.
 - An admin-only [collection](../exploration-and-organization/collections.md), with [collection permissions](../permissions/collections.md) set to **No access** for all groups except Administrators.
-- A [saved SQL question](../people-and-groups/) with the rows and columns to be displayed to the people in the custom sandbox, stored in the admin-only collection.
+- A [saved SQL question](../questions/native-editor/writing-sql.md) with the rows and columns to be displayed to the people in the custom sandbox, stored in the admin-only collection.
 - Optional: if you want to restrict **rows** in a custom sandbox, set up [user attributes](#choosing-user-attributes-for-data-sandboxes) for each of the people in the group.
 
 ### Creating a SQL question for Metabase to display in an custom sandbox

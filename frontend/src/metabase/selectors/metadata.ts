@@ -127,10 +127,8 @@ export const getMetadata: (
       );
     });
     // schema
-    hydrate(
-      metadata.schemas,
-      "database",
-      schema => metadata.database(schema.database) as Database,
+    hydrate(metadata.schemas, "database", schema =>
+      metadata.database(schema.getPlainObject().database),
     );
 
     // table
@@ -151,10 +149,11 @@ export const getMetadata: (
       );
     });
 
-    hydrate(metadata.schemas, "tables", schema =>
-      schema.tables
+    hydrate(metadata.schemas, "tables", schema => {
+      const tableIds = schema.getPlainObject().tables;
+      return tableIds
         ? // use the schema tables if they exist
-          schema.tables.map(table => metadata.table(table))
+          tableIds.map(table => metadata.table(table))
         : schema.database && schema.database.tables.length > 0
         ? // if the schema has a database with tables, use those
           schema.database.tables.filter(
@@ -163,8 +162,8 @@ export const getMetadata: (
         : // otherwise use any loaded tables that match the schema id
           Object.values(metadata.tables).filter(
             table => table.schema && table.schema.id === schema.id,
-          ),
-    );
+          );
+    });
 
     // segments
     hydrate(

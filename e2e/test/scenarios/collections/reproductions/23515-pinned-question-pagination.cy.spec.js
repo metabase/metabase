@@ -17,9 +17,11 @@ describe("issue 23515", () => {
     cy.wait("@getCardQuery");
 
     cy.icon("triangle_right").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Rows 5-8 of first 2000").should("be.visible");
 
     cy.icon("triangle_left").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Rows 1-4 of first 2000").should("be.visible");
   });
 });
