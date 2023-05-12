@@ -14,7 +14,6 @@ import Questions from "metabase/entities/questions";
 import { getMetadata } from "metabase/selectors/metadata";
 
 import type {
-  Card,
   CardId,
   DatabaseId,
   WritebackActionId,
@@ -47,11 +46,10 @@ interface ActionLoaderProps {
 }
 
 interface ModelLoaderProps {
-  modelCard: Card;
+  model: Question;
 }
 
 interface StateProps {
-  model: Question;
   metadata: Metadata;
 }
 
@@ -68,8 +66,7 @@ type Props = OwnProps &
   StateProps &
   DispatchProps;
 
-const mapStateToProps = (state: State, { modelCard }: ModelLoaderProps) => ({
-  model: new Question(modelCard, getMetadata(state)),
+const mapStateToProps = (state: State) => ({
   metadata: getMetadata(state),
 });
 
@@ -217,7 +214,7 @@ export default _.compose(
   }),
   Questions.load({
     id: (state: State, props: OwnProps) => props?.modelId,
-    entityAlias: "modelCard",
+    entityAlias: "model",
   }),
   Database.loadList(),
   connect(mapStateToProps, mapDispatchToProps),
