@@ -77,7 +77,6 @@ function ActionCreatorModal({
 
   return (
     <ActionCreator
-      data-testid="action-creator"
       actionId={actionId}
       modelId={modelId}
       databaseId={databaseId}
