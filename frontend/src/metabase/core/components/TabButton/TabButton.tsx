@@ -25,30 +25,28 @@ import {
 import { TabButtonInput, TabButtonRoot, MenuButton } from "./TabButton.styled";
 import TabButtonMenu from "./TabButtonMenu";
 
-export type TabButtonValue = string | number;
-
-export type TabButtonMenuAction = (
+export type TabButtonMenuAction<T> = (
   context: TabContextType,
-  value?: TabButtonValue,
+  value: T,
 ) => void;
 
-export interface TabButtonMenuItem {
+export interface TabButtonMenuItem<T> {
   label: string;
-  action: TabButtonMenuAction;
+  action: TabButtonMenuAction<T>;
 }
 
-export interface TabButtonProps extends HTMLAttributes<HTMLDivElement> {
+export interface TabButtonProps<T> extends HTMLAttributes<HTMLDivElement> {
   label: string;
-  value?: TabButtonValue;
+  value: T;
   showMenu?: boolean;
-  menuItems?: TabButtonMenuItem[];
+  menuItems?: TabButtonMenuItem<T>[];
   onEdit?: ChangeEventHandler<HTMLInputElement>;
   onFinishEditing?: () => void;
   isEditing?: boolean;
   disabled?: boolean;
 }
 
-const TabButton = forwardRef(function TabButton(
+const TabButton = forwardRef(function TabButton<T>(
   {
     value,
     menuItems,
@@ -60,7 +58,7 @@ const TabButton = forwardRef(function TabButton(
     isEditing = false,
     showMenu: showMenuProp = true,
     ...props
-  }: TabButtonProps,
+  }: TabButtonProps<T>,
   inputRef: Ref<HTMLInputElement>,
 ) {
   const { value: selectedValue, idPrefix, onChange } = useContext(TabContext);
@@ -90,15 +88,11 @@ const TabButton = forwardRef(function TabButton(
   const handleInputKeyPress: KeyboardEventHandler<HTMLInputElement> =
     useCallback(
       event => {
-        if (event.key !== "Enter") {
-          return;
-        }
-        if (typeof inputRef === "object") {
+        if (event.key === "Enter" && typeof inputRef === "object") {
           inputRef?.current?.blur();
         }
-        onFinishEditing?.();
       },
-      [onFinishEditing, inputRef],
+      [inputRef],
     );
 
   return (
@@ -111,6 +105,7 @@ const TabButton = forwardRef(function TabButton(
       aria-selected={isSelected}
       aria-controls={getTabPanelId(idPrefix, value)}
       aria-disabled={disabled}
+      aria-label={label}
       id={getTabId(idPrefix, value)}
     >
       <TabButtonInput
@@ -122,6 +117,7 @@ const TabButton = forwardRef(function TabButton(
         onKeyPress={handleInputKeyPress}
         onFocus={e => e.currentTarget.select()}
         onBlur={onFinishEditing}
+        aria-labelledby={getTabId(idPrefix, value)}
         id={getTabButtonInputId(idPrefix, value)}
         ref={inputRef}
       />
@@ -143,7 +139,7 @@ const TabButton = forwardRef(function TabButton(
             />
           )}
           popoverContent={({ closePopover }) => (
-            <TabButtonMenu
+            <TabButtonMenu<T>
               menuItems={menuItems}
               value={value}
               closePopover={closePopover}
@@ -155,25 +151,29 @@ const TabButton = forwardRef(function TabButton(
   );
 });
 
-export interface RenameableTabButtonProps
-  extends Omit<TabButtonProps, "onEdit" | "onFinishEditing" | "isEditing"> {
+export interface RenameableTabButtonProps<T>
+  extends Omit<TabButtonProps<T>, "onEdit" | "onFinishEditing" | "isEditing"> {
   onRename: (newLabel: string) => void;
   renameMenuLabel?: string;
   renameMenuIndex?: number;
 }
 
-export function RenameableTabButton({
-  label: originalLabel,
+export function RenameableTabButton<T>({
+  label: labelProp,
   menuItems: originalMenuItems = [],
   onRename,
   renameMenuLabel = t`Rename`,
   renameMenuIndex = 0,
   ...props
-}: RenameableTabButtonProps) {
-  const [label, setLabel] = useState(originalLabel);
+}: RenameableTabButtonProps<T>) {
+  const [label, setLabel] = useState(labelProp);
   const [prevLabel, setPrevLabel] = useState(label);
   const [isEditing, setIsEditing] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setLabel(labelProp);
+  }, [labelProp]);
 
   useEffect(() => {
     if (isEditing) {

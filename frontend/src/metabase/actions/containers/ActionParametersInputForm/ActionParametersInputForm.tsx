@@ -85,12 +85,13 @@ function ActionParametersInputForm({
     const hasValueFromDashboard = Object.keys(dashcardParamValues).length > 0;
     const canPrefetch = hasValueFromDashboard && dashboard && dashcard;
 
-    if (shouldPrefetch) {
+    if (shouldPrefetch && !hasPrefetchedValues) {
       setPrefetchedValues({});
       canPrefetch && fetchInitialValues();
     }
   }, [
     shouldPrefetch,
+    hasPrefetchedValues,
     dashboard,
     dashcard,
     dashcardParamValues,
