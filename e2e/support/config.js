@@ -112,7 +112,6 @@ const mainConfig = {
   // New `specPattern` is the combination of the old:
   //   1. testFiles and
   //   2. integrationFolder
-  experimentalStudio: true,
   specPattern: "e2e/test/**/*.cy.spec.js",
   projectId: "KetpiS",
   viewportHeight: 800,
