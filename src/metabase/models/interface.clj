@@ -414,7 +414,6 @@
   {:in  (comp json-in normalize-parameters-list)
    :out (comp (catch-normalization-exceptions normalize-parameters-list) json-out-with-keywordization)})
 
-
 ;; --- predefined hooks
 
 (t2/define-before-insert :hook/timestamped?
