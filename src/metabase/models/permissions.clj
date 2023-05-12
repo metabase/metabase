@@ -686,6 +686,8 @@
 
 (methodical/defmethod t2/table-name :model/Permissions [_model] :permissions)
 
+(derive :model/Permissions :metabase/model)
+
 (t2/define-before-insert :model/Permissions
   [permissions]
   (u/prog1 permissions

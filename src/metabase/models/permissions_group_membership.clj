@@ -1,7 +1,6 @@
 (ns metabase.models.permissions-group-membership
   (:require
    [metabase.db.query :as mdb.query]
-   [metabase.models.interface :as mi]
    [metabase.models.permissions-group :as perms-group]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
@@ -14,6 +13,8 @@
   :model/PermissionsGroupMembership)
 
 (methodical/defmethod t2/table-name :model/PermissionsGroupMembership [_model] :permissions_group_membership)
+
+(derive :model/PermissionsGroupMembership :metabase/model)
 
 (def fail-to-remove-last-admin-msg
   "Exception message when try to remove the last admin."

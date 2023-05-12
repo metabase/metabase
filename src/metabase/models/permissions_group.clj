@@ -27,6 +27,8 @@
 
 (methodical/defmethod t2/table-name :model/PermissionsGroup [_model] :permissions_group)
 
+(derive :model/PermissionsGroup :metabase/model)
+
 ;;; -------------------------------------------- Magic Groups Getter Fns ---------------------------------------------
 
 (defn- magic-group [group-name]
