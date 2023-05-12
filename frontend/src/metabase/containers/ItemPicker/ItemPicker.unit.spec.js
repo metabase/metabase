@@ -117,6 +117,11 @@ function mockCollectionItemsEndpoint() {
       data,
     };
   });
+
+  fetchMock.get("path:/api/collection/personal/items", {
+    total: 1,
+    data: [COLLECTION.PERSONAL],
+  });
 }
 
 async function setup({
@@ -253,5 +258,24 @@ describe("ItemPicker", () => {
     expect(list.getByText(COLLECTION_OTHER_USERS.name)).toBeInTheDocument();
     expect(list.getByText(COLLECTION.PERSONAL.name)).toBeInTheDocument();
     expect(list.getAllByTestId("item-picker-item")).toHaveLength(2);
+  });
+
+  it("preselects value in the correspondent collection", async () => {
+    await setup({
+      initialOpenCollectionId: DASHBOARD.REGULAR_CHILD.collection_id,
+      value: {
+        model: "dashboard",
+        id: DASHBOARD.REGULAR_CHILD.id,
+      },
+    });
+
+    const header = within(getItemPickerHeader());
+
+    // nested collection
+    expect(header.getByText(COLLECTION.ROOT.name)).toBeInTheDocument();
+    expect(header.getByText(COLLECTION.REGULAR.name)).toBeInTheDocument();
+
+    const list = within(getItemPickerList());
+    expect(list.getByText(DASHBOARD.REGULAR_CHILD.name)).toBeInTheDocument();
   });
 });
