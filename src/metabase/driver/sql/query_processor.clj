@@ -44,11 +44,32 @@
   nil)
 
 (defn make-nestable-sql
-  "For embedding native sql queries, wraps [sql] in parens and removes any comments and semicolons."
+  "Do best effort edit to the `sql`, to make it nestable in subselect.
+
+  That requires:
+
+  - Removal of traling comments (after the semicolon).
+  - Removing the semicolon(s).
+  - Squashing whitespace at the end of the string and replacinig it with newline. This is required in case some
+    comments were preceding semicolon.
+  - Wrapping the result in parens.
+
+  This implementation does not handle few cases cases properly. 100% correct comment and semicolon removal would
+  probably require _parsing_ sql string and not just a regular expression replacement. Link to the discussion:
+  https://github.com/metabase/metabase/pull/30677
+
+  For the limitations see the [[metabase.driver.sql.query-processor-test/make-nestable-sql-test]]"
   [sql]
-  (str "(" (-> sql
-               (str/replace #"--.*(\n|$)" "")
-               (str/replace #";[\s;]*$" "")) ")"))
+  (str "("
+       (-> sql
+           (str/replace #";([\s;]*(--.*\n?)*)*?$" "")
+           str/trimr
+           (as-> trimmed
+                 ;; Query could potentially end with a comment.
+                 (if (re-find #"--.*$" trimmed)
+                   (str/replace trimmed #"$" "\n")
+                   trimmed)))
+       ")"))
 
 (defn- format-sql-source-query [_fn [sql params]]
   (into [(make-nestable-sql sql)] params))
