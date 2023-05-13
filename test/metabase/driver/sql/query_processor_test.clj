@@ -1078,3 +1078,44 @@
                                     :breakout    [:binning-strategy $quantity :num-bins 10]}))
                    (mdb.query/format-sql :h2)
                    str/split-lines)))))))
+
+(deftest ^:parallel make-nestable-sql-test
+  (testing "Native sql query should be modified to be usable in subselect"
+    (are [raw nestable] (= nestable (sql.qp/make-nestable-sql raw))
+      "SELECT ';' `x`; ; "
+      "(SELECT ';' `x`)"
+
+      "SELECT * FROM table\n-- remark"
+      "(SELECT * FROM table\n-- remark\n)"
+
+      ;; Comment, semicolon, comment, comment.
+      "SELECT * from people -- people -- cool table\n ; -- cool query\n -- some notes on cool query"
+      "(SELECT * from people -- people -- cool table\n)"
+
+      ;; String containing semicolon, double dash and newline followed by NO _comment or semicolon or end of input_.
+      "SELECT 'string with \n ; -- ends \n on new line';"
+      "(SELECT 'string with \n ; -- ends \n on new line')"
+
+      ;; String containing semicolon followed by double dash followed by THE _comment or semicolon or end of input_.
+      ;; TODO: Enable when better sql parsing solution is found in the [[sql.qp/make-nestable-sql]]].
+      #_#_
+      "SELECT 'string with \n ; -- ending on the same line';"
+      "(SELECT 'string with \n ; -- ending on the same line')"
+      #_#_
+      "SELECT 'string with \n ; -- ending on the same line';\n-- comment"
+      "(SELECT 'string with \n ; -- ending on the same line')"
+
+      ;; String containing just `--` without `;` works
+      "SELECT 'string with \n -- ending on the same line';"
+      "(SELECT 'string with \n -- ending on the same line'\n)"
+
+      ;; String with just `;`
+      "SELECT 'string with ; ending on the same line';"
+      "(SELECT 'string with ; ending on the same line')"
+
+      ;; Semicolon after comment after semicolon
+      "SELECT ';';\n
+      --c1\n
+      ; --c2\n
+      -- c3"
+      "(SELECT ';')")))

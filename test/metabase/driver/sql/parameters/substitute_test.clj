@@ -285,7 +285,7 @@
                                 (substitute query {"#123" (params/map->ReferencedCardQuery
                                                            {:card-id 123, :query nested})}))
         "SELECT ';' `x`; ; "             "SELECT ';' `x`"
-        "SELECT * FROM table\n-- remark" "SELECT * FROM table\n"))))
+        "SELECT * FROM table\n-- remark" "SELECT * FROM table\n-- remark\n"))))
 
 ;;; --------------------------------------------- Native Query Snippets ----------------------------------------------
 
