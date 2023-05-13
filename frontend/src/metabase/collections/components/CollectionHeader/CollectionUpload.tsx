@@ -40,6 +40,7 @@ export default function ColllectionUpload({
           )} (${MAX_UPLOAD_STRING} max)`}</TooltipSubtitle>
         </TooltipContainer>
       }
+      placement="bottom"
     >
       <label htmlFor="upload-csv">
         <CollectionHeaderButton as="span" to="" icon="arrow_up" />

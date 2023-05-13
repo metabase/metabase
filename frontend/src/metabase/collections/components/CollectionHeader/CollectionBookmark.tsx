@@ -33,6 +33,7 @@ const CollectionBookmark = ({
   return (
     <BookmarkToggle
       isBookmarked={isBookmarked}
+      tooltipPlacement="bottom"
       onCreateBookmark={handleCreateBookmark}
       onDeleteBookmark={handleDeleteBookmark}
     />
