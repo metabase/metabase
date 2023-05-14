@@ -122,6 +122,7 @@ class QueryInner {
   }
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default class Query extends memoizeClass<QueryInner>("question")(
   QueryInner,
 ) {}

@@ -66,6 +66,7 @@ type DimensionOption = {
  * @abstract
  */
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default class Dimension {
   _parent: Dimension | null | undefined;
   _args: any;
