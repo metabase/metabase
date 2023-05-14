@@ -25,7 +25,7 @@
                                          {:base-type :type/Date, :temporal-unit :year}
                                          (meta/id :checkins :date)]]}]}
             query))
-    (is (= "Checkins, Count, Grouped by Date (year)"
+    (is (= "Checkins, Count, Grouped by Date: Year"
            (lib/display-name query query)
            (lib/describe-query query)
            (lib/suggested-name query)))))

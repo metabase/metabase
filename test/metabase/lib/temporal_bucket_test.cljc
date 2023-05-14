@@ -52,6 +52,8 @@
 (deftest ^:parallel describe-temporal-unit-test
   (is (= ""
          (lib.temporal-bucket/describe-temporal-unit nil)))
+  (is (= "Day of month"
+         (lib.temporal-bucket/describe-temporal-unit :day-of-month)))
   (is (= "Day"
          (lib.temporal-bucket/describe-temporal-unit :day)
          (lib.temporal-bucket/describe-temporal-unit 1 :day)
