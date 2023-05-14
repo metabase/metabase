@@ -307,6 +307,10 @@
               (preprocess* query)))]
     (qp query nil nil)))
 
+(defn- restore-join-aliases [preprocessed-query]
+  (let [replacement (-> preprocessed-query :info :alias/escaped->original)]
+    (escape-join-aliases/restore-aliases preprocessed-query replacement)))
+
 (defn query->expected-cols
   "Return the `:cols` you would normally see in MBQL query results by preprocessing the query and calling `annotate` on
   it. This only works for pure MBQL queries, since it does not actually run the queries. Native queries or MBQL
@@ -314,16 +318,13 @@
   [{query-type :type, :as query}]
   (when-not (= (mbql.u/normalize-token query-type) :query)
     (throw (ex-info (tru "Can only determine expected columns for MBQL queries.")
-             {:type qp.error-type/qp})))
+                    {:type qp.error-type/qp})))
   ;; TODO - we should throw an Exception if the query has a native source query or at least warn about it. Need to
   ;; check where this is used.
   (qp.store/with-store
-    (let [preprocessed (preprocess query)]
+    (let [preprocessed (-> query preprocess restore-join-aliases)]
       (driver/with-driver (driver.u/database->driver (:database preprocessed))
-        (let [escaped->original (-> preprocessed :info :alias/escaped->original)
-              column-info (cond-> (annotate/merged-column-info preprocessed nil)
-                            (seq escaped->original) (escape-join-aliases/restore-aliases escaped->original))]
-          (not-empty (vec column-info)))))))
+        (not-empty (vec (annotate/merged-column-info preprocessed nil)))))))
 
 (defn compile
   "Return the native form for `query` (e.g. for a MBQL query on Postgres this would return a map containing the compiled
