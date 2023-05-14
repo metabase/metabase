@@ -66,6 +66,7 @@ const isOverwriteMode = (
   return saveType === "overwrite";
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default class SaveQuestionModal extends Component<SaveQuestionModalProps> {
   handleSubmit = async (details: FormValues) => {
     const { originalQuestion } = this.props;

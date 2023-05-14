@@ -143,6 +143,7 @@ const mapDispatchToProps = {
   revertToRevision,
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   Revision.loadList({
     query: (state: State, props: DashboardInfoSidebarProps) => ({

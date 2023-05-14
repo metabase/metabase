@@ -28,4 +28,5 @@ const MetabotLogo = forwardRef(function MetabotLogo(
   );
 });
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default MetabotLogo;
