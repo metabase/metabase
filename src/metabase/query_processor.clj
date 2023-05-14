@@ -320,7 +320,10 @@
   (qp.store/with-store
     (let [preprocessed (preprocess query)]
       (driver/with-driver (driver.u/database->driver (:database preprocessed))
-        (not-empty (vec (annotate/merged-column-info preprocessed nil)))))))
+        (let [escaped->original (-> preprocessed :info :alias/escaped->original)
+              column-info (cond-> (annotate/merged-column-info preprocessed nil)
+                            (seq escaped->original) (escape-join-aliases/restore-aliases escaped->original))]
+          (not-empty (vec column-info)))))))
 
 (defn compile
   "Return the native form for `query` (e.g. for a MBQL query on Postgres this would return a map containing the compiled
