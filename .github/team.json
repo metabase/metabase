@@ -1,17 +1,6 @@
 {
   "teams": [
     {
-      "name": "App Viz",
-      "label": ".Team/Viz :bar_chart:",
-      "members": [
-        "alxnddr",
-        "iethree",
-        "npfitz",
-        "EmmadUsmani",
-        "JesseSDevaney"
-      ]
-    },
-    {
       "name": "Query Builder",
       "label": ".Team/QueryBuilder :abacus:",
       "members": [
@@ -40,9 +29,18 @@
       ]
     },
     {
-      "name": "Fun Police",
-      "label": ".Team/FunPolice :police_officer:",
-      "members": ["noahmoss", "escherize", "adam-james-v"]
+      "name": "Pixel Police",
+      "label": ".Team/PixelPolice :police_officer:",
+      "members": [
+        "noahmoss",
+        "escherize",
+        "adam-james-v",
+        "alxnddr",
+        "iethree",
+        "npfitz",
+        "EmmadUsmani",
+        "JesseSDevaney"
+      ]
     }
   ]
 }
