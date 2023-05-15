@@ -64,10 +64,13 @@ describe("scenarios > visualizations > scalar", () => {
       display: "scalar",
     });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("April 30, 2018");
     cy.findByTestId("viz-settings-button").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Show the time").should("be.hidden");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Time style").should("be.hidden");
   });
 });

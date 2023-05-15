@@ -47,10 +47,11 @@
 
 (driver/register! :postgres, :parent :sql-jdbc)
 
-(doseq [[feature supported?] {:datetime-diff true
-                              :persist-models true
-                              :convert-timezone true
-                              :now true}]
+(doseq [[feature supported?] {:convert-timezone true
+                              :datetime-diff    true
+                              :now              true
+                              :persist-models   true
+                              :schemas          true}]
   (defmethod driver/database-supports? [:postgres feature] [_driver _feature _db] supported?))
 
 (defmethod driver/database-supports? [:postgres :nested-field-columns]

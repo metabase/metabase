@@ -484,7 +484,7 @@
                   :parameterized_object_type :card
                   :parameterized_object_id   card-id-2
                   :parameter_id              "_CATEGORY_NAME_"}]
-                (t2/select 'ParameterCard :card_id source-card-id)))
+                (t2/select 'ParameterCard :card_id source-card-id {:order-by [[:parameterized_object_id :asc]]})))
         (t2/delete! :model/Card :id source-card-id)
         (is (= []
                (t2/select 'ParameterCard :card_id source-card-id)))))))
@@ -519,7 +519,7 @@
                 :parameter_id              "param_2"
                 :parameterized_object_type :dashboard
                 :parameterized_object_id   (:id dashboard)}]
-              (t2/select ParameterCard :card_id source-card-id)))
+              (t2/select ParameterCard :card_id source-card-id {:order-by [[:parameter_id :asc]]})))
       ;; update card with removing the products.category
       (testing "on update result_metadata"
         (t2/update! :model/Card source-card-id

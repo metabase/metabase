@@ -1,5 +1,5 @@
 import { RowValue } from "./dataset";
-import { TableId } from "./table";
+import { Table, TableId } from "./table";
 
 export type FieldId = number;
 
@@ -57,9 +57,16 @@ export type FieldDimension = {
   name: string;
 };
 
+export type FieldDimensionOption = {
+  name: string;
+  mbql: unknown[] | null;
+  type: string;
+};
+
 export interface ConcreteField {
   id: FieldId;
   table_id: TableId;
+  table?: Table;
 
   name: string;
   display_name: string;
@@ -78,8 +85,11 @@ export interface ConcreteField {
   fk_target_field_id: FieldId | null;
   target?: Field;
   values?: FieldValue[];
-  dimensions?: FieldDimension[];
   settings?: FieldFormattingSettings;
+
+  dimensions?: FieldDimension[];
+  default_dimension_option?: FieldDimensionOption;
+  dimension_options?: FieldDimensionOption[];
 
   max_value?: number;
   min_value?: number;

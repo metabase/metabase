@@ -30,10 +30,12 @@ describe("issue 28874", () => {
   it("should allow to modify a pivot question in the notebook (metabase#28874)", () => {
     visitQuestionAdhoc(questionDetails, { mode: "notebook" });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Product ID")
       .parent()
       .within(() => cy.icon("close").click());
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Product ID").should("not.exist");
   });
 });

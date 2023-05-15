@@ -47,7 +47,9 @@ describe("issue 23862", () => {
       );
     });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Small");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("-36.53");
   });
 });

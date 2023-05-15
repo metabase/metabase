@@ -21,6 +21,7 @@ const LoadingSpinner = ({ className, size = 32, borderWidth = 4 }: Props) => (
   </SpinnerRoot>
 );
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Object.assign(LoadingSpinner, {
   Root: SpinnerRoot,
 });

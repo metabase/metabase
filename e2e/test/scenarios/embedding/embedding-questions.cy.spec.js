@@ -42,31 +42,40 @@ describe("scenarios > embedding > questions ", () => {
     });
 
     cy.icon("share").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Embed in your application").click();
 
     visitIframe();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(title);
 
     cy.icon("info").realHover();
     popover().contains(description);
 
     // Data model: Renamed column
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Product ID as Title");
     // Data model: Display value changed to show FK
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Awesome Concrete Shoes");
     // Custom column
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Math");
     // Question settings: Renamed column
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Billed");
     // Question settings: Column formating
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("€39.72");
     // Question settings: Abbreviated date, day enabled, 24H clock with seconds
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Mon, Feb 11, 2019, 21:40:27");
     // Question settings: Show mini-bar
     cy.findAllByTestId("mini-bar");
 
     // Data model: Subtotal is turned off globally
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Subtotal").should("not.exist");
   });
 
@@ -78,6 +87,7 @@ describe("scenarios > embedding > questions ", () => {
     });
 
     cy.icon("share").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Embed in your application").click();
 
     visitIframe();
@@ -114,25 +124,33 @@ describe("scenarios > embedding > questions ", () => {
     });
 
     cy.icon("share").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Embed in your application").click();
 
     visitIframe();
 
     // Global (Data model) settings should be preserved
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Product ID as Title");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Awesome Concrete Shoes");
 
     // Custom column
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Math");
 
     // Base question visualization settings should reset to the defaults (inherit global formatting)
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Total");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("39.72");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("February 11, 2019, 9:40 PM");
 
     cy.findAllByTestId("mini-bar").should("not.exist");
 
     // Data model: Subtotal is turned off globally
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Subtotal").should("not.exist");
   });
 
@@ -144,26 +162,38 @@ describe("scenarios > embedding > questions ", () => {
     });
 
     cy.icon("share").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Embed in your application").click();
 
     visitIframe();
 
     // Base question assertions
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Product ID as Title");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Awesome Concrete Shoes");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Math");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Billed");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("€39.72");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Mon, Feb 11, 2019, 21:40:27");
     cy.findAllByTestId("mini-bar");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Subtotal").should("not.exist");
 
     // Joined table fields
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("98.52598640° W");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("User → Birth Date");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("December 12, 1986");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("October 7, 2017, 1:34 AM");
   });
 
@@ -174,6 +204,7 @@ describe("scenarios > embedding > questions ", () => {
     visitQuestion(CARD_ID);
 
     cy.icon("share").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Embed in your application").click();
 
     visitIframe();
@@ -187,6 +218,7 @@ describe("scenarios > embedding > questions ", () => {
       });
     });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Februar 11, 2019, 9:40 PM");
   });
 });

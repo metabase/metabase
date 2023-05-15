@@ -1,5 +1,6 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default class Base {
   _plainObject: Record<string, unknown>;
 
