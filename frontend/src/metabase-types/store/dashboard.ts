@@ -37,6 +37,7 @@ export interface DashboardState {
 
   isEditing: Dashboard | null;
   isAddParameterPopoverOpen: boolean;
+  isAddTextPopoverOpen: boolean;
 
   slowCards: Record<DashCardId, unknown>;
 

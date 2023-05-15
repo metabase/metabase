@@ -29,6 +29,8 @@ import {
   CANCEL_FETCH_CARD_DATA,
   SHOW_ADD_PARAMETER_POPOVER,
   HIDE_ADD_PARAMETER_POPOVER,
+  SHOW_ADD_TEXT_POPOVER,
+  HIDE_ADD_TEXT_POPOVER,
   SET_SIDEBAR,
   CLOSE_SIDEBAR,
   SET_DOCUMENT_TITLE,
@@ -232,6 +234,16 @@ const isAddParameterPopoverOpen = handleActions(
   {
     [SHOW_ADD_PARAMETER_POPOVER]: () => true,
     [HIDE_ADD_PARAMETER_POPOVER]: () => false,
+    [INITIALIZE]: () => false,
+    [RESET]: () => false,
+  },
+  false,
+);
+
+const isAddTextPopoverOpen = handleActions(
+  {
+    [SHOW_ADD_TEXT_POPOVER]: () => true,
+    [HIDE_ADD_TEXT_POPOVER]: () => false,
     [INITIALIZE]: () => false,
     [RESET]: () => false,
   },
@@ -462,6 +474,7 @@ export default combineReducers({
   draftParameterValues,
   loadingDashCards,
   isAddParameterPopoverOpen,
+  isAddTextPopoverOpen,
   sidebar,
   missingActionParameters,
 });

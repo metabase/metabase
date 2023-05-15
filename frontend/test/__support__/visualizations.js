@@ -96,6 +96,26 @@ export const TextCard = (name, ...overrides) =>
     ...overrides,
   );
 
+// ! Used for testing. Remove comment after implementing tests.
+export const HeadingCard = (name, ...overrides) =>
+  Card(
+    name,
+    {
+      card: {
+        display: "heading",
+        visualization_settings: {
+          text: "",
+        },
+      },
+      data: {
+        cols: [],
+        columns: [],
+        rows: [],
+      },
+    },
+    ...overrides,
+  );
+
 export const LineCard = (name, ...overrides) =>
   Card(
     name,

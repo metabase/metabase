@@ -334,19 +334,31 @@ class DashboardGrid extends Component {
     breakpoint,
     gridItemWidth,
     totalNumGridCols,
-  }) => (
-    <DashboardCard
-      key={String(dc.id)}
-      className="DashCard"
-      isAnimationDisabled={this.state.isAnimationPaused}
-    >
-      {this.renderDashCard(dc, {
-        isMobile: breakpoint === "mobile",
-        gridItemWidth,
-        totalNumGridCols,
-      })}
-    </DashboardCard>
-  );
+  }) => {
+    // TODO: change this?
+    const { isEditing } = this.props;
+    const isHeadingCard = dc.card.display === "heading";
+    const isTextCard = dc.card.display === "text";
+
+    const shouldChangeTextCardEditingStyling =
+      isEditing && (isHeadingCard || isTextCard);
+
+    return (
+      <DashboardCard
+        key={String(dc.id)}
+        className={cx("DashCard", {
+          TextCard: shouldChangeTextCardEditingStyling,
+        })}
+        isAnimationDisabled={this.state.isAnimationPaused}
+      >
+        {this.renderDashCard(dc, {
+          isMobile: breakpoint === "mobile",
+          gridItemWidth,
+          totalNumGridCols,
+        })}
+      </DashboardCard>
+    );
+  };
 
   renderGrid() {
     const { dashboard, width } = this.props;

@@ -162,6 +162,21 @@
   box-shadow: 3px 3px 8px var(--color-shadow);
 }
 
+.TextCard.resizing {
+  border-radius: 8px;
+  border: 1px solid var(--color-brand);
+}
+
+.TextCard:hover {
+  border-radius: 8px;
+  border: 1px solid var(--color-brand);
+}
+
+.TextCard:hover .react-resizable-handle:after,
+.TextCard.react-resizable-handle:hover:after {
+  border-color: var(--color-brand) !important;
+}
+
 .Dash--editing .DashCard.react-draggable-dragging,
 .Dash--editing .DashCard.react-resizable-resizing {
   z-index: 3;

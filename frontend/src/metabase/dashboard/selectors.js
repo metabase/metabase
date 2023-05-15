@@ -41,8 +41,12 @@ export const getIsLoadingComplete = state =>
 
 export const getLoadingStartTime = state =>
   state.dashboard.loadingDashCards.startTime;
+
 export const getIsAddParameterPopoverOpen = state =>
   state.dashboard.isAddParameterPopoverOpen;
+
+export const getIsAddTextPopoverOpen = state =>
+  state.dashboard.isAddTextPopoverOpen;
 
 export const getSidebar = state => state.dashboard.sidebar;
 export const getIsSharing = createSelector(

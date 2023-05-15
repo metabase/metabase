@@ -18,6 +18,7 @@ import Bookmark from "metabase/entities/bookmarks";
 
 import { getDashboardActions } from "metabase/dashboard/components/DashboardActions";
 
+import TextChoicesPopover from "metabase/dashboard/components/TextChoicesPopover";
 import ParametersPopover from "metabase/dashboard/components/ParametersPopover";
 import DashboardBookmark from "metabase/dashboard/components/DashboardBookmark";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
@@ -83,7 +84,8 @@ class DashboardHeader extends Component {
     setRefreshElapsedHook: PropTypes.func.isRequired,
 
     addCardToDashboard: PropTypes.func.isRequired,
-    addTextDashCardToDashboard: PropTypes.func.isRequired,
+    addHeadingDashCardToDashboard: PropTypes.func.isRequired,
+    addMarkdownDashCardToDashboard: PropTypes.func.isRequired,
     addLinkDashCardToDashboard: PropTypes.func.isRequired,
     fetchDashboard: PropTypes.func.isRequired,
     saveDashboardAndCards: PropTypes.func.isRequired,
@@ -122,8 +124,16 @@ class DashboardHeader extends Component {
     toggleBookmark(this.props.dashboardId);
   }
 
-  onAddTextBox() {
-    this.props.addTextDashCardToDashboard({ dashId: this.props.dashboard.id });
+  onAddMarkdownBox() {
+    this.props.addMarkdownDashCardToDashboard({
+      dashId: this.props.dashboard.id,
+    });
+  }
+
+  onAddHeading() {
+    this.props.addHeadingDashCardToDashboard({
+      dashId: this.props.dashboard.id,
+    });
   }
 
   onAddLinkCard() {
@@ -250,20 +260,45 @@ class DashboardHeader extends Component {
         </Tooltip>,
       );
 
-      // Add text card button
+      const { isAddTextPopoverOpen, showAddTextPopover, hideAddTextPopover } =
+        this.props;
+
+      // Text/Headers
+      // TODO: replace the hacky spacer <span style={{ "margin-left": "0.25em" }} />
+      // * with something less hacky
       buttons.push(
-        <Tooltip key="add-a-text-box" tooltip={t`Add a text box`}>
-          <a
-            data-metabase-event="Dashboard;Add Text Box"
-            key="add-text"
-            className="text-brand-hover cursor-pointer"
-            onClick={() => this.onAddTextBox()}
+        <span key="add-a-text-box">
+          <TippyPopover
+            placement="bottom-start"
+            onClose={hideAddTextPopover}
+            visible={isAddTextPopoverOpen}
+            content={
+              <TextChoicesPopover
+                onAddMarkdown={() => this.onAddMarkdownBox()}
+                onAddHeading={() => this.onAddHeading()}
+                onClose={hideAddTextPopover}
+              />
+            }
           >
-            <DashboardHeaderButton>
-              <Icon name="string" size={18} />
-            </DashboardHeaderButton>
-          </a>
-        </Tooltip>,
+            <div>
+              <Tooltip tooltip={t`Add a heading or text box`}>
+                <DashboardHeaderButton
+                  key="add-text"
+                  onClick={showAddTextPopover}
+                  data-metabase-event="Dashboard;Add Text Box"
+                >
+                  <Icon name="string" size={18} />
+                  <span style={{ "margin-left": "0.25em" }} />
+                  <Icon name="chevrondown" size={10} />
+                </DashboardHeaderButton>
+              </Tooltip>
+            </div>
+          </TippyPopover>
+        </span>,
+      );
+
+      // Add link card button
+      buttons.push(
         <Tooltip key="add-link-card" tooltip={t`Add link card`}>
           <DashboardHeaderButton
             onClick={() => this.onAddLinkCard()}

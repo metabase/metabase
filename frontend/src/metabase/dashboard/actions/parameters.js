@@ -289,6 +289,14 @@ export const setParameterIndex = createThunkAction(
   },
 );
 
+// ! START: <MOVE THIS TO ITS OWN ACTIONS FILE FOR TEXT AND HEADERS>
+export const SHOW_ADD_TEXT_POPOVER = "metabase/dashboard/SHOW_ADD_TEXT_POPOVER";
+export const showAddTextPopover = createAction(SHOW_ADD_TEXT_POPOVER);
+
+export const HIDE_ADD_TEXT_POPOVER = "metabase/dashboard/HIDE_ADD_TEXT_POPOVER";
+export const hideAddTextPopover = createAction(HIDE_ADD_TEXT_POPOVER);
+// ! END: <MOVE THIS TO ITS OWN ACTIONS FILE FOR TEXT AND HEADERS>
+
 export const SHOW_ADD_PARAMETER_POPOVER =
   "metabase/dashboard/SHOW_ADD_PARAMETER_POPOVER";
 

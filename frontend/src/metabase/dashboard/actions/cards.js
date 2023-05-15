@@ -89,15 +89,38 @@ export const addDashCardToDashboard = function ({ dashId, dashcardOverrides }) {
   };
 };
 
-export const addTextDashCardToDashboard = function ({ dashId }) {
-  const virtualTextCard = createCard();
-  virtualTextCard.display = "text";
-  virtualTextCard.archived = false;
+export const addMarkdownDashCardToDashboard = function ({ dashId }) {
+  const virtualTextCard = {
+    ...createCard(),
+    display: "text",
+    archived: false,
+  };
 
   const dashcardOverrides = {
     card: virtualTextCard,
     visualization_settings: {
       virtual_card: virtualTextCard,
+    },
+  };
+  return addDashCardToDashboard({
+    dashId: dashId,
+    dashcardOverrides: dashcardOverrides,
+  });
+};
+
+export const addHeadingDashCardToDashboard = function ({ dashId }) {
+  const virtualTextCard = {
+    ...createCard(),
+    display: "heading",
+    archived: false,
+  };
+
+  const dashcardOverrides = {
+    card: virtualTextCard,
+    visualization_settings: {
+      virtual_card: virtualTextCard,
+      text: "Heading",
+      "dashcard.background": false,
     },
   };
   return addDashCardToDashboard({
