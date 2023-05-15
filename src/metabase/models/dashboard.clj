@@ -259,6 +259,10 @@
         (->> (filter identity)
              build-sentence))))
 
+(defn has-tabs?
+  "Check if a dashboard has tabs."
+  [dashboard-or-id]
+  (t2/exists? :model/DashboardTab :dashboard_id (u/the-id dashboard-or-id)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 OTHER CRUD FNS                                                 |

@@ -702,3 +702,38 @@
                      {:text (format "### [Linked table dname](%s/question?db=%d&table=%d)\nLinked table desc" site-url database-id table-id)}
                      {:text (format "### [https://metabase.com](https://metabase.com)")}]
                     (@#'metabase.pulse/execute-dashboard {:creator_id (mt/user->id :lucky)} dashboard)))))))))
+
+(deftest dashboard-with-tabs-test
+  (t2.with-temp/with-temp
+    [Dashboard           {dashboard-id :id
+                          :as dashboard}   {:name "Dashboard"}
+     :model/DashboardTab {tab-id-2 :id}    {:name         "The second tab"
+                                            :position     1
+                                            :dashboard_id dashboard-id}
+     :model/DashboardTab {tab-id-1 :id}    {:name         "The first tab"
+                                            :position     0
+                                            :dashboard_id dashboard-id}
+     DashboardCard       _                 {:dashboard_id           dashboard-id
+                                            :dashboard_tab_id       tab-id-1
+                                            :row                    2
+                                            :visualization_settings {:text "Card 2 tab-1"}}
+     DashboardCard       _                 {:dashboard_id           dashboard-id
+                                            :dashboard_tab_id       tab-id-1
+                                            :row                    1
+                                            :visualization_settings {:text "Card 1 tab-1"}}
+     DashboardCard       _                 {:dashboard_id           dashboard-id
+                                            :dashboard_tab_id       tab-id-2
+                                            :row                    2
+                                            :visualization_settings {:text "Card 2 tab-2"}}
+     DashboardCard       _                 {:dashboard_id           dashboard-id
+                                            :dashboard_tab_id       tab-id-2
+                                            :row                    1
+                                            :visualization_settings {:text "Card 1 tab-2"}}]
+    (testing "tabs are correctly rendered"
+      (is (= [{:text "# The first tab"}
+              {:text "Card 1 tab-1"}
+              {:text "Card 2 tab-1"}
+              {:text "# The second tab"}
+              {:text "Card 1 tab-2"}
+              {:text "Card 2 tab-2"}]
+             (@#'metabase.pulse/execute-dashboard {:creator_id (mt/user->id :rasta)} dashboard))))))

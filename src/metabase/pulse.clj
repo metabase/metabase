@@ -8,7 +8,7 @@
    [metabase.email.messages :as messages]
    [metabase.integrations.slack :as slack]
    [metabase.models.card :refer [Card]]
-   [metabase.models.dashboard :refer [Dashboard]]
+   [metabase.models.dashboard :as dashboard :refer [Dashboard]]
    [metabase.models.dashboard-card
     :as dashboard-card
     :refer [DashboardCard]]
@@ -163,19 +163,30 @@
           (params/process-virtual-dashcard parameters)
           :visualization_settings))))
 
+(defn- dashcards->content
+  [dashcards pulse dashboard]
+  (let [ordered-dashcards (sort dashcard-comparator dashcards)]
+    (doall (for [dashcard ordered-dashcards
+                 :let  [content (dashcard->content dashcard pulse dashboard)]
+                 :when (some? content)]
+             content))))
+
+(defn- tab->text
+  [{:keys [name]}]
+  {:text (str (format "# %s" name))})
+
 (defn- execute-dashboard
   "Fetch all the dashcards in a dashboard for a Pulse, and execute non-text cards.
 
   The gerenerated contents will follow the pulse's creator permissions."
   [{pulse-creator-id :creator_id, :as pulse} dashboard & {:as _options}]
-  (let [dashboard-id      (u/the-id dashboard)
-        dashcards         (t2/select DashboardCard :dashboard_id dashboard-id)
-        ordered-dashcards (sort dashcard-comparator dashcards)]
+  (let [dashboard-id      (u/the-id dashboard)]
     (mw.session/with-current-user pulse-creator-id
-      (doall (for [dashcard ordered-dashcards
-                   :let  [content (dashcard->content dashcard pulse dashboard)]
-                   :when (some? content)]
-               content)))))
+      (if (dashboard/has-tabs? dashboard)
+        (let [ordered-tabs-with-cards (t2/hydrate (t2/select :model/DashboardTab :dashboard_id dashboard-id) :ordered-tab-cards)]
+          (doall (flatten (for [{:keys [cards] :as tab} ordered-tabs-with-cards]
+                            (concat [(tab->text tab)] (dashcards->content cards pulse dashboard))))))
+        (dashcards->content (t2/select DashboardCard :dashboard_id dashboard-id) pulse dashboard)))))
 
 (defn- database-id [card]
   (or (:database_id card)
