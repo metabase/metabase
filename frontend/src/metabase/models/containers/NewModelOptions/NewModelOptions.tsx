@@ -42,10 +42,13 @@ const NewModelOptionsComponent = (props: NewModelOptionsProps) => {
   const dispatch = useDispatch();
 
   const collectionId = useMemo(() => {
-    const decodedCollectionHash = deserializeCardFromUrl(
-      location.hash.replace(/^#/, ""),
-    );
-    return decodedCollectionHash.collectionId;
+    if (location.hash) {
+      const decodedCollectionHash = deserializeCardFromUrl(
+        location.hash.replace(/^#/, ""),
+      );
+      return decodedCollectionHash.collectionId;
+    }
+    return null;
   }, []);
 
   useMount(() => {
