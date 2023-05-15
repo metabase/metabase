@@ -42,12 +42,12 @@ const mapDispatchToProps = {
   ...metadataActions,
 };
 
-const createListItem = entity => (
+const createListItem = table => (
   <ListItem
-    key={entity.id}
-    name={entity.display_name || entity.name}
-    description={entity.description}
-    url={`/reference/databases/${entity.db_id}/tables/${entity.id}`}
+    key={table.id}
+    name={table.display_name || table.name}
+    description={table.description}
+    url={`/reference/databases/${table.db_id}/tables/${table.id}`}
     icon="table2"
   />
 );
