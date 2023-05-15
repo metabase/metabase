@@ -452,7 +452,7 @@
         (is (nil? (t2/select-one Table :db_id (mt/id))))))))
 
 (deftest load-from-csv-tab-test
-  (testing "Upload a CSV file with column names that are reserved by the DB"
+  (testing "Upload a CSV file with tabs in the values"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (mt/with-empty-db
         (upload/load-from-csv
@@ -471,6 +471,28 @@
                      (column-names-for-table table)))
               (is (= [[1 "Serenity" "Malcolm\tReynolds"]
                       [2 "Millennium\tFalcon" "Han\tSolo"]]
+                     (rows-for-table table))))))))))
+
+(deftest load-from-csv-carriage-return-test
+  (testing "Upload a CSV file with carriage returns in the values"
+    (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+      (mt/with-empty-db
+        (upload/load-from-csv
+         driver/*driver*
+         (mt/id)
+         "upload_test"
+         (csv-file-with ["id,ship,captain"
+                         "1,Serenity,\"Malcolm\rReynolds\""
+                         "2,\"Millennium\rFalcon\",\"Han\rSolo\""]))
+        (testing "Table and Fields exist after sync"
+          (sync/sync-database! (mt/db))
+          (let [table (t2/select-one Table :db_id (mt/id))]
+            (is (=? {:name #"(?i)upload_test"} table))
+            (testing "Check the data was uploaded into the table correctly"
+              (is (= ["id", "ship", "captain"]
+                     (column-names-for-table table)))
+              (is (= [[1 "Serenity" "Malcolm\rReynolds"]
+                      [2 "Millennium\rFalcon" "Han\rSolo"]]
                      (rows-for-table table))))))))))
 
 (deftest load-from-csv-BOM-test

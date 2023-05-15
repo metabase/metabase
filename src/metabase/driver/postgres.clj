@@ -793,6 +793,9 @@
 
 (defn- sanitize-value
   ;; Per https://www.postgresql.org/docs/current/sql-copy.html#id-1.9.3.55.9.2
+  ;; "Backslash characters (\) can be used in the COPY data to quote data characters that might otherwise be taken as
+  ;; row or column delimiters. In particular, the following characters must be preceded by a backslash if they appear
+  ;; as part of a column value: backslash itself, newline, carriage return, and the current delimiter character."
   [v]
   (if (string? v)
     (-> v
