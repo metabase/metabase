@@ -3,6 +3,7 @@ import type { ComponentStory } from "@storybook/react";
 import { useArgs } from "@storybook/client-api";
 import DateMonthYearWidget from "./DateMonthYearWidget";
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default {
   title: "Parameters/DateMonthYearWidget",
   component: DateMonthYearWidget,

@@ -58,6 +58,7 @@ function TabRowInner<T>({
 
 const TabRowInnerWithSize = ExplicitSize()(TabRowInner);
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default function TabRow<T>(props: TabListProps<T>) {
   return <TabRowInnerWithSize {...props} />;
 }

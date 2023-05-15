@@ -37,4 +37,5 @@ const useDebounce = function <T>(func: (value: T) => void, wait: number) {
   }, [callback, wait]);
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ColorSettingsWidget;

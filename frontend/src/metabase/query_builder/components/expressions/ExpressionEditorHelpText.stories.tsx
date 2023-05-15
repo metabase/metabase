@@ -8,6 +8,7 @@ import ExpressionEditorHelpText, {
   ExpressionEditorHelpTextProps,
 } from "./ExpressionEditorHelpText";
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default {
   title: "Query Builder/ExpressionEditorHelpText",
   component: ExpressionEditorHelpText,
