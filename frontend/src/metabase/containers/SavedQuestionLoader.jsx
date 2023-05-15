@@ -1,10 +1,13 @@
+import { useState, useEffect } from "react";
 import _ from "underscore";
 import { useAsync } from "react-use";
 
-import { useDispatch } from "metabase/lib/redux";
+import { useSelector, useDispatch } from "metabase/lib/redux";
 import { loadMetadataForCard } from "metabase/questions/actions";
+import { getMetadata } from "metabase/selectors/metadata";
 
 import Questions from "metabase/entities/questions";
+import Question from "metabase-lib/Question";
 
 // type annotations
 
@@ -33,23 +36,47 @@ import Questions from "metabase/entities/questions";
  *
  * @example
  */
-const SavedQuestionLoader = ({ children, question, error, loading }) => {
+const SavedQuestionLoader = ({
+  children,
+  question: loadedQuestion,
+  error,
+  loading,
+}) => {
+  const metadata = useSelector(getMetadata);
   const dispatch = useDispatch();
+  const [question, setQuestion] = useState(null);
 
-  const metadataState = useAsync(async () => {
-    if (question) {
-      await dispatch(loadMetadataForCard(question.card()));
+  const cardMetadataState = useAsync(async () => {
+    if (loadedQuestion?.id() == null) {
+      return;
     }
-  }, [question.id()]);
 
-  const isMetadataLoaded =
-    !metadataState.loading && metadataState.error == null;
+    await dispatch(loadMetadataForCard(loadedQuestion.card()));
+  }, [loadedQuestion?.id()]);
+
+  useEffect(() => {
+    if (loadedQuestion?.id() == null) {
+      return;
+    }
+
+    const hasCardMetadataLoaded =
+      !cardMetadataState.loading && cardMetadataState.error == null;
+
+    if (!hasCardMetadataLoaded) {
+      setQuestion(null);
+      return;
+    }
+
+    if (!question) {
+      setQuestion(new Question(loadedQuestion.card(), metadata));
+    }
+  }, [loadedQuestion, metadata, cardMetadataState, question]);
 
   return (
     children?.({
-      question: isMetadataLoaded ? question : null,
-      loading: loading || isMetadataLoaded.loading,
-      error: error ?? isMetadataLoaded.error,
+      question,
+      loading: loading || cardMetadataState.loading,
+      error: error ?? cardMetadataState.error,
     }) ?? null
   );
 };
