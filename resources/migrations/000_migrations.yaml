@@ -14669,6 +14669,21 @@ databaseChangeLog:
   - changeSet:
       id: v47.00-023
       author: dpsutton
+      comment: Added 0.47.0 -- model_index foriegn key to report_card
+      validCheckSum: ANY
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: model_index
+            baseColumnNames: model_id
+            referencedTableName: report_card
+            referencedColumnNames: id
+            constraintName: fk_model_index_model_id
+            nullable: false
+            deleteCascade: true
+
+  - changeSet:
+      id: v47.00-024
+      author: dpsutton
       comment: Added 0.47.0 -- model_index index
       changes:
         - createIndex:
@@ -14681,21 +14696,6 @@ databaseChangeLog:
         - dropIndex:
             tableName: model_index
             indexName: idx_model_index_model_id
-
-  - changeSet:
-      id: v47.00-024
-      author: dpsutton
-      comment: Added 0.47.0 -- model_index foriegn key to report_card
-      validCheckSum: ANY
-      changes:
-        - addForeignKeyConstraint:
-            baseTableName: model_index
-            baseColumnNames: model_id
-            referencedTableName: report_card
-            referencedColumnNames: id
-            constraintName: fk_model_index_model_id
-            nullable: false
-            deleteCascade: true
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
