@@ -60,7 +60,7 @@ export const separateTablesBySchema = (
   createSchemaSeparator,
   createListItem,
 ) =>
-  Object.values(tables)
+  tables
     .sort((table1, table2) =>
       table1.schema_name > table2.schema_name
         ? 1
@@ -100,6 +100,8 @@ class TableList extends Component {
       loading,
     } = this.props;
 
+    const tables = Object.values(entities);
+
     return (
       <div style={style} className="full">
         <ReferenceHeader
@@ -112,21 +114,21 @@ class TableList extends Component {
           error={loadingError}
         >
           {() =>
-            Object.keys(entities).length > 0 ? (
+            tables.length > 0 ? (
               <div className="wrapper wrapper--trim">
                 <List>
                   {!hasSingleSchema
                     ? separateTablesBySchema(
-                        entities,
+                        tables,
                         createSchemaSeparator,
                         createListItem,
                       )
-                    : Object.values(entities).map(
-                        (entity, index) =>
-                          entity &&
-                          entity.id &&
-                          entity.name &&
-                          createListItem(entity, index),
+                    : tables.map(
+                        (table, index) =>
+                          table &&
+                          table.id &&
+                          table.name &&
+                          createListItem(table, index),
                       )}
                 </List>
               </div>
