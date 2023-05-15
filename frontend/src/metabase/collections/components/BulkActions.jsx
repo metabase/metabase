@@ -46,11 +46,26 @@ const SelectionControls = ({
   size = 18,
 }) =>
   !hasUnselected ? (
-    <StackedCheckBox checked onChange={onSelectNone} size={size} />
+    <StackedCheckBox
+      checked
+      onChange={onSelectNone}
+      size={size}
+      aria-label="Select all items"
+    />
   ) : selected.length === 0 ? (
-    <StackedCheckBox onChange={onSelectAll} size={size} />
+    <StackedCheckBox
+      onChange={onSelectAll}
+      size={size}
+      aria-label="Select all items"
+    />
   ) : (
-    <StackedCheckBox checked indeterminate onChange={onSelectAll} size={size} />
+    <StackedCheckBox
+      checked
+      indeterminate
+      onChange={onSelectAll}
+      size={size}
+      aria-label="Select all items"
+    />
   );
 
 function BulkActions(props) {
