@@ -18893,18 +18893,18 @@ react-refresh@^0.13.0:
   resolved "https://registry.yarnpkg.com/react-refresh/-/react-refresh-0.13.0.tgz#cbd01a4482a177a5da8d44c9755ebb1f26d5a1c1"
   integrity sha512-XP8A9BT0CpRBD+NYLLeIhld/RqG9+gktUjW1FkE+Vm7OCinbG1SshcK5tb9ls4kzvjZr9mOQc7HYgBngEyPAXg==
 
-react-resizable@^1.9.0:
-  version "1.11.0"
-  resolved "https://registry.yarnpkg.com/react-resizable/-/react-resizable-1.11.0.tgz#0b237c4aff16937b7663de1045861749683227ad"
-  integrity sha512-VoGz2ddxUFvildS8r8/29UZJeyiM3QJnlmRZSuXm+FpTqq/eIrMPc796Y9XQLg291n2hFZJtIoP1xC3hSTw/jg==
-  dependencies:
-    prop-types "15.x"
-    react-draggable "^4.0.3"
-
 react-resizable@^3.0.1:
   version "3.0.1"
   resolved "https://registry.yarnpkg.com/react-resizable/-/react-resizable-3.0.1.tgz#9709831809d87d3abe861df7fe691e6103f27dc1"
   integrity sha512-wban8GguvXrmeObSVTmhxs99G9eUgYSGugf0i32qHXyqKDTzQsCKLhm3VJW24TpTBKJvM+cybNExskOCYkYF5Q==
+  dependencies:
+    prop-types "15.x"
+    react-draggable "^4.0.3"
+
+react-resizable@^3.0.5:
+  version "3.0.5"
+  resolved "https://registry.yarnpkg.com/react-resizable/-/react-resizable-3.0.5.tgz#362721f2efbd094976f1780ae13f1ad7739786c1"
+  integrity sha512-vKpeHhI5OZvYn82kXOs1bC8aOXktGU5AmKAgaZS4F5JPburCtbmDPqE7Pzp+1kN4+Wb81LlF33VpGwWwtXem+w==
   dependencies:
     prop-types "15.x"
     react-draggable "^4.0.3"
