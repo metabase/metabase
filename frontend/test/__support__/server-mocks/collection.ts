@@ -142,6 +142,7 @@ export function setupCollectionItemsEndpoint({
 }) {
   fetchMock.get(/api\/collection\/\d+\/items/, url => {
     const collectionIdParam = url.split("/")[5];
+
     const collectionId = Number(collectionIdParam);
 
     const dashboardsOfCollection = dashboards.filter(
@@ -152,5 +153,16 @@ export function setupCollectionItemsEndpoint({
       total: dashboardsOfCollection.length,
       data: dashboardsOfCollection,
     };
+  });
+}
+
+export function setupPersonalCollectionItemsEndpont({
+  collections,
+}: {
+  collections: Collection[];
+}) {
+  fetchMock.get("path:/api/collection/personal/items", {
+    total: collections.length,
+    data: collections,
   });
 }
