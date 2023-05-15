@@ -77,9 +77,13 @@ function QueryColumnPicker({
 
   const handleSelectColumn = useCallback(
     (item: ColumnListItem) => {
-      handleSelect(item.column);
+      if (isBucketReset(query, clause, item.column)) {
+        onClose?.();
+      } else {
+        handleSelect(item.column);
+      }
     },
-    [handleSelect],
+    [query, clause, handleSelect, onClose],
   );
 
   const checkIsItemSelected = useCallback(
@@ -89,9 +93,9 @@ function QueryColumnPicker({
   );
 
   const renderItemExtra = useCallback(
-    item => {
+    (item: ColumnListItem) => {
       if (!hasBucketing) {
-        return false;
+        return null;
       }
 
       const binningStrategies = Lib.availableBinningStrategies(
@@ -100,10 +104,11 @@ function QueryColumnPicker({
       );
 
       if (binningStrategies.length > 0) {
+        const selectedBucket = clause ? Lib.binning(clause) : null;
         return (
           <BinningStrategyPickerPopover
             query={query}
-            selectedBucket={Lib.binning(item.column)}
+            selectedBucket={selectedBucket}
             buckets={binningStrategies}
             onSelect={nextBucket => {
               handleSelect(Lib.withBinning(item.column, nextBucket));
@@ -115,10 +120,11 @@ function QueryColumnPicker({
       const temporalBuckets = Lib.availableTemporalBuckets(query, item.column);
 
       if (temporalBuckets.length > 0) {
+        const selectedBucket = clause ? Lib.temporalBucket(clause) : null;
         return (
           <TemporalBucketPickerPopover
             query={query}
-            selectedBucket={Lib.temporalBucket(item.column)}
+            selectedBucket={selectedBucket}
             buckets={temporalBuckets}
             onSelect={nextBucket => {
               handleSelect(Lib.withTemporalBucket(item.column, nextBucket));
@@ -129,7 +135,7 @@ function QueryColumnPicker({
 
       return null;
     },
-    [query, hasBucketing, handleSelect],
+    [query, clause, hasBucketing, handleSelect],
   );
 
   return (
@@ -177,6 +183,28 @@ function getGroupIcon(groupInfo: Lib.ColumnDisplayInfo | Lib.TableDisplayInfo) {
     return "connections";
   }
   return;
+}
+
+function isBucketReset(
+  query: Lib.Query,
+  clause: Lib.Clause | undefined,
+  nextColumn: Lib.ColumnMetadata,
+) {
+  if (!clause) {
+    return false;
+  }
+
+  const isSameColumn = Lib.isClauseColumn(query, clause, nextColumn);
+  if (!isSameColumn) {
+    return false;
+  }
+
+  const hasBucketOnCurrentClause =
+    Lib.temporalBucket(clause) || Lib.binning(clause);
+  const hasNoBucketOnNewColumn =
+    !Lib.temporalBucket(nextColumn) && !Lib.binning(nextColumn);
+
+  return hasBucketOnCurrentClause && hasNoBucketOnNewColumn;
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
