@@ -42,6 +42,7 @@ const TabList = forwardRef(function TabGroup<T>(
   );
 });
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Object.assign(TabList, {
   Root: TabListRoot,
   Content: TabListContent,

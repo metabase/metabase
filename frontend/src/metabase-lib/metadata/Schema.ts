@@ -4,6 +4,7 @@ import type Metadata from "./Metadata";
 import type Database from "./Database";
 import type Table from "./Table";
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default class Schema {
   private readonly schema: NormalizedSchema;
   metadata?: Metadata;

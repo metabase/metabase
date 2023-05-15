@@ -273,4 +273,5 @@ class SchedulePicker extends Component<SchedulePickerProps> {
   }
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default SchedulePicker;

@@ -2,6 +2,7 @@ import React from "react";
 import type { ComponentStory } from "@storybook/react";
 import Toaster from "./Toaster";
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default {
   title: "Dashboard/Toaster",
   component: Toaster,

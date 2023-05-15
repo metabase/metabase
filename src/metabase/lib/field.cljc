@@ -1,5 +1,6 @@
 (ns metabase.lib.field
   (:require
+   [clojure.string :as str]
    [medley.core :as m]
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.binning :as lib.binning]
@@ -197,8 +198,10 @@
                              (str join-display-name " → " field-display-name)
                              field-display-name)]
     (cond
-      temporal-unit (lib.util/format "%s (%s)" display-name (name temporal-unit))
-      binning       (lib.util/format "%s: %s"  display-name (lib.binning/binning-display-name binning field-metadata))
+      temporal-unit (lib.util/format "%s: %s" display-name (-> (name temporal-unit)
+                                                               (str/replace \- \space)
+                                                               u/capitalize-en))
+      binning       (lib.util/format "%s: %s" display-name (lib.binning/binning-display-name binning field-metadata))
       :else         display-name)))
 
 (defmethod lib.metadata.calculation/display-name-method :field

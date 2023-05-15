@@ -360,6 +360,7 @@ function DashCard({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Object.assign(DashCard, {
   root: DashCardRoot,
 });
