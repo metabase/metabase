@@ -62,8 +62,8 @@ export const separateTablesBySchema = (
   createListItem,
 ) => {
   const sortedTables = _.chain(tables)
-    .sortBy(t => t.schema_name)
     .sortBy(t => t.name)
+    .sortBy(t => t.schema_name)
     .value();
 
   return sortedTables.map((table, index, sortedTables) => {
