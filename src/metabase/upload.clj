@@ -1,6 +1,7 @@
 (ns metabase.upload
   (:require
    [clj-bom.core :as bom]
+   [clojure.core.memoize :as memoize]
    [clojure.data.csv :as csv]
    [clojure.java.io :as io]
    [clojure.set :as set]
@@ -84,6 +85,11 @@
 
 (defn- get-number-separators []
   (get-in (public-settings/custom-formatting) [:type/Number :number_separators] ".,"))
+
+(def ^:private memoized-number-separators
+  (memoize/ttl get-number-separators
+               ;; two seconds. `parse-plain-number` absolutely hammers it otherwise.
+               :ttl/threshold (* 1000 2)))
 
 (defn- int-regex [number-separators]
   (with-currency
@@ -204,7 +210,7 @@
       fr (NumberFormat/getInstance (Locale. "fr" "FR"))
       ch (NumberFormat/getInstance (Locale. "de" "CH"))]
   (defn- parse-plain-number [s]
-    (case (get-number-separators)
+    (case (memoized-number-separators)
       ("." ".,") (. us parse s)
       ",." (. de parse s)
       ", " (. fr parse (str/replace s \space \u00A0)) ; \u00A0 is a non-breaking space
