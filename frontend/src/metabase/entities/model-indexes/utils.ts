@@ -11,7 +11,9 @@ import type FieldEntity from "metabase-lib/metadata/Field";
 import type Table from "metabase-lib/metadata/Table";
 
 const hasPk = (table?: Table) =>
-  !!table?.fields.some((field: FieldEntity) => isPK(field) && isInteger(field));
+  !!table?.fields?.some(
+    (field: FieldEntity) => isPK(field) && isInteger(field),
+  );
 
 export const canIndexField = (field: FieldEntity): boolean => {
   return !!(isString(field) && !isBoolean(field) && hasPk(field?.table));

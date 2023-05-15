@@ -3,15 +3,14 @@ import { dissocIn } from "icepick";
 
 import { Dispatch } from "metabase-types/store";
 import type { ModelIndex } from "metabase-types/api/modelIndexes";
-import type { FieldReference } from "metabase-types/api";
+import type { FieldReference, Field } from "metabase-types/api";
 import type Question from "metabase-lib/Question";
-import type Field from "metabase-lib/metadata/Field";
 
-import ModelIndexes from "./model-indexes";
+import { ModelIndexes } from "./model-indexes";
 
 export type FieldWithMaybeIndex = Field & {
   should_index?: boolean;
-  field_ref: FieldReference;
+  field_ref?: FieldReference;
 };
 
 export const updateModelIndexes =

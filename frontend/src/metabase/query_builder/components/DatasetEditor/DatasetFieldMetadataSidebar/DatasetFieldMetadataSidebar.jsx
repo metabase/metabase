@@ -24,7 +24,7 @@ import ColumnSettings, {
   hasColumnSettingsWidgets,
 } from "metabase/visualizations/components/ColumnSettings";
 import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings/column";
-import ModelIndexes from "metabase/entities/model-indexes";
+import { ModelIndexes } from "metabase/entities/model-indexes";
 import { isSameField } from "metabase-lib/queries/utils/field-ref";
 import { isFK } from "metabase-lib/types/utils/isa";
 

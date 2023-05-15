@@ -1,1 +1,1 @@
-export { default } from "./model-indexes";
+export * from "./model-indexes";

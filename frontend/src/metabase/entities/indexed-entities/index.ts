@@ -1,1 +1,1 @@
-export { default } from "./indexed-entities";
+export * from "./indexed-entities";

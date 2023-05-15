@@ -8,7 +8,7 @@ import { createEntity } from "metabase/lib/entities";
 import { IndexedEntitySchema } from "metabase/schema";
 import { indexedEntity as indexedEntityUrl } from "metabase/lib/urls";
 
-const IndexedEntities = createEntity({
+export const IndexedEntities = createEntity({
   name: "indexedEntities",
   nameOne: "indexedEntity",
   schema: IndexedEntitySchema,
@@ -17,5 +17,3 @@ const IndexedEntities = createEntity({
     getIcon: () => ({ name: "beaker" }),
   },
 });
-
-export default IndexedEntities;

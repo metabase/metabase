@@ -14,7 +14,7 @@ import { ModelIndexSchema } from "metabase/schema";
 import * as actions from "./actions";
 import * as utils from "./utils";
 
-const ModelIndexes = createEntity({
+export const ModelIndexes = createEntity({
   name: "modelIndexes",
   nameOne: "modelIndex",
   path: "/api/model-index",
@@ -42,5 +42,3 @@ const ModelIndexes = createEntity({
   },
   // objectSelectors: {},
 });
-
-export default ModelIndexes;

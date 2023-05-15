@@ -6,8 +6,8 @@ export { default as dashboards } from "./dashboards";
 export { default as databaseCandidates } from "./database-candidates";
 export { default as pulses } from "./pulses";
 export { default as questions } from "./questions";
-export { default as modelIndexes } from "./model-indexes";
-export { default as indexedEntities } from "./indexed-entities";
+export { ModelIndexes as modelIndexes } from "./model-indexes";
+export { IndexedEntities as indexedEntities } from "./indexed-entities";
 
 export { default as timelines } from "./timelines";
 export { default as timelineEvents } from "./timeline-events";
