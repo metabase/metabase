@@ -37,7 +37,7 @@ const DatabaseSchemasPane = ({
     () => models.sort((a, b) => a.name.localeCompare(b.name)),
     [models],
   );
-  const schemas = database.schemas;
+  const schemas = database.getSchemas();
   return (
     <SidebarContent
       title={database.name}
