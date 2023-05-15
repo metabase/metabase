@@ -4,27 +4,22 @@ import type Metadata from "./Metadata";
 import type Database from "./Database";
 import type Table from "./Table";
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default class Schema {
-  private readonly schema: NormalizedSchema;
-  metadata?: Metadata;
+interface Schema extends Omit<NormalizedSchema, "database" | "tables"> {
   database?: Database;
-  tables: Table[] = [];
+  tables?: Table[];
+  metadata?: Metadata;
+}
+
+class Schema {
+  private readonly _plainObject: NormalizedSchema;
 
   constructor(schema: NormalizedSchema) {
-    this.schema = schema;
-  }
-
-  get id() {
-    return this.schema.id;
-  }
-
-  get name() {
-    return this.schema.name;
+    this._plainObject = schema;
+    Object.assign(this, schema);
   }
 
   getPlainObject() {
-    return this.schema;
+    return this._plainObject;
   }
 
   displayName() {
@@ -32,6 +27,9 @@ export default class Schema {
   }
 
   getTables() {
-    return this.tables;
+    return this.tables ?? [];
   }
 }
+
+// eslint-disable-next-line import/no-default-export -- deprecated usage
+export default Schema;

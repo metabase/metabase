@@ -6,7 +6,6 @@ import {
 } from "metabase/collections/utils";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { Bookmark, Collection, CollectionItem } from "metabase-types/api";
-import Metadata from "metabase-lib/metadata/Metadata";
 import Database from "metabase-lib/metadata/Database";
 import PinnedQuestionLoader from "./PinnedQuestionLoader";
 import {
@@ -19,7 +18,6 @@ import {
 export interface PinnedQuestionCardProps {
   item: CollectionItem;
   collection: Collection;
-  metadata: Metadata;
   databases?: Database[];
   bookmarks?: Bookmark[];
   onCopy: (items: CollectionItem[]) => void;
@@ -31,7 +29,6 @@ export interface PinnedQuestionCardProps {
 const PinnedQuestionCard = ({
   item,
   collection,
-  metadata,
   databases,
   bookmarks,
   onCopy,
@@ -54,7 +51,7 @@ const PinnedQuestionCard = ({
         deleteBookmark={onDeleteBookmark}
       />
       {isPreview ? (
-        <PinnedQuestionLoader id={item.id} metadata={metadata}>
+        <PinnedQuestionLoader id={item.id}>
           {({ question, rawSeries, loading, error, errorIcon }) =>
             loading ? (
               <CardPreviewSkeleton
