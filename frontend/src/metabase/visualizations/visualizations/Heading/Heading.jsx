@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 // ! REMOVE ABOVE COMMENT AND CONVERT TO TYPESCRIPT
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 
 import cx from "classnames";
 import { t } from "ttag";
@@ -16,8 +16,11 @@ export function Heading({
   settings,
   isEditing,
   onUpdateVisualizationSettings,
+  dashcard,
 }) {
-  const [isFocused, setIsFocused] = useState(false);
+  const justAdded = useMemo(() => dashcard?.justAdded || false, [dashcard]);
+
+  const [isFocused, setIsFocused] = useState(justAdded);
   const [isHovering, setIsHovering] = useState(false);
   const isPreviewing = !isFocused && !isHovering;
 
@@ -44,6 +47,7 @@ export function Heading({
             name="heading"
             placeholder={t`Heading`}
             value={content}
+            autoFocus={justAdded}
             onChange={e => handleTextChange(e.target.value)}
             // Prevents text cards from dragging when you actually want to select text
             // See: https://github.com/metabase/metabase/issues/17039

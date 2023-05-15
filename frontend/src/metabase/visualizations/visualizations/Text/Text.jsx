@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeExternalLinks from "rehype-external-links";
@@ -41,7 +41,9 @@ export function Text({
   isEditing,
   parameterValues,
 }) {
-  const [isFocused, setIsFocused] = useState(false);
+  const justAdded = useMemo(() => dashcard?.justAdded || false, [dashcard]);
+
+  const [isFocused, setIsFocused] = useState(justAdded);
   const [isHovering, setIsHovering] = useState(false);
   const isPreviewing = !isFocused && !isHovering;
 
@@ -106,6 +108,7 @@ export function Text({
             name="text"
             placeholder={t`You can use Markdown here, and include variables {{like_this}}`}
             value={content}
+            autoFocus={justAdded}
             onChange={e => handleTextChange(e.target.value)}
             onMouseDown={preventDragging}
             onFocus={() => setIsFocused(true)}
