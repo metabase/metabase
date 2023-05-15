@@ -102,7 +102,7 @@ class TableList extends Component {
     const tables = Object.values(entities);
 
     return (
-      <div style={style} className="full">
+      <div style={style} className="full" data-testid="table-list">
         <ReferenceHeader
           name={t`Tables in ${database.name}`}
           type="tables"
