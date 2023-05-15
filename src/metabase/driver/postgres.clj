@@ -38,7 +38,6 @@
    (java.sql ResultSet ResultSetMetaData Time Types)
    (java.time LocalDateTime OffsetDateTime OffsetTime)
    (java.util Date UUID)
-   (javax.sql DataSource)
    (org.postgresql.copy CopyManager)
    (org.postgresql.jdbc PgConnection)))
 

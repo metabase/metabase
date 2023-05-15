@@ -276,8 +276,6 @@
     (let [[header & rows] (csv/read-csv reader)]
       (rows->schema header (sample-rows rows)))))
 
-(def ^:dynamic *instrumenting* "nice" false)
-
 (defn load-from-csv
   "Loads a table from a CSV file. If the table already exists, it will throw an error. Returns nil."
   [driver db-id table-name csv-file]
