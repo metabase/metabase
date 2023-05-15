@@ -934,7 +934,7 @@
 
 ;;; ------------------------------------------------ GRAPH ENDPOINTS -------------------------------------------------
 
-(api/defendpoint-schema GET "/graph"
+(api/defendpoint GET "/graph"
   "Fetch a graph of all Collection Permissions."
   [namespace]
   {namespace [:maybe ms/NonBlankString]}
