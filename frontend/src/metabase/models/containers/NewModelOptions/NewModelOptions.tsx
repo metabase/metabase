@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
@@ -41,9 +41,12 @@ const NewModelOptions = (props: NewModelOptionsProps) => {
 
   const dispatch = useDispatch();
 
-  const collectionId = deserializeCardFromUrl(
-    location.hash.replace(/^#/, ""),
-  ).collectionId;
+  const collectionId = useMemo(() => {
+    const decodedCollectionHash = deserializeCardFromUrl(
+      location.hash.replace(/^#/, ""),
+    );
+    return decodedCollectionHash.collectionId;
+  }, [location.hash]);
 
   useMount(() => {
     const { location } = props;
