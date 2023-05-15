@@ -181,8 +181,8 @@
 
   `binning` can be one of the opaque values returned by [[available-binning-strategies]], or a literal
   [[metabase.lib.schema.binning/binning]] value."
-  [x binning]
-  (lib.core/with-binning x binning))
+  [x binning-option]
+  (lib.core/with-binning x binning-option))
 
 (defn ^:export available-binning-strategies
   "Get a list of available binning strategies for `x` (a field reference, generally) in the context of `a-query` and

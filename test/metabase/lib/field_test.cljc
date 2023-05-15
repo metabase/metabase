@@ -234,19 +234,20 @@
                                                    (lib/with-temporal-bucket x :month-of-year))))))))))
 
 (deftest ^:parallel unresolved-lib-field-with-binning-test
-  (let [query   (lib/query-for-table-name meta/metadata-provider "ORDERS")
-        binning {:strategy :num-bins
-                 :num-bins 10}
-        f       (lib/with-binning (lib/field (meta/id :orders :subtotal)) binning)]
+  (let [query         (lib/query-for-table-name meta/metadata-provider "ORDERS")
+        binning       {:strategy :num-bins
+                       :num-bins 10}
+        binning-typed (assoc binning :lib/type ::lib.binning/binning)
+        f             (lib/with-binning (lib/field (meta/id :orders :subtotal)) binning)]
     (is (fn? f))
     (let [field (f query -1)]
       (is (=? [:field {:binning binning} (meta/id :orders :subtotal)]
               field))
       (testing "(lib/binning <column-metadata>)"
-        (is (= binning
+        (is (= binning-typed
                (lib/binning (lib.metadata.calculation/metadata query -1 field)))))
       (testing "(lib/binning <field-ref>)"
-        (is (= binning
+        (is (= binning-typed
                (lib/binning field))))
       #?(:clj
          ;; i18n/trun doesn't work in the CLJS tests, only in proper FE, so this test is JVM-only.
@@ -264,7 +265,7 @@
           :let                  [x' (lib/with-binning x binning1)]]
     (testing (str what " strategy = " (:strategy binning2) "\n\n" (u/pprint-to-str x') "\n")
       (testing "lib/binning should return the binning settings"
-        (is (= binning1
+        (is (= (assoc binning1 :lib/type ::lib.binning/binning)
                (lib/binning x'))))
       (testing "should generate a :field ref with correct :binning"
         (is (=? [:field
@@ -280,7 +281,7 @@
       (testing "change the binning setting, THEN remove it"
         (let [x''  (lib/with-binning x' binning2)
               x''' (lib/with-binning x'' nil)]
-          (is (= binning2
+          (is (= (assoc binning2 :lib/type ::lib.binning/binning)
                  (lib/binning x'')))
           (is (nil? (lib/binning x''')))
           (is (= x
@@ -303,7 +304,7 @@
           (testing "when binned, should still return the same available units"
             (let [binned (lib/with-binning x (second expected-options))]
               (is (= (-> expected-options second :mbql)
-                     (lib/binning binned)))
+                     (-> binned lib/binning (dissoc :lib/type))))
               (is (= expected-options
                      (lib/available-binning-strategies query binned))))))))))
 

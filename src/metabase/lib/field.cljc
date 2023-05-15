@@ -320,11 +320,16 @@
 ;;; ---------------------------------------- Binning ---------------------------------------------
 (defmethod lib.binning/binning-method :field
   [field-clause]
-  (-> field-clause lib.options/options :binning))
+  (some-> field-clause
+          lib.options/options
+          :binning
+          (assoc :lib/type ::lib.binning/binning)))
 
 (defmethod lib.binning/binning-method :metadata/field
   [metadata]
-  (::binning metadata))
+  (some-> metadata
+          ::binning
+          (assoc :lib/type ::lib.binning/binning)))
 
 (defmethod lib.binning/with-binning-method :field
   [field-clause binning]

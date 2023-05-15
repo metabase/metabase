@@ -119,6 +119,10 @@
   [_query _stage-number binning-option]
   (select-keys binning-option [:display-name :default]))
 
+(defmethod lib.metadata.calculation/display-info-method ::binning
+  [_query _stage-number binning-value]
+  (select-keys binning-value [:display-name :default]))
+
 (defn binning-display-name
   "This is implemented outside of [[lib.metadata.calculation/display-name]] because it needs access to the field type.
   It's called directly by `:field` or `:metadata/field`'s [[lib.metadata.calculation/display-name]]."
