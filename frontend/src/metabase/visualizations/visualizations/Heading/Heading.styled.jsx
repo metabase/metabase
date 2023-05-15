@@ -6,12 +6,12 @@ export const InputContainer = styled.div`
   border-radius: 8px;
   display: flex;
   flex-direction: column;
+  width: 100%;
   height: 100%;
   justify-content: center;
   overflow: hidden;
   padding: 0 0.65em;
   padding-left: 0em;
-  width: 100%;
 
   ${({ isPreviewing }) =>
     !isPreviewing &&
@@ -58,7 +58,7 @@ export const HeadingContent = styled.h2`
   max-width: 100%;
   overflow-x: hidden;
   overflow-y: auto;
-  padding-left: 0.75em;
+  padding: 0.75em;
   margin: 0;
   pointer-events: all;
 `;
