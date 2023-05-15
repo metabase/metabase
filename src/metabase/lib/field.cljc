@@ -20,6 +20,7 @@
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
    [metabase.shared.util.i18n :as i18n]
+   [metabase.shared.util.time :as shared.ut]
    [metabase.util :as u]
    [metabase.util.humanization :as u.humanization]
    [metabase.util.log :as log]
@@ -286,14 +287,35 @@
   [query stage-number field-ref]
   (lib.temporal-bucket/available-temporal-buckets query stage-number (resolve-field-metadata query stage-number field-ref)))
 
+(defn- fingerprint-based-default [fingerprint]
+  (u/ignore-exceptions
+    (when-let [{:keys [earliest latest]} (-> fingerprint :type :type/DateTime)]
+      (let [days (shared.ut/day-diff (shared.ut/coerce-to-timestamp earliest)
+                                     (shared.ut/coerce-to-timestamp latest))]
+        (when-not (NaN? days)
+          (condp > days
+            1 :minute
+            31 :day
+            365 :week
+            :month))))))
+
+(defn- mark-default-unit [options unit]
+  (cond->> options
+    (some #(= (:unit %) unit) options)
+    (mapv (fn [option]
+            (cond-> (dissoc option :default)
+              (= (:unit option) unit) (assoc :default true))))))
+
 (defmethod lib.temporal-bucket/available-temporal-buckets-method :metadata/field
   [_query _stage-number field-metadata]
-  (let [effective-type ((some-fn :effective-type :base-type) field-metadata)]
-    (cond
-      (isa? effective-type :type/DateTime) lib.temporal-bucket/datetime-bucket-options
-      (isa? effective-type :type/Date)     lib.temporal-bucket/date-bucket-options
-      (isa? effective-type :type/Time)     lib.temporal-bucket/time-bucket-options
-      :else                                [])))
+  (let [effective-type ((some-fn :effective-type :base-type) field-metadata)
+        fingerprint-default (some-> field-metadata :fingerprint fingerprint-based-default)]
+    (cond-> (cond
+              (isa? effective-type :type/DateTime) lib.temporal-bucket/datetime-bucket-options
+              (isa? effective-type :type/Date)     lib.temporal-bucket/date-bucket-options
+              (isa? effective-type :type/Time)     lib.temporal-bucket/time-bucket-options
+              :else                                [])
+      fingerprint-default (mark-default-unit fingerprint-default))))
 
 ;;; ---------------------------------------- Binning ---------------------------------------------
 (defmethod lib.binning/binning-method :field
