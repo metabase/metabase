@@ -277,6 +277,7 @@
    :quarter :quarter-of-year})
 
 (def date-exclude-regex
+  "Regex to match date exclusion values, e.g. exclude-days-Mon, exclude-months-Jan, etc."
   (re-pattern (str "exclude-" temporal-units-regex #"s-([-\p{Alnum}]+)")))
 
 (def ^:private absolute-date-string-decoders
