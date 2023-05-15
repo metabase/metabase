@@ -287,7 +287,7 @@
   [query stage-number field-ref]
   (lib.temporal-bucket/available-temporal-buckets query stage-number (resolve-field-metadata query stage-number field-ref)))
 
-(defn- fingerprint-based-default [fingerprint]
+(defn- fingerprint-based-default-unit [fingerprint]
   (u/ignore-exceptions
     (when-let [{:keys [earliest latest]} (-> fingerprint :type :type/DateTime)]
       (let [days (shared.ut/day-diff (shared.ut/coerce-to-timestamp earliest)
@@ -309,7 +309,7 @@
 (defmethod lib.temporal-bucket/available-temporal-buckets-method :metadata/field
   [_query _stage-number field-metadata]
   (let [effective-type ((some-fn :effective-type :base-type) field-metadata)
-        fingerprint-default (some-> field-metadata :fingerprint fingerprint-based-default)]
+        fingerprint-default (some-> field-metadata :fingerprint fingerprint-based-default-unit)]
     (cond-> (cond
               (isa? effective-type :type/DateTime) lib.temporal-bucket/datetime-bucket-options
               (isa? effective-type :type/Date)     lib.temporal-bucket/date-bucket-options
