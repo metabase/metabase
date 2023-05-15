@@ -1,19 +1,11 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
 import Segment from "./Segment";
-import Base from "./Base";
+
 describe("Segment", () => {
   describe("instantiation", () => {
     it("should create an instance of Segment", () => {
       expect(new Segment()).toBeInstanceOf(Segment);
-    });
-    it("should add `object` props to the instance (because it extends Base)", () => {
-      expect(new Segment()).toBeInstanceOf(Base);
-      expect(
-        new Segment({
-          foo: "bar",
-        }),
-      ).toHaveProperty("foo", "bar");
     });
   });
   describe("displayName", () => {

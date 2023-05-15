@@ -27,7 +27,7 @@ export interface UseEntityOwnProps<TId, TItem> {
   requestType?: string;
 }
 
-export interface UseEntityQueryProps<TId, TQuery> {
+export interface UseEntityQueryProps<TId, TQuery = never> {
   id?: TId;
   query?: TQuery;
   reload?: boolean;
@@ -40,7 +40,7 @@ export interface UseEntityQueryResult<TItem> {
   error: unknown;
 }
 
-export const useEntityQuery = <TId, TItem, TQuery>(
+export const useEntityQuery = <TId, TItem, TQuery = never>(
   {
     id: entityId,
     query: entityQuery,
