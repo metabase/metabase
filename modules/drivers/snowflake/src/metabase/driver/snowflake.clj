@@ -36,8 +36,7 @@
   (:import
    (java.io File)
    (java.sql Connection DatabaseMetaData ResultSet Types)
-   (java.time OffsetDateTime ZonedDateTime)
-   (net.snowflake.client.jdbc SnowflakeStatement)))
+   (java.time OffsetDateTime ZonedDateTime)))
 
 (set! *warn-on-reflection* true)
 
@@ -580,6 +579,15 @@
   [driver ps i t]
   (sql-jdbc.execute/set-parameter driver ps i (t/sql-timestamp (t/with-zone-same-instant t (t/zone-id "UTC")))))
 
+
+;;; ------------------------------------------------- User Impersonation --------------------------------------------------
+
 (defmethod qp.util/set-role-statement :snowflake
   [_ role]
   (format "USE ROLE %s;" role))
+
+(defmethod qp.util/default-database-role :snowflake
+  [_ database]
+  (or
+   (-> database :details :role)
+   "ACCOUNTADMIN"))

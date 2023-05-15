@@ -19,8 +19,8 @@
   [driver ^Connection conn database]
   (when (driver/database-supports? driver :connection-impersonation database)
     (try
-      (let [role "accountadmin"
-            sql  (qp.util/set-role-statement driver role)]
+      (let [default-role (qp.util/default-database-role driver database)
+            sql          (qp.util/set-role-statement driver default-role)]
         (with-open [stmt (.createStatement conn)]
           (.execute stmt sql)))
       (catch Throwable e
