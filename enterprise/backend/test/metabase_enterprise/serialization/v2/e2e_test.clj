@@ -659,7 +659,7 @@
             DashboardCard       _                          {:dashboard_id     dashboard-id
                                                             :card_id          card-id-2
                                                             :dashboard_tab_id tab-id-2}]
-           (let [extraction (serdes/with-cache (into [] (extract/extract-metabase {})))]
+           (let [extraction (serdes/with-cache (into [] (extract/extract {})))]
              (storage/store! (seq extraction) dump-dir))
 
            (testing "ingest and load"
