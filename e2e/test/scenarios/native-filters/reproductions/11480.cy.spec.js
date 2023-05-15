@@ -23,6 +23,7 @@ describe("issue 11480", () => {
 
     // Run the query and see an error.
     SQLFilter.runQuery();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains(`Data conversion error converting "some text"`);
 
     // Oh wait! That doesn't match the total column, so we'll change the parameter to a number.
@@ -31,6 +32,7 @@ describe("issue 11480", () => {
 
     // When we run it again, the default has been cleared out so we get the right error.
     SQLFilter.runQuery();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains(
       "You'll need to pick a value for 'X' before this query can run.",
     );

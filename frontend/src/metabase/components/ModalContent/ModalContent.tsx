@@ -19,6 +19,7 @@ interface CommonModalProps {
   centeredTitle?: boolean;
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default class ModalContent extends Component<ModalContentProps> {
   static propTypes = {
     id: PropTypes.string,

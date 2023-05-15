@@ -6,12 +6,9 @@ import ListItem from "./ListItem";
 const ITEM_NAME = "Table Foo";
 const ITEM_DESCRIPTION = "Nice table description.";
 
-function setup({ name, index = 0, ...opts }) {
+function setup({ name, ...opts }) {
   return renderWithProviders(
-    <Route
-      path="/"
-      component={() => <ListItem name={name} index={index} {...opts} />}
-    />,
+    <Route path="/" component={() => <ListItem name={name} {...opts} />} />,
     { withRouter: true },
   );
 }

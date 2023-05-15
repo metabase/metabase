@@ -19,7 +19,7 @@ export const SAVE_DASHBOARD_AND_CARDS =
 
 export const saveDashboardAndCards = createThunkAction(
   SAVE_DASHBOARD_AND_CARDS,
-  function () {
+  function (preserveParameters = false) {
     return async function (dispatch, getState) {
       const state = getState();
       const { dashboards, dashcards, dashboardId } = state.dashboard;
@@ -128,7 +128,7 @@ export const saveDashboardAndCards = createThunkAction(
       await dispatch(Dashboards.actions.update(dashboard));
 
       // make sure that we've fully cleared out any dirty state from editing (this is overkill, but simple)
-      dispatch(fetchDashboard(dashboard.id, null)); // disable using query parameters when saving
+      dispatch(fetchDashboard(dashboard.id, null, preserveParameters)); // disable using query parameters when saving
     };
   },
 );

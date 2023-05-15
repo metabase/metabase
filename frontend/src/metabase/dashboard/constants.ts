@@ -23,10 +23,17 @@ export const INITIAL_DASHBOARD_STATE: DashboardState = {
     loadingIds: [],
     loadingStatus: "idle" as const,
     startTime: null,
+    endTime: null,
   },
   loadingControls: {},
   isAddParameterPopoverOpen: false,
   slowCards: {},
   sidebar: { props: {} },
   missingActionParameters: null,
+  autoApplyFilters: {
+    toastId: null,
+    toastDashboardId: null,
+  },
 };
+
+export const DASHBOARD_SLOW_TIMEOUT = 15 * 1000;

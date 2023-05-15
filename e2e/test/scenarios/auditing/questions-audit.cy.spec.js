@@ -25,10 +25,12 @@ describeEE("audit > auditing > questions", () => {
 
       assertRowsOrder(QUERY_RUNS_DESC_ORDER);
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Query Runs").click();
 
       assertRowsOrder(QUERY_RUNS_ASC_ORDER);
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Query Runs").click();
 
       assertRowsOrder(QUERY_RUNS_DESC_ORDER);
@@ -39,6 +41,7 @@ describeEE("audit > auditing > questions", () => {
       cy.findByPlaceholderText("Question name").type("year");
 
       cy.get("tbody > tr").should("have.length", 1);
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Orders, Count, Grouped by Created At (year)");
     });
 
@@ -60,6 +63,7 @@ describeEE("audit > auditing > questions", () => {
       cy.findByPlaceholderText("Collection name").type("First");
 
       cy.get("tbody > tr").should("have.length", 1);
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("My question");
     });
 

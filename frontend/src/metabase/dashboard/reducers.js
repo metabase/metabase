@@ -37,6 +37,7 @@ import {
   RESET,
   SET_PARAMETER_VALUES,
   UNDO_REMOVE_CARD_FROM_DASH,
+  SHOW_AUTO_APPLY_FILTERS_TOAST,
   tabsReducer,
 } from "./actions";
 
@@ -273,6 +274,9 @@ const slowCards = handleActions(
 const parameterValues = handleActions(
   {
     [INITIALIZE]: { next: () => ({}) }, // reset values
+    [FETCH_DASHBOARD]: {
+      next: (state, { payload: { parameterValues } }) => parameterValues,
+    },
     [SET_PARAMETER_VALUE]: {
       next: (state, { payload: { id, value, isDraft } }) => {
         if (!isDraft) {
@@ -282,14 +286,11 @@ const parameterValues = handleActions(
         return state;
       },
     },
-    [REMOVE_PARAMETER]: {
-      next: (state, { payload: { id } }) => dissoc(state, id),
-    },
-    [FETCH_DASHBOARD]: {
-      next: (state, { payload: { parameterValues } }) => parameterValues,
-    },
     [SET_PARAMETER_VALUES]: {
       next: (state, { payload }) => payload,
+    },
+    [REMOVE_PARAMETER]: {
+      next: (state, { payload: { id } }) => dissoc(state, id),
     },
     [RESET]: { next: state => ({}) },
   },
@@ -298,35 +299,27 @@ const parameterValues = handleActions(
 
 const draftParameterValues = handleActions(
   {
-    [INITIALIZE]: { next: _state => ({}) }, // reset values
-    [SET_PARAMETER_VALUE]: {
-      next: (state, { payload: { id, value, isDraft } }) => {
-        if (isDraft) {
-          return assoc(state ?? {}, id, value);
-        }
-
-        return state;
-      },
-    },
+    [INITIALIZE]: { next: () => ({}) },
     [FETCH_DASHBOARD]: {
-      next: (state, { payload }) => {
-        if (payload.dashboard.auto_apply_filters) {
-          return state;
-        }
-
-        return payload.parameterValues;
-      },
+      next: (
+        state,
+        { payload: { dashboard, parameterValues, preserveParameters } },
+      ) =>
+        preserveParameters && !dashboard.auto_apply_filters
+          ? state
+          : parameterValues,
     },
-    [RESET]: { next: _state => ({}) },
-    [Dashboards.actionTypes.UPDATE]: {
-      next: (state, { payload }) => {
-        if (payload.dashboard.auto_apply_filters) {
-          return {};
-        }
-
-        return state;
-      },
+    [SET_PARAMETER_VALUE]: {
+      next: (state, { payload: { id, value } }) =>
+        assoc(state ?? {}, id, value),
     },
+    [SET_PARAMETER_VALUES]: {
+      next: (state, { payload }) => payload,
+    },
+    [REMOVE_PARAMETER]: {
+      next: (state, { payload: { id } }) => dissoc(state, id),
+    },
+    [RESET]: { next: () => ({}) },
   },
   {},
 );
@@ -353,25 +346,20 @@ const loadingDashCards = handleActions(
       },
     },
     [FETCH_DASHBOARD_CARD_DATA]: {
-      next: state => ({
+      next: (state, { payload: { currentTime } }) => ({
         ...state,
         loadingStatus: state.dashcardIds.length > 0 ? "running" : "idle",
-        startTime:
-          state.dashcardIds.length > 0 &&
-          // check that performance is defined just in case
-          typeof performance === "object"
-            ? performance.now()
-            : null,
+        startTime: state.dashcardIds.length > 0 ? currentTime : null,
       }),
     },
     [FETCH_CARD_DATA]: {
-      next: (state, { payload: { dashcard_id } }) => {
+      next: (state, { payload: { dashcard_id, currentTime } }) => {
         const loadingIds = state.loadingIds.filter(id => id !== dashcard_id);
         return {
           ...state,
           loadingIds,
           ...(loadingIds.length === 0
-            ? { startTime: null, loadingStatus: "complete" }
+            ? { endTime: currentTime, loadingStatus: "complete" }
             : {}),
         };
       },
@@ -436,6 +424,19 @@ const missingActionParameters = handleActions(
   INITIAL_DASHBOARD_STATE.missingActionParameters,
 );
 
+export const autoApplyFilters = handleActions(
+  {
+    [SHOW_AUTO_APPLY_FILTERS_TOAST]: {
+      next: (state, { payload: { toastId, dashboardId } }) => ({
+        ...state,
+        toastId,
+        toastDashboardId: dashboardId,
+      }),
+    },
+  },
+  INITIAL_DASHBOARD_STATE.autoApplyFilters,
+);
+
 export default reduceReducers(
   INITIAL_DASHBOARD_STATE,
   combineReducers({
@@ -452,6 +453,7 @@ export default reduceReducers(
     isAddParameterPopoverOpen,
     sidebar,
     missingActionParameters,
+    autoApplyFilters,
     // Combined reducer needs to init state for every slice
     selectedTabId: (state = INITIAL_DASHBOARD_STATE.selectedTabId) => state,
   }),

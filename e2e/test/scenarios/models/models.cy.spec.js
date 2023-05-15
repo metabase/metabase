@@ -150,7 +150,9 @@ describe("scenarios > models", () => {
     cy.get(".LineAreaBarChart");
 
     turnIntoModel();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("This is a model now.");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Undo").click();
 
     cy.get(".LineAreaBarChart");
@@ -170,10 +172,12 @@ describe("scenarios > models", () => {
 
     cy.wait("@cardUpdate");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("This is a question now.");
     openQuestionActions();
     assertIsQuestion();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Undo").click();
     cy.wait("@cardUpdate");
     openQuestionActions();
@@ -182,6 +186,7 @@ describe("scenarios > models", () => {
 
   it("shows 404 when opening a question with a /dataset URL", () => {
     cy.visit("/model/1");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/We're a little lost/i);
   });
 
@@ -264,6 +269,7 @@ describe("scenarios > models", () => {
       cy.findAllByRole("option").should("have.length", 4);
       selectFromDropdown("Products");
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Add filters to narrow your answer").click();
       selectFromDropdown("Products", { force: true });
       selectFromDropdown("Price", { force: true });
@@ -272,14 +278,17 @@ describe("scenarios > models", () => {
       cy.findByPlaceholderText("Enter a number").type("50");
       cy.button("Add filter").click();
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Pick the metric you want to see").click();
       selectFromDropdown("Count of rows");
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Pick a column to group by").click();
       selectFromDropdown("Created At");
 
       visualize();
       cy.get(".LineAreaBarChart");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Save").click();
 
       modal().within(() => {
@@ -353,6 +362,7 @@ describe("scenarios > models", () => {
       cy.visit("/model/1");
       cy.wait("@dataset");
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Subtotal").click();
       selectFromDropdown("Sum over time");
 
@@ -389,6 +399,7 @@ describe("scenarios > models", () => {
       cy.wait("@updateCard");
 
       cy.findByDisplayValue("M1");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("foo");
     });
   });
@@ -428,10 +439,12 @@ describe("scenarios > models", () => {
     closeQuestionActions();
 
     // Check card tags are supported by models
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Open editor/i).click();
     cy.get(".ace_content").type(
       "{leftarrow}{leftarrow}{backspace}{backspace}#1",
     );
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
     modal().findByText("Save").click();
 
@@ -479,7 +492,9 @@ describe("scenarios > models", () => {
     turnIntoModel();
 
     visitCollection("root");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Useful data");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("A model");
   });
 
@@ -491,7 +506,9 @@ describe("scenarios > models", () => {
     cy.wait("@cardUpdate");
 
     visitCollection("root");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Useful data").should("not.exist");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("A model").should("not.exist");
   });
 

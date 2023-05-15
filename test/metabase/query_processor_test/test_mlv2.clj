@@ -35,12 +35,6 @@
   [legacy-query]
   (or
    *skip-conversion-tests*
-   ;; #29938: conversion for `:case` with default value does not work correctly
-   (mbql.u/match-one legacy-query
-     :case
-     (mbql.u/match-one &match
-       {:default _default}
-       "#29938"))
    ;; #29942: missing schema for `:cum-sum` and `:cum-count` aggregations
    (mbql.u/match-one legacy-query
      #{:cum-sum :cum-count}
@@ -57,10 +51,6 @@
    (mbql.u/match-one legacy-query
      :regex-match-first
      "#29949")
-   ;; #29950: string filter clauses with options like `:case-sensitive` option not handled correctly
-   (mbql.u/match-one legacy-query
-     {:case-sensitive _case-sensitive?}
-     "#29950")
    ;; #29958: `:convert-timezone` with 2 args is broken
    (mbql.u/match-one legacy-query
      [:convert-timezone _expr _source-timezone]

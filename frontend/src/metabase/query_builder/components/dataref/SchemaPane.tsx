@@ -68,6 +68,7 @@ const SchemaPane = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Schemas.load({
   id: (_state: State, props: SchemaPaneProps) => props.schema.id,
 })(SchemaPane);

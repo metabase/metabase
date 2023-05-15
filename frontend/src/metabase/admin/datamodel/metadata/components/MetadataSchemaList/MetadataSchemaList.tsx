@@ -8,8 +8,9 @@ import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import * as Urls from "metabase/lib/urls";
 import Schemas from "metabase/entities/schemas";
 import Icon from "metabase/components/Icon/Icon";
-import { DatabaseId, Schema, SchemaId } from "metabase-types/api";
+import { DatabaseId, SchemaId } from "metabase-types/api";
 import { Dispatch, State } from "metabase-types/store";
+import Schema from "metabase-lib/metadata/Schema";
 
 interface OwnProps {
   selectedDatabaseId: DatabaseId;
@@ -120,6 +121,7 @@ const SchemaRow = ({ schema, isSelected, onSelectSchema }: SchemaRowProps) => {
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   Schemas.loadList({
     query: (_: State, { selectedDatabaseId }: OwnProps) => ({

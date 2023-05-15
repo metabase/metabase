@@ -6,6 +6,7 @@ import {
 } from "metabase-types/api/mocks";
 import DatabaseEngineWarning from "./DatabaseEngineWarning";
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default {
   title: "Databases/DatabaseEngineWarning",
   component: DatabaseEngineWarning,

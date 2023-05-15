@@ -32,6 +32,7 @@ type State = {
   current?: Moment;
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default class Calendar extends Component<CalendarProps, State> {
   constructor(props: CalendarProps) {
     super(props);
