@@ -71,6 +71,7 @@ function StringInputWidget({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default StringInputWidget;
 
 function normalize(value: string[] | undefined): string[] {

@@ -24,6 +24,7 @@ const TEST_DATABASES = [
       createMockTable({ schema: "uploads" }),
       createMockTable({ schema: "top_secret" }),
     ],
+    features: ["schemas"],
   }),
   createMockDatabase({
     id: 2,
@@ -37,6 +38,7 @@ const TEST_DATABASES = [
     engine: "h2",
     settings: { "database-enable-actions": true },
     tables: [createMockTable({ schema: "public" })],
+    features: ["schemas"],
   }),
   createMockDatabase({
     id: 4,
@@ -50,6 +52,7 @@ const TEST_DATABASES = [
     engine: "h2",
     settings: { "database-enable-actions": true },
     tables: [],
+    features: ["schemas"],
   }),
 ];
 

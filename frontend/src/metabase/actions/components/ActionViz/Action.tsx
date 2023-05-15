@@ -187,6 +187,7 @@ function getErrorTooltip({
   return t`Something's gone wrong`;
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   Databases.load({
     id: (state: State, props: ActionProps) =>

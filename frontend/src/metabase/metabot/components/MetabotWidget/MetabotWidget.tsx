@@ -111,6 +111,7 @@ const getPromptPlaceholder = (model: Question | undefined) => {
   }
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   Search.loadList({
     query: {

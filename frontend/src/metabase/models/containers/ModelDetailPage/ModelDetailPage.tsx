@@ -194,6 +194,7 @@ function getPageTitle({ model }: Props) {
   return model?.displayName();
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   Questions.load({ id: getModelId, entityAlias: "model" }),
   Databases.loadList(),

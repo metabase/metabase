@@ -36,4 +36,5 @@ const ColorSelectorPopover = forwardRef(function ColorSelector(
   );
 });
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ColorSelectorPopover;

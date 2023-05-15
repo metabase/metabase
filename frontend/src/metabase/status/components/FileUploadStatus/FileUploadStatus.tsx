@@ -57,6 +57,7 @@ const FileUploadStatusContent = ({
   return <FileUploadStatusLarge uploads={uploads} collection={collection} />;
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Collections.loadList({ loadingAndErrorWrapper: false })(
   FileUploadStatus,
 );

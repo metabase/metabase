@@ -9,6 +9,7 @@ import Database from "metabase-lib/metadata/Database";
  * and form a single MBQL / native query clause
  */
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default class AtomicQuery extends Query {
   /**
    * Tables this query could use, if the database is set

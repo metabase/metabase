@@ -74,6 +74,7 @@ function getCardListingQuery(state: State, { model }: OwnProps) {
   };
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Questions.loadList({
   query: getCardListingQuery,
 })(ModelUsageDetails);

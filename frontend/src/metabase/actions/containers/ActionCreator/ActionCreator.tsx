@@ -206,6 +206,7 @@ function ActionCreatorWithContext({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   Actions.load({
     id: (state: State, props: OwnProps) => props.actionId,

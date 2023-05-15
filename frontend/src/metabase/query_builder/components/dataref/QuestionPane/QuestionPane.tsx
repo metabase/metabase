@@ -101,6 +101,7 @@ const QuestionPane = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   Questions.load({
     id: (_state: State, props: QuestionPaneProps) => props.question.id,

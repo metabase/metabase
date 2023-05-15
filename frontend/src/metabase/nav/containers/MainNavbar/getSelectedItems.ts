@@ -82,4 +82,5 @@ function getSelectedItems({
   return [{ url: pathname, type: "non-entity" }];
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default getSelectedItems;

@@ -93,6 +93,7 @@ function getModelId(state: State, props: OwnProps) {
   return Urls.extractEntityId(props.params.slug);
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   Models.load({
     id: getModelId,

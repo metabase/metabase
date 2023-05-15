@@ -113,4 +113,5 @@ const CustomFormField = React.forwardRef<
   return <RawCustomFormField {...props} forwardedRef={ref} />;
 });
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default CustomFormField;
