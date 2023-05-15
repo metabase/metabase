@@ -22,7 +22,7 @@
   [param-type :- s/Keyword]
   (= (get-in mbql.s/parameter-types [param-type :type]) :date))
 
-(defn date-range-type?
+(defn not-single-date-type?
   "Does date `param-type` represent a range of dates, rather than a single absolute date? (The value may be relative,
   such as `past30days`, or absolute, such as `2020-01`.)"
   [param-type]

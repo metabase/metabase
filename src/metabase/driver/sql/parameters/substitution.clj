@@ -277,7 +277,7 @@
                  (honeysql->replacement-snippet-info driver))]
         {:replacement-snippet snippet, :prepared-statement-args (vec args)})
 
-      (and (= :date/all-options param-type)
+      (and (params.dates/date-type? param-type)
            (re-matches params.dates/date-exclude-regex value))
       (let [field-clause (field->clause driver field param-type)]
         (->> (params.dates/date-string->filter value field-clause)
@@ -286,18 +286,18 @@
              ->honeysql
              (honeysql->replacement-snippet-info driver)))
 
-      ;; convert date ranges to DateRange record types
-      (params.dates/date-range-type? param-type) (prepend-field
-                                                  (date-range-field-filter->replacement-snippet-info driver value))
+      ;; convert other date to DateRange record types
+      (params.dates/not-single-date-type? param-type) (prepend-field
+                                                       (date-range-field-filter->replacement-snippet-info driver value))
       ;; convert all other dates to `= <date>`
-      (params.dates/date-type? param-type)       (prepend-field
-                                                  (field-filter->equals-clause-sql driver (params/map->Date {:s value})))
+      (params.dates/date-type? param-type)            (prepend-field
+                                                       (field-filter->equals-clause-sql driver (params/map->Date {:s value})))
       ;; for sequences of multiple values we want to generate an `IN (...)` clause
-      (sequential? value)                       (prepend-field
-                                                 (field-filter-multiple-values->in-clause-sql driver value))
+      (sequential? value)                             (prepend-field
+                                                       (field-filter-multiple-values->in-clause-sql driver value))
       ;; convert everything else to `= <value>`
-      :else                                     (prepend-field
-                                                 (field-filter->equals-clause-sql driver value)))))
+      :else                                           (prepend-field
+                                                       (field-filter->equals-clause-sql driver value)))))
 
 (defmethod ->replacement-snippet-info [:sql FieldFilter]
   [driver {:keys [value], :as field-filter}]
