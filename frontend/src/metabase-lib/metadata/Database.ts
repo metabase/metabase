@@ -1,5 +1,4 @@
 import {
-  DatabaseFeature,
   NativeQuery,
   NormalizedDatabase,
   StructuredQuery,
@@ -32,7 +31,7 @@ class Database {
     return this.name;
   }
 
-  schema(schemaName: string) {
+  schema(schemaName: string | undefined) {
     return this.metadata?.schema(generateSchemaId(this.id, schemaName));
   }
 
@@ -63,12 +62,12 @@ class Database {
     return this.tablesLookup();
   }
 
-  hasFeature(feature: DatabaseFeature | "join") {
+  hasFeature(feature: string | undefined) {
     if (!feature) {
       return true;
     }
 
-    const set = new Set(this.features);
+    const set = new Set<string>(this.features);
 
     if (feature === "join") {
       return (
@@ -110,7 +109,6 @@ class Database {
     return Boolean(this.settings?.["database-enable-actions"]);
   }
 
-  // QUESTIONS
   newQuestion() {
     return this.question().setDefaultQuery().setDefaultDisplay();
   }
