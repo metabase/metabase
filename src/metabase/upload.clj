@@ -199,12 +199,16 @@
   [s]
   (str/replace s currency-regex ""))
 
-(defn- parse-plain-number [s]
-  (case (get-number-separators)
-    ("." ".,") (. (NumberFormat/getInstance (Locale. "en" "US")) parse s)
-    ",." (. (NumberFormat/getInstance (Locale. "de" "DE")) parse s)
-    ", " (. (NumberFormat/getInstance (Locale. "fr" "FR")) parse (str/replace s \space \u00A0)) ; \u00A0 is a non-breaking space
-    ".’" (. (NumberFormat/getInstance (Locale. "de" "CH")) parse s)))
+(let [us (NumberFormat/getInstance (Locale. "en" "US"))
+      de (NumberFormat/getInstance (Locale. "de" "DE"))
+      fr (NumberFormat/getInstance (Locale. "fr" "FR"))
+      ch (NumberFormat/getInstance (Locale. "de" "CH"))]
+  (defn- parse-plain-number [s]
+    (case (get-number-separators)
+      ("." ".,") (. us parse s)
+      ",." (. de parse s)
+      ", " (. fr parse (str/replace s \space \u00A0)) ; \u00A0 is a non-breaking space
+      ".’" (. ch parse s))))
 
 (defn- parse-number
   [s]
