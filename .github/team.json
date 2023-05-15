@@ -1,20 +1,19 @@
 {
   "teams": [
     {
-      "name": "Query Builder",
-      "label": ".Team/QueryBuilder :abacus:",
+      "name": "Question Masters",
+      "label": ".Team/QuestionMasters",
       "members": [
         "ranquild",
         "WiNloSt",
         "deniskaber",
         "oisincoveney",
-        "uladzimirdev"
+        "uladzimirdev",
+        "tsmacdonald",
+        "qnkhuat",
+        "calherries",
+        "kamilmielnik"
       ]
-    },
-    {
-      "name": "App BE",
-      "label": ".Team/Backend :pancakes:",
-      "members": ["dpsutton", "tsmacdonald", "qnkhuat", "calherries"]
     },
     {
       "name": "Query Processor",
@@ -35,6 +34,7 @@
         "noahmoss",
         "escherize",
         "adam-james-v",
+        "qwef",
         "alxnddr",
         "iethree",
         "npfitz",
