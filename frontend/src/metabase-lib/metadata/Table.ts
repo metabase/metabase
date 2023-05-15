@@ -145,6 +145,8 @@ class Table {
 
   connectedTables(): Table[] {
     const fks = this.fks || [];
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore
     return fks.map(fk => new Table(fk.origin.table));
   }
 
