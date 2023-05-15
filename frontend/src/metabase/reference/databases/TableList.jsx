@@ -61,21 +61,22 @@ export const separateTablesBySchema = (
   createSchemaSeparator,
   createListItem,
 ) => {
-  return _.chain(tables)
+  const sortedTables = _.chain(tables)
     .sortBy(t => t.schema_name)
     .sortBy(t => t.name)
-    .value()
-    .map((table, index, sortedTables) => {
-      if (!table || !table.id || !table.name) {
-        return;
-      }
-      // add schema header for first element and if schema is different from previous
-      const previousTableId = Object.keys(sortedTables)[index - 1];
-      return index === 0 ||
-        sortedTables[previousTableId].schema_name !== table.schema_name
-        ? [createSchemaSeparator(table), createListItem(table, index)]
-        : createListItem(table, index);
-    });
+    .value();
+
+  return sortedTables.map((table, index, sortedTables) => {
+    if (!table || !table.id || !table.name) {
+      return;
+    }
+    // add schema header for first element and if schema is different from previous
+    const previousTableId = Object.keys(sortedTables)[index - 1];
+    return index === 0 ||
+      sortedTables[previousTableId].schema_name !== table.schema_name
+      ? [createSchemaSeparator(table), createListItem(table, index)]
+      : createListItem(table, index);
+  });
 };
 
 class TableList extends Component {
