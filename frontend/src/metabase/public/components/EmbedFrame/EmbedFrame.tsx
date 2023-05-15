@@ -173,4 +173,5 @@ function EmbedFrame({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(connect(mapStateToProps), withRouter)(EmbedFrame);

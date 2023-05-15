@@ -131,19 +131,19 @@
 
 (deftest ^:parallel unresolved-lib-field-with-temporal-bucket-test
   (let [query (lib/query-for-table-name meta/metadata-provider "CHECKINS")
-        f (lib/with-temporal-bucket (lib/field (meta/id :checkins :date)) :year)]
+        f (lib/with-temporal-bucket (lib/field (meta/id :checkins :date)) :day-of-month)]
     (is (fn? f))
     (let [field (f query -1)]
-      (is (=? [:field {:temporal-unit :year} (meta/id :checkins :date)]
+      (is (=? [:field {:temporal-unit :day-of-month} (meta/id :checkins :date)]
               field))
       (testing "(lib/temporal-bucket <column-metadata>)"
-        (is (= :year
+        (is (= :day-of-month
                (lib/temporal-bucket (lib.metadata.calculation/metadata query -1 field)))))
       (testing "(lib/temporal-bucket <field-ref>)"
         (is (= {:lib/type :type/temporal-bucketing-option
-                :unit :year}
+                :unit :day-of-month}
                (lib/temporal-bucket-option field))))
-      (is (= "Date (year)"
+      (is (= "Date: Day of month"
              (lib.metadata.calculation/display-name query -1 field))))))
 
 (def ^:private temporal-bucketing-mock-metadata
@@ -210,9 +210,13 @@
 (deftest ^:parallel available-temporal-buckets-test
   (doseq [{:keys [metadata expected-options]}
           [{:metadata         (get-in temporal-bucketing-mock-metadata [:fields :date])
-            :expected-options lib.temporal-bucket/date-bucket-options}
+            :expected-options (-> lib.temporal-bucket/date-bucket-options
+                                  (update 0 dissoc :default)
+                                  (assoc-in [2 :default] true))}
            {:metadata         (get-in temporal-bucketing-mock-metadata [:fields :datetime])
-            :expected-options lib.temporal-bucket/datetime-bucket-options}
+            :expected-options (-> lib.temporal-bucket/datetime-bucket-options
+                                  (update 2 dissoc :default)
+                                  (assoc-in [4 :default] true))}
            {:metadata         (get-in temporal-bucketing-mock-metadata [:fields :time])
             :expected-options lib.temporal-bucket/time-bucket-options}]]
     (testing (str (:base-type metadata) " Field")

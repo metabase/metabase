@@ -25,11 +25,13 @@ describe("Admin > UploadSettings > utils", () => {
         id: 100,
         settings: { "database-enable-actions": true },
         engine: "postgres",
+        features: ["schemas"],
       }),
       createMockDatabase({
         id: 200,
         settings: { "database-enable-actions": false },
         engine: "h2",
+        features: ["schemas"],
       }),
       createMockDatabase({
         id: 300,

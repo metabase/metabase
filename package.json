@@ -7,7 +7,7 @@
   "license": "private",
   "engines": {
     "node": ">=16",
-    "yarn": ">=1.12.3"
+    "yarn": "^1.12.3"
   },
   "dependencies": {
     "@emotion/react": "^11.7.1",
@@ -226,7 +226,7 @@
     "eslint-plugin-jest-dom": "^4.0.3",
     "eslint-plugin-no-only-tests": "^2.4.0",
     "eslint-plugin-react": "^7.22.0",
-    "eslint-plugin-react-hooks": "^4.2.0",
+    "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-testing-library": "^5.9.1",
     "fetch-mock": "^9.11.0",
     "glob": "^7.1.1",

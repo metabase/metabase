@@ -33,6 +33,7 @@ const mapDispatchToProps = (dispatch: any) => ({
   },
 });
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   TimelineEvents.load(timelineEventProps),
   connect(mapStateToProps, mapDispatchToProps),

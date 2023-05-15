@@ -42,4 +42,5 @@ const getFieldId = (field: Field) => {
   return field.id;
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default FieldVisibilityPicker;

@@ -143,4 +143,5 @@ DashCardMenu.shouldRender = ({ question, result }: QueryDownloadWidgetOpts) => {
   return canEditQuestion(question) || canDownloadResults(result);
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(null, mapDispatchToProps)(DashCardMenu);
