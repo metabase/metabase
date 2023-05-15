@@ -232,7 +232,7 @@
         field-cols
         (do (doall field-cols)          ; force generation of unique names before join columns
             (into []
-                  (m/distinct-by #(dissoc % :source_alias :lib/source :lib/desired-column-alias))
+                  (m/distinct-by #(dissoc % :source_alias :lib/source :lib/source-uuid :lib/desired-column-alias))
                   (concat field-cols
                           (lib.join/all-joins-default-columns query stage-number unique-name-fn))))
 

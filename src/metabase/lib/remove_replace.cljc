@@ -87,21 +87,22 @@
     query))
 
 (defn- remove-replace* [query stage-number target-clause remove-replace-fn]
-  (let [target-clause (lib.common/->op-arg query stage-number target-clause)
-        stage (lib.util/query-stage query stage-number)
-        location (m/find-first
-                   (fn [possible-location]
-                     (when-let [sub-loc (get-in stage possible-location)]
-                       (let [clauses (if (lib.util/clause-uuid sub-loc)
-                                       [sub-loc]
-                                       sub-loc)
-                             target-uuid (lib.util/clause-uuid target-clause)]
-                         (when (some (comp #{target-uuid} :lib/uuid second) clauses)
-                           possible-location))))
-                   (stage-paths query stage-number))]
-    (if location
-      (remove-replace-location query stage-number query location target-clause remove-replace-fn)
-      query)))
+  (binding [mu/*enforce* false]
+    (let [target-clause (lib.common/->op-arg query stage-number target-clause)
+          stage (lib.util/query-stage query stage-number)
+          location (m/find-first
+                     (fn [possible-location]
+                       (when-let [sub-loc (get-in stage possible-location)]
+                         (let [clauses (if (lib.util/clause-uuid sub-loc)
+                                         [sub-loc]
+                                         sub-loc)
+                               target-uuid (lib.util/clause-uuid target-clause)]
+                           (when (some (comp #{target-uuid} :lib/uuid second) clauses)
+                             possible-location))))
+                     (stage-paths query stage-number))]
+      (if location
+        (remove-replace-location query stage-number query location target-clause remove-replace-fn)
+        query))))
 
 (mu/defn remove-clause :- :metabase.lib.schema/query
   "Removes the `target-clause` in the filter of the `query`."
@@ -111,8 +112,7 @@
   ([query :- :metabase.lib.schema/query
     stage-number :- :int
     target-clause]
-   (binding [mu/*enforce* false]
-     (remove-replace* query stage-number target-clause lib.util/remove-clause))))
+   (remove-replace* query stage-number target-clause lib.util/remove-clause)))
 
 (mu/defn replace-clause :- :metabase.lib.schema/query
   "Replaces the `target-clause` with `new-clause` in the `query` stage."

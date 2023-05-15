@@ -19,8 +19,8 @@
   [metadata :- lib.metadata/ColumnMetadata]
   (let [options {:lib/uuid       (str (random-uuid))
                  :effective-type ((some-fn :effective-type :base-type) metadata)}
-        ag-uuid (::aggregation-uuid metadata)]
-    (assert ag-uuid "Metadata for an aggregation reference should include ::aggregation-uuid")
+        ag-uuid (:lib/source-uuid metadata)]
+    (assert ag-uuid "Metadata for an aggregation reference should include :lib/source-uuid")
     [:aggregation options ag-uuid]))
 
 (mu/defn resolve-aggregation :- ::lib.schema.aggregation/aggregation
@@ -51,8 +51,7 @@
     (merge
      (lib.metadata.calculation/metadata query stage-number aggregation)
      {:lib/source :source/aggregations
-      :lib/source-uuid (:lib/uuid (second aggregation))
-      ::aggregation-uuid (:lib/uuid (second aggregation))}
+      :lib/source-uuid (:lib/uuid (second aggregation))}
      (when base-type
        {:base-type base-type})
      (when effective-type
@@ -235,5 +234,4 @@
             (into [] (map (fn [aggregation]
                             (-> (lib.metadata.calculation/metadata query stage-number aggregation)
                                 (assoc :lib/source :source/aggregations
-                                       :lib/source-uuid (:lib/uuid (second aggregation))
-                                       ::aggregation-uuid (:lib/uuid (second aggregation))))))))))
+                                       :lib/source-uuid (:lib/uuid (second aggregation))))))))))
