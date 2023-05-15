@@ -11,9 +11,9 @@
 
 (defn- metadata-type->model [metadata-type]
   (case metadata-type
-    :metadata/database :metabase.models.database/Database
-    :metadata/table    :metabase.models.table/Table
-    :metadata/field    :metabase.models.field/Field
+    :metadata/database :model/Database
+    :metadata/table    :model/Table
+    :metadata/field    :model/Field
     :metadata/card     :model/Card
     :metadata/metric   :metabase.models.metric/Metric
     :metadata/segment  :metabase.models.segment/Segment))
@@ -43,12 +43,12 @@
                     {})))
   (log/debugf "Fetching all Tables for Database %d" database-id)
   (mapv #(instance->metadata % :metadata/table)
-        (t2/select :metabase.models.table/Table :db_id database-id)))
+        (t2/select :model/Table :db_id database-id)))
 
 (defn- fields [table-id]
   (log/debugf "Fetching all Fields for Table %d" table-id)
   (mapv #(instance->metadata % :metadata/field)
-        (t2/select :metabase.models.field/Field :table_id table-id)))
+        (t2/select :model/Field :table_id table-id)))
 
 (p/deftype+ UncachedApplicationDatabaseMetadataProvider [database-id]
   lib.metadata.protocols/MetadataProvider

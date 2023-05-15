@@ -25,6 +25,7 @@
    [toucan.models :as models]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]
+   [toucan2.protocols :as t2.protocols]
    [toucan2.tools.before-insert :as t2.before-insert]
    [toucan2.tools.hydrate :as t2.hydrate]
    [toucan2.util :as t2.u])
@@ -404,6 +405,11 @@
   {:in  json-in
    :out json-out-with-keywordization})
 
+(def transform-encrypted-json
+  "Transform for encrypted json."
+  {:in  encrypted-json-in
+   :out cached-encrypted-json-out})
+
 (def transform-visualization-settings
   "Transform for viz-settings."
   {:in  (comp json-in migrate-viz-settings)
@@ -413,6 +419,11 @@
   "Transform for parameters list."
   {:in  (comp json-in normalize-parameters-list)
    :out (comp (catch-normalization-exceptions normalize-parameters-list) json-out-with-keywordization)})
+
+(def transform-cron-string
+  "Transform for encrypted json."
+  {:in  validate-cron-string
+   :out identity})
 
 ;; --- predefined hooks
 
@@ -441,6 +452,14 @@
   [instance]
   (-> instance
       add-entity-id))
+
+;; --- helper fns
+(defn pre-update-changes
+  "Returns the changes used for pre-update hooks.
+  This is to match the input of pre-update for toucan1 methods"
+  [row]
+  (t2.protocols/with-current row (merge (t2.model/primary-key-values-map row)
+                                        (t2.protocols/changes row))))
 
 (methodical/prefer-method! #'t2.before-insert/before-insert :hook/timestamped? :hook/entity-id)
 
