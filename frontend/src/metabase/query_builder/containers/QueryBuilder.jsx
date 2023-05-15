@@ -35,6 +35,7 @@ import title from "metabase/hoc/Title";
 import titleWithLoadingTime from "metabase/hoc/TitleWithLoadingTime";
 import favicon from "metabase/hoc/Favicon";
 
+import useBeforeUnload from "metabase/hooks/use-before-unload";
 import View from "../components/view/View";
 
 import {
@@ -299,6 +300,8 @@ function QueryBuilder(props) {
     window.addEventListener("resize", forceUpdateDebounced);
     return () => window.removeEventListener("resize", forceUpdateDebounced);
   }, []);
+
+  useBeforeUnload(props.isDirty && props.isNativeEditorOpen);
 
   useUnmount(() => {
     cancelQuery();
