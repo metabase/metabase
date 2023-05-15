@@ -14686,6 +14686,7 @@ databaseChangeLog:
       id: v47.00-024
       author: dpsutton
       comment: Added 0.47.0 -- model_index foriegn key to report_card
+      validCheckSum: ANY
       changes:
         - addForeignKeyConstraint:
             baseTableName: model_index
@@ -14694,6 +14695,7 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_model_index_model_id
             nullable: false
+            deleteCascade: true
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
