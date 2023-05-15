@@ -14608,15 +14608,6 @@ databaseChangeLog:
         - createTable:
             tableName: model_index
             remarks: 'Used to keep track of which models have indexed columns.'
-            columns:
-              - column:
-                  name: id
-                  type: int
-                  autoIncrement: true
-                  constraints:
-                    primaryKey: true
-                    nullable: false
-              - column:
                   name: model_id
                   type: int
                   remarks: 'The ID of the indexed model.'
@@ -14758,6 +14749,47 @@ databaseChangeLog:
             constraintName: fk_model_index_value_model_id
             nullable: false
             deleteCascade: true
+
+  - changeSet:
+      id: v47.00-026
+      author: noahmoss
+      comment: Added 0.47.0 - New table for connection impersonation policies
+      changes:
+        - createTable:
+            tableName: connection_impersonations
+            remarks: Table for holding connection impersonation policies
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: database_id
+                  type: int
+                  remarks: 'ID of the database this connection impersonation policy affects'
+                  constraints:
+                    nullable: false
+                    referencedTableName: metabase_database
+                    referencedColumnNames: id
+                    foreignKeyName: fk_conn_impersonation_database_id
+                    deleteCascade: true
+              - column:
+                  name: group_id
+                  type: int
+                  remarks: 'ID of the permissions group this connection impersonation policy affects'
+                  constraints:
+                    nullable: false
+                    referencedTableName: permissions_group
+                    referencedColumnNames: id
+                    foreignKeyName: fk_conn_impersonation_group_id
+                    deleteCascade: true
+              - column:
+                  name: attribute
+                  type: ${text.type}
+                  remarks: 'User attribute associated with the database role to use for this connection impersonation policy'
 
   - changeSet:
       id: v47.00-027
