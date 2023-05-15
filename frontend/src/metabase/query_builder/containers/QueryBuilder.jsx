@@ -233,7 +233,7 @@ function QueryBuilder(props) {
   const wasShowingAnySidebar = usePrevious(isAnySidebarOpen);
   const wasNativeEditorOpen = usePrevious(isNativeEditorOpen);
   const hasQuestion = question != null;
-  const collectionId = question?.collectionId();
+  const collectionId = card?.collectionId || question?.collectionId();
 
   const openModal = useCallback(
     (modal, modalContext) => setUIControls({ modal, modalContext }),
