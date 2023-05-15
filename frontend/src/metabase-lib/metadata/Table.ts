@@ -172,7 +172,9 @@ class Table {
   }
 
   clone() {
-    return new Table(this.getPlainObject());
+    const table = new Table(this.getPlainObject());
+    Object.assign(table, this);
+    return table;
   }
 }
 
