@@ -276,6 +276,9 @@
    :month   :month-of-year
    :quarter :quarter-of-year})
 
+(def date-exclude-regex
+  (re-pattern (str "exclude-" temporal-units-regex #"s-([-\p{Alnum}]+)")))
+
 (def ^:private absolute-date-string-decoders
   ;; year and month
   [{:parser (regex->parser #"([0-9]{4}-[0-9]{2})" [:date])
@@ -316,7 +319,7 @@
     :filter (fn [{:keys [date]} field-clause]
               [:> (mbql.u/with-temporal-unit field-clause :day) (->iso-8601-date date)])}
    ;; exclusions
-   {:parser (regex->parser (re-pattern (str "exclude-" temporal-units-regex #"s-([-\p{Alnum}]+)")) [:unit :exclusions])
+   {:parser (regex->parser date-exclude-regex [:unit :exclusions])
     :filter (fn [{:keys [unit exclusions]} field-clause]
               (let [unit (keyword unit)
                     exclusions (map (partial excluded-datetime unit (t/local-date))
@@ -389,6 +392,8 @@
          now (t/local-date-time)]
      ;; Relative dates respect the given time zone because a notion like "last 7 days" might mean a different range of
      ;; days depending on the user timezone
+     ;; WIP: this is being called incorrectly
+    ;;  (sc.api/spy)
      (or (->> (execute-decoders relative-date-string-decoders :range now date-string)
               (adjust-inclusive-range-if-needed options)
               (m/map-vals u.date/format))

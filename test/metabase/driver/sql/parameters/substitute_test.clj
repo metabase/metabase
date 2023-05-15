@@ -622,6 +622,19 @@
             "SELECT * FROM ORDERS WHERE TOTAL > 100 [[AND {{created}} #]] AND CREATED_AT < now()"
             nil)))))
 
+(deftest expand-exclude-field-filter-test
+  (mt/with-driver :h2
+    (testing "exclude date parts"
+      (testing "one exclusion"
+        (is (= {:query
+                "SELECT * FROM checkins WHERE ((CAST(extract(month from \"PUBLIC\".\"CHECKINS\".\"DATE\") AS integer) <> CAST(extract(month from ?) AS integer)) OR (CAST(extract(month from \"PUBLIC\".\"CHECKINS\".\"DATE\") AS integer) IS NULL));",
+                :params [#t "2016-01-01T00:00Z[UTC]"]}
+               (expand-with-field-filter-param {:type :date/all-options, :value "exclude-months-Jan"}))))
+      (testing "two exclusions"
+        (is (= {:query
+                "SELECT * FROM checkins WHERE (((CAST(extract(month from \"PUBLIC\".\"CHECKINS\".\"DATE\") AS integer) <> CAST(extract(month from ?) AS integer)) OR (CAST(extract(month from \"PUBLIC\".\"CHECKINS\".\"DATE\") AS integer) IS NULL)) AND ((CAST(extract(month from \"PUBLIC\".\"CHECKINS\".\"DATE\") AS integer) <> CAST(extract(month from ?) AS integer)) OR (CAST(extract(month from \"PUBLIC\".\"CHECKINS\".\"DATE\") AS integer) IS NULL)));",
+                :params [#t "2016-01-01T00:00Z[UTC]" #t "2016-02-01T00:00Z[UTC]"]}
+               (expand-with-field-filter-param {:type :date/all-options, :value "exclude-months-Jan-Feb"})))))))
 
 ;;; -------------------------------------------- "REAL" END-TO-END-TESTS ---------------------------------------------
 
@@ -678,7 +691,7 @@
 (deftest ^:parallel e2e-relative-dates-test
   (mt/test-drivers (sql-parameters-engines)
     (testing (str "test that relative dates work correctly. It should be enough to try just one type of relative date "
-                  "here, since handling them gets delegated to the functions in `metabase.query-processor.parameters`, "
+                  "here, since handling them gets delegated to the functions in `metabase.driver.common.parameters.dates`, "
                   "which is fully-tested :D")
       (is (= [0]
              (mt/first-row
@@ -694,6 +707,30 @@
                    :parameters [{:type   :date/relative
                                  :target [:dimension [:template-tag "checkin_date"]]
                                  :value  "thismonth"}]))))))))
+
+
+(deftest ^:parallel e2e-exclude-date-parts-test
+  (mt/test-drivers (sql-parameters-engines)
+    (testing (str "test that excluding date parts work correctly. It should be enough to try just one type of exclusion, because"
+                  "here, since handling them gets delegated to the functions in `metabase.driver.common.parameters.dates`, "
+                  "which is fully-tested :D")
+      (doseq [[exclusion-string expected] {"exclude-months-Jan"     962
+                                           "exclude-months-Jan-Feb" 892}]
+        (testing (format "test that excluding %s works correctly" exclusion-string)
+          (is (= [expected]
+                 (mt/first-row
+                  (mt/format-rows-by [int]
+                                     (process-native
+                                      :native     {:query         (format "SELECT COUNT(*) FROM %s WHERE {{checkin_date}}"
+                                                                          (checkins-identifier))
+                                                   :template-tags {"checkin_date" {:name         "checkin_date"
+                                                                                   :display-name "Checkin Date"
+                                                                                   :type         :dimension
+                                                                                   :widget-type  :date/all-options
+                                                                                   :dimension    [:field (mt/id :checkins :date) nil]}}}
+                                      :parameters [{:type   :date/all-options
+                                                    :target [:dimension [:template-tag "checkin_date"]]
+                                                    :value  exclusion-string}]))))))))))
 
 (deftest ^:parallel e2e-combine-multiple-filters-test
   (mt/test-drivers (sql-parameters-engines)
