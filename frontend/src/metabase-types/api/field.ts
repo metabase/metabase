@@ -1,5 +1,5 @@
 import { RowValue } from "./dataset";
-import { TableId } from "./table";
+import { Table, TableId } from "./table";
 
 export type FieldId = number;
 
@@ -66,6 +66,7 @@ export type FieldDimensionOption = {
 export interface ConcreteField {
   id: FieldId;
   table_id: TableId;
+  table?: Table;
 
   name: string;
   display_name: string;
