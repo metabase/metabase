@@ -167,9 +167,9 @@
                     (is (=? {:name "k2"}
                             db)))
                   (is (thrown-with-msg?
-                        clojure.lang.ExceptionInfo
-                        #"Can't decrypt app db with MB_ENCRYPTION_SECRET_KEY"
-                        (rotate-encryption-key! k3))))
+                       clojure.lang.ExceptionInfo
+                       #"Can't decrypt app db with MB_ENCRYPTION_SECRET_KEY"
+                       (rotate-encryption-key! k3))))
                 (encryption-test/with-secret-key k3
                   (is (not= {:db "/tmp/k2.db"} (t2/select-one-fn :details Database :name "k2")))
                   (is (= {:db "/tmp/k3.db"} (t2/select-one-fn :details Database :name "k3")))))

@@ -29,7 +29,6 @@
    [toucan2.tools.before-insert :as t2.before-insert]
    [toucan2.tools.hydrate :as t2.hydrate]
    [toucan2.util :as t2.u])
-
   (:import
    (java.io BufferedInputStream ByteArrayInputStream DataInputStream)
    (java.sql Blob)

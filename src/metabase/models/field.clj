@@ -125,7 +125,7 @@
 
 (defn- maybe-parse-semantic-numeric-values [maybe-double-value]
   (if (string? maybe-double-value)
-    (u/ignore-exceptions (Double/parseDouble maybe-double-value))
+    (or (u/ignore-exceptions (Double/parseDouble maybe-double-value)) maybe-double-value)
     maybe-double-value))
 
 (defn- update-semantic-numeric-values
@@ -135,7 +135,7 @@
   (m/update-existing-in fingerprint [:type :type/Number]
                         (partial m/map-vals maybe-parse-semantic-numeric-values)))
 
-(def transform-json-for-fingerprints
+(def ^:private transform-json-fingerprints
   {:in  mi/json-in
    :out (comp update-semantic-numeric-values mi/json-out-with-keywordization)})
 
@@ -146,7 +146,7 @@
    :semantic_type     transform-field-semantic-type
    :visibility_type   mi/transform-keyword
    :has_field_values  mi/transform-keyword
-   :fingerprint       transform-json-for-fingerprints
+   :fingerprint       transform-json-fingerprints
    :settings          mi/transform-json
    :nfc_path          mi/transform-json})
 
