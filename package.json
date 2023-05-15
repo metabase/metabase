@@ -7,7 +7,7 @@
   "license": "private",
   "engines": {
     "node": ">=16",
-    "yarn": ">=1.12.3"
+    "yarn": "^1.12.3"
   },
   "dependencies": {
     "@emotion/react": "^11.7.1",
