@@ -1,4 +1,10 @@
-import { popover, restore } from "e2e/support/helpers";
+import {
+  popover,
+  restore,
+  getPinnedSection,
+  openPinnedItemMenu,
+  openUnpinnedItemMenu,
+} from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -201,31 +207,7 @@ describe("scenarios > collection pinned items overview", () => {
   });
 });
 
-const getPinnedSection = () => {
-  return cy.findByTestId("pinned-items");
-};
-
-const getUnpinnedSection = () => {
-  return cy.findByRole("table");
-};
-
 const openRootCollection = () => {
   cy.visit("/collection/root");
   cy.wait("@getPinnedItems");
-};
-
-const openPinnedItemMenu = name => {
-  getPinnedSection().within(() => {
-    cy.findByText(name)
-      .closest("a")
-      .within(() => cy.icon("ellipsis").click({ force: true }));
-  });
-};
-
-const openUnpinnedItemMenu = name => {
-  getUnpinnedSection().within(() => {
-    cy.findByText(name)
-      .closest("tr")
-      .within(() => cy.icon("ellipsis").click());
-  });
 };
