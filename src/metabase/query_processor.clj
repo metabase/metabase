@@ -102,12 +102,11 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (when config/ee-available?
-  (classloader/require
-   '[metabase-enterprise.advanced-permissions.query-processor.middleware.permissions :as ee.perms]
-   '[metabase-enterprise.audit-app.query-processor.middleware.handle-audit-queries :as ee.audit]
-   '[metabase-enterprise.sandbox.query-processor.middleware
-     [column-level-perms-check :as ee.sandbox.columns]
-     [row-level-restrictions :as ee.sandbox.rows]]))
+  (classloader/require '[metabase-enterprise.advanced-permissions.query-processor.middleware.permissions :as ee.perms]
+                       '[metabase-enterprise.audit-app.query-processor.middleware.handle-audit-queries :as ee.audit]
+                       '[metabase-enterprise.sandbox.query-processor.middleware
+                         [column-level-perms-check :as ee.sandbox.columns]
+                         [row-level-restrictions :as ee.sandbox.rows]]))
 
 ;;; This is a namespace that adds middleware to test MLv2 stuff every time we run a query. It lives in a `./test`
 ;;; namespace, so it's only around when running with `:dev` or the like.
