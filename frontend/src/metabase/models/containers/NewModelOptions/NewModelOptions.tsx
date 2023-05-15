@@ -31,7 +31,7 @@ interface NewModelOptionsProps {
   location: Location;
 }
 
-const NewModelOptions = (props: NewModelOptionsProps) => {
+const NewModelOptionsComponent = (props: NewModelOptionsProps) => {
   const hasDataAccess = useSelector(() =>
     getHasDataAccess(props.databases ?? []),
   );
@@ -125,8 +125,8 @@ const NewModelOptions = (props: NewModelOptionsProps) => {
   );
 };
 
-export default _.compose(
+export const NewModelOptions = _.compose(
   Databases.loadList({
     loadingAndErrorWrapper: false,
   }),
-)(NewModelOptions);
+)(NewModelOptionsComponent);
