@@ -14616,6 +14616,47 @@ databaseChangeLog:
             class: "metabase.db.custom_migrations.MigrateLegacyColumnSettingsFieldRefs"
 
   - changeSet:
+      id: v47.00-026
+      author: noahmoss
+      comment: Added 0.47.0 - New table for connection impersonation policies
+      changes:
+        - createTable:
+            tableName: connection_impersonations
+            remarks: Table for holding connection impersonation policies
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: database_id
+                  type: int
+                  remarks: 'ID of the database this connection impersonation policy affects'
+                  constraints:
+                    nullable: false
+                    referencedTableName: metabase_database
+                    referencedColumnNames: id
+                    foreignKeyName: fk_conn_impersonation_database_id
+                    deleteCascade: true
+              - column:
+                  name: group_id
+                  type: int
+                  remarks: 'ID of the permissions group this connection impersonation policy affects'
+                  constraints:
+                    nullable: false
+                    referencedTableName: permissions_group
+                    referencedColumnNames: id
+                    foreignKeyName: fk_conn_impersonation_group_id
+                    deleteCascade: true
+              - column:
+                  name: attribute
+                  type: ${text.type}
+                  remarks: 'User attribute associated with the database role to use for this connection impersonation policy'
+
+  - changeSet:
       id: v47.00-027
       author: calherres
       comment: Added 0.47.0 - Migrate field_ref in report_card.result_metadata from legacy format
