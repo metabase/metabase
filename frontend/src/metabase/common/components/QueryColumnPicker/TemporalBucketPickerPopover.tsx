@@ -7,7 +7,7 @@ import {
 } from "./BucketPickerPopover";
 
 function renderTriggerContent(bucket?: Lib.BucketDisplayInfo) {
-  return bucket ? t`by ${bucket.displayName}` : null;
+  return bucket ? t`by ${bucket.displayName.toLowerCase()}` : null;
 }
 
 export function TemporalBucketPickerPopover(
