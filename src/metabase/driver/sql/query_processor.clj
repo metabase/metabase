@@ -62,12 +62,12 @@
   [sql]
   (str "("
        (-> sql
-           (str/replace #";([\s;]*(--.*\n?)*)*?$" "")
+           (str/replace #";([\s;]*(--.*\n?)*)*$" "")
            str/trimr
            (as-> trimmed
                  ;; Query could potentially end with a comment.
                  (if (re-find #"--.*$" trimmed)
-                   (str/replace trimmed #"$" "\n")
+                   (str trimmed "\n")
                    trimmed)))
        ")"))
 
