@@ -74,8 +74,8 @@ export const separateTablesBySchema = (
     const previousTableId = Object.keys(sortedTables)[index - 1];
     return index === 0 ||
       sortedTables[previousTableId].schema_name !== table.schema_name
-      ? [createSchemaSeparator(table), createListItem(table, index)]
-      : createListItem(table, index);
+      ? [createSchemaSeparator(table), createListItem(table)]
+      : createListItem(table);
   });
 };
 
