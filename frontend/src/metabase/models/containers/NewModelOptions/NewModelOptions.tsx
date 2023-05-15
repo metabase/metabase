@@ -17,6 +17,7 @@ import NoDatabasesEmptyState from "metabase/reference/databases/NoDatabasesEmpty
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Database } from "metabase-types/api";
+import { deserializeCardFromUrl } from "metabase/lib/card";
 import {
   OptionsGridItem,
   OptionsRoot,
@@ -40,7 +41,9 @@ const NewModelOptions = (props: NewModelOptionsProps) => {
 
   const dispatch = useDispatch();
 
-  const collectionId = JSON.parse(atob(location.hash.slice(1))).collectionId;
+  const collectionId = deserializeCardFromUrl(
+    location.hash.replace(/^#/, ""),
+  ).collectionId;
 
   useMount(() => {
     const { location } = props;
