@@ -99,6 +99,7 @@ export const addMarkdownDashCardToDashboard = function ({ dashId }) {
   const dashcardOverrides = {
     card: virtualTextCard,
     visualization_settings: {
+      text: "Add your text...",
       virtual_card: virtualTextCard,
     },
   };
