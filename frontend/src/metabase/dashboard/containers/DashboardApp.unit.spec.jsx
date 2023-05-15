@@ -20,6 +20,7 @@ import {
   setupCollectionsEndpoints,
   setupDashboardEndpoints,
 } from "__support__/server-mocks";
+import { callMockEvent } from "__support__/events";
 
 const TEST_DASHBOARD = createMockDashboard({
   id: 1,
@@ -29,19 +30,6 @@ const TEST_DASHBOARD = createMockDashboard({
 const TEST_COLLECTION = createMockCollection({
   id: "root",
 });
-
-// calls event handler in the mockEventListener that matches the eventName
-// and uses the mockEvent to hold the callback's return value
-const callMockEvent = (mockEventListener, eventName) => {
-  const mockEvent = {
-    preventDefault: jest.fn(),
-  };
-
-  mockEventListener.mock.calls
-    .filter(([event]) => eventName === event)
-    .forEach(([_, callback]) => callback(mockEvent));
-  return mockEvent;
-};
 
 async function setup({ user = createMockUser() }) {
   setupDashboardEndpoints(createMockDashboard(TEST_DASHBOARD));

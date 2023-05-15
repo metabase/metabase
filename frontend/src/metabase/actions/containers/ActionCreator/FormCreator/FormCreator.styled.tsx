@@ -40,7 +40,7 @@ export const ExplainerTitle = styled.h3`
   margin-bottom: ${space(1)};
 `;
 
-export const ExplainerText = styled.p`
+export const ExplainerText = styled.div`
   font-weight: 400;
   line-height: 1.5rem;
   color: ${color("text-medium")};
