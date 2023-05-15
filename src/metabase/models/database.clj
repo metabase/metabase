@@ -24,7 +24,7 @@
 
 (def Database
   "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], not it's a reference to the toucan2 model name.
-  We'll keep this till we replace all the Database symbol in our codebase."
+  We'll keep this till we replace all Database symbols in our codebase."
   :model/Database)
 
 (methodical/defmethod t2/table-name :model/Database [_model] :metabase_database)
@@ -124,7 +124,7 @@
                        id))
         (t2/delete! Secret :id secret-id)))))
 
-(t2/define-before-delete  :model/Database
+(t2/define-before-delete :model/Database
   [{id :id, driver :engine, :as database}]
   (unschedule-tasks! database)
   (t2/query-one {:delete-from :permissions
