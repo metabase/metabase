@@ -4,6 +4,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { useMount } from "react-use";
+import { Location } from "history";
 import { Grid } from "metabase/components/Grid";
 import NewModelOption from "metabase/models/components/NewModelOption";
 
@@ -15,6 +16,7 @@ import { getHasDataAccess, getHasNativeWrite } from "metabase/selectors/data";
 import NoDatabasesEmptyState from "metabase/reference/databases/NoDatabasesEmptyState";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { Database } from "metabase-types/api";
 import {
   OptionsGridItem,
   OptionsRoot,
@@ -23,11 +25,12 @@ import {
 
 const EDUCATIONAL_LINK = MetabaseSettings.learnUrl("data-modeling/models");
 
-const NewModelOptions = (props: {
-  databases?: any;
-  location?: any;
-  push?: any;
-}) => {
+interface NewModelOptionsProps {
+  databases?: Database[];
+  location: Location;
+}
+
+const NewModelOptions = (props: NewModelOptionsProps) => {
   const hasDataAccess = useSelector(() =>
     getHasDataAccess(props.databases ?? []),
   );
@@ -47,8 +50,8 @@ const NewModelOptions = (props: {
         push(
           Urls.newQuestion({
             ...options,
-            databaseId: database ? parseInt(database) : undefined,
-            tableId: table ? parseInt(table) : undefined,
+            databaseId: database ? parseInt(database as string) : undefined,
+            tableId: table ? parseInt(table as string) : undefined,
           }),
         ),
       );
