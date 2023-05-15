@@ -16,8 +16,8 @@ import { getHasDataAccess, getHasNativeWrite } from "metabase/selectors/data";
 import NoDatabasesEmptyState from "metabase/reference/databases/NoDatabasesEmptyState";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { Database } from "metabase-types/api";
 import { deserializeCardFromUrl } from "metabase/lib/card";
+import Database from "metabase-lib/metadata/Database";
 import {
   OptionsGridItem,
   OptionsRoot,
