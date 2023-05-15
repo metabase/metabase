@@ -1,8 +1,8 @@
 import * as ML from "cljs/metabase.lib.js";
-import type { Bucket, ColumnMetadata, Query } from "./types";
+import type { Bucket, ColumnMetadata, Clause, Query } from "./types";
 
-export function binning(column: ColumnMetadata): Bucket | null {
-  return ML.binning(column);
+export function binning(clause: Clause | ColumnMetadata): Bucket | null {
+  return ML.binning(clause);
 }
 
 declare function AvailableBinningStrategiesFn(
