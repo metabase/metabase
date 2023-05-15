@@ -393,8 +393,6 @@
          now (t/local-date-time)]
      ;; Relative dates respect the given time zone because a notion like "last 7 days" might mean a different range of
      ;; days depending on the user timezone
-     ;; WIP: this is being called incorrectly
-    ;;  (sc.api/spy)
      (or (->> (execute-decoders relative-date-string-decoders :range now date-string)
               (adjust-inclusive-range-if-needed options)
               (m/map-vals u.date/format))
