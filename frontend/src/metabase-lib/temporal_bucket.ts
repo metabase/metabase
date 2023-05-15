@@ -6,10 +6,7 @@ import {
 } from "cljs/metabase.lib.core";
 import type { Bucket, ColumnMetadata, Query } from "./types";
 
-export function temporalBucket(
-  query: Query,
-  column: ColumnMetadata,
-): Bucket | null {
+export function temporalBucket(column: ColumnMetadata): Bucket | null {
   return temporal_bucket(query, column);
 }
 

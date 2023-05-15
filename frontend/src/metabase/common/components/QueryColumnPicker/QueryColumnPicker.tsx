@@ -101,7 +101,7 @@ function QueryColumnPicker({
         return (
           <BinningStrategyPickerPopover
             query={query}
-            selectedBucket={Lib.binning(query, item.column)}
+            selectedBucket={Lib.binning(item.column)}
             buckets={binningStrategies}
             onSelect={nextBucket => {
               handleSelect(Lib.withBinning(item.column, nextBucket));
@@ -116,7 +116,7 @@ function QueryColumnPicker({
         return (
           <TemporalBucketPickerPopover
             query={query}
-            selectedBucket={Lib.temporalBucket(query, item.column)}
+            selectedBucket={Lib.temporalBucket(item.column)}
             buckets={temporalBuckets}
             onSelect={nextBucket => {
               handleSelect(Lib.withTemporalBucket(item.column, nextBucket));
