@@ -1,1 +1,1 @@
-export const isUrlString = (str: string) => /^http/i.test(str);
+export const isUrlString = (str?: string) => str && /^http/i.test(str);

@@ -2,24 +2,20 @@ import React, { useCallback } from "react";
 import { t } from "ttag";
 import { connect } from "react-redux";
 
-import Select from "metabase/core/components/Select";
+import Select, { SelectChangeEvent } from "metabase/core/components/Select";
+import EmptyState from "metabase/components/EmptyState";
 
 import { setParameterMapping } from "metabase/dashboard/actions";
-import type { SelectChangeEvent } from "metabase/core/components/Select";
 
 import type {
   ActionDashboardCard,
   ActionParametersMapping,
+  Dashboard,
+  ParameterId,
+  ParameterTarget,
   WritebackParameter,
   WritebackAction,
-  Dashboard,
 } from "metabase-types/api";
-
-import type {
-  ParameterTarget,
-  ParameterId,
-} from "metabase-types/types/Parameter";
-import EmptyState from "metabase/components/EmptyState";
 import type Question from "metabase-lib/Question";
 
 import {

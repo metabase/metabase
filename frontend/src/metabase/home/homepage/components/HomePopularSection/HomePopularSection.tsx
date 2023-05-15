@@ -2,7 +2,10 @@ import React from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import * as Urls from "metabase/lib/urls";
-import { getIcon, getName } from "metabase/entities/popular-items";
+import PopularItems, {
+  getIcon,
+  getName,
+} from "metabase/entities/popular-items";
 import { PopularItem } from "metabase-types/api";
 import HomeCaption from "../HomeCaption";
 import HomeHelpCard from "../HomeHelpCard";
@@ -55,4 +58,5 @@ const getTitle = (popularItems: PopularItem[]) => {
   }
 };
 
-export default HomePopularSection;
+// eslint-disable-next-line import/no-default-export -- deprecated usage
+export default PopularItems.loadList()(HomePopularSection);

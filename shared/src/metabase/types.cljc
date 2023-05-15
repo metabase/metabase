@@ -335,6 +335,31 @@
   [field]
   (field-is-type? :type/Temporal field))
 
+(defn- most-specific-common-ancestor*
+  "Impl for [[most-specific-common-ancestor]]."
+  [x y]
+  (cond
+    (= x :type/*) nil
+    (= y :type/*) nil
+    (isa? x y)    y
+    (isa? y x)    x
+    ;; if we haven't had a match yet, recursively try using parent types.
+    :else
+    (some (fn [x']
+            (some (fn [y']
+                    (when-not (= [x' y'] [x y])
+                      (most-specific-common-ancestor* x' y')))
+                  (cons y (parents y))))
+          (cons x (parents x)))))
+
+(defn most-specific-common-ancestor
+  "Return the most-specific type that is an ancestor of both `x` and `y`.
+
+    (most-specific-common-ancestor :type/BigInteger :type/Decimal) => :type/Number"
+  [x y]
+  (or (most-specific-common-ancestor* x y)
+      :type/*))
+
 #?(:cljs
    (defn ^:export isa
      "Is `x` the same as, or a descendant type of, `y`?"

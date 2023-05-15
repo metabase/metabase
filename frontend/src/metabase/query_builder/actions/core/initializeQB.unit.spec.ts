@@ -10,10 +10,15 @@ import Databases from "metabase/entities/databases";
 import Snippets from "metabase/entities/snippets";
 import { setErrorPage } from "metabase/redux/app";
 
-import { DatabaseId, TableId, User } from "metabase-types/api";
+import {
+  Card,
+  DatabaseId,
+  NativeDatasetQuery,
+  TableId,
+  TemplateTag,
+  User,
+} from "metabase-types/api";
 import { createMockUser } from "metabase-types/api/mocks";
-import { Card, NativeDatasetQuery } from "metabase-types/types/Card";
-import { TemplateTag } from "metabase-types/types/Query";
 import { createMockState } from "metabase-types/store/mocks";
 
 import {

@@ -24,7 +24,7 @@
    [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db])
+   [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)
    (java.text NumberFormat)
@@ -145,9 +145,9 @@
   (when-not card-id
     (throw (ex-info (tru "Invalid :card parameter: missing `:card-id`")
                     {:tag tag, :type qp.error-type/invalid-parameter})))
-  (let [card           (db/select-one Card :id card-id)
+  (let [card           (t2/select-one Card :id card-id)
         persisted-info (when (:dataset card)
-                         (db/select-one PersistedInfo :card_id card-id))
+                         (t2/select-one PersistedInfo :card_id card-id))
         query          (or (:dataset_query card)
                            (throw (ex-info (tru "Card {0} not found." card-id)
                                            {:card-id card-id, :tag tag, :type qp.error-type/invalid-parameter})))]
@@ -174,7 +174,7 @@
   (let [snippet-id (or snippet-id
                        (throw (ex-info (tru "Unable to resolve Snippet: missing `:snippet-id`")
                                        {:tag tag, :type qp.error-type/invalid-parameter})))
-        snippet    (or (db/select-one NativeQuerySnippet :id snippet-id)
+        snippet    (or (t2/select-one NativeQuerySnippet :id snippet-id)
                        (throw (ex-info (tru "Snippet {0} {1} not found." snippet-id (pr-str snippet-name))
                                        {:snippet-id   snippet-id
                                         :snippet-name snippet-name

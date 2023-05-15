@@ -10,7 +10,7 @@ import {
   NotFound,
   Unauthorized,
 } from "metabase/containers/ErrorPages";
-import UndoListing from "metabase/containers/UndoListing";
+import { UndoListing } from "metabase/containers/UndoListing";
 
 import {
   getErrorPage,
@@ -24,7 +24,7 @@ import { initializeIframeResizer } from "metabase/lib/dom";
 import AppBanner from "metabase/components/AppBanner";
 import AppBar from "metabase/nav/containers/AppBar";
 import Navbar from "metabase/nav/containers/Navbar";
-import StatusListing from "metabase/status/containers/StatusListing";
+import StatusListing from "metabase/status/components/StatusListing";
 import { ContentViewportContext } from "metabase/core/context/ContentViewportContext";
 
 import { AppErrorDescriptor, State } from "metabase-types/store";
@@ -117,6 +117,7 @@ function App({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect<AppStateProps, unknown, AppRouterOwnProps, State>(
   mapStateToProps,
   mapDispatchToProps,

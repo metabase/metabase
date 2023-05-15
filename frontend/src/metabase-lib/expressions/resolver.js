@@ -4,9 +4,9 @@ import { ResolverError } from "metabase-lib/expressions/pratt/types";
 import { OPERATOR as OP } from "./tokenizer";
 import { getMBQLName, MBQL_CLAUSES } from "./index";
 
-export const FIELD_MARKERS = ["dimension", "segment", "metric"];
+const FIELD_MARKERS = ["dimension", "segment", "metric"];
 export const LOGICAL_OPS = [OP.Not, OP.And, OP.Or];
-export const NUMBER_OPS = [OP.Plus, OP.Minus, OP.Star, OP.Slash];
+const NUMBER_OPS = [OP.Plus, OP.Minus, OP.Star, OP.Slash];
 export const COMPARISON_OPS = [
   OP.Equal,
   OP.NotEqual,

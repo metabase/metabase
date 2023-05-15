@@ -14,6 +14,7 @@ import Base from "./Base";
 import Table from "./Table";
 import Schema from "./Schema";
 import Metadata from "./Metadata";
+
 /**
  * @typedef { import("./Metadata").SchemaName } SchemaName
  */
@@ -29,11 +30,14 @@ class DatabaseInner extends Base {
   name: string;
   engine: string;
   description: string;
+  creator_id?: number;
+  is_sample: boolean;
   is_saved_questions: boolean;
   tables: Table[];
   schemas: Schema[];
   metadata: Metadata;
   features: DatabaseFeature[];
+  details: Record<string, unknown>;
   settings?: DatabaseSettings;
   native_permissions: NativePermissions;
 
@@ -181,38 +185,9 @@ class DatabaseInner extends Base {
   savedQuestionsDatabase() {
     return this.metadata.databasesList().find(db => db.is_saved_questions);
   }
-
-  /**
-   * @private
-   * @param {number} id
-   * @param {string} name
-   * @param {?string} description
-   * @param {Table[]} tables
-   * @param {Schema[]} schemas
-   * @param {Metadata} metadata
-   * @param {boolean} auto_run_queries
-   */
-
-  /* istanbul ignore next */
-  _constructor(
-    id,
-    name,
-    description,
-    tables,
-    schemas,
-    metadata,
-    auto_run_queries,
-  ) {
-    this.id = id;
-    this.name = name;
-    this.description = description;
-    this.tables = tables;
-    this.schemas = schemas;
-    this.metadata = metadata;
-    this.auto_run_queries = auto_run_queries;
-  }
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default class Database extends memoizeClass<DatabaseInner>(
   "tablesLookup",
 )(DatabaseInner) {}

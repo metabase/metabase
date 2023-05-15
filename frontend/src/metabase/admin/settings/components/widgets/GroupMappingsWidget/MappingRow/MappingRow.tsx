@@ -3,7 +3,6 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { isAdminGroup } from "metabase/lib/groups";
-import { PermissionsApi } from "metabase/services";
 import Tooltip from "metabase/core/components/Tooltip";
 import Icon from "metabase/components/Icon";
 import Confirm from "metabase/components/Confirm";
@@ -28,6 +27,8 @@ type MappingRowProps = {
   name: string;
   groups: UserGroupsType;
   selectedGroupIds: GroupIds;
+  clearGroupMember: ({ id }: { id: number }) => void;
+  deleteGroup: ({ id }: { id: number }) => void;
   onChange: () => void;
   onDeleteMapping: OnDeleteMappingType;
 };
@@ -36,6 +37,8 @@ const MappingRow = ({
   name,
   groups,
   selectedGroupIds,
+  clearGroupMember,
+  deleteGroup,
   onChange,
   onDeleteMapping,
 }: MappingRowProps) => {
@@ -82,7 +85,7 @@ const MappingRow = ({
             groupIds.map(async id => {
               try {
                 if (!isAdminGroup(groups.find(group => group.id === id))) {
-                  await PermissionsApi.clearGroupMembership({ id });
+                  await clearGroupMember({ id });
                 }
               } catch (error) {
                 console.error(error);
@@ -95,7 +98,7 @@ const MappingRow = ({
             groupIds.map(async id => {
               try {
                 if (!isAdminGroup(groups.find(group => group.id === id))) {
-                  await PermissionsApi.deleteGroup({ id });
+                  await deleteGroup({ id });
                 }
               } catch (error) {
                 console.error(error);
@@ -171,4 +174,5 @@ const DeleteButton = ({
   </Tooltip>
 );
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default MappingRow;

@@ -42,7 +42,7 @@ jobs:
       with:
         m2-cache-key: uberjar
     - name: Build
-      run: ./bin/build
+      run: ./bin/build.sh
     - name: Prepare uberjar artifact
       uses: ./.github/actions/prepare-uberjar-artifact
 
@@ -70,7 +70,7 @@ jobs:
     - name: Launch uberjar
       run: java -jar ./target/uberjar/metabase.jar &
     - name: Wait for Metabase to start
-      run: while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
+      run: while ! curl 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
 
   containerize_test_and_push_container:
     runs-on: ubuntu-22.04
@@ -129,15 +129,15 @@ jobs:
         password: ${{ secrets.DOCKERHUB_TOKEN }}
     - name: Retag and push images if master (ee)
       if: ${{ (github.ref_name == 'master') && matrix.edition == 'ee' }}
-      run: docker tag localhost:5000/metabase-dev:${{ steps.extract_branch.outputs.branch }}-ee metabase/metabase-enterprise-head:latest && docker push metabase/metabase-enterprise-head:latest
+      run: docker tag localhost:5000/metabase-dev:${{ steps.extract_branch.outputs.branch }}-ee ${{ github.repository_owner }}/metabase-enterprise-head:latest && docker push ${{ github.repository_owner }}/metabase-enterprise-head:latest
 
     - name: Retag and push images if master (oss)
       if: ${{ (github.ref_name == 'master') && matrix.edition == 'oss' }}
-      run: docker tag localhost:5000/metabase-dev:${{ steps.extract_branch.outputs.branch }}-oss metabase/metabase-head:latest && docker push metabase/metabase-head:latest
+      run: docker tag localhost:5000/metabase-dev:${{ steps.extract_branch.outputs.branch }}-oss ${{ github.repository_owner }}/metabase-head:latest && docker push ${{ github.repository_owner }}/metabase-head:latest
 
     - name: Retag and push images if dev branch
       if: ${{ !(startsWith(github.ref_name,'master') || startsWith(github.ref_name,'backport')) && matrix.edition == 'ee' }}
-      run: docker tag localhost:5000/metabase-dev:${{ steps.extract_branch.outputs.branch }}-ee metabase/metabase-dev:${{ steps.extract_branch.outputs.branch }} && docker push metabase/metabase-dev:${{ steps.extract_branch.outputs.branch }}
+      run: docker tag localhost:5000/metabase-dev:${{ steps.extract_branch.outputs.branch }}-ee ${{ github.repository_owner }}/metabase-dev:${{ steps.extract_branch.outputs.branch }} && docker push ${{ github.repository_owner }}/metabase-dev:${{ steps.extract_branch.outputs.branch }}
 
     - name: Run Trivy vulnerability scanner if master (ee)
       if: ${{ (github.ref_name == 'master') && matrix.edition == 'ee' }}
@@ -145,7 +145,7 @@ jobs:
       env:
         TRIVY_OFFLINE_SCAN: true
       with:
-        image-ref: docker.io/metabase/metabase-enterprise-head:latest
+        image-ref: docker.io/${{ github.repository_owner }}/metabase-enterprise-head:latest
         format: sarif
         output: trivy-results.sarif
 
@@ -155,7 +155,7 @@ jobs:
       env:
         TRIVY_OFFLINE_SCAN: true
       with:
-        image-ref: docker.io/metabase/metabase-head:latest
+        image-ref: docker.io/${{ github.repository_owner }}/metabase-head:latest
         format: sarif
         output: trivy-results.sarif
 
@@ -165,7 +165,7 @@ jobs:
       env:
         TRIVY_OFFLINE_SCAN: true
       with:
-        image-ref: docker.io/metabase/metabase-dev:${{ steps.extract_branch.outputs.branch }}
+        image-ref: docker.io/${{ github.repository_owner }}/metabase-dev:${{ steps.extract_branch.outputs.branch }}
         format: sarif
         output: trivy-results.sarif
 
@@ -186,3 +186,80 @@ jobs:
       uses: github/codeql-action/upload-sarif@v2
       with:
         sarif_file: 'trivy-results.sarif'
+
+  containerize_multi_arch:
+    runs-on: ubuntu-22.04
+    name: Containerize multi-arch ${{ matrix.edition }}
+    if: ${{ github.ref_name == 'master' }}
+    needs: check_jar_health
+    strategy:
+      matrix:
+        edition: [ee, oss]
+    services:
+      registry:
+        image: registry:2
+        ports:
+          - 5000:5000
+    steps:
+      - name: Extract and clean branch name
+        shell: bash
+        run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/} | sed 's/[^-._a-zA-Z0-9]/-/g')"
+        id: extract_branch
+      - name: Check out the code (Dockerfile needed)
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.inputs.commit }}
+      - name: Download uploaded artifacts to insert into container
+        uses: actions/download-artifact@v3
+        with:
+          name: metabase-${{ matrix.edition }}-uberjar
+          path: bin/docker/
+      - name: Move the ${{ matrix.edition }} uberjar to the context dir
+        run: mv bin/docker/target/uberjar/metabase.jar bin/docker/.
+      # We need it for multi-arch build
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+        with:
+          platforms: 'arm64'
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v1
+        with:
+          driver-opts: network=host
+      # Build experimental ubuntu-based images only for master
+      - name: Build ${{ matrix.edition }} Ubuntu based multi-arch container
+        uses: docker/build-push-action@v2
+        with:
+          context: bin/docker/.
+          platforms: linux/amd64,linux/arm64
+          file: bin/docker/Dockerfile_ubuntu
+          network: host
+          tags: localhost:5000/metabase-dev:${{ steps.extract_branch.outputs.branch }}-${{ matrix.edition }}-ubuntu
+          no-cache: true
+          push: true
+      - name: Launch ${{ matrix.edition }} Ubuntu based container
+        run: docker run --rm -dp 3001:3000 localhost:5000/metabase-dev:${{ steps.extract_branch.outputs.branch }}-${{ matrix.edition }}-ubuntu
+        timeout-minutes: 5
+      - name: Is Docker with Ubuntu running?
+        run: docker ps
+      - name: Wait for Ubuntu-based Metabase container to start and reach 100% health
+        run: while ! curl -s 'http://localhost:3001/api/health' | grep '{"status":"ok"}'; do sleep 1; done
+        timeout-minutes: 3
+      - name: Login to Docker Hub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      # Push experimental ubuntu image only for versions based on a master
+      - name: Install regctl
+        uses: regclient/actions/regctl-installer@main
+        with:
+          release: 'v0.4.7'
+      - name: Switch regctl to point to localhost:5000 via http
+        run: regctl registry set --tls disabled localhost:5000
+      - name: Retag and push ubuntu-based images if master (ee)
+        if: ${{ matrix.edition == 'ee' }}
+        run: regctl image copy localhost:5000/metabase-dev:${{ steps.extract_branch.outputs.branch }}-ee-ubuntu ${{ github.repository_owner }}/metabase-enterprise-head:latest-ubuntu
+      - name: Retag and push ubuntu-based images if master (oss)
+        if: ${{ matrix.edition == 'oss' }}
+        run: regctl image copy localhost:5000/metabase-dev:${{ steps.extract_branch.outputs.branch }}-oss-ubuntu ${{ github.repository_owner }}/metabase-head:latest-ubuntu

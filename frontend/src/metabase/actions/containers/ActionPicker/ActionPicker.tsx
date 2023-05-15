@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { t } from "ttag";
+import _ from "underscore";
 
 import Modal from "metabase/components/Modal";
 import { useToggle } from "metabase/hooks/use-toggle";
@@ -7,11 +8,11 @@ import { useToggle } from "metabase/hooks/use-toggle";
 import Actions from "metabase/entities/actions";
 import Search from "metabase/entities/search";
 
-import { isImplicitAction } from "metabase/actions/utils";
 import ActionCreator from "metabase/actions/containers/ActionCreator";
 
 import type { Card, WritebackAction } from "metabase-types/api";
-import type { State } from "metabase-types/store";
+
+import { sortAndGroupActions } from "./utils";
 
 import {
   ActionsList,
@@ -23,12 +24,15 @@ import {
   NewActionButton,
 } from "./ActionPicker.styled";
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default function ActionPicker({
   models,
+  actions,
   onClick,
   currentAction,
 }: {
   models: Card[];
+  actions: WritebackAction[];
   onClick: (action: WritebackAction) => void;
   currentAction?: WritebackAction;
 }) {
@@ -38,12 +42,15 @@ export default function ActionPicker({
       [models],
     ) ?? [];
 
+  const actionsByModel = useMemo(() => sortAndGroupActions(actions), [actions]);
+
   return (
     <div className="scroll-y">
       {sortedModels.map(model => (
-        <ConnectedModelActionPicker
+        <ModelActionPicker
           key={model.id}
           model={model}
+          actions={actionsByModel[model.id] ?? []}
           onClick={onClick}
           currentAction={currentAction}
         />
@@ -103,7 +110,7 @@ function ModelActionPicker({
                 onClick={() => onClick(action)}
               >
                 <span>{action.name}</span>
-                {!isImplicitAction(action) && (
+                {action.type !== "implicit" && (
                   <EditButton
                     icon="pencil"
                     onlyIcon
@@ -142,17 +149,14 @@ function ModelActionPicker({
   );
 }
 
-const ConnectedModelActionPicker = Actions.loadList({
-  query: (state: State, props: { model: { id: number | null } }) => ({
-    "model-id": props?.model?.id,
+export const ConnectedActionPicker = _.compose(
+  Search.loadList({
+    query: () => ({
+      models: ["dataset"],
+    }),
+    listName: "models",
   }),
-  loadingAndErrorWrapper: false,
-})(ModelActionPicker);
-
-export const ConnectedActionPicker = Search.loadList({
-  query: () => ({
-    models: ["dataset"],
+  Actions.loadList({
+    loadingAndErrorWrapper: false,
   }),
-  loadingAndErrorWrapper: true,
-  listName: "models",
-})(ActionPicker);
+)(ActionPicker);

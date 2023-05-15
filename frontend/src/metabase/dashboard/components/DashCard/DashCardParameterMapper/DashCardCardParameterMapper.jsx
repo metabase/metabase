@@ -20,14 +20,16 @@ import {
   showVirtualDashCardInfoText,
 } from "metabase/dashboard/utils";
 
+import { isActionDashCard } from "metabase/actions/utils";
 import Question from "metabase-lib/Question";
 import { isDateParameter } from "metabase-lib/parameters/utils/parameter-type";
 import { isVariableTarget } from "metabase-lib/parameters/utils/targets";
 
+import { normalize } from "metabase-lib/queries/utils/normalize";
 import {
   getEditingParameter,
   getParameterTarget,
-  makeGetParameterMappingOptions,
+  getParameterMappingOptions,
 } from "../../../selectors";
 import { setParameterMapping } from "../../../actions";
 
@@ -59,7 +61,7 @@ function formatSelected({ name, sectionName }) {
 const mapStateToProps = (state, props) => ({
   editingParameter: getEditingParameter(state, props),
   target: getParameterTarget(state, props),
-  mappingOptions: makeGetParameterMappingOptions()(state, props),
+  mappingOptions: getParameterMappingOptions(state, props),
   metadata: getMetadata(state),
 });
 
@@ -78,7 +80,7 @@ DashCardCardParameterMapper.propTypes = {
   isMobile: PropTypes.bool,
 };
 
-function DashCardCardParameterMapper({
+export function DashCardCardParameterMapper({
   card,
   dashcard,
   editingParameter,
@@ -93,9 +95,9 @@ function DashCardCardParameterMapper({
   const hasSeries = dashcard.series && dashcard.series.length > 0;
   const onlyAcceptsSingleValue =
     isVariableTarget(target) && !isDateParameter(editingParameter);
-  const isDisabled = mappingOptions.length === 0;
-  const selectedMappingOption = _.find(mappingOptions, o =>
-    _.isEqual(o.target, target),
+  const isDisabled = mappingOptions.length === 0 || isActionDashCard(dashcard);
+  const selectedMappingOption = _.find(mappingOptions, option =>
+    _.isEqual(normalize(option.target), normalize(target)),
   );
 
   const handleChangeTarget = useCallback(
@@ -195,7 +197,7 @@ function DashCardCardParameterMapper({
             {mappingInfoText}
           </TextCardDefault>
         ) : (
-          <TextCardDefault>
+          <TextCardDefault aria-label={mappingInfoText}>
             <Icon
               name="info"
               size={16}
@@ -237,6 +239,7 @@ function DashCardCardParameterMapper({
             >
               <TargetButton
                 variant={buttonVariant}
+                aria-label={buttonTooltip}
                 aria-haspopup="listbox"
                 aria-expanded={isDropdownVisible}
                 aria-disabled={isDisabled || !hasPermissionsToMap}

@@ -17,7 +17,7 @@
    [metabase.db.test-util :as mdb.test-util]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-   [metabase.test :as mt]
+   [metabase.test.data.datasets :as datasets]
    [metabase.test.data.interface :as tx]
    [metabase.test.initialize :as initialize]
    [metabase.util :as u]
@@ -213,7 +213,7 @@
                             migration-range
                             [migration-range migration-range])]
     (testing (format "Migrations %s thru %s" start-id (or end-id "end"))
-      (mt/test-drivers #{:h2 :mysql :postgres}
+      (datasets/test-drivers #{:h2 :mysql :postgres}
         (test-migrations-for-driver driver/*driver* [start-id end-id] f)))))
 
 (defmacro test-migrations
@@ -223,7 +223,7 @@
   this order:
 
   1. Load data and check any preconditions before running migrations you're testing.
-     Prefer [[toucan.db/simple-insert!]] or plain SQL for loading data to avoid dependencies on the current state of
+     Prefer [[t2/insert!]] with a table name or plain SQL for loading data to avoid dependencies on the current state of
      the schema that may be present in Toucan `pre-insert` functions and the like.
 
   2. Call `(migrate!)` to run migrations in range of `start-id` -> `end-id` (inclusive)

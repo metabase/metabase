@@ -201,22 +201,6 @@ describe("StructuredQuery", () => {
       });
     });
 
-    describe("sorts", () => {
-      it("should not remove sort referencing valid field ID", () => {
-        const q = ORDERS.query().sort([
-          "asc",
-          ["field", ORDERS.TOTAL.id, null],
-        ]);
-        expect(q.clean().query()).toEqual(q.query());
-        expect(q.clean() === q).toBe(true);
-      });
-
-      it("should remove sort referencing invalid field ID", () => {
-        const q = ORDERS.query().sort(["asc", ["field", 12345, null]]);
-        expect(q.clean().query()).toEqual({ "source-table": ORDERS.id });
-      });
-    });
-
     describe("nested", () => {
       it("shouldn't modify valid nested queries", () => {
         const q = ORDERS.query()

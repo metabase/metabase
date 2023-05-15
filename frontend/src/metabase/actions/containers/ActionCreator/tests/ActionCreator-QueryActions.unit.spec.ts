@@ -75,7 +75,7 @@ describe("ActionCreator > Query Actions", () => {
         }),
       });
 
-      expect(screen.getByText("FooBar")).toBeInTheDocument();
+      expect(screen.getAllByText("FooBar")).toHaveLength(2);
     });
 
     it("blocks editing if the user doesn't have write permissions for the collection", async () => {

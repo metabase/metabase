@@ -1,6 +1,7 @@
 import React from "react";
 import fetchMock from "fetch-mock";
 
+import userEvent from "@testing-library/user-event";
 import {
   renderWithProviders,
   screen,
@@ -187,6 +188,9 @@ describe("QuestionInfoSidebar", () => {
       await setup({
         question: getQuestion({ description: "Foo bar", can_write: false }),
       });
+      // show input
+      userEvent.click(screen.getByTestId("editable-text"));
+
       expect(screen.queryByPlaceholderText("Add description")).toHaveValue(
         "Foo bar",
       );

@@ -4,7 +4,7 @@
    [metabase.models.database :refer [Database]]
    [metabase.models.dimension :refer [Dimension]]
    [metabase.models.field :refer [Field]]
-   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.models.serialization :as serdes]
    [metabase.models.table :refer [Table]]
    [metabase.test :as mt])
   (:import
@@ -23,5 +23,5 @@
                                          :human_readable_field_id (:id field2)
                                          :created_at              now}]]
         (is (= "c52f8889"
-               (serdes.hash/raw-hash [(serdes.hash/identity-hash field1) (serdes.hash/identity-hash field2) now])
-               (serdes.hash/identity-hash dim)))))))
+               (serdes/raw-hash [(serdes/identity-hash field1) (serdes/identity-hash field2) now])
+               (serdes/identity-hash dim)))))))

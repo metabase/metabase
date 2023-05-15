@@ -11,6 +11,10 @@ export type Visualization = {
     width: number;
     height: number;
   };
+  defaultSize: {
+    width: number;
+    height: number;
+  };
 
   isSensible: (data: DatasetData) => boolean;
   isLiveResizable: (series: Series) => boolean;

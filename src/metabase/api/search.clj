@@ -17,6 +17,7 @@
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan2.core :as t2]
@@ -80,19 +81,21 @@
    :updated_at          :timestamp
    ;; returned for Card only
    :dashboardcard_count :integer
-   :dataset_query       :text
    :moderated_status    :text
    ;; returned for Metric and Segment
    :table_id            :integer
-   :database_id         :integer
    :table_schema        :text
    :table_name          :text
    :table_description   :text
+   ;; returned for Metric, Segment, and Action
+   :database_id         :integer
    ;; returned for Database and Table
    :initial_sync_status :text
    ;; returned for Action
    :model_id            :integer
-   :model_name          :text))
+   :model_name          :text
+   ;; returned for Card and Action
+   :dataset_query       :text))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               Shared Query Logic                                               |
@@ -282,6 +285,8 @@
   (-> (base-query-for-model model search-ctx)
       (sql.helpers/left-join [:report_card :model]
                              [:= :model.id :action.model_id])
+      (sql.helpers/left-join :query_action
+                             [:= :query_action.action_id :action.id])
       (add-collection-join-and-where-clauses :model.collection_id search-ctx)))
 
 (s/defmethod search-query-for-model "card"
@@ -475,6 +480,7 @@
 (api/defendpoint GET "/models"
   "Get the set of models that a search query will return"
   [q archived-string table-db-id]
+  {table-db-id [:maybe ms/PositiveInt]}
   (query-model-set (search-context q archived-string table-db-id nil nil nil)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}

@@ -19,9 +19,9 @@ Update the `login_attributes` for a User.
 
 ### PARAMS:
 
-*  **`id`** 
+*  **`id`** value must be an integer greater than zero.
 
-*  **`login_attributes`** value must be a valid user attributes map (name -> value)
+*  **`login_attributes`** nullable value must be a valid user attributes map (name -> value)
 
 ---
 

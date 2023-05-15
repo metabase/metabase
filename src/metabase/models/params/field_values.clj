@@ -2,12 +2,14 @@
   "Code related to fetching FieldValues for Fields to populate parameter widgets. Always used by the field
   values (`GET /api/field/:id/values`) endpoint; used by the chain filter endpoints under certain circumstances."
   (:require
+   [medley.core :as m]
+   [metabase.models.field :as field :refer [Field]]
    [metabase.models.field-values :as field-values :refer [FieldValues]]
    [metabase.models.interface :as mi]
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.util :as u]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (defn default-get-or-create-field-values-for-current-user!
   "OSS implementation; used as a fallback for the EE implementation if the field isn't sandboxed."
@@ -28,7 +30,7 @@
 
 (defn- postprocess-field-values
   "Format a FieldValues to use by params functions.
-  ;; (postprocess-field-values (db/select-one FieldValues :id 1) (Field 1))
+  ;; (postprocess-field-values (t2/select-one FieldValues :id 1) (Field 1))
   ;; => {:values          [1 2 3 4]
          :field_id        1
          :has_more_values boolean}"
@@ -38,6 +40,30 @@
         (assoc :values (field-values/field-values->pairs field-values))
         (select-keys [:values :field_id :has_more_values]))
     {:values [], :field_id (u/the-id field), :has_more_values false}))
+
+(defn default-field-id->field-values-for-current-user
+  "OSS implementation; used as a fallback for the EE implementation for any fields that aren't subject to sandboxing."
+  [field-ids]
+  (when (seq field-ids)
+    (not-empty
+      (let [field-values       (t2/select [FieldValues :values :human_readable_values :field_id]
+                                          :type :full
+                                          :field_id [:in (set field-ids)])
+            readable-fields    (when (seq field-values)
+                                 (field/readable-fields-only (t2/select [Field :id :table_id]
+                                                               :id [:in (set (map :field_id field-values))])))
+            readable-field-ids (set (map :id readable-fields))]
+       (->> field-values
+            (filter #(contains? readable-field-ids (:field_id %)))
+            (m/index-by :field_id))))))
+
+(defenterprise field-id->field-values-for-current-user
+  "Fetch *existing* FieldValues for a sequence of `field-ids` for the current User. Values are returned as a map of
+    {field-id FieldValues-instance}
+  Returns `nil` if `field-ids` is empty of no matching FieldValues exist."
+  metabase-enterprise.sandbox.models.params.field-values
+  [field-ids]
+  (default-field-id->field-values-for-current-user field-ids))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             Advanced FieldValues                                               |
@@ -82,17 +108,17 @@
   (when-let [{:keys [values has_more_values]} (fetch-advanced-field-values fv-type field constraints)]
     (let [;; If the full FieldValues of this field has a human-readable-values, fix it with the new values
           human-readable-values (field-values/fixup-human-readable-values
-                                  (db/select-one FieldValues
+                                  (t2/select-one FieldValues
                                                  :field_id (:id field)
                                                  :type :full)
                                   values)]
-      (db/insert! FieldValues
-                  :field_id (:id field)
-                  :type fv-type
-                  :hash_key hash-key
-                  :has_more_values has_more_values
-                  :human_readable_values human-readable-values
-                  :values values))))
+      (first (t2/insert-returning-instances! FieldValues
+                                             :field_id (:id field)
+                                             :type fv-type
+                                             :hash_key hash-key
+                                             :has_more_values has_more_values
+                                             :human_readable_values human-readable-values
+                                             :values values)))))
 
 (defn get-or-create-advanced-field-values!
   "Fetch an Advanced FieldValues with type `fv-type` for a `field`, creating them if needed.
@@ -102,7 +128,7 @@
 
   ([fv-type field constraints]
    (let [hash-key (hash-key-for-advanced-field-values fv-type (:id field) constraints)
-         fv       (or (db/select-one FieldValues :field_id (:id field)
+         fv       (or (t2/select-one FieldValues :field_id (:id field)
                                      :type fv-type
                                      :hash_key hash-key)
                       (create-advanced-field-values! fv-type field hash-key constraints))]
@@ -111,7 +137,7 @@
 
        ;; If it's expired, delete then try to re-create it
        (field-values/advanced-field-values-expired? fv) (do
-                                                          (db/delete! FieldValues :id (:id fv))
+                                                          (t2/delete! FieldValues :id (:id fv))
                                                           (recur fv-type field constraints))
        :else fv))))
 

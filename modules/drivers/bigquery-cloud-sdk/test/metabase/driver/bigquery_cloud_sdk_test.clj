@@ -13,10 +13,9 @@
    [metabase.test :as mt]
    [metabase.test.data.bigquery-cloud-sdk :as bigquery.tx]
    [metabase.test.data.interface :as tx]
-   [metabase.test.util :as tu]
+   [metabase.test.util.random :as tu.random]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [toucan.db :as db]
    [toucan2.core :as t2])
   (:import
    (com.google.cloud.bigquery BigQuery)))
@@ -50,9 +49,9 @@
               [3 "The Apple Pan"]
               [4 "Wurstküche"]
               [5 "Brite Spot Family Restaurant"]]
-             (->> (metadata-queries/table-rows-sample (db/select-one Table :id (mt/id :venues))
-                    [(db/select-one Field :id (mt/id :venues :id))
-                     (db/select-one Field :id (mt/id :venues :name))]
+             (->> (metadata-queries/table-rows-sample (t2/select-one Table :id (mt/id :venues))
+                    [(t2/select-one Field :id (mt/id :venues :id))
+                     (t2/select-one Field :id (mt/id :venues :name))]
                     (constantly conj))
                   (sort-by first)
                   (take 5)))))
@@ -65,9 +64,9 @@
            page-callback   (fn [] (swap! pages-retrieved inc))]
        (with-bindings {#'bigquery/*page-size*             25
                        #'bigquery/*page-callback*         page-callback}
-         (let [actual (->> (metadata-queries/table-rows-sample (db/select-one Table :id (mt/id :venues))
-                             [(db/select-one Field :id (mt/id :venues :id))
-                              (db/select-one Field :id (mt/id :venues :name))]
+         (let [actual (->> (metadata-queries/table-rows-sample (t2/select-one Table :id (mt/id :venues))
+                             [(t2/select-one Field :id (mt/id :venues :id))
+                              (t2/select-one Field :id (mt/id :venues :name))]
                              (constantly conj))
                            (sort-by first)
                            (take 5))]
@@ -160,7 +159,7 @@
 
 (defn- do-with-temp-obj [name-fmt-str create-args-fn drop-args-fn f]
   (driver/with-driver :bigquery-cloud-sdk
-    (let [obj-name (format name-fmt-str (tu/random-name))]
+    (let [obj-name (format name-fmt-str (tu.random/random-name))]
       (mt/with-temp-copy-of-db
         (try
           (apply bigquery.tx/execute! (create-args-fn obj-name))
@@ -260,40 +259,19 @@
         (mt/with-db temp-db
           (testing " for sync"
             (sync/sync-database! temp-db {:scan :schema})
-            (let [[tbl & more-tbl] (db/select Table :db_id db-id)]
+            (let [[tbl & more-tbl] (t2/select Table :db_id db-id)]
               (is (some? tbl))
               (is (nil? more-tbl))
               (is (= "taxi_trips" (:name tbl)))
               ;; make sure all the fields for taxi_tips were synced
-              (is (= 23 (db/count Field :table_id (u/the-id tbl))))))
+              (is (= 23 (t2/count Field :table_id (u/the-id tbl))))))
           (testing " for querying"
-            (is (= ["ff0b96c0cada768361b1c9341e11905254644afb"
-                    "c7fd753040e0170e38049465089bca99c750f5ed8b3f6c547b303057ec23be36b9b86790fe417bb5949d980892460a2732a28a515bb805cf967bf4cf4b44b074"
-                    "2016-09-20T07:15:00Z"
-                    "2016-09-20T07:30:00Z"
-                    1265
-                    7.2
-                    nil
-                    nil
-                    nil
-                    nil
-                    0.01
-                    0.0
-                    nil
-                    0.0
-                    0.01
-                    "Cash"
-                    "303 Taxi"
-                    nil
-                    nil
-                    nil
-                    nil
-                    nil
-                    nil]
-                   (mt/first-row
-                     (mt/run-mbql-query taxi_trips
-                       {:filter [:= [:field (mt/id :taxi_trips :unique_key) nil]
-                                    "ff0b96c0cada768361b1c9341e11905254644afb"]})))))
+            (is (= 23
+                   (count (mt/first-row
+                            (mt/run-mbql-query taxi_trips
+                              {:filter [:= [:field (mt/id :taxi_trips :payment_type) nil]
+                                           "Cash"]
+                               :limit  1}))))))
           (testing " has project-id-from-credentials set correctly"
             (is (= (bigquery-project-id) (get-in temp-db [:details :project-id-from-credentials])))))))))
 
@@ -347,23 +325,23 @@
                 :fields #{{:name "int_col", :database-type "INTEGER", :base-type :type/Integer, :database-position 0}
                           {:name "array_col", :database-type "INTEGER", :base-type :type/Array, :database-position 1}}}
                (driver/describe-table :bigquery-cloud-sdk (mt/db) {:name tbl-nm, :schema "v3_test_data"}))
-               "`describe-table` should detect the correct base-type for array type columns")))))
+            "`describe-table` should detect the correct base-type for array type columns")))))
 
 (deftest sync-inactivates-old-duplicate-tables
   (testing "If on the new driver, then downgrade, then upgrade again (#21981)"
     (mt/test-driver :bigquery-cloud-sdk
       (mt/dataset avian-singles
         (try
-          (let [synced-tables (db/select Table :db_id (mt/id))]
+          (let [synced-tables (t2/select Table :db_id (mt/id))]
             (is (= 2 (count synced-tables)))
-            (db/insert-many! Table (map #(dissoc % :id :schema) synced-tables))
+            (t2/insert! Table (map #(dissoc % :id :schema) synced-tables))
             (sync/sync-database! (mt/db) {:scan :schema})
-            (let [synced-tables (db/select Table :db_id (mt/id))]
+            (let [synced-tables (t2/select Table :db_id (mt/id))]
               (is (partial= {true [{:name "messages"} {:name "users"}]
                              false [{:name "messages"} {:name "users"}]}
                             (-> (group-by :active synced-tables)
                                 (update-vals #(sort-by :name %)))))))
-          (finally (db/delete! Table :db_id (mt/id) :active false)))))))
+          (finally (t2/delete! Table :db_id (mt/id) :active false)))))))
 
 (deftest retry-certain-exceptions-test
   (mt/test-driver :bigquery-cloud-sdk
@@ -417,7 +395,7 @@
 (defn- sync-and-assert-filtered-tables [database assert-table-fn]
   (mt/with-temp Database [db-filtered database]
     (sync/sync-database! db-filtered {:scan :schema})
-    (doseq [table (db/select-one Table :db_id (u/the-id db-filtered))]
+    (doseq [table (t2/select-one Table :db_id (u/the-id db-filtered))]
       (assert-table-fn table))))
 
 (deftest dataset-filtering-test
@@ -463,7 +441,7 @@
                                                                   (orig-fn database dataset-id))]
             ;; fetch the Database from app DB a few more times to ensure the normalization changes are only called once
             (doseq [_ (range 5)]
-              (is (nil? (get-in (db/select-one Database :id db-id) [:details :dataset-id]))))
+              (is (nil? (get-in (t2/select-one Database :id db-id) [:details :dataset-id]))))
             ;; the convert-dataset-id-to-filters! fn should have only been called *once* (as a result of the select
             ;; that runs at the end of creating the temp object, above ^
             ;; it should have persisted the change that removes the dataset-id to the app DB, so the next time someone
@@ -471,9 +449,9 @@
             ;; hence, assert it was not called anymore here
             (is (= 0 @call-count) "convert-dataset-id-to-filters! should not have been called any more times"))
           ;; now, so we need to manually update the temp DB again here, to force the "old" structure
-          (let [updated? (db/update! Database db-id :details {:dataset-id "my-dataset"})]
+          (let [updated? (pos? (t2/update! Database db-id {:details {:dataset-id "my-dataset"}}))]
             (is updated?)
-            (let [updated (db/select-one Database :id db-id)]
+            (let [updated (t2/select-one Database :id db-id)]
               (is (nil? (get-in updated [:details :dataset-id])))
               ;; the hardcoded dataset-id connection property should have now been turned into an inclusion filter
               (is (= "my-dataset" (get-in updated [:details :dataset-filters-patterns])))

@@ -1,12 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { usePrevious } from "react-use";
 
-import { t } from "ttag";
-
 import Input from "metabase/core/components/Input";
 import SearchResults from "metabase/nav/components/SearchResults";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
-import Ellipsified from "metabase/core/components/Ellipsified";
 
 import type {
   DashboardOrderedCard,
@@ -17,10 +14,12 @@ import type {
 import { useToggle } from "metabase/hooks/use-toggle";
 import Search from "metabase/entities/search";
 
-import { isEmpty } from "metabase/lib/validate";
-
 import { isRestrictedLinkEntity } from "metabase-types/guards/dashboard";
-import { EntityDisplay } from "./EntityDisplay";
+import {
+  EntityDisplay,
+  UrlLinkDisplay,
+  RestrictedEntityDisplay,
+} from "./EntityDisplay";
 import { settings } from "./LinkVizSettings";
 
 import {
@@ -28,10 +27,11 @@ import {
   DisplayLinkCardWrapper,
   CardLink,
   SearchResultsContainer,
-  BrandIconWithHorizontalMargin,
+  StyledRecentsList,
 } from "./LinkViz.styled";
 
 import { isUrlString } from "./utils";
+import { WrappedUnrestrictedLinkEntity } from "./types";
 
 const MODELS_TO_SEARCH = [
   "card",
@@ -99,12 +99,12 @@ function LinkViz({
     if (isRestrictedLinkEntity(entity)) {
       return (
         <EditLinkCardWrapper>
-          <EntityDisplay entity={entity} />
+          <RestrictedEntityDisplay />
         </EditLinkCardWrapper>
       );
     }
 
-    const wrappedEntity = Search.wrapEntity({
+    const wrappedEntity: WrappedUnrestrictedLinkEntity = Search.wrapEntity({
       ...entity,
       database_id: entity.db_id ?? entity.database_id,
       table_id: entity.model === "table" ? entity.id : undefined,
@@ -132,15 +132,19 @@ function LinkViz({
     return (
       <EditLinkCardWrapper>
         <TippyPopover
-          visible={!!url?.length && inputIsFocused && !isUrlString(url)}
+          visible={inputIsFocused && !isUrlString(url)}
           content={
-            <SearchResultsContainer>
-              <SearchResults
-                searchText={url?.trim()}
-                onEntitySelect={handleEntitySelect}
-                models={MODELS_TO_SEARCH}
-              />
-            </SearchResultsContainer>
+            !url?.trim?.().length && !entity ? (
+              <StyledRecentsList onClick={handleEntitySelect} />
+            ) : (
+              <SearchResultsContainer>
+                <SearchResults
+                  searchText={url?.trim()}
+                  onEntitySelect={handleEntitySelect}
+                  models={MODELS_TO_SEARCH}
+                />
+              </SearchResultsContainer>
+            )
           }
           placement="bottom"
         >
@@ -160,16 +164,14 @@ function LinkViz({
     );
   }
 
-  const urlIcon = isEmpty(url) ? "question" : "link";
-
   return (
     <DisplayLinkCardWrapper>
       <CardLink to={url ?? ""} target="_blank" rel="noreferrer">
-        <BrandIconWithHorizontalMargin name={urlIcon} />
-        <Ellipsified>{!isEmpty(url) ? url : t`Choose a link`}</Ellipsified>
+        <UrlLinkDisplay url={url} />
       </CardLink>
     </DisplayLinkCardWrapper>
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Object.assign(LinkViz, settings);

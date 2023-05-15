@@ -5,6 +5,7 @@ import {
   getFriendlyName,
   getDefaultDimensionsAndMetrics,
   preserveExistingColumnsOrder,
+  MAX_SERIES,
 } from "metabase/visualizations/lib/utils";
 
 import {
@@ -105,7 +106,8 @@ export const GRAPH_DATA_SETTINGS = {
     title: t`X-axis`,
     widget: "fields",
     getMarginBottom: (series, vizSettings) =>
-      vizSettings["graph.dimensions"]?.length === 2 && series.length <= 20
+      vizSettings["graph.dimensions"]?.length === 2 &&
+      series.length <= MAX_SERIES
         ? "0.5rem"
         : "1rem",
     isValid: (series, vizSettings) =>
@@ -220,7 +222,9 @@ export const GRAPH_DATA_SETTINGS = {
       }));
     },
     getHidden: (series, settings) => {
-      return settings["graph.dimensions"]?.length < 2 || series.length > 20;
+      return (
+        settings["graph.dimensions"]?.length < 2 || series.length > MAX_SERIES
+      );
     },
     dashboard: false,
     readDependencies: ["series_settings.colors", "series_settings"],

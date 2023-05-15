@@ -4,9 +4,9 @@ import PropTypes from "prop-types";
 import { Link } from "react-router";
 import { connect } from "react-redux";
 import { t } from "ttag";
-
 import _ from "underscore";
 import cx from "classnames";
+
 import title from "metabase/hoc/Title";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
@@ -14,6 +14,7 @@ import AdminLayout from "metabase/components/AdminLayout";
 import { NotFound } from "metabase/containers/ErrorPages";
 
 import { prepareAnalyticsValue } from "metabase/admin/settings/utils";
+import ErrorBoundary from "metabase/ErrorBoundary";
 import SettingsSetting from "../components/SettingsSetting";
 
 import {
@@ -149,6 +150,7 @@ class SettingsEditorApp extends Component {
     if (activeSection.component) {
       return (
         <activeSection.component
+          saveStatusRef={this.saveStatusRef}
           elements={activeSection.settings}
           settingValues={settingValues}
           updateSetting={this.updateSetting}
@@ -233,7 +235,9 @@ class SettingsEditorApp extends Component {
 
     return (
       <div className="MetadataEditor-table-list AdminList flex-no-shrink">
-        <ul className="AdminList-items pt1">{renderedSections}</ul>
+        <ul className="AdminList-items pt1">
+          <ErrorBoundary>{renderedSections}</ErrorBoundary>
+        </ul>
       </div>
     );
   }
@@ -245,7 +249,7 @@ class SettingsEditorApp extends Component {
         title={t`Settings`}
         sidebar={this.renderSettingsSections()}
       >
-        {this.renderSettingsPane()}
+        <ErrorBoundary>{this.renderSettingsPane()}</ErrorBoundary>
       </AdminLayout>
     );
   }

@@ -15,7 +15,6 @@
    [metabase.test.data.sql-jdbc.execute :as execute]
    [metabase.test.data.sql-jdbc.load-data :as load-data]
    [metabase.test.data.sql.ddl :as ddl]
-   [metabase.util :as u]
    [metabase.util.log :as log])
   (:import
    (java.sql Connection DriverManager PreparedStatement)))
@@ -27,7 +26,7 @@
 (defmethod tx/sorts-nil-first? :presto-jdbc [_ _] false)
 
 ;; during unit tests don't treat presto as having FK support
-(defmethod driver/supports? [:presto-jdbc :foreign-keys] [_ _] (not config/is-test?))
+(defmethod driver/database-supports? [:presto-jdbc :foreign-keys] [_driver _feature _db] (not config/is-test?))
 
 (defmethod tx/aggregate-column-info :presto-jdbc
   ([driver ag-type]
@@ -147,7 +146,7 @@
 
 (defmethod sql.tx/qualified-name-components :presto-jdbc
   ;; use the default schema from the in-memory connector
-  ([_ _db-name]                       [test-catalog-name "default"])
+  ([_ _db-name]                      [test-catalog-name "default"])
   ([_ db-name table-name]            [test-catalog-name "default" (tx/db-qualified-table-name db-name table-name)])
   ([_ db-name table-name field-name] [test-catalog-name "default" (tx/db-qualified-table-name db-name table-name) field-name]))
 
@@ -172,13 +171,11 @@
       (is (= "CREATE TABLE \"test_data\".\"default\".\"categories\" (\"id\" INTEGER, \"name\" VARCHAR) ;"
              (sql.tx/create-table-sql :presto-jdbc db-def table-def))))))
 
-(defmethod ddl.i/format-name :presto-jdbc [_ table-or-field-name]
-  (u/snake-key table-or-field-name))
+(defmethod ddl.i/format-name :presto-jdbc
+  [_driver table-or-field-name]
+  (str/replace table-or-field-name #"-" "_"))
 
 ;; Presto doesn't support FKs, at least not adding them via DDL
 (defmethod sql.tx/add-fk-sql :presto-jdbc
   [_ _ _ _]
   nil)
-
-;; FIXME Presto actually has very good timezone support
-#_(defmethod tx/has-questionable-timezone-support? :presto-jdbc [_] true)

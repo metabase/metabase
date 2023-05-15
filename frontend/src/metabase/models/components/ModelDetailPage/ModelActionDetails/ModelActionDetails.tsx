@@ -7,6 +7,7 @@ import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
 
 import Actions from "metabase/entities/actions";
+import Databases from "metabase/entities/databases";
 import { parseTimestamp } from "metabase/lib/time";
 import * as Urls from "metabase/lib/urls";
 import { useConfirmation } from "metabase/hooks/use-confirmation";
@@ -14,6 +15,12 @@ import { useConfirmation } from "metabase/hooks/use-confirmation";
 import type { Card, WritebackAction } from "metabase-types/api";
 import type { Dispatch, State } from "metabase-types/store";
 import type Question from "metabase-lib/Question";
+import Database from "metabase-lib/metadata/Database";
+import {
+  canArchiveAction,
+  canEditAction,
+  canRunAction,
+} from "metabase-lib/actions/utils";
 
 import {
   EmptyStateContainer,
@@ -45,7 +52,14 @@ interface ActionsLoaderProps {
   actions: WritebackAction[];
 }
 
-type Props = OwnProps & DispatchProps & ActionsLoaderProps;
+interface DatabaseLoaderProps {
+  databases: Database[];
+}
+
+type Props = OwnProps &
+  DispatchProps &
+  ActionsLoaderProps &
+  DatabaseLoaderProps;
 
 function mapDispatchToProps(dispatch: Dispatch, { model }: OwnProps) {
   return {
@@ -61,7 +75,7 @@ function mapDispatchToProps(dispatch: Dispatch, { model }: OwnProps) {
 function ModelActionDetails({
   model,
   actions,
-  canRunActions,
+  databases,
   onEnableImplicitActions,
   onArchiveAction,
   onDeleteAction,
@@ -72,6 +86,7 @@ function ModelActionDetails({
   const database = model.database();
   const hasActionsEnabled = database != null && database.hasActionsEnabled();
   const canWrite = model.canWriteActions();
+  const supportsImplicitActions = model.supportsImplicitActions();
 
   const actionsSorted = useMemo(
     () => _.sortBy(actions, mostRecentFirst),
@@ -106,7 +121,7 @@ function ModelActionDetails({
         icon: "bolt",
         action: onDeleteImplicitActions,
       });
-    } else {
+    } else if (supportsImplicitActions) {
       items.push({
         title: t`Create basic actions`,
         icon: "bolt",
@@ -115,7 +130,12 @@ function ModelActionDetails({
     }
 
     return items;
-  }, [implicitActions, onEnableImplicitActions, onDeleteImplicitActions]);
+  }, [
+    implicitActions,
+    supportsImplicitActions,
+    onEnableImplicitActions,
+    onDeleteImplicitActions,
+  ]);
 
   const renderActionListItem = useCallback(
     (action: WritebackAction) => {
@@ -126,14 +146,15 @@ function ModelActionDetails({
           <ModelActionListItem
             action={action}
             actionUrl={actionUrl}
-            canWrite={canWrite}
-            canRun={canRunActions}
+            canRun={canRunAction(action, databases)}
+            canEdit={canEditAction(action, model)}
+            canArchive={canArchiveAction(action, model)}
             onArchive={onArchiveAction}
           />
         </li>
       );
     },
-    [model, canWrite, canRunActions, onArchiveAction],
+    [model, databases, onArchiveAction],
   );
 
   const newActionUrl = Urls.newAction(model.card() as Card);
@@ -141,13 +162,15 @@ function ModelActionDetails({
   return (
     <Root>
       {canWrite && (
-        <ActionsHeader>
+        <ActionsHeader data-testid="model-actions-header">
           <Button as={Link} to={newActionUrl}>{t`New action`}</Button>
-          <ActionMenu
-            triggerIcon="ellipsis"
-            items={menuItems}
-            triggerProps={{ "aria-label": t`Actions menu` }}
-          />
+          {menuItems.length > 0 && (
+            <ActionMenu
+              triggerIcon="ellipsis"
+              items={menuItems}
+              triggerProps={{ "aria-label": t`Actions menu` }}
+            />
+          )}
         </ActionsHeader>
       )}
       {database && !hasActionsEnabled && (
@@ -161,7 +184,7 @@ function ModelActionDetails({
         </ActionList>
       ) : (
         <NoActionsState
-          hasCreateButton={canWrite}
+          hasCreateButton={canWrite && supportsImplicitActions}
           onCreateClick={onEnableImplicitActions}
         />
       )}
@@ -198,11 +221,13 @@ function mostRecentFirst(action: WritebackAction) {
   return -createdAt.unix();
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   Actions.loadList({
     query: (state: State, { model }: OwnProps) => ({
       "model-id": model.id(),
     }),
   }),
+  Databases.loadList(),
   connect(null, mapDispatchToProps),
 )(ModelActionDetails);

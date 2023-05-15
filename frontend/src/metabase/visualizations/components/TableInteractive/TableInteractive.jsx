@@ -988,6 +988,7 @@ class TableInteractive extends Component {
               })}
               onMouseEnter={this.handleOnMouseEnter}
               onMouseLeave={this.handleOnMouseLeave}
+              data-testid="TableInteractive-root"
             >
               <canvas
                 className="spread"
@@ -1108,6 +1109,7 @@ class TableInteractive extends Component {
 
       setTimeout(() => {
         const end = Date.now();
+        // eslint-disable-next-line no-console
         console.log(end - start);
         start = end;
 

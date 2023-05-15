@@ -21,7 +21,8 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [potemkin :as p]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -71,7 +72,7 @@
                            (throw (Exception. (format "Table '%s' not loaded from definition:\n%s\nFound:\n%s"
                                                       table-name
                                                       (u/pprint-to-str (dissoc table-definition :rows))
-                                                      (u/pprint-to-str (db/select [Table :schema :name], :db_id (:id db))))))))]
+                                                      (u/pprint-to-str (t2/select [Table :schema :name], :db_id (:id db))))))))]
       (doseq [{:keys [field-name], :as field-definition} (:field-definitions table-definition)]
         (let [field (delay (or (tx/metabase-instance field-definition @table)
                                (throw (Exception. (format "Field '%s' not loaded from definition:\n%s"
@@ -80,7 +81,7 @@
           (doseq [property [:visibility-type :semantic-type :effective-type :coercion-strategy]]
             (when-let [v (get field-definition property)]
               (log/debugf "SET %s %s.%s -> %s" property table-name field-name v)
-              (db/update! Field (:id @field) (keyword (str/replace (name property) #"-" "_")) (u/qualified-name v)))))))))
+              (t2/update! Field (:id @field) {(keyword (str/replace (name property) #"-" "_")) (u/qualified-name v)}))))))))
 
 (def ^:private create-database-timeout-ms
   "Max amount of time to wait for driver text extensions to create a DB and load test data."
@@ -103,10 +104,10 @@
         (tx/create-db! driver database-definition)))
     ;; Add DB object to Metabase DB
     (let [connection-details (tx/dbdef->connection-details driver :db database-definition)
-          db                 (db/insert! Database
-                               :name    database-name
-                               :engine  (u/qualified-name driver)
-                               :details connection-details)]
+          db                 (first (t2/insert-returning-instances! Database
+                                                                    :name    database-name
+                                                                    :engine  (u/qualified-name driver)
+                                                                    :details connection-details))]
       (try
         ;; sync newly added DB
         (u/with-timeout sync-timeout-ms
@@ -124,7 +125,7 @@
                 (catch Throwable e
                   (log/error e "Error adding extra metadata"))))))
         ;; make sure we're returing an up-to-date copy of the DB
-        (db/select-one Database :id (u/the-id db))
+        (t2/select-one Database :id (u/the-id db))
         (catch Throwable e
           (let [e (ex-info (format "Failed to create test database: %s" (ex-message e))
                            {:driver             driver
@@ -132,7 +133,7 @@
                             :connection-details connection-details}
                            e)]
             (log/error e "Failed to create test database")
-            (db/delete! Database :id (u/the-id db))
+            (t2/delete! Database :id (u/the-id db))
             (throw e)))))
     (catch Throwable e
       (log/errorf e "create-database! failed; destroying %s database %s" driver (pr-str database-name))
@@ -194,31 +195,31 @@
   [db-id table-name]
   {:pre [(integer? db-id) ((some-fn keyword? string?) table-name)]}
   (let [table-name        (name table-name)
-        table-id-for-name (partial db/select-one-id Table, :db_id db-id, :name)]
+        table-id-for-name (partial t2/select-one-pk Table, :db_id db-id, :name)]
     (or (table-id-for-name table-name)
-        (table-id-for-name (let [db-name (db/select-one-field :name Database :id db-id)]
+        (table-id-for-name (let [db-name (t2/select-one-fn :name Database :id db-id)]
                              (tx/db-qualified-table-name db-name table-name)))
-        (let [{driver :engine, db-name :name} (db/select-one [Database :engine :name] :id db-id)]
+        (let [{driver :engine, db-name :name} (t2/select-one [Database :engine :name] :id db-id)]
           (throw
            (Exception. (format "No Table %s found for %s Database %d %s.\nFound: %s"
                                (pr-str table-name) driver db-id (pr-str db-name)
-                               (u/pprint-to-str (db/select-id->field :name Table, :db_id db-id, :active true)))))))))
+                               (u/pprint-to-str (t2/select-pk->fn :name Table, :db_id db-id, :active true)))))))))
 
 (defn- qualified-field-name [{parent-id :parent_id, field-name :name}]
   (if parent-id
-    (str (qualified-field-name (db/select-one Field :id parent-id))
+    (str (qualified-field-name (t2/select-one Field :id parent-id))
          \.
          field-name)
     field-name))
 
 (defn- all-field-names [table-id]
-  (into {} (for [field (db/select Field :active true, :table_id table-id)]
+  (into {} (for [field (t2/select Field :active true, :table_id table-id)]
              [(u/the-id field) (qualified-field-name field)])))
 
 (defn- the-field-id* [table-id field-name & {:keys [parent-id]}]
-  (or (db/select-one-id Field, :active true, :table_id table-id, :name field-name, :parent_id parent-id)
-      (let [{db-id :db_id, table-name :name} (db/select-one [Table :name :db_id] :id table-id)
-            db-name                          (db/select-one-field :name Database :id db-id)
+  (or (t2/select-one-pk Field, :active true, :table_id table-id, :name field-name, :parent_id parent-id)
+      (let [{db-id :db_id, table-name :name} (t2/select-one [Table :name :db_id] :id table-id)
+            db-name                          (t2/select-one-fn :name Database :id db-id)
             field-name                       (qualified-field-name {:parent_id parent-id, :name field-name})
             all-field-names                  (all-field-names table-id)]
         (throw
@@ -251,14 +252,14 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- copy-table-fields! [old-table-id new-table-id]
-  (db/insert-many! Field
-    (for [field (db/select Field :table_id old-table-id {:order-by [[:id :asc]]})]
+  (t2/insert! Field
+    (for [field (t2/select Field :table_id old-table-id {:order-by [[:id :asc]]})]
       (-> field (dissoc :id :fk_target_field_id) (assoc :table_id new-table-id))))
   ;; now copy the FieldValues as well.
-  (let [old-field-id->name (db/select-id->field :name Field :table_id old-table-id)
-        new-field-name->id (db/select-field->id :name Field :table_id new-table-id)
-        old-field-values   (db/select FieldValues :field_id [:in (set (keys old-field-id->name))])]
-    (db/insert-many! FieldValues
+  (let [old-field-id->name (t2/select-pk->fn :name Field :table_id old-table-id)
+        new-field-name->id (t2/select-fn->pk :name Field :table_id new-table-id)
+        old-field-values   (t2/select FieldValues :field_id [:in (set (keys old-field-id->name))])]
+    (t2/insert! FieldValues
       (for [{old-field-id :field_id, :as field-values} old-field-values
             :let                                       [field-name (get old-field-id->name old-field-id)]]
         (-> field-values
@@ -266,8 +267,8 @@
             (assoc :field_id (get new-field-name->id field-name)))))))
 
 (defn- copy-db-tables! [old-db-id new-db-id]
-  (let [old-tables    (db/select Table :db_id old-db-id {:order-by [[:id :asc]]})
-        new-table-ids (db/insert-many! Table
+  (let [old-tables    (t2/select Table :db_id old-db-id {:order-by [[:id :asc]]})
+        new-table-ids (t2/insert-returning-pks! Table
                         (for [table old-tables]
                           (-> table (dissoc :id) (assoc :db_id new-db-id))))]
     (doseq [[old-table-id new-table-id] (zipmap (map :id old-tables) new-table-ids)]
@@ -287,8 +288,8 @@
                                         [:= :source-table.db_id old-db-id]
                                         [:= :target-table.db_id old-db-id]
                                         [:not= :source-field.fk_target_field_id nil]]})]
-    (db/update! Field (the-field-id (the-table-id new-db-id source-table) source-field)
-      :fk_target_field_id (the-field-id (the-table-id new-db-id target-table) target-field))))
+    (t2/update! Field (the-field-id (the-table-id new-db-id source-table) source-field)
+                {:fk_target_field_id (the-field-id (the-table-id new-db-id target-table) target-field)})))
 
 (defn- copy-db-tables-and-fields! [old-db-id new-db-id]
   (copy-db-tables! old-db-id new-db-id)
@@ -308,8 +309,8 @@
 (defn- copy-secrets [database]
   (let [prop->old-id (get-linked-secrets database)]
     (if (seq prop->old-id)
-      (let [secrets (db/select [Secret :id :name :kind :source :value] :id [:in (set (vals prop->old-id))])
-            new-ids (db/insert-many! Secret (map #(dissoc % :id) secrets))
+      (let [secrets (t2/select [Secret :id :name :kind :source :value] :id [:in (set (vals prop->old-id))])
+            new-ids (t2/insert-returning-pks! Secret (map #(dissoc % :id) secrets))
             old-id->new-id (zipmap (map :id secrets) new-ids)]
         (assoc database
                :details
@@ -329,13 +330,13 @@
   [f]
   (let [{old-db-id :id, :as old-db} (*get-db*)
         original-db (-> old-db copy-secrets (select-keys [:details :engine :name]))
-        {new-db-id :id, :as new-db} (db/insert! Database original-db)]
+        {new-db-id :id, :as new-db} (first (t2/insert-returning-instances! Database original-db))]
     (try
       (copy-db-tables-and-fields! old-db-id new-db-id)
       (binding [*db-is-temp-copy?* true]
         (do-with-db new-db f))
       (finally
-        (db/delete! Database :id new-db-id)))))
+        (t2/delete! Database :id new-db-id)))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -362,7 +363,7 @@
                              (binding [db/*disable-db-logging* true]
                                (let [db (get-or-create-database! driver dbdef)]
                                  (assert db)
-                                 (assert (db/exists? Database :id (u/the-id db)))
+                                 (assert (t2/exists? Database :id (u/the-id db)))
                                  db))))]
     (binding [*get-db* (fn []
                          (locking do-with-dataset

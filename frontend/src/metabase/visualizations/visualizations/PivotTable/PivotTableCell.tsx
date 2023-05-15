@@ -176,6 +176,7 @@ export const LeftHeaderCell = ({
       icon={
         (isSubtotal || hasSubtotal) && (
           <RowToggleIcon
+            data-testid={`${item.rawValue}-toggle-button`}
             value={path}
             settings={settings}
             updateSettings={onUpdateVisualizationSettings}

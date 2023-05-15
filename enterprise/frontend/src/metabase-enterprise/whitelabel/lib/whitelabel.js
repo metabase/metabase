@@ -197,5 +197,5 @@ export function enabledApplicationNameReplacement() {
 try {
   updateColorsJS();
 } catch (e) {
-  console.log(e);
+  console.error(e);
 }

@@ -186,7 +186,7 @@
                mbql->native
                sql.qp-test-util/sql->sql-map)))))
 
-(deftest ^:paralell handle-source-query-params-test
+(deftest ^:parallel handle-source-query-params-test
   (driver/with-driver :h2
     (mt/with-everything-store
       (testing "params from source queries should get passed in to the top-level. Semicolons should be removed"
@@ -224,18 +224,18 @@
 (defn- compile-join [driver]
   (driver/with-driver driver
     (qp.store/with-store
-      (qp.store/store-database! (t2/instance :metabase.models.database/Database
+      (qp.store/store-database! (t2/instance :model/Database
                                              {:id       1
                                               :name     "test-data"
                                               :engine   driver
                                               :details  {}
                                               :settings {}}))
-      (qp.store/store-table!    (t2/instance :metabase.models.table/Table
+      (qp.store/store-table!    (t2/instance :model/Table
                                              {:id     1
                                               :db_id  1
                                               :schema "public"
                                               :name   "checkins"}))
-      (qp.store/store-field!    (t2/instance :metabase.models.field/Field
+      (qp.store/store-field!    (t2/instance :model/Field
                                              {:id            1
                                               :table_id      1
                                               :name          "id"
@@ -247,7 +247,7 @@
                                               :display_name  "ID"
                                               :fingerprint   nil
                                               :base_type     :type/Integer}))
-      (binding [hx/*honey-sql-version* (sql.qp/honey-sql-version driver)]
+      (sql.qp/with-driver-honey-sql-version driver
         (let [join (sql.qp/join->honeysql
                     driver
                     {:source-query {:native "SELECT * FROM VENUES;", :params []}
@@ -1044,20 +1044,21 @@
   (testing "Numbers should be returned inline, even when targeting Honey SQL 2."
     (mt/test-drivers (filter #(isa? driver/hierarchy (driver/the-driver %) :sql)
                              (tx.env/test-drivers))
-      (doseq [day [:sunday
-                   :monday
-                   :tuesday
-                   :wednesday
-                   :thursday
-                   :friday
-                   :saturday]]
-        (metabase.test/with-temporary-setting-values [start-of-week day]
-          (binding [hx/*honey-sql-version* (sql.qp/honey-sql-version driver/*driver*)]
-            (let [sql-args (-> (sql.qp/format-honeysql driver/*driver* (sql.qp/date driver/*driver* :day-of-week :x))
-                               vec
-                               (update 0 #(str/split-lines (mdb.query/format-sql % driver/*driver*))))]
-              (testing "this query should not have any parameters"
-                (is (mc/validate [:cat [:sequential :string]] sql-args))))))))))
+      (mt/with-everything-store
+        (doseq [day [:sunday
+                     :monday
+                     :tuesday
+                     :wednesday
+                     :thursday
+                     :friday
+                     :saturday]]
+          (metabase.test/with-temporary-setting-values [start-of-week day]
+            (sql.qp/with-driver-honey-sql-version driver/*driver*
+              (let [sql-args (-> (sql.qp/format-honeysql driver/*driver* (sql.qp/date driver/*driver* :day-of-week :x))
+                                 vec
+                                 (update 0 #(str/split-lines (mdb.query/format-sql % driver/*driver*))))]
+                (testing "this query should not have any parameters"
+                  (is (mc/validate [:cat [:sequential :string]] sql-args)))))))))))
 
 (deftest ^:parallel binning-optimize-math-expressions-test
   (testing "Don't include nonsense like `+ 0.0` and `- 0.0` when generating expressions for binning"

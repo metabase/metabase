@@ -1,9 +1,12 @@
 import { assocIn } from "icepick";
+
 import { createEntity } from "metabase/lib/entities";
 import {
   CREATE_MEMBERSHIP,
   DELETE_MEMBERSHIP,
+  CLEAR_MEMBERSHIPS,
 } from "metabase/admin/people/events";
+import { PermissionsApi } from "metabase/services";
 
 const Groups = createEntity({
   name: "groups",
@@ -11,6 +14,14 @@ const Groups = createEntity({
 
   form: {
     fields: [{ name: "name" }],
+  },
+
+  actions: {
+    clearMember: async ({ id }) => {
+      await PermissionsApi.clearGroupMembership({ id });
+
+      return { type: CLEAR_MEMBERSHIPS, payload: { groupId: id } };
+    },
   },
 
   reducer: (state = {}, { type, payload, error }) => {
@@ -37,6 +48,11 @@ const Groups = createEntity({
       } else {
         return state;
       }
+    }
+
+    if (type === CLEAR_MEMBERSHIPS && !error) {
+      const { groupId } = payload;
+      return assocIn(state, [groupId, "members"], []);
     }
 
     return state;

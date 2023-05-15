@@ -21,7 +21,7 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (deftest basic-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
@@ -197,9 +197,7 @@
                                                      (when dataset?
                                                        {:info {:metadata/dataset-metadata (:result_metadata card)}}))))))))))))
 
-
-
-(deftest sql-source-query-breakout-aggregation-test
+(deftest ^:parallel sql-source-query-breakout-aggregation-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
     (testing "make sure we can do a query with breakout and aggregation using a SQL source query"
       (is (= (:rows (breakout-results))
@@ -209,7 +207,6 @@
                   {:source-query {:native (compile-to-native (mt/mbql-query venues))}
                    :aggregation  [:count]
                    :breakout     [*price]}))))))))
-
 
 (defn- mbql-card-def
   "Basic MBQL Card definition. Pass kv-pair clauses for the inner query."
@@ -951,8 +948,8 @@
                            (ean-metadata (qp/process-query query))))))))))))))
 
 (defn- field-id->name [field-id]
-  (let [{field-name :name, table-id :table_id} (db/select-one [Field :name :table_id] :id field-id)
-        table-name                             (db/select-one-field :name Table :id table-id)]
+  (let [{field-name :name, table-id :table_id} (t2/select-one [Field :name :table_id] :id field-id)
+        table-name                             (t2/select-one-fn :name Table :id table-id)]
     (format "%s.%s" table-name field-name)))
 
 (deftest inception-test
@@ -1387,3 +1384,16 @@
                     ["Widget"    5061]]
                    (mt/formatted-rows [str int]
                      (qp/process-query query))))))))))
+
+(deftest unfolded-json-with-custom-expression-test
+  (testing "Should keep roots of unfolded JSON fields in the nested query (#29184)"
+    (mt/test-driver :postgres
+      (mt/dataset json
+        (let [db    (t2/select-one 'Database :name "json" :engine driver/*driver*)
+              table (t2/select-one 'Table :db_id (:id db) :name "json")
+              field (t2/select-one 'Field :table_id (:id table)
+                                   :name "json_bit → title")]
+          (is (seq (mt/run-mbql-query json
+                                      {:expressions  {"substring" [:substring [:field (:id field) nil] 1 10]}
+                                       :fields       [[:expression "substring"]
+                                                      [:field (:id field) nil]]}))))))))

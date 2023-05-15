@@ -40,6 +40,7 @@ const PATHS_WITH_COLLAPSED_NAVBAR = [
   /\/model.*/,
   /\/question.*/,
   /\/dashboard.*/,
+  /\/metabot.*/,
 ];
 
 function checkIsSidebarInitiallyOpen() {

@@ -6,7 +6,7 @@ import _ from "underscore";
 import TimeGroupingPopover from "metabase/query_builder/components/TimeGroupingPopover";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import SelectButton from "metabase/core/components/SelectButton";
-import { isStructured } from "metabase-lib/queries/utils";
+import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
 export default class TimeseriesGroupingWidget extends Component {
   static propTypes = {
@@ -19,7 +19,7 @@ export default class TimeseriesGroupingWidget extends Component {
   render() {
     const { query, onChange } = this.props;
 
-    if (isStructured(query.datasetQuery())) {
+    if (query instanceof StructuredQuery) {
       const breakouts = query.breakouts();
       if (!breakouts || breakouts.length === 0) {
         return null;

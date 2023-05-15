@@ -6,16 +6,17 @@
    [clojure.test :refer :all]
    [clojure.walk :as walk]
    [medley.core :as m]
+   [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.api.card-test :as api.card-test]
    [metabase.api.common :as api]
    [metabase.api.dashboard :as api.dashboard]
    [metabase.api.pivots :as api.pivots]
+   [metabase.dashboard-subscription-test :as dashboard-subscription-test]
    [metabase.http-client :as client]
    [metabase.models
     :refer [Action
             Card
             Collection
-            Database
             Dashboard
             DashboardCard
             DashboardCardSeries
@@ -27,10 +28,12 @@
             Revision
             Table
             User]]
+   [metabase.models.dashboard :as dashboard]
    [metabase.models.dashboard-card :as dashboard-card]
    [metabase.models.dashboard-test :as dashboard-test]
    [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
+   [metabase.models.params.chain-filter :as chain-filter]
    [metabase.models.params.chain-filter-test :as chain-filter-test]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
@@ -39,13 +42,14 @@
    [metabase.public-settings.premium-features-test
     :as premium-features-test]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.streaming.test-util :as streaming.test-util]
    [metabase.server.middleware.util :as mw.util]
    [metabase.test :as mt]
    [metabase.util :as u]
    [ring.util.codec :as codec]
    [schema.core :as s]
-   [toucan.db :as db]
+   [toucan2.core :as t2]
    [toucan2.protocols :as t2.protocols]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
@@ -108,7 +112,7 @@
     (mt/with-temp Collection [collection]
       (grant-collection-perms-fn! (perms-group/all-users) collection)
       (doseq [dashboard-or-id dashboards-or-ids]
-        (db/update! Dashboard (u/the-id dashboard-or-id) :collection_id (u/the-id collection)))
+        (t2/update! Dashboard (u/the-id dashboard-or-id) {:collection_id (u/the-id collection)}))
       (f))))
 
 (defmacro ^:private with-dashboards-in-readable-collection [dashboards-or-ids & body]
@@ -161,6 +165,7 @@
    :cache_ttl               nil
    :position                nil
    :public_uuid             nil
+   :auto_apply_filters      true
    :show_in_getting_started false
    :updated_at              true})
 
@@ -188,7 +193,7 @@
                                                                            :collection_id (u/the-id collection)})
                        dashboard-response)))
             (finally
-              (db/delete! Dashboard :name test-dashboard-name))))))))
+              (t2/delete! Dashboard :name test-dashboard-name))))))))
 
 (deftest create-dashboard-with-collection-position-test
   (testing "POST /api/dashboard"
@@ -202,10 +207,10 @@
                                                                   :collection_id       (u/the-id collection)
                                                                   :collection_position 1000})
               (is (=? {:collection_id true, :collection_position 1000}
-                      (some-> (db/select-one [Dashboard :collection_id :collection_position] :name dashboard-name)
+                      (some-> (t2/select-one [Dashboard :collection_id :collection_position] :name dashboard-name)
                               (update :collection_id (partial = (u/the-id collection))))))
               (finally
-                (db/delete! Dashboard :name dashboard-name)))))
+                (t2/delete! Dashboard :name dashboard-name)))))
 
         (testing "..but not if we don't have permissions for the Collection"
           (mt/with-temp Collection [collection]
@@ -214,7 +219,7 @@
                                                                   :collection_id       (u/the-id collection)
                                                                   :collection_position 1000})
               (is (= nil
-                     (some-> (db/select-one [Dashboard :collection_id :collection_position] :name dashboard-name)
+                     (some-> (t2/select-one [Dashboard :collection_id :collection_position] :name dashboard-name)
                              (update :collection_id (partial = (u/the-id collection)))))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -276,117 +281,92 @@
 (deftest fetch-dashboard-test
   (testing "GET /api/dashboard/:id"
     (testing "fetch a dashboard WITH a dashboard card on it"
-      (mt/with-temp* [Dashboard     [{dashboard-id :id
-                                      :as          dashboard}    {:name "Test Dashboard"}]
-                      Card          [{card-id :id
-                                      :as     card}         {:name "Dashboard Test Card"}]
-                      DashboardCard [dashcard           {:dashboard_id dashboard-id, :card_id card-id}]
-                      User          [{user-id :id}      {:first_name "Test" :last_name "User"
-                                                         :email      "test@example.com"}]
-                      Revision      [_                  {:user_id  user-id
-                                                         :model    "Dashboard"
-                                                         :model_id dashboard-id
-                                                         :object   (revision/serialize-instance dashboard
-                                                                                                dashboard-id
-                                                                                                dashboard)}]]
+      (mt/with-temp* [Dashboard           [{dashboard-id :id
+                                            :as          dashboard}    {:name "Test Dashboard"}]
+                      Card                [{card-id :id
+                                            :as     card}         {:name "Dashboard Test Card"}]
+                      :model/DashboardTab [{dashtab-id :id}   {:name "Test Dashboard Tab" :position 0 :dashboard_id dashboard-id}]
+                      DashboardCard       [dashcard           {:dashboard_id dashboard-id :card_id card-id :dashboard_tab_id dashtab-id}]
+                      User                [{user-id :id}      {:first_name "Test" :last_name "User"
+                                                               :email      "test@example.com"}]
+                      Revision            [_                  {:user_id  user-id
+                                                               :model    "Dashboard"
+                                                               :model_id dashboard-id
+                                                               :object   (revision/serialize-instance dashboard
+                                                                                                      dashboard-id
+                                                                                                      dashboard)}]]
         (with-dashboards-in-readable-collection [dashboard-id]
           (api.card-test/with-cards-in-readable-collection [card-id]
-            (is (= (merge
-                    dashboard-defaults
-                    {:name                       "Test Dashboard"
-                     :creator_id                 (mt/user->id :rasta)
-                     :collection_id              true
-                     :collection_authority_level nil
-                     :can_write                  false
-                     :param_fields               nil
-                     :last-edit-info             {:timestamp true :id true :first_name "Test" :last_name "User" :email "test@example.com"}
-                     :ordered_cards              [{:size_x                     4
-                                                   :size_y                     4
-                                                   :col                        0
-                                                   :row                        0
-                                                   :collection_authority_level nil
-                                                   :updated_at                 true
-                                                   :created_at                 true
-                                                   :entity_id                  (:entity_id dashcard)
-                                                   :parameter_mappings         []
-                                                   :visualization_settings     {}
-                                                   :card                       (merge api.card-test/card-defaults-no-hydrate
-                                                                                      {:name                   "Dashboard Test Card"
-                                                                                       :creator_id             (mt/user->id :rasta)
-                                                                                       :collection_id          true
-                                                                                       :display                "table"
-                                                                                       :entity_id              (:entity_id card)
-                                                                                       :visualization_settings {}
-                                                                                       :result_metadata        nil})
-                                                   :series                     []}]})
+            (is (=? (merge
+                     dashboard-defaults
+                     {:name                       "Test Dashboard"
+                      :creator_id                 (mt/user->id :rasta)
+                      :collection_id              true
+                      :collection_authority_level nil
+                      :can_write                  false
+                      :param_fields               nil
+                      :param_values               nil
+                      :last-edit-info             {:timestamp true :id true :first_name "Test" :last_name "User" :email "test@example.com"}
+                      :ordered_tabs               [{:name "Test Dashboard Tab" :position 0 :id dashtab-id :dashboard_id dashboard-id}]
+                      :ordered_cards              [{:size_x                     4
+                                                    :size_y                     4
+                                                    :col                        0
+                                                    :row                        0
+                                                    :collection_authority_level nil
+                                                    :updated_at                 true
+                                                    :created_at                 true
+                                                    :entity_id                  (:entity_id dashcard)
+                                                    :parameter_mappings         []
+                                                    :visualization_settings     {}
+                                                    :dashboard_tab_id           dashtab-id
+                                                    :card                       (merge api.card-test/card-defaults-no-hydrate
+                                                                                       {:name                   "Dashboard Test Card"
+                                                                                        :creator_id             (mt/user->id :rasta)
+                                                                                        :collection_id          true
+                                                                                        :display                "table"
+                                                                                        :entity_id              (:entity_id card)
+                                                                                        :visualization_settings {}
+                                                                                        :result_metadata        nil})
+                                                    :series                     []}]})
                    (dashboard-response (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id)))))))))
 
     (testing "a dashboard that has link cards on it"
-      (let [link-card-viz-setting (fn [model id]
-                                    {:virtual_card {:display "link"}
-                                     :link         {:entity {:id    id
-                                                             :model model}}})
-            link-card-info-from-resp (fn [resp]
-                                       (->> resp
-                                            :ordered_cards
-                                            (map #(get-in % [:visualization_settings :link :entity]))))
-            crowberto-pc-id         (db/select-one-field :id Collection :personal_owner_id (mt/user->id :crowberto))]
+      (let [link-card-info-from-resp
+            (fn [resp]
+              (->> resp
+                   :ordered_cards
+                   (map (fn [dashcard] (or (get-in dashcard [:visualization_settings :link :entity])
+                                           ;; get for link card
+                                           (get-in dashcard [:visualization_settings :link]))))))]
         (t2.with-temp/with-temp
-          [Collection    {coll-id :id}      {:name        "Linked collection"
-                                             :description "Linked collection desc"
-                                             :location    (format "/%d/" crowberto-pc-id)}
-           Database      {db-id :id}        {:name        "Linked database"
-                                             :description "Linked database desc"}
-           Table         {table-id    :id}  {:db_id        db-id
-                                             :name        "Linked table"
-                                             :display_name "Linked table dname"
-                                             :description "Linked table desc"}
-           Card          {card-id :id}      {:name          "Linked card"
-                                             :description   "Linked card desc"
-                                             :display       "bar"
-                                             :collection_id crowberto-pc-id}
-           Card          {model-id :id}     {:dataset       true
-                                             :name          "Linked model"
-                                             :description   "Linked model desc"
-                                             :display       "table"
-                                             :collection_id crowberto-pc-id}
-           Dashboard     {dash-id :id}      {:name          "Linked Dashboard"
-                                             :description   "Linked Dashboard desc"
-                                             :collection_id crowberto-pc-id}
-           Dashboard     {dashboard-id :id} {:name        "Test Dashboard"}
-           DashboardCard _                  {:dashboard_id           dashboard-id
-                                             :visualization_settings (link-card-viz-setting "collection" coll-id)}
-           DashboardCard _                  {:dashboard_id           dashboard-id
-                                             :visualization_settings (link-card-viz-setting "database" db-id)}
-           DashboardCard _                  {:dashboard_id           dashboard-id
-                                             :visualization_settings (link-card-viz-setting "table" table-id)}
-           DashboardCard _                  {:dashboard_id           dashboard-id
-                                             :visualization_settings (link-card-viz-setting "dashboard" dash-id)}
-           DashboardCard _                  {:dashboard_id           dashboard-id
-                                             :visualization_settings (link-card-viz-setting "card" card-id)}
-           DashboardCard _                  {:dashboard_id           dashboard-id
-                                             :visualization_settings (link-card-viz-setting "dataset" model-id)}]
-          (is (= [{:id coll-id  :model "collection":name "Linked collection"  :description "Linked collection desc"  :display nil
-                   :db_id nil   :collection_id     nil}
-                  {:id db-id    :model "database"  :name "Linked database"  :description "Linked database desc"  :display nil
-                   :db_id nil   :collection_id     nil}
-                  {:id table-id :model "table"     :name "Linked table dname" :description "Linked table desc"     :display nil
-                   :db_id db-id :collection_id     nil}
-                  {:id dash-id  :model "dashboard" :name "Linked Dashboard" :description "Linked Dashboard desc" :display nil
-                   :db_id nil   :collection_id     crowberto-pc-id}
-                  {:id card-id  :model "card"      :name "Linked card"      :description "Linked card desc"      :display "bar"
-                   :db_id nil   :collection_id     crowberto-pc-id}
-                  {:id model-id :model "dataset"   :name "Linked model"     :description "Linked model desc"     :display "table"
-                   :db_id nil   :collection_id     crowberto-pc-id}]
-                 (link-card-info-from-resp
-                   (mt/user-http-request :crowberto :get 200 (format "dashboard/%d" dashboard-id)))))
+          [Dashboard dashboard {:name "Test Dashboard"}]
+          (dashboard-subscription-test/with-link-card-fixture-for-dashboard dashboard [{:keys [collection-id
+                                                                                               database-id
+                                                                                               table-id
+                                                                                               dashboard-id
+                                                                                               card-id
+                                                                                               model-id]}]
+            (is (= [{:id collection-id :model "collection":name "Linked collection name"  :description "Linked collection desc"  :display nil
+                     :db_id nil   :collection_id     nil}
+                    {:id database-id   :model "database"  :name "Linked database name"  :description "Linked database desc"  :display nil
+                     :db_id nil   :collection_id     nil}
+                    {:id table-id      :model "table"     :name "Linked table dname" :description "Linked table desc"     :display nil
+                     :db_id database-id :collection_id     nil}
+                    {:id dashboard-id  :model "dashboard" :name "Linked Dashboard name" :description "Linked Dashboard desc" :display nil
+                     :db_id nil   :collection_id     collection-id}
+                    {:id card-id  :model "card"      :name "Linked card name"      :description "Linked card desc"      :display "bar"
+                     :db_id nil   :collection_id     collection-id}
+                    {:id model-id :model "dataset"   :name "Linked model name"     :description "Linked model desc"     :display "table"
+                     :db_id nil   :collection_id     collection-id}
+                    {:url "https://metabase.com"}]
+                   (link-card-info-from-resp
+                     (mt/user-http-request :crowberto :get 200 (format "dashboard/%d" (:id dashboard))))))
 
-          (testing "should return restricted if user doesn't have permission to view it"
-            (perms/revoke-data-perms! (perms-group/all-users) db-id)
-            (is (= #{{:restricted true}}
-                   (set (link-card-info-from-resp
-                          (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id))))))))))
-
+           (testing "should return restricted if user doesn't have permission to view the models"
+             (perms/revoke-data-perms! (perms-group/all-users) database-id)
+             (is (= #{{:restricted true} {:url "https://metabase.com"}}
+                    (set (link-card-info-from-resp
+                           (mt/user-http-request :lucky :get 200 (format "dashboard/%d" (:id dashboard))))))))))))
 
     (testing "fetch a dashboard with a param in it"
       (mt/with-temp* [Table         [{table-id :id} {}]
@@ -408,6 +388,7 @@
                            :collection_id              true
                            :collection_authority_level nil
                            :can_write                  false
+                           :param_values  nil
                            :param_fields               {field-id {:id               field-id
                                                                   :table_id         table-id
                                                                   :display_name     display-name
@@ -416,6 +397,7 @@
                                                                   :has_field_values "search"
                                                                   :name_field       nil
                                                                   :dimensions       []}}
+                           :ordered_tabs               []
                            :ordered_cards              [{:size_x                     4
                                                          :size_y                     4
                                                          :col                        0
@@ -428,6 +410,7 @@
                                                                                        :parameter_id "foo"
                                                                                        :target       ["dimension" ["field" field-id nil]]}]
                                                          :visualization_settings     {}
+                                                         :dashboard_tab_id           nil
                                                          :card                       (merge api.card-test/card-defaults-no-hydrate
                                                                                             {:name                   "Dashboard Test Card"
                                                                                              :creator_id             (mt/user->id :rasta)
@@ -449,7 +432,7 @@
                  (-> (dashboard-response (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id)))
                      :collection_authority_level)))
             (let [collection-id (:collection_id (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id)))]
-              (db/update! Collection collection-id :authority_level "official"))
+              (t2/update! Collection collection-id {:authority_level "official"}))
             (is (= "official"
                    (-> (dashboard-response (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id)))
                        :collection_authority_level)))))))))
@@ -471,6 +454,35 @@
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403 (format "dashboard/%d" dashboard-id)))))))))
 
+(deftest param-values-test
+  (testing "Don't return `param_values` for Fields for which the current User has no data perms."
+    (mt/with-temp-copy-of-db
+      (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
+      (perms/grant-permissions! (perms-group/all-users) (perms/table-read-path (mt/id :venues)))
+      (mt/with-temp* [Dashboard     [{dashboard-id :id} {:name "Test Dashboard"}]
+                      Card          [{card-id :id}      {:name "Dashboard Test Card"}]
+                      DashboardCard [{_ :id}            {:dashboard_id       dashboard-id
+                                                         :card_id            card-id
+                                                         :parameter_mappings [{:card_id      card-id
+                                                                               :parameter_id "foo"
+                                                                               :target       [:dimension
+                                                                                              [:field (mt/id :venues :name) nil]]}
+                                                                              {:card_id      card-id
+                                                                               :parameter_id "bar"
+                                                                               :target       [:dimension
+                                                                                              [:field (mt/id :categories :name) nil]]}]}]]
+
+        (is (= {(mt/id :venues :name) {:values                ["20th Century Cafe"
+                                                               "25°"
+                                                               "33 Taps"]
+                                       :field_id              (mt/id :venues :name)
+                                       :human_readable_values []}}
+               (let [response (:param_values (mt/user-http-request :rasta :get 200 (str "dashboard/" dashboard-id)))]
+                 (into {} (for [[field-id m] response]
+                            [field-id (update m :values (partial take 3))])))))))))
+
+
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             PUT /api/dashboard/:id                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -483,7 +495,7 @@
           (is (= (merge dashboard-defaults {:name          "Test Dashboard"
                                             :creator_id    (mt/user->id :rasta)
                                             :collection_id true})
-                 (dashboard-response (db/select-one Dashboard :id dashboard-id)))))
+                 (dashboard-response (t2/select-one Dashboard :id dashboard-id)))))
 
         (testing "PUT response"
           (is (= (merge dashboard-defaults {:name           "My Cool Dashboard"
@@ -507,7 +519,7 @@
                                             :cache_ttl     1234
                                             :creator_id    (mt/user->id :rasta)
                                             :collection_id true})
-                 (dashboard-response (db/select-one Dashboard :id dashboard-id)))))
+                 (dashboard-response (t2/select-one Dashboard :id dashboard-id)))))
 
         (testing "No-op PUT: Do not return 500"
           (t2.with-temp/with-temp [Card          {card-id :id} {}
@@ -520,7 +532,21 @@
             ;; In the interest of un-busting the e2e tests let's just check to make sure the endpoint no-ops
             (is (=? {:id dashboard-id}
                     (mt/user-http-request :rasta :put 200 (str "dashboard/" dashboard-id)
-                                          {:cards [(select-keys dashcard [:id :card_id :row_col :size_x :size_y])]})))))))))
+                                          {:cards [(select-keys dashcard [:id :card_id :row_col :size_x :size_y])]})))))))
+    (testing "auto_apply_filters test"
+      (doseq [enabled? [true false]]
+        (mt/with-temp Dashboard [{dashboard-id :id} {:name "Test Dashboard"
+                                                     :auto_apply_filters enabled?}]
+          (testing "Can set it"
+            (mt/user-http-request :rasta :put 200 (str "dashboard/" dashboard-id)
+                                  {:auto_apply_filters (not enabled?)})
+            (is (= (not enabled?)
+                   (t2/select-one-fn :auto_apply_filters Dashboard :id dashboard-id))))
+          (testing "If not in put it is not changed"
+            (mt/user-http-request :rasta :put 200 (str "dashboard/" dashboard-id)
+                                  {:description "foo"})
+            (is (= (not enabled?)
+                   (t2/select-one-fn :auto_apply_filters Dashboard :id dashboard-id)))))))))
 
 (deftest update-dashboard-guide-columns-test
   (testing "PUT /api/dashboard/:id"
@@ -550,12 +576,12 @@
         (with-dashboards-in-writeable-collection [dashboard]
           (mt/user-http-request :rasta :put 200 (str "dashboard/" (u/the-id dashboard)) {:description nil})
           (is (= nil
-                 (db/select-one-field :description Dashboard :id (u/the-id dashboard))))
+                 (t2/select-one-fn :description Dashboard :id (u/the-id dashboard))))
 
           (testing "Set to a blank description"
             (mt/user-http-request :rasta :put 200 (str "dashboard/" (u/the-id dashboard)) {:description ""})
             (is (= ""
-                   (db/select-one-field :description Dashboard :id (u/the-id dashboard))))))))))
+                   (t2/select-one-fn :description Dashboard :id (u/the-id dashboard))))))))))
 
 (deftest update-dashboard-change-collection-id-test
   (testing "PUT /api/dashboard/:id"
@@ -568,7 +594,7 @@
           ;; now make an API call to move collections
           (mt/user-http-request :rasta :put 200 (str "dashboard/" (u/the-id dash)) {:collection_id (u/the-id new-collection)})
           ;; Check to make sure the ID has changed in the DB
-          (is (= (db/select-one-field :collection_id Dashboard :id (u/the-id dash))
+          (is (= (t2/select-one-fn :collection_id Dashboard :id (u/the-id dash))
                  (u/the-id new-collection))))))
 
     (testing "if we don't have the Permissions for the old collection, we should get an Exception"
@@ -609,13 +635,13 @@
           (mt/user-http-request :rasta :put 200 (str "dashboard/" (u/the-id dashboard))
                                 {:collection_position 1})
           (is (= 1
-                 (db/select-one-field :collection_position Dashboard :id (u/the-id dashboard))))
+                 (t2/select-one-fn :collection_position Dashboard :id (u/the-id dashboard))))
 
           (testing "...and unset (unpin) it as well?"
             (mt/user-http-request :rasta :put 200 (str "dashboard/" (u/the-id dashboard))
                                   {:collection_position nil})
             (is (= nil
-                   (db/select-one-field :collection_position Dashboard :id (u/the-id dashboard))))))
+                   (t2/select-one-fn :collection_position Dashboard :id (u/the-id dashboard))))))
 
         (testing "we shouldn't be able to if we don't have permissions for the Collection"
           (mt/with-temp* [Collection [collection]
@@ -623,14 +649,14 @@
             (mt/user-http-request :rasta :put 403 (str "dashboard/" (u/the-id dashboard))
                                   {:collection_position 1})
             (is (= nil
-                   (db/select-one-field :collection_position Dashboard :id (u/the-id dashboard)))))
+                   (t2/select-one-fn :collection_position Dashboard :id (u/the-id dashboard)))))
 
           (mt/with-temp* [Collection [collection]
                           Dashboard  [dashboard {:collection_id (u/the-id collection), :collection_position 1}]]
             (mt/user-http-request :rasta :put 403 (str "dashboard/" (u/the-id dashboard))
                                   {:collection_position nil})
             (is (= 1
-                   (db/select-one-field :collection_position Dashboard :id (u/the-id dashboard))))))))))
+                   (t2/select-one-fn :collection_position Dashboard :id (u/the-id dashboard))))))))))
 
 (deftest update-dashboard-position-test
   (mt/with-non-admin-groups-no-root-collection-perms
@@ -743,7 +769,7 @@
                       "d" 4}
                      (api.card-test/get-name->collection-position :rasta collection)))
               (finally
-                (db/delete! Dashboard :collection_id (u/the-id collection))))))))))
+                (t2/delete! Dashboard :collection_id (u/the-id collection))))))))))
 
 (deftest insert-dashboard-no-position-test
   (testing "POST /api/dashboard"
@@ -767,7 +793,7 @@
                       "d" 3}
                      (api.card-test/get-name->collection-position :rasta collection)))
               (finally
-                (db/delete! Dashboard :collection_id (u/the-id collection))))))))))
+                (t2/delete! Dashboard :collection_id (u/the-id collection))))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -780,7 +806,7 @@
       (is (= nil
              (mt/user-http-request :rasta :delete 204 (format "dashboard/%d" dashboard-id))))
       (is (= nil
-             (db/select-one Dashboard :id dashboard-id))))))
+             (t2/select-one Dashboard :id dashboard-id))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         POST /api/dashboard/:id/copy                                           |
@@ -805,7 +831,7 @@
             (is (not=  (:entity_id dashboard) (:entity_id response))
                 "The copy should have a new entity ID generated")
             (finally
-              (db/delete! Dashboard :id (u/the-id response)))))))
+              (t2/delete! Dashboard :id (u/the-id response)))))))
 
     (testing "Ensure name / description / user set when copying"
       (mt/with-temp Dashboard [dashboard  {:name        "Test Dashboard"
@@ -825,7 +851,7 @@
             (is (not= (:entity_id dashboard) (:entity_id response))
                 "The copy should have a new entity ID generated")
             (finally
-              (db/delete! Dashboard :id (u/the-id response))))))))
+              (t2/delete! Dashboard :id (u/the-id response))))))))
   (testing "Deep copy: POST /api/dashboard/:id/copy"
     (mt/dataset sample-dataset
       (mt/with-temp* [Collection [source-coll {:name "Source collection"}]
@@ -892,10 +918,10 @@
                                             :collection_id (u/the-id dest-coll)})]
             (is (= (:collection_id resp) (u/the-id dest-coll))
                 "Dashboard should go into the destination collection")
-            (is (= 3 (count (db/select 'Card :collection_id (u/the-id source-coll)))))
-            (let [copied-cards (db/select 'Card :collection_id (u/the-id dest-coll))
-                  copied-db-cards (db/select 'DashboardCard :dashboard_id (u/the-id (:id resp)))
-                  source-db-cards (db/select 'DashboardCard :dashboard_id (u/the-id dashboard))]
+            (is (= 3 (count (t2/select 'Card :collection_id (u/the-id source-coll)))))
+            (let [copied-cards (t2/select 'Card :collection_id (u/the-id dest-coll))
+                  copied-db-cards (t2/select 'DashboardCard :dashboard_id (u/the-id (:id resp)))
+                  source-db-cards (t2/select 'DashboardCard :dashboard_id (u/the-id dashboard))]
               (testing "Copies all of the questions on the dashboard"
                 (is (= 2 (count copied-cards))))
               (testing "Copies all of the dashboard cards"
@@ -971,8 +997,8 @@
                                               :collection_id (u/the-id dest-coll)})]
               (is (= (:collection_id resp) (u/the-id dest-coll))
                   "Dashboard should go into the destination collection")
-              (let [copied-cards (db/select 'Card :collection_id (u/the-id dest-coll))
-                    copied-db-cards (db/select 'DashboardCard :dashboard_id (u/the-id (:id resp)))]
+              (let [copied-cards (t2/select 'Card :collection_id (u/the-id dest-coll))
+                    copied-db-cards (t2/select 'DashboardCard :dashboard_id (u/the-id (:id resp)))]
                 (testing "Copies only one of the questions on the dashboard"
                   (is (= 1 (count copied-cards))))
                 (testing "Copies one of the dashboard cards"
@@ -982,7 +1008,7 @@
                          (into #{} (map :name) copied-cards))
                       "Should preserve the titles of the original cards"))
                 (testing "Should not create dashboardcardseries because the base card lacks permissions"
-                  (is (empty? (db/select DashboardCardSeries :card_id [:in (map :id copied-cards)]))))
+                  (is (empty? (t2/select DashboardCardSeries :card_id [:in (map :id copied-cards)]))))
                 (testing "Response includes uncopied cards"
                   ;; cards might be full cards or just a map {:id 1} due to permissions Any card with lack of
                   ;; permissions is just {:id 1}. Cards in a series which you have permissions for, but the base card
@@ -1044,7 +1070,7 @@
                                                :description "A new description"
                                                :is_deep_copy true
                                                :collection_id (u/the-id source-coll)})
-                  cards-in-coll (db/select 'Card :collection_id (u/the-id source-coll))]
+                  cards-in-coll (t2/select 'Card :collection_id (u/the-id source-coll))]
               ;; original 3 plust 3 duplicates
               (is (= 6 (count cards-in-coll)) "Not all cards were copied")
               (is (= (into #{} (comp (map :name)
@@ -1098,6 +1124,7 @@
 
 (deftest update-cards-for-copy-test
   (testing "When copy style is shallow returns original ordered-cards"
+
     (let [ordered-cards [{:card_id 1 :card {:id 1} :series [{:id 2}]}
                          {:card_id 3 :card {:id 3}}]]
       (is (= ordered-cards
@@ -1176,15 +1203,15 @@
         (let [copy-id (u/the-id (mt/user-http-request :rasta :post 200 (format "dashboard/%d/copy" dashboard-id)))]
           (try
             (is (= 2
-                   (count (db/select-ids DashboardCard, :dashboard_id copy-id))))
+                   (count (t2/select-pks-set DashboardCard, :dashboard_id copy-id))))
             (is (=? [{:name "Category ID" :slug "category_id" :id "_CATEGORY_ID_" :type :category}]
-                   (db/select-one-field :parameters Dashboard :id copy-id)))
+                   (t2/select-one-fn :parameters Dashboard :id copy-id)))
             (is (=? [{:parameter_id "random-id"
                       :card_id      card-id
                       :target       [:dimension [:field (mt/id :venues :name) nil]]}]
-                   (db/select-one-field :parameter_mappings DashboardCard :id dashcard-id)))
+                   (t2/select-one-fn :parameter_mappings DashboardCard :id dashcard-id)))
            (finally
-             (db/delete! Dashboard :id copy-id))))))))
+             (t2/delete! Dashboard :id copy-id))))))))
 
 (deftest copy-dashboard-into-correct-collection-test
   (testing "POST /api/dashboard/:id/copy"
@@ -1197,90 +1224,16 @@
           (let [response (mt/user-http-request :rasta :post 200 (format "dashboard/%d/copy" (u/the-id dash)) {:collection_id (u/the-id new-collection)})]
             (try
               ;; Check to make sure the ID of the collection is correct
-              (is (= (db/select-one-field :collection_id Dashboard :id
+              (is (= (t2/select-one-fn :collection_id Dashboard :id
                                           (u/the-id response))
                      (u/the-id new-collection)))
               (finally
-                (db/delete! Dashboard :id (u/the-id response))))))))))
+                (t2/delete! Dashboard :id (u/the-id response))))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                         POST /api/dashboard/:id/cards                                          |
+;;; |                                          PUT /api/dashboard/:id/cards                                          |
 ;;; +----------------------------------------------------------------------------------------------------------------+
-
-(deftest simple-creation-with-no-additional-series-test
-  (mt/with-temp* [Dashboard [{dashboard-id :id}]
-                  Card      [{card-id :id}]]
-    (with-dashboards-in-writeable-collection [dashboard-id]
-      (api.card-test/with-cards-in-readable-collection [card-id]
-        (is (= {:size_x                 4
-                :size_y                 4
-                :col                    4
-                :row                    4
-                :series                 []
-                :parameter_mappings     [{:parameter_id "abc" :card_id 123, :hash "abc", :target "foo"}]
-                :visualization_settings {}
-                :created_at             true
-                :updated_at             true}
-               (-> (mt/user-http-request :rasta :post 200 (format "dashboard/%d/cards" dashboard-id)
-                                         {:cardId                 card-id
-                                          :row                    4
-                                          :col                    4
-                                          :size_x                 4
-                                          :size_y                 4
-                                          :parameter_mappings     [{:parameter_id "abc"
-                                                                    :card_id 123
-                                                                    :hash "abc"
-                                                                    :target "foo"}]
-                                          :visualization_settings {}})
-                   (dissoc :id :dashboard_id :action_id :card_id :entity_id)
-                   (update :created_at boolean)
-                   (update :updated_at boolean))))
-        (is (= [{:size_x                 4
-                 :size_y                 4
-                 :col                    4
-                 :row                    4
-                 :parameter_mappings     [{:parameter_id "abc", :card_id 123, :hash "abc", :target "foo"}]
-                 :visualization_settings {}}]
-               (map (partial into {})
-                    (db/select [DashboardCard :size_x :size_y :col :row :parameter_mappings :visualization_settings]
-                      :dashboard_id dashboard-id))))))))
-
-(deftest new-dashboard-card-with-additional-series-test
-  (mt/with-temp* [Dashboard [{dashboard-id :id}]
-                  Card      [{card-id :id}]
-                  Card      [{series-id-1 :id} {:name "Series Card"}]]
-    (with-dashboards-in-writeable-collection [dashboard-id]
-      (api.card-test/with-cards-in-readable-collection [card-id series-id-1]
-        (let [dashboard-card (mt/user-http-request :rasta :post 200 (format "dashboard/%d/cards" dashboard-id)
-                                                   {:cardId card-id
-                                                    :row     4
-                                                    :col     4
-                                                    :size_x  4
-                                                    :size_y  4
-                                                    :series [{:id series-id-1}]})]
-          (is (= {:row                    4
-                  :col                    4
-                  :size_x                 4
-                  :size_y                 4
-                  :parameter_mappings     []
-                  :visualization_settings {}
-                  :series                 [{:name                   "Series Card"
-                                            :description            nil
-                                            :dataset_query          (:dataset_query api.card-test/card-defaults)
-                                            :display                "table"
-                                            :visualization_settings {}}]
-                  :created_at             true
-                  :updated_at             true}
-                 (remove-ids-and-booleanize-timestamps dashboard-card)))
-          (is (= [{:size_x 4
-                   :size_y 4
-                   :col    4
-                   :row    4}]
-                 (map (partial into {})
-                      (db/select [DashboardCard :size_x :size_y :col :row], :dashboard_id dashboard-id))))
-          (is (= #{0}
-                 (db/select-field :position DashboardCardSeries, :dashboardcard_id (:id dashboard-card)))))))))
 
 (defn do-with-add-card-parameter-mapping-permissions-fixtures [f]
   (mt/with-temp-copy-of-db
@@ -1300,47 +1253,27 @@
             :mappings     mappings
             :add-card!    (fn [expected-status-code]
                             (mt/user-http-request :rasta
-                                                  :post expected-status-code (format "dashboard/%d/cards" dashboard-id)
-                                                  {:cardId             card-id
-                                                   :row                0
-                                                   :col                0
-                                                   :size_x             4
-                                                   :size_y             4
-                                                   :parameter_mappings mappings}))
-            :dashcards    (fn [] (db/select DashboardCard :dashboard_id dashboard-id))})))))
+                                                  :put expected-status-code (format "dashboard/%d/cards" dashboard-id)
+                                                  {:cards [{:id                 -1
+                                                            :card_id            card-id
+                                                            :row                0
+                                                            :col                0
+                                                            :size_x             4
+                                                            :size_y             4
+                                                            :parameter_mappings mappings}]
+                                                   :ordered_tabs []}))
+            :dashcards    (fn [] (t2/select DashboardCard :dashboard_id dashboard-id))})))))
 
-(deftest add-card-parameter-mapping-permissions-test
-  (testing "POST /api/dashboard/:id/cards"
-    (testing "Should check current user's data permissions for the `parameter_mapping`"
-      (do-with-add-card-parameter-mapping-permissions-fixtures
-       (fn [{:keys [card-id mappings add-card! dashcards]}]
-         (is (schema= {:message  (s/eq "You must have data permissions to add a parameter referencing the Table \"VENUES\".")
-                       s/Keyword s/Any}
-                (add-card! 403)))
-         (is (= []
-                (dashcards)))
-         (testing "Permissions for a different table in the same DB should not count"
-           (perms/grant-permissions! (perms-group/all-users) (perms/table-query-path (mt/id :categories)))
-           (is (schema= {:message  (s/eq "You must have data permissions to add a parameter referencing the Table \"VENUES\".")
-                         s/Keyword s/Any}
-                        (add-card! 403)))
-           (is (= []
-                  (dashcards))))
-         (testing "If they have data permissions, it should be ok"
-           (perms/grant-permissions! (perms-group/all-users) (perms/table-query-path (mt/id :venues)))
-           (is (schema= {:card_id            (s/eq card-id)
-                         :parameter_mappings [(s/one
-                                               {:parameter_id (s/eq "_CATEGORY_ID_")
-                                                :target       (s/eq ["dimension" ["field" (mt/id :venues :category_id) nil]])
-                                                s/Keyword     s/Any}
-                                               "mapping")]
-                         s/Keyword           s/Any}
-                        (add-card! 200)))
-           (is (schema= [(s/one {:card_id            (s/eq card-id)
-                                 :parameter_mappings (s/eq mappings)
-                                 s/Keyword           s/Any}
-                                "DashboardCard")]
-                        (dashcards)))))))))
+(defn- dashcard-like-response
+  [id]
+  (t2/hydrate (t2/select-one DashboardCard :id id) :series))
+
+(defn- current-cards
+  "Returns the current ordered cards of a dashboard."
+  [dashboard-id]
+  (-> dashboard-id
+      dashboard/ordered-cards
+      (t2/hydrate :series)))
 
 (defn do-with-update-cards-parameter-mapping-permissions-fixtures [f]
   (do-with-add-card-parameter-mapping-permissions-fixtures
@@ -1361,63 +1294,469 @@
              :update-mappings!       (fn [expected-status-code]
                                        (mt/user-http-request :rasta :put expected-status-code
                                                              (format "dashboard/%d/cards" dashboard-id)
-                                                             {:cards [(assoc dashcard-info :parameter_mappings new-mappings)]}))
+                                                             {:cards        [(assoc dashcard-info :parameter_mappings new-mappings)]
+                                                              :ordered_tabs []}))
              :update-size!           (fn []
                                        (mt/user-http-request :rasta :put 200
                                                              (format "dashboard/%d/cards" dashboard-id)
-                                                             {:cards [new-dashcard-info]}))}))))))
+                                                             {:cards        [new-dashcard-info]
+                                                              :ordered_tabs []}))}))))))
 
-(deftest update-cards-parameter-mapping-permissions-test
+(defn- do-with-simple-dashboard-with-tabs
+  [f]
+  (t2.with-temp/with-temp
+    [Dashboard           {dashboard-id :id} {}
+
+     Card                {card-id-1 :id}    {}
+
+     Card                {card-id-2 :id}    {}
+     :model/DashboardTab {dashtab-id-1 :id} {:name         "Tab 1"
+                                             :dashboard_id dashboard-id
+                                             :position     0}
+     :model/DashboardTab {dashtab-id-2 :id} {:name         "Tab 2"
+                                             :dashboard_id dashboard-id
+                                             :position     1}
+     DashboardCard       {dashcard-id-1 :id} {:dashboard_id     dashboard-id
+                                              :card_id          card-id-1
+                                              :dashboard_tab_id dashtab-id-1}
+     DashboardCard       {dashcard-id-2 :id} {:dashboard_id     dashboard-id
+                                              :card_id          card-id-2
+                                              :dashboard_tab_id dashtab-id-2}]
+    (f {:dashboard-id  dashboard-id
+        :card-id-1     card-id-1
+        :card-id-2     card-id-1
+        :dashtab-id-1  dashtab-id-1
+        :dashtab-id-2  dashtab-id-2
+        :dashcard-id-1 dashcard-id-1
+        :dashcard-id-2 dashcard-id-2})))
+
+(defmacro ^:private with-simple-dashboard-with-tabs
+  "Create a simple dashboard with 2 tabs and 2 cards in each tab and run `body` with the dashboard and cards ids bound to"
+  [[bindings] & body]
+  `(do-with-simple-dashboard-with-tabs (fn [~bindings] ~@body)))
+
+(deftest e2e-update-cards-and-tabs-test
+  (testing "PUT /api/dashboard/:id/cards with create/update/delete in a single req"
+       (t2.with-temp/with-temp
+         [Dashboard               {dashboard-id :id}  {}
+          Card                    {card-id-1 :id}     {}
+          Card                    {card-id-2 :id}     {}
+          :model/DashboardTab     {dashtab-id-1 :id}  {:name "Tab 1" :dashboard_id dashboard-id :position 0}
+          :model/DashboardTab     {dashtab-id-2 :id}  {:name "Tab 2" :dashboard_id dashboard-id :position 1}
+          :model/DashboardTab     {dashtab-id-3 :id}  {:name "Tab 3" :dashboard_id dashboard-id :position 2}
+          DashboardCard           {dashcard-id-1 :id} {:dashboard_id dashboard-id, :card_id card-id-1, :dashboard_tab_id dashtab-id-1}
+          DashboardCard           {dashcard-id-2 :id} {:dashboard_id dashboard-id, :card_id card-id-1, :dashboard_tab_id dashtab-id-2}
+          DashboardCard           {dashcard-id-3 :id} {:dashboard_id dashboard-id, :card_id card-id-1, :dashboard_tab_id dashtab-id-2}]
+        (let [resp (mt/user-http-request :rasta :put 200 (format "dashboard/%d/cards" dashboard-id)
+                                                         {:ordered_tabs  [{:id   dashtab-id-1
+                                                                           :name "Tab 1 edited"}
+                                                                          {:id   dashtab-id-2
+                                                                           :name "Tab 2"}
+                                                                          {:id   -1
+                                                                           :name "New tab"}]
+                                                          :cards [{:id     dashcard-id-1
+                                                                   :size_x 4
+                                                                   :size_y 4
+                                                                   :col    1
+                                                                   :row    1
+                                                                   ;; initialy was in tab1, now in tab 2
+                                                                   :dashboard_tab_id dashtab-id-2
+                                                                   :card_id card-id-1}
+                                                                  {:id     dashcard-id-2
+                                                                   :dashboard_tab_id dashtab-id-2
+                                                                   :size_x 2
+                                                                   :size_y 2
+                                                                   :col    2
+                                                                   :row    2}
+                                                                  ;; remove the dashcard3 and create a new card using negative numbers
+                                                                  ;; and assign into the newly created dashcard
+                                                                  {:id     -1
+                                                                   :size_x 1
+                                                                   :size_y 1
+                                                                   :col    3
+                                                                   :row    3
+                                                                   :dashboard_tab_id -1
+                                                                   :card_id card-id-2}]})]
+          (testing "tabs got updated correctly "
+            (is (=? [{:id           dashtab-id-1
+                      :dashboard_id dashboard-id
+                      :name         "Tab 1 edited"
+                      :position     0}
+                     {:id           dashtab-id-2
+                      :dashboard_id dashboard-id
+                      :name         "Tab 2"
+                      :position 1}
+                     {:id           #hawk/schema (s/pred pos-int?)
+                      :dashboard_id dashboard-id
+                      :name         "New tab"
+                      :position     2}]
+                    (:ordered_tabs resp)))
+            (testing "dashtab 3 got deleted"
+              (is (nil? (t2/select-one :model/DashboardTab :id dashtab-id-3)))))
+
+          (testing "dashcards got updated correctly"
+            (let [new-tab-id (t2/select-one-pk :model/DashboardTab :name "New tab" :dashboard_id dashboard-id)]
+              (is (=? [{:id               dashcard-id-1
+                        :card_id          card-id-1
+                        :dashboard_tab_id dashtab-id-2
+                        :size_x           4
+                        :size_y           4
+                        :col              1
+                        :row              1}
+                       {:id               dashcard-id-2
+                        :dashboard_tab_id dashtab-id-2
+                        :size_x           2
+                        :size_y           2
+                        :col              2
+                        :row              2}
+                       {:id               #hawk/schema (s/pred pos-int?)
+                        :size_x           1
+                        :size_y           1
+                        :col              3
+                        :row              3
+                        :dashboard_tab_id new-tab-id
+                        :card_id           card-id-2}]
+                      (:cards resp))))
+            (testing "dashcard 3 got deleted"
+             (is (nil? (t2/select-one DashboardCard :id dashcard-id-3)))))))))
+
+(deftest e2e-update-cards-only-test
+  (testing "PUT /api/dashboard/:id/cards with create/update/delete in a single req"
+    (t2.with-temp/with-temp
+      [Dashboard           {dashboard-id :id}  {}
+       Card                {card-id-1 :id}     {}
+       Card                {card-id-2 :id}     {}
+       DashboardCard       {dashcard-id-1 :id} {:dashboard_id dashboard-id, :card_id card-id-1}
+       DashboardCard       {dashcard-id-2 :id} {:dashboard_id dashboard-id, :card_id card-id-1}
+       DashboardCard       {dashcard-id-3 :id} {:dashboard_id dashboard-id, :card_id card-id-1}
+       Card                {series-id-1 :id}   {:name "Series Card 1"}
+       Card                {series-id-2 :id}   {:name "Series Card 2"}
+       DashboardCardSeries _                   {:dashboardcard_id dashcard-id-1, :card_id series-id-1
+                                                :position         0}]
+      ;; send a request that update and create and delete some cards at the same time
+      (let [cards (:cards (mt/user-http-request :crowberto :put 200 (format "dashboard/%d/cards" dashboard-id)
+                                                {:cards [{:id     dashcard-id-1
+                                                          :size_x 4
+                                                          :size_y 4
+                                                          :col    1
+                                                          :row    1
+                                                          ;; update series for card 1
+                                                          :series  [{:id series-id-2}]
+                                                          :card_id card-id-1}
+                                                         {:id     dashcard-id-2
+                                                          :size_x 2
+                                                          :size_y 2
+                                                          :col    2
+                                                          :row    2}
+                                                         ;; remove the dashcard3 and create a new card using negative numbers
+                                                         {:id     -1
+                                                          :size_x 1
+                                                          :size_y 1
+                                                          :col    3
+                                                          :row    3
+                                                          :card_id card-id-2
+                                                          :series  [{:id series-id-1}]}]
+                                                 :ordered_tabs []}))
+            updated-card-1 {:id           dashcard-id-1
+                            :card_id      card-id-1
+                            :dashboard_id dashboard-id
+                            :size_x       4
+                            :size_y       4
+                            :action_id    nil
+                            :row          1
+                            :col          1
+                            :series       [{:name "Series Card 2"}]}
+            updated-card-2 {:id           dashcard-id-2
+                            :card_id      card-id-1
+                            :dashboard_id dashboard-id
+                            :size_x       2
+                            :size_y       2
+                            :action_id    nil
+                            :row          2
+                            :col          2
+                            :series       []}
+            new-card       {:card_id      card-id-2
+                            :dashboard_id dashboard-id
+                            :size_x       1
+                            :size_y       1
+                            :action_id    nil
+                            :row          3
+                            :col          3
+                            :series       [{:name "Series Card 1"}]}]
+        (is (=? [updated-card-1
+                 updated-card-2
+                 new-card]
+                cards))
+       ;; dashcard 3 is deleted
+       (is (nil? (t2/select-one DashboardCard :id dashcard-id-3)))))))
+
+(deftest e2e-update-tabs-only-test
+  (testing "PUT /api/dashboard/:id/cards with create/update/delete tabs in a single req"
+    (with-simple-dashboard-with-tabs [{:keys [dashboard-id dashtab-id-1 dashtab-id-2]}]
+      (with-dashboards-in-writeable-collection [dashboard-id]
+        ;; send a request that update and create and delete some cards at the same time
+        (is (some? (t2/select-one :model/DashboardTab :id dashtab-id-2)))
+        (let [tabs (:ordered_tabs (mt/user-http-request :rasta :put 200 (format "dashboard/%d/cards" dashboard-id)
+                                                        {:ordered_tabs [{:name     "Tab new"
+                                                                         :id       -1}
+                                                                        {:name     "Tab 1 moved to second position"
+                                                                         :id       dashtab-id-1}]
+                                                         :cards        []}))]
+
+          (is (=? [{:dashboard_id dashboard-id
+                    :name         "Tab new"
+                    :position     0}
+                   {:id           dashtab-id-1
+                    :dashboard_id dashboard-id
+                    :name         "Tab 1 moved to second position"
+                    :position     1}]
+                  tabs))
+          ;; dashtab 2 is deleted
+          (is (nil? (t2/select-one :model/DashboardTab :id dashtab-id-2))))))))
+
+(deftest upgrade-from-non-tab-dashboard-to-has-tabs
+  (testing "we introduced tabs in 47 but there are dashboards without tabs before this
+           this test check the flow to upgrade a dashboard pre-47 to have tabs"
+    (t2.with-temp/with-temp
+      [Dashboard     {dashboard-id :id}  {}
+       Card          {card-id-1 :id}     {}
+       Card          {card-id-2 :id}     {}
+       DashboardCard {dashcard-1-id :id} {:card_id      card-id-1
+                                          :dashboard_id dashboard-id}]
+      ;; create 2 tabs, assign the existing dashcard to the 1st tab
+      ;; create 2 new dashcards, 1 for each tab
+      (let [resp (mt/user-http-request :rasta :put 200 (format "dashboard/%d/cards" dashboard-id)
+                                  {:ordered_tabs  [{:id       -1
+                                                    :name     "New Tab 1"}
+                                                   {:id       -2
+                                                    :name     "New Tab 2"}]
+                                   :cards [{:id               dashcard-1-id
+                                            :size_x           4
+                                            :size_y           4
+                                            :col              1
+                                            :row              1
+                                            :dashboard_tab_id -1
+                                            :card_id          card-id-1}
+                                           {:id               -2
+                                            :size_x           4
+                                            :size_y           4
+                                            :col              1
+                                            :row              1
+                                            :dashboard_tab_id -1
+                                            :card_id          card-id-1}
+                                           {:id               -1
+                                            :size_x           4
+                                            :size_y           4
+                                            :col              1
+                                            :row              1
+                                            :dashboard_tab_id -2
+                                            :card_id          card-id-2}]})
+            tab-1-id (t2/select-one-pk :model/DashboardTab :name "New Tab 1" :dashboard_id dashboard-id)
+            tab-2-id (t2/select-one-pk :model/DashboardTab :name "New Tab 2" :dashboard_id dashboard-id)]
+        (is (=? {:cards [{:id               dashcard-1-id
+                          :card_id          card-id-1
+                          :dashboard_id     dashboard-id
+                          :dashboard_tab_id tab-1-id}
+                         {:id               #hawk/schema (s/pred pos-int?)
+                          :card_id          card-id-1
+                          :dashboard_id     dashboard-id
+                          :dashboard_tab_id tab-1-id}
+                         {:id               #hawk/schema (s/pred pos-int?)
+                          :card_id          card-id-2
+                          :dashboard_id     dashboard-id
+                          :dashboard_tab_id tab-2-id}]
+                 :ordered_tabs [{:id           tab-1-id
+                                 :dashboard_id dashboard-id
+                                 :name         "New Tab 1"
+                                 :position     0}
+                                {:id           tab-2-id
+                                 :dashboard_id dashboard-id
+                                 :name         "New Tab 2"
+                                 :position     1}]}
+               resp))))))
+
+(deftest update-cards-error-handling-test
+  (testing "PUT /api/dashboard/:id/cards"
+    (with-simple-dashboard-with-tabs [{:keys [dashboard-id]}]
+      (testing "if a dashboard has tabs, check if all cards from the request has a tab_id"
+        (is (= "This dashboard has tab, makes sure every card has a tab"
+               (mt/user-http-request :crowberto :put 400 (format "dashboard/%d/cards" dashboard-id)
+                                     {:cards        (conj
+                                                      (current-cards dashboard-id)
+                                                      {:id      -1
+                                                       :size_x  4
+                                                       :size_y  4
+                                                       :col     1
+                                                       :row     1})
+                                      :ordered_tabs (dashboard/ordered-tabs dashboard-id)})))))))
+
+;;; -------------------------------------- Create dashcards tests ---------------------------------------
+
+(deftest simple-creation-with-no-additional-series-test
+  (mt/with-temp* [Dashboard [{dashboard-id :id}]
+                  Card      [{card-id :id}]]
+    (with-dashboards-in-writeable-collection [dashboard-id]
+      (api.card-test/with-cards-in-readable-collection [card-id]
+        (let [resp (:cards (mt/user-http-request :rasta :put 200 (format "dashboard/%d/cards" dashboard-id)
+                                                 {:cards        [{:id                     -1
+                                                                  :card_id                card-id
+                                                                  :row                    4
+                                                                  :col                    4
+                                                                  :size_x                 4
+                                                                  :size_y                 4
+                                                                  :parameter_mappings     [{:parameter_id "abc"
+                                                                                            :card_id 123
+                                                                                            :hash "abc"
+                                                                                            :target "foo"}]
+                                                                  :visualization_settings {}}]
+                                                  :ordered_tabs []}))]
+          ;; extra sure here because the dashcard we given has a negative id
+          (testing "the inserted dashcards has ids auto-generated"
+            (is (pos? (:id (first resp)))))
+          (is (= {:size_x                     4
+                  :size_y                     4
+                  :col                        4
+                  :row                        4
+                  :series                     []
+                  :dashboard_tab_id           nil
+                  :parameter_mappings         [{:parameter_id "abc" :card_id 123, :hash "abc", :target "foo"}]
+                  :visualization_settings     {}
+                  :created_at                 true
+                  :updated_at                 true
+                  :collection_authority_level nil}
+                 (-> resp
+                     first
+                     (dissoc :id :dashboard_id :action_id :card_id :entity_id)
+                     (update :created_at boolean)
+                     (update :updated_at boolean))))
+          (is (= [{:size_x                 4
+                   :size_y                 4
+                   :col                    4
+                   :row                    4
+                   :parameter_mappings     [{:parameter_id "abc", :card_id 123, :hash "abc", :target "foo"}]
+                   :visualization_settings {}}]
+                 (map (partial into {})
+                      (t2/select [DashboardCard :size_x :size_y :col :row :parameter_mappings :visualization_settings]
+                                 :dashboard_id dashboard-id)))))))))
+
+(deftest new-dashboard-card-with-additional-series-test
+  (mt/with-temp* [Dashboard [{dashboard-id :id}]
+                  Card      [{card-id :id}]
+                  Card      [{series-id-1 :id} {:name "Series Card"}]]
+    (with-dashboards-in-writeable-collection [dashboard-id]
+      (api.card-test/with-cards-in-readable-collection [card-id series-id-1]
+        (let [dashboard-cards (:cards (mt/user-http-request :rasta :put 200 (format "dashboard/%d/cards" dashboard-id)
+                                                            {:cards        [{:id      -1
+                                                                             :card_id card-id
+                                                                             :row     4
+                                                                             :col     4
+                                                                             :size_x  4
+                                                                             :size_y  4
+                                                                             :series [{:id series-id-1}]}]
+                                                             :ordered_tabs []}))]
+          (is (=? [{:row                    4
+                    :col                    4
+                    :size_x                 4
+                    :size_y                 4
+                    :parameter_mappings     []
+                    :visualization_settings {}
+                    :series                 [{:name                   "Series Card"
+                                              :description            nil
+                                              :dataset_query          (:dataset_query api.card-test/card-defaults)
+                                              :display                "table"
+                                              :visualization_settings {}}]
+                    :created_at             true
+                    :updated_at             true}]
+                 (remove-ids-and-booleanize-timestamps dashboard-cards)))
+          (is (= [{:size_x 4
+                   :size_y 4
+                   :col    4
+                   :row    4}]
+                 (map (partial into {})
+                      (t2/select [DashboardCard :size_x :size_y :col :row], :dashboard_id dashboard-id))))
+          (is (= #{0}
+                 (t2/select-fn-set :position DashboardCardSeries, :dashboardcard_id (:id (first dashboard-cards))))))))))
+
+(deftest dashcard-action-create-update-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :actions)
+    (mt/with-actions-test-data-and-actions-enabled
+      (doseq [action-type [:http :implicit :query]]
+        (mt/with-actions [{:keys [action-id]} {:type action-type :visualization_settings {:hello true}}]
+          (testing (str "Creating dashcard with action: " action-type)
+            (mt/with-temp* [Dashboard [{dashboard-id :id}]]
+              (is (partial= [{:visualization_settings {:label "Update"}
+                              :action_id              action-id
+                              :card_id                nil}]
+                            (:cards (mt/user-http-request :crowberto :put 200 (format "dashboard/%s/cards" dashboard-id)
+                                                          {:cards        [{:id                     -1
+                                                                           :size_x                 1
+                                                                           :size_y                 1
+                                                                           :row                    1
+                                                                           :col                    1
+                                                                           :card_id                nil
+                                                                           :action_id              action-id
+                                                                           :visualization_settings {:label "Update"}}]
+                                                           :ordered_tabs []}))))
+              (is (partial= {:ordered_cards [{:action (cond-> {:visualization_settings {:hello true}
+                                                               :type (name action-type)
+                                                               :parameters [{:id "id"}]}
+                                                              (#{:query :implicit} action-type)
+                                                              (assoc :database_id (mt/id)))}]}
+                            (mt/user-http-request :crowberto :get 200 (format "dashboard/%s" dashboard-id)))))))))))
+
+(deftest add-card-parameter-mapping-permissions-test
   (testing "PUT /api/dashboard/:id/cards"
     (testing "Should check current user's data permissions for the `parameter_mapping`"
-      (do-with-update-cards-parameter-mapping-permissions-fixtures
-       (fn [{:keys [dashboard-id card-id original-mappings update-mappings! update-size! new-dashcard-info new-mappings]}]
-         (testing "Should *NOT* be allowed to update the `:parameter_mappings` without proper data permissions"
+      (do-with-add-card-parameter-mapping-permissions-fixtures
+       (fn [{:keys [card-id mappings add-card! dashcards]}]
+         (is (schema= {:message  (s/eq "You must have data permissions to add a parameter referencing the Table \"VENUES\".")
+                       s/Keyword s/Any}
+                (add-card! 403)))
+         (is (= []
+                (dashcards)))
+         (testing "Permissions for a different table in the same DB should not count"
+           (perms/grant-permissions! (perms-group/all-users) (perms/table-query-path (mt/id :categories)))
            (is (schema= {:message  (s/eq "You must have data permissions to add a parameter referencing the Table \"VENUES\".")
                          s/Keyword s/Any}
-                        (update-mappings! 403)))
-           (is (= original-mappings
-                  (db/select-one-field :parameter_mappings DashboardCard :dashboard_id dashboard-id, :card_id card-id))))
-         (testing "Changing another column should be ok even without data permissions."
-           (is (= {:status "ok"}
-                  (update-size!)))
-           (is (= (:size_x new-dashcard-info)
-                  (db/select-one-field :size_x DashboardCard :dashboard_id dashboard-id, :card_id card-id))))
-         (testing "Should be able to update `:parameter_mappings` *with* proper data permissions."
+                        (add-card! 403)))
+           (is (= []
+                  (dashcards))))
+         (testing "If they have data permissions, it should be ok"
            (perms/grant-permissions! (perms-group/all-users) (perms/table-query-path (mt/id :venues)))
-           (is (= {:status "ok"}
-                  (update-mappings! 200)))
-           (is (= new-mappings
-                  (db/select-one-field :parameter_mappings DashboardCard :dashboard_id dashboard-id, :card_id card-id)))))))))
+           (is (schema= [{:card_id            (s/eq card-id)
+                                  :parameter_mappings [(s/one
+                                                         {:parameter_id (s/eq "_CATEGORY_ID_")
+                                                          :target       (s/eq ["dimension" ["field" (mt/id :venues :category_id) nil]])
+                                                          s/Keyword     s/Any}
+                                                         "mapping")]
+                                  s/Keyword           s/Any}]
+                        (:cards (add-card! 200))))
+           (is (schema= [(s/one {:card_id            (s/eq card-id)
+                                 :parameter_mappings (s/eq mappings)
+                                 s/Keyword           s/Any}
+                                "DashboardCard")]
+                        (dashcards)))))))))
 
+(deftest adding-archived-cards-to-dashboard-is-not-allowed
+  (t2.with-temp/with-temp
+    [Dashboard {dashboard-id :id} {}
+     Card      {card-id :id}      {:archived true}]
+    (is (= "The object has been archived."
+           (:message (mt/user-http-request :rasta :put 404 (format "dashboard/%d/cards" dashboard-id)
+                                           {:cards       [{:id                     -1
+                                                           :card_id                card-id
+                                                           :row                    4
+                                                           :col                    4
+                                                           :size_x                 4
+                                                           :size_y                 4
+                                                           :parameter_mappings     [{:parameter_id "abc"
+                                                                                     :card_id 123
+                                                                                     :hash "abc"
+                                                                                     :target "foo"}]
+                                                           :visualization_settings {}}]
+                                            :ordered_tabs []}))))))
 
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                        DELETE /api/dashboard/:id/cards                                         |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-(deftest delete-cards-test
-  (testing "DELETE /api/dashboard/id/:cards"
-    ;; fetch a dashboard WITH a dashboard card on it
-    (mt/with-temp* [Dashboard           [{dashboard-id :id}]
-                    Card                [{card-id :id}]
-                    Card                [{series-id-1 :id}]
-                    Card                [{series-id-2 :id}]
-                    DashboardCard       [{dashcard-id :id} {:dashboard_id dashboard-id, :card_id card-id}]
-                    DashboardCardSeries [_                 {:dashboardcard_id dashcard-id, :card_id series-id-1, :position 0}]
-                    DashboardCardSeries [_                 {:dashboardcard_id dashcard-id, :card_id series-id-2, :position 1}]]
-      (with-dashboards-in-writeable-collection [dashboard-id]
-        (is (= 1
-               (count (db/select-ids DashboardCard, :dashboard_id dashboard-id))))
-        (is (= nil
-               (mt/user-http-request :rasta :delete 204
-                                     (format "dashboard/%d/cards" dashboard-id) :dashcardId dashcard-id)))
-        (is (= 0
-               (count (db/select-ids DashboardCard, :dashboard_id dashboard-id))))))))
-
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                          PUT /api/dashboard/:id/cards                                          |
-;;; +----------------------------------------------------------------------------------------------------------------+
+;;; -------------------------------------- Update dashcards only tests ---------------------------------------
 
 (deftest update-cards-test
   (testing "PUT /api/dashboard/:id/cards"
@@ -1448,9 +1787,9 @@
                 :created_at             true
                 :updated_at             true}
                (remove-ids-and-booleanize-timestamps (dashboard-card/retrieve-dashboard-card dashcard-id-2))))
-        (is (= {:status "ok"}
-               (mt/user-http-request :rasta :put 200 (format "dashboard/%d/cards" dashboard-id)
-                                     {:cards [{:id     dashcard-id-1
+        ;; TODO adds tests for return
+        (mt/user-http-request :rasta :put 200 (format "dashboard/%d/cards" dashboard-id)
+                              {:cards        [{:id     dashcard-id-1
                                                :size_x 4
                                                :size_y 2
                                                :col    0
@@ -1460,7 +1799,8 @@
                                                :size_x 1
                                                :size_y 1
                                                :col    1
-                                               :row    3}]})))
+                                               :row    3}]
+                               :ordered_tabs []})
         (is (= {:size_x                 4
                 :size_y                 2
                 :col                    0
@@ -1486,6 +1826,27 @@
                 :updated_at             true}
                (remove-ids-and-booleanize-timestamps (dashboard-card/retrieve-dashboard-card dashcard-id-2))))))))
 
+(deftest update-cards-parameter-mapping-permissions-test
+  (testing "PUT /api/dashboard/:id/cards"
+    (testing "Should check current user's data permissions for the `parameter_mapping`"
+      (do-with-update-cards-parameter-mapping-permissions-fixtures
+       (fn [{:keys [dashboard-id card-id original-mappings update-mappings! update-size! new-dashcard-info new-mappings]}]
+         (testing "Should *NOT* be allowed to update the `:parameter_mappings` without proper data permissions"
+           (is (schema= {:message  (s/eq "You must have data permissions to add a parameter referencing the Table \"VENUES\".")
+                         s/Keyword s/Any}
+                        (update-mappings! 403)))
+           (is (= original-mappings
+                  (t2/select-one-fn :parameter_mappings DashboardCard :dashboard_id dashboard-id, :card_id card-id))))
+         (testing "Changing another column should be ok even without data permissions."
+           (update-size!)
+           (is (= (:size_x new-dashcard-info)
+                  (t2/select-one-fn :size_x DashboardCard :dashboard_id dashboard-id, :card_id card-id))))
+         (testing "Should be able to update `:parameter_mappings` *with* proper data permissions."
+           (perms/grant-permissions! (perms-group/all-users) (perms/table-query-path (mt/id :venues)))
+           (update-mappings! 200)
+           (is (= new-mappings
+                  (t2/select-one-fn :parameter_mappings DashboardCard :dashboard_id dashboard-id, :card_id card-id)))))))))
+
 (deftest update-action-cards-test
   (mt/with-actions-enabled
     (testing "PUT /api/dashboard/:id/cards"
@@ -1499,14 +1860,122 @@
                                                   :card_id model-id}]
                       DashboardCard [question-card {:dashboard_id dashboard-id, :card_id model-id}]]
         (with-dashboards-in-writeable-collection [dashboard-id]
-          (is (= {:status "ok"}
-                 (mt/user-http-request :rasta :put 200 (format "dashboard/%d/cards" dashboard-id)
+          ;; TODO adds test for return
+          (mt/user-http-request :rasta :put 200 (format "dashboard/%d/cards" dashboard-id)
                                        {:cards [(assoc action-card :card_id model-id-2)
-                                                (assoc question-card :card_id model-id-2)]})))
+                                                (assoc question-card :card_id model-id-2)]
+                                        :ordered_tabs []})
           ;; Only action card should change
           (is (partial= [{:card_id model-id-2}
                          {:card_id model-id}]
-                        (db/select DashboardCard :dashboard_id dashboard-id {:order-by [:id]}))))))))
+                        (t2/select DashboardCard :dashboard_id dashboard-id {:order-by [:id]}))))))))
+
+(deftest update-tabs-test
+  (with-simple-dashboard-with-tabs [{:keys [dashboard-id dashtab-id-1 dashtab-id-2]}]
+    (testing "change tab name and change the position"
+      (is (=? [{:id       dashtab-id-2
+                :name     "Tab 2"}
+               {:id       dashtab-id-1
+                :name     "Tab 1 edited"}]
+              (:ordered_tabs (mt/user-http-request :crowberto :put 200 (format "dashboard/%d/cards" dashboard-id)
+                                                   {:ordered_tabs [{:id   dashtab-id-2
+                                                                    :name "Tab 2"}
+                                                                   {:id   dashtab-id-1
+                                                                    :name "Tab 1 edited"}]
+                                                    :cards (current-cards dashboard-id)})))))))
+
+;;; -------------------------------------- Delete dashcards tests ---------------------------------------
+
+(deftest delete-cards-test
+  (testing "PUT /api/dashboard/id/:cards to delete"
+    (testing "partial delete"
+      ;; fetch a dashboard WITH a dashboard card on it
+      (mt/with-temp* [Dashboard           [{dashboard-id :id}]
+                      Card                [{card-id :id}]
+                      Card                [{series-id-1 :id}]
+                      Card                [{series-id-2 :id}]
+                      DashboardCard       [{dashcard-id-1 :id}  {:dashboard_id dashboard-id, :card_id card-id}]
+                      DashboardCard       [{_dashcard-id-2 :id} {:dashboard_id dashboard-id, :card_id card-id}]
+                      DashboardCard       [{dashcard-id-3 :id}  {:dashboard_id dashboard-id, :card_id card-id}]
+                      DashboardCardSeries [_                    {:dashboardcard_id dashcard-id-1, :card_id series-id-1, :position 0}]
+                      DashboardCardSeries [_                    {:dashboardcard_id dashcard-id-1, :card_id series-id-2, :position 1}]
+                      DashboardCardSeries [_                    {:dashboardcard_id dashcard-id-3, :card_id series-id-1, :position 0}]]
+        (with-dashboards-in-writeable-collection [dashboard-id]
+          (is (= 3
+                 (count (t2/select-pks-set DashboardCard, :dashboard_id dashboard-id))))
+          (is (=? {:cards [{:id     dashcard-id-3
+                            :series [{:id series-id-1}]}]
+                   :ordered_tabs  []}
+                  (mt/user-http-request :rasta :put 200
+                                        (format "dashboard/%d/cards" dashboard-id) {:cards [(dashcard-like-response dashcard-id-3)]
+                                                                                    :ordered_tabs []})))
+          (is (= 1
+                 (count (t2/select-pks-set DashboardCard, :dashboard_id dashboard-id)))))))
+    (testing "prune"
+      (mt/with-temp* [Dashboard           [{dashboard-id :id}]
+                      Card                [{card-id :id}]
+                      DashboardCard       [_ {:dashboard_id dashboard-id, :card_id card-id}]
+                      DashboardCard       [_ {:dashboard_id dashboard-id, :card_id card-id}]]
+        (with-dashboards-in-writeable-collection [dashboard-id]
+          (is (= 2
+                 (count (t2/select-pks-set DashboardCard, :dashboard_id dashboard-id))))
+          (is (=? {:ordered_tabs []
+                   :cards        []}
+                  (mt/user-http-request :rasta :put 200
+                                        (format "dashboard/%d/cards" dashboard-id) {:cards [] :ordered_tabs []})))
+          (is (= 0
+                 (count (t2/select-pks-set DashboardCard, :dashboard_id dashboard-id)))))))))
+
+(deftest delete-tabs-test
+  (testing "PUT /api/dashboard/id/:cards to delete"
+    (testing "partial delete"
+      (with-simple-dashboard-with-tabs [{:keys [dashboard-id dashtab-id-1 dashtab-id-2]}]
+        (testing "we have 2 tabs, each has 1 card to begin with"
+          (is (= 2
+                 (t2/count DashboardCard, :dashboard_id dashboard-id)))
+          (is (= 2
+                 (t2/count :model/DashboardTab :dashboard_id dashboard-id))))
+        (is (=? {:ordered_tabs [{:id dashtab-id-1}]}
+                (mt/user-http-request :rasta :put 200
+                                      (format "dashboard/%d/cards" dashboard-id)
+                                      {:ordered_tabs [(t2/select-one :model/DashboardTab :id dashtab-id-1)]
+                                       :cards (remove #(= (:dashboard_tab_id %) dashtab-id-2) (current-cards dashboard-id))})))
+        (testing "deteted 1 tab, we should have"
+          (testing "1 card left"
+            (is (= 1
+                   (t2/count DashboardCard :dashboard_id dashboard-id))))
+          (testing "1 tab left"
+            (is (= 1
+                   (t2/count :model/DashboardTab :dashboard_id dashboard-id)))))))
+    (testing "prune"
+      (with-simple-dashboard-with-tabs [{:keys [dashboard-id dashtab-id-2]}]
+        (testing "we have 2 tabs, each has 1 card to begin with"
+          (is (= 2
+                 (t2/count DashboardCard, :dashboard_id dashboard-id)))
+          (is (= 2
+                 (t2/count :model/DashboardTab :dashboard_id dashboard-id))))
+        (is (=? {:ordered_tabs  []
+                 :cards []}
+                (mt/user-http-request :rasta :put 200
+                                      (format "dashboard/%d/cards" dashboard-id)
+                                      {:ordered_tabs []
+                                       :cards (remove #(= (:dashboard_tab_id %) dashtab-id-2) (current-cards dashboard-id))})))
+        (testing "dashboard should be empty"
+          (testing "0 card left"
+            (is (= 0
+                   (t2/count DashboardCard :dashboard_id dashboard-id))))
+          (testing "0 tab left"
+            (is (= 0
+                   (t2/count :model/DashboardTab :dashboard_id dashboard-id)))))))))
+
+(deftest classify-changes-test
+  (testing "classify correctly"
+    (is (= {:to-update [{:id 2 :name "c3"} {:id 4 :name "c4"}]
+            :to-delete [{:id 1 :name "c1"} {:id 3 :name "c3"}]
+            :to-create [{:id -1 :name "-c1"}]}
+           (#'api.dashboard/classify-changes
+             [{:id 1 :name "c1"}   {:id 2 :name "c2"} {:id 3 :name "c3"} {:id 4 :name "c4"}]
+             [{:id -1 :name "-c1"} {:id 2 :name "c3"} {:id 4 :name "c4"}])))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        GET /api/dashboard/:id/revisions                                        |
@@ -1641,7 +2110,7 @@
       (mt/with-temp Dashboard [dashboard]
         (let [{uuid :uuid} (mt/user-http-request :crowberto :post 200
                                                  (format "dashboard/%d/public_link" (u/the-id dashboard)))]
-          (is (db/exists? Dashboard :id (u/the-id dashboard), :public_uuid uuid))
+          (is (t2/exists? Dashboard :id (u/the-id dashboard), :public_uuid uuid))
           (testing "Test that if a Dashboard has already been shared we reuse the existing UUID"
             (is (= uuid
                    (:uuid (mt/user-http-request :crowberto :post 200
@@ -1668,7 +2137,7 @@
         (mt/with-temp Dashboard [dashboard (shared-dashboard)]
           (mt/user-http-request :crowberto :delete 204 (format "dashboard/%d/public_link" (u/the-id dashboard)))
           (is (= false
-                 (db/exists? Dashboard :id (u/the-id dashboard), :public_uuid (:public_uuid dashboard))))))
+                 (t2/exists? Dashboard :id (u/the-id dashboard), :public_uuid (:public_uuid dashboard))))))
 
       (testing "Test that we *cannot* unshare a Dashboard if we are not admins"
         (mt/with-temp Dashboard [dashboard (shared-dashboard)]
@@ -1941,6 +2410,24 @@
                          query)
                     query-params))
 
+(deftest dashboard-chain-filter-permissions-test
+  (with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
+    (let [url (chain-filter-values-url dashboard (:category-name param-keys))]
+      (testing (str "\nGET /api/" url "\n")
+        (testing "\nShow me names of categories that have expensive venues (price = 4), while I lack permisisons."
+          (with-redefs [metabase.models.params.chain-filter/use-cached-field-values? (constantly false)]
+            (binding [qp.perms/*card-id* nil] ;; this situation was observed when running constrained chain filters.
+              (is (= {:values ["African" "American" "Artisan" "Asian"] :has_more_values false}
+                     (chain-filter-test/take-n-values 4 (mt/user-http-request :rasta :get 200 url)))))))))
+
+    (let [url (chain-filter-values-url dashboard (:category-name param-keys) (:price param-keys) 4)]
+      (testing (str "\nGET /api/" url "\n")
+        (testing "\nShow me names of categories that have expensive venues (price = 4), while I lack permisisons."
+          (with-redefs [chain-filter/use-cached-field-values? (constantly false)]
+            (binding [qp.perms/*card-id* nil]
+              (is (= {:values ["Japanese" "Steakhouse"], :has_more_values false}
+                     (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 url)))))))))))
+
 (deftest dashboard-chain-filter-test
   (testing "GET /api/dashboard/:id/params/:param-key/values"
     (with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
@@ -1983,19 +2470,33 @@
                                                        (assoc  :card_id (:id card-2)))]]
           (is (= {:values          ["African" "American" "Artisan"]
                   :has_more_values false}
-                 (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 (chain-filter-values-url
-                                                                                           (:id dashboard)
-                                                                                           (:category-name param-keys)))))))))
+                 (->> (chain-filter-values-url (:id dashboard) (:category-name param-keys))
+                      (mt/user-http-request :rasta :get 200)
+                      (chain-filter-test/take-n-values 3)))))))
+
     (testing "should check perms for the Fields in question"
       (mt/with-temp-copy-of-db
         (with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
           (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
+
           ;; HACK: we currently 403 on chain-filter calls that require running a MBQL
           ;; but 200 on calls that we could just use the cache.
           ;; It's not ideal and we definitely need to have a consistent behavior
           (with-redefs [field-values/field-should-have-field-values? (fn [_] false)]
-            (is (= "You don't have permissions to do that."
-                   (mt/user-http-request :rasta :get 403 (chain-filter-values-url (:id dashboard) (:category-name param-keys)))))))))))
+            (is (= {:values ["African" "American" "Artisan"]
+                    :has_more_values false}
+                   (->> (chain-filter-values-url (:id dashboard) (:category-name param-keys))
+                        (mt/user-http-request :rasta :get 200)
+                        (chain-filter-test/take-n-values 3))))))))
+
+    (testing "missing data perms should not affect perms for the Fields in question when users have collection access"
+      (mt/with-temp-copy-of-db
+        (with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
+          (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
+          (is (= {:values ["African" "American" "Artisan"] :has_more_values false}
+                 (->> (chain-filter-values-url (:id dashboard) (:category-name param-keys))
+                      (mt/user-http-request :rasta :get 200)
+                      (chain-filter-test/take-n-values 3)))))))))
 
 (deftest dashboard-with-static-list-parameters-test
   (testing "A dashboard that has parameters that has static values"
@@ -2076,10 +2577,10 @@
         (let [metadata (-> (qp/process-query (:dataset_query native-card))
                            :data :results_metadata :columns)]
           (is (seq metadata) "Did not get metadata")
-          (db/update-where! 'Card {:id model-id}
-                            :result_metadata (json/generate-string
-                                              (assoc-in metadata [0 :id]
-                                                        (mt/id :products :category)))))
+          (t2/update! 'Card {:id model-id}
+                      {:result_metadata (json/generate-string
+                                         (assoc-in metadata [0 :id]
+                                                    (mt/id :products :category)))}))
         ;; ...so instead we create a question on top of this model (note that
         ;; metadata must be present on the model) and use the question on the
         ;; dashboard.
@@ -2157,12 +2658,12 @@
   (testing "GET /api/dashboard/:id/params/:param-key/values"
     (testing "If some Dashboard parameters do not have valid Field IDs, we should ignore them"
       (with-chain-filter-fixtures [{:keys [dashcard card dashboard]}]
-        (db/update! DashboardCard (:id dashcard)
-          :parameter_mappings [{:parameter_id "_CATEGORY_NAME_"
-                                :card_id      (:id card)
-                                :target       [:dimension (mt/$ids venues $category_id->categories.name)]}
-                               {:parameter_id "_PRICE_"
-                                :card_id      (:id card)}])
+        (t2/update! DashboardCard (:id dashcard)
+                    {:parameter_mappings [{:parameter_id "_CATEGORY_NAME_"
+                                           :card_id      (:id card)
+                                           :target       [:dimension (mt/$ids venues $category_id->categories.name)]}
+                                          {:parameter_id "_PRICE_"
+                                           :card_id      (:id card)}]})
         (testing "Since the _PRICE_ param is not mapped to a valid Field, it should get ignored"
           (let-url [url (chain-filter-values-url dashboard "_CATEGORY_NAME_" "_PRICE_" 4)]
             (is (= {:values          ["African" "American" "Artisan"]
@@ -2233,7 +2734,7 @@
 (deftest chain-filter-should-use-cached-field-values-test
   (testing "Chain filter endpoints should use cached FieldValues if applicable (#13832)"
     ;; ignore the cache entries added by #23699
-    (mt/with-temp-vals-in-db FieldValues (db/select-one-id FieldValues :field_id (mt/id :categories :name) :hash_key nil) {:values ["Good" "Bad"]}
+    (mt/with-temp-vals-in-db FieldValues (t2/select-one-pk FieldValues :field_id (mt/id :categories :name) :hash_key nil) {:values ["Good" "Bad"]}
       (with-chain-filter-fixtures [{:keys [dashboard]}]
         (testing "GET /api/dashboard/:id/params/:param-key/values"
           (let-url [url (chain-filter-values-url dashboard "_CATEGORY_NAME_")]
@@ -2340,9 +2841,10 @@
       ;; card with agggregation and binning columns
       [Card [{mbql-card-id :id}
              (merge (mt/card-with-source-metadata-for-query
-                      (mt/mbql-query venues {:limit 5
-                                             :aggregation [:count]
-                                             :breakout [[:field %latitude {:binning {:strategy :num-bins :num-bins 10}}]]}))
+                      (mt/mbql-query venues
+                        {:limit 5
+                         :aggregation [:count]
+                         :breakout [[:field %latitude {:binning {:strategy :num-bins :num-bins 10}}]]}))
                     {:name        "MBQL question"
                      :database_id (mt/id)
                      :table_id    (mt/id :venues)})]
@@ -2555,31 +3057,6 @@
             (is (= ["MS" "Organic" "Gizmo" 0 16 42] (nth rows 445)))
             (is (= [nil nil nil 7 18760 69540] (last rows)))))))))
 
-(deftest dashcard-action-create-update-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :actions)
-    (mt/with-actions-test-data-and-actions-enabled
-      (doseq [action-type [:http :implicit :query]]
-        (mt/with-actions [{:keys [action-id]} {:type action-type :visualization_settings {:hello true}}]
-          (testing (str "Creating dashcard with action: " action-type)
-            (mt/with-temp* [Dashboard [{dashboard-id :id}]]
-              (is (partial= {:visualization_settings {:label "Update"}
-                             :action_id              action-id
-                             :card_id                nil}
-                            (mt/user-http-request :crowberto :post 200 (format "dashboard/%s/cards" dashboard-id)
-                                                  {:size_x                 1
-                                                   :size_y                 1
-                                                   :row                    1
-                                                   :col                    1
-                                                   :cardId                 nil
-                                                   :action_id              action-id
-                                                   :visualization_settings {:label "Update"}})))
-              (is (partial= {:ordered_cards [{:action (cond-> {:visualization_settings {:hello true}
-                                                               :type (name action-type)
-                                                               :parameters [{:id "id"}]}
-                                                              (#{:query :implicit} action-type)
-                                                              (assoc :database_id (mt/id)))}]}
-                            (mt/user-http-request :crowberto :get 200 (format "dashboard/%s" dashboard-id)))))))))))
-
 (defn- has-valid-action-execution-error-message? [response]
   (string? (:message response)))
 
@@ -2626,7 +3103,17 @@
               (testing "Sending an invalid number should fail gracefully"
                 (is (has-valid-action-execution-error-message?
                      (mt/user-http-request :crowberto :post 500 execute-path
-                                           {:parameters {"id" "BAD"}})))))))))))
+                                           {:parameters {"id" "BAD"}}))))
+              (testing "should send a snowplow event"
+                (snowplow-test/with-fake-snowplow-collector
+                  (mt/user-http-request :crowberto :post 200 execute-path
+                                        {:parameters {"id" 1}})
+                  (is (= {:data {"action_id" action-id
+                                 "event"     "action_executed"
+                                 "source"    "dashboard"
+                                 "type"      "query"}
+                          :user-id (str (mt/user->id :crowberto))}
+                         (last (snowplow-test/pop-event-data-and-user-id!)))))))))))))
 
 (deftest dashcard-http-action-execution-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
@@ -2680,7 +3167,7 @@
                 (is (partial= {:name "Birds"}
                               new-row)))
               (testing "Extra parameter should fail gracefully"
-                (is (partial= {:message "No destination parameter found for #{\"extra\"}. Found: #{\"id\" \"name\"}"}
+                (is (partial= {:message "No destination parameter found for #{\"extra\"}. Found: #{\"name\"}"}
                               (mt/user-http-request :crowberto :post 400 execute-path
                                                     {:parameters {"extra" 1}}))))
               (testing "Missing other parameters should fail gracefully"
@@ -2826,20 +3313,25 @@
                        (:cause
                         (mt/user-http-request :crowberto :post 400 execute-path
                                               {:parameters {"name" "Birds"}})))))
-              (testing "Without read rights on the DB"
+              ;; Actions cannot run with access to the DB blocked, which is an enterprise feature.  See tests in
+              ;; enterprise/backend/test/metabase_enterprise/advanced_permissions/common_test.clj and at the bottom of
+              ;; this file
+              (testing "Works without read rights on the DB (but access not blocked)"
                 (perms/revoke-data-perms! (perms-group/all-users) (mt/db))
                 (mt/with-actions-enabled
-                  (is (partial= {:message "You do not have permissions to run this query."}
-                                (mt/user-http-request :rasta :post 403 execute-path
-                                                      {:parameters {"name" "Birds"}})))))
-              (testing "With execute rights on the DB"
+                  (is (contains? #{{:ID 76, :NAME "Birds"}
+                                   {:id 76, :name "Birds"}}
+                                 (-> (mt/user-http-request :rasta :post 200 execute-path
+                                                           {:parameters {"name" "Birds"}})
+                                     :created-row)))))
+              (testing "Works with execute rights on the DB"
                 (perms/grant-full-data-permissions! (perms-group/all-users) (mt/db))
                 (try
                   (mt/with-actions-enabled
-                    (is (contains? #{{:ID 76, :NAME "Birds"}
-                                     {:id 76, :name "Birds"}}
+                    (is (contains? #{{:ID 77, :NAME "Avians"}
+                                     {:id 77, :name "Avians"}}
                                    (-> (mt/user-http-request :rasta :post 200 execute-path
-                                                             {:parameters {"name" "Birds"}})
+                                                             {:parameters {"name" "Avians"}})
                                        :created-row))))
                   (finally
                     (perms/revoke-data-perms! (perms-group/all-users) (mt/db))))))))))))
@@ -2856,26 +3348,29 @@
             (let [execute-path (format "dashboard/%s/dashcard/%s/execute"
                                        dashboard-id
                                        dashcard-id)]
-              (testing "Without actions enabled"
+              (testing "Fails with actions disabled"
                 (is (= "Actions are not enabled."
                        (:cause
                         (mt/user-http-request :crowberto :post 400 execute-path
                                               {:parameters {"id" 1}})))))
-              (testing "Without read rights on the DB"
-                (perms/revoke-data-perms! (perms-group/all-users) (mt/db))
-                (mt/with-actions-enabled
-                  (is (partial= {:message "You don't have permissions to do that."}
-                                (mt/user-http-request :rasta :post 403 execute-path
-                                                      {:parameters {"id" 1}})))))
-              (testing "With read rights on the DB"
-                (perms/grant-full-data-permissions! (perms-group/all-users) (mt/db))
+              ;; Actions cannot run with access to the DB blocked, which is an enterprise feature.  See tests in
+              ;; enterprise/backend/test/metabase_enterprise/advanced_permissions/common_test.clj and at the bottom of
+              ;; this file.
+              (testing "Works with read rights on the DB"
+                (perms/grant-permissions-for-all-schemas! (perms-group/all-users) (mt/db))
                 (try
                   (mt/with-actions-enabled
                     (is (= {:rows-affected 1}
                            (mt/user-http-request :rasta :post 200 execute-path
                                                  {:parameters {"id" 1}}))))
                   (finally
-                    (perms/revoke-data-perms! (perms-group/all-users) (mt/db))))))))))))
+                    (perms/revoke-data-perms! (perms-group/all-users) (mt/db)))))
+              (testing "Works with no particular permissions"
+                (perms/revoke-data-perms! (perms-group/all-users) (mt/db))
+                (mt/with-actions-enabled
+                  (is (= {:rows-affected 1}
+                         (mt/user-http-request :rasta :post 200 execute-path
+                                               {:parameters {"id" 1}}))))))))))))
 
 (deftest dashcard-execution-fetch-prefill-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
@@ -2920,53 +3415,52 @@
                 (is (partial= {:message "No destination parameter found for #{\"price\"}. Found: #{\"id\" \"name\"}"}
                               (mt/user-http-request :crowberto :post 400 execute-path {:parameters {"id" 1 "name" "Blueberries" "price" 1234}})))))))))))
 
-;; Not relevant for 46; uncomment and make work for 47
-(comment
-  (defn- ee-features-enabled? []
-    (u/ignore-exceptions
-      (classloader/require 'metabase-enterprise.advanced-permissions.models.permissions)
-      (some? (resolve 'metabase-enterprise.advanced-permissions.models.permissions/update-db-execute-permissions!))))
+(defn- ee-features-enabled? []
+  (u/ignore-exceptions
+    (classloader/require 'metabase-enterprise.advanced-permissions.models.permissions)
+    (some? (resolve 'metabase-enterprise.advanced-permissions.models.permissions/update-db-execute-permissions!))))
 
-  (deftest dashcard-action-execution-granular-auth-test
-    (when (ee-features-enabled?)
-        (mt/with-temp-copy-of-db
-          (mt/with-actions-test-data-and-actions-enabled
-            (mt/with-actions [{:keys [action-id model-id]} {}]
-              (testing "Executing dashcard with action"
-                (mt/with-temp* [Dashboard [{dashboard-id :id}]
-                                DashboardCard [{dashcard-id :id}
-                                               {:dashboard_id dashboard-id
-                                                :action_id action-id
-                                                :card_id model-id}]]
-                  (let [execute-path (format "dashboard/%s/dashcard/%s/execute"
-                                             dashboard-id
-                                             dashcard-id)]
-                    (testing "with :advanced-permissions feature flag"
-                      (premium-features-test/with-premium-features #{:advanced-permissions}
-                        (testing "for non-magic group"
-                          (mt/with-temp* [PermissionsGroup [{group-id :id}]
-                                          PermissionsGroupMembership [_ {:user_id  (mt/user->id :rasta)
-                                                                         :group_id group-id}]]
-                            (is (partial= {:message "You don't have permissions to do that."}
-                                          (mt/user-http-request :rasta :post 403 execute-path
-                                                                {:parameters {"id" 1}}))
-                                "Execution permission should be required")
-                            (mt/user-http-request
-                             :crowberto :put 200 "permissions/execution/graph"
-                             (assoc-in (perms/execution-perms-graph) [:groups group-id (mt/id)] :all))
-                            (is (= :all
-                                   (get-in (perms/execution-perms-graph) [:groups group-id (mt/id)]))
-                                "Should be able to set execution permission")
-                            (is (= {:rows-affected 1}
-                                   (mt/user-http-request :rasta :post 200 execute-path
-                                                         {:parameters {"id" 1}}))
-                                "Execution and data permissions should be enough")
+(deftest dashcard-action-execution-granular-auth-test
+  (when (ee-features-enabled?)
+    (mt/with-temp-copy-of-db
+      (mt/with-actions-test-data-and-actions-enabled
+        (mt/with-actions [{:keys [action-id model-id]} {}]
+          (testing "Executing dashcard with action"
+            (mt/with-temp* [Dashboard [{dashboard-id :id}]
+                            DashboardCard [{dashcard-id :id}
+                                           {:dashboard_id dashboard-id
+                                            :action_id action-id
+                                            :card_id model-id}]]
+              (let [execute-path (format "dashboard/%s/dashcard/%s/execute"
+                                         dashboard-id
+                                         dashcard-id)]
+                (testing "with :advanced-permissions feature flag"
+                  (premium-features-test/with-premium-features #{:advanced-permissions}
+                    (testing "for non-magic group"
+                      (mt/with-temp* [PermissionsGroup [{group-id :id}]
+                                      PermissionsGroupMembership [_ {:user_id  (mt/user->id :rasta)
+                                                                     :group_id group-id}]]
+                        (comment ;; We do not currently support /execute/ permission
+                          (is (partial= {:message "You don't have permissions to do that."}
+                                        (mt/user-http-request :rasta :post 403 execute-path
+                                                              {:parameters {"id" 1}}))
+                              "Execution permission should be required"))
+                        (mt/user-http-request
+                         :crowberto :put 200 "permissions/execution/graph"
+                         (assoc-in (perms/execution-perms-graph) [:groups group-id (mt/id)] :all))
+                        (is (= :all
+                               (get-in (perms/execution-perms-graph) [:groups group-id (mt/id)]))
+                            "Should be able to set execution permission")
+                        (is (= {:rows-affected 1}
+                               (mt/user-http-request :rasta :post 200 execute-path
+                                                     {:parameters {"id" 1}}))
+                            "Execution and data permissions should be enough")
 
-                            (perms/update-data-perms-graph! [group-id (mt/id) :data]
-                                                            {:schemas :block})
-                            (perms/update-data-perms-graph! [(:id (perms-group/all-users)) (mt/id) :data]
-                                                            {:schemas :block})
-                            (is (partial= {:message "You don't have permissions to do that."}
-                                          (mt/user-http-request :rasta :post 403 execute-path
-                                                                {:parameters {"id" 1}}))
-                                "Data permissions should be required"))))))))))))))
+                        (perms/update-data-perms-graph! [group-id (mt/id) :data]
+                                                        {:schemas :block})
+                        (perms/update-data-perms-graph! [(:id (perms-group/all-users)) (mt/id) :data]
+                                                        {:schemas :block})
+                        (is (partial= {:message "You don't have permissions to do that."}
+                                      (mt/user-http-request :rasta :post 403 execute-path
+                                                            {:parameters {"id" 1}}))
+                            "Data permissions should be required")))))))))))))

@@ -249,7 +249,9 @@ const EngineEmptyState = ({ isHosted }: EngineEmptyStateProps): JSX.Element => {
         <EngineEmptyText>{jt`Don’t see your database? Check out our ${(
           <ExternalLink
             key="link"
-            href={MetabaseSettings.docsUrl("developers-guide-drivers")}
+            href={MetabaseSettings.docsUrl(
+              "developers-guide/partner-and-community-drivers",
+            )}
           >
             {t`Community Drivers`}
           </ExternalLink>
@@ -339,4 +341,5 @@ const getActiveIndex = (
   }
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default DatabaseEngineWidget;

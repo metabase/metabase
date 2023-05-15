@@ -112,8 +112,10 @@
   [url respond]
   (with-open [^BufferedReader reader (if-let [resource (io/resource url)]
                                        (io/reader resource)
-                                       (:body (http/get url {:as                :reader
-                                                             :redirect-strategy :none})))
+                                       (:body (http/get url {:as                 :reader
+                                                             :redirect-strategy  :none
+                                                             :socket-timeout     8000
+                                                             :connection-timeout 8000})))
               is                     (ReaderInputStream. reader)]
     (respond (-> (response/response is)
                  (response/content-type "application/json")))))

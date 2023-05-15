@@ -6,12 +6,12 @@
   explicitly excluded, or has the :entity_id property."
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
+   [metabase-enterprise.serialization.v2.seed-entity-ids :as v2.seed-entity-ids]
    [metabase.db.data-migrations]
    [metabase.models]
-   [metabase.models.interface :as mi]
    [metabase.models.revision-test]
-   [metabase.models.serialization.hash :as serdes.hash]
-   [toucan.models :as models]))
+   [metabase.models.serialization :as serdes]))
 
 (set! *warn-on-reflection* true)
 
@@ -22,9 +22,9 @@
 (def ^:private entities-external-name
   "Entities with external names, so they don't need a generated entity_id."
   #{;; Databases have external names based on their URLs; tables are nested under databases; fields under tables.
-    :metabase.models.database/Database
-    :metabase.models.table/Table
-    :metabase.models.field/Field
+    :model/Database
+    :model/Table
+    :model/Field
     ;; Settings have human-selected unique names.
     :metabase.models.setting/Setting})
 
@@ -45,7 +45,7 @@
     :metabase.models.bookmark/DashboardBookmark
     :metabase.models.collection.root/RootCollection
     :metabase.models.collection-permission-graph-revision/CollectionPermissionGraphRevision
-    :metabase.models.dashboard-card-series/DashboardCardSeries
+    :model/DashboardCardSeries
     :metabase.models.field-values/FieldValues
     :metabase.models.login-history/LoginHistory
     :metabase.models.metric-important-field/MetricImportantField
@@ -73,20 +73,19 @@
     :metabase-enterprise.sandbox.models.group-table-access-policy/GroupTableAccessPolicy})
 
 (deftest ^:parallel comprehensive-entity-id-test
-  (doseq [model (->> (descendants :toucan1/model)
+  (doseq [model (->> (v2.seed-entity-ids/toucan-models)
                      (remove entities-not-exported)
                      (remove entities-external-name))]
     (testing (format (str "Model %s should either: have the ::mi/entity-id property, or be explicitly listed as having "
                           "an external name, or explicitly listed as excluded from serialization")
                      model)
-      (is (contains? (set (keys (models/properties model)))
-                     ::mi/entity-id)))))
+      (is (true? (serdes.backfill/has-entity-id? model))))))
 
 (deftest ^:parallel comprehensive-identity-hash-test
-  (doseq [model (->> (descendants :toucan1/model)
+  (doseq [model (->> (v2.seed-entity-ids/toucan-models)
                      (remove entities-not-exported))]
     (testing (format "Model %s should implement identity-hash-fields" model)
       (is (some? (try
-                   (serdes.hash/identity-hash-fields model)
+                   (serdes/hash-fields model)
                    (catch java.lang.IllegalArgumentException _
                      nil)))))))

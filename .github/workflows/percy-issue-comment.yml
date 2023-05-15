@@ -69,7 +69,7 @@ jobs:
 
       - name: Prepare cypress environment
         uses: ./.github/actions/prepare-cypress
-      - run: ./bin/build
+      - run: ./bin/build.sh
       - name: Get the version info
         run: |
           jar xf target/uberjar/metabase.jar version.properties

@@ -1,11 +1,12 @@
 import _ from "underscore";
 import moment from "moment-timezone";
 import { assoc } from "icepick";
-import inflection from "inflection";
 import { t, ngettext, msgid } from "ttag";
 
 import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 import { parseTimestamp } from "metabase/lib/time";
+
+import * as Lib from "metabase-lib";
 
 import { FieldDimension } from "metabase-lib/Dimension";
 
@@ -121,10 +122,10 @@ export function generateTimeFilterValuesDescriptions(filter) {
 
   if (operator === "time-interval") {
     const [n, unit] = values;
-    return generateTimeIntervalDescription(n, unit);
+    return [Lib.describeTemporalInterval(n, unit)];
   } else if (isStartingFrom(filter)) {
     const [interval, unit] = getRelativeDatetimeInterval(filter);
-    const [prefix] = generateTimeIntervalDescription(interval, unit);
+    const prefix = Lib.describeTemporalInterval(interval, unit);
     const startingFrom = getStartingFrom(filter);
     if (!startingFrom) {
       return [prefix];
@@ -139,47 +140,7 @@ export function generateTimeFilterValuesDescriptions(filter) {
   }
 }
 
-export function generateTimeIntervalDescription(n, unit) {
-  if (unit === "day") {
-    switch (n) {
-      case "current":
-      case 0:
-        return [t`Today`];
-      case "next":
-      case 1:
-        return [t`Tomorrow`];
-      case "last":
-      case -1:
-        return [t`Yesterday`];
-    }
-  }
-
-  if (!unit && n === 0) {
-    return t`Today`;
-  } // ['relative-datetime', 'current'] is a legal MBQL form but has no unit
-
-  switch (n) {
-    case "current":
-    case 0:
-      return [t`This ${formatBucketing(unit)}`];
-    case "next":
-    case 1:
-      return [t`Next ${formatBucketing(unit)}`];
-    case "last":
-    case -1:
-      return [t`Previous ${formatBucketing(unit)}`];
-  }
-
-  if (n < 0) {
-    return [t`Previous ${-n} ${formatBucketing(unit, -n)}`];
-  } else if (n > 0) {
-    return [t`Next ${n} ${formatBucketing(unit, n)}`];
-  } else {
-    return [t`This ${formatBucketing(unit)}`];
-  }
-}
-
-export function generateTimeValueDescription(value, bucketing, isExclude) {
+function generateTimeValueDescription(value, bucketing, isExclude) {
   if (typeof value === "number" && bucketing === "hour-of-day") {
     return moment().hour(value).format("h A");
   } else if (typeof value === "string") {
@@ -192,82 +153,20 @@ export function generateTimeValueDescription(value, bucketing, isExclude) {
       return m.format("MMMM D, YYYY");
     }
   } else if (isRelativeDatetime(value)) {
-    let n = value[1];
-    let unit = value[2];
+    let [n, unit] = value;
 
     if (n === "current") {
       n = 0;
       unit = bucketing;
     }
 
-    if (bucketing === unit) {
-      return generateTimeIntervalDescription(n, unit);
-    } else {
-      // FIXME: what to do if the bucketing and unit don't match?
-      if (n === 0) {
-        return t`Now`;
-      } else {
-        return n < 0
-          ? t`${-n} ${formatBucketing(unit, -n).toLowerCase()} ago`
-          : t`${n} ${formatBucketing(unit, n).toLowerCase()} from now`;
-      }
-    }
+    return bucketing === unit
+      ? Lib.describeTemporalInterval(n, unit)
+      : Lib.describeRelativeDatetime(n, unit);
   } else {
     console.warn("Unknown datetime format", value);
     return `[${t`Unknown`}]`;
   }
-}
-
-export function formatBucketing(bucketing = "", n = 1) {
-  if (!bucketing) {
-    return "";
-  }
-
-  // ngettext requires all plural messages to have an argument
-  const arg = "";
-
-  switch (bucketing) {
-    case "default":
-      return ngettext(msgid`Default period${arg}`, `Default periods${arg}`, n);
-    case "minute":
-      return ngettext(msgid`Minute${arg}`, `Minutes${arg}`, n);
-    case "hour":
-      return ngettext(msgid`Hour${arg}`, `Hours${arg}`, n);
-    case "day":
-      return ngettext(msgid`Day${arg}`, `Days${arg}`, n);
-    case "week":
-      return ngettext(msgid`Week${arg}`, `Weeks${arg}`, n);
-    case "month":
-      return ngettext(msgid`Month${arg}`, `Months${arg}`, n);
-    case "quarter":
-      return ngettext(msgid`Quarter${arg}`, `Quarters${arg}`, n);
-    case "year":
-      return ngettext(msgid`Year${arg}`, `Years${arg}`, n);
-    case "minute-of-hour":
-      return ngettext(msgid`Minute of hour${arg}`, `Minutes of hour${arg}`, n);
-    case "hour-of-day":
-      return ngettext(msgid`Hour of day${arg}`, `Hours of day${arg}`, n);
-    case "day-of-week":
-      return ngettext(msgid`Day of week${arg}`, `Days of week${arg}`, n);
-    case "day-of-month":
-      return ngettext(msgid`Day of month${arg}`, `Days of month${arg}`, n);
-    case "day-of-year":
-      return ngettext(msgid`Day of year${arg}`, `Days of year${arg}`, n);
-    case "week-of-year":
-      return ngettext(msgid`Week of year${arg}`, `Weeks of year${arg}`, n);
-    case "month-of-year":
-      return ngettext(msgid`Month of year${arg}`, `Months of year${arg}`, n);
-    case "quarter-of-year":
-      return ngettext(
-        msgid`Quarter of year${arg}`,
-        `Quarters of year${arg}`,
-        n,
-      );
-  }
-
-  const words = bucketing.split("-");
-  words[0] = inflection.capitalize(words[0]);
-  return words.join(" ");
 }
 
 export function absolute(date) {
@@ -294,29 +193,6 @@ export function parseFieldBucketing(field, defaultUnit = null) {
   return defaultUnit;
 }
 
-// returns field with temporal bucketing removed
-export function parseFieldTarget(field) {
-  const dimension = FieldDimension.parseMBQLOrWarn(field);
-  if (dimension) {
-    return dimension.withoutTemporalBucketing();
-  }
-  return field;
-}
-
-/**
- * Get the raw integer ID from a `field` clause, otherwise return the clause as-is. (TODO: Why would we want to
- * return the clause as-is?)
- */
-export function parseFieldTargetId(field) {
-  const dimension = FieldDimension.parseMBQLOrWarn(field);
-  if (dimension) {
-    if (dimension.isIntegerFieldId()) {
-      return dimension.fieldIdOrName();
-    }
-  }
-  return field;
-}
-
 // 271821 BC and 275760 AD and should be far enough in the past/future
 function max() {
   return moment(new Date(864000000000000));
@@ -330,7 +206,7 @@ export function isRelativeDatetime(value) {
   return Array.isArray(value) && value[0] === "relative-datetime";
 }
 
-export function isInterval(mbql) {
+function isInterval(mbql) {
   if (!Array.isArray(mbql)) {
     return false;
   }
@@ -394,7 +270,7 @@ export function formatStartingFrom(bucketing, n) {
   return "";
 }
 
-export function getTimeInterval(mbql) {
+function getTimeInterval(mbql) {
   if (Array.isArray(mbql) && mbql[0] === "time-interval") {
     return [mbql[1], mbql[2], mbql[3] || "day"];
   }
@@ -578,11 +454,6 @@ export const getTimeComponent = value => {
   return { hours, minutes, date };
 };
 
-export const hasTimeComponent = value => {
-  const { hours, minutes } = getTimeComponent(value);
-  return typeof hours === "number" && typeof minutes === "number";
-};
-
 export const setTimeComponent = (value, hours, minutes) => {
   const m = moment(value);
   if (!m.isValid()) {
@@ -601,6 +472,10 @@ export const setTimeComponent = (value, hours, minutes) => {
   } else {
     return m.format(DATE_FORMAT);
   }
+};
+
+const getMomentDateForSerialization = date => {
+  return date.clone().locale("en");
 };
 
 export const TIME_SELECTOR_DEFAULT_HOUR = 12;
@@ -624,7 +499,7 @@ export const EXCLUDE_OPTIONS = {
         return {
           displayName,
           value,
-          serialized: date.format("ddd"),
+          serialized: getMomentDateForSerialization(date).format("ddd"),
           test: val => value === val,
         };
       }),
@@ -645,7 +520,7 @@ export const EXCLUDE_OPTIONS = {
       return {
         displayName,
         value,
-        serialized: date.format("MMM"),
+        serialized: getMomentDateForSerialization(date).format("MMM"),
         test: value => moment(value).format("MMMM") === displayName,
       };
     };
@@ -662,7 +537,7 @@ export const EXCLUDE_OPTIONS = {
         return {
           displayName: displayName + suffix,
           value,
-          serialized: date.format("Q"),
+          serialized: getMomentDateForSerialization(date).format("Q"),
           test: value => moment(value).format("Qo") === displayName,
         };
       }),

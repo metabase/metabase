@@ -32,7 +32,7 @@ export const DataPointTableHeader = styled.thead<DataPointTableHeaderProps>`
 `;
 
 export const DataPointTableBody = styled.tbody`
-  border-top: 1px solid ${darken("text-medium", 0.55)};
+  border-top: 1px solid ${darken("bg-dark", 0.55)};
 
   &:before {
     ${tableRowSpacingStyle}

@@ -1,14 +1,17 @@
 import _ from "underscore";
 
-import { Parameter, ParameterValuesConfig } from "metabase-types/api";
-import type { ParameterTarget } from "metabase-types/types/Parameter";
-import type { Card } from "metabase-types/types/Card";
-import type { TemplateTag } from "metabase-types/types/Query";
+import {
+  Card,
+  Parameter,
+  ParameterValuesConfig,
+  ParameterTarget,
+  TemplateTag,
+} from "metabase-types/api";
 import type { ParameterWithTarget } from "metabase-lib/parameters/types";
 import { getTemplateTagFromTarget } from "metabase-lib/parameters/utils/targets";
 import { hasParameterValue } from "metabase-lib/parameters/utils/parameter-values";
 
-export function getTemplateTagType(tag: TemplateTag) {
+function getTemplateTagType(tag: TemplateTag) {
   const { type } = tag;
   if (type === "date") {
     return "date/single";
@@ -22,9 +25,7 @@ export function getTemplateTagType(tag: TemplateTag) {
   }
 }
 
-export function getTemplateTagParameterTarget(
-  tag: TemplateTag,
-): ParameterTarget {
+function getTemplateTagParameterTarget(tag: TemplateTag): ParameterTarget {
   return tag.type === "dimension"
     ? ["dimension", ["template-tag", tag.name]]
     : ["variable", ["template-tag", tag.name]];
@@ -57,7 +58,9 @@ export function getTemplateTagParameters(
   return tags
     .filter(
       tag =>
-        tag.type != null && (tag["widget-type"] || tag.type !== "dimension"),
+        tag.type != null &&
+        ((tag["widget-type"] && tag["widget-type"] !== "none") ||
+          tag.type !== "dimension"),
     )
     .map(tag => getTemplateTagParameter(tag, parametersById[tag.id]));
 }

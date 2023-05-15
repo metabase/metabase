@@ -8,7 +8,7 @@
    [metabase.models.database :refer [Database]]
    [metabase.sync :as sync]
    [metabase.test.data :as data]
-   [metabase.test.util :as tu]
+   [metabase.test.util.random :as tu.random]
    [toucan.util.test :as tt]))
 
 (def ^:dynamic *conn*
@@ -20,7 +20,7 @@
 (defn do-with-blank-db
   "Impl for `with-blank-db` macro; prefer that to using this directly."
   [f]
-  (let [details {:db (str "mem:" (tu/random-name) ";DB_CLOSE_DELAY=10")}]
+  (let [details {:db (str "mem:" (tu.random/random-name) ";DB_CLOSE_DELAY=10")}]
     (tt/with-temp Database [db {:engine :h2, :details details}]
       (data/with-db db
         (jdbc/with-db-connection [conn (mdb.spec/spec :h2 details)]

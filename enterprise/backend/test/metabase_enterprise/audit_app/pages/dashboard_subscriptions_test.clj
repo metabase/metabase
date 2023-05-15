@@ -8,7 +8,7 @@
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (defn- dashboard-subscriptions [dashboard-name]
   (mt/with-test-user :crowberto
@@ -69,7 +69,7 @@
                                "Every hour"
                                (mt/user->id :rasta)
                                "Rasta Toucan"
-                               (db/select-one-field :created_at PulseChannel :id channel-2-id)
+                               (t2/select-one-fn :created_at PulseChannel :id channel-2-id)
                                0]
                               [dashboard-id
                                dashboard-name
@@ -81,7 +81,7 @@
                                "At 8:00 AM, on the first Tuesday of the month"
                                (mt/user->id :rasta)
                                "Rasta Toucan"
-                               (db/select-one-field :created_at PulseChannel :id channel-id)
+                               (t2/select-one-fn :created_at PulseChannel :id channel-id)
                                0]]}
                    (mt/rows+column-names
                     (dashboard-subscriptions (str/join (rest (butlast dashboard-name)))))))))))))

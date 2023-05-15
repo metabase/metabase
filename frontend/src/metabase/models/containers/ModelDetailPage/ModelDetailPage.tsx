@@ -13,7 +13,6 @@ import Actions from "metabase/entities/actions";
 import Databases from "metabase/entities/databases";
 import Questions from "metabase/entities/questions";
 import Tables from "metabase/entities/tables";
-import { getMetadata } from "metabase/selectors/metadata";
 import title from "metabase/hoc/Title";
 
 import { loadMetadataForCard } from "metabase/questions/actions";
@@ -22,7 +21,6 @@ import ModelDetailPageView from "metabase/models/components/ModelDetailPage";
 import QuestionMoveToast from "metabase/questions/components/QuestionMoveToast";
 
 import type { Card, Collection, WritebackAction } from "metabase-types/api";
-import type { Card as LegacyCardType } from "metabase-types/types/Card";
 import type { State } from "metabase-types/store";
 
 import Question from "metabase-lib/Question";
@@ -39,10 +37,6 @@ type OwnProps = {
 
 type EntityLoadersProps = {
   actions: WritebackAction[];
-  modelCard: Card;
-};
-
-type StateProps = {
   model: Question;
 };
 
@@ -54,7 +48,7 @@ type ToastOpts = {
 };
 
 type DispatchProps = {
-  loadMetadataForCard: (card: LegacyCardType) => void;
+  loadMetadataForCard: (card: Card) => void;
   fetchTableForeignKeys: (params: { id: Table["id"] }) => void;
   onChangeModel: (card: Card) => void;
   onChangeCollection: (
@@ -65,13 +59,7 @@ type DispatchProps = {
   onChangeLocation: (location: LocationDescriptor) => void;
 };
 
-type Props = OwnProps & EntityLoadersProps & StateProps & DispatchProps;
-
-function mapStateToProps(state: State, props: OwnProps & EntityLoadersProps) {
-  const metadata = getMetadata(state);
-  const model = new Question(props.modelCard, metadata);
-  return { model };
-}
+type Props = OwnProps & EntityLoadersProps & DispatchProps;
 
 const mapDispatchToProps = {
   loadMetadataForCard,
@@ -202,27 +190,21 @@ function getModelId(state: State, props: OwnProps) {
   return Urls.extractEntityId(props.params.slug);
 }
 
-function getModelDatabaseId(
-  state: State,
-  props: OwnProps & EntityLoadersProps,
-) {
-  return props.modelCard.dataset_query.database;
+function getPageTitle({ model }: Props) {
+  return model?.displayName();
 }
 
-function getPageTitle({ modelCard }: Props) {
-  return modelCard?.name;
-}
-
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
-  Questions.load({ id: getModelId, entityAlias: "modelCard" }),
-  Databases.load({ id: getModelDatabaseId, loadingAndErrorWrapper: false }),
+  Questions.load({ id: getModelId, entityAlias: "model" }),
+  Databases.loadList(),
   Actions.loadList({
     query: (state: State, props: OwnProps) => ({
       "model-id": getModelId(state, props),
     }),
   }),
-  connect<StateProps, DispatchProps, OwnProps & EntityLoadersProps, State>(
-    mapStateToProps,
+  connect<null, DispatchProps, OwnProps & EntityLoadersProps, State>(
+    null,
     mapDispatchToProps,
   ),
   title(getPageTitle),

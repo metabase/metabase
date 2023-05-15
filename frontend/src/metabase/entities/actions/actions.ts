@@ -3,6 +3,7 @@ import { updateIn } from "icepick";
 import _ from "underscore";
 import { createAction } from "redux-actions";
 
+import { ActionSchema } from "metabase/schema";
 import { createEntity, undo } from "metabase/lib/entities";
 import * as Urls from "metabase/lib/urls";
 import { ActionsApi } from "metabase/services";
@@ -56,42 +57,32 @@ const defaultImplicitActionCreateOptions = {
 const enableImplicitActionsForModel =
   async (modelId: number, options = defaultImplicitActionCreateOptions) =>
   async (dispatch: Dispatch) => {
-    const requests = [];
-
     if (options.insert) {
-      requests.push(
-        ActionsApi.create({
-          name: t`Create`,
-          type: "implicit",
-          kind: "row/create",
-          model_id: modelId,
-        }),
-      );
+      await ActionsApi.create({
+        name: t`Create`,
+        type: "implicit",
+        kind: "row/create",
+        model_id: modelId,
+      });
     }
 
     if (options.update) {
-      requests.push(
-        ActionsApi.create({
-          name: t`Update`,
-          type: "implicit",
-          kind: "row/update",
-          model_id: modelId,
-        }),
-      );
+      await ActionsApi.create({
+        name: t`Update`,
+        type: "implicit",
+        kind: "row/update",
+        model_id: modelId,
+      });
     }
 
     if (options.delete) {
-      requests.push(
-        ActionsApi.create({
-          name: t`Delete`,
-          type: "implicit",
-          kind: "row/delete",
-          model_id: modelId,
-        }),
-      );
+      await ActionsApi.create({
+        name: t`Delete`,
+        type: "implicit",
+        kind: "row/delete",
+        model_id: modelId,
+      });
     }
-
-    await Promise.all(requests);
 
     dispatch(Actions.actions.invalidateLists());
   };
@@ -102,6 +93,7 @@ const DELETE_PUBLIC_LINK = "metabase/entities/actions/DELETE_PUBLIC_LINK";
 const Actions = createEntity({
   name: "actions",
   nameOne: "action",
+  schema: ActionSchema,
   path: "/api/action",
   api: {
     create: (params: CreateActionParams) => ActionsApi.create(params),
@@ -183,4 +175,5 @@ const Actions = createEntity({
   },
 });
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Actions;

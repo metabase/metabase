@@ -1,2 +1,2 @@
-export * from "./ActionForm";
-export * from "./ActionFormFieldWidget";
+// eslint-disable-next-line import/no-default-export -- deprecated usage
+export { default } from "./ActionForm";

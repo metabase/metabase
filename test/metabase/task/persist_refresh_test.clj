@@ -4,17 +4,13 @@
    [clojurewerkz.quartzite.conversion :as qc]
    [java-time :as t]
    [medley.core :as m]
-   [metabase.driver :as driver]
-   [metabase.driver.ddl.interface :as ddl.i]
    [metabase.models :refer [Card Database PersistedInfo TaskHistory]]
-   [metabase.query-processor :as qp]
-   [metabase.query-processor.interface :as qp.i]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.task.persist-refresh :as task.persist-refresh]
    [metabase.test :as mt]
    [metabase.util :as u]
    [potemkin.types :as p]
-   [toucan.db :as db])
+   [toucan2.core :as t2])
   (:import [org.quartz CronScheduleBuilder CronTrigger]))
 
 (set! *warn-on-reflection* true)
@@ -142,7 +138,7 @@
             (is (= #{(u/the-id model1) (u/the-id model2)} @card-ids)))
           (is (partial= {:task "persist-refresh"
                          :task_details {:success 2 :error 0}}
-                        (db/select-one TaskHistory
+                        (t2/select-one TaskHistory
                                        :db_id (u/the-id db)
                                        :task "persist-refresh"
                                        {:order-by [[:id :desc]]})))))
@@ -160,7 +156,7 @@
           (is (= 2 @call-count))
           (is (partial= {:task "persist-refresh"
                          :task_details {:success 1 :error 1}}
-                        (db/select-one TaskHistory
+                        (t2/select-one TaskHistory
                                        :db_id (u/the-id db)
                                        :task "persist-refresh"
                                        {:order-by [[:id :desc]]}))))))
@@ -192,43 +188,6 @@
             (is (contains? @called-on (u/the-id deletable-persisted))))
           (is (partial= {:task "unpersist-tables"
                          :task_details {:success 3 :error 0, :skipped 0}}
-                        (db/select-one TaskHistory
+                        (t2/select-one TaskHistory
                                        :task "unpersist-tables"
                                        {:order-by [[:id :desc]]}))))))))
-
-(deftest persisted-models-max-rows-test
-  (testing "Persisted models should have the full number of rows of the underlying query,
-            not limited by `absolute-max-results` (#24793)"
-    (with-redefs [qp.i/absolute-max-results 3]
-      (mt/dataset daily-bird-counts
-        (mt/test-driver :postgres
-          (mt/with-persistence-enabled [persist-models!]
-            (mt/with-temp* [Card [model {:dataset       true
-                                         :database_id   (mt/id)
-                                         :query_type    :query
-                                         :dataset_query {:database (mt/id)
-                                                         :type     :query
-                                                         :query    {:source-table (mt/id :bird-count)}}}]]
-              (let [ ;; Get the number of rows before the model is persisted
-                    query-on-top       {:database (mt/id)
-                                        :type     :query
-                                        :query    {:aggregation  [[:count]]
-                                                   :source-table (str "card__" (:id model))}}
-                    [[num-rows-query]] (mt/rows (qp/process-query query-on-top))]
-                ;; Persist the model
-                (persist-models!)
-                ;; Check the number of rows is the same after persisting
-                (let [query-on-top {:database (mt/id)
-                                    :type     :query
-                                    :query    {:aggregation [[:count]]
-                                               :source-table (str "card__" (:id model))}}]
-                  (is (= [[num-rows-query]] (mt/rows (qp/process-query query-on-top)))))))))))))
-
-(deftest can-persist-test
-  (testing "Can each database that allows for persistence actually persist"
-    (mt/test-drivers (mt/normal-drivers-with-feature :persist-models)
-      (testing (str driver/*driver* " can persist")
-        (mt/dataset test-data
-          (let [[success? error] (ddl.i/check-can-persist (mt/db))]
-            (is success? (str "Not able to persist on " driver/*driver*))
-            (is (= :persist.check/valid error))))))))

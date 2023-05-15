@@ -5,7 +5,7 @@ inputs:
     default: '11'
   clojure-version:
     required: true
-    default: '1.11.1.1208'
+    default: '1.11.1.1262'
   m2-cache-key:
     description: 'Key to cache M2 packages from Maven Central'
     required: true

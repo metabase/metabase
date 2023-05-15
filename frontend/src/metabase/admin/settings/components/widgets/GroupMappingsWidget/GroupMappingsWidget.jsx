@@ -1,14 +1,14 @@
 /* eslint-disable react/prop-types */
-import React, { useState, useEffect } from "react";
-import { t } from "ttag";
+import React, { useState } from "react";
 import _ from "underscore";
+import { t } from "ttag";
 
 import AdminContentTable from "metabase/components/AdminContentTable";
-import { PermissionsApi, SettingsApi } from "metabase/services";
 import { isDefaultGroup } from "metabase/lib/groups";
 
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/core/components/Tooltip";
+
 import SettingToggle from "../SettingToggle";
 import AddMappingRow from "./AddMappingRow";
 import {
@@ -24,38 +24,21 @@ import MappingRow from "./MappingRow";
 
 const groupIsMappable = group => !isDefaultGroup(group);
 
-const loadGroupsAndMappings = async mappingSetting => {
-  const [settings, groupsIncludingDefaultGroup] = await Promise.all([
-    SettingsApi.list(),
-    PermissionsApi.groups(),
-  ]);
-
-  const setting = _.findWhere(settings, {
-    key: mappingSetting,
-  });
-
-  return {
-    groups: groupsIncludingDefaultGroup.filter(groupIsMappable),
-    mappings: setting?.value || {},
-  };
-};
-
-function GroupMappingsWidget({ mappingSetting, ...props }) {
+function GroupMappingsWidget({
+  groupHeading,
+  groupPlaceholder,
+  allGroups = [],
+  mappingSetting,
+  deleteGroup,
+  clearGroupMember,
+  updateSetting,
+  mappings,
+  ...props
+}) {
   const [showAddRow, setShowAddRow] = useState(false);
-  const [groups, setGroups] = useState([]);
-  const [mappings, setMappings] = useState({});
   const [saveError, setSaveError] = useState({});
 
-  useEffect(() => {
-    async function fetchData() {
-      const { groups, mappings } = await loadGroupsAndMappings(mappingSetting);
-
-      setMappings(mappings);
-      setGroups(groups);
-    }
-
-    fetchData();
-  }, [mappingSetting]);
+  const groups = allGroups.filter(groupIsMappable);
 
   const handleShowAddRow = () => {
     setShowAddRow(true);
@@ -65,25 +48,22 @@ function GroupMappingsWidget({ mappingSetting, ...props }) {
     setShowAddRow(false);
   };
 
-  const handleAddMapping = name => {
+  const handleAddMapping = async name => {
     const mappingsPlusNewMapping = { ...mappings, [name]: [] };
 
-    SettingsApi.put({
-      key: mappingSetting,
-      value: mappingsPlusNewMapping,
-    }).then(
-      () => {
-        props.onChangeSetting(mappingSetting, mappingsPlusNewMapping);
-
-        setMappings(mappingsPlusNewMapping);
-        setShowAddRow(false);
-        setSaveError(null);
-      },
-      e => setSaveError(e),
-    );
+    try {
+      await updateSetting({
+        key: mappingSetting,
+        value: mappingsPlusNewMapping,
+      });
+      setShowAddRow(false);
+      setSaveError(null);
+    } catch (error) {
+      setSaveError(error);
+    }
   };
 
-  const handleChangeMapping = name => (group, selected) => {
+  const handleChangeMapping = name => async (group, selected) => {
     const updatedMappings = selected
       ? { ...mappings, [name]: [...mappings[name], group.id] }
       : {
@@ -91,42 +71,32 @@ function GroupMappingsWidget({ mappingSetting, ...props }) {
           [name]: mappings[name].filter(id => id !== group.id),
         };
 
-    SettingsApi.put({
-      key: mappingSetting,
-      value: updatedMappings,
-    }).then(
-      () => {
-        props.onChangeSetting(mappingSetting, updatedMappings);
-        setMappings(updatedMappings);
-
-        setSaveError(null);
-      },
-      e => setSaveError(e),
-    );
+    try {
+      await updateSetting({ key: mappingSetting, value: updatedMappings });
+      setSaveError(null);
+    } catch (error) {
+      setSaveError(error);
+    }
   };
 
-  const handleDeleteMapping = ({ name, onSuccess, groupIdsToDelete = [] }) => {
+  const handleDeleteMapping = async ({
+    name,
+    onSuccess,
+    groupIdsToDelete = [],
+  }) => {
     const mappingsMinusDeletedMapping = _.omit(mappings, name);
 
-    SettingsApi.put({
-      key: mappingSetting,
-      value: mappingsMinusDeletedMapping,
-    }).then(
-      async () => {
-        props.onChangeSetting(mappingSetting, mappingsMinusDeletedMapping);
+    try {
+      await updateSetting({
+        key: mappingSetting,
+        value: mappingsMinusDeletedMapping,
+      });
 
-        onSuccess && (await onSuccess());
-
-        const { groups, mappings } = await loadGroupsAndMappings(
-          mappingSetting,
-        );
-
-        setGroups(groups);
-        setMappings(mappings);
-        setSaveError(null);
-      },
-      e => setSaveError(e),
-    );
+      onSuccess && (await onSuccess());
+      setSaveError(null);
+    } catch (error) {
+      setSaveError(error);
+    }
   };
 
   return (
@@ -157,13 +127,11 @@ function GroupMappingsWidget({ mappingSetting, ...props }) {
                 {t`New mapping`}
               </AddMappingButton>
             )}
-            <AdminContentTable
-              columnTitles={[props.groupHeading, t`Groups`, ""]}
-            >
+            <AdminContentTable columnTitles={[groupHeading, t`Groups`, ""]}>
               {showAddRow && (
                 <AddMappingRow
                   mappings={mappings}
-                  placeholder={props.groupPlaceholder}
+                  placeholder={groupPlaceholder}
                   onCancel={handleHideAddRow}
                   onAdd={handleAddMapping}
                 />
@@ -176,12 +144,14 @@ function GroupMappingsWidget({ mappingSetting, ...props }) {
                 </tr>
               )}
               {Object.entries(mappings).map(([name, selectedGroupIds]) => {
-                return groups.length > 0 ? (
+                return groups?.length > 0 ? (
                   <MappingRow
                     key={name}
                     name={name}
                     groups={groups}
                     selectedGroupIds={selectedGroupIds}
+                    clearGroupMember={clearGroupMember}
+                    deleteGroup={deleteGroup}
                     onChange={handleChangeMapping(name)}
                     onDeleteMapping={handleDeleteMapping}
                   />

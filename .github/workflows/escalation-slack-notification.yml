@@ -1,0 +1,31 @@
+name: Escalation Slack Notification
+
+on:
+  issues:
+    types:
+      - labeled
+jobs:
+  on-escalation-label:
+    if: github.event.label.name == '.Escalation'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - name: Send escalated issue ${{ github.event.issue.number }} to Slack
+        id: slack
+        uses: slackapi/slack-github-action@v1.23.0
+        with:
+          payload: |
+            {
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "🔥🔥🔥 ${{ github.event.issue.title }}\n${{ github.event.issue.html_url }}"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_ESCALATIONS_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK

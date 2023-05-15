@@ -2,6 +2,7 @@
   "Put everything needed for REPL development within easy reach"
   (:require
    [clojure.core.async :as a]
+   [dev.model-tracking :as model-tracking]
    [dev.debug-qp :as debug-qp]
    [honeysql.core :as hsql]
    [malli.dev :as malli-dev]
@@ -26,16 +27,27 @@
    [methodical.core :as methodical]
    [potemkin :as p]
    [toucan.db :as db]
+   [toucan2.core :as t2]
    [toucan2.connection :as t2.connection]
    [toucan2.pipeline :as t2.pipeline]))
 
-(comment debug-qp/keep-me)
+(set! *warn-on-reflection* true)
+
+(comment
+  debug-qp/keep-me
+  model-tracking/keep-me)
 
 (defn tap>-spy [x]
   (doto x tap>))
 
 (p/import-vars
- [debug-qp process-query-debug])
+ [debug-qp process-query-debug]
+ [model-tracking
+  track!
+  untrack!
+  untrack-all!
+  reset-changes!
+  changes])
 
 (def initialized?
   (atom nil))
@@ -49,7 +61,7 @@
   []
   (server/start-web-server! #'handler/app)
   (when config/is-dev?
-    (malli-dev/start!))
+    (with-out-str (malli-dev/start!)))
   (when-not @initialized?
     (init!)))
 
@@ -130,7 +142,7 @@
     (try
       (driver/with-driver driver
         (letfn [(thunk []
-                  (with-open [conn (sql-jdbc.execute/connection-with-timezone driver (mt/db) (qp.timezone/report-timezone-id-if-supported))
+                  (with-open [conn (sql-jdbc.execute/connection-with-timezone driver (mt/db) (qp.timezone/report-timezone-id-if-supported driver (mt/db)))
                               stmt (sql-jdbc.execute/prepared-statement driver conn sql params)
                               rs   (sql-jdbc.execute/execute-prepared-statement! driver stmt)]
                     (let [rsmeta (.getMetaData rs)]
@@ -152,7 +164,7 @@
    (mdb.setup/migrate! (mdb.connection/db-type) (mdb.connection/data-source)
                        direction version)))
 
-(methodical/defmethod t2.connection/do-with-connection :metabase.models.database/Database
+(methodical/defmethod t2.connection/do-with-connection :model/Database
   "Support running arbitrary queries against data warehouse DBs for easy REPL debugging. Only works for SQL+JDBC drivers
   right now!
 
@@ -200,13 +212,14 @@
   "Add the application database as a Database. Currently only works if your app DB uses broken-out details!"
   []
   (binding [t2.connection/*current-connectable* nil]
-    (or (db/select-one Database :name "Application Database")
+    (or (t2/select-one Database :name "Application Database")
         (let [details (#'metabase.db.env/broken-out-details
                        (mdb.connection/db-type)
                        @#'metabase.db.env/env)
-              app-db  (db/insert! Database {:name    "Application Database"
-                                            :engine  (mdb.connection/db-type)
-                                            :details details})]
+              app-db  (first (t2/insert-returning-instances! Database
+                                                             {:name    "Application Database"
+                                                              :engine  (mdb.connection/db-type)
+                                                              :details details}))]
           (sync/sync-database! app-db)
           app-db))))
 

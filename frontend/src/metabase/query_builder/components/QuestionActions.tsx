@@ -2,6 +2,7 @@ import React, { useCallback } from "react";
 import { t } from "ttag";
 import { connect } from "react-redux";
 
+import * as Urls from "metabase/lib/urls";
 import Button from "metabase/core/components/Button";
 import Tooltip from "metabase/core/components/Tooltip";
 import EntityMenu from "metabase/components/EntityMenu";
@@ -17,6 +18,8 @@ import { State } from "metabase-types/store";
 import { color } from "metabase/lib/colors";
 
 import BookmarkToggle from "metabase/core/components/BookmarkToggle";
+import { getSetting } from "metabase/selectors/settings";
+import { canUseMetabotOnDatabase } from "metabase/metabot/utils";
 import Question from "metabase-lib/Question";
 
 import {
@@ -38,8 +41,9 @@ const TOGGLE_MODEL_PERSISTENCE_TESTID = "toggle-persistence";
 const CLONE_TESTID = "clone-button";
 const ARCHIVE_TESTID = "archive-button";
 
-const mapStateToProps = (state: State, props: Props) => ({
+const mapStateToProps = (state: State) => ({
   isModerator: getUserIsAdmin(state),
+  isMetabotEnabled: getSetting(state, "is-metabot-enabled"),
 });
 
 const mapDispatchToProps = {
@@ -49,6 +53,7 @@ const mapDispatchToProps = {
 interface Props {
   isBookmarked: boolean;
   isShowingQuestionInfoSidebar: boolean;
+  isMetabotEnabled: boolean;
   handleBookmark: () => void;
   onOpenModal: (modalType: string) => void;
   question: Question;
@@ -66,6 +71,7 @@ interface Props {
 const QuestionActions = ({
   isBookmarked,
   isShowingQuestionInfoSidebar,
+  isMetabotEnabled,
   handleBookmark,
   onOpenModal,
   question,
@@ -85,6 +91,7 @@ const QuestionActions = ({
   const isDataset = question.isDataset();
   const canWrite = question.canWrite();
   const isSaved = question.isSaved();
+  const database = question.database();
 
   const canPersistDataset =
     PLUGIN_MODEL_PERSISTENCE.isModelLevelPersistenceEnabled() &&
@@ -113,6 +120,19 @@ const QuestionActions = ({
   }, [onOpenModal, question]);
 
   const extraButtons = [];
+
+  if (
+    isMetabotEnabled &&
+    isDataset &&
+    database &&
+    canUseMetabotOnDatabase(database)
+  ) {
+    extraButtons.push({
+      title: t`Ask Metabot`,
+      icon: "insight",
+      link: Urls.modelMetabot(question.id()),
+    });
+  }
 
   extraButtons.push(
     PLUGIN_MODERATION.getMenuItems(question, isModerator, softReloadCard),
@@ -221,6 +241,7 @@ const QuestionActions = ({
         </ViewHeaderIconButtonContainer>
       </Tooltip>
       <EntityMenu
+        triggerAriaLabel={t`Move, archive, and more...`}
         items={extraButtons}
         triggerIcon="ellipsis"
         tooltip={t`Move, archive, and more...`}
@@ -229,4 +250,5 @@ const QuestionActions = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(mapStateToProps, mapDispatchToProps)(QuestionActions);

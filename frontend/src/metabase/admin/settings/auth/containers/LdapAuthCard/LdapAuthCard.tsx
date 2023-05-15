@@ -17,4 +17,5 @@ const mapDispatchToProps = (dispatch: Dispatch) => ({
   onDeactivate: () => dispatch(updateSettings(LDAP_SCHEMA.getDefault())),
 });
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(mapStateToProps, mapDispatchToProps)(AuthCard);

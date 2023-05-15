@@ -5,15 +5,18 @@ import { Card, ParameterValues } from "metabase-types/api";
 import {
   createMockCard,
   createMockCollection,
+  createMockDatabase,
   createMockField,
   createMockParameterValues,
 } from "metabase-types/api/mocks";
 import {
   setupCardsEndpoints,
   setupCollectionsEndpoints,
+  setupDatabasesEndpoints,
   setupErrorParameterValuesEndpoints,
   setupParameterValuesEndpoints,
   setupUnauthorizedCardsEndpoints,
+  setupUnauthorizedCollectionsEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import Field from "metabase-lib/metadata/Field";
@@ -23,8 +26,8 @@ import ValuesSourceModal from "./ValuesSourceModal";
 
 describe("ValuesSourceModal", () => {
   describe("fields source", () => {
-    it("should show a message about not connected fields", () => {
-      setup();
+    it("should show a message about not connected fields", async () => {
+      await setup();
 
       expect(
         screen.getByText(/You haven’t connected a field to this filter/),
@@ -32,7 +35,7 @@ describe("ValuesSourceModal", () => {
     });
 
     it("should show a message about missing field values", async () => {
-      setup({
+      await setup({
         parameter: createMockUiParameter({
           fields: [new Field(createMockField({ id: 1 }))],
         }),
@@ -42,12 +45,12 @@ describe("ValuesSourceModal", () => {
       });
 
       expect(
-        await screen.findByText(/We don’t have any cached values/),
+        screen.getByText(/We don’t have any cached values/),
       ).toBeInTheDocument();
     });
 
     it("should show field values", async () => {
-      setup({
+      await setup({
         parameter: createMockUiParameter({
           fields: [
             new Field(createMockField({ id: 1 })),
@@ -59,13 +62,11 @@ describe("ValuesSourceModal", () => {
         }),
       });
 
-      await waitFor(() => {
-        expect(screen.getByRole("textbox")).toHaveValue("A\nB\nC");
-      });
+      expect(screen.getByRole("textbox")).toHaveValue("A\nB\nC");
     });
 
-    it("should not show the fields option for variable template tags", () => {
-      setup({
+    it("should not show the fields option for variable template tags", async () => {
+      await setup({
         parameter: createMockUiParameter({
           hasVariableTemplateTagTarget: true,
         }),
@@ -79,8 +80,8 @@ describe("ValuesSourceModal", () => {
       ).toBeChecked();
     });
 
-    it("should preserve custom list option for variable template tags", () => {
-      setup({
+    it("should preserve custom list option for variable template tags", async () => {
+      await setup({
         parameter: createMockUiParameter({
           values_source_type: "static-list",
           hasVariableTemplateTagTarget: true,
@@ -91,7 +92,7 @@ describe("ValuesSourceModal", () => {
     });
 
     it("should copy field values when switching to custom list", async () => {
-      setup({
+      await setup({
         parameter: createMockUiParameter({
           fields: [
             new Field(createMockField({ id: 1 })),
@@ -105,10 +106,7 @@ describe("ValuesSourceModal", () => {
           values: [["C"], ["D"]],
         }),
       });
-
-      await waitFor(() => {
-        expect(screen.getByRole("textbox")).toHaveValue("C\nD");
-      });
+      expect(screen.getByRole("textbox")).toHaveValue("C\nD");
 
       userEvent.click(screen.getByRole("radio", { name: "Custom list" }));
       expect(screen.getByRole("radio", { name: "Custom list" })).toBeChecked();
@@ -116,7 +114,7 @@ describe("ValuesSourceModal", () => {
     });
 
     it("should not overwrite custom list values when field values are empty", async () => {
-      setup({
+      await setup({
         parameter: createMockUiParameter({
           fields: [
             new Field(createMockField({ id: 1 })),
@@ -130,9 +128,8 @@ describe("ValuesSourceModal", () => {
           values: [],
         }),
       });
-
       expect(
-        await screen.findByText(/We don’t have any cached values/),
+        screen.getByText(/We don’t have any cached values/),
       ).toBeInTheDocument();
 
       userEvent.click(screen.getByRole("radio", { name: "Custom list" }));
@@ -143,7 +140,7 @@ describe("ValuesSourceModal", () => {
 
   describe("card source", () => {
     it("should show a message when there are no text columns", async () => {
-      setup({
+      await setup({
         parameter: createMockUiParameter({
           values_source_type: "card",
           values_source_config: {
@@ -159,12 +156,12 @@ describe("ValuesSourceModal", () => {
       });
 
       expect(
-        await screen.findByText(/This question doesn’t have any text columns/),
+        screen.getByText(/This question doesn’t have any text columns/),
       ).toBeInTheDocument();
     });
 
     it("should allow to select only text fields", async () => {
-      const { onSubmit } = setup({
+      const { onSubmit } = await setup({
         parameter: createMockUiParameter({
           values_source_type: "card",
           values_source_config: {
@@ -193,9 +190,7 @@ describe("ValuesSourceModal", () => {
         ],
       });
 
-      userEvent.click(
-        await screen.findByRole("button", { name: /Pick a column/ }),
-      );
+      userEvent.click(screen.getByRole("button", { name: /Pick a column/ }));
       expect(
         screen.queryByRole("heading", { name: "ID" }),
       ).not.toBeInTheDocument();
@@ -209,7 +204,7 @@ describe("ValuesSourceModal", () => {
     });
 
     it("should show card values", async () => {
-      setup({
+      await setup({
         parameter: createMockUiParameter({
           values_source_type: "card",
           values_source_config: {
@@ -236,13 +231,11 @@ describe("ValuesSourceModal", () => {
         ],
       });
 
-      await waitFor(() => {
-        expect(screen.getByRole("textbox")).toHaveValue("A\nB\nC");
-      });
+      expect(screen.getByRole("textbox")).toHaveValue("A\nB\nC");
     });
 
     it("should display a message when the user has no access to the card", async () => {
-      setup({
+      await setup({
         parameter: createMockUiParameter({
           values_source_type: "card",
           values_source_config: {
@@ -255,16 +248,33 @@ describe("ValuesSourceModal", () => {
             name: "Products",
           }),
         ],
-        hasDataAccess: false,
+        hasCollectionAccess: false,
       });
 
       expect(
-        await screen.findByText("You don't have permissions to do that."),
+        screen.getByText("You don't have permissions to do that."),
+      ).toBeInTheDocument();
+    });
+
+    it("should allow searching for a card without access to the root collection (metabase#30355)", async () => {
+      await setup({
+        hasCollectionAccess: false,
+      });
+
+      userEvent.click(
+        screen.getByRole("radio", { name: "From another model or question" }),
+      );
+      userEvent.click(
+        screen.getByRole("button", { name: /Pick a model or question…/ }),
+      );
+
+      expect(
+        screen.getByPlaceholderText("Search for a question or model"),
       ).toBeInTheDocument();
     });
 
     it("should display a message when there is an error in the underlying query", async () => {
-      setup({
+      await setup({
         parameter: createMockUiParameter({
           values_source_type: "card",
           values_source_config: {
@@ -290,12 +300,12 @@ describe("ValuesSourceModal", () => {
       });
 
       expect(
-        await screen.findByText("An error occurred in your query"),
+        screen.getByText("An error occurred in your query"),
       ).toBeInTheDocument();
     });
 
     it("should copy card values when switching to custom list", async () => {
-      setup({
+      await setup({
         parameter: createMockUiParameter({
           values_source_type: "card",
           values_source_config: {
@@ -321,10 +331,7 @@ describe("ValuesSourceModal", () => {
           }),
         ],
       });
-
-      await waitFor(() => {
-        expect(screen.getByRole("textbox")).toHaveValue("A\nB\nC");
-      });
+      expect(screen.getByRole("textbox")).toHaveValue("A\nB\nC");
 
       userEvent.click(screen.getByRole("radio", { name: "Custom list" }));
       expect(screen.getByRole("radio", { name: "Custom list" })).toBeChecked();
@@ -333,8 +340,8 @@ describe("ValuesSourceModal", () => {
   });
 
   describe("list source", () => {
-    it("should set static list values", () => {
-      const { onSubmit } = setup();
+    it("should set static list values", async () => {
+      const { onSubmit } = await setup();
 
       userEvent.click(screen.getByRole("radio", { name: "Custom list" }));
       userEvent.type(screen.getByRole("textbox"), "Gadget\nWidget");
@@ -345,8 +352,8 @@ describe("ValuesSourceModal", () => {
       });
     });
 
-    it("should preserve the list when changing the source type", () => {
-      setup({
+    it("should preserve the list when changing the source type", async () => {
+      await setup({
         parameter: createMockUiParameter({
           values_source_type: "static-list",
           values_source_config: {
@@ -369,31 +376,36 @@ interface SetupOpts {
   parameter?: UiParameter;
   parameterValues?: ParameterValues;
   cards?: Card[];
-  hasDataAccess?: boolean;
+  hasCollectionAccess?: boolean;
   hasParameterValuesError?: boolean;
 }
 
-const setup = ({
+const setup = async ({
   parameter = createMockUiParameter(),
   parameterValues = createMockParameterValues(),
   cards = [],
-  hasDataAccess = true,
+  hasCollectionAccess = true,
   hasParameterValuesError = false,
 }: SetupOpts = {}) => {
+  const databases = [createMockDatabase()];
+  const collections = [createMockCollection(ROOT_COLLECTION)];
   const onSubmit = jest.fn();
   const onClose = jest.fn();
 
-  if (hasDataAccess) {
-    setupCollectionsEndpoints([createMockCollection(ROOT_COLLECTION)]);
-    setupCardsEndpoints(cards);
+  setupDatabasesEndpoints(databases);
 
-    if (!hasParameterValuesError) {
-      setupParameterValuesEndpoints(parameterValues);
-    } else {
-      setupErrorParameterValuesEndpoints();
-    }
+  if (hasCollectionAccess) {
+    setupCollectionsEndpoints(collections);
+    setupCardsEndpoints(cards);
   } else {
+    setupUnauthorizedCollectionsEndpoints(collections);
     setupUnauthorizedCardsEndpoints(cards);
+  }
+
+  if (!hasParameterValuesError) {
+    setupParameterValuesEndpoints(parameterValues);
+  } else {
+    setupErrorParameterValuesEndpoints();
   }
 
   renderWithProviders(
@@ -403,6 +415,10 @@ const setup = ({
       onClose={onClose}
     />,
   );
+
+  await waitFor(() => {
+    expect(screen.queryByText(/Loading/)).not.toBeInTheDocument();
+  });
 
   return { onSubmit };
 };

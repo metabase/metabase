@@ -15,7 +15,7 @@ import {
 } from "../../permissions";
 import PermissionsPageLayout from "../../components/PermissionsPageLayout/PermissionsPageLayout";
 import { DataPermissionsHelp } from "../../components/DataPermissionsHelp";
-import { ToolbarUpsell } from "../../components/ToolbarUpsell";
+import ToolbarUpsell from "../../components/ToolbarUpsell";
 
 export const DATA_PERMISSIONS_TOOLBAR_CONTENT = [
   <ToolbarUpsell key="upsell" />,
@@ -93,6 +93,8 @@ DataPermissionsPage.propTypes = propTypes;
 
 export default _.compose(
   Groups.loadList(),
-  Databases.loadList(),
+  Databases.loadList({
+    selectorName: "getListUnfiltered",
+  }),
   connect(mapStateToProps, mapDispatchToProps),
 )(DataPermissionsPage);

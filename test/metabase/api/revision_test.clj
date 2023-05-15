@@ -10,8 +10,8 @@
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
-   [toucan.db :as db]
-   [toucan.util.test :as tt]))
+   [toucan.util.test :as tt]
+   [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :test-users :web-server))
 
@@ -36,7 +36,7 @@
   "Fetch the latest version of a Dashboard and save a revision entry for it. Returns the fetched Dashboard."
   [dash is-creation? user]
   (revision/push-revision!
-   :object       (db/select-one Dashboard :id (:id dash))
+   :object       (t2/select-one Dashboard :id (:id dash))
    :entity       Dashboard
    :id           (:id dash)
    :user-id      (test.users/user->id user)
@@ -96,7 +96,7 @@
              (do
                (create-card-revision card true :rasta)
                (create-card-revision (assoc card :name "something else") false :rasta)
-               (db/insert! Revision
+               (t2/insert! Revision
                  :model        "Card"
                  :model_id     id
                  :user_id      (test.users/user->id :rasta)
@@ -118,16 +118,16 @@
                     Card      [{card-id :id, :as card}]]
       (is (=? {:id id}
               (create-dashboard-revision! dash true :rasta)))
-      (let [dashcard (db/insert! DashboardCard
-                                 :dashboard_id id
-                                 :card_id (:id card)
-                                 :size_x 4
-                                 :size_y 4
-                                 :row    0
-                                 :col    0)]
+      (let [dashcard (first (t2/insert-returning-instances! DashboardCard
+                                                            :dashboard_id id
+                                                            :card_id (:id card)
+                                                            :size_x 4
+                                                            :size_y 4
+                                                            :row    0
+                                                            :col    0))]
         (is (=? {:id id}
                 (create-dashboard-revision! dash false :rasta)))
-        (is (true? (db/simple-delete! DashboardCard, :id (:id dashcard)))))
+        (is (pos? (t2/delete! (t2/table-name DashboardCard) :id (:id dashcard)))))
       (is (=? {:id id}
               (create-dashboard-revision! dash false :rasta)))
       (testing "Revert to the previous revision, allowed because rasta has permissions on parent collection"
@@ -163,7 +163,7 @@
                :message      nil
                :user         @rasta-revision-info
                :diff         nil
-               :description  "rearranged the cards."}]
+               :description  "rearranged the cards and set auto apply filters to true."}]
              (->> (get-revisions :dashboard id)
                   (mapv (fn [rev]
                           (if-not (:diff rev)
@@ -178,6 +178,8 @@
       (mt/with-temp* [Collection [collection {:name "Personal collection"}]
                       Dashboard  [dashboard {:collection_id (u/the-id collection) :name "Personal dashboard"}]]
         (create-dashboard-revision! dashboard true :crowberto)
+        ;; update so that the revision is accepted
+        (t2/update! Dashboard :id (:id dashboard) {:name "Personal dashboard edited"})
         (create-dashboard-revision! dashboard false :crowberto)
         (let [dashboard-id          (u/the-id dashboard)
               [_ {prev-rev-id :id}] (revision/revisions Dashboard dashboard-id)

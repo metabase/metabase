@@ -50,7 +50,6 @@ import {
   getIsNew,
   getIsObjectDetail,
   getTables,
-  getTableMetadata,
   getTableForeignKeys,
   getTableForeignKeyReferences,
   getUiControls,
@@ -93,6 +92,7 @@ import {
   getCardAutocompleteResultsFn,
 } from "../selectors";
 import * as actions from "../actions";
+import { VISUALIZATION_SLOW_TIMEOUT } from "../constants";
 
 const timelineProps = {
   query: { include: "events" },
@@ -104,7 +104,7 @@ const mapStateToProps = (state, props) => {
     user: getUser(state, props),
     canManageSubscriptions: canManageSubscriptions(state, props),
     isAdmin: getUserIsAdmin(state, props),
-    fromUrl: props.location.query.from,
+    fromUrl: props.location.query?.from,
 
     mode: getMode(state),
 
@@ -122,7 +122,6 @@ const mapStateToProps = (state, props) => {
     databases: getDatabasesList(state),
     nativeDatabases: getNativeDatabases(state),
     tables: getTables(state),
-    tableMetadata: getTableMetadata(state),
 
     query: getQuery(state),
     metadata: getMetadata(state),
@@ -219,6 +218,7 @@ function QueryBuilder(props) {
     showTimelinesForCollection,
     card,
     isLoadingComplete,
+    closeQB,
   } = props;
 
   const forceUpdate = useForceUpdate();
@@ -267,26 +267,20 @@ function QueryBuilder(props) {
   };
 
   const handleCreate = useCallback(
-    async card => {
-      const shouldBePinned = Boolean(card.dataset);
-
-      const questionWithUpdatedCard = question
-        .setCard(card)
-        .setPinned(shouldBePinned);
-
-      await apiCreateQuestion(questionWithUpdatedCard);
+    async newQuestion => {
+      const shouldBePinned = newQuestion.isDataset();
+      await apiCreateQuestion(newQuestion.setPinned(shouldBePinned));
 
       setRecentlySaved("created");
     },
-    [question, apiCreateQuestion, setRecentlySaved],
+    [apiCreateQuestion, setRecentlySaved],
   );
 
   const handleSave = useCallback(
-    async (card, { rerunQuery = false } = {}) => {
-      const questionWithUpdatedCard = question.setCard(card);
-      await apiUpdateQuestion(questionWithUpdatedCard, { rerunQuery });
+    async (updatedQuestion, { rerunQuery } = {}) => {
+      await apiUpdateQuestion(updatedQuestion, { rerunQuery });
       if (!rerunQuery) {
-        await updateUrl(questionWithUpdatedCard.card(), { dirty: false });
+        await updateUrl(updatedQuestion, { dirty: false });
       }
       if (fromUrl) {
         onChangeLocation(fromUrl);
@@ -294,14 +288,7 @@ function QueryBuilder(props) {
         setRecentlySaved("updated");
       }
     },
-    [
-      question,
-      fromUrl,
-      apiUpdateQuestion,
-      updateUrl,
-      onChangeLocation,
-      setRecentlySaved,
-    ],
+    [fromUrl, apiUpdateQuestion, updateUrl, onChangeLocation, setRecentlySaved],
   );
 
   useMount(() => {
@@ -316,6 +303,7 @@ function QueryBuilder(props) {
   useUnmount(() => {
     cancelQuery();
     closeModal();
+    closeQB();
     clearTimeout(timeout.current);
   });
 
@@ -374,7 +362,7 @@ function QueryBuilder(props) {
   }, []);
 
   useLoadingTimer(isRunning, {
-    timer: 15000,
+    timer: VISUALIZATION_SLOW_TIMEOUT,
     onTimeout,
   });
 

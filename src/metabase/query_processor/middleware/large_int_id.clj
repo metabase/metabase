@@ -3,7 +3,7 @@
   (:require
    [metabase.mbql.util :as mbql.u]
    [metabase.models.field :refer [Field]]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (defn- result-int->string
   [field-indexes rf]
@@ -46,7 +46,7 @@
                                                                ;; TODO -- can't we use the QP store here? Seems like
                                                                ;; we should be able to, but it doesn't work (not
                                                                ;; initialized)
-                                                               (db/select-one [Field :base_type :semantic_type]
+                                                               (t2/select-one [Field :base_type :semantic_type]
                                                                  :id field-id))]
                                               (when (and (or (isa? (:semantic_type field) :type/PK)
                                                              (isa? (:semantic_type field) :type/FK))

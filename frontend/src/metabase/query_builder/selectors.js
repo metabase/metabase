@@ -1,10 +1,10 @@
 /*eslint no-use-before-define: "error"*/
 
 import d3 from "d3";
-import { createSelector } from "reselect";
+import { createSelector } from "@reduxjs/toolkit";
 import createCachedSelector from "re-reselect";
 import _ from "underscore";
-import { assocIn, getIn, merge, updateIn } from "icepick";
+import { getIn, merge, updateIn } from "icepick";
 
 // Needed due to wrong dependency resolution order
 // eslint-disable-next-line no-unused-vars
@@ -25,6 +25,7 @@ import { parseTimestamp } from "metabase/lib/time";
 import { getMode as getQuestionMode } from "metabase/modes/lib/modes";
 import { getSortedTimelines } from "metabase/lib/timelines";
 import { getSetting } from "metabase/selectors/settings";
+import { getDashboardById } from "metabase/dashboard/selectors";
 import {
   getXValues,
   isTimeseries,
@@ -32,6 +33,7 @@ import {
 import ObjectMode from "metabase/modes/components/modes/ObjectMode";
 
 import { LOAD_COMPLETE_FAVICON } from "metabase/hoc/Favicon";
+import * as ML from "metabase-lib/v2";
 import { getCardUiParameters } from "metabase-lib/parameters/utils/cards";
 import {
   normalizeParameters,
@@ -348,53 +350,16 @@ export const getQuestionFromCard = createCachedSelector(
   (metadata, card) => new Question(card, metadata),
 )((_state, card) => card.id);
 
-function normalizeClause(clause) {
-  return typeof clause?.raw === "function" ? clause.raw() : clause;
-}
-
-// Certain differences in a query should be ignored. `normalizeQuery`
-// standardizes the query before comparison in `getIsResultDirty`.
-export function normalizeQuery(query, tableMetadata) {
-  if (!query) {
-    return query;
-  }
-  if (query.query) {
-    if (tableMetadata) {
-      query = updateIn(query, ["query", "fields"], fields => {
-        fields = fields
-          ? // if the query has fields, copy them before sorting
-            [...fields]
-          : // if the fields aren't set, we get them from the table metadata
-            tableMetadata.fields.map(({ id }) => ["field", id, null]);
-        return fields.sort((a, b) =>
-          JSON.stringify(b).localeCompare(JSON.stringify(a)),
-        );
-      });
-    }
-    ["aggregation", "breakout", "filter", "joins", "order-by"].forEach(
-      clauseList => {
-        if (query.query[clauseList]) {
-          query = updateIn(query, ["query", clauseList], clauses =>
-            clauses.map(normalizeClause),
-          );
-        }
-      },
-    );
-  }
-  if (query.native && query.native["template-tags"] == null) {
-    query = assocIn(query, ["native", "template-tags"], {});
-  }
-  return query;
-}
-
 function isQuestionEditable(question) {
   return !question?.query().readOnly();
 }
 
-function areQueriesEqual(queryA, queryB, tableMetadata) {
-  const normalizedQueryA = normalizeQuery(queryA, tableMetadata);
-  const normalizedQueryB = normalizeQuery(queryB, tableMetadata);
-  return _.isEqual(normalizedQueryA, normalizedQueryB);
+function areLegacyQueriesEqual(queryA, queryB, tableMetadata) {
+  return ML.areLegacyQueriesEqual(
+    queryA,
+    queryB,
+    tableMetadata?.fields.map(({ id }) => id),
+  );
 }
 
 // Model questions may be composed via the `composeDataset` method.
@@ -413,12 +378,12 @@ function areModelsEquivalent({
 
   const composedOriginal = originalQuestion.composeDataset();
 
-  const isLastRunComposed = areQueriesEqual(
+  const isLastRunComposed = areLegacyQueriesEqual(
     lastRunQuestion.datasetQuery(),
     composedOriginal.datasetQuery(),
     tableMetadata,
   );
-  const isCurrentComposed = areQueriesEqual(
+  const isCurrentComposed = areLegacyQueriesEqual(
     currentQuestion.datasetQuery(),
     composedOriginal.datasetQuery(),
     tableMetadata,
@@ -426,7 +391,7 @@ function areModelsEquivalent({
 
   const isLastRunEquivalentToCurrent =
     isLastRunComposed &&
-    areQueriesEqual(
+    areLegacyQueriesEqual(
       currentQuestion.datasetQuery(),
       originalQuestion.datasetQuery(),
       tableMetadata,
@@ -434,7 +399,7 @@ function areModelsEquivalent({
 
   const isCurrentEquivalentToLastRun =
     isCurrentComposed &&
-    areQueriesEqual(
+    areLegacyQueriesEqual(
       lastRunQuestion.datasetQuery(),
       originalQuestion.datasetQuery(),
       tableMetadata,
@@ -450,7 +415,7 @@ function areQueriesEquivalent({
   tableMetadata,
 }) {
   return (
-    areQueriesEqual(
+    areLegacyQueriesEqual(
       lastRunQuestion?.datasetQuery(),
       currentQuestion?.datasetQuery(),
       tableMetadata,
@@ -965,9 +930,21 @@ export const getNativeQueryFn = createSelector(
   (datasetQuery, parameters) => {
     let lastResult = undefined;
 
-    return async () => {
-      lastResult ??= await MetabaseApi.native({ ...datasetQuery, parameters });
+    return async (options = {}) => {
+      lastResult ??= await MetabaseApi.native({
+        ...datasetQuery,
+        parameters,
+        ...options,
+      });
       return lastResult;
     };
   },
 );
+
+export const getDashboardId = state => {
+  return state.qb.dashboardId;
+};
+
+export const getDashboard = state => {
+  return getDashboardById(state, getDashboardId(state));
+};

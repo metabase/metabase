@@ -28,9 +28,9 @@ export type Expr =
   | string
   | boolean
   | ([string, ...Expr[]] & { node?: Node });
-export type CompilerPass = (expr: Expr) => Expr;
+type CompilerPass = (expr: Expr) => Expr;
 
-export interface Options {
+interface Options {
   getMBQLName(expressionName: string): string | undefined;
   passes?: CompilerPass[];
 }

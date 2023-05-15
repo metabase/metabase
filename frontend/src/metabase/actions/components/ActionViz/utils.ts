@@ -9,10 +9,10 @@ import type {
   ActionParameterValue,
   ParameterId,
   ParametersForActionExecution,
+  ParameterValueOrArray,
   WritebackAction,
   WritebackParameter,
 } from "metabase-types/api";
-import type { ParameterValueOrArray } from "metabase-types/types/Parameter";
 
 type ActionParameterTuple = [ParameterId, ActionParameterValue];
 
@@ -84,11 +84,22 @@ export function getNotProvidedActionParameters(
   });
 }
 
+export function getMappedActionParameters(
+  action: WritebackAction,
+  dashboardParamValues: ParametersForActionExecution,
+) {
+  const parameters = action.parameters ?? [];
+  return parameters.filter(parameter => {
+    return isMappedParameter(parameter, dashboardParamValues);
+  });
+}
+
 export const shouldShowConfirmation = (action?: WritebackAction) => {
   if (!action) {
     return false;
   }
-  const hasConfirmationMessage = action.visualization_settings?.confirmMessage;
+  const hasConfirmationMessage =
+    !!action.visualization_settings?.confirmMessage;
   const isImplicitDelete =
     action.type === "implicit" && action.kind === "row/delete";
   return hasConfirmationMessage || isImplicitDelete;

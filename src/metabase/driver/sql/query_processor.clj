@@ -106,6 +106,13 @@
     2
     1))
 
+(defmacro with-driver-honey-sql-version
+  "Evaluates body with the appropriate driver version of honey sql bound"
+  {:style/indent 1}
+  [driver & body]
+  `(binding [hx/*honey-sql-version* (honey-sql-version ~driver)]
+     ~@body))
+
 (defn inline-num
   "Wrap number `n` in `:inline` when targeting Honey SQL 2."
   {:added "0.46.0"}
@@ -1372,10 +1379,18 @@
 (defn- apply-source-query
   "Handle a `:source-query` clause by adding a recursive `SELECT` or native query. At the time of this writing, all
   source queries are aliased as `source`."
-  [driver honeysql-form {{:keys [native params], :as source-query} :source-query}]
+  [driver honeysql-form {{:keys [native params],
+                          persisted :persisted-info/native
+                          :as source-query} :source-query}]
   (assoc honeysql-form
-         :from [[(if native
+         :from [[(cond
+                   persisted
+                   (sql-source-query persisted nil)
+
+                   native
                    (sql-source-query native params)
+
+                   :else
                    (apply-clauses driver {} source-query))
                  (let [table-alias (->honeysql driver (hx/identifier :table-alias source-query-alias))]
                    (case (long hx/*honey-sql-version*)

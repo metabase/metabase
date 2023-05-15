@@ -31,7 +31,7 @@
    [metabase.util.log :as log]
    [pretty.core :as pretty]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -345,7 +345,7 @@
                                                                           (apply save-query-update-avg-time-original args))
                     cache/min-duration-ms                               (constantly 0)]
         (with-mock-cache [save-chan]
-          (db/delete! Query :query_hash q-hash)
+          (t2/delete! Query :query_hash q-hash)
           (is (not (:cached (qp/process-userland-query query (context.default/default-context)))))
           (a/alts!! [save-chan (a/timeout 200)]) ;; wait-for-result closes the channel
           (u/deref-with-timeout called-promise 500)

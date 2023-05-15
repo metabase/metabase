@@ -1,20 +1,21 @@
 (ns metabase.driver.druid.query-processor-test
   "Some tests to make sure the Druid Query Processor is generating sane Druid queries when compiling MBQL."
-  (:require [cheshire.core :as json]
-            [clojure.test :refer :all]
-            [clojure.tools.macro :as tools.macro]
-            [java-time :as t]
-            [medley.core :as m]
-            [metabase.db.metadata-queries :as metadata-queries]
-            [metabase.driver :as driver]
-            [metabase.driver.druid.query-processor :as druid.qp]
-            [metabase.models :refer [Field Metric Table]]
-            [metabase.query-processor :as qp]
-            [metabase.test :as mt]
-            [metabase.timeseries-query-processor-test.util :as tqpt]
-            [metabase.util :as u]
-            [metabase.util.date-2 :as u.date]
-            [toucan.db :as db]))
+  (:require
+   [cheshire.core :as json]
+   [clojure.test :refer :all]
+   [clojure.tools.macro :as tools.macro]
+   [java-time :as t]
+   [medley.core :as m]
+   [metabase.db.metadata-queries :as metadata-queries]
+   [metabase.driver :as driver]
+   [metabase.driver.druid.query-processor :as druid.qp]
+   [metabase.models :refer [Field Metric Table]]
+   [metabase.query-processor :as qp]
+   [metabase.test :as mt]
+   [metabase.timeseries-query-processor-test.util :as tqpt]
+   [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
+   [toucan2.core :as t2]))
 
 (defn- str->absolute-dt [s]
   [:absolute-datetime (u.date/parse s "UTC") :default])
@@ -234,10 +235,10 @@
                 {:aggregation [[:+ 1 [:aggregation-options [:distinct $checkins.venue_name] {:name "__distinct_0"}]]]})))))))
 
 (defn- table-rows-sample []
-  (->> (metadata-queries/table-rows-sample (db/select-one Table :id (mt/id :checkins))
-         [(db/select-one Field :id (mt/id :checkins :id))
-          (db/select-one Field :id (mt/id :checkins :venue_name))
-          (db/select-one Field :id (mt/id :checkins :timestamp))]
+  (->> (metadata-queries/table-rows-sample (t2/select-one Table :id (mt/id :checkins))
+         [(t2/select-one Field :id (mt/id :checkins :id))
+          (t2/select-one Field :id (mt/id :checkins :venue_name))
+          (t2/select-one Field :id (mt/id :checkins :timestamp))]
          (constantly conj))
        (sort-by first)
        (take 5)))

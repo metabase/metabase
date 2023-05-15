@@ -8,7 +8,7 @@
    [metabase.models.collection :refer [Collection]]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.schema :as su]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/data-model"
@@ -29,15 +29,12 @@
    path           (su/with-api-error-message su/NonBlankString
                     "Valid directory to serialize results to")}
   ;; Make sure all the specified collection IDs exist.
-  (let [existing-collection-ids (db/select-ids Collection :id [:in (set collection_ids)])]
+  (let [existing-collection-ids (t2/select-pks-set Collection :id [:in (set collection_ids)])]
     (when-not (= (set collection_ids) (set existing-collection-ids))
       (throw (ex-info (tru "Invalid Collection ID(s). These Collections do not exist: {0}"
                            (pr-str (set/difference (set collection_ids) (set existing-collection-ids))))
                       {:status-code 404}))))
-  (serialization.cmd/v2-dump path
-                             {:selected-collections collection_ids
-                              :targets              (for [collection-id collection_ids]
-                                                      ["Collection" collection-id])})
+  (serialization.cmd/v2-dump path {:collections collection_ids})
   ;; TODO -- not 100% sure this response makes sense. We can change it later with something more meaningful maybe
   {:status :ok})
 

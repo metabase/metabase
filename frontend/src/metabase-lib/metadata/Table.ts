@@ -4,7 +4,12 @@
 // NOTE: this needs to be imported first due to some cyclical dependency nonsense
 import Question from "../Question"; // eslint-disable-line import/order
 import { singularize } from "metabase/lib/formatting";
-import type { Table as ITable, TableId } from "metabase-types/api";
+import type {
+  Table as ITable,
+  TableFieldOrder,
+  TableId,
+  TableVisibilityType,
+} from "metabase-types/api";
 import { isVirtualCardId } from "metabase-lib/metadata/utils/saved-questions";
 import { getAggregationOperators } from "metabase-lib/operators/utils";
 import { createLookupByProperty, memoizeClass } from "metabase-lib/utils";
@@ -13,6 +18,8 @@ import type Metadata from "./Metadata";
 import type Schema from "./Schema";
 import type Field from "./Field";
 import type Database from "./Database";
+import type Metric from "./Metric";
+import type Segment from "./Segment";
 
 /**
  * @typedef { import("./Metadata").SchemaName } SchemaName
@@ -32,8 +39,12 @@ class TableInner extends Base {
   schema_name: string;
   db_id: number;
   fields: Field[];
+  field_order: TableFieldOrder;
+  metrics: Metric[];
+  segments: Segment[];
   metadata?: Metadata;
   db?: Database | undefined | null;
+  visibility_type: TableVisibilityType;
 
   getPlainObject(): ITable {
     return this._plainObject;
@@ -108,7 +119,7 @@ class TableInner extends Base {
 
   // AGGREGATIONS
   aggregationOperators() {
-    return getAggregationOperators(this);
+    return getAggregationOperators(this.db, this.fields);
   }
 
   aggregationOperatorsLookup() {
@@ -116,12 +127,7 @@ class TableInner extends Base {
   }
 
   aggregationOperator(short) {
-    return this.aggregation_operators_lookup[short];
-  }
-
-  // @deprecated: use aggregationOperatorsLookup
-  get aggregation_operators_lookup() {
-    return this.aggregationOperatorsLookup();
+    return this.aggregationOperatorsLookup()[short];
   }
 
   // FIELDS
@@ -169,28 +175,9 @@ class TableInner extends Base {
     newTable._plainObject = plainObject;
     return newTable;
   }
-
-  /**
-   * @private
-   * @param {string} description
-   * @param {Database} db
-   * @param {Schema?} schema
-   * @param {SchemaName} [schema_name]
-   * @param {Field[]} fields
-   * @param {EntityType} entity_type
-   */
-
-  /* istanbul ignore next */
-  _constructor(description, db, schema, schema_name, fields, entity_type) {
-    this.description = description;
-    this.db = db;
-    this.schema = schema;
-    this.schema_name = schema_name;
-    this.fields = fields;
-    this.entity_type = entity_type;
-  }
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default class Table extends memoizeClass<TableInner>(
   "aggregationOperators",
   "aggregationOperatorsLookup",

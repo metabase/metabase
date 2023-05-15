@@ -9,7 +9,7 @@ import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import { isSyncCompleted } from "metabase/lib/syncing";
 import DeleteDatabaseModal from "metabase/admin/databases/components/DeleteDatabaseModel/DeleteDatabaseModal";
 
-import type { Database as IDatabase, DatabaseId } from "metabase-types/api";
+import type { DatabaseData, DatabaseId } from "metabase-types/api";
 import type Database from "metabase-lib/metadata/Database";
 
 import ModelActionsSection from "./ModelActionsSection";
@@ -25,12 +25,17 @@ interface DatabaseEditAppSidebarProps {
   database: Database;
   isAdmin: boolean;
   isModelPersistenceEnabled: boolean;
-  updateDatabase: (database: { id: DatabaseId } & Partial<IDatabase>) => void;
-  syncDatabaseSchema: (databaseId: DatabaseId) => void;
-  dismissSyncSpinner: (databaseId: DatabaseId) => void;
-  rescanDatabaseFields: (databaseId: DatabaseId) => void;
-  discardSavedFieldValues: (databaseId: DatabaseId) => void;
-  deleteDatabase: (databaseId: DatabaseId, isDetailView: boolean) => void;
+  updateDatabase: (
+    database: { id: DatabaseId } & Partial<DatabaseData>,
+  ) => Promise<void>;
+  syncDatabaseSchema: (databaseId: DatabaseId) => Promise<void>;
+  dismissSyncSpinner: (databaseId: DatabaseId) => Promise<void>;
+  rescanDatabaseFields: (databaseId: DatabaseId) => Promise<void>;
+  discardSavedFieldValues: (databaseId: DatabaseId) => Promise<void>;
+  deleteDatabase: (
+    databaseId: DatabaseId,
+    isDetailView: boolean,
+  ) => Promise<void>;
 }
 
 const DatabaseEditAppSidebar = ({
@@ -193,4 +198,5 @@ const DatabaseEditAppSidebar = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default DatabaseEditAppSidebar;

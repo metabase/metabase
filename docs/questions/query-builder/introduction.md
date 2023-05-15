@@ -49,7 +49,7 @@ To the right of completed step is a **Preview** button (looks like a Play button
 
 ## Picking data
 
-The data section is where you select the data you want to work with. Here you'll pick a [model][model], a table from a database, or a saved question. You can click on a table to select which columns you want to include in your results.
+The data section is where you select the data you want to work with. Here you'll pick a [model](../../data-modeling/models.md), a table from a database, or a saved question. You can click on a table to select which columns you want to include in your results.
 
 ## Joining data
 
@@ -85,7 +85,7 @@ When viewing a table or chart, clicking on the **Filter** will bring up the filt
 
 ![Bulk filter modal](../images/bulk-filter-modal.png)
 
-Here you can add multiple filters to your question in one go. Filter options will differ depending on the [field type](../../data-modeling/field-types.md). Any tables linked by foreign keys will be displayed in the left tab of the modal. When you're done adding filters, hit **Apply filters** to rerun the query and update its results. To remove all the filters you've applied, click on **Clear all filters** in the bottom right of the filter modal. Any filters you apply here will show up in the notebook editor, and vice versa.
+Here you can add multiple filters to your question in one go. Filter options will differ depending on the [field type](../../data-modeling/field-types.md). Any tables linked by foreign keys will be displayed in the left tab of the modal. When you're done adding filters, hit **Apply filters** to rerun the query and update its results. To remove all the filters you've applied, click on **Clear all filters** in the bottom left of the filter modal. Any filters you apply here will show up in the notebook editor, and vice versa.
 
 ### Filtering by date
 
@@ -217,7 +217,7 @@ Each time you start modifying a saved question, Metabase will create a new quest
 
 Feel free to play around with any saved question, as you won't have any effect on the existing question. When you hit **Save** on the question, you can choose either to save as a new question (the default), or you can overwrite the existing question you started from.
 
-If you find yourself using the same saved question as a starting point for multiple questions, you may want to turn it into a [Model][model] to let others know it's a good starting place.
+If you find yourself using the same saved question as a starting point for multiple questions, you may want to turn it into a [model](../../data-modeling/models.md) to let others know it's a good starting place.
 
 ## Question version history
 

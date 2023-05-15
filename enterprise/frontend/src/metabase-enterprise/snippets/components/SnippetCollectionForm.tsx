@@ -165,6 +165,7 @@ function getCollectionId(state: State, props: SnippetCollectionFormOwnProps) {
   return props.collection?.id;
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   SnippetCollections.load({ id: getCollectionId }),
   connect(null, mapDispatchToProps),

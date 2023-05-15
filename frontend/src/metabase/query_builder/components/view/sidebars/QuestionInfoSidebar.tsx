@@ -8,9 +8,8 @@ import { PLUGIN_MODERATION, PLUGIN_CACHING } from "metabase/plugins";
 import MetabaseSettings from "metabase/lib/settings";
 import * as Urls from "metabase/lib/urls";
 
+import Link from "metabase/core/components/Link";
 import QuestionActivityTimeline from "metabase/query_builder/components/QuestionActivityTimeline";
-
-import type { Card } from "metabase-types/types/Card";
 
 import Question from "metabase-lib/Question";
 
@@ -19,12 +18,11 @@ import {
   Root,
   ContentSection,
   HeaderContainer,
-  HeaderLink,
 } from "./QuestionInfoSidebar.styled";
 
 interface QuestionInfoSidebarProps {
   question: Question;
-  onSave: (card: Card) => Promise<Question>;
+  onSave: (question: Question) => Promise<Question>;
 }
 
 export const QuestionInfoSidebar = ({
@@ -42,13 +40,13 @@ export const QuestionInfoSidebar = ({
 
   const handleSave = (description: string | null) => {
     if (question.description() !== description) {
-      onSave(question.setDescription(description).card());
+      onSave(question.setDescription(description));
     }
   };
 
   const handleUpdateCacheTTL = (cache_ttl: number | undefined) => {
     if (question.cacheTTL() !== cache_ttl) {
-      return onSave(question.setCacheTTL(cache_ttl).card());
+      return onSave(question.setCacheTTL(cache_ttl));
     }
   };
 
@@ -58,9 +56,10 @@ export const QuestionInfoSidebar = ({
         <HeaderContainer>
           <h3>{t`About`}</h3>
           {question.isDataset() && (
-            <HeaderLink
+            <Link
+              variant="brand"
               to={Urls.modelDetail(question.card())}
-            >{t`Model details`}</HeaderLink>
+            >{t`Model details`}</Link>
           )}
         </HeaderContainer>
         <EditableText
@@ -70,6 +69,7 @@ export const QuestionInfoSidebar = ({
           }
           isOptional
           isMultiline
+          isMarkdown
           isDisabled={!canWrite}
           onChange={handleSave}
         />

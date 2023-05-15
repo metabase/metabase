@@ -200,6 +200,36 @@
                 body))]
     {:node node*}))
 
+(defn- let-second-inner [body bindings]
+  (let [binding-infos (for [[model {[binding value] :children}] (partition 2 bindings)]
+                        {:model   model
+                         :binding binding
+                         :value   (or value
+                                      (hooks/token-node 'nil))})]
+    (-> (hooks/vector-node
+         [(hooks/vector-node (map :model binding-infos))
+          (-> (hooks/list-node (list* (hooks/token-node `let)
+                                    (hooks/vector-node (mapcat (juxt :binding :value) binding-infos))
+                                    body))
+              (with-meta (meta body)))])
+        (with-meta (meta body)))))
+
+(defn let-second
+  "Helper for macros that have a shape like
+
+    (my-macro x [y]
+    ...)
+
+    where the let is for second arg.
+
+    =>
+
+    (let [y nil]
+    ...)"
+  [{:keys [node]}]
+  (let [[_ first-arg-ref binding+opts & body] (:children node)]
+    {:node (let-second-inner body [first-arg-ref binding+opts])}))
+
 (defn let-with-optional-value-for-last-binding
   "This is exactly like [[clojure.core/let]] but the right-hand side of the *last* binding, `value`, is optional.
 

@@ -66,18 +66,18 @@ You can specify additional options via a string, e.g. `UseResultsetStreaming=0;L
 
 Turn this option **OFF** if people want to click **Run** (the play button) before applying any [Summarize](../../questions/query-builder/introduction.md#grouping-your-metrics) or filter selections.
 
-By default, Metabase will execute a query as soon as you choose an grouping option from the **Summarize** menu or a filter condition from the [action menu](https://www.metabase.com/glossary/action_menu). If your database is slow, you may want to disable re-running to avoid loading data on each click.
+By default, Metabase will execute a query as soon as you choose an grouping option from the **Summarize** menu or a filter condition from the [drill-through menu](https://www.metabase.com/learn/questions/drill-through). If your database is slow, you may want to disable re-running to avoid loading data on each click.
 
 ### Choose when Metabase syncs and scans
 
-Turn this option **ON** to manage the queries that Metabase uses to stay up to date with your database. For more information, see [Syncing and scanning databases](../connecting.md#syncing-and-scanning-databases).
+Turn this option **ON** to manage the queries that Metabase uses to stay up to date with your database. For more information, see [Syncing and scanning databases](../sync-scan.md).
 
 #### Database syncing
 
-If you've selected **Choose when syncs and scans happen** > **ON**, you'll see the following options under **Database syncing**:
+If you've selected **Choose when syncs and scans happen** > **ON**, you'll be able to set:
 
-- **Scan** sets the frequency of the [sync query](../connecting.md#how-database-syncs-work) to hourly (default) or daily.
-- **at** sets the time when your sync query will run against your database (in the timezone of the server where your Metabase app is running).
+- The frequency of the [sync](../sync-scan.md#how-database-syncs-work): hourly (default) or daily.
+- The time to run the sync, in the timezone of the server where your Metabase app is running.
 
 #### Scanning for filter values
 
@@ -85,15 +85,17 @@ Metabase can scan the values present in each field in this database to enable ch
 
 If you've selected **Choose when syncs and scans happen** > **ON**, you'll see the following options under **Scanning for filter values**:
 
-- **Regularly, on a schedule** allows you to run [scan queries](../connecting.md#how-database-scans-work) at a frequency that matches the rate of change to your database. The time is set in the timezone of the server where your Metabase app is running. This is the best option for a small database, or tables with distinct values that get updated often.
+- **Regularly, on a schedule** allows you to run [scan queries](../sync-scan.md#how-database-scans-work) at a frequency that matches the rate of change to your database. The time is set in the timezone of the server where your Metabase app is running. This is the best option for a small database, or tables with distinct values that get updated often.
 - **Only when adding a new filter widget** is a great option if you want scan queries to run on demand. Turning this option **ON** means that Metabase will only scan and cache the values of the field(s) that are used when a new filter is added to a dashboard or SQL question.
-- **Never, I'll do this manually if I need to** is an option for databases that are either prohibitively large, or which never really have new values added. Use the [Re-scan field values now](../connecting.md#manually-scanning-column-values) button to run a manual scan and bring your filter values up to date.
+- **Never, I'll do this manually if I need to** is an option for databases that are either prohibitively large, or which never really have new values added. Use the [Re-scan field values now](../sync-scan.md#manually-scanning-column-values) button to run a manual scan and bring your filter values up to date.
 
 ### Periodically refingerprint tables
 
-Turn this option **ON** to scan a _sample_ of values every time Metabase runs a [sync](../connecting.md#how-database-syncs-work).
+> Periodic refingerprinting will increase the load on your database.
 
-A fingerprinting query examines the first 10,000 rows from each column and uses that data to guesstimate how many unique values each column has, what the minimum and maximum values are for numeric and timestamp columns, and so on. If you turn this option **OFF**, Metabase will only fingerprint your columns once during setup.
+Turn this option **ON** to scan a sample of values every time Metabase runs a [sync](../sync-scan.md#how-database-syncs-work).
+
+A fingerprinting query examines the first 10,000 rows from each column and uses that data to guesstimate how many unique values each column has, what the minimum and maximum values are for numeric and timestamp columns, and so on. If you leave this option **OFF**, Metabase will only fingerprint your columns once during setup.
 
 ### Default result cache duration
 
@@ -107,6 +109,116 @@ Options are:
 - **Custom**.
 
 If you are on a paid plan, you can also set cache duration per questions. See [Advanced caching controls](../../configuring-metabase/caching.md#advanced-caching-controls).
+
+## Example IAM Policy
+
+This policy provides read-only permissions for data in S3. You'll need to specify any S3 buckets that you want Metabase to be able to query from _as well as_ the S3 bucket provided as part of the configuration where results are written to.
+
+There may be additional permissions required for other Athena functionality, like federated queries. For details, check out the [Athena docs](https://docs.aws.amazon.com/athena/latest/ug/security-iam-athena).
+
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "Athena",
+      "Effect": "Allow",
+      "Action": [
+        "athena:BatchGetNamedQuery",
+        "athena:BatchGetQueryExecution",
+        "athena:GetNamedQuery",
+        "athena:GetQueryExecution",
+        "athena:GetQueryResults",
+        "athena:GetQueryResultsStream",
+        "athena:GetWorkGroup",
+        "athena:ListDatabases",
+        "athena:ListDataCatalogs",
+        "athena:ListNamedQueries",
+        "athena:ListQueryExecutions",
+        "athena:ListTagsForResource",
+        "athena:ListWorkGroups",
+        "athena:ListTableMetadata",
+        "athena:StartQueryExecution",
+        "athena:StopQueryExecution",
+        "athena:CreatePreparedStatement",
+        "athena:DeletePreparedStatement",
+        "athena:GetPreparedStatement"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "Glue",
+      "Effect": "Allow",
+      "Action": [
+        "glue:BatchGetPartition",
+        "glue:GetDatabase",
+        "glue:GetDatabases",
+        "glue:GetPartition",
+        "glue:GetPartitions",
+        "glue:GetTable",
+        "glue:GetTables",
+        "glue:GetTableVersion",
+        "glue:GetTableVersions"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "S3ReadAccess",
+      "Effect": "Allow",
+      "Action": ["s3:GetObject", "s3:ListBucket", "s3:GetBucketLocation"],
+      "Resource": [
+        "arn:aws:s3:::bucket1",
+        "arn:aws:s3:::bucket1/*",
+        "arn:aws:s3:::bucket2",
+        "arn:aws:s3:::bucket2/*"
+      ]
+    },
+    {
+      "Sid": "AthenaResultsBucket",
+      "Effect": "Allow",
+      "Action": [
+        "s3:PutObject",
+        "s3:GetObject",
+        "s3:AbortMultipartUpload",
+        "s3:ListBucket",
+        "s3:GetBucketLocation"
+      ],
+      "Resource": ["arn:aws:s3:::bucket2", "arn:aws:s3:::bucket2/*"]
+    }
+  ]
+}
+```
+
+If Metabase also needs to create tables, you'll need additional AWS Glue permissions. The `"Resource": "*"` key-value pair gives the account Delete and Update permissions to any table:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "VisualEditor0",
+      "Effect": "Allow",
+      "Action": [
+        "glue:BatchCreatePartition",
+        "glue:UpdateDatabase",
+        "glue:DeleteDatabase",
+        "glue:CreateTable",
+        "glue:CreateDatabase",
+        "glue:UpdateTable",
+        "glue:BatchDeletePartition",
+        "glue:BatchDeleteTable",
+        "glue:DeleteTable",
+        "glue:CreatePartition",
+        "glue:DeletePartition",
+        "glue:UpdatePartition"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
+```
+
 
 ## Further reading
 

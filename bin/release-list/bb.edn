@@ -1,0 +1,9 @@
+{:paths ["src"]
+ :tasks
+ {test:bb {:extra-paths ["test/release_list"]
+           :extra-deps {io.github.cognitect-labs/test-runner
+                        {:git/tag "v0.5.1" :git/sha "dfb30dd"}}
+           :task (exec 'cognitect.test-runner.api/test)
+           :exec-args {:dirs ["test/release_list"]}
+           :org.babashka/cli {:coerce {:nses [:symbol]
+                                       :vars [:symbol]}}}}}

@@ -109,7 +109,6 @@
       (qualify-and-quote driver database-name table-name field-name)
       field-comment)))
 
-
 (defmulti inline-table-comment-sql
   "Return an inline `COMMENT` statement for a table."
   {:arglists '([driver comment])}
@@ -117,13 +116,6 @@
   :hierarchy #'driver/hierarchy)
 
 (defmethod inline-table-comment-sql :sql/test-extensions [_ _] nil)
-
-(defn standard-inline-table-comment-sql
-  "Implementation of `inline-table-comment-sql` for driver test extenstions that wish to use it."
-  [_ table-comment]
-  (when (seq table-comment)
-    (format "COMMENT '%s'" table-comment)))
-
 
 (defmulti standalone-table-comment-sql
   "Return standalone `COMMENT` statement for a table."

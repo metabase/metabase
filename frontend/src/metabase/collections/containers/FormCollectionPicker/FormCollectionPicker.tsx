@@ -122,6 +122,7 @@ function FormCollectionPicker({
 
   return (
     <TippyPopoverWithTrigger
+      sizeToFit
       placement="bottom-start"
       renderTrigger={renderTrigger}
       popoverContent={renderContent}
@@ -130,4 +131,5 @@ function FormCollectionPicker({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default FormCollectionPicker;

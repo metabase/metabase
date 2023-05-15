@@ -43,21 +43,21 @@
           (embed-test/with-temp-card [card {:dataset_query
                                             {:database (mt/id)
                                              :type     :native
-                                             :native   {:template-tags {:a {:type "date", :name "a", :display_name "a"}
-                                                                        :b {:type "date", :name "b", :display_name "b"}
-                                                                        :c {:type "date", :name "c", :display_name "c"}
-                                                                        :d {:type "date", :name "d", :display_name "d"}}}}}]
-            (is (= [{:id      nil
+                                             :native   {:template-tags {:a {:type "date", :name "a", :display_name "a" :id "a"}
+                                                                        :b {:type "date", :name "b", :display_name "b" :id "b"}
+                                                                        :c {:type "date", :name "c", :display_name "c" :id "c"}
+                                                                        :d {:type "date", :name "d", :display_name "d" :id "d"}}}}}]
+            (is (= [{:id      "d"
                      :type    "date/single"
                      :target  ["variable" ["template-tag" "d"]]
                      :name    "d"
                      :slug    "d"
                      :default nil}]
                    (-> (mt/user-http-request :crowberto :get 200 (card-url card {:_embedding_params {:a "locked"
-                                                                                                     :b "disabled"
-                                                                                                     :c "enabled"
-                                                                                                     :d "enabled"}
-                                                                                 :params            {:c 100}}))
+                                                                                                      :b "disabled"
+                                                                                                      :c "enabled"
+                                                                                                      :d "enabled"}
+                                                                                  :params            {:c 100}}))
                        :parameters)))))))))
 
 ;;; ------------------------------------ GET /api/preview_embed/card/:token/query ------------------------------------

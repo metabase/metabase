@@ -73,7 +73,7 @@ import createCachedSelector from "re-reselect";
 // NOTE: need to use inflection directly here due to circular dependency
 import inflection from "inflection";
 
-import { createSelector } from "reselect";
+import { createSelector } from "@reduxjs/toolkit";
 import { normalize, denormalize, schema } from "normalizr";
 import { getIn, merge } from "icepick";
 import _ from "underscore";
@@ -243,7 +243,7 @@ export function createEntity(def) {
       (entityObject, updatedObject = null, { notify } = {}) =>
         async (dispatch, getState) => {
           // save the original object for undo
-          const originalObject = entity.selectors.getObject(getState(), {
+          const originalObject = getObject(getState(), {
             entityId: entityObject.id,
           });
           // If a second object is provided just take the id from the first and
@@ -474,6 +474,7 @@ export function createEntity(def) {
   );
 
   const defaultSelectors = {
+    getEntityIds,
     getList,
     getObject,
     getFetched,

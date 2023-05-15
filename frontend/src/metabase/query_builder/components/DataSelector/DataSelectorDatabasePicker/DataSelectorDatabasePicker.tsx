@@ -3,11 +3,9 @@ import React, { useCallback, useMemo } from "react";
 import Icon from "metabase/components/Icon";
 import AccordionList from "metabase/core/components/AccordionList";
 
-import { checkDatabaseActionsEnabled } from "metabase/actions/utils";
+import Database from "metabase-lib/metadata/Database";
+import Schema from "metabase-lib/metadata/Schema";
 
-import type { Database } from "metabase-types/api/database";
-
-import type { Schema } from "../types";
 import DataSelectorLoading from "../DataSelectorLoading";
 import { RawDataBackButton } from "../DataSelector.styled";
 
@@ -18,7 +16,6 @@ type DataSelectorDatabasePickerProps = {
   hasInitialFocus?: boolean;
   hasNextStep?: boolean;
   isLoading?: boolean;
-  requireWriteback?: boolean;
   selectedDatabase?: Database;
   selectedSchema?: Schema;
   onBack?: () => void;
@@ -30,7 +27,6 @@ type Item = {
   name: string;
   index: number;
   database: Database;
-  writebackEnabled?: boolean;
 };
 
 type Section = {
@@ -45,7 +41,6 @@ const DataSelectorDatabasePicker = ({
   hasNextStep,
   onBack,
   hasInitialFocus,
-  requireWriteback = false,
 }: DataSelectorDatabasePickerProps) => {
   const sections = useMemo(() => {
     const sections: Section[] = [];
@@ -54,20 +49,16 @@ const DataSelectorDatabasePicker = ({
       sections.push({ name: <RawDataBackButton /> });
     }
 
-    const databaseItems = databases
-      .filter(database =>
-        requireWriteback ? checkDatabaseActionsEnabled(database) : true,
-      )
-      .map((database, index) => ({
+    sections.push({
+      items: databases.map((database, index) => ({
         name: database.name,
         index,
         database,
-      }));
-
-    sections.push({ items: databaseItems });
+      })),
+    });
 
     return sections;
-  }, [databases, requireWriteback, onBack]);
+  }, [databases, onBack]);
 
   const handleChangeSection = useCallback(
     (section: Section, sectionIndex: number) => {
@@ -104,4 +95,5 @@ const DataSelectorDatabasePicker = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default DataSelectorDatabasePicker;

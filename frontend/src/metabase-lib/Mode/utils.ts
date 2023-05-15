@@ -18,7 +18,7 @@ export function getModeType(question: Question): ModeType | null {
     return null;
   }
 
-  if (question.card().display === "action") {
+  if (question.display() === "action") {
     return MODE_TYPE_ACTION;
   }
 

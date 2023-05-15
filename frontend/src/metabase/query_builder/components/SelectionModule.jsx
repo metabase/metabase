@@ -7,7 +7,6 @@ import _ from "underscore";
 import cx from "classnames";
 import Popover from "metabase/components/Popover";
 import Icon from "metabase/components/Icon";
-import SearchBar from "./SearchBar";
 
 export default class SelectionModule extends Component {
   constructor(props, context) {
@@ -24,8 +23,6 @@ export default class SelectionModule extends Component {
     this.state = {
       open: isInitiallyOpen,
       expanded: false,
-      searchThreshold: 20,
-      searchEnabled: false,
       filterTerm: null,
     };
   }
@@ -54,18 +51,6 @@ export default class SelectionModule extends Component {
       open: false,
       expanded: false,
     });
-  }
-
-  _enableSearch() {
-    /*
-        not showing search for now
-        if(this.props.items.length > this.state.searchThreshold) {
-            return true
-        } else {
-            return false
-        }
-        */
-    return false;
   }
 
   _toggleOpen() {
@@ -205,11 +190,6 @@ export default class SelectionModule extends Component {
         "SelectionItems--expanded": this.state.expanded,
       });
 
-      let searchBar;
-      if (this._enableSearch()) {
-        searchBar = <SearchBar onFilter={this._filterSelections} />;
-      }
-
       return (
         <Popover
           target={this.rootRef.current}
@@ -217,7 +197,6 @@ export default class SelectionModule extends Component {
           onClose={this.onClose}
         >
           <div className={itemListClasses}>
-            {searchBar}
             <ul className="SelectionList scroll-show scroll-y">
               {this._listItems(selection)}
             </ul>

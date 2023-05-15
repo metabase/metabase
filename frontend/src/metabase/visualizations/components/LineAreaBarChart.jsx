@@ -22,6 +22,7 @@ import {
 } from "metabase/visualizations/lib/settings/validation";
 import { getOrderedSeries } from "metabase/visualizations/lib/series";
 import { getAccentColors } from "metabase/lib/colors/groups";
+import { isEmpty } from "metabase/lib/validate";
 import {
   isNumeric,
   isDate,
@@ -81,6 +82,7 @@ export default class LineAreaBarChart extends Component {
   static supportsSeries = true;
 
   static minSize = { width: 4, height: 3 };
+  static defaultSize = { width: 4, height: 3 };
 
   static isSensible({ cols, rows }) {
     return (
@@ -274,7 +276,8 @@ export default class LineAreaBarChart extends Component {
     const hasMultipleSeries = series.length > 1;
     const canChangeSeries = onAddSeries || onEditSeries || onRemoveSeries;
     const hasLegendButtons = !hasTitle && actionButtons;
-    const hasLegend = hasMultipleSeries || canChangeSeries || hasLegendButtons;
+    const hasLegend =
+      hasMultipleSeries || canChangeSeries || hasLegendButtons || hasBreakout;
 
     const seriesSettings =
       settings.series && series.map(single => settings.series(single));
@@ -308,7 +311,7 @@ export default class LineAreaBarChart extends Component {
     }
   };
 
-  handleSelectSeries = (event, index) => {
+  handleSelectSeries = (event, index, isReversed) => {
     const {
       card,
       series,
@@ -318,7 +321,9 @@ export default class LineAreaBarChart extends Component {
       onChangeCardAndRun,
     } = this.props;
 
-    const single = series[index];
+    const single = isReversed
+      ? series[series.length - index - 1]
+      : series[index];
     const hasBreakout = card._breakoutColumn != null;
 
     if (onEditSeries && !hasBreakout) {
@@ -349,7 +354,10 @@ export default class LineAreaBarChart extends Component {
       settings,
     } = this.props;
 
-    const orderedSeries = getOrderedSeries(series, settings);
+    // Note (EmmadUsmani): Stacked charts should be reversed so series are stacked
+    // from top to bottom, matching the sidebar (metabase#28772).
+    const isReversed = !isEmpty(settings["stackable.stack_type"]);
+    const orderedSeries = getOrderedSeries(series, settings, isReversed);
 
     const {
       title,
@@ -391,6 +399,7 @@ export default class LineAreaBarChart extends Component {
           onHoverChange={onHoverChange}
           onRemoveSeries={!hasBreakout ? onRemoveSeries : undefined}
           onSelectSeries={this.handleSelectSeries}
+          isReversed={isReversed}
         >
           <CardRenderer
             {...this.props}

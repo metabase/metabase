@@ -28,6 +28,12 @@ export const ADD_CARD_TO_DASH = "metabase/dashboard/ADD_CARD_TO_DASH";
 export const REMOVE_CARD_FROM_DASH = "metabase/dashboard/REMOVE_CARD_FROM_DASH";
 export const removeCardFromDashboard = createAction(REMOVE_CARD_FROM_DASH);
 
+export const UNDO_REMOVE_CARD_FROM_DASH =
+  "metabase/dashboard/UNDO_REMOVE_CARD_FROM_DASH";
+export const undoRemoveCardFromDashboard = createAction(
+  UNDO_REMOVE_CARD_FROM_DASH,
+);
+
 export const UPDATE_DASHCARD_VISUALIZATION_SETTINGS =
   "metabase/dashboard/UPDATE_DASHCARD_VISUALIZATION_SETTINGS";
 export const onUpdateDashCardVisualizationSettings = createAction(
@@ -47,10 +53,4 @@ export const REPLACE_ALL_DASHCARD_VISUALIZATION_SETTINGS =
 export const onReplaceAllDashCardVisualizationSettings = createAction(
   REPLACE_ALL_DASHCARD_VISUALIZATION_SETTINGS,
   (id, settings) => ({ id, settings }),
-);
-
-export const UPDATE_DASHCARD_ID = "metabase/dashboard/UPDATE_DASHCARD_ID";
-export const updateDashcardId = createAction(
-  UPDATE_DASHCARD_ID,
-  (oldDashcardId, newDashcardId) => ({ oldDashcardId, newDashcardId }),
 );

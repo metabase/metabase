@@ -194,23 +194,20 @@
 ;; the current HiveConnection doesn't support .createStatement
 (defmethod sql-jdbc.execute/statement-supported? :sparksql [_] false)
 
-(doseq [feature [:basic-aggregations
-                 :binning
-                 :expression-aggregations
-                 :expressions
-                 :native-parameters
-                 :nested-queries
-                 :standard-deviation-aggregations]]
-  (defmethod driver/supports? [:sparksql feature] [_ _] true))
+(doseq [[feature supported?] {:basic-aggregations              true
+                              :binning                         true
+                              :expression-aggregations         true
+                              :expressions                     true
+                              :native-parameters               true
+                              :nested-queries                  true
+                              :standard-deviation-aggregations true
+                              :test/jvm-timezone-setting       false}]
+  (defmethod driver/database-supports? [:sparkql feature] [_driver _feature _db] supported?))
 
 ;; only define an implementation for `:foreign-keys` if none exists already. In test extensions we define an alternate
 ;; implementation, and we don't want to stomp over that if it was loaded already
-(when-not (get (methods driver/supports?) [:sparksql :foreign-keys])
-  (defmethod driver/supports? [:sparksql :foreign-keys] [_ _] true))
-
-(defmethod driver/database-supports? [:sparksql :test/jvm-timezone-setting]
-  [_driver _feature _database]
-  false)
+(when-not (get (methods driver/database-supports?) [:sparksql :foreign-keys])
+  (defmethod driver/database-supports? [:sparksql :foreign-keys] [_driver _feature _db] true))
 
 (defmethod sql.qp/quote-style :sparksql
   [_driver]

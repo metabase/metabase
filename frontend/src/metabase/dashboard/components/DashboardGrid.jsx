@@ -4,6 +4,8 @@ import PropTypes from "prop-types";
 
 import _ from "underscore";
 import cx from "classnames";
+import { connect } from "react-redux";
+import { t } from "ttag";
 import ExplicitSize from "metabase/components/ExplicitSize";
 
 import Modal from "metabase/components/Modal";
@@ -23,13 +25,15 @@ import {
   MIN_ROW_HEIGHT,
 } from "metabase/lib/dashboard_grid";
 import { ContentViewportContext } from "metabase/core/context/ContentViewportContext";
+import { addUndo } from "metabase/redux/undo";
 import { DashboardCard } from "./DashboardGrid.styled";
 
 import GridLayout from "./grid/GridLayout";
 import { generateMobileLayout } from "./grid/utils";
 import AddSeriesModal from "./AddSeriesModal/AddSeriesModal";
-import RemoveFromDashboardModal from "./RemoveFromDashboardModal";
 import DashCard from "./DashCard";
+
+const mapDispatchToProps = { addUndo };
 
 class DashboardGrid extends Component {
   static contextType = ContentViewportContext;
@@ -40,7 +44,6 @@ class DashboardGrid extends Component {
     this.state = {
       layouts: this.getLayouts(props),
       dashcards: this.getSortedDashcards(props),
-      removeModalDashCard: null,
       addSeriesModalDashCard: null,
       isDragging: false,
       isAnimationPaused: true,
@@ -129,7 +132,7 @@ class DashboardGrid extends Component {
     });
 
     if (changes.length > 0) {
-      setMultipleDashCardAttributes(changes);
+      setMultipleDashCardAttributes({ dashcards: changes });
       MetabaseAnalytics.trackStructEvent("Dashboard", "Layout Changed");
     }
   };
@@ -175,14 +178,13 @@ class DashboardGrid extends Component {
     const desktop = dashboard.ordered_cards.map(this.getLayoutForDashCard);
     const mobile = generateMobileLayout({
       desktopLayout: desktop,
-      // We want to keep the heights for all visualizations equal not to break the visual rhythm
-      // Exceptions are text cards (can take too much vertical space)
-      // and scalar value cards (basically a number and some text on a big card)
+      defaultCardHeight: 6,
       heightByDisplayType: {
+        action: 1,
+        link: 1,
         text: 2,
         scalar: 4,
       },
-      defaultCardHeight: 6,
     });
     return { desktop, mobile };
   }
@@ -201,23 +203,6 @@ class DashboardGrid extends Component {
     // prevent infinite re-rendering when the scroll bar appears/disappears
     // https://github.com/metabase/metabase/issues/17229
     return hasScroll ? Math.ceil(actualHeight) : Math.floor(actualHeight);
-  }
-
-  renderRemoveModal() {
-    // can't use PopoverWithTrigger due to strange interaction with ReactGridLayout
-    const isOpen = this.state.removeModalDashCard != null;
-    return (
-      <Modal isOpen={isOpen}>
-        {isOpen && (
-          <RemoveFromDashboardModal
-            dashcard={this.state.removeModalDashCard}
-            dashboard={this.props.dashboard}
-            removeCardFromDashboard={this.props.removeCardFromDashboard}
-            onClose={() => this.setState({ removeModalDashCard: null })}
-          />
-        )}
-      </Modal>
-    );
   }
 
   renderAddSeriesModal() {
@@ -254,7 +239,16 @@ class DashboardGrid extends Component {
   };
 
   onDashCardRemove(dc) {
-    this.setState({ removeModalDashCard: dc });
+    this.props.removeCardFromDashboard({
+      dashcardId: dc.id,
+    });
+    this.props.addUndo({
+      message: t`Removed card`,
+      undo: true,
+      action: () =>
+        this.props.undoRemoveCardFromDashboard({ dashcardId: dc.id }),
+    });
+    MetabaseAnalytics.trackStructEvent("Dashboard", "Remove Card");
   }
 
   onDashCardAddSeries(dc) {
@@ -387,11 +381,13 @@ class DashboardGrid extends Component {
     return (
       <div className="flex layout-centered">
         {width > 0 ? this.renderGrid() : <div />}
-        {this.renderRemoveModal()}
         {this.renderAddSeriesModal()}
       </div>
     );
   }
 }
 
-export default ExplicitSize()(DashboardGrid);
+export default _.compose(
+  ExplicitSize(),
+  connect(null, mapDispatchToProps),
+)(DashboardGrid);

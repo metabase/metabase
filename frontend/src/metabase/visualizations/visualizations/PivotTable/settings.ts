@@ -18,14 +18,14 @@ import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import ChartSettingsTableFormatting from "metabase/visualizations/components/settings/ChartSettingsTableFormatting";
 import { ChartSettingIconRadio } from "metabase/visualizations/components/settings/ChartSettingIconRadio";
 
-import type { Series, VisualizationSettings } from "metabase-types/api";
-import type { Card } from "metabase-types/types/Card";
 import type {
+  Card,
+  DatasetColumn,
   DatasetData,
-  Column,
-  Row,
-  ColumnSettings,
-} from "metabase-types/types/Dataset";
+  Series,
+  RowValue,
+  VisualizationSettings,
+} from "metabase-types/api";
 
 import { isDimension } from "metabase-lib/types/utils/isa";
 
@@ -38,6 +38,15 @@ import {
   updateValueWithCurrentColumns,
 } from "./utils";
 import { PivotSetting } from "./types";
+
+export const getTitleForColumn = (
+  column: DatasetColumn,
+  settings: VisualizationSettings,
+) => {
+  const { column: _column, column_title: columnTitle } =
+    settings.column(column);
+  return columnTitle || formatColumn(_column);
+};
 
 export const settings = {
   ...columnSettings({ hidden: true }),
@@ -75,6 +84,9 @@ export const settings = {
       partitions,
       columns: data == null ? [] : data.cols,
       settings,
+      getColumnTitle: (column: DatasetColumn) => {
+        return getTitleForColumn(column, settings);
+      },
     }),
     getValue: (
       [{ data, card }]: [{ data: DatasetData; card: Card }],
@@ -98,7 +110,7 @@ export const settings = {
         );
 
         let rows;
-        let columns: Column[];
+        let columns: DatasetColumn[];
 
         if (dimensions.length < 2) {
           columns = [];
@@ -178,7 +190,7 @@ export const settings = {
         const hasOnlyFormattableColumns =
           columnFormat.columns
             .map(columnName =>
-              (data.cols as Column[]).find(
+              (data.cols as DatasetColumn[]).find(
                 column => column.name === columnName,
               ),
             )
@@ -189,7 +201,9 @@ export const settings = {
     },
     getProps: (series: Series) => ({
       canHighlightRow: false,
-      cols: (series[0].data.cols as Column[]).filter(isFormattablePivotColumn),
+      cols: (series[0].data.cols as DatasetColumn[]).filter(
+        isFormattablePivotColumn,
+      ),
     }),
     getHidden: ([{ data }]: [{ data: DatasetData }]) =>
       !data?.cols.some(col => isFormattablePivotColumn(col)),
@@ -214,7 +228,7 @@ export const _columnSettings = {
         },
       ],
     },
-    getHidden: ({ source }: { source: Column["source"] }) =>
+    getHidden: ({ source }: { source: DatasetColumn["source"] }) =>
       source === "aggregation",
   },
   [COLUMN_SHOW_TOTALS]: {
@@ -222,19 +236,19 @@ export const _columnSettings = {
     widget: "toggle",
     inline: true,
     getDefault: (
-      column: Column,
-      columnSettings: ColumnSettings,
+      column: DatasetColumn,
+      columnSettings: DatasetColumn,
       { settings }: { settings: VisualizationSettings },
     ) => {
       //Default to showing totals if appropriate
       const rows = settings[COLUMN_SPLIT_SETTING].rows || [];
       return rows
         .slice(0, -1)
-        .some((row: Row) => _.isEqual(row, column.field_ref));
+        .some((row: RowValue) => _.isEqual(row, column.field_ref));
     },
     getHidden: (
-      column: Column,
-      columnSettings: ColumnSettings,
+      column: DatasetColumn,
+      columnSettings: DatasetColumn,
       { settings }: { settings: VisualizationSettings },
     ) => {
       const rows = settings[COLUMN_SPLIT_SETTING].rows || [];
@@ -243,7 +257,7 @@ export const _columnSettings = {
       //  - not the last column
       return !rows
         .slice(0, -1)
-        .some((row: Row) => _.isEqual(row, column.field_ref));
+        .some((row: RowValue) => _.isEqual(row, column.field_ref));
     },
   },
   column_title: {

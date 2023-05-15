@@ -14,7 +14,7 @@ You'll need to have a [Google Cloud Platform](https://cloud.google.com/) account
 
 ## Google Cloud Platform: creating a service account and JSON file
 
-You'll first need a [service account](https://cloud.google.com/iam/docs/service-accounts) JSON file that Metabase can use to access your BigQuery dataset. Service accounts are intended for non-human users (such as applications like Metabase) to authenticate (who am I?) and authorize (what can I do?) their API calls.
+You'll first need a [service account](https://cloud.google.com/iam/docs/service-account-overview) JSON file that Metabase can use to access your BigQuery dataset. Service accounts are intended for non-human users (such as applications like Metabase) to authenticate (who am I?) and authorize (what can I do?) their API calls.
 
 To create the service account JSON file, follow Google's documentation on [setting up a service account](https://cloud.google.com/iam/docs/creating-managing-service-accounts) for your BigQuery dataset. Here's the basic flow:
 
@@ -60,18 +60,20 @@ You can specify which BigQuery datasets you want to sync and scan. Options are:
 - Only these...
 - All except...
 
-For the Only these and All except options, you can input a comma-separated list of values to tell Metabase which datasets you want to include (or exclude). For example:
+> A BigQuery dataset is similar to a schema. Make sure to enter your dataset names (like `marketing`), _not_ your table names (`marketing.campaigns`).
+
+Let's say you have three datasets: foo, bar, and baz.
+
+To sync all three datasets, select **Only these...** and enter:
 
 ```
 foo,bar,baz
 ```
 
-You can use the `*` wildcard to match multiple datasets.
+To sync datasets based on a string match, use the `*` wildcard:
 
-Let's say you have three datasets: foo, bar, and baz.
-
-- If you have **Only these...** set, and enter the string `b*`, you'll sync with bar and baz.
-- If you have **All except...** set, and enter the string `b*`, you'll just sync foo.
+- To sync bar and baz, select **Only these...** and enter the string `b*`.
+- To sync foo only, select **All except...**  and enter the string `b*`.
 
 Note that only the `*` wildcard is supported; you can't use other special characters or regexes.
 
@@ -87,18 +89,18 @@ This can be useful for [auditing](../../usage-and-performance-tools/audit.md) an
 
 Turn this option **OFF** if people want to click **Run** (the play button) before applying any [Summarize](../../questions/query-builder/introduction.md#grouping-your-metrics) or filter selections.
 
-By default, Metabase will execute a query as soon as you choose an grouping option from the **Summarize** menu or a filter condition from the [action menu](https://www.metabase.com/glossary/action_menu). If your database is slow, you may want to disable re-running to avoid loading data on each click.
+By default, Metabase will execute a query as soon as you choose an grouping option from the **Summarize** menu or a filter condition from the [drill-through menu](https://www.metabase.com/learn/questions/drill-through). If your database is slow, you may want to disable re-running to avoid loading data on each click.
 
 ### Choose when Metabase syncs and scans
 
-Turn this option **ON** to manage the queries that Metabase uses to stay up to date with your database. For more information, see [Syncing and scanning databases](../connecting.md#syncing-and-scanning-databases).
+Turn this option **ON** to manage the queries that Metabase uses to stay up to date with your database. For more information, see [Syncing and scanning databases](../sync-scan.md#syncing-and-scanning-databases).
 
 #### Database syncing
 
-If you've selected **Choose when syncs and scans happen** > **ON**, you'll see the following options under **Database syncing**:
+If you've selected **Choose when syncs and scans happen** > **ON**, you'll be able to set:
 
-- **Scan** sets the frequency of the [sync query](../connecting.md#how-database-syncs-work) to hourly (default) or daily.
-- **at** sets the time when your sync query will run against your database (in the timezone of the server where your Metabase app is running).
+- The frequency of the [sync](../sync-scan.md#how-database-syncs-work): hourly (default) or daily.
+- The time to run the sync, in the timezone of the server where your Metabase app is running.
 
 #### Scanning for filter values
 
@@ -106,15 +108,17 @@ Metabase can scan the values present in each field in this database to enable ch
 
 If you've selected **Choose when syncs and scans happen** > **ON**, you'll see the following options under **Scanning for filter values**:
 
-- **Regularly, on a schedule** allows you to run [scan queries](../connecting.md#how-database-scans-work) at a frequency that matches the rate of change to your database. The time is set in the timezone of the server where your Metabase app is running. This is the best option for a small database, or tables with distinct values that get updated often.
+- **Regularly, on a schedule** allows you to run [scan queries](../sync-scan.md#how-database-scans-work) at a frequency that matches the rate of change to your database. The time is set in the timezone of the server where your Metabase app is running. This is the best option for a small database, or tables with distinct values that get updated often.
 - **Only when adding a new filter widget** is a great option if you want scan queries to run on demand. Turning this option **ON** means that Metabase will only scan and cache the values of the field(s) that are used when a new filter is added to a dashboard or SQL question.
-- **Never, I'll do this manually if I need to** is an option for databases that are either prohibitively large, or which never really have new values added. Use the [Re-scan field values now](../connecting.md#manually-scanning-column-values) button to run a manual scan and bring your filter values up to date.
+- **Never, I'll do this manually if I need to** is an option for databases that are either prohibitively large, or which never really have new values added. Use the [Re-scan field values now](../sync-scan.md#manually-scanning-column-values) button to run a manual scan and bring your filter values up to date.
 
 ### Periodically refingerprint tables
 
-Turn this option **ON** to scan a _sample_ of values every time Metabase runs a [sync](../connecting.md#how-database-syncs-work).
+> Periodic refingerprinting will increase the load on your database.
 
-A fingerprinting query examines the first 10,000 rows from each column and uses that data to guesstimate how many unique values each column has, what the minimum and maximum values are for numeric and timestamp columns, and so on. If you turn this option **OFF**, Metabase will only fingerprint your columns once during setup.
+Turn this option **ON** to scan a sample of values every time Metabase runs a [sync](../sync-scan.md#how-database-syncs-work).
+
+A fingerprinting query examines the first 10,000 rows from each column and uses that data to guesstimate how many unique values each column has, what the minimum and maximum values are for numeric and timestamp columns, and so on. If you leave this option **OFF**, Metabase will only fingerprint your columns once during setup.
 
 ### Default result cache duration
 
@@ -136,8 +140,8 @@ You can connect Metabase to Google Drive data sources via BigQuery. There is som
 To connect to a data source stored in Google Drive (like a Google Sheet), first make sure you've completed the steps above, including:
 
 - creating a project in Google Cloud Platform,
-- adding a BigQuery dataset, and 
-- creating a [service account](#google-cloud-platform-creating-a-service-account-and-json-file). 
+- adding a BigQuery dataset, and
+- creating a [service account](#google-cloud-platform-creating-a-service-account-and-json-file).
 
 ### Share your Google Drive source with the service account
 
@@ -161,7 +165,7 @@ Once you've completed these steps, you'll be able to ask questions and create da
 
 ## Using Legacy SQL
 
-As of version 0.30.0, Metabase tells BigQuery to interpret SQL queries as [Standard SQL](https://cloud.google.com/bigquery/docs/reference/standard-sql/). If you prefer using [Legacy SQL](https://cloud.google.com/bigquery/docs/reference/legacy-sql) instead, you can tell Metabase to do so by including a `#legacySQL` directive at the beginning of your query, for example:
+As of version 0.30.0, Metabase tells BigQuery to interpret SQL queries as [Standard SQL (GoogleSQL)](https://cloud.google.com/bigquery/docs/introduction-sql). If you prefer using [Legacy SQL](https://cloud.google.com/bigquery/docs/reference/legacy-sql) instead, you can tell Metabase to do so by including a `#legacySQL` directive at the beginning of your query, for example:
 
 ```sql
 #legacySQL

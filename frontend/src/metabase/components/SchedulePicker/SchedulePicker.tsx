@@ -1,57 +1,30 @@
 import React, { Component } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import Select, { SelectChangeEvent } from "metabase/core/components/Select";
 import { SegmentedControl } from "metabase/components/SegmentedControl";
-
 import { capitalize } from "metabase/lib/formatting/strings";
-
 import type {
   ScheduleDayType,
   ScheduleFrameType,
-  ScheduleType,
   ScheduleSettings,
+  ScheduleType,
 } from "metabase-types/api";
+import {
+  AM_PM_OPTIONS,
+  getDayOfWeekOptions,
+  HOUR_OPTIONS,
+  MINUTE_OPTIONS,
+  MONTH_DAY_OPTIONS,
+} from "metabase/lib/date-time";
 
 import {
-  PickerText,
   PickerRoot,
   PickerRow,
   PickerSpacedRow,
+  PickerText,
   ScheduleDescriptionContainer,
 } from "./SchedulePicker.styled";
-
-export const HOUR_OPTIONS = _.times(12, n => ({
-  name: (n === 0 ? 12 : n) + ":00",
-  value: n,
-}));
-
-export const MINUTE_OPTIONS = _.times(60, n => ({
-  name: n.toString(),
-  value: n,
-}));
-
-export const AM_PM_OPTIONS = [
-  { name: "AM", value: 0 },
-  { name: "PM", value: 1 },
-];
-
-export const DAY_OF_WEEK_OPTIONS = [
-  { name: t`Sunday`, value: "sun" },
-  { name: t`Monday`, value: "mon" },
-  { name: t`Tuesday`, value: "tue" },
-  { name: t`Wednesday`, value: "wed" },
-  { name: t`Thursday`, value: "thu" },
-  { name: t`Friday`, value: "fri" },
-  { name: t`Saturday`, value: "sat" },
-];
-
-export const MONTH_DAY_OPTIONS = [
-  { name: t`First`, value: "first" },
-  { name: t`Last`, value: "last" },
-  { name: t`15th (Midpoint)`, value: "mid" },
-];
 
 const optionNameTranslations = {
   hourly: t`Hourly`,
@@ -155,7 +128,7 @@ class SchedulePicker extends Component<SchedulePickerProps> {
 
     const DAY_OPTIONS = [
       { name: t`Calendar Day`, value: null },
-      ...DAY_OF_WEEK_OPTIONS,
+      ...getDayOfWeekOptions(),
     ];
 
     return (
@@ -194,7 +167,7 @@ class SchedulePicker extends Component<SchedulePickerProps> {
           onChange={(e: SelectChangeEvent<ScheduleDayType>) =>
             this.handleChangeProperty("schedule_day", e.target.value)
           }
-          options={DAY_OF_WEEK_OPTIONS}
+          options={getDayOfWeekOptions()}
         />
       </PickerRow>
     );
@@ -300,4 +273,5 @@ class SchedulePicker extends Component<SchedulePickerProps> {
   }
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default SchedulePicker;

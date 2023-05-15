@@ -34,6 +34,7 @@
 /deploy/artifacts/*
 /docs/uberdoc.html
 /frontend/test/snapshots/*
+/e2e/snapshots/*
 /lein-plugins/*/target
 /local
 /locales/metabase-*.pot
@@ -86,4 +87,4 @@ dev/src/dev/nocommit/
 .calva/
 
 # malli + clj-kondo: ignore malli-types
-.clj-kondo/metosin/malli-types
+.clj-kondo/metosin/malli-types-clj

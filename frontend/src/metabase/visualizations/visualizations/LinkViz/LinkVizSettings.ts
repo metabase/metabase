@@ -11,6 +11,7 @@ export const settings = {
   hidden: true,
   supportPreviewing: false,
   minSize: { width: 1, height: 1 },
+  defaultSize: { width: 3, height: 1 },
   checkRenderable: () => undefined,
   settings: {
     "card.title": {

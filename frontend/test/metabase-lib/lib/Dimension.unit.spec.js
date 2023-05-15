@@ -275,10 +275,11 @@ describe("Dimension", () => {
             card: () => {},
           };
 
-          const question = ORDERS.question().setResultsMetadata({
-            columns: [ORDERS.TOTAL],
-          });
-          question.card().id = 1;
+          const question = ORDERS.question()
+            .setId(1)
+            .setResultsMetadata({
+              columns: [ORDERS.TOTAL],
+            });
 
           const query = new StructuredQuery(question, {
             type: "query",
@@ -445,7 +446,7 @@ describe("Dimension", () => {
             name: "CREATED_AT",
             display_name: "Created At",
             base_type: "type/DateTime",
-            semantic_type: null,
+            semantic_type: "type/CreationTimestamp",
             field_ref: [
               "field",
               ORDERS.CREATED_AT.id,
@@ -800,6 +801,62 @@ describe("Dimension", () => {
           ]).field();
           expect(base_type).toBe("type/Integer");
         });
+
+        it.each([
+          {
+            field: ["field", PRODUCTS.CATEGORY.id, null],
+            fieldName: "category",
+            expectedType: "type/Text",
+          },
+          {
+            field: ["field", PRODUCTS.PRICE.id, null],
+            fieldName: "price",
+            expectedType: "type/Float",
+          },
+          {
+            field: [
+              "field",
+              PRODUCTS.CREATED_AT.id,
+              { "temporal-unit": "day" },
+            ],
+            fieldName: "created_at",
+            expectedType: "type/DateTime",
+          },
+        ])(
+          "should return $expectedType for min of $fieldName",
+          ({ field, expectedType }) => {
+            const { base_type } = aggregation(["min", field]).field();
+            expect(base_type).toBe(expectedType);
+          },
+        );
+
+        it.each([
+          {
+            field: ["field", PRODUCTS.CATEGORY.id, null],
+            fieldName: "category",
+            expectedType: "type/Text",
+          },
+          {
+            field: ["field", PRODUCTS.PRICE.id, null],
+            fieldName: "price",
+            expectedType: "type/Float",
+          },
+          {
+            field: [
+              "field",
+              PRODUCTS.CREATED_AT.id,
+              { "temporal-unit": "day" },
+            ],
+            fieldName: "created_at",
+            expectedType: "type/DateTime",
+          },
+        ])(
+          "should return $expectedType for max of $fieldName",
+          ({ field, expectedType }) => {
+            const { base_type } = aggregation(["max", field]).field();
+            expect(base_type).toBe(expectedType);
+          },
+        );
 
         it("should return an int field for count", () => {
           const { base_type } = aggregation(["count"]).field();

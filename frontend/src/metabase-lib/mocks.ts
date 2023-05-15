@@ -1,10 +1,9 @@
 import {
-  Card,
-  SavedCard,
-  UnsavedCard,
-  StructuredDatasetQuery,
+  Card as SavedCard,
   NativeDatasetQuery,
-} from "metabase-types/types/Card";
+  StructuredDatasetQuery,
+  UnsavedCard,
+} from "metabase-types/api";
 
 import {
   SAMPLE_DATABASE,
@@ -15,12 +14,11 @@ import {
 import Question from "metabase-lib/Question";
 import NativeQuery from "metabase-lib/queries/NativeQuery";
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";
-import Query from "metabase-lib/queries/Query";
 
 export type NativeSavedCard = SavedCard<NativeDatasetQuery>;
-export type NativeUnsavedCard = UnsavedCard<NativeDatasetQuery>;
+type NativeUnsavedCard = UnsavedCard<NativeDatasetQuery>;
 export type StructuredSavedCard = SavedCard<StructuredDatasetQuery>;
-export type StructuredUnsavedCard = UnsavedCard<StructuredDatasetQuery>;
+type StructuredUnsavedCard = UnsavedCard<StructuredDatasetQuery>;
 
 const BASE_GUI_QUESTION: StructuredUnsavedCard = {
   display: "table",
@@ -56,7 +54,7 @@ const SAVED_QUESTION = {
   result_metadata: [],
 };
 
-export function getQuestion(card: Partial<Card>) {
+function getQuestion(card: Partial<SavedCard>) {
   return new Question(
     {
       ...BASE_GUI_QUESTION,
@@ -70,16 +68,6 @@ export function getQuestion(card: Partial<Card>) {
 
 export function getAdHocQuestion(card?: Partial<StructuredUnsavedCard>) {
   return getQuestion({ ...BASE_GUI_QUESTION, ...card });
-}
-
-export function getCleanStructuredQuestion(
-  card?: Partial<StructuredUnsavedCard>,
-) {
-  let question = getAdHocQuestion(card);
-  if (question.query() instanceof StructuredQuery) {
-    question = question.setQuery(new Query());
-  }
-  return question;
 }
 
 export function getUnsavedNativeQuestion(card?: Partial<NativeUnsavedCard>) {

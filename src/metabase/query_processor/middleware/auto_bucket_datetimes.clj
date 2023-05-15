@@ -12,7 +12,7 @@
    [metabase.models.field :refer [Field]]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (def ^:private FieldTypeInfo
   {:base-type                      (s/maybe su/FieldType)
@@ -38,7 +38,7 @@
    ;; build map of field ID -> <info from DB>
    (when-let [field-ids (seq (filter integer? (map second unbucketed-fields)))]
      (into {} (for [{id :id, :as field}
-                    (db/select [Field :id :base_type :effective_type :semantic_type]
+                    (t2/select [Field :id :base_type :effective_type :semantic_type]
                       :id [:in (set field-ids)])]
                 [id (set/rename-keys (select-keys field
                                                   [:base_type :effective_type :semantic_type])

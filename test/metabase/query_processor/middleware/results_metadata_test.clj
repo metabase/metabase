@@ -13,10 +13,10 @@
    [metabase.util :as u]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (defn- card-metadata [card]
-  (db/select-one-field :result_metadata Card :id (u/the-id card)))
+  (t2/select-one-fn :result_metadata Card :id (u/the-id card)))
 
 (defn- round-to-2-decimals
   "Defaults [[mt/round-all-decimals]] to 2 digits"
@@ -24,7 +24,7 @@
   (mt/round-all-decimals 2 data))
 
 (defn- default-card-results []
-  (let [id->fingerprint   (db/select-id->field :fingerprint Field :table_id (mt/id :venues))
+  (let [id->fingerprint   (t2/select-pk->fn :fingerprint Field :table_id (mt/id :venues))
         name->fingerprint (comp id->fingerprint (partial mt/id :venues))]
     [{:name           "ID"
       :display_name   "ID"

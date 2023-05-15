@@ -76,7 +76,7 @@
 
     (testing "404 if user does not exist"
       (is (= "Not found."
-             (mt/user-http-request :crowberto :put 404 (format "mt/user/%d/attributes" (inc (t2/count 'User))) {}))))
+             (mt/user-http-request :crowberto :put 404 (format "mt/user/%d/attributes" Integer/MAX_VALUE) {}))))
 
     (testing "Admin can update user attributes"
       (t2.with-temp/with-temp

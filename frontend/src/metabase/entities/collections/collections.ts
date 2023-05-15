@@ -1,5 +1,5 @@
 import { t } from "ttag";
-import { createSelector } from "reselect";
+import { createSelector } from "@reduxjs/toolkit";
 
 import { GET } from "metabase/lib/api";
 import { createEntity, undo } from "metabase/lib/entities";
@@ -102,4 +102,5 @@ const Collections = createEntity({
 
 export { getExpandedCollectionsById };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Collections;
