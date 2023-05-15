@@ -6,7 +6,7 @@
    [metabase.lib.join :as lib.join]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.util :as lib.util]
-   [metabase.mbql.util.match :as mbql.match]
+   [metabase.mbql.util :as mbql.u]
    [metabase.util.malli :as mu]))
 
 (defn- stage-paths
@@ -32,26 +32,34 @@
                                              remove-replace-fn location target-clause)
         target-uuid (lib.util/clause-uuid target-clause)]
     (if (not= query result)
-      (mbql.match/match-one location
-        [:expressions expr-name] (-> result
-                                     (remove-local-references
-                                       stage-number
-                                       unmodified-query-for-stage
-                                       :expression
-                                       expr-name)
-                                     (remove-stage-references stage-number unmodified-query-for-stage target-uuid))
-        [:aggregation] (-> result
-                           (remove-local-references
-                             stage-number
-                             unmodified-query-for-stage
-                             :aggregation
-                             target-uuid)
-                           (remove-stage-references stage-number unmodified-query-for-stage target-uuid))
+      (mbql.u/match-one location
+        [:expressions expr-name]
+        (-> result
+            (remove-local-references
+              stage-number
+              unmodified-query-for-stage
+              :expression
+              expr-name)
+            (remove-stage-references stage-number unmodified-query-for-stage target-uuid))
+
+        [:aggregation]
+        (-> result
+            (remove-local-references
+              stage-number
+              unmodified-query-for-stage
+              :aggregation
+              target-uuid)
+            (remove-stage-references stage-number unmodified-query-for-stage target-uuid))
+
+        #_{:clj-kondo/ignore [:invalid-arity]}
         (:or
-         [:breakout]
-         [:fields]
-         [:joins _ :fields]) (remove-stage-references result stage-number unmodified-query-for-stage target-uuid)
-        _ result)
+          [:breakout]
+          [:fields]
+          [:joins _ :fields])
+        (remove-stage-references result stage-number unmodified-query-for-stage target-uuid)
+
+        _
+        result)
       result)))
 
 (defn- remove-local-references [query stage-number unmodified-query-for-stage target-op target-ref-id]
@@ -63,7 +71,7 @@
                                         [sub-loc]
                                         sub-loc)]
                           (->> clauses
-                               (keep #(mbql.match/match-one sub-loc
+                               (keep #(mbql.u/match-one sub-loc
                                         [target-op _ target-ref-id] [location %]))))))
                     (stage-paths query stage-number))]
     (reduce
