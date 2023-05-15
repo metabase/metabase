@@ -2,11 +2,14 @@ import React from "react";
 import userEvent from "@testing-library/user-event";
 import { render, screen, getIcon, within } from "__support__/ui";
 import * as Lib from "metabase-lib";
-import { columnFinder, createQuery } from "metabase-lib/test-helpers";
+import {
+  columnFinder,
+  createQuery,
+  findBinningStrategy,
+  findTemporalBucket,
+} from "metabase-lib/test-helpers";
 import { createMockNotebookStep } from "../../test-utils";
 import BreakoutStep from "./BreakoutStep";
-
-console.error = jest.fn();
 
 function createQueryWithBreakout() {
   const initialQuery = createQuery();
@@ -17,6 +20,35 @@ function createQueryWithBreakout() {
   const column = findColumn("ORDERS", "TAX");
   const query = Lib.breakout(initialQuery, column);
   return { query, columnInfo: Lib.displayInfo(query, column) };
+}
+
+function createQueryWithBinning() {
+  const initialQuery = createQuery();
+  const findColumn = columnFinder(
+    initialQuery,
+    Lib.breakoutableColumns(initialQuery),
+  );
+  const column = findColumn("ORDERS", "TAX");
+  const bucket = findBinningStrategy(initialQuery, column, "10 bins");
+  const columnWithBinning = Lib.withBinning(column, bucket);
+  const query = Lib.breakout(initialQuery, columnWithBinning);
+  return { query, columnInfo: Lib.displayInfo(query, columnWithBinning) };
+}
+
+function createQueryWithTemporalBreakout() {
+  const initialQuery = createQuery();
+  const findColumn = columnFinder(
+    initialQuery,
+    Lib.breakoutableColumns(initialQuery),
+  );
+  const column = findColumn("ORDERS", "CREATED_AT");
+  const bucket = findTemporalBucket(initialQuery, column, "Quarter");
+  const columnWithTemporalBucket = Lib.withTemporalBucket(column, bucket);
+  const query = Lib.breakout(initialQuery, columnWithTemporalBucket);
+  return {
+    query,
+    columnInfo: Lib.displayInfo(query, column),
+  };
 }
 
 function setup(step = createMockNotebookStep()) {
@@ -117,6 +149,16 @@ describe("BreakoutStep", () => {
   });
 
   describe("bucketing", () => {
+    it("should apply default binning strategy", async () => {
+      const { getRecentBreakoutClause } = setup();
+
+      userEvent.click(screen.getByText("Pick a column to group by"));
+      userEvent.click(screen.getByText("Total"));
+
+      const breakout = getRecentBreakoutClause();
+      expect(breakout.displayName).toBe("Total");
+    });
+
     it("should apply selected binning strategy", async () => {
       const { getRecentBreakoutClause } = setup();
 
@@ -129,14 +171,31 @@ describe("BreakoutStep", () => {
       expect(breakout.displayName).toBe("Total: 10 bins");
     });
 
-    it("should apply default binning strategy", async () => {
-      const { getRecentBreakoutClause } = setup();
+    // failing because ML.displayInfo(query, ML.binning(clause)) fails
+    it("should highlight selected binning strategy", async () => {
+      const { query } = createQueryWithBinning();
+      setup(createMockNotebookStep({ topLevelQuery: query }));
 
-      userEvent.click(screen.getByText("Pick a column to group by"));
-      userEvent.click(screen.getByText("Total"));
+      userEvent.click(screen.getByText("Tax: 10 bins"));
+      const option = screen.getByRole("option", { name: "Tax" });
+      userEvent.click(within(option).getByLabelText("Binning strategy"));
 
-      const breakout = getRecentBreakoutClause();
-      expect(breakout.displayName).toBe("Total");
+      expect(
+        await screen.findByRole("menuitem", { name: "10 bins" }),
+      ).toHaveAttribute("aria-selected", "true");
+    });
+
+    // failing because ML.displayInfo(query, ML.binning(clause)) fails
+    it("shouldn't update a query when clicking a selected binned column", async () => {
+      const { query } = createQueryWithBinning();
+      const { updateQuery } = setup(
+        createMockNotebookStep({ topLevelQuery: query }),
+      );
+
+      userEvent.click(screen.getByText("Tax: 10 bins"));
+      userEvent.click(screen.getByText("Tax"));
+
+      expect(updateQuery).not.toHaveBeenCalled();
     });
 
     it("should apply default temporal bucket", async () => {
@@ -158,7 +217,32 @@ describe("BreakoutStep", () => {
       userEvent.click(await screen.findByRole("menuitem", { name: "Quarter" }));
 
       const breakout = getRecentBreakoutClause();
-      expect(breakout.displayName).toBe("Created At (quarter)");
+      expect(breakout.displayName).toBe("Created At: Quarter");
+    });
+
+    it("should highlight selected temporal bucket", async () => {
+      const { query } = createQueryWithTemporalBreakout();
+      setup(createMockNotebookStep({ topLevelQuery: query }));
+
+      userEvent.click(screen.getByText("Created At: Quarter"));
+      const option = screen.getByRole("option", { name: "Created At" });
+      userEvent.click(within(option).getByLabelText("Temporal bucket"));
+
+      expect(
+        await screen.findByRole("menuitem", { name: "Quarter" }),
+      ).toHaveAttribute("aria-selected", "true");
+    });
+
+    it("shouldn't update a query when clicking a selected column with temporal bucketing", async () => {
+      const { query } = createQueryWithTemporalBreakout();
+      const { updateQuery } = setup(
+        createMockNotebookStep({ topLevelQuery: query }),
+      );
+
+      userEvent.click(screen.getByText("Created At: Quarter"));
+      userEvent.click(screen.getByText("Created At"));
+
+      expect(updateQuery).not.toHaveBeenCalled();
     });
   });
 });
