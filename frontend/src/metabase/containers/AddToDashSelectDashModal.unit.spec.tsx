@@ -1,11 +1,13 @@
 import React from "react";
-import fetchMock from "fetch-mock";
 import { Route } from "react-router";
 import userEvent from "@testing-library/user-event";
 import {
   setupMostRecentlyViewedDashboard,
   setupCollectionsEndpoints,
   setupSearchEndpoints,
+  setupCollectionByIdEndpoint,
+  setupCollectionItemsEndpoint,
+  setupRootCollectionItemsEndpoint,
 } from "__support__/server-mocks";
 import {
   renderWithProviders,
@@ -44,7 +46,7 @@ const DASHBOARD_AT_ROOT = createMockDashboard({
   model: "dashboard",
 });
 
-const DASHBOARDS = {
+const DASHBOARDS_BY_ID = {
   [DASHBOARD.id]: DASHBOARD,
   [DASHBOARD_AT_ROOT.id]: DASHBOARD_AT_ROOT,
 };
@@ -96,9 +98,9 @@ const setup = async ({
 }: SetupOpts = {}) => {
   setupSearchEndpoints([]);
   setupCollectionsEndpoints(collections);
-  mockCollectionItemsEndpoint([dashboard]);
-  mockRootCollectionItemsEndpoint(collections, [dashboard]);
-  mockCollectionByIdEndpoint({ collections, error });
+  setupCollectionItemsEndpoint({ dashboards: [dashboard] });
+  setupRootCollectionItemsEndpoint({ collections, dashboards: [dashboard] });
+  setupCollectionByIdEndpoint({ collections, error });
   setupMostRecentlyViewedDashboard(noRecentDashboard ? undefined : dashboard);
 
   renderWithProviders(
@@ -109,7 +111,7 @@ const setup = async ({
           card={CARD}
           onChangeLocation={() => undefined}
           onClose={() => undefined}
-          dashboards={DASHBOARDS}
+          dashboards={DASHBOARDS_BY_ID}
         />
       )}
     />,
@@ -204,69 +206,3 @@ describe("AddToDashSelectDashModal", () => {
     });
   });
 });
-
-function mockCollectionItemsEndpoint(dashboards: Dashboard[]) {
-  fetchMock.get(/api\/collection\/\d+\/items/, url => {
-    const collectionIdParam = url.split("/")[5];
-    const collectionId = Number(collectionIdParam);
-
-    const dashboardsOfCollection = dashboards.filter(
-      dashboard => dashboard.collection_id === collectionId,
-    );
-
-    return {
-      total: dashboardsOfCollection.length,
-      data: dashboardsOfCollection,
-    };
-  });
-}
-
-function mockRootCollectionItemsEndpoint(
-  collections: Collection[],
-  dashboards: Dashboard[],
-) {
-  fetchMock.get("path:/api/collection/root/items", () => {
-    const rootDashboards = dashboards.filter(
-      dashboard => dashboard.collection_id === null,
-    );
-    const rootCollections = collections.filter(
-      collection => collection.location !== "/",
-    );
-    const data = [...rootDashboards, ...rootCollections];
-
-    console.log({
-      rootDashboards,
-    });
-
-    return {
-      total: data.length,
-      data,
-    };
-  });
-}
-
-function mockCollectionByIdEndpoint({
-  collections,
-  error,
-}: {
-  collections: Collection[];
-  error?: string;
-}) {
-  fetchMock.get(/api\/collection\/\d+/, url => {
-    if (error) {
-      return {
-        status: 500,
-        body: error,
-      };
-    }
-
-    const collectionIdParam = url.split("/")[5];
-    const collectionId = Number(collectionIdParam);
-
-    const collection = collections.find(
-      collection => collection.id === collectionId,
-    );
-
-    return collection;
-  });
-}
