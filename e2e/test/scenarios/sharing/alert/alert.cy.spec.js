@@ -18,6 +18,7 @@ describe("scenarios > alert", () => {
       visitQuestion(1);
       cy.icon("bell").click();
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(
         "To send alerts, you'll need to set up email or Slack integration.",
       );
@@ -29,6 +30,7 @@ describe("scenarios > alert", () => {
       visitQuestion(1);
       cy.icon("bell").click();
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(
         "To send alerts, an admin needs to set up email integration.",
       );
@@ -47,14 +49,21 @@ describe("scenarios > alert", () => {
         visitQuestion(1);
         cy.icon("bell").click();
 
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("The wide world of alerts");
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("There are a few different kinds of alerts you can get");
 
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.contains("When a raw data question returns any results");
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.contains("When a line or bar crosses a goal line");
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.contains("When a progress bar reaches its goal");
 
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Set up an alert").click();
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Done").click();
 
         cy.wait("@savedAlert");
@@ -65,7 +74,9 @@ describe("scenarios > alert", () => {
 
         cy.icon("bell").click();
 
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Let's set up your alert");
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("The wide world of alerts").should("not.exist");
       });
     });

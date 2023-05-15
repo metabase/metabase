@@ -1,6 +1,7 @@
 (ns hooks.metabase.models.setting
-  (:require [clj-kondo.hooks-api :as hooks]
-            [hooks.common :as common]))
+  (:require
+   [clj-kondo.hooks-api :as hooks]
+   [hooks.common :as common]))
 
 (defn defsetting
   "Rewrite a [[metabase.models.defsetting]] form like
@@ -25,17 +26,17 @@
                                    (hooks/string-node "Docstring.")
                                    (hooks/vector-node []))
                                   hooks/list-node
-                                  (with-meta (meta setting-name)))
+                                  (with-meta (meta node)))
         ;; (defn my-setting! [_x] ...)
         setter-node           (-> (list
                                    (hooks/token-node 'defn)
                                    (with-meta
-                                     (hooks/token-node (symbol (str (:string-value setting-name) \!)))
+                                     (hooks/token-node (symbol (str (hooks/sexpr setting-name) \!)))
                                      (meta setting-name))
                                    (hooks/string-node "Docstring.")
                                    (hooks/vector-node [(hooks/token-node '_value-or-nil)]))
                                   hooks/list-node
-                                  (with-meta (meta setting-name)))]
+                                  (with-meta (update (meta node) :clj-kondo/ignore #(hooks/vector-node (cons :clojure-lsp/unused-public-var (:children %))))))]
     {:node (-> (list
                 (hooks/token-node 'let)
                 ;; include description and the options map so they can get validated as well.
@@ -45,3 +46,26 @@
                 setter-node)
                hooks/list-node
                (with-meta (meta node)))}))
+
+(comment
+  (defn- defsetting* [form]
+    (hooks/sexpr
+     (:node
+      (defsetting
+        {:node
+         (hooks/parse-string
+          (with-out-str
+            (clojure.pprint/pprint
+             form)))}))))
+
+  (defn- x []
+    (defsetting*
+      '(defsetting active-users-count
+         (deferred-tru "Cached number of active users. Refresh every 5 minutes.")
+         :visibility :admin
+         :type       :integer
+         :default    0
+         :getter     (fn []
+                       (if-not ((requiring-resolve 'metabase.db/db-is-set-up?))
+                         0
+                         (cached-active-users-count)))))))

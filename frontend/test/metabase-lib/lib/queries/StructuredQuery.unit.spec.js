@@ -600,27 +600,6 @@ describe("StructuredQuery", () => {
         ).toEqual([["asc", ["field", ORDERS.TOTAL.id, null]]]);
       });
     });
-
-    describe("sortOptions", () => {
-      it("returns the correct count of dimensions", () => {
-        expect(query.sortOptions().dimensions.length).toBe(7);
-      });
-
-      it("excludes the already used sorts", () => {
-        const queryWithBreakout = query.sort([
-          "asc",
-          ["field", ORDERS.TOTAL.id, null],
-        ]);
-        expect(queryWithBreakout.sortOptions().dimensions.length).toBe(6);
-      });
-
-      it("includes an explicitly provided sort although it has already been used", () => {
-        const sort = ["asc", ["field", ORDERS.TOTAL.id, null]];
-        const queryWithBreakout = query.sort(sort);
-        expect(queryWithBreakout.sortOptions().dimensions.length).toBe(6);
-        expect(queryWithBreakout.sortOptions(sort).dimensions.length).toBe(7);
-      });
-    });
   });
 
   describe("DIMENSION METHODS", () => {

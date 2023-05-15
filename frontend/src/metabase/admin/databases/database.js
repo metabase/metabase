@@ -92,7 +92,7 @@ const migrateDatabaseToNewSchedulingSettings = database => {
         },
       });
     } else {
-      console.log(
+      console.error(
         `${MIGRATE_TO_NEW_SCHEDULING_SETTINGS} is no-op as scheduling settings are already set`,
       );
     }
@@ -225,8 +225,8 @@ export const deleteDatabase = function (databaseId, isDetailView = true) {
   return async function (dispatch, getState) {
     try {
       dispatch({ type: DELETE_DATABASE_STARTED, payload: databaseId });
-      dispatch(push("/admin/databases/"));
       await dispatch(Databases.actions.delete({ id: databaseId }));
+      dispatch(push("/admin/databases/"));
       MetabaseAnalytics.trackStructEvent(
         "Databases",
         "Delete",
@@ -234,7 +234,7 @@ export const deleteDatabase = function (databaseId, isDetailView = true) {
       );
       dispatch({ type: DELETE_DATABASE, payload: { databaseId } });
     } catch (error) {
-      console.log("error deleting database", error);
+      console.error("error deleting database", error);
       dispatch({
         type: DELETE_DATABASE_FAILED,
         payload: { databaseId, error },
@@ -254,7 +254,7 @@ export const syncDatabaseSchema = createThunkAction(
         MetabaseAnalytics.trackStructEvent("Databases", "Manual Sync");
         return call;
       } catch (error) {
-        console.log("error syncing database", error);
+        console.error("error syncing database", error);
       }
     };
   },
@@ -267,7 +267,7 @@ export const dismissSyncSpinner = createThunkAction(
       try {
         await MetabaseApi.db_dismiss_sync_spinner({ dbId: databaseId });
       } catch (error) {
-        console.log("error dismissing sync spinner for database", error);
+        console.error("error dismissing sync spinner for database", error);
       }
     };
   },
@@ -283,7 +283,7 @@ export const rescanDatabaseFields = createThunkAction(
         MetabaseAnalytics.trackStructEvent("Databases", "Manual Sync");
         return call;
       } catch (error) {
-        console.log("error syncing database", error);
+        console.error("error syncing database", error);
       }
     };
   },
@@ -299,7 +299,7 @@ export const discardSavedFieldValues = createThunkAction(
         MetabaseAnalytics.trackStructEvent("Databases", "Manual Sync");
         return call;
       } catch (error) {
-        console.log("error syncing database", error);
+        console.error("error syncing database", error);
       }
     };
   },

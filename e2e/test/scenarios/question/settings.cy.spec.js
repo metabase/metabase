@@ -49,6 +49,7 @@ describe("scenarios > question > settings", () => {
         .click();
 
       // wait a Category value to appear in the table, so we know the query completed
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Widget");
 
       // Add people.ean
@@ -59,6 +60,7 @@ describe("scenarios > question > settings", () => {
         .click();
 
       // wait a Ean value to appear in the table, so we know the query completed
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("8833419218504");
 
       // confirm that the table contains the right columns
@@ -122,9 +124,11 @@ describe("scenarios > question > settings", () => {
 
       reloadResults();
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("117.03").should("not.exist");
 
       // This click doesn't do anything, but simply allows the array to be updated (test gives false positive without this step)
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Visible columns").click();
 
       findColumnAtIndex("Products → Category", 5);
@@ -133,6 +137,7 @@ describe("scenarios > question > settings", () => {
       // https://github.com/metabase/metabase/pull/21338#pullrequestreview-928807257
 
       // Add "Address"
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Address").siblings(".Icon-add").click();
 
       // The result automatically load when adding new fields but two requests are fired.
@@ -173,15 +178,18 @@ describe("scenarios > question > settings", () => {
       });
 
       cy.findByTestId("viz-settings-button").click(); // open settings sidebar
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Conditional Formatting"); // confirm it's open
       cy.get(".TableInteractive").findByText("Subtotal").click(); // open subtotal column header actions
       popover().within(() => cy.icon("gear").click()); // open subtotal column settings
 
       //cy.findByText("Table options").should("not.exist"); // no longer displaying the top level settings
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Separator style"); // shows subtotal column settings
 
       cy.get(".TableInteractive").findByText("Created At").click(); // open created_at column header actions
       popover().within(() => cy.icon("gear").click()); // open created_at column settings
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Date style"); // shows created_at column settings
     });
 
@@ -206,6 +214,7 @@ describe("scenarios > question > settings", () => {
 
       visitQuestionAdhoc(questionDetails);
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(newColumnTitle);
 
       cy.findByTestId("viz-settings-button").click();
@@ -223,15 +232,22 @@ describe("scenarios > question > settings", () => {
           cy.icon("ellipsis").click();
         });
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Normal").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Currency").click();
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("US Dollar").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Bitcoin").click();
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("In every table cell").click();
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("₿ 2.07");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("₿ 6.10");
     });
   });
@@ -241,21 +257,28 @@ describe("scenarios > question > settings", () => {
       // create a question and add it to a modal
       openOrdersTable();
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Save").click();
       cy.get(".ModalContent").contains("button", "Save").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Yes please!").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Orders in a dashboard").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Cancel").click();
 
       // create a new question to see if the "add to a dashboard" modal is still there
       openNavigationSidebar();
       browse().click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Sample Database").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Orders").click();
 
       // This next assertion might not catch bugs where the modal displays after
       // a quick delay. With the previous presentation of this bug, the modal
       // was immediately visible, so I'm not going to add any waits.
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Add this question to a dashboard").should("not.exist");
     });
   });

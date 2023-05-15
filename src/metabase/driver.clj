@@ -490,6 +490,13 @@
     ;; Does the driver support experimental "writeback" actions like "delete this row" or "insert a new row" from 44+?
     :actions
 
+    ;; Does the driver support uploading files
+    :uploads
+
+    ;; Does the driver support schemas (aka namespaces) for tables
+    ;; DEFAULTS TO TRUE
+    :schemas
+
     ;; Does the driver support custom writeback actions. Drivers that support this must
     ;; implement [[execute-write-query!]]
     :actions/custom
@@ -503,9 +510,8 @@
 
     (supports? :postgres :set-timezone) ; -> true
 
-  DEPRECATED — [[database-supports?]] is intended to replace this method. However, it driver authors should continue
-  _implementing_ `supports?` for the time being until we get a chance to migrate all our usages."
-  {:arglists '([driver feature]), :deprecated "0.41.0"}
+  DEPRECATED — [[database-supports?]] should be used instead. This function will be removed in Metabase version 0.50.0."
+  {:arglists '([driver feature]), :deprecated "0.47.0"}
   (fn [driver feature]
     (when-not (driver-features feature)
       (throw (Exception. (tru "Invalid driver feature: {0}" feature))))
@@ -514,12 +520,7 @@
 
 (defmethod supports? :default [_ _] false)
 
-(defmethod supports? [::driver :basic-aggregations] [_ _] true)
-(defmethod supports? [::driver :case-sensitivity-string-filter-options] [_ _] true)
-(defmethod supports? [::driver :date-arithmetics] [_ _] true)
-(defmethod supports? [::driver :temporal-extract] [_ _] true)
-(defmethod supports? [::driver :convert-timezone] [_ _] false)
-(defmethod supports? [::driver :test/jvm-timezone-setting] [_ _] true)
+(defmethod supports? [::driver :schemas] [_ _] true)
 
 (defmulti database-supports?
   "Does this driver and specific instance of a database support a certain `feature`?
@@ -545,6 +546,14 @@
   :hierarchy #'hierarchy)
 
 (defmethod database-supports? :default [driver feature _] (supports? driver feature))
+
+(doseq [[feature supported?] {:basic-aggregations                     true
+                              :case-sensitivity-string-filter-options true
+                              :date-arithmetics                       true
+                              :temporal-extract                       true
+                              :convert-timezone                       false
+                              :test/jvm-timezone-setting              true}]
+  (defmethod database-supports? [::driver feature] [_driver _feature _db] supported?))
 
 (defmulti ^String escape-alias
   "Escape a `column-or-table-alias` string in a way that makes it valid for your database. This method is used for
@@ -808,5 +817,48 @@
   `:truncation-size`: size to truncate text fields to if the driver supports
   expressions."
   {:arglists '([driver table fields rff opts]), :added "0.46.0"}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                    Upload                                                      |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defmulti table-name-length-limit
+  "Return the maximum number of characters allowed in a table name, or `nil` if there is no limit."
+  {:added "0.47.0", :arglists '([driver])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti create-table
+  "Create a table named `table-name`. If the table already exists it will throw an error."
+  {:added "0.47.0", :arglists '([driver db-id table-name col->type])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti drop-table
+  "Drop a table named `table-name`. If the table doesn't exist it will not be dropped."
+  {:added "0.47.0", :arglists '([driver db-id table-name])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti insert-into
+  "Insert `values` into a table named `table-name`. `values` is a sequence of rows, where each row's order matches
+   `column-names`."
+  {:added "0.47.0", :arglists '([driver db-id table-name column-names values])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti syncable-schemas
+  "Returns the set of syncable schemas in the database (as strings)."
+  {:added "0.47.0", :arglists '([driver database])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod syncable-schemas ::driver [_ _] #{})
+
+(defmulti upload-type->database-type
+  "Returns the database type for a given `metabase.upload` type."
+  {:added "0.47.0", :arglists '([driver upload-type])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)

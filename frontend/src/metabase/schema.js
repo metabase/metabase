@@ -71,6 +71,7 @@ export const TimelineEventSchema = new schema.Entity("timelineEvents");
 DatabaseSchema.define({
   tables: [TableSchema],
   schemas: [SchemaSchema],
+  idFields: [FieldSchema],
 });
 
 SchemaSchema.define({

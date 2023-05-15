@@ -257,14 +257,14 @@
 
 (defmethod ->root Card
   [card]
-  (let [source (source card)]
+  (let [{:keys [dataset] :as source} (source card)]
     {:entity       card
      :source       source
      :database     (:database_id card)
      :query-filter (get-in card [:dataset_query :query :filter])
-     :full-name    (tru "\"{0}\" question" (:name card))
+     :full-name    (tru "\"{0}\"" (:name card))
      :short-name   (source-name {:source source})
-     :url          (format "%squestion/%s" public-endpoint (u/the-id card))
+     :url          (format "%s%s/%s" public-endpoint (if dataset "model" "question") (u/the-id card))
      :rules-prefix [(if (table-like? card)
                       "table"
                       "question")]}))
@@ -629,10 +629,10 @@
       (m/update-existing :visualization #(instantiate-visualization % bindings (:metrics context)))))
 
 (defn- valid-breakout-dimension?
-  [{:keys [base_type engine fingerprint aggregation]}]
+  [{:keys [base_type db fingerprint aggregation]}]
   (or (nil? aggregation)
       (not (isa? base_type :type/Number))
-      (and (driver/supports? engine :binning)
+      (and (driver/database-supports? (:engine db) :binning db)
            (-> fingerprint :type :type/Number :min))))
 
 (defn- singular-cell-dimensions
@@ -732,8 +732,8 @@
         :when (some-> target mi/can-read?)]
     (-> target field/table (assoc :link id))))
 
-(def ^:private ^{:arglists '([source])} source->engine
-  (comp :engine (partial t2/select-one Database :id) (some-fn :db_id :database_id)))
+(def ^:private ^{:arglists '([source])} source->db
+  (comp (partial t2/select-one Database :id) (some-fn :db_id :database_id)))
 
 (defmulti
   ^{:private  true
@@ -747,7 +747,7 @@
                            :tables
                            (m/find-first (comp #{(:table_id field)} u/the-id))
                            :link)
-                :engine (-> context :source source->engine))]
+                :db (-> context :source source->db))]
     (update context :dimensions
             (fn [dimensions]
               (->> dimensions
@@ -775,7 +775,7 @@
 (defn- relevant-fields
   "Source fields from tables that are applicable to the entity being x-rayed."
   [{:keys [source _entity] :as _root} tables]
-  (let [engine (source->engine source)]
+  (let [db (source->db source)]
     (if (mi/instance-of? Table source)
       (comp (->> (t2/select Field
                    :table_id [:in (map u/the-id tables)]
@@ -783,7 +783,7 @@
                    :preview_display true
                    :active true)
                  field/with-targets
-                 (map #(assoc % :engine engine))
+                 (map #(assoc % :db db))
                  (group-by :table_id))
             u/the-id)
       (let [source-fields (->> source
@@ -794,7 +794,7 @@
                                         (update field :semantic_type keyword)
                                         (mi/instance Field field)
                                         (classify/run-classifiers field {})
-                                        (assoc field :engine engine)))))]
+                                        (assoc field :db db)))))]
         (constantly source-fields)))))
 
 (s/defn ^:private make-base-context
@@ -1079,12 +1079,13 @@
                     (-> context :filters u/pprint-to-str)))
     (-> dashboard
         (populate/create-dashboard show)
-        (assoc :related           (related context rule)
-               :more              (when (and (not= show :all)
-                                             (-> dashboard :cards count (> show)))
-                                    (format "%s#show=all" (:url root)))
-               :transient_filters (:query-filter context)
-               :param_fields      (->> context :query-filter (filter-referenced-fields root))))))
+        (assoc :related            (related context rule)
+               :more               (when (and (not= show :all)
+                                              (-> dashboard :cards count (> show)))
+                                     (format "%s#show=all" (:url root)))
+               :transient_filters  (:query-filter context)
+               :param_fields       (->> context :query-filter (filter-referenced-fields root))
+               :auto_apply_filters true))))
 
 
 (defmulti automagic-analysis

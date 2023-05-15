@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 
-import FieldList from "metabase/query_builder/components/FieldList";
+import QueryColumnPicker from "metabase/common/components/QueryColumnPicker";
 
 export const SortDirectionButton = styled.button`
   display: flex;
@@ -13,6 +13,6 @@ export const SortDirectionButton = styled.button`
   cursor: pointer;
 `;
 
-export const SortFieldList = styled(FieldList)`
+export const SortColumnPicker = styled(QueryColumnPicker)`
   color: ${color("summarize")};
 `;

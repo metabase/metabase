@@ -108,6 +108,15 @@
                          [column-level-perms-check :as ee.sandbox.columns]
                          [row-level-restrictions :as ee.sandbox.rows]]))
 
+;;; This is a namespace that adds middleware to test MLv2 stuff every time we run a query. It lives in a `./test`
+;;; namespace, so it's only around when running with `:dev` or the like.
+;;;
+;;; Why not just do `classloader/require` in a `try-catch` and ignore exceptions? Because we want to know if this errors
+;;; for some reason. If we accidentally break the namespace and just ignore exceptions, we could be skipping our tests
+;;; without even knowing about it. So it's better to have this actually error if in cases where it SHOULD be working.
+(when config/tests-available?
+  (classloader/require 'metabase.query-processor-test.test-mlv2))
+
 (def ^:private pre-processing-middleware
   "Pre-processing middleware. Has the form
 

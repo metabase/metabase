@@ -1,12 +1,13 @@
 (ns metabase.lib.schema.temporal-bucketing
   "Malli schema for temporal bucketing units and expressions."
   (:require
+   [clojure.set :as set]
    [metabase.util.malli.registry :as mr]))
 
-;;; units that you can EXTRACT from a date or datetime. These return integers in temporal bucketing expressions.
-(mr/def ::unit.date.extract
-  [:enum
-   :day-of-week
+(def ordered-date-extraction-units
+  "Units that you can EXTRACT from a date or datetime. These return integers in temporal bucketing expressions.
+  The front end shows the options in this order."
+  [:day-of-week
    :day-of-month
    :day-of-year
    :week-of-year
@@ -14,64 +15,141 @@
    :quarter-of-year
    :year])
 
-;;; units that you can TRUNCATE a date or datetime to. In temporal bucketing expressions these return a `:type/Date`.
+(def date-extraction-units
+  "Units that you can EXTRACT from a date or datetime. These return integers in temporal bucketing expressions."
+  (set ordered-date-extraction-units))
+
+(mr/def ::unit.date.extract
+  (into [:enum {:error/message "Valid date extraction unit"}] date-extraction-units))
+
+(def ordered-date-truncation-units
+  "Units that you can TRUNCATE a date or datetime to. In temporal bucketing expressions these return a `:type/Date`.
+  The front end shows the options in this order."
+  [:day :week :month :quarter :year])
+
+(def date-truncation-units
+  "Units that you can TRUNCATE a date or datetime to. In temporal bucketing expressions these return a `:type/Date`."
+  (set ordered-date-truncation-units))
+
 (mr/def ::unit.date.truncate
-  ;; `:year` could work as either an extract or a truncation unit, but I think we're mostly using it as extract for
-  ;; the time being.
-  [:enum :day :week :month :quarter #_:year])
+  (into [:enum {:error/message "Valid date truncation unit"}] date-truncation-units))
+
+(def ordered-date-bucketing-units
+  "Valid date or datetime bucketing units for either truncation or extraction operations.
+  The front end shows the options in this order."
+  (into [] (distinct) (concat ordered-date-truncation-units ordered-date-extraction-units)))
+
+(def date-bucketing-units
+  "Valid date or datetime bucketing units for either truncation or extraction operations."
+  (set ordered-date-bucketing-units))
 
 (mr/def ::unit.date
-  [:or
-   ::unit.date.extract
-   ::unit.date.truncate])
+  (into [:enum {:error/message "Valid date bucketing unit"}] date-bucketing-units))
 
-;;; units that you can EXTRACT from a time or datetime. These return integers in temporal bucketing expressions.
+(def ordered-time-extraction-units
+  "Units that you can EXTRACT from a time or datetime. These return integers in temporal bucketing expressions.
+  The front end shows the options in this order."
+  [:minute-of-hour :hour-of-day])
+
+(def time-extraction-units
+  "Units that you can EXTRACT from a time or datetime. These return integers in temporal bucketing expressions."
+  (set ordered-time-extraction-units))
+
 (mr/def ::unit.time.extract
-  [:enum :minute-of-hour :hour-of-day])
+  (into [:enum {:error/message "Valid time extraction unit"}] time-extraction-units))
 
-;;; units you can TRUNCATE a time or datetime to. These return the same type as the expression being bucketed in
-;;; temporal bucketing expressions.
+(def ordered-time-truncation-units
+  "Units you can TRUNCATE a time or datetime to. These return the same type as the expression being bucketed in temporal
+  bucketing expressions. The front end shows the options in this order."
+  [:millisecond :second :minute :hour])
+
+(def time-truncation-units
+  "Units you can TRUNCATE a time or datetime to. These return the same type as the expression being bucketed in temporal
+  bucketing expressions."
+  (set ordered-time-truncation-units))
+
 (mr/def ::unit.time.truncate
-  [:enum :millisecond :second :minute :hour])
+  (into [:enum {:error/message "Valid time truncation unit"}] time-truncation-units))
+
+(def ordered-time-bucketing-units
+  "Valid time bucketing units for either truncation or extraction operations.
+  The front end shows the options in this order."
+  (into []
+        (comp (remove #{:millisecond :second})
+              (distinct))
+        (concat ordered-time-truncation-units ordered-time-extraction-units)))
+
+(def time-bucketing-units
+  "Valid time bucketing units for either truncation or extraction operations."
+  (set ordered-time-extraction-units))
 
 (mr/def ::unit.time
-  [:or
-   ::unit.time.extract
-   ::unit.time.truncate])
+  (into [:enum {:error/message "Valid time bucketing unit"}] time-bucketing-units))
+
+(def ordered-datetime-bucketing-units
+  "Valid datetime bucketing units for either truncation or extraction operations.
+  The front end shows the options in this order."
+  (into []
+        (comp (remove #{:millisecond :second})
+              (distinct))
+        (concat ordered-time-truncation-units ordered-date-truncation-units
+                ordered-time-extraction-units ordered-date-extraction-units)))
+
+(def datetime-bucketing-units
+  "Valid datetime bucketing units for either truncation or extraction operations."
+  (set ordered-datetime-bucketing-units))
 
 (mr/def ::unit.date-time
-  [:or
-   ::unit.date
-   ::unit.time])
+  (into [:enum {:error/message "Valid datetime bucketing unit"}] datetime-bucketing-units))
+
+(def temporal-bucketing-units
+  "This is the same as [[datetime-bucketing-units]], but also includes `:default`."
+  (conj datetime-bucketing-units :default))
 
 (mr/def ::unit
-  [:or
-   [:= :default]
-   ::unit.date
-   ::unit.time])
+  (into [:enum {:error/message "Valid temporal bucketing unit"}] temporal-bucketing-units))
 
-;;; valid TRUNCATION units for a DATE TIME.
+(def datetime-truncation-units
+  "Valid TRUNCATION units for a datetime."
+  (set/union date-truncation-units time-truncation-units))
+
 (mr/def ::unit.date-time.truncate
-  [:or
-   ::unit.date.truncate
-   ::unit.time.truncate])
+  (into [:enum {:error/message "Valid datetime truncation unit"}] datetime-truncation-units))
 
-;;; valid EXTRACTION units for a DATE TIME.
+(def datetime-extraction-units
+  "Valid EXTRACTION units for a datetime. Extraction units return integers!"
+  (set/union date-extraction-units time-extraction-units))
+
 (mr/def ::unit.date-time.extract
-  [:or
-   ::unit.date.extract
-   ::unit.time.extract])
+  (into [:enum {:error/message "Valid datetime extraction unit"}] datetime-extraction-units))
 
-;;; date units that are valid in intervals or clauses like `:datetime-add`. This is a superset of `::unit.date.truncate`
+(def date-interval-units
+  "Date units that are valid in intervals or clauses like `:datetime-add`. This is a superset
+  of [[date-truncation-units]]."
+  ;; it's the same but also includes `:year`, not normally allowed as a date truncation unit; `:year` is interpreted
+  ;; as extraction instead.
+  (conj date-truncation-units :year))
+
 (mr/def ::unit.date.interval
-  [:enum :day :week :month :quarter :year])
+  (into [:enum {:error/message "Valid date interval unit"}] date-interval-units))
 
-;;; time units that are valid in intervals or clauses like `:datetime-add`. Currently the same as `::unit.time.extract`.
+(def time-interval-units
+  "Time units that are valid in intervals or clauses like `:datetime-add`. Currently the same
+  as [[time-truncation-units]]."
+  time-truncation-units)
+
 (mr/def ::unit.time.interval
-  [:enum :millisecond :second :minute :hour])
+  (into [:enum {:error/message "Valid time interval unit"}] time-interval-units))
 
-;;; units valid in intervals or clauses like `:datetime-add` for DATE TIMES.
+(def datetime-interval-units
+  "Units valid in intervals or clauses like `:datetime-add` for datetimes."
+  (set/union date-interval-units time-interval-units))
+
 (mr/def ::unit.date-time.interval
-  [:or
-   ::unit.date.interval
-   ::unit.time.interval])
+  (into [:enum {:error/message "Valid datetime interval unit"}] datetime-interval-units))
+
+(mr/def ::option
+  [:map
+   [:lib/type [:= :type/temporal-bucketing-option]]
+   [:unit ::unit]
+   [:default {:optional true} :boolean]])

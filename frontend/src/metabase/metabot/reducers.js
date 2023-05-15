@@ -94,6 +94,8 @@ export const queryError = handleActions(
     [RUN_QUESTION_QUERY_REJECTED]: { next: (state, { payload }) => payload },
     [RESET]: { next: () => null },
     [CANCEL_QUERY]: { next: () => null },
+    [RUN_PROMPT_QUERY]: { next: () => null },
+    [RUN_QUESTION_QUERY]: { next: () => null },
   },
   null,
 );

@@ -119,7 +119,6 @@
          :database (meta/id)
          :stages [{:lib/type :mbql.stage/mbql
                    :source-table (meta/id :categories)
-                   :lib/options {:lib/uuid string?}
                    :filters [original-filter]}]}]
     (testing "no filter"
       (is (nil? (lib/filters q2))))

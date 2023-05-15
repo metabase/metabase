@@ -1,5 +1,6 @@
 (ns metabase.lib.aggregation-test
   (:require
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [are deftest is testing]]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
@@ -9,7 +10,7 @@
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
-   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
+   [metabase.lib.util :as lib.util]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -141,29 +142,29 @@
                              (col-info-for-aggregation-clause clause))
     ;; :count, no field
     [:/ {} [:count {}] 2]
-    {:base_type    :type/Float
+    {:base-type    :type/Float
      :name         "count_divided_by_2"
-     :display_name "Count ÷ 2"}
+     :display-name "Count ÷ 2"}
 
     ;; :sum
     [:sum {} [:+ {} (lib.tu/field-clause :venues :price) 1]]
-    {:base_type    :type/Integer
+    {:base-type    :type/Integer
      :name         "sum_PRICE_plus_1"
-     :display_name "Sum of Price + 1"}
+     :display-name "Sum of Price + 1"}
 
     ;; options map
     [:sum
      {:name "sum_2", :display-name "My custom name", :base-type :type/BigInteger}
      (lib.tu/field-clause :venues :price)]
-    {:base_type    :type/BigInteger
+    {:base-type    :type/BigInteger
      :name         "sum_2"
-     :display_name "My custom name"}))
+     :display-name "My custom name"}))
 
 (deftest ^:parallel col-info-named-aggregation-test
   (testing "col info for an `expression` aggregation w/ a named expression should work as expected"
-    (is (=? {:base_type    :type/Integer
+    (is (=? {:base-type    :type/Integer
              :name         "sum_double-price"
-             :display_name "Sum of double-price"}
+             :display-name "Sum of double-price"}
             (col-info-for-aggregation-clause
              (lib.tu/venues-query-with-last-stage
               {:expressions {"double-price" [:*
@@ -181,7 +182,6 @@
          :database (meta/id)
          :stages [{:lib/type :mbql.stage/mbql
                    :source-table (meta/id :venues)
-                   :lib/options {:lib/uuid string?}
                    :aggregation [[:sum {:lib/uuid string?}
                                   [:field
                                    {:base-type :type/Integer, :lib/uuid string?}
@@ -237,9 +237,9 @@
                   (lib/expression "double-price" (lib/* (lib/field (meta/id :venues :price)) 2))
                   (lib/aggregate (lib/sum [:expression {:lib/uuid (str (random-uuid))} "double-price"])))]
     (is (=? [{:lib/type     :metadata/field
-              :base_type    :type/Integer
+              :base-type    :type/Integer
               :name         "sum_double-price"
-              :display_name "Sum of double-price"}]
+              :display-name "Sum of double-price"}]
             (lib/aggregations query)))
     (is (= :type/Integer
            (lib/type-of query (first (lib/aggregations query)))))))
@@ -250,9 +250,9 @@
                     (lib/aggregate (lib/sum (lib/field (meta/id :venues :price)))))]
       (is (=? {:settings     {:is_priceless true}
                :lib/type     :metadata/field
-               :base_type    :type/Integer
+               :base-type    :type/Integer
                :name         "sum_PRICE"
-               :display_name "Sum of Price"
+               :display-name "Sum of Price"
                :lib/source   :source/aggregations}
               (lib.metadata.calculation/metadata query (first (lib/aggregations query -1))))))))
 
@@ -267,17 +267,47 @@
 (deftest ^:parallel aggregation-ref-display-info-test
   (let [query  (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
                    (lib/aggregate (lib/avg (lib/+ (lib/field "VENUES" "PRICE") 1))))
-        ag-ref [:aggregation {:lib/uuid "8e76cd35-465d-4a2b-a03a-55857f07c4e0", :effective-type :type/Float} 0]]
+        ag-uuid (:metabase.lib.aggregation/aggregation-uuid (first (lib/aggregations query)))
+        ag-ref [:aggregation {:lib/uuid "8e76cd35-465d-4a2b-a03a-55857f07c4e0", :effective-type :type/Float} ag-uuid]]
     (is (= :type/Float
            (lib.metadata.calculation/type-of query ag-ref)))
     (is (= "Average of Price + 1"
            (lib.metadata.calculation/display-name query ag-ref)))
     (is (=? {:lib/type                                   :metadata/field
              :lib/source                                 :source/aggregations
-             :display_name                               "Average of Price + 1"
-             :effective_type                             :type/Float
-             :metabase.lib.aggregation/aggregation-index 0}
+             :display-name                               "Average of Price + 1"
+             :effective-type                             :type/Float
+             :metabase.lib.aggregation/aggregation-uuid ag-uuid}
             (lib.metadata.calculation/metadata query ag-ref)))
-    (is (=? {:display_name   "Average of Price + 1"
-             :effective_type :type/Float}
+    (is (=? {:display-name   "Average of Price + 1"
+             :effective-type :type/Float}
             (lib.metadata.calculation/display-info query ag-ref)))))
+
+(deftest ^:parallel aggregate-should-drop-invalid-parts
+  (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
+                  (lib/with-fields [(lib/field "VENUES" "PRICE")])
+                  (lib/order-by (lib/field "VENUES" "PRICE"))
+                  (lib/join (-> (lib/join-clause (meta/table-metadata :categories)
+                                                 [(lib/=
+                                                    (lib/field "VENUES" "CATEGORY_ID")
+                                                    (lib/with-join-alias (lib/field "CATEGORIES" "ID") "Cat"))])
+                                (lib/with-join-fields [(lib/field "CATEGORIES" "ID")])))
+                  (lib/append-stage)
+                  (lib/with-fields [(lib/field "VENUES" "PRICE")])
+                  (lib/aggregate 0 (lib/sum (lib/field "VENUES" "CATEGORY_ID"))))
+        first-stage (lib.util/query-stage query 0)
+        first-join (first (lib/joins query 0))]
+    (is (= 1 (count (:stages query))))
+    (is (not (contains? first-stage :fields)))
+    (is (not (contains? first-stage :order-by)))
+    (is (= 1 (count (lib/joins query 0))))
+    (is (not (contains? first-join :fields))))
+  (testing "Already summarized query should be left alone"
+    (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
+                    (lib/breakout (lib/field "VENUES" "CATEGORY_ID"))
+                    (lib/order-by (lib/field "VENUES" "CATEGORY_ID"))
+                    (lib/append-stage)
+                    (lib/aggregate 0 (lib/sum (lib/field "VENUES" "CATEGORY_ID"))))
+          first-stage (lib.util/query-stage query 0)]
+      (is (= 2 (count (:stages query))))
+      (is (contains? first-stage :order-by)))))

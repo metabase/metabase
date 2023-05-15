@@ -118,7 +118,7 @@
     stage-number :- :int]
    (not-empty (get (lib.util/query-stage query stage-number) :order-by))))
 
-(defn- orderable-column? [{base-type :base_type, :as _column-metadata}]
+(defn- orderable-column? [{:keys [base-type], :as _column-metadata}]
   (some (fn [orderable-base-type]
           (isa? base-type orderable-base-type))
         lib.schema.expression/orderable-types))
@@ -148,14 +148,19 @@
 
   ([query        :- ::lib.schema/query
     stage-number :- :int]
-   (let [existing-order-bys (mapv (fn [[_tag _opts expr]]
-                                    expr)
-                                  (order-bys query stage-number))
-         existing-order-by? (fn [x]
-                              (some (fn [existing-order-by]
-                                      (lib.equality/= (lib.ref/ref x) existing-order-by))
-                                    existing-order-bys))
-         breakouts          (not-empty (lib.breakout/breakouts query stage-number))
+   (let [indexed-order-bys (map-indexed (fn [pos [_tag _opts expr]]
+                                          [pos expr])
+                                        (order-bys query stage-number))
+         order-by-pos
+         (fn [x]
+           (some (fn [[pos existing-order-by]]
+                   (let [a-ref (lib.ref/ref x)]
+                     (when (or (lib.equality/= a-ref existing-order-by)
+                               (lib.equality/= a-ref (lib.util/with-default-effective-type existing-order-by)))
+                       pos)))
+                 indexed-order-bys))
+
+         breakouts          (not-empty (lib.breakout/breakouts-metadata query stage-number))
          aggregations       (not-empty (lib.aggregation/aggregations query stage-number))
          columns            (if (or breakouts aggregations)
                               (concat breakouts aggregations)
@@ -163,7 +168,10 @@
                                 (lib.metadata.calculation/visible-columns query stage-number stage)))]
      (some->> (not-empty columns)
               (into [] (comp (filter orderable-column?)
-                             (remove existing-order-by?)))))))
+                             (map (fn [col]
+                                    (let [pos (order-by-pos col)]
+                                      (cond-> col
+                                        pos (assoc :order-by-position pos)))))))))))
 
 (def ^:private opposite-direction
   {:asc :desc

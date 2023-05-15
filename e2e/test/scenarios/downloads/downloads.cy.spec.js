@@ -16,6 +16,29 @@ const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 const testCases = ["csv", "xlsx"];
 
+const canSavePngQuestion = {
+  name: "Q1",
+  display: "line",
+  query: {
+    "source-table": ORDERS_ID,
+    aggregation: [["count"]],
+    breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }]],
+  },
+  visualization_settings: {
+    "graph.metrics": ["count"],
+    "graph.dimensions": ["CREATED_AT"],
+  },
+};
+
+const cannotSavePngQuestion = {
+  name: "Q2",
+  display: "table",
+  query: {
+    "source-table": ORDERS_ID,
+  },
+  visualization_settings: {},
+};
+
 describe("scenarios > question > download", () => {
   beforeEach(() => {
     restore();
@@ -25,10 +48,13 @@ describe("scenarios > question > download", () => {
   testCases.forEach(fileType => {
     it(`downloads ${fileType} file`, () => {
       startNewQuestion();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Saved Questions").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Orders, Count").click();
 
       visualize();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("18,760");
 
       downloadAndAssert({ fileType }, sheet => {
@@ -65,6 +91,7 @@ describe("scenarios > question > download", () => {
 
       popover().find("input").type("1");
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Add filter").click();
 
       cy.wait("@dashboard");
@@ -78,29 +105,6 @@ describe("scenarios > question > download", () => {
   });
 
   describe("png images", () => {
-    const canSavePngQuestion = {
-      name: "Q1",
-      display: "line",
-      query: {
-        "source-table": ORDERS_ID,
-        aggregation: [["count"]],
-        breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }]],
-      },
-      visualization_settings: {
-        "graph.metrics": ["count"],
-        "graph.dimensions": ["CREATED_AT"],
-      },
-    };
-
-    const cannotSavePngQuestion = {
-      name: "Q2",
-      display: "table",
-      query: {
-        "source-table": ORDERS_ID,
-      },
-      visualization_settings: {},
-    };
-
     it("from dashboards", () => {
       cy.createDashboardWithQuestions({
         dashboardName: "saving pngs dashboard",
@@ -109,6 +113,7 @@ describe("scenarios > question > download", () => {
         visitDashboard(dashboard.id);
       });
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Q1").realHover();
       getDashboardCardMenu(0).click();
 
@@ -117,6 +122,7 @@ describe("scenarios > question > download", () => {
         cy.findByText(".png").click();
       });
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Q2").realHover();
       getDashboardCardMenu(1).click();
 
@@ -147,6 +153,28 @@ describe("scenarios > question > download", () => {
         cy.findByText(".png").should("not.exist");
       });
     });
+  });
+});
+
+describe("scenarios > dashboard > download pdf", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
+  it("should allow you to download a PDF of a dashboard", () => {
+    cy.createDashboardWithQuestions({
+      dashboardName: "saving pdf dashboard",
+      questions: [canSavePngQuestion, cannotSavePngQuestion],
+    }).then(({ dashboard }) => {
+      visitDashboard(dashboard.id);
+    });
+
+    cy.findByLabelText("dashboard-menu-button").click();
+
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Export as PDF").click();
+
+    cy.verifyDownload("saving pdf dashboard.pdf", { contains: true });
   });
 });
 

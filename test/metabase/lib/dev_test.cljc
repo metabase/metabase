@@ -21,7 +21,6 @@
   (is (=? {:lib/type :mbql/query
            :database (meta/id)
            :stages   [{:lib/type     :mbql.stage/mbql
-                       :lib/options  {:lib/uuid string?}
                        :source-table (meta/id :venues)}]}
           (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
               (dissoc :lib/metadata)))))

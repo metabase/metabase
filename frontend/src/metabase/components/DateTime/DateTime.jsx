@@ -5,8 +5,7 @@ import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 import MetabaseSettings from "metabase/lib/settings";
 
 // Mirrors DatetimeUnit type, as it's used in date formatting utility fn
-// Type: https://github.com/metabase/metabase/blob/bbd4f635220b05487de82a18310d4d18fe04174d/frontend/src/metabase-types/types/Query.js#L30
-// Utility: https://github.com/metabase/metabase/blob/bbd4f635220b05487de82a18310d4d18fe04174d/frontend/src/metabase/lib/formatting.js#L406
+// Type: https://github.com/metabase/metabase/blob/8778569c56beb573b0e688d49edba327b8ae62ab/frontend/src/metabase-types/api/query.ts#L31
 export const DATE_TIME_UNITS = [
   "default",
   "minute",

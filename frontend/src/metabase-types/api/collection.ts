@@ -49,8 +49,10 @@ type CollectionItemModel =
   | "pulse"
   | "collection";
 
+export type CollectionItemId = number;
+
 export interface CollectionItem<T = CollectionItemModel> {
-  id: number;
+  id: CollectionItemId;
   model: T;
   name: string;
   description: string | null;

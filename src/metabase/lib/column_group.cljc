@@ -53,20 +53,20 @@
             (lib.metadata.calculation/display-info query stage-number table)))
         ;; for multi-stage queries return an empty string (#30108)
         (when (next (:stages query))
-          {:display_name ""})
+          {:display-name ""})
         ;; if this is a native query or something else that doesn't have a source Table or source Card then use the
         ;; stage display name.
-        {:display_name (lib.metadata.calculation/display-name query stage-number stage)}))
-     {:is_from_join           false
-      :is_implicitly_joinable false})
+        {:display-name (lib.metadata.calculation/display-name query stage-number stage)}))
+     {:is-from-join           false
+      :is-implicitly-joinable false})
 
     :group-type/join.explicit
     (merge
      (let [join-alias (:join-alias column-group)]
        (when-let [join (lib.join/resolve-join query stage-number join-alias)]
          (lib.metadata.calculation/display-info query stage-number join)))
-     {:is_from_join           true
-      :is_implicitly_joinable false})
+     {:is-from-join           true
+      :is-implicitly-joinable false})
 
     :group-type/join.implicit
     (merge
@@ -78,16 +78,16 @@
            ;; This is very intentional: one table might have several FKs to one foreign table, each with different
            ;; meaning (eg. ORDERS.customer_id vs. ORDERS.supplier_id both linking to a PEOPLE table).
            ;; See #30109 for more details.
-           (assoc field-info :fk_reference_name (lib.util/strip-id (:display_name field-info))))))
-     {:is_from_join           false
-      :is_implicitly_joinable true})))
+           (assoc field-info :fk-reference-name (lib.util/strip-id (:display-name field-info))))))
+     {:is-from-join           false
+      :is-implicitly-joinable true})))
 
 (mu/defn ^:private column-group-info :- [:map [::group-type GroupType]]
   "The value we should use to `group-by` inside [[group-columns]]."
   [{source :lib/source, :as column-metadata} :- lib.metadata/ColumnMetadata]
   (case source
     :source/implicitly-joinable
-    {::group-type :group-type/join.implicit, :fk-field-id (:fk_field_id column-metadata)}
+    {::group-type :group-type/join.implicit, :fk-field-id (:fk-field-id column-metadata)}
 
     :source/joins
     {::group-type :group-type/join.explicit, :join-alias (lib.join/current-join-alias column-metadata)}

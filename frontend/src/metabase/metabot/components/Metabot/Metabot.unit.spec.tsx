@@ -84,11 +84,14 @@ const setupMetabotDatabaseEndpoints = (couldGenerateCard = true) => {
 
 const setupMetabotModelEndpoints = (couldGenerateCard = true) => {
   if (couldGenerateCard) {
-    setupMetabotModelEndpoint(MODEL.id(), GENERATED_CARD);
-    setupCardDataset({
-      row_count: 1,
-      data: { rows: [[RESULT_VALUE]] },
-    });
+    setupMetabotModelEndpoint(MODEL.id(), GENERATED_CARD, true);
+    setupCardDataset(
+      {
+        row_count: 1,
+        data: { rows: [[RESULT_VALUE]] },
+      },
+      true,
+    );
   } else {
     setupBadRequestMetabotModelEndpoint(MODEL.id());
   }
@@ -160,7 +163,7 @@ describe("Metabot", () => {
       expect(screen.getByText("How did I do?")).toBeInTheDocument();
     });
 
-    it("should show an error when a query could not be generates", async () => {
+    it("should show an error when a query could not be generated", async () => {
       setupMetabotModelEndpoints(false);
       setup({ entityType: "model", model: MODEL });
 
@@ -169,6 +172,13 @@ describe("Metabot", () => {
       );
       expect(await screen.findByText(API_ERROR)).toBeInTheDocument();
       expect(screen.queryByText("How did I do?")).not.toBeInTheDocument();
+
+      // The error state get cleared
+      setupMetabotModelEndpoints(true);
+
+      userEvent.click(screen.getByRole("button", { name: /get answer/i }));
+      expect(await screen.findByText("Here you go!")).toBeInTheDocument();
+      expect(await screen.findByText(RESULT_VALUE)).toBeInTheDocument();
     });
   });
 

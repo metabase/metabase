@@ -162,7 +162,7 @@ function ModelActionDetails({
   return (
     <Root>
       {canWrite && (
-        <ActionsHeader>
+        <ActionsHeader data-testid="model-actions-header">
           <Button as={Link} to={newActionUrl}>{t`New action`}</Button>
           {menuItems.length > 0 && (
             <ActionMenu
@@ -221,6 +221,7 @@ function mostRecentFirst(action: WritebackAction) {
   return -createdAt.unix();
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   Actions.loadList({
     query: (state: State, { model }: OwnProps) => ({

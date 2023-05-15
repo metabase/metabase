@@ -1,17 +1,16 @@
 import React from "react";
-import type { DatasetQuery } from "metabase-types/types/Card";
 
+import { createMockEntitiesState } from "__support__/store";
 import { setupDatabasesEndpoints } from "__support__/server-mocks/database";
 import { setupSearchEndpoints } from "__support__/server-mocks/search";
 import { renderWithProviders, screen, getIcon } from "__support__/ui";
-import { createMockState } from "metabase-types/store/mocks";
 
+import type { DatasetQuery } from "metabase-types/api";
 import {
   createMockStructuredDatasetQuery,
   createMockNativeDatasetQuery,
 } from "metabase-types/api/mocks";
-
-import { createEntitiesState } from "__support__/store";
+import { createMockState } from "metabase-types/store/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import QueryViewer from "./QueryViewer";
@@ -26,7 +25,7 @@ const makeQuery = (options: any) => {
 const setup = ({ query }: { query: DatasetQuery }) => {
   const database = createSampleDatabase();
   const state = createMockState({
-    entities: createEntitiesState({
+    entities: createMockEntitiesState({
       databases: [database],
     }),
   });

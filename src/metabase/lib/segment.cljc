@@ -7,7 +7,7 @@
 
 (defmethod lib.metadata.calculation/display-name-method :metadata/segment
   [_query _stage-number segment-metadata _style]
-  (or ((some-fn :display_name :name) segment-metadata)
+  (or ((some-fn :display-name :name) segment-metadata)
       (i18n/tru "[Unknown Segment]")))
 
 (defmethod lib.metadata.calculation/display-name-method :segment

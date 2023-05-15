@@ -41,17 +41,14 @@ const mapDispatchToProps = {
   ...metadataActions,
 };
 
-const createListItem = (entity, index) => (
-  <li className="relative" key={entity.id}>
-    <ListItem
-      id={entity.id}
-      index={index}
-      name={entity.display_name || entity.name}
-      description={entity.description}
-      url={`/reference/databases/${entity.db_id}/tables/${entity.id}`}
-      icon="table2"
-    />
-  </li>
+const createListItem = entity => (
+  <ListItem
+    key={entity.id}
+    name={entity.display_name || entity.name}
+    description={entity.description}
+    url={`/reference/databases/${entity.db_id}/tables/${entity.id}`}
+    icon="table2"
+  />
 );
 
 const createSchemaSeparator = table => (

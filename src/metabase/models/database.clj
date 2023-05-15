@@ -176,7 +176,13 @@
                       {:status-code     400
                        :existing-engine existing-engine
                        :new-engine      new-engine}))
-      (u/prog1 (handle-secrets-changes database)
+      (u/prog1  (-> database
+                    (cond->
+                      ;; If the engine doesn't support nested field columns, `json_unfolding` must be nil
+                      (and (some? (:details database))
+                           (not (driver/database-supports? (or new-engine existing-engine) :nested-field-columns database)))
+                      (update :details dissoc :json_unfolding))
+                    handle-secrets-changes)
         ;; TODO - this logic would make more sense in post-update if such a method existed
         ;; if the sync operation schedules have changed, we need to reschedule this DB
         (when (or new-metadata-schedule new-fieldvalues-schedule)

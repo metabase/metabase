@@ -18,6 +18,7 @@
  */
 
 export const SAMPLE_DB_ID = 1;
+export const SAMPLE_DB_SCHEMA_ID = "1:PUBLIC";
 
 // Use only for e2e helpers and custom commands. Never in e2e tests directly!
 export const SAMPLE_DB_TABLES = {

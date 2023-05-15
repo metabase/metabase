@@ -3,8 +3,7 @@ import { t } from "ttag";
 
 import Ellipsified from "metabase/core/components/Ellipsified";
 import Icon from "metabase/components/Icon";
-
-import type { VisualizationProps } from "metabase-types/types/Visualization";
+import type { VisualizationProps } from "metabase/visualizations/types";
 
 import { StyledButton, StyledButtonContent } from "./ActionButton.styled";
 
@@ -52,4 +51,5 @@ function ActionButtonView({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ActionButtonView;

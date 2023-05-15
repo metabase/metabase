@@ -2,6 +2,8 @@
 // @ts-nocheck
 import Filter from "metabase-lib/queries/structured/Filter";
 import Base from "./Base";
+import type Metadata from "./Metadata";
+import type Table from "./Table";
 /**
  * @typedef { import("./Metadata").Aggregation } Aggregation
  */
@@ -10,8 +12,12 @@ import Base from "./Base";
  * Wrapper class for a metric. Belongs to a {@link Database} and possibly a {@link Table}
  */
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default class Metric extends Base {
   name: string;
+  table_id: Table["id"];
+  table: Table;
+  metadata: Metadata;
 
   displayName() {
     return this.name;

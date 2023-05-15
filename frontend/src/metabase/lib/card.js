@@ -32,7 +32,7 @@ export async function loadCard(cardId, { dispatch, getState }) {
     });
     return card;
   } catch (error) {
-    console.log("error loading card", error);
+    console.error("error loading card", error);
     throw error;
   }
 }

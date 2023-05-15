@@ -58,10 +58,10 @@
       (str "Invalid :expression reference: no expression named " (pr-str expression-name)))))
 
 (defn- aggregation-ref-error-for-stage [stage]
-  (let [num-aggregations (count (:aggregation stage))]
+  (let [uuids (into #{} (map (comp :lib/uuid second)) (:aggregation stage))]
     (mbql.match/match-one (dissoc stage :joins :lib/stage-metadata)
-      [:aggregation _opts (index :guard #(>= % num-aggregations))]
-      (str "Invalid :aggregation reference: no aggregation at index " index))))
+      [:aggregation _opts (ag-uuid :guard (complement uuids))]
+      (str "Invalid :aggregation reference: no aggregation with uuid " ag-uuid))))
 
 (def ^:private ^{:arglists '([stage])} ref-error-for-stage
   "Validate references in the context of a single `stage`, independent of any previous stages. If there is an error with

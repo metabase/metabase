@@ -1,6 +1,7 @@
 (ns metabase.models.revision
   (:require
    [clojure.data :as data]
+   [metabase.db.util :as mdb.u]
    [metabase.models.interface :as mi]
    [metabase.models.revision.diff :refer [diff-string]]
    [metabase.models.user :refer [User]]
@@ -97,7 +98,7 @@
 (defn revisions
   "Get the revisions for `model` with `id` in reverse chronological order."
   [model id]
-  {:pre [(models/model? model) (integer? id)]}
+  {:pre [(mdb.u/toucan-model? model) (integer? id)]}
   (t2/select Revision, :model (name model), :model_id id, {:order-by [[:id :desc]]}))
 
 (defn revisions+details
@@ -113,7 +114,7 @@
 (defn- delete-old-revisions!
   "Delete old revisions of `model` with `id` when there are more than `max-revisions` in the DB."
   [model id]
-  {:pre [(models/model? model) (integer? id)]}
+  {:pre [(mdb.u/toucan-model? model) (integer? id)]}
   (when-let [old-revisions (seq (drop max-revisions (map :id (t2/select [Revision :id]
                                                                :model    (name model)
                                                                :model_id id
@@ -121,36 +122,39 @@
     (t2/delete! Revision :id [:in old-revisions])))
 
 (defn push-revision!
-  "Record a new Revision for `entity` with `id`. Returns `object`."
+  "Record a new Revision for `entity` with `id` if it's changed compared to the last revision.
+  Returns `object` or `nil` if the object does not changed."
   {:arglists '([& {:keys [object entity id user-id is-creation? message]}])}
   [& {object :object,
       :keys [entity id user-id is-creation? message],
       :or {id (:id object), is-creation? false}}]
   ;; TODO - rewrite this to use a schema
-  {:pre [(models/model? entity)
+  {:pre [(mdb.u/toucan-model? entity)
          (integer? user-id)
          (t2/exists? User :id user-id)
          (integer? id)
          (t2/exists? entity :id id)
          (map? object)]}
-  (let [object (serialize-instance entity id (dissoc object :message))]
+  (let [serialized-object (serialize-instance entity id (dissoc object :message))
+        last-object       (t2/select-one-fn :object Revision :model (name entity) :model_id id {:order-by [[:id :desc]]})]
     ;; make sure we still have a map after calling out serialization function
-    (assert (map? object))
-    (t2/insert! Revision
-      :model        (name entity)
-      :model_id     id
-      :user_id      user-id
-      :object       object
-      :is_creation  is-creation?
-      :is_reversion false
-      :message      message))
-  (delete-old-revisions! entity id)
-  object)
+    (assert (map? serialized-object))
+    (when-not (= serialized-object last-object)
+      (t2/insert! Revision
+                  :model        (name entity)
+                  :model_id     id
+                  :user_id      user-id
+                  :object       serialized-object
+                  :is_creation  is-creation?
+                  :is_reversion false
+                  :message      message)
+      (delete-old-revisions! entity id)
+      object)))
 
 (defn revert!
   "Revert `entity` with `id` to a given Revision."
   [& {:keys [entity id user-id revision-id]}]
-  {:pre [(models/model? entity)
+  {:pre [(mdb.u/toucan-model? entity)
          (integer? id)
          (t2/exists? entity :id id)
          (integer? user-id)

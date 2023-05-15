@@ -1,6 +1,7 @@
 (ns metabase.lib.join
   (:require
    [medley.core :as m]
+   [metabase.lib.common :as lib.common]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata :as lib.metadata]
@@ -8,7 +9,6 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.util :as lib.util]
    [metabase.shared.util.i18n :as i18n]
@@ -69,7 +69,7 @@
   [query _stage-number {[first-stage] :stages, :as _join} _style]
   (if-let [source-table (:source-table first-stage)]
     (if (integer? source-table)
-      (:display_name (lib.metadata/table query source-table))
+      (:display-name (lib.metadata/table query source-table))
       ;; handle card__<id> source tables.
       (let [card-id (lib.util/string-table-id->card-id source-table)]
         (i18n/tru "Saved Question #{0}" card-id)))
@@ -78,7 +78,7 @@
 (defmethod lib.metadata.calculation/display-info-method :mbql/join
   [query stage-number join]
   (let [display-name (lib.metadata.calculation/display-name query stage-number join)]
-    {:name (or (:alias join) display-name), :display_name display-name}))
+    {:name (or (:alias join) display-name), :display-name display-name}))
 
 (mu/defn ^:private column-from-join-fields :- lib.metadata.calculation/ColumnMetadataWithSource
   "For a column that comes from a join `:fields` list, add or update metadata as needed, e.g. include join name in the
@@ -89,7 +89,7 @@
    join-alias      :- ::lib.schema.common/non-blank-string]
   (let [column-metadata (assoc column-metadata :source_alias join-alias)
         col             (-> (assoc column-metadata
-                                   :display_name (lib.metadata.calculation/display-name query stage-number column-metadata)
+                                   :display-name (lib.metadata.calculation/display-name query stage-number column-metadata)
                                    :lib/source   :source/joins)
                             (with-join-alias join-alias))]
     (assert (= (current-join-alias col) join-alias))
@@ -107,11 +107,12 @@
 (defmethod lib.metadata.calculation/metadata-method :mbql/join
   [query stage-number {:keys [fields stages], join-alias :alias, :or {fields :none}, :as _join}]
   (when-not (= fields :none)
-    (let [field-metadatas (if (= fields :all)
-                            (lib.metadata.calculation/metadata (assoc query :stages stages) -1 (last stages))
-                            (for [field-ref fields]
-                              ;; resolve the field ref in the context of the join. Not sure if this is right.
-                              (lib.metadata.calculation/metadata query stage-number field-ref)))]
+    (let [join-query (assoc query :stages stages)
+          field-metadatas (if (= fields :all)
+                            (lib.metadata.calculation/metadata join-query -1 (peek stages))
+                            (for [field-ref fields
+                                  :let [join-field (lib.options/update-options field-ref dissoc :join-alias)]]
+                              (lib.metadata.calculation/metadata join-query -1 join-field)))]
       (mapv (fn [field-metadata]
               (column-from-join-fields query stage-number field-metadata join-alias))
             field-metadatas))))
@@ -204,41 +205,6 @@
                                            :stage-number stage-number
                                            :f            f})))))
 
-;; TODO this is basically the same as lib.common/->op-args,
-;; but requiring lib.common leads to crircular dependencies:
-;; join -> common -> field -> join.
-(defmulti ^:private ->join-condition
-  {:arglists '([query stage-number x])}
-  (fn [_query _stage-number x]
-    (lib.dispatch/dispatch-value x))
-  :hierarchy lib.hierarchy/hierarchy)
-
-(defmethod ->join-condition :default
-  [_query _stage-number x]
-  x)
-
-(defmethod ->join-condition :lib/external-op
-  [query stage-number {:keys [operator options args] :or {options {}}}]
-  (->join-condition query stage-number
-                    (lib.options/ensure-uuid (into [operator options] args))))
-
-(defmethod ->join-condition :dispatch-type/fn
-  [query stage-number f]
-  (->join-condition query stage-number (f query stage-number)))
-
-(mu/defn join-condition :- [:or
-                            fn?
-                            ::lib.schema.expression/boolean]
-  "Create a MBQL condition expression to include in the `:conditions` in a join map.
-
-  - One arity: return a function that will be resolved later once we have `query` and `stage-number.`
-  - Three arity: return the join condition expression immediately."
-  ([x]
-   (fn [query stage-number]
-     (join-condition query stage-number x)))
-  ([query stage-number x]
-   (->join-condition query stage-number x)))
-
 (defn join-clause
   "Create an MBQL join map from something that can conceptually be joined against. A `Table`? An MBQL or native query? A
   Saved Question? You should be able to join anything, and this should return a sensible MBQL join map."
@@ -255,7 +221,7 @@
 
   ([query stage-number x conditions]
    (cond-> (join-clause query stage-number x)
-     conditions (assoc :conditions (mapv #(join-condition query stage-number %) conditions)))))
+     conditions (assoc :conditions (mapv #(lib.common/->op-arg query stage-number %) conditions)))))
 
 (defmulti with-join-fields-method
   "Impl for [[with-join-fields]]."
@@ -267,7 +233,9 @@
 (defmethod with-join-fields-method :dispatch-type/fn
   [f fields]
   (fn [query stage-number]
-    (with-join-fields-method (f query stage-number) fields)))
+    (with-join-fields-method (f query stage-number) (if (keyword? fields)
+                                                      fields
+                                                      (mapv #(lib.common/->op-arg query stage-number %) fields)))))
 
 (defmethod with-join-fields-method :mbql/join
   [join fields]
@@ -276,7 +244,7 @@
 (mu/defn with-join-fields
   "Update a join (or a function that will return a join) to include `:fields`, either `:all`, `:none`, or a sequence of
   references."
-  [x fields :- ::lib.schema.join/fields]
+  [x fields]
   (with-join-fields-method x fields))
 
 (mu/defn join :- ::lib.schema/query
@@ -317,3 +285,13 @@
   [table-name           :- ::lib.schema.common/non-blank-string
    source-field-id-name :- ::lib.schema.common/non-blank-string]
   (lib.util/format "%s__via__%s" table-name source-field-id-name))
+
+(mu/defn join-conditions :- ::lib.schema.join/conditions
+  "Get all join conditions for the given join"
+  [j :- ::lib.schema.join/join]
+  (:conditions j))
+
+(mu/defn join-fields :- [:maybe ::lib.schema/fields]
+  "Get all join conditions for the given join"
+  [j :- ::lib.schema.join/join]
+  (:fields j))

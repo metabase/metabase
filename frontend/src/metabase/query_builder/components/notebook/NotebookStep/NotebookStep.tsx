@@ -30,11 +30,6 @@ function hasLargeButton(action: NotebookStepAction) {
   return !STEP_UI[action.type].compact;
 }
 
-function getTestId(step: INotebookStep) {
-  const { type, stageIndex, itemIndex } = step;
-  return `step-${type}-${stageIndex || 0}-${itemIndex || 0}`;
-}
-
 interface NotebookStepProps {
   step: INotebookStep;
   sourceQuestion?: Question;
@@ -116,7 +111,7 @@ function NotebookStep({
     <ExpandingContent isInitiallyOpen={!isLastOpened} isOpen>
       <StepRoot
         className="hover-parent hover--visibility"
-        data-testid={getTestId(step)}
+        data-testid={step.testID}
       >
         <StepHeader color={color}>
           {title}
@@ -181,4 +176,5 @@ function NotebookStep({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default NotebookStep;

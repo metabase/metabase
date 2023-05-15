@@ -243,13 +243,13 @@
   (fn [path]
     (-> path last :model)))
 
-(declare *lookup-by-id*)
+(declare lookup-by-id)
 
 (defmethod load-find-local :default [path]
   (let [{id :id model-name :model} (last path)
         model                      (t2.model/resolve-model (symbol model-name))]
     (when model
-      (*lookup-by-id* model id))))
+      (lookup-by-id model id))))
 
 (defmulti dependencies
   "Given an entity map as ingested (not a Toucan entity) returns a (possibly empty) list of its dependencies, where each
@@ -373,7 +373,7 @@
                       (take 1)))
        first))
 
-(defn ^:dynamic ^::cache *lookup-by-id*
+(defn lookup-by-id
   "Given an ID string, this endeavours to find the matching entity, whether it's an entity ID or identity hash.
   This is useful when writing [[load-xform]] to turn a foreign key from a portable form to an appdb ID.
   Returns a Toucan entity or nil."
@@ -473,7 +473,7 @@
           eid        (if (vector? eid)
                        (last eid)
                        eid)
-          entity     (*lookup-by-id* model eid)]
+          entity     (lookup-by-id model eid)]
       (if entity
         (get entity (mdb.u/primary-key model))
         (throw (ex-info "Could not find foreign key target - bad serdes-dependencies or other serialization error"
@@ -855,11 +855,11 @@
   Link cards are dashcards that link to internal entities like Database/Dashboard/... or an url.
 
   It's here instead of [metabase.models.dashboard_card] to avoid cyclic deps."
-  {"card"       :metabase.models.card/Card
-   "dataset"    :metabase.models.card/Card
+  {"card"       :model/Card
+   "dataset"    :model/Card
    "collection" :metabase.models.collection/Collection
    "database"   :metabase.models.database/Database
-   "dashboard"  :metabase.models.dashboard/Dashboard
+   "dashboard"  :model/Dashboard
    "table"      :metabase.models.table/Table})
 
 (defn- export-viz-link-card

@@ -50,18 +50,30 @@
    #_expr [:ref ::expression/expression]])
 
 
-(mbql-clause/define-tuple-mbql-clause :case
+(mbql-clause/define-catn-mbql-clause :case
   ;; TODO -- we should further constrain this so all of the exprs are of the same type
-  [:sequential {:min 1} [:ref ::case-subclause]])
+  [:pred-expr-pairs [:sequential {:min 1} [:ref ::case-subclause]]]
+  [:default [:? [:schema [:ref ::expression/expression]]]])
+
+(defn- allow-unkown-type
+  "A hack to allow case and coalesce expressions using fields only.
+  The real fix would pass in metadata so that the types of fields
+  can be determined."
+  [expr-type]
+  (if (= expr-type ::expression/type.unknown)
+    :type/*
+    expr-type))
 
 (defmethod expression/type-of* :case
-  [[_tag _opts pred-expr-pairs]]
-  (reduce
-   (fn [best-guess [_pred expr]]
-     (let [expr-type (expression/type-of expr)]
-       (best-return-type best-guess expr-type)))
-   nil
-   pred-expr-pairs))
+  [[_tag _opts pred-expr-pairs default]]
+  (-> (reduce
+       (fn [best-guess [_pred expr]]
+         (let [expr-type (expression/type-of expr)]
+           (best-return-type best-guess expr-type)))
+       (when (some? default)
+         (expression/type-of default))
+       pred-expr-pairs)
+      allow-unkown-type))
 
 ;;; TODO -- add constraint that these types have to be compatible
 (mbql-clause/define-tuple-mbql-clause :coalesce
@@ -70,4 +82,5 @@
 
 (defmethod expression/type-of* :coalesce
   [[_tag _opts expr null-value]]
-  (best-return-type (expression/type-of expr) (expression/type-of null-value)))
+  (-> (best-return-type (expression/type-of expr) (expression/type-of null-value))
+      allow-unkown-type))

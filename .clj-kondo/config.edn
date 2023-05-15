@@ -158,11 +158,13 @@
    toucan.db/execute!            {:message "Use t2/query-one instead of toucan.db/execute!"}
    toucan.db/reducible-query     {:message "Use mdb.query/reducible-query instead of toucan.db/reducible-query"}
    toucan.db/resolve-model       {:message "Use metabase.db.util/resolve-model instead of toucan.db/resolve-model"}
-   toucan.models/primary-key     {:message "Use metabase.db.util/primary-key instead of toucan.models/primary-key"}}
+   toucan.models/primary-key     {:message "Use metabase.db.util/primary-key instead of toucan.models/primary-key"}
+   toucan.models/model?          {:message "Use mdb.u/toucan-model? instead of toucan.models/model?"}}
 
   :discouraged-namespace
-  {clojure.tools.logging {:message "Use metabase.util.log instead of clojure.tools.logging directly"}
-   metabase.util.jvm     {:message "All of metabase.util.jvm is re-exported from metabase.util; prefer that"}}
+  {camel-snake-kebab.core {:message "CSK is not Turkish-safe, use the versions in metabase.util instead."}
+   clojure.tools.logging  {:message "Use metabase.util.log instead of clojure.tools.logging directly"}
+   metabase.util.jvm      {:message "All of metabase.util.jvm is re-exported from metabase.util; prefer that"}}
 
   :unresolved-var
   {:exclude
@@ -447,10 +449,7 @@
     ring.adapter.jetty9.servlet                                     servlet
     saml20-clj.core                                                 saml
     toucan.db                                                       db
-    toucan.models                                                   models}}
-
-  :metabase/disallow-invoking-model         {:level :warning}
-  :metabase/disallow-class-or-type-on-model {:level :warning}}
+    toucan.models                                                   models}}}
 
  :lint-as
  {clojure.core.logic/defne                                                             clj-kondo.lint-as/def-catch-all
@@ -477,12 +476,10 @@
   metabase.driver.sql-jdbc.connection/with-connection-spec-for-testing-connection      clojure.core/let
   metabase.driver.sql-jdbc.execute.diagnostic/capturing-diagnostic-info                clojure.core/fn
   metabase.integrations.ldap/with-ldap-connection                                      clojure.core/fn
-  metabase.mbql.schema.macros/defclause                                                clj-kondo.lint-as/def-catch-all
   metabase.models.collection-test/with-collection-in-location                          clojure.core/let
   metabase.models.json-migration/def-json-migration                                    clj-kondo.lint-as/def-catch-all
   metabase.models.setting.multi-setting/define-multi-setting                           clojure.core/def
   metabase.models.setting/defsetting                                                   clj-kondo.lint-as/def-catch-all
-  metabase.public-settings.premium-features/defenterprise                              clj-kondo.lint-as/def-catch-all
   metabase.public-settings.premium-features/defenterprise-schema                       clj-kondo.lint-as/def-catch-all
   metabase.public-settings.premium-features/define-premium-feature                     clojure.core/def
   metabase.pulse-test/with-pulse-for-card                                              clojure.core/let
@@ -533,6 +530,7 @@
    metabase.api.common/defendpoint-async-schema                                                                              hooks.metabase.api.common/defendpoint
    metabase.api.common/defendpoint-schema                                                                                    hooks.metabase.api.common/defendpoint
    metabase.api.dashboard-test/with-chain-filter-fixtures                                                                    hooks.common/let-one-with-optional-value
+   metabase.api.dashboard-test/with-simple-dashboard-with-tabs                                                               hooks.common/with-one-binding
    metabase.api.card-test/with-card-param-values-fixtures                                                                    hooks.common/let-one-with-optional-value
    metabase.api.embed-test/do-response-formats                                                                               hooks.common/with-two-bindings
    metabase.api.embed-test/with-chain-filter-fixtures                                                                        hooks.common/let-one-with-optional-value
@@ -549,15 +547,19 @@
    metabase.async.streaming-response-test/with-start-execution-chan                                                          hooks.common/with-one-binding
    metabase.db.schema-migrations-test.impl/test-migrations                                                                   hooks.metabase.db.schema-migrations-test.impl/test-migrations
    metabase.dashboard-subscription-test/with-link-card-fixture-for-dashboard                                                 hooks.common/let-second
+   metabase.driver.bigquery-cloud-sdk-test/calculate-bird-scarcity                                                           hooks.metabase.query-processor-test.expressions-test/calculate-bird-scarcity
+   metabase.mbql.schema.macros/defclause                                                                                     hooks.metabase.mbql.schemas.macros/defclause
    metabase.models.collection-test/with-collection-hierarchy                                                                 hooks.common/let-one-with-optional-value
    metabase.models.collection-test/with-personal-and-impersonal-collections                                                  hooks.common/with-two-bindings
    metabase.models.dashboard-test/with-dash-in-collection                                                                    hooks.common/with-three-bindings
+   metabase.models.dashboard-tab-test/with-dashtab-in-personal-collection                                                    hooks.common/with-one-top-level-binding
    metabase.models.interface/define-simple-hydration-method                                                                  hooks.metabase.models.interface/define-hydration-method
    metabase.models.interface/define-batched-hydration-method                                                                 hooks.metabase.models.interface/define-hydration-method
    metabase.models.pulse-test/with-dashboard-subscription-in-collection                                                      hooks.common/with-four-bindings
    metabase.models.pulse-test/with-pulse-in-collection                                                                       hooks.common/with-four-bindings
    metabase.models.setting.multi-setting/define-multi-setting                                                                hooks.metabase.models.setting/defsetting
    metabase.models.setting/defsetting                                                                                        hooks.metabase.models.setting/defsetting
+   metabase.public-settings.premium-features/defenterprise                                                                   hooks.metabase.public-settings.premium-features/defenterprise
    metabase.pulse.test-util/checkins-query-card                                                                              hooks.metabase.test.data/$ids
    metabase.query-processor-test.expressions-test/calculate-bird-scarcity                                                    hooks.metabase.query-processor-test.expressions-test/calculate-bird-scarcity
    metabase.query-processor-test.filter-test/count-with-filter-clause                                                        hooks.metabase.test.data/$ids
@@ -713,10 +715,16 @@
   ;; to the new stricter rules from day 1
   metabase-lib
   {:linters
-   {:docstring-leading-trailing-whitespace                 {:level :warning}
-    :reduce-without-init                                   {:level :warning}
-    :used-underscored-binding                              {:level :warning}
-    :single-key-in                                         {:level :warning}
-    :keyword-binding                                       {:level :warning}
-    :shadowed-var                                          {:level :warning}
-    :metabase/deftest-not-marked-parallel-or-synchronized  {:level :warning}}}}}
+   {:docstring-leading-trailing-whitespace                {:level :warning}
+    :reduce-without-init                                  {:level :warning}
+    :used-underscored-binding                             {:level :warning}
+    :single-key-in                                        {:level :warning}
+    :keyword-binding                                      {:level :warning}
+    :shadowed-var                                         {:level :warning}
+    :metabase/deftest-not-marked-parallel-or-synchronized {:level :warning}
+
+    ;; eventually we should do this for the whole codebase, but the args are in the opposite order so switching them
+    ;; all at once isn't trivial, at least we can stop using it in new code.
+    :discouraged-var
+    {medley.core/map-keys {:message "Use clojure.core/update-keys"}
+     medley.core/map-vals {:message "Use clojure.core/update-vals"}}}}}}

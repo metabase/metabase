@@ -225,7 +225,7 @@
           (is (= 100 (count (t2/select-fn-set :email 'User))))
 
           (testing "extraction"
-            (reset! extraction (serdes/with-cache (into [] (extract/extract-metabase {}))))
+            (reset! extraction (serdes/with-cache (into [] (extract/extract {}))))
             (reset! entities   (reduce (fn [m entity]
                                          (update m (-> entity :serdes/meta last :model)
                                                  (fnil conj []) entity))
@@ -466,7 +466,7 @@
               (is (= 2 (t2/count ParameterCard))))
 
             (testing "extract and store"
-              (let [extraction (serdes/with-cache (into [] (extract/extract-metabase {})))]
+              (let [extraction (serdes/with-cache (into [] (extract/extract {})))]
                 (is (= [{:id                   "abc",
                          :name                 "CATEGORY",
                          :type                 :category,
@@ -575,7 +575,7 @@
              DashboardCard _                         {:dashboard_id           dashboard-id
                                                       :visualization_settings (link-card-viz-setting "dataset" model-id)}]
             (testing "extract and store"
-              (let [extraction          (serdes/with-cache (into [] (extract/extract-metabase {})))
+              (let [extraction          (serdes/with-cache (into [] (extract/extract {})))
                     extracted-dashboard (first (filter #(= (:name %) "Test Dashboard") (by-model extraction "Dashboard")))]
                 (is (= [{:model "collection" :id coll-eid}
                         {:model "database"   :id "Linked database"}

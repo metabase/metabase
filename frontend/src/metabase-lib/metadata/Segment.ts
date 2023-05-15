@@ -1,6 +1,8 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
 import Base from "./Base";
+import type Metadata from "./Metadata";
+import type Table from "./Table";
 /**
  * @typedef { import("./Metadata").FilterClause } FilterClause
  */
@@ -9,8 +11,13 @@ import Base from "./Base";
  * Wrapper class for a segment. Belongs to a {@link Database} and possibly a {@link Table}
  */
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default class Segment extends Base {
+  id: number;
   name: string;
+  table_id: Table["id"];
+  table: Table;
+  metadata: Metadata;
 
   displayName() {
     return this.name;

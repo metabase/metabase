@@ -506,10 +506,12 @@ const mapDispatchToProps = {
   onFetchParameterValues: fetchParameterValues,
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   Tables.load({
     id: (state: State, { sourceConfig: { card_id } }: ModalOwnProps) =>
       card_id ? getQuestionVirtualTableId(card_id) : undefined,
+    fetchType: "fetchMetadata",
     requestType: "fetchMetadata",
     LoadingAndErrorWrapper: ModalLoadingAndErrorWrapper,
   }),

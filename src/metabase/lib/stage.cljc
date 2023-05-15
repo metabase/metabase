@@ -71,7 +71,7 @@
    stage-number   :- :int
    unique-name-fn :- fn?]
   (not-empty
-   (for [breakout (lib.breakout/breakouts query stage-number)]
+   (for [breakout (lib.breakout/breakouts-metadata query stage-number)]
      (assoc breakout
             :lib/source               :source/breakouts
             :lib/source-column-alias  (:name breakout)
@@ -107,7 +107,7 @@
               :lib/source-column-alias  (lib.metadata.calculation/column-name query stage-number metadata)
               :lib/desired-column-alias (unique-name-fn (lib.field/desired-alias query metadata)))))))
 
-(mu/defn ^:private breakout-ags-fields-columns :- [:maybe lib.metadata.calculation/ColumnsWithUniqueAliases]
+(mu/defn ^:private summary-columns :- [:maybe lib.metadata.calculation/ColumnsWithUniqueAliases]
   [query          :- ::lib.schema/query
    stage-number   :- :int
    unique-name-fn :- fn?]
@@ -116,8 +116,7 @@
          (mapcat (fn [f]
                    (f query stage-number unique-name-fn)))
          [breakouts-columns
-          aggregations-columns
-          fields-columns])))
+          aggregations-columns])))
 
 (mu/defn ^:private previous-stage-metadata :- [:maybe lib.metadata.calculation/ColumnsWithUniqueAliases]
   "Metadata for the previous stage, if there is one."
@@ -129,10 +128,15 @@
      (for [col  (stage-metadata query previous-stage-number)
            :let [source-alias (or ((some-fn :lib/desired-column-alias :lib/source-column-alias) col)
                                   (lib.metadata.calculation/column-name query stage-number col))]]
-       (assoc col
-              :lib/source               :source/previous-stage
-              :lib/source-column-alias  source-alias
-              :lib/desired-column-alias (unique-name-fn source-alias))))))
+       (-> col
+           (assoc :lib/source               :source/previous-stage
+                  :lib/source-column-alias  source-alias
+                  :lib/desired-column-alias (unique-name-fn source-alias))
+           ;; do not retain `:temporal-unit`; it's not like we're doing a extract(month from <x>) twice, in both
+           ;; stages of a query. It's a little hacky that we're manipulating `::lib.field` keys directly here since
+           ;; they're presumably supposed to be private-ish, but I don't have a more elegant way of solving this sort
+           ;; of problem at this point in time.
+           (dissoc ::lib.field/temporal-unit))))))
 
 (mu/defn ^:private saved-question-metadata :- [:maybe lib.metadata.calculation/ColumnsWithUniqueAliases]
   "Metadata associated with a Saved Question, if `:source-table` is a `card__<id>` string."
@@ -206,8 +210,9 @@
 
 (mu/defn ^:private stage-metadata :- [:maybe lib.metadata.calculation/ColumnsWithUniqueAliases]
   "Return results metadata about the expected columns in an MBQL query stage. If the query has
-  aggregations/breakouts/fields, then return THOSE. Otherwise return the defaults based on the source Table or
-  previous stage + joins."
+  aggregations/breakouts, then return those and the fields columns.
+  Otherwise if there are fields columns return those and the joined columns.
+  Otherwise return the defaults based on the source Table or previous stage + joins."
   ([query stage-number]
    (stage-metadata query stage-number (lib.util/unique-name-generator)))
 
@@ -216,11 +221,23 @@
     unique-name-fn :- fn?]
    (or
     (existing-stage-metadata query stage-number)
-    (let [query (ensure-previous-stages-have-metadata query stage-number)]
+    (let [query (ensure-previous-stages-have-metadata query stage-number)
+          summary-cols (summary-columns query stage-number unique-name-fn)
+          field-cols (fields-columns query stage-number unique-name-fn)]
       ;; ... then calculate metadata for this stage
-      (or
-       (breakout-ags-fields-columns query stage-number unique-name-fn)
-       (lib.metadata.calculation/default-columns query stage-number (lib.util/query-stage query stage-number) unique-name-fn))))))
+      (cond
+        summary-cols
+        (into summary-cols field-cols)
+
+        field-cols
+        (do (doall field-cols)          ; force generation of unique names before join columns
+            (into []
+                  (m/distinct-by #(dissoc % :source_alias :lib/source :lib/desired-column-alias))
+                  (concat field-cols
+                          (lib.join/all-joins-default-columns query stage-number unique-name-fn))))
+
+        :else
+        (lib.metadata.calculation/default-columns query stage-number (lib.util/query-stage query stage-number) unique-name-fn))))))
 
 (defmethod lib.metadata.calculation/metadata-method ::stage
   [query stage-number _stage]
@@ -253,7 +270,7 @@
 
 (defn- implicitly-joinable-columns
   "Columns that are implicitly joinable from some other columns in `column-metadatas`. To be joinable, the column has to
-  have appropriate FK metadata, i.e. have an `:fk_target_field_id` pointing to another Field. (I think we only include
+  have appropriate FK metadata, i.e. have an `:fk-target-field-id` pointing to another Field. (I think we only include
   this information for Databases that support FKs and joins, so I don't think we need to do an additional DB feature
   check here.)
 
@@ -264,20 +281,20 @@
 
   Does not include columns that would be implicitly joinable via multiple hops."
   [query stage-number column-metadatas unique-name-fn]
-  (let [existing-table-ids (into #{} (map :table_id) column-metadatas)]
+  (let [existing-table-ids (into #{} (map :table-id) column-metadatas)]
     (into []
-          (comp (filter :fk_target_field_id)
-                (m/distinct-by :fk_target_field_id)
-                (map (fn [{source-field-id :id, target-field-id :fk_target_field_id}]
-                       (-> (lib.metadata/field query target-field-id)
+          (comp (filter :fk-target-field-id)
+                (m/distinct-by :fk-target-field-id)
+                (map (fn [{source-field-id :id, :keys [fk-target-field-id]}]
+                       (-> (lib.metadata/field query fk-target-field-id)
                            (assoc ::source-field-id source-field-id))))
-                (remove #(contains? existing-table-ids (:table_id %)))
-                (m/distinct-by :table_id)
-                (mapcat (fn [{table-id :table_id, ::keys [source-field-id]}]
+                (remove #(contains? existing-table-ids (:table-id %)))
+                (m/distinct-by :table-id)
+                (mapcat (fn [{:keys [table-id], ::keys [source-field-id]}]
                           (let [table-metadata (lib.metadata/table query table-id)]
                             (for [field (lib.metadata.calculation/default-columns query stage-number table-metadata unique-name-fn)
                                   :let  [field (assoc field
-                                                      :fk_field_id              source-field-id
+                                                      :fk-field-id              source-field-id
                                                       :lib/source               :source/implicitly-joinable
                                                       :lib/source-column-alias  (:name field))]]
                               (assoc field :lib/desired-column-alias (unique-name-fn

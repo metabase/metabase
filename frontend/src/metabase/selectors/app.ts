@@ -1,5 +1,5 @@
 import { Location } from "history";
-import { createSelector } from "reselect";
+import { createSelector } from "@reduxjs/toolkit";
 import { getUser } from "metabase/selectors/user";
 import {
   getIsEditing as getIsEditingDashboard,

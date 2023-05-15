@@ -1,17 +1,18 @@
 import React, { useEffect, useMemo } from "react";
 import _ from "underscore";
-import { useSelector, useDispatch } from "react-redux";
 
+import { useSelector, useDispatch } from "metabase/lib/redux";
 import NativeQueryEditor from "metabase/query_builder/components/NativeQueryEditor";
 import ReadOnlyNotebook from "metabase/query_builder/components/notebook/ReadOnlyNotebook";
 
 import { getMetadata } from "metabase/selectors/metadata";
 import { loadMetadataForCard } from "metabase/questions/actions";
 
-import type { DatasetQuery } from "metabase-types/types/Card";
+import type { DatasetQuery } from "metabase-types/api";
 
 import Question from "metabase-lib/Question";
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default function QueryViewer({
   datasetQuery,
 }: {

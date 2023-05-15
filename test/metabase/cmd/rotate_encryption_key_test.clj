@@ -112,7 +112,7 @@
                 (reset! secret-id-unenc (u/the-id secret)))
               (encryption-test/with-secret-key k1
                 (t2/insert! Setting {:key "k1crypted", :value "encrypted with k1"})
-                (t2/update! Database 1 {:details "{\"db\":\"/tmp/test.db\"}"})
+                (t2/update! Database 1 {:details {:db "/tmp/test.db"}})
                 (let [secret (first (t2/insert-returning-instances! Secret {:name       "My Secret (encrypted)"
                                                                             :kind       "password"
                                                                             :value      (.getBytes secret-val StandardCharsets/UTF_8)
@@ -153,11 +153,11 @@
 
               (testing "full rollback when a database details looks encrypted with a different key than the current one"
                 (encryption-test/with-secret-key k3
-                  (let [db (first (t2/insert-returning-instances! Database {:name "k3", :engine :mysql, :details "{\"db\":\"/tmp/k3.db\"}"}))]
+                  (let [db (first (t2/insert-returning-instances! Database {:name "k3", :engine :mysql, :details {:db "/tmp/k3.db"}}))]
                     (is (=? {:name "k3"}
                             db))))
                 (encryption-test/with-secret-key k2
-                  (let [db (first (t2/insert-returning-instances! Database {:name "k2", :engine :mysql, :details "{\"db\":\"/tmp/k2.db\"}"}))]
+                  (let [db (first (t2/insert-returning-instances! Database {:name "k2", :engine :mysql, :details {:db "/tmp/k3.db"}}))]
                     (is (=? {:name "k2"}
                             db)))
                   (is (thrown-with-msg?
@@ -169,8 +169,8 @@
                   (is (= {:db "/tmp/k3.db"} (t2/select-one-fn :details Database :name "k3")))))
 
               (testing "rotate-encryption-key! to nil decrypts the encrypted keys"
-                (t2/update! Database 1 {:details "{\"db\":\"/tmp/test.db\"}"})
-                (t2/update! Database {:name "k3"} {:details "{\"db\":\"/tmp/test.db\"}"})
+                (t2/update! Database 1 {:details {:db "/tmp/test.db"}})
+                (t2/update! Database {:name "k3"} {:details {:db "/tmp/test.db"}})
                 (encryption-test/with-secret-key k2 ; with the last key that we rotated to in the test
                   (rotate-encryption-key! nil))
                 (is (= "unencrypted value" (raw-value "nocrypt")))

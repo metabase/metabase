@@ -1,20 +1,26 @@
 (ns metabase.lib.field
   (:require
+   [clojure.string :as str]
    [medley.core :as m]
    [metabase.lib.aggregation :as lib.aggregation]
+   [metabase.lib.binning :as lib.binning]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.join :as lib.join]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.normalize :as lib.normalize]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.ref]
+   [metabase.lib.schema.temporal-bucketing
+    :as lib.schema.temporal-bucketing]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
    [metabase.shared.util.i18n :as i18n]
+   [metabase.util :as u]
    [metabase.util.humanization :as u.humanization]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
@@ -91,9 +97,9 @@
    [_field {:keys [join-alias], :as opts} id-or-name, :as _field-clause] :- :mbql.clause/field]
   (merge
    (when-let [base-type (:base-type opts)]
-     {:base_type base-type})
+     {:base-type base-type})
    (when-let [effective-type ((some-fn :effective-type :base-type) opts)]
-     {:effective_type effective-type})
+     {:effective-type effective-type})
    ;; TODO -- some of the other stuff in `opts` probably ought to be merged in here as well. Also, if the Field is
    ;; temporally bucketed, the base-type/effective-type would probably be affected, right? We should probably be
    ;; taking that into consideration?
@@ -111,19 +117,31 @@
   "If this is a nested column, add metadata about the parent column."
   [query    :- ::lib.schema/query
    metadata :- lib.metadata/ColumnMetadata]
-  (let [parent-metadata     (lib.metadata/field query (:parent_id metadata))
+  (let [parent-metadata     (lib.metadata/field query (:parent-id metadata))
         {parent-name :name} (cond->> parent-metadata
-                              (:parent_id parent-metadata) (add-parent-column-metadata query))]
+                              (:parent-id parent-metadata) (add-parent-column-metadata query))]
     (update metadata :name (fn [field-name]
                              (str parent-name \. field-name)))))
 
+(defn- column-metadata-effective-type
+  "Effective type of a column when taking the `::temporal-unit` into account. If we have a temporal extraction like
+  `:month-of-year`, then this actually returns an integer rather than the 'original` effective type of `:type/Date` or
+  whatever."
+  [{::keys [temporal-unit], :as column-metadata}]
+  (if (and temporal-unit
+           (contains? lib.schema.temporal-bucketing/datetime-extraction-units temporal-unit))
+    :type/Integer
+    ((some-fn :effective-type :base-type) column-metadata)))
+
 (defmethod lib.metadata.calculation/type-of-method :metadata/field
-  [_query _stage-number field-metadata]
-  ((some-fn :effective_type :base_type) field-metadata))
+  [_query _stage-number column-metadata]
+  (column-metadata-effective-type column-metadata))
 
 (defmethod lib.metadata.calculation/type-of-method :field
-  [query stage-number field-ref]
-  (lib.metadata.calculation/type-of query stage-number (resolve-field-metadata query stage-number field-ref)))
+  [query stage-number [_tag {:keys [temporal-unit], :as _opts} _id-or-name :as field-ref]]
+  (let [metadata (cond-> (resolve-field-metadata query stage-number field-ref)
+                   temporal-unit (assoc ::temporal-unit temporal-unit))]
+    (lib.metadata.calculation/type-of query stage-number metadata)))
 
 (defmethod lib.metadata.calculation/metadata-method :metadata/field
   [_query _stage-number {field-name :name, :as field-metadata}]
@@ -131,36 +149,41 @@
 
 ;;; TODO -- base type should be affected by `temporal-unit`, right?
 (defmethod lib.metadata.calculation/metadata-method :field
-  [query stage-number [_tag {:keys [source-field effective-type base-type temporal-unit join-alias], :as opts} :as field-ref]]
+  [query
+   stage-number
+   [_tag {:keys [base-type binning effective-type join-alias source-field temporal-unit], :as opts} :as field-ref]]
   (let [field-metadata (resolve-field-metadata query stage-number field-ref)
         metadata       (merge
                         {:lib/type :metadata/field}
                         field-metadata
-                        {:display_name (or (:display-name opts)
+                        {:display-name (or (:display-name opts)
                                            (lib.metadata.calculation/display-name query stage-number field-ref))}
                         (when effective-type
-                          {:effective_type effective-type})
+                          {:effective-type effective-type})
                         (when base-type
-                          {:base_type base-type})
+                          {:base-type base-type})
                         (when temporal-unit
                           {::temporal-unit temporal-unit})
+                        (when binning
+                          {::binning binning})
                         (when join-alias
                           {::join-alias join-alias})
                         (when source-field
-                          {:fk_field_id source-field}))]
+                          {:fk-field-id source-field}))]
     (cond->> metadata
-      (:parent_id metadata) (add-parent-column-metadata query))))
+      (:parent-id metadata) (add-parent-column-metadata query))))
 
 ;;; this lives here as opposed to [[metabase.lib.metadata]] because that namespace is more of an interface namespace
 ;;; and moving this there would cause circular references.
 (defmethod lib.metadata.calculation/display-name-method :metadata/field
-  [query stage-number {field-display-name :display_name
+  [query stage-number {field-display-name :display-name
                        field-name         :name
                        temporal-unit      :unit
+                       binning            :binning
                        join-alias         :source_alias
-                       fk-field-id        :fk_field_id
-                       table-id           :table_id
-                       :as                _field-metadata} style]
+                       fk-field-id        :fk-field-id
+                       table-id           :table-id
+                       :as                field-metadata} style]
   (let [field-display-name (or field-display-name
                                (u.humanization/name->human-readable-name :simple field-name))
         join-display-name  (when (= style :long)
@@ -174,19 +197,23 @@
         display-name       (if join-display-name
                              (str join-display-name " → " field-display-name)
                              field-display-name)]
-    (if temporal-unit
-      (lib.util/format "%s (%s)" display-name (name temporal-unit))
-      display-name)))
+    (cond
+      temporal-unit (lib.util/format "%s: %s" display-name (-> (name temporal-unit)
+                                                               (str/replace \- \space)
+                                                               u/capitalize-en))
+      binning       (lib.util/format "%s: %s" display-name (lib.binning/binning-display-name binning field-metadata))
+      :else         display-name)))
 
 (defmethod lib.metadata.calculation/display-name-method :field
   [query
    stage-number
-   [_tag {:keys [join-alias temporal-unit source-field], :as _opts} _id-or-name, :as field-clause]
+   [_tag {:keys [binning join-alias temporal-unit source-field], :as _opts} _id-or-name, :as field-clause]
    style]
   (if-let [field-metadata (cond-> (resolve-field-metadata query stage-number field-clause)
                             join-alias    (assoc :source_alias join-alias)
                             temporal-unit (assoc :unit temporal-unit)
-                            source-field  (assoc :fk_field_id source-field))]
+                            binning       (assoc :binning binning)
+                            source-field  (assoc :fk-field-id source-field))]
     (lib.metadata.calculation/display-name query stage-number field-metadata style)
     ;; mostly for the benefit of JS, which does not enforce the Malli schemas.
     (i18n/tru "[Unknown Field]")))
@@ -211,26 +238,100 @@
    (when (= (:lib/source field-metadata) :source/card)
      (when-let [card-id (:lib/card-id field-metadata)]
        (when-let [card (lib.metadata/card query card-id)]
-         {:table {:name (:name card), :display_name (:name card)}})))))
+         {:table {:name (:name card), :display-name (:name card)}})))))
 
-(defmethod lib.temporal-bucket/current-temporal-bucket-method :field
+;;; ---------------------------------- Temporal Bucketing ----------------------------------------
+(defmethod lib.temporal-bucket/temporal-bucket-method :field
   [[_tag opts _id-or-name]]
   (:temporal-unit opts))
 
-(defmethod lib.temporal-bucket/current-temporal-bucket-method :metadata/field
+(defmethod lib.temporal-bucket/temporal-bucket-method :metadata/field
   [metadata]
   (::temporal-unit metadata))
 
-(defmethod lib.temporal-bucket/temporal-bucket-method :field
+(defmethod lib.temporal-bucket/with-temporal-bucket-method :field
   [[_tag options id-or-name] unit]
+  ;; if `unit` is an extraction unit like `:month-of-year`, then the `:effective-type` of the ref changes to
+  ;; `:type/Integer` (month of year returns an int). We need to record the ORIGINAL effective type somewhere in case
+  ;; we need to refer back to it, e.g. to see what temporal buckets are available if we want to change the unit, or if
+  ;; we want to remove it later. We will record this with the key `::original-effective-type`. Note that changing the
+  ;; unit multiple times should keep the original first value of `::original-effective-type`.
   (if unit
-    [:field (assoc options :temporal-unit unit) id-or-name]
-    [:field (dissoc options :temporal-unit) id-or-name]))
+    (let [extraction-unit?        (contains? lib.schema.temporal-bucketing/datetime-extraction-units unit)
+          original-effective-type ((some-fn ::original-effective-type :effective-type :base-type) options)
+          new-effective-type      (if extraction-unit?
+                                    :type/Integer
+                                    original-effective-type)
+          options                 (assoc options
+                                         :temporal-unit unit
+                                         :effective-type new-effective-type
+                                         ::original-effective-type original-effective-type)]
+      [:field options id-or-name])
+    ;; `unit` is `nil`: remove the temporal bucket.
+    (let [options (if-let [original-effective-type (::original-effective-type options)]
+                    (-> options
+                        (assoc :effective-type original-effective-type)
+                        (dissoc ::original-effective-type))
+                    options)
+          options (dissoc options :temporal-unit)]
+      [:field options id-or-name])))
 
-(defmethod lib.temporal-bucket/temporal-bucket-method :metadata/field
+(defmethod lib.temporal-bucket/with-temporal-bucket-method :metadata/field
   [metadata unit]
-  (assoc metadata ::temporal-unit unit))
+  (if unit
+    (assoc metadata ::temporal-unit unit)
+    (dissoc metadata ::temporal-unit)))
 
+(defmethod lib.temporal-bucket/available-temporal-buckets-method :field
+  [query stage-number field-ref]
+  (lib.temporal-bucket/available-temporal-buckets query stage-number (resolve-field-metadata query stage-number field-ref)))
+
+(defmethod lib.temporal-bucket/available-temporal-buckets-method :metadata/field
+  [_query _stage-number field-metadata]
+  (let [effective-type ((some-fn :effective-type :base-type) field-metadata)]
+    (cond
+      (isa? effective-type :type/DateTime) lib.temporal-bucket/datetime-bucket-options
+      (isa? effective-type :type/Date)     lib.temporal-bucket/date-bucket-options
+      (isa? effective-type :type/Time)     lib.temporal-bucket/time-bucket-options
+      :else                                [])))
+
+;;; ---------------------------------------- Binning ---------------------------------------------
+(defmethod lib.binning/binning-method :field
+  [field-clause]
+  (-> field-clause lib.options/options :binning))
+
+(defmethod lib.binning/binning-method :metadata/field
+  [metadata]
+  (::binning metadata))
+
+(defmethod lib.binning/with-binning-method :field
+  [field-clause binning]
+  (lib.options/update-options field-clause u/assoc-dissoc :binning binning))
+
+(defmethod lib.binning/with-binning-method :metadata/field
+  [metadata binning]
+  (u/assoc-dissoc metadata ::binning binning))
+
+(defmethod lib.binning/available-binning-strategies-method :field
+  [query stage-number field-ref]
+  (lib.binning/available-binning-strategies query stage-number (resolve-field-metadata query stage-number field-ref)))
+
+(defmethod lib.binning/available-binning-strategies-method :metadata/field
+  [query _stage-number {:keys [effective-type fingerprint semantic-type] :as _field-metadata}]
+  (let [binning?        (some-> query lib.metadata/database :features (contains? :binning))
+        {min-value :min max-value :max} (get-in fingerprint [:type :type/Number])]
+    (cond
+      ;; TODO: Include the time and date binning strategies too; see metabase.api.table/assoc-field-dimension-options.
+      (and binning? min-value max-value
+           (isa? semantic-type :type/Coordinate))
+      (lib.binning/coordinate-binning-strategies)
+
+      (and binning? min-value max-value
+           (isa? effective-type :type/Number)
+           (not (isa? semantic-type :Relation/*)))
+      (lib.binning/numeric-binning-strategies))))
+
+;;; -------------------------------------- Join Alias --------------------------------------------
 (defmethod lib.join/current-join-alias-method :field
   [[_tag opts]]
   (get opts :join-alias))
@@ -260,22 +361,22 @@
     :source/expressions  (lib.expression/column-metadata->expression-ref metadata)
     (let [options          (merge
                             {:lib/uuid       (str (random-uuid))
-                             :base-type      (:base_type metadata)
-                             :effective-type ((some-fn :effective_type :base_type) metadata)}
+                             :base-type      (:base-type metadata)
+                             :effective-type (column-metadata-effective-type metadata)}
                             (when-let [join-alias (::join-alias metadata)]
                               {:join-alias join-alias})
                             (when-let [temporal-unit (::temporal-unit metadata)]
                               {:temporal-unit temporal-unit})
-                            (when-let [source-field-id (:fk_field_id metadata)]
-                              {:source-field source-field-id})
-                            ;; TODO -- binning options.
-                            )
+                            (when-let [binning (::binning metadata)]
+                              {:binning binning})
+                            (when-let [source-field-id (:fk-field-id metadata)]
+                              {:source-field source-field-id}))
           always-use-name? (#{:source/card :source/native :source/previous-stage} (:lib/source metadata))]
       [:field options (if always-use-name?
                         (:name metadata)
                         (or (:id metadata) (:name metadata)))])))
 
-(defn- implicit-join-name [query {fk-field-id :fk_field_id, table-id :table_id, :as _field-metadata}]
+(defn- implicit-join-name [query {:keys [fk-field-id table-id], :as _field-metadata}]
   (when (and fk-field-id table-id)
     (when-let [table-metadata (lib.metadata/table query table-id)]
       (let [table-name           (:name table-metadata)

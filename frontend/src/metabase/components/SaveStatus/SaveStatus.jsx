@@ -15,7 +15,7 @@ export default class SaveStatus extends Component {
       error: null,
     };
 
-    _.bindAll(this, "setSaving", "setSaved", "setSaveError");
+    _.bindAll(this, "setSaving", "setSaved", "setSaveError", "clear");
   }
 
   setSaving() {
@@ -38,6 +38,10 @@ export default class SaveStatus extends Component {
 
   setSaveError(error) {
     this.setState({ saving: false, recentlySavedTimeout: null, error: error });
+  }
+
+  clear() {
+    this.setState({ saving: false, recentlySavedTimeout: null, error: null });
   }
 
   render() {

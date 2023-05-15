@@ -2,7 +2,7 @@ import React from "react";
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { getMetadata } from "metabase/selectors/metadata";
-import { createEntitiesState } from "__support__/store";
+import { createMockEntitiesState } from "__support__/store";
 import { getIcon, renderWithProviders } from "__support__/ui";
 import { Collection, CollectionItem, Database } from "metabase-types/api";
 import {
@@ -32,7 +32,7 @@ const setup = ({
   isMetabotEnabled = false,
 }: SetupOpts) => {
   const storeInitialState = createMockState({
-    entities: createEntitiesState({
+    entities: createMockEntitiesState({
       databases,
     }),
     settings: createMockSettingsState({

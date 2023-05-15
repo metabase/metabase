@@ -464,7 +464,7 @@
       "1": {
         "description": "The date and time an order was submitted.",
         "table_id": 1,
-        "semantic_type": null,
+        "semantic_type": "type/CreationTimestamp",
         "name": "CREATED_AT",
         "caveats": null,
         "fk_target_field_id": null,

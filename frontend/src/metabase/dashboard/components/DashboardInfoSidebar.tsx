@@ -17,6 +17,9 @@ import { getUser } from "metabase/selectors/user";
 
 import { revertToRevision } from "metabase/dashboard/actions";
 
+import Toggle from "metabase/core/components/Toggle";
+import FormField from "metabase/core/components/FormField";
+import { useUniqueId } from "metabase/hooks/use-unique-id";
 import {
   DashboardInfoSidebarRoot,
   HistoryHeader,
@@ -24,10 +27,12 @@ import {
   DescriptionHeader,
 } from "./DashboardInfoSidebar.styled";
 
+type DashboardAttributeType = string | number | null | boolean;
+
 interface DashboardInfoSidebarProps {
   dashboard: Dashboard;
-  setDashboardAttribute: (name: string, value: string | number | null) => void;
-  saveDashboardAndCards: (id: number) => void;
+  setDashboardAttribute: (name: string, value: DashboardAttributeType) => void;
+  saveDashboardAndCards: (preserveParameters?: boolean) => void;
   revisions: RevisionType[];
   currentUser: User;
   revertToRevision: (revision: RevisionType) => void;
@@ -47,17 +52,28 @@ const DashboardInfoSidebar = ({
     PLUGIN_CACHING.isEnabled() && MetabaseSettings.get("enable-query-caching");
 
   const handleDescriptionChange = useCallback(
-    async (description: string) => {
-      await setDashboardAttribute("description", description);
-      saveDashboardAndCards(dashboard.id);
+    (description: string) => {
+      setDashboardAttribute("description", description);
+      saveDashboardAndCards(true);
     },
-    [setDashboardAttribute, saveDashboardAndCards, dashboard],
+    [saveDashboardAndCards, setDashboardAttribute],
   );
 
-  const handleUpdateCacheTTL = async (cache_ttl: number | null) => {
-    await setDashboardAttribute("cache_ttl", cache_ttl);
-    saveDashboardAndCards(dashboard.id);
-  };
+  const handleUpdateCacheTTL = useCallback(
+    (cache_ttl: number | null) => {
+      setDashboardAttribute("cache_ttl", cache_ttl);
+      saveDashboardAndCards(true);
+    },
+    [saveDashboardAndCards, setDashboardAttribute],
+  );
+
+  const handleToggleAutoApplyFilters = useCallback(
+    (isAutoApplyingFilters: boolean) => {
+      setDashboardAttribute("auto_apply_filters", isAutoApplyingFilters);
+      saveDashboardAndCards(true);
+    },
+    [saveDashboardAndCards, setDashboardAttribute],
+  );
 
   const events = useMemo(
     () =>
@@ -67,6 +83,8 @@ const DashboardInfoSidebar = ({
       }),
     [revisions, currentUser, canWrite],
   );
+
+  const autoApplyFilterToggleId = useUniqueId();
 
   return (
     <DashboardInfoSidebarRoot data-testid="sidebar-right">
@@ -83,6 +101,19 @@ const DashboardInfoSidebar = ({
         />
       </ContentSection>
 
+      <ContentSection>
+        <FormField
+          title={t`Auto-apply filters`}
+          orientation="horizontal"
+          htmlFor={autoApplyFilterToggleId}
+        >
+          <Toggle
+            id={autoApplyFilterToggleId}
+            value={dashboard.auto_apply_filters}
+            onChange={handleToggleAutoApplyFilters}
+          />
+        </FormField>
+      </ContentSection>
       {showCaching && (
         <ContentSection>
           <PLUGIN_CACHING.DashboardCacheSection
@@ -112,6 +143,7 @@ const mapDispatchToProps = {
   revertToRevision,
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   Revision.loadList({
     query: (state: State, props: DashboardInfoSidebarProps) => ({

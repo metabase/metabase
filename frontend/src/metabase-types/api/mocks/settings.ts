@@ -198,5 +198,9 @@ export const createMockSettings = (opts?: Partial<Settings>): Settings => ({
   version: createMockVersion(),
   "version-info": createMockVersionInfo(),
   "version-info-last-checked": null,
+  "uploads-enabled": false,
+  "uploads-database-id": null,
+  "uploads-table-prefix": null,
+  "uploads-schema-name": null,
   ...opts,
 });

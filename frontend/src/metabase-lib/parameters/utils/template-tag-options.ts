@@ -33,15 +33,20 @@ export function getParameterOptionsForField(field: Field) {
     });
 }
 
+function fallbackParameterWidgetType(tag: TemplateTag): "none" | undefined {
+  return tag.type === "dimension" ? "none" : undefined;
+}
+
 export function getDefaultParameterWidgetType(tag: TemplateTag, field: Field) {
   const options = getParameterOptionsForField(field);
   if (options.length === 0) {
-    return undefined;
+    return fallbackParameterWidgetType(tag);
   }
 
   const widgetType = tag["widget-type"];
   if (
     widgetType != null &&
+    widgetType !== "none" &&
     options.some(option => option.type === widgetType)
   ) {
     return widgetType;

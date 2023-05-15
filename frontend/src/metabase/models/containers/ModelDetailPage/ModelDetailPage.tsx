@@ -22,7 +22,6 @@ import ModelDetailPageView from "metabase/models/components/ModelDetailPage";
 import QuestionMoveToast from "metabase/questions/components/QuestionMoveToast";
 
 import type { Card, Collection, WritebackAction } from "metabase-types/api";
-import type { Card as LegacyCardType } from "metabase-types/types/Card";
 import type { State } from "metabase-types/store";
 
 import Question from "metabase-lib/Question";
@@ -54,7 +53,7 @@ type ToastOpts = {
 };
 
 type DispatchProps = {
-  loadMetadataForCard: (card: LegacyCardType) => void;
+  loadMetadataForCard: (card: Card) => void;
   fetchTableForeignKeys: (params: { id: Table["id"] }) => void;
   onChangeModel: (card: Card) => void;
   onChangeCollection: (
@@ -206,6 +205,7 @@ function getPageTitle({ modelCard }: Props) {
   return modelCard?.name;
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   Questions.load({ id: getModelId, entityAlias: "modelCard" }),
   Databases.loadList(),

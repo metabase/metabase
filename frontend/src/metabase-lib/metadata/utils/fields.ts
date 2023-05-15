@@ -25,6 +25,9 @@ const ICON_MAPPING: Record<string, string> = {
   [PRIMARY_KEY]: "label",
 };
 
+/**
+ * @deprecated use metabase-lib v2 + `getColumnIcon` from "metabase/common/utils/columns"
+ */
 export function getIconForField(fieldOrColumn: any) {
   const type = getFieldType(fieldOrColumn);
   return type && ICON_MAPPING[type] ? ICON_MAPPING[type] : "unknown";

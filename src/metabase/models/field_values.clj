@@ -267,7 +267,7 @@
 (defenterprise hash-key-for-sandbox
   "Return a hash-key that will be used for sandboxed fieldvalues."
   metabase-enterprise.sandbox.models.params.field-values
-  [field-id]
+  [_field-id]
   nil)
 
 (defn default-hash-key-for-linked-filters

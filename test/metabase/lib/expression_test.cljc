@@ -20,7 +20,6 @@
            :database (meta/id)
            :stages [{:lib/type :mbql.stage/mbql
                      :source-table (meta/id :venues)
-                     :lib/options {:lib/uuid string?}
                      :expressions {"myadd" [:+ {:lib/uuid string?}
                                             1
                                             [:field {:base-type :type/Integer, :lib/uuid string?} (meta/id :venues :category-id)]]}}]}
@@ -85,9 +84,9 @@
             (is (= typ (lib.schema.expression/type-of resolved)))))))))
 
 (deftest ^:parallel col-info-expression-ref-test
-  (is (=? {:base_type    :type/Integer
+  (is (=? {:base-type    :type/Integer
            :name         "double-price"
-           :display_name "double-price"
+           :display-name "double-price"
            :lib/source   :source/expressions}
           (lib.metadata.calculation/metadata
            (lib.tu/venues-query-with-last-stage
@@ -106,8 +105,8 @@
                                             [:interval {:lib/uuid (str (random-uuid))} -1 :month]]}
                 :fields      [[:expression {:base-type :type/DateTime, :lib/uuid (str (random-uuid))} "prev_month"]]})]
     (is (=? [{:name         "prev_month"
-              :display_name "prev_month"
-              :base_type    :type/DateTime
+              :display-name "prev_month"
+              :base-type    :type/DateTime
               :lib/source   :source/expressions}]
             (lib.metadata.calculation/metadata query)))))
 
@@ -162,8 +161,8 @@
     (testing "Uses the first clause"
       (testing "Gets the type information from the field"
         (is (=? {:name         "expr"
-                 :display_name "expr"
-                 :base_type    :type/Text}
+                 :display-name "expr"
+                 :base-type    :type/Text}
                 (infer-first [:coalesce
                               {:lib/uuid (str (random-uuid))}
                               (lib.tu/field-clause :venues :name)
@@ -172,9 +171,9 @@
           (is (not (contains? (infer-first [:coalesce {:lib/uuid (str (random-uuid))} (lib.tu/field-clause :venues :name) "bar"])
                               :id)))))
       (testing "Gets the type information from the literal"
-        (is (=? {:base_type    :type/Text
+        (is (=? {:base-type    :type/Text
                  :name         "expr"
-                 :display_name "expr"}
+                 :display-name "expr"}
                 (infer-first [:coalesce {:lib/uuid (str (random-uuid))} "bar" (lib.tu/field-clause :venues :name)])))))))
 
 (deftest ^:parallel infer-case-test
@@ -182,8 +181,8 @@
     (testing "Uses first available type information"
       (testing "From a field"
         (is (=? {:name         "expr"
-                 :display_name "expr"
-                 :base_type    :type/Text}
+                 :display-name "expr"
+                 :base-type    :type/Text}
                 (infer-first [:coalesce
                               {:lib/uuid (str (random-uuid))}
                               (lib.tu/field-clause :venues :name)
@@ -194,9 +193,9 @@
                           :id))))))))
 
 (deftest ^:parallel col-info-for-temporal-expression-test
-  (is (=? {:base_type    :type/DateTime
+  (is (=? {:base-type    :type/DateTime
            :name         "last-login-plus-2"
-           :display_name "last-login-plus-2"
+           :display-name "last-login-plus-2"
            :lib/source   :source/expressions}
           (lib.metadata.calculation/metadata
            (lib.tu/venues-query-with-last-stage
@@ -245,7 +244,7 @@
 (deftest ^:parallel expressions-names-test
   (testing "expressions should include the original expression name"
     (is (=? [{:name         "expr"
-              :display_name "expr"}]
+              :display-name "expr"}]
             (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
                 (lib/expression "expr" (lib/absolute-datetime "2020" :month))
                 lib/expressions)))))

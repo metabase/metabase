@@ -2,8 +2,7 @@ import React from "react";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import _ from "underscore";
-import type { VisualizationSettings } from "metabase-types/api";
-import type { Column } from "metabase-types/types/Dataset";
+import type { DatasetColumn, VisualizationSettings } from "metabase-types/api";
 
 import { PivotTable } from "./PivotTable";
 
@@ -42,7 +41,7 @@ const cols = [
     field_ref: ["aggregation", 2],
     display_name: "aggregation-2",
   },
-] as Column[];
+] as DatasetColumn[];
 
 const rows = [
   ["foo1", "bar1", "baz1", 0, 111, 222],

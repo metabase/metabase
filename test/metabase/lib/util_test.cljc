@@ -6,6 +6,9 @@
    [metabase.lib.util :as lib.util]
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
 
+#?(:cljs
+   (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
+
 (deftest ^:parallel pipeline-test
   (are [query expected] (=? expected
                             (lib.util/pipeline query))

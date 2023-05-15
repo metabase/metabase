@@ -1,6 +1,6 @@
 import { t } from "ttag";
 import _ from "underscore";
-import { createSelector } from "reselect";
+import { createSelector } from "@reduxjs/toolkit";
 import { updateIn } from "icepick";
 import { createEntity, notify } from "metabase/lib/entities";
 import {
@@ -19,11 +19,13 @@ import { TableSchema } from "metabase/schema";
 
 import Metrics from "metabase/entities/metrics";
 import Segments from "metabase/entities/segments";
-import Fields from "metabase/entities/fields";
 import Questions from "metabase/entities/questions";
 
 import { GET, PUT } from "metabase/lib/api";
-import { getMetadata } from "metabase/selectors/metadata";
+import {
+  getMetadata,
+  getMetadataUnfiltered,
+} from "metabase/selectors/metadata";
 import {
   convertSavedQuestionToVirtualTable,
   getQuestionVirtualTableId,
@@ -43,7 +45,8 @@ export const FETCH_METADATA = "metabase/entities/FETCH_METADATA";
 export const FETCH_TABLE_METADATA = "metabase/entities/FETCH_TABLE_METADATA";
 export const FETCH_TABLE_FOREIGN_KEYS =
   "metabase/entities/FETCH_TABLE_FOREIGN_KEYS";
-const UPDATE_TABLE_FIELD_ORDER = "metabase/entities/UPDATE_TABLE_FIELD_ORDER";
+export const UPDATE_TABLE_FIELD_ORDER =
+  "metabase/entities/UPDATE_TABLE_FIELD_ORDER";
 
 const Tables = createEntity({
   name: "tables",
@@ -53,9 +56,9 @@ const Tables = createEntity({
 
   api: {
     list: async (params, ...args) => {
-      if (params.dbId && params.schemaName) {
+      if (params.dbId != null && params.schemaName != null) {
         return listTablesForSchema(params, ...args);
-      } else if (params.dbId) {
+      } else if (params.dbId != null) {
         return listTablesForDatabase(params, ...args);
       } else {
         return listTables(params, ...args);
@@ -90,10 +93,11 @@ const Tables = createEntity({
       ),
       withNormalize(TableSchema),
     )(
-      ({ id }, options = {}) =>
+      ({ id, ...params }, options = {}) =>
         (dispatch, getState) =>
           MetabaseApi.table_query_metadata({
             tableId: id,
+            ...params,
             ...options.params,
           }),
     ),
@@ -129,11 +133,15 @@ const Tables = createEntity({
       return { id: entityObject.id, fks: fks };
     }),
 
-    setFieldOrder: compose(withAction(UPDATE_TABLE_FIELD_ORDER))(
+    setFieldOrder:
       ({ id }, fieldOrder) =>
-        (dispatch, getState) =>
-          updateFieldOrder({ id, fieldOrder }, { bodyParamName: "fieldOrder" }),
-    ),
+      dispatch => {
+        dispatch({
+          type: UPDATE_TABLE_FIELD_ORDER,
+          payload: { id, fieldOrder },
+        });
+        updateFieldOrder({ id, fieldOrder }, { bodyParamName: "fieldOrder" });
+      },
   },
 
   // FORMS
@@ -239,6 +247,16 @@ const Tables = createEntity({
       }
     }
 
+    if (type === UPDATE_TABLE_FIELD_ORDER) {
+      const table = state[payload.id];
+      if (table) {
+        return {
+          ...state,
+          [table.id]: { ...table, field_order: "custom" },
+        };
+      }
+    }
+
     return state;
   },
   objectSelectors: {
@@ -253,24 +271,14 @@ const Tables = createEntity({
   selectors: {
     getObject: (state, { entityId }) => getMetadata(state).table(entityId),
     // these unfiltered selectors include hidden tables/fields for display in the admin panel
-    getObjectUnfiltered: (state, { entityId }) => {
-      const table = state.entities.tables[entityId];
-      return (
-        table && {
-          ...table,
-          fields: (table.fields || []).map(entityId =>
-            Fields.selectors.getObjectUnfiltered(state, { entityId }),
-          ),
-          metrics: (table.metrics || []).map(id => state.entities.metrics[id]),
-          segments: (table.segments || []).map(
-            id => state.entities.segments[id],
-          ),
-        }
+    getObjectUnfiltered: (state, { entityId }) =>
+      getMetadataUnfiltered(state).table(entityId),
+    getListUnfiltered: (state, { entityQuery }) => {
+      const entityIds =
+        Tables.selectors.getEntityIds(state, { entityQuery }) ?? [];
+      return entityIds.map(entityId =>
+        Tables.selectors.getObjectUnfiltered(state, { entityId }),
       );
-    },
-    getListUnfiltered: ({ entities }, { entityQuery }) => {
-      const { list } = entities.tables_list[JSON.stringify(entityQuery)] || {};
-      return (list || []).map(id => entities.tables[id]);
     },
     getTable: createSelector(
       // we wrap getMetadata to handle a circular dep issue

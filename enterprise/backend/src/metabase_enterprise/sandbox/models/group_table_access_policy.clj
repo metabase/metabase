@@ -7,7 +7,7 @@
   (:require
    [medley.core :as m]
    [metabase.mbql.normalize :as mbql.normalize]
-   [metabase.models.card :as card :refer [Card]]
+   [metabase.models.card :refer [Card]]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms :refer [Permissions]]
    [metabase.models.table :as table]
@@ -104,10 +104,10 @@
              :let [table-col (get table-cols (:name col))]]
        (check-column-types-match col table-col)))))
 
-;; TODO -- should we only check these constraints if EE features are enabled??
-(defn update-card-check-gtaps
+(defenterprise pre-update-check-sandbox-constraints
   "If a Card is updated, and its result metadata changes, check that these changes do not violate the constraints placed
   on GTAPs (the Card cannot add fields or change types vs. the original Table)."
+  :feature :sandboxes
   [{new-result-metadata :result_metadata, card-id :id}]
   (when new-result-metadata
     (when-let [gtaps-using-this-card (not-empty (t2/select [GroupTableAccessPolicy :id :table_id] :card_id card-id))]
@@ -122,9 +122,6 @@
                                      (.getMessage e))
                                 (ex-data e)
                                 e))))))))))
-
-(log/trace "Installing additional EE pre-update checks for Card")
-(reset! card/pre-update-check-sandbox-constraints update-card-check-gtaps)
 
 (defenterprise upsert-sandboxes!
   "Create new `sandboxes` or update existing ones. If a sandbox has an `:id` it will be updated, otherwise it will be

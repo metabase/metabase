@@ -30,7 +30,10 @@ import {
   toggleSidebar,
 } from "metabase/dashboard/actions";
 
-import Header from "../components/DashboardHeader";
+import { hasDatabaseActionsEnabled } from "metabase/dashboard/utils";
+import { saveDashboardPdf } from "metabase/visualizations/lib/save-dashboard-pdf";
+
+import DashboardHeaderView from "../components/DashboardHeaderView";
 import { SIDEBAR_NAME } from "../constants";
 import {
   DashboardHeaderButton,
@@ -42,6 +45,7 @@ const mapStateToProps = (state, props) => {
     isBookmarked: getIsBookmarked(state, props),
     isNavBarOpen: getIsNavbarOpen(state),
     isShowingDashboardInfoSidebar: getIsShowDashboardInfoSidebar(state),
+    selectedTabId: state.dashboard.selectedTabId,
   };
 };
 
@@ -58,7 +62,6 @@ const mapDispatchToProps = {
 class DashboardHeader extends Component {
   constructor(props) {
     super(props);
-
     this.addQuestionModal = React.createRef();
     this.handleToggleBookmark = this.handleToggleBookmark.bind(this);
   }
@@ -97,10 +100,15 @@ class DashboardHeader extends Component {
     onChangeLocation: PropTypes.func.isRequired,
 
     toggleSidebar: PropTypes.func.isRequired,
-    sidebar: PropTypes.string.isRequired,
+    sidebar: PropTypes.shape({
+      name: PropTypes.string,
+      props: PropTypes.object,
+    }).isRequired,
     setSidebar: PropTypes.func.isRequired,
     closeSidebar: PropTypes.func.isRequired,
     addActionToDashboard: PropTypes.func.isRequired,
+
+    databases: PropTypes.object,
   };
 
   handleEdit(dashboard) {
@@ -116,16 +124,23 @@ class DashboardHeader extends Component {
   }
 
   onAddTextBox() {
-    this.props.addTextDashCardToDashboard({ dashId: this.props.dashboard.id });
+    this.props.addTextDashCardToDashboard({
+      dashId: this.props.dashboard.id,
+      tabId: this.props.selectedTabId,
+    });
   }
 
   onAddLinkCard() {
-    this.props.addLinkDashCardToDashboard({ dashId: this.props.dashboard.id });
+    this.props.addLinkDashCardToDashboard({
+      dashId: this.props.dashboard.id,
+      tabId: this.props.selectedTabId,
+    });
   }
 
   onAddAction() {
     this.props.addActionToDashboard({
       dashId: this.props.dashboard.id,
+      tabId: this.props.selectedTabId,
       displayType: "button",
       action: {},
     });
@@ -143,8 +158,8 @@ class DashboardHeader extends Component {
     );
   }
 
-  async onSave() {
-    await this.props.saveDashboardAndCards(this.props.dashboard.id);
+  async onSave(preserveParameters) {
+    await this.props.saveDashboardAndCards(preserveParameters);
     this.onDoneEditing();
   }
 
@@ -209,9 +224,14 @@ class DashboardHeader extends Component {
       toggleSidebar,
       isShowingDashboardInfoSidebar,
       closeSidebar,
+      databases,
     } = this.props;
 
     const canEdit = dashboard.can_write && isEditable && !!dashboard;
+
+    const hasModelActionsEnabled = Object.values(databases).some(
+      hasDatabaseActionsEnabled,
+    );
 
     const buttons = [];
     const extraButtons = [];
@@ -234,6 +254,7 @@ class DashboardHeader extends Component {
             isActive={activeSidebarName === SIDEBAR_NAME.addQuestion}
             onClick={() => toggleSidebar(SIDEBAR_NAME.addQuestion)}
             data-metabase-event="Dashboard;Add Card Sidebar"
+            aria-label="add questions"
           />
         </Tooltip>,
       );
@@ -297,7 +318,7 @@ class DashboardHeader extends Component {
         </span>,
       );
 
-      if (canEdit) {
+      if (canEdit && hasModelActionsEnabled) {
         buttons.push(
           <>
             <DashboardHeaderActionDivider />
@@ -351,6 +372,14 @@ class DashboardHeader extends Component {
         event: "Dashboard;Copy",
       });
 
+      extraButtons.push({
+        title: t`Export as PDF`,
+        icon: "png",
+        action: () => {
+          this.saveAsImage();
+        },
+      });
+
       if (canEdit) {
         extraButtons.push({
           title: t`Move`,
@@ -394,6 +423,7 @@ class DashboardHeader extends Component {
           </Tooltip>,
           <EntityMenu
             key="dashboard-action-menu-button"
+            triggerAriaLabel="dashboard-menu-button"
             items={extraButtons}
             triggerIcon="ellipsis"
             tooltip={t`Move, archive, and more...`}
@@ -404,6 +434,12 @@ class DashboardHeader extends Component {
 
     return buttons;
   }
+
+  saveAsImage = async () => {
+    const { dashboard } = this.props;
+    const cardNodeSelector = "#Dashboard-Cards-Container";
+    await saveDashboardPdf(cardNodeSelector, dashboard.name);
+  };
 
   render() {
     const {
@@ -418,7 +454,7 @@ class DashboardHeader extends Component {
     const hasLastEditInfo = dashboard["last-edit-info"] != null;
 
     return (
-      <Header
+      <DashboardHeaderView
         headerClassName="wrapper"
         objectType="dashboard"
         analyticsContext="Dashboard"
@@ -434,7 +470,7 @@ class DashboardHeader extends Component {
         editingButtons={this.getEditingButtons()}
         setDashboardAttribute={setDashboardAttribute}
         onLastEditInfoClick={() => setSidebar({ name: SIDEBAR_NAME.info })}
-        onSave={() => this.onSave()}
+        onSave={() => this.onSave(true)}
       />
     );
   }

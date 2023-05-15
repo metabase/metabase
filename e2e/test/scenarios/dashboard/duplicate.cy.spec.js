@@ -13,14 +13,18 @@ describe("scenarios > dashboard > duplicate", () => {
       cy.icon("ellipsis").click();
     });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Duplicate").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText('Duplicate "Orders in a dashboard" and its questions');
 
     cy.findByRole("checkbox").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText('Duplicate "Orders in a dashboard"');
 
     cy.button("Duplicate").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Orders in a dashboard - Duplicate");
   });
 
@@ -31,20 +35,25 @@ describe("scenarios > dashboard > duplicate", () => {
       cy.icon("ellipsis").click();
     });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Duplicate").click();
 
     // Change destination collection
     cy.findByTestId("select-button").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("My personal collection").click();
 
     cy.button("Duplicate").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Orders in a dashboard - Duplicate");
 
     // Duplicated dashboard and question should live in personal collection
     visitCollection(1);
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Orders");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Orders in a dashboard - Duplicate");
   });
 });

@@ -1,13 +1,13 @@
 (ns metabase.analytics.snowplow
   "Functions for sending Snowplow analytics events"
   (:require
+   [clojure.string :as str]
    [java-time :as t]
    [medley.core :as m]
    [metabase.config :as config]
    [metabase.models.setting :as setting :refer [defsetting Setting]]
    [metabase.models.user :refer [User]]
    [metabase.public-settings :as public-settings]
-   [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [deferred-tru trs]]
    [metabase.util.log :as log]
@@ -172,7 +172,7 @@
 
 (defn- normalize-kw
   [kw]
-  (-> kw u/snake-key name))
+  (-> kw name (str/replace #"-" "_")))
 
 (defn- payload
   "A SelfDescribingJson object containing the provided event data, which can be included as the payload for an

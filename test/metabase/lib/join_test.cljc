@@ -30,12 +30,10 @@
   (is (=? {:lib/type :mbql/query
            :database (meta/id)
            :stages   [{:lib/type     :mbql.stage/mbql
-                       :lib/options  {:lib/uuid string?}
                        :source-table (meta/id :venues)
                        :joins        [{:lib/type    :mbql/join
                                        :lib/options {:lib/uuid string?}
                                        :stages      [{:lib/type     :mbql.stage/mbql
-                                                      :lib/options  {:lib/uuid string?}
                                                       :source-table (meta/id :categories)}]
                                        :conditions  [[:=
                                                       {:lib/uuid string?}
@@ -53,7 +51,6 @@
   (is (=? {:lib/type :mbql/query
            :database (meta/id)
            :stages   [{:lib/type     :mbql.stage/mbql
-                       :lib/options  {:lib/uuid string?}
                        :source-table (meta/id :categories)
                        :joins        [{:lib/type    :mbql/join
                                        :lib/options {:lib/uuid string?}
@@ -101,7 +98,7 @@
                   (dissoc :lib/metadata)))))))
 
 (deftest ^:parallel col-info-implicit-join-test
-  (testing (str "when a `:field` with `:source-field` (implicit join) is used, we should add in `:fk_field_id` "
+  (testing (str "when a `:field` with `:source-field` (implicit join) is used, we should add in `:fk-field-id` "
                 "info about the source Field")
     (let [query (lib/query
                  meta/metadata-provider
@@ -112,7 +109,7 @@
                               :fields       [[:field (meta/id :categories :name) {:source-field (meta/id :venues :category-id)}]]}}))]
       (is (=? [{:name        "NAME"
                 :id          (meta/id :categories :name)
-                :fk_field_id (meta/id :venues :category-id)
+                :fk-field-id (meta/id :venues :category-id)
                 :lib/source  :source/fields}]
               (lib.metadata.calculation/metadata query -1 query))))))
 
@@ -142,7 +139,7 @@
                  :lib/metadata meta/metadata-provider}]
       (let [metadata (lib.metadata.calculation/metadata query)]
         (is (=? [(merge (meta/field-metadata :categories :name)
-                        {:display_name                  "Name"
+                        {:display-name                  "Name"
                          :lib/source                    :source/fields
                          :metabase.lib.field/join-alias "CATEGORIES__via__CATEGORY_ID"})]
                 metadata))
@@ -156,7 +153,7 @@
 (deftest ^:parallel join-against-source-card-metadata-test
   (let [card-1            {:name          "My Card"
                            :id            1
-                           :dataset_query {:database (meta/id)
+                           :dataset-query {:database (meta/id)
                                            :type     :query
                                            :query    {:source-table (meta/id :checkins)
                                                       :aggregation  [[:count]]
@@ -217,7 +214,12 @@
               :lib/source-column-alias       "ID"
               :lib/desired-column-alias      "Cat__ID"
               :metabase.lib.field/join-alias "Cat"
-              :lib/source                    :source/fields}]
+              :lib/source                    :source/fields}
+             {:name                          "NAME"
+              :lib/source-column-alias       "NAME"
+              :lib/desired-column-alias      "Cat__NAME"
+              :metabase.lib.field/join-alias "Cat"
+              :lib/source                    :source/joins}]
             (lib.metadata.calculation/metadata query)))
     (testing "Introduce a new stage"
       (let [query' (lib/append-stage query)]
@@ -228,6 +230,10 @@
                  {:name                          "ID"
                   :lib/source-column-alias       "Cat__ID"
                   :lib/desired-column-alias      "Cat__ID"
+                  :lib/source                    :source/previous-stage}
+                 {:name                          "NAME"
+                  :lib/source-column-alias       "Cat__NAME"
+                  :lib/desired-column-alias      "Cat__NAME"
                   :lib/source                    :source/previous-stage}]
                 (lib.metadata.calculation/metadata query')))))))
 
@@ -257,15 +263,15 @@
                                                                    :lib/options  {:lib/uuid "e8888108-22a7-4f97-8315-ff63503634d7"}
                                                                    :source-table (meta/id :categories)}]}]}]}]
     (is (=? [{:name                     "ID"
-              :display_name             "ID"
+              :display-name             "ID"
               :lib/source-column-alias  "ID"
               :lib/desired-column-alias "ID"}
              {:name                     "NAME"
-              :display_name             "Name"
+              :display-name             "Name"
               :lib/source-column-alias  "NAME"
               :lib/desired-column-alias "NAME"}
              {:name                     "ID"
-              :display_name             "ID"
+              :display-name             "ID"
               :lib/source-column-alias  "ID"
               :lib/desired-column-alias "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXY_bfaf4e7b"}]
             (lib.metadata.calculation/metadata query)))))

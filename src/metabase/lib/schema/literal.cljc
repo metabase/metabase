@@ -2,7 +2,9 @@
   "Malli schemas for string, temporal, number, and boolean literals."
   (:require
    [malli.core :as mc]
+   [metabase.lib.schema.common :as common]
    [metabase.lib.schema.expression :as expression]
+   [metabase.lib.schema.mbql-clause :as mbql-clause]
    [metabase.util.malli.registry :as mr]
    #?@(:clj ([metabase.lib.schema.literal.jvm]))))
 
@@ -175,3 +177,29 @@
   [:re
    {:error/message "year string literal"}
    year-regex])
+
+;;; `:effective-type` is required for `:value` clauses. This was not a rule in the legacy MBQL schema, but in actual
+;;; usage they basically always have `:base-type`; in MLv2 we're trying to use `:effective-type` everywhere instead;
+;;; These clauses are useless/pointless without type information anyway, so let's enforce this rule going forward.
+;;; Conversion can take care of `:base-type` <=> `:effective-type` as needed.
+(mr/def ::value.options
+  [:merge
+   [:ref ::common/options]
+   [:map
+    [:effective-type ::common/base-type]]])
+
+;;; [:value <opts> <value>] clauses are mostly used internally by the query processor to add type information to
+;;; literals, to make it easier for drivers to process queries; see
+;;; the [[metabase.query-processor.middleware.wrap-value-literals]] middleware. It is also used to differentiate `nil`
+;;; (as in no clause or value) from something intended to be `NULL` in a compiled query, and to associate type
+;;; information with that `nil`. Even if this is mostly used internally, the schema still needs to know about it.
+;;;
+;;; The schema itself does not currently enforce that the actual <value> matches up with the `:effective-type` in the
+;;; options map; this is only enforced in the QP. For now, it assumes you know what you are doing and takes your word
+;;; for it when you say something has a given `:effective-type`.
+(mbql-clause/define-mbql-clause :value
+  [:tuple
+   {:error/message "Value :value clause"}
+   #_tag   [:= :value]
+   #_opts  [:ref ::value.options]
+   #_value any?])

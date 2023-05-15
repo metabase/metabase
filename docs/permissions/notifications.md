@@ -17,7 +17,7 @@ Notification **recipients** can see whatever the notification **creator** can se
 From [Account settings](../people-and-groups/account-settings.md), all accounts can:
 
 - Create [alerts](../questions/sharing/alerts.md) and [dashboard subscriptions](../dashboards/subscriptions.md#setting-up-a-dashboard-subscription).
-- Add new recipients to alerts and subscriptions that they own.
+- Add new recipients to dashboard subscriptions that they own. Non-admins can only add themselves to alerts.
 - Unsubscribe from any alert or subscription.
 
 When a notification creator adds new recipients to an alert or subscription, Metabase will display data to the recipients using the **creator's** [data permissions](../permissions/data.md) and [collection permissions](../permissions/collections.md).

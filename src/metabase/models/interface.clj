@@ -1,7 +1,6 @@
 (ns metabase.models.interface
   (:require
    [buddy.core.codecs :as codecs]
-   [camel-snake-kebab.core :as csk]
    [cheshire.core :as json]
    [cheshire.generate :as json.generate]
    [clojure.core.memoize :as memoize]
@@ -378,6 +377,43 @@
 ;;; |                                               Toucan 2 Extensions                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+;; --- transforms methods
+(def transform-metabase-query
+  "Transform for metabase-query."
+  {:in  (comp json-in maybe-normalize)
+   :out (comp (catch-normalization-exceptions maybe-normalize) json-out-with-keywordization)})
+
+(defn- result-metadata-out
+  "Transform the Card result metadata as it comes out of the DB. Convert columns to keywords where appropriate."
+  [metadata]
+  (when-let [metadata (not-empty (json-out-with-keywordization metadata))]
+    (seq (map mbql.normalize/normalize-source-metadata metadata))))
+
+(def transform-result-metadata
+  "Transform for card.result_metadata like columns."
+  {:in  json-in
+   :out result-metadata-out})
+
+(def transform-keyword
+  "Transform for keywords."
+  {:in  u/qualified-name
+   :out keyword})
+
+(def transform-json
+  "Transform for json."
+  {:in  json-in
+   :out json-out-with-keywordization})
+
+(def transform-visualization-settings
+  "Transform for viz-settings."
+  {:in  (comp json-in migrate-viz-settings)
+   :out (comp migrate-viz-settings normalize-visualization-settings json-out-without-keywordization)})
+
+(def transform-parameters-list
+  "Transform for parameters list."
+  {:in  (comp json-in normalize-parameters-list)
+   :out (comp (catch-normalization-exceptions normalize-parameters-list) json-out-with-keywordization)})
+
 ;; --- predefined hooks
 
 (t2/define-before-insert :hook/timestamped?
@@ -408,6 +444,19 @@
 
 (methodical/prefer-method! #'t2.before-insert/before-insert :hook/timestamped? :hook/entity-id)
 
+(methodical/defmethod t2.model/resolve-model :before :default
+  "Ensure the namespace for given model is loaded.
+  This is a safety mechanism as we moving to toucan2 and we don't need to require the model namespaces in order to use it."
+  [x]
+  (when (and (keyword? x)
+             (= (namespace x) "model")
+             ;; don't try to require if it's already registered as a :metabase/model; this way ones defined in EE
+             ;; namespaces won't break if they are loaded in some other way.
+             (not (isa? x :metabase/model)))
+    (let [model-namespace (str "metabase.models." (u/->kebab-case-en (name x)))]
+      ;; use `classloader/require` which is thread-safe and plays nice with our plugins system
+      (classloader/require model-namespace)))
+  x)
 
 (methodical/defmethod t2.model/resolve-model :around clojure.lang.Symbol
   "Handle models deriving from :metabase/model."
@@ -637,4 +686,4 @@
 (methodical/defmethod t2.hydrate/fk-keys-for-automagic-hydration :default
   "In Metabase the FK key used for automagic hydration should use underscores (work around upstream Toucan 2 issue)."
   [_original-model dest-key _hydrated-key]
-  [(csk/->snake_case (keyword (str (name dest-key) "_id")))])
+  [(u/->snake_case_en (keyword (str (name dest-key) "_id")))])

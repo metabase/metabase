@@ -1,6 +1,5 @@
 import moment from "moment-timezone";
 
-import { slugify, humanize } from "metabase/lib/formatting";
 import { isEmpty } from "metabase/lib/validate";
 
 import { getDefaultFieldSettings } from "metabase/actions/utils";
@@ -116,39 +115,27 @@ export const getInputType = (param: Parameter, field?: Field) => {
   return "string";
 };
 
-export const generateFieldSettingsFromParameters = (
-  params: Parameter[],
-  fields?: Field[],
-) => {
+export const generateFieldSettingsFromParameters = (params: Parameter[]) => {
   const fieldSettings: Record<ParameterId, LocalFieldSettings> = {};
 
-  const fieldMetadataMap = Object.fromEntries(
-    fields?.map(f => [slugify(f.name), f]) ?? [],
-  );
-
   params.forEach((param, index) => {
-    const field = fieldMetadataMap[param.id]
-      ? new Field(fieldMetadataMap[param.id])
-      : new Field({
-          id: param.id,
-          name: param.id,
-          slug: param.id,
-          display_name: humanize(param.id),
-          base_type: param.type,
-          semantic_type: param.type,
-        });
-
-    const name = param["display-name"] ?? param.name ?? param.id;
-    const displayName = field?.displayName?.() ?? name;
+    const field = new Field({
+      id: param.id,
+      name: param.id,
+      slug: param.id,
+      display_name: param["display-name"],
+      base_type: param.type,
+      semantic_type: param.type,
+    });
 
     fieldSettings[param.id] = getDefaultFieldSettings({
       id: param.id,
-      name,
-      title: displayName,
-      placeholder: displayName,
-      required: !!param?.required,
+      name: param.name,
+      title: field.displayName(),
+      placeholder: field.displayName(),
+      required: !!param.required,
       order: index,
-      description: field?.description ?? "",
+      description: "",
       fieldType: getFieldType(param),
       inputType: getInputType(param, field),
     });

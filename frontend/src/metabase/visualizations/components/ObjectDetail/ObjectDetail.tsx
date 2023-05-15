@@ -1,18 +1,20 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { connect } from "react-redux";
 import _ from "underscore";
+import { t } from "ttag";
 
 import { useMount, usePrevious } from "react-use";
 import { State } from "metabase-types/store";
 import type {
-  ForeignKey,
   ConcreteTableId,
+  DatasetData,
+  ForeignKey,
   VisualizationSettings,
 } from "metabase-types/api";
-import { DatasetData } from "metabase-types/types/Dataset";
 
 import Button from "metabase/core/components/Button";
 import { NotFound } from "metabase/containers/ErrorPages";
+import LoadingSpinner from "metabase/components/LoadingSpinner";
 
 import Tables from "metabase/entities/tables";
 import {
@@ -34,6 +36,7 @@ import {
 } from "metabase/query_builder/selectors";
 import { getUser } from "metabase/selectors/user";
 
+import { MetabaseApi } from "metabase/services";
 import { isVirtualCardId } from "metabase-lib/metadata/utils/saved-questions";
 import { isPK } from "metabase-lib/types/utils/isa";
 import type {
@@ -47,6 +50,7 @@ import {
   getDisplayId,
   getIdValue,
   getSingleResultsRow,
+  getSinglePKIndex,
 } from "./utils";
 import { DetailsTable } from "./ObjectDetailsTable";
 import { Relationships } from "./ObjectRelationships";
@@ -115,11 +119,11 @@ const mapDispatchToProps = (dispatch: any) => ({
   closeObjectDetail: () => dispatch(closeObjectDetail()),
 });
 
-export function ObjectDetailFn({
-  data,
+export function ObjectDetailView({
+  data: passedData,
   question,
   table,
-  zoomedRow,
+  zoomedRow: passedZoomedRow,
   zoomedRowID,
   tableForeignKeys,
   tableForeignKeyReferences,
@@ -141,9 +145,25 @@ export function ObjectDetailFn({
   className,
 }: ObjectDetailProps): JSX.Element | null {
   const [hasNotFoundError, setHasNotFoundError] = useState(false);
+  const [maybeLoading, setMaybeLoading] = useState(false);
   const prevZoomedRowId = usePrevious(zoomedRowID);
-  const prevData = usePrevious(data);
+  const prevData = usePrevious(passedData);
   const prevTableForeignKeys = usePrevious(tableForeignKeys);
+  const [data, setData] = useState<DatasetData>(passedData);
+
+  const pkIndex = useMemo(
+    () => getSinglePKIndex(passedData?.cols),
+    [passedData],
+  );
+
+  const zoomedRow = useMemo(
+    () =>
+      passedZoomedRow ||
+      (pkIndex !== undefined &&
+        data.rows.find(row => row[pkIndex] === zoomedRowID)) ||
+      undefined,
+    [passedZoomedRow, pkIndex, data, zoomedRowID],
+  );
 
   const loadFKReferences = useCallback(() => {
     if (zoomedRowID) {
@@ -154,6 +174,7 @@ export function ObjectDetailFn({
   useMount(() => {
     const notFoundObject = zoomedRowID != null && !zoomedRow;
     if (data && notFoundObject) {
+      setMaybeLoading(true);
       setHasNotFoundError(true);
       return;
     }
@@ -171,6 +192,31 @@ export function ObjectDetailFn({
       window.removeEventListener("keydown", onKeyDown, true);
     };
   });
+
+  useEffect(() => {
+    if (maybeLoading && pkIndex !== undefined) {
+      // if we don't have the row in the current data, try to fetch this single row
+      const pkField = passedData.cols[pkIndex];
+      const filteredQuestion = question?.filter("=", pkField, zoomedRowID);
+      MetabaseApi.dataset(filteredQuestion?._card.dataset_query)
+        .then(result => {
+          if (result?.data?.rows?.length > 0) {
+            const newRow = result.data.rows[0];
+            setData(prevData => ({
+              ...prevData,
+              rows: [newRow, ...prevData.rows],
+            }));
+            setHasNotFoundError(false);
+          }
+        })
+        .catch(() => {
+          setHasNotFoundError(true);
+        })
+        .finally(() => {
+          setMaybeLoading(false);
+        });
+    }
+  }, [maybeLoading, passedData, question, zoomedRowID, pkIndex]);
 
   useEffect(() => {
     if (tableForeignKeys && prevZoomedRowId !== zoomedRowID) {
@@ -249,9 +295,13 @@ export function ObjectDetailFn({
 
   return (
     <ObjectDetailContainer wide={hasRelationships} className={className}>
-      {hasNotFoundError ? (
+      {maybeLoading ? (
         <ErrorWrapper>
-          <NotFound />
+          <LoadingSpinner />
+        </ErrorWrapper>
+      ) : hasNotFoundError ? (
+        <ErrorWrapper>
+          <NotFound message={t`We couldn't find that record`} />
         </ErrorWrapper>
       ) : (
         <ObjectDetailWrapperDiv
@@ -314,7 +364,7 @@ export function ObjectDetailWrapper({
         onClose={closeObjectDetail}
         className={""} // need an empty className to override the Modal default width
       >
-        <ObjectDetailFn
+        <ObjectDetailView
           {...props}
           showHeader
           data={data}
@@ -329,7 +379,7 @@ export function ObjectDetailWrapper({
 
   return (
     <>
-      <ObjectDetailFn
+      <ObjectDetailView
         {...props}
         zoomedRow={data.rows[currentObjectIndex]}
         data={data}
@@ -483,6 +533,7 @@ export function ObjectDetailBody({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(
   mapStateToProps,
   mapDispatchToProps,

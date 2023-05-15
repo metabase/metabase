@@ -172,7 +172,7 @@ function LinkedEntityPicker({
           {({ onClose }: { onClose: () => void }) => (
             <ModalContent
               title={getModalTitle()}
-              onClose={hasSelectedTarget ? onClose : null}
+              onClose={hasSelectedTarget ? onClose : undefined}
             >
               {/* eslint-disable-next-line @typescript-eslint/ban-ts-comment */}
               {/* @ts-ignore */}
@@ -199,4 +199,5 @@ function LinkedEntityPicker({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default LinkedEntityPicker;

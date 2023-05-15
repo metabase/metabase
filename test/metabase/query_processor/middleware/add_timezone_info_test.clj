@@ -8,11 +8,11 @@
 
 (driver/register! ::timezone-driver, :abstract? true)
 
-(defmethod driver/supports? [::timezone-driver :set-timezone] [_ _] true)
+(defmethod driver/database-supports? [::timezone-driver :set-timezone] [_driver _feature _db] true)
 
 (driver/register! ::no-timezone-driver, :abstract? true)
 
-(defmethod driver/supports? [::no-timezone-driver :set-timezone] [_ _] false)
+(defmethod driver/database-supports? [::no-timezone-driver :set-timezone] [_driver _feature _db] false)
 
 (defn- add-timezone-info [metadata]
   ((add-timezone-info/add-timezone-info {} identity) metadata))

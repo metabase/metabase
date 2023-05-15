@@ -32,17 +32,20 @@
                         :base-type         :type/Integer
                         :semantic-type     :type/PK
                         :database-is-auto-increment true
+                        :json-unfolding    false
                         :database-position 0}
                        {:name              "title"
                         :database-type     "VARCHAR"
                         :base-type         :type/Text
                         :semantic-type     :type/Title
                         :database-is-auto-increment false
+                        :json-unfolding    false
                         :database-position 1}
                        {:name              "studio"
                         :database-type     "VARCHAR"
                         :base-type         :type/Text
                         :database-is-auto-increment false
+                        :json-unfolding    false
                         :database-position 2}}
              :description nil}
    "studio" {:name   "studio"
@@ -52,11 +55,13 @@
                         :base-type         :type/Text
                         :semantic-type     :type/PK
                         :database-is-auto-increment false
+                        :json-unfolding    false
                         :database-position 0}
                        {:name              "name"
                         :database-type     "VARCHAR"
                         :base-type         :type/Text
                         :database-is-auto-increment false
+                        :json-unfolding    false
                         :database-position 1}}
              :description ""}})
 
@@ -79,8 +84,8 @@
                                :schema nil}
             :dest-column-name "studio"}})))
 
-(defmethod driver/supports? [::sync-test :foreign-keys]
-  [_ _]
+(defmethod driver/database-supports? [::sync-test :foreign-keys]
+  [_driver _feature _db]
   true)
 
 (defmethod driver/mbql->native ::sync-test
@@ -120,6 +125,7 @@
     :last_analyzed       false
     :parent_id           false
     :position            0
+    :json_unfolding      false
     :table_id            true
     :updated_at          true}))
 

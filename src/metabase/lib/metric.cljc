@@ -43,7 +43,7 @@
 
 (defmethod lib.metadata.calculation/display-name-method :metadata/metric
   [_query _stage-number metric-metadata _style]
-  (or ((some-fn :display_name :name) metric-metadata)
+  (or ((some-fn :display-name :name) metric-metadata)
       (i18n/tru "[Unknown Metric]")))
 
 (defmethod lib.metadata.calculation/display-name-method :metric

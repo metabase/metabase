@@ -136,10 +136,10 @@ describe("filtered and summarized query with post-aggregation filter", () => {
     });
   });
   describe("previewQuery", () => {
-    it("shouldn't include filter, summarize, or post-aggregrationfilter for data step", () => {
+    it("shouldn't include filter, summarize, or post-aggregation filter for data step", () => {
       expect(steps[0].previewQuery.query()).toEqual(rawDataQuery);
     });
-    it("shouldn't include summarize or post-aggregrationfilter filter step", () => {
+    it("shouldn't include summarize or post-aggregation filter filter step", () => {
       expect(steps[1].previewQuery.query()).toEqual(filteredQuery);
     });
     it("should be the original query for post-aggregation filter step", () => {
@@ -153,7 +153,7 @@ describe("filtered and summarized query with post-aggregation filter", () => {
       );
       expect(newQuery.query()).toEqual({ "source-table": PRODUCTS.id });
     });
-    it("shouldn't remove summarize or post-aggregrationfilter when removing filter", () => {
+    it("shouldn't remove summarize or post-aggregation filter when removing filter", () => {
       const newQuery = steps[1].update(
         steps[1].revert(steps[1].query).datasetQuery(),
       );
@@ -162,7 +162,7 @@ describe("filtered and summarized query with post-aggregation filter", () => {
         "source-query": summarizedQuery,
       });
     });
-    it("should remove post-aggregration filter when removing summarize", () => {
+    it("should remove post-aggregation filter when removing summarize", () => {
       const newQuery = steps[2].update(
         steps[2].revert(steps[2].query).datasetQuery(),
       );

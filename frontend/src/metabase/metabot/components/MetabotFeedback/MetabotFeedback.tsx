@@ -26,7 +26,7 @@ const mapStateToProps = (state: State): StateProps => ({
 
 const mapDispatchToProps: DispatchProps = {
   onSubmitFeedback: submitFeedbackForm,
-  onRetry: () => runPromptQuery(),
+  onRetry: () => runPromptQuery(true),
 };
 
 const MetabotFeedback = ({
@@ -81,4 +81,5 @@ const FeedbackTypeSelect = ({ onSubmitFeedback }: FeedbackTypeSelectProps) => {
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(mapStateToProps, mapDispatchToProps)(MetabotFeedback);

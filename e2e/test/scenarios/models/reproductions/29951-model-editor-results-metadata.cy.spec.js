@@ -32,6 +32,7 @@ describe("issue 29951", () => {
     cy.wait("@dataset");
 
     openQuestionActions();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Edit query definition").click();
     removeExpression("CC2");
     cy.findByRole("button", { name: "Save changes" }).click();
@@ -41,6 +42,7 @@ describe("issue 29951", () => {
     dragColumn(0, 100);
     cy.findAllByRole("button", { name: "Get Answer" }).first().click();
     cy.wait("@dataset");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Showing first 2,000 rows").should("be.visible");
   });
 });

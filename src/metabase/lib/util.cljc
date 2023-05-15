@@ -1,9 +1,16 @@
 (ns metabase.lib.util
   (:refer-clojure :exclude [format])
   (:require
+   #?@(:clj
+       ([potemkin :as p]))
+   #?@(:cljs
+       (["crc-32" :as CRC32]
+        [goog.string :as gstring]
+        [goog.string.format :as gstring.format]))
    [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
+   [metabase.lib.common :as lib.common]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -11,13 +18,7 @@
    [metabase.mbql.util :as mbql.u]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util :as u]
-   [metabase.util.malli :as mu]
-   #?@(:clj
-       ([potemkin :as p]))
-   #?@(:cljs
-       (["crc-32" :as CRC32]
-        [goog.string :as gstring]
-        [goog.string.format :as gstring.format]))))
+   [metabase.util.malli :as mu]))
 
 #?(:clj
    (set! *warn-on-reflection* true))
@@ -52,7 +53,7 @@
    If `location` contains no clause with `target-clause` no replacement happens."
   [stage location target-clause new-clause]
   {:pre [(clause? target-clause)]}
-  (m/update-existing
+  (m/update-existing-in
     stage
     location
     #(->> (for [clause %]
@@ -68,13 +69,18 @@
    If the the location is empty, dissoc it from stage."
   [stage location target-clause]
   {:pre [(clause? target-clause)]}
-  (if-let [target (get stage location)]
+  (if-let [target (get-in stage location)]
     (let [target-uuid (clause-uuid target-clause)
           result (into [] (remove (comp #{target-uuid} clause-uuid)) target)]
       (if (seq result)
-        (assoc stage location result)
-        (dissoc stage location)))
-    stage))
+        (assoc-in stage location result)
+        (if (= 1 (count location))
+          (dissoc stage (first location))
+          (case [(first location) (last location)]
+            [:joins :conditions] (throw (ex-info (i18n/tru "Cannot remove the final join condition")
+                                                 {:conditions (get-in stage location)}))
+            [:joins :fields] (update-in stage (pop location) dissoc (peek location))))))
+            stage))
 
 ;;; TODO -- all of this `->pipeline` stuff should probably be merged into [[metabase.lib.convert]] at some point in
 ;;; the near future.
@@ -115,20 +121,30 @@
 (defn- joins->pipeline [joins]
   (mapv join->pipeline joins))
 
+(defn ->stage-metadata
+  "Convert legacy `:source-metadata` to [[metabase.lib.metadata/StageMetadata]]."
+  [source-metadata]
+  (when source-metadata
+    (-> (if (vector? source-metadata)
+          {:columns source-metadata}
+          source-metadata)
+        (update :columns (fn [columns]
+                           (mapv (fn [column]
+                                   (-> column
+                                       (update-keys u/->kebab-case-en)
+                                       (assoc :lib/type :metadata/field)))
+                                 columns)))
+        (assoc :lib/type :metadata/results))))
+
 (defn- inner-query->stages [{:keys [source-query source-metadata], :as inner-query}]
   (let [previous-stages (if source-query
                           (inner-query->stages source-query)
                           [])
-        source-metadata (when source-metadata
-                          (-> (if (vector? source-metadata)
-                                {:columns source-metadata}
-                                source-metadata)
-                              (update :columns (fn [columns]
-                                                 (for [column columns]
-                                                   (assoc column :lib/type :metadata/field))))
-                              (assoc :lib/type :metadata/results)))
+        source-metadata (->stage-metadata source-metadata)
+        previous-stage  (dec (count previous-stages))
         previous-stages (cond-> previous-stages
-                          source-metadata (assoc-in [(dec (count previous-stages)) :lib/stage-metadata] source-metadata))
+                          (and source-metadata
+                               (not (neg? previous-stage))) (assoc-in [previous-stage :lib/stage-metadata] source-metadata))
         stage-type      (if (:native inner-query)
                           :mbql.stage/native
                           :mbql.stage/mbql)
@@ -154,13 +170,14 @@
           :stages   (inner-query->stages (:query query))}
          (dissoc query :type :query)))
 
-(def ^:private AnyQuery
+(def LegacyOrPMBQLQuery
+  "Schema for a map that is either a legacy query OR a pMBQL query."
   [:or
    [:map
-    {:error/fn "legacy query"}
+    {:error/message "legacy query"}
     [:type [:enum :native :query]]]
    [:map
-    {:error/fn "pMBQL query"}
+    {:error/message "pMBQL query"}
     [:lib/type [:= :mbql/query]]]])
 
 (mu/defn pipeline
@@ -168,7 +185,7 @@
   goal here is just to make sure we have `:stages` in the correct place and the like. See [[metabase.lib.convert]] for
   functions that actually ensure all parts of the query match the pMBQL schema (they use this function as part of that
   process.)"
-  [query :- AnyQuery]
+  [query :- LegacyOrPMBQLQuery]
   (if (= (:lib/type query) :mbql/query)
     query
     (case (:type query)
@@ -209,7 +226,7 @@
 (mu/defn query-stage :- ::lib.schema/stage
   "Fetch a specific `stage` of a query. This handles negative indices as well, e.g. `-1` will return the last stage of
   the query."
-  [query        :- AnyQuery
+  [query        :- LegacyOrPMBQLQuery
    stage-number :- :int]
   (let [{:keys [stages]} (pipeline query)]
     (get (vec stages) (non-negative-stage-index stages stage-number))))
@@ -226,7 +243,7 @@
     (apply f stage args)
 
   `stage-number` can be a negative index, e.g. `-1` will update the last stage of the query."
-  [query        :- AnyQuery
+  [query        :- LegacyOrPMBQLQuery
    stage-number :- :int
    f & args]
   (let [{:keys [stages], :as query} (pipeline query)
@@ -420,3 +437,48 @@
   (-> display-name
       (str/replace strip-id-regex "")
       str/trim))
+
+(mu/defn add-summary-clause :- ::lib.schema/query
+  "If the given stage has no summary, it will drop :fields, :order-by, and :join :fields from it,
+   as well as any subsequent stages."
+  [query :- ::lib.schema/query
+   stage-number :- :int
+   location :- [:enum :breakout :aggregation]
+   a-summary-clause]
+  (let [{:keys [stages] :as query} (pipeline query)
+        stage-number (or stage-number -1)
+        stage (query-stage query stage-number)
+        new-summary? (not (or (seq (:aggregation stage)) (seq (:breakout stage))))
+        new-query (update-query-stage
+                    query stage-number
+                    update location
+                    (fn [summary-clauses]
+                      (conj (vec summary-clauses) (lib.common/->op-arg query stage-number a-summary-clause))))]
+    (if new-summary?
+      (-> new-query
+          (update-query-stage
+            stage-number
+            (fn [stage]
+              (-> stage
+                  (dissoc :order-by :fields)
+                  (m/update-existing :joins (fn [joins] (mapv #(dissoc % :fields) joins))))))
+          ;; subvec holds onto references, so create a new vector
+          (update :stages (comp #(into [] %) subvec) 0 (inc (non-negative-stage-index stages stage-number))))
+      new-query)))
+
+(defn with-default-effective-type
+  "Adds a default :effective-type property if it does not exist and
+  :base-type is known.
+
+  This is needed only because we have to convert queries to the Legacy
+  form.
+  The round trip conversion pMBQL -> legacy MBQL -> pMBQL loses the
+  :effective-type property, but it should be present for the frontend
+  to work. It defaults to the :base-type property."
+  [clause]
+  (let [options (lib.options/options clause)
+        default-effective-type (when-not (:effective-type options)
+                                 (:base-type options))]
+    (cond-> clause
+      default-effective-type
+      (lib.options/update-options assoc :effective-type default-effective-type))))

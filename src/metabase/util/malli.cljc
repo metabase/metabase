@@ -65,8 +65,8 @@
    (clojure.core/defn instrument!
      "Instrument a [[metabase.util.malli/defn]]."
      [id]
-     (minst/instrument! {:filters [(minst/-filter-var #(-> % meta :validate! (= id)))]
-                         :report  explain-fn-fail!}))
+     (with-out-str (minst/instrument! {:filters [(minst/-filter-var #(-> % meta :validate! (= id)))]
+                                       :report  explain-fn-fail!})))
    :cljs
    (clojure.core/defn instrument!
      "Instrument a [[metabase.util.malli/defn]]. No-op for ClojureScript. Instrumentation currently only works in

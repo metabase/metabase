@@ -15,6 +15,7 @@
    [metabase.plugins.classloader :as classloader]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
+   [metabase.upload :as upload]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [deferred-tru tru]]
@@ -49,7 +50,8 @@
                               :actions/custom            true
                               :datetime-diff             true
                               :now                       true
-                              :test/jvm-timezone-setting false}]
+                              :test/jvm-timezone-setting false
+                              :uploads                   true}]
   (defmethod driver/database-supports? [:h2 feature]
     [_driver _feature _database]
     supported?))
@@ -515,3 +517,19 @@
       (do (log/error (tru "SSH tunnel can only be established for H2 connections using the TCP protocol"))
           db-details))
     db-details))
+
+(defmethod driver/upload-type->database-type :h2
+  [_driver upload-type]
+  (case upload-type
+    ::upload/varchar_255 "VARCHAR"
+    ::upload/text        "VARCHAR"
+    ::upload/int         "INTEGER"
+    ::upload/float       "DOUBLE PRECISION"
+    ::upload/boolean     "BOOLEAN"
+    ::upload/date        "DATE"
+    ::upload/datetime    "TIMESTAMP"))
+
+(defmethod driver/table-name-length-limit :h2
+  [_driver]
+  ;; http://www.h2database.com/html/advanced.html#limits_limitations
+  256)

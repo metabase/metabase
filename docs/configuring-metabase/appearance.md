@@ -54,7 +54,7 @@ Custom colors are unavailable for:
 - [Number charts](../questions/sharing/visualizing-results.md#numbers)
 - [Trend charts](../questions/sharing/visualizing-results.md#trends)
 - [Funnel charts](../questions/sharing/visualizing-results.md#funnel-charts)
-- Conditional formatting ([tables](../questions/sharing/visualizing-results.md#tables) and [pivot tables](../questions/sharing/visualizing-results.md#pivot-table))
+- Conditional formatting ([tables](../questions/sharing/visualizing-results.md#tables) and [pivot tables](../questions/sharing/visualizing-results.md#pivot-tables))
 - [Maps](../questions/sharing/visualizing-results.md#maps)
 
 ## Logo

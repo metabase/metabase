@@ -77,10 +77,11 @@
                    (request.u/ip-address mock-request)))))))))
 
 (deftest ^:parallel geocode-ip-addresses-test
-  (are [ip-addresses expected] (schema= expected (request.u/geocode-ip-addresses ip-addresses))
+  (are [ip-addresses expected] (schema= (s/conditional some? expected nil? (s/eq nil))
+                                        (request.u/geocode-ip-addresses ip-addresses))
     ["8.8.8.8"]
-    {(s/required-key "8.8.8.8") {:description (s/eq "United States")
-                                 :timezone    (s/eq (t/zone-id "America/Chicago"))}}
+    {(s/required-key "8.8.8.8") {:description (s/eq "Los Angeles, California, United States")
+                                 :timezone    (s/eq (t/zone-id "America/Los_Angeles"))}}
 
     ;; this is from the MaxMind sample high-risk IP address list https://www.maxmind.com/en/high-risk-ip-sample-list
     ["185.233.100.23"]

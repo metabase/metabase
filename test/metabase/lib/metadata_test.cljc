@@ -33,11 +33,11 @@
 (deftest ^:parallel stage-column-metadata-test
   (let [query (lib/saved-question-query meta/metadata-provider meta/saved-question)]
     (are [x] (=? {:lib/type       :metadata/field
-                  :display_name   "CATEGORY_ID"
+                  :display-name   "CATEGORY_ID"
                   :name           "CATEGORY_ID"
-                  :base_type      :type/Integer
-                  :effective_type :type/Integer
-                  :semantic_type  nil}
+                  :base-type      :type/Integer
+                  :effective-type :type/Integer
+                  :semantic-type  nil}
                  x)
       (lib.metadata/stage-column query "CATEGORY_ID")
       (lib.metadata/stage-column query -1 "CATEGORY_ID"))))

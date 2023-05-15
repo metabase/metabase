@@ -32,7 +32,7 @@
 (defenterprise can-create?
   "Can the current User save a new Snippet with the values in `m`?"
   :feature :any
-  [model m]
+  [_model m]
   (has-parent-collection-perms? m :write))
 
 (defenterprise can-update?

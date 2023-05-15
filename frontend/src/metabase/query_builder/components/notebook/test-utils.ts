@@ -8,14 +8,19 @@ export const DEFAULT_QUESTION = getSavedStructuredQuestion();
 export const DEFAULT_LEGACY_QUERY = DEFAULT_QUESTION.query() as StructuredQuery;
 export const DEFAULT_QUERY = DEFAULT_QUESTION._getMLv2Query();
 
-export function createMockNotebookStep(
-  opts: Partial<NotebookStep> = {},
-): NotebookStep {
+export function createMockNotebookStep({
+  id = "test-step",
+  type = "data",
+  stageIndex = 0,
+  itemIndex = 0,
+  ...opts
+}: Partial<NotebookStep> = {}): NotebookStep {
   return {
-    id: "test-step",
-    type: "data",
-    stageIndex: 0,
-    itemIndex: 0,
+    id,
+    type,
+    stageIndex,
+    itemIndex,
+    testID: `step-${type}-${stageIndex}-${itemIndex}`,
     topLevelQuery: DEFAULT_QUERY,
     query: DEFAULT_LEGACY_QUERY,
     valid: true,

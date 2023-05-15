@@ -11,7 +11,7 @@
 
 (defmethod lib.metadata.calculation/display-name-method :metadata/table
   [_query _stage-number table-metadata _style]
-  (or (:display_name table-metadata)
+  (or (:display-name table-metadata)
       (some->> (:name table-metadata)
                (u.humanization/name->human-readable-name :simple))))
 
@@ -45,7 +45,7 @@
   "Remove Fields that shouldn't be visible from the default Fields for a source Table.
   See [[metabase.query-processor.middleware.add-implicit-clauses/table->sorted-fields*]]."
   [field-metadatas]
-  (remove (fn [{visibility-type :visibility_type, active? :active, :as _field-metadata}]
+  (remove (fn [{:keys [visibility-type], active? :active, :as _field-metadata}]
             (or (false? active?)
                 (#{:sensitive :retired} (some-> visibility-type keyword))))
           field-metadatas))

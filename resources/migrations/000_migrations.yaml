@@ -14312,7 +14312,6 @@ databaseChangeLog:
       id: v47.00-001
       author: calherries
       comment: Added 0.47.0 -- set base-type to type/JSON for JSON database-types for postgres and mysql
-      validCheckSum: ANY
       changes:
         - sql:
             sql: >-
@@ -14363,6 +14362,34 @@ databaseChangeLog:
                 UPDATE SET f.base_type = updates.base_type;
 
   - changeSet:
+      id: v47.00-002
+      author: calherries
+      comment: Added 0.47.0 - Add json_unfolding column to metabase_field
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                remarks: 'Enable/disable JSON unfolding for a field'
+                name: json_unfolding
+                type: boolean
+                defaultValueBoolean: false
+                constraints:
+                  nullable: false
+            tableName: metabase_field
+
+  - changeSet:
+      id: v47.00-003
+      author: calherries
+      comment: Added 0.47.0 - Populate metabase_field.json_unfolding based on base_type
+      changes:
+        - sql:
+            sql: >-
+              UPDATE metabase_field
+              SET json_unfolding = true
+              WHERE base_type = 'type/JSON';
+      rollback: # nothing to do, since json_unfolding is new in 47
+
+  - changeSet:
       id: v47.00-004
       author: qnkhuat
       comment: Added 0.47.0 - Add auto_incremented to metabase_field
@@ -14375,6 +14402,22 @@ databaseChangeLog:
                   type: boolean
                   remarks: Indicates this field is auto incremented
                   defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v47.00-005
+      author: winlost
+      comment: Added 0.47.0 - Add auto_apply_filters to dashboard
+      changes:
+        - addColumn:
+            tableName: report_dashboard
+            columns:
+              - column:
+                  name: auto_apply_filters
+                  type: boolean
+                  remarks: Whether or not to auto-apply filters on a dashboard
+                  defaultValueBoolean: true
                   constraints:
                     nullable: false
 
@@ -14465,6 +14508,112 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_report_dashboardcard_ref_dashboard_tab_id
             deleteCascade: true
+
+  - changeSet:
+      id: v47.00-009
+      author: qwef
+      comment: Added 0.47.0 - Replace user google_auth and ldap_auth columns with sso_source values
+      changes:
+        - sql:
+            sql: UPDATE core_user SET sso_source = 'google' WHERE google_auth = true;
+      rollback:
+        - sql:
+            sql: UPDATE core_user SET google_auth = true, sso_source = NULL WHERE sso_source = 'google';
+
+  - changeSet:
+      id: v47.00-010
+      author: tsmacdonald
+      comment: Added 0.47.0 - Make metabase_table.name long enough for H2 names
+      changes:
+        - modifyDataType:
+            tableName: metabase_table
+            columnName: name
+            newDataType: varchar(256)
+      rollback: # no rollback needed, varchar(256) is backwards compatible
+
+  - changeSet:
+      id: v47.00-011
+      author: tsmacdonald
+      comment: Added 0.47.0 - Make metabase_table.display_name long enough for H2 names
+      changes:
+        - modifyDataType:
+            tableName: metabase_table
+            columnName: display_name
+            newDataType: varchar(256)
+      rollback: # no rollback needed, varchar(256) is backwards compatible
+
+  - changeSet:
+      id: v47.00-012
+      author: qwef
+      comment: Added 0.47.0 - Replace user google_auth and ldap_auth columns with sso_source values
+      changes:
+        - dropColumn:
+            tableName: core_user
+            columnName: google_auth
+      rollback:
+        - addColumn:
+            tableName: core_user
+            columns:
+              - column:
+                  name: google_auth
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v47.00-013
+      author: qwef
+      comment: Added 0.47.0 - Replace user google_auth and ldap_auth columns with sso_source values
+      changes:
+        - sql:
+            sql: UPDATE core_user SET sso_source = 'ldap' WHERE ldap_auth = true;
+      rollback:
+        - sql:
+            sql: UPDATE core_user SET ldap_auth = true, sso_source = NULL WHERE sso_source = 'ldap';
+
+  - changeSet:
+      id: v47.00-014
+      author: qwef
+      comment: Added 0.47.0 - Replace user google_auth and ldap_auth columns with sso_source values
+      changes:
+        - dropColumn:
+            tableName: core_user
+            columnName: ldap_auth
+      rollback:
+        - addColumn:
+            tableName: core_user
+            columns:
+              - column:
+                  name: ldap_auth
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v47.00-015
+      author: escherize
+      comment: added 0.47.0 - Add is_audit to metabase_database
+      changes:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: is_audit
+                  type: boolean
+                  defaultValueBoolean: false
+                  remarks: 'Only the app db, visible to admins via auditing should have this set true.'
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v47.00-016
+      author: calherres
+      comment: Added 0.47.0 - Migrate the report_card.visualization_settings.column_settings field refs from legacy format
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.MigrateLegacyColumnSettingsFieldRefs"
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

@@ -5,7 +5,8 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { FieldSchema } from "metabase/schema";
 
 import type { Field as IField, FieldId } from "metabase-types/api";
-import type { State } from "metabase-types/store";
+import type { EntitiesState, State } from "metabase-types/store";
+import { createMockState } from "metabase-types/store/mocks";
 
 import type Database from "metabase-lib/metadata/Database";
 import type Field from "metabase-lib/metadata/Field";
@@ -16,6 +17,7 @@ import stateFixture from "./sample_database_fixture.json";
 
 export const state = stateFixture as unknown as State;
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default state;
 
 export const SAMPLE_DATABASE_ID = 1;
@@ -64,7 +66,7 @@ export function createMetadata(updateState = (state: EnhancedState) => state) {
   const stateModified = updateState(chain(state)).thaw().value();
 
   stateModified.entities.fields = normalizeFields(
-    stateModified.entities.fields || {},
+    (stateModified.entities.fields as any) || {},
   );
 
   const metadata = getMetadata(stateModified);
@@ -177,5 +179,7 @@ export function makeMetadata(
 
   metadata.fields = normalizeFields(metadata.fields);
 
-  return getMetadata({ entities: metadata });
+  return getMetadata(
+    createMockState({ entities: metadata as unknown as EntitiesState }),
+  );
 }

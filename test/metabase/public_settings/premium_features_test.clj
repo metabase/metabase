@@ -210,7 +210,7 @@
   "Returns a greeting for a user. Only EE version is defined with defenterprise-schema."
   metabase-enterprise.util-test
   [username]
-  (format "Hi %s, you're an OSS customer!"))
+  (format "Hi %s, you're an OSS customer!" username))
 
 (deftest defenterprise-schema-test
   (when-not config/ee-available?
