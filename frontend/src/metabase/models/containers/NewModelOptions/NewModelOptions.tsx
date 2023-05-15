@@ -46,7 +46,7 @@ const NewModelOptions = (props: NewModelOptionsProps) => {
       location.hash.replace(/^#/, ""),
     );
     return decodedCollectionHash.collectionId;
-  }, [location.hash]);
+  }, []);
 
   useMount(() => {
     const { location } = props;
