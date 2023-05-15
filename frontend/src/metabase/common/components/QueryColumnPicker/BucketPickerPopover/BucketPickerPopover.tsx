@@ -21,7 +21,7 @@ type ListItem = Lib.BucketDisplayInfo & {
   bucket: Lib.Bucket;
 };
 
-function BucketPickerPopover({
+export function BucketPickerPopover({
   selectedBucket,
   query,
   buckets,
@@ -72,5 +72,3 @@ function BucketPickerPopover({
     />
   );
 }
-
-export default BucketPickerPopover;
