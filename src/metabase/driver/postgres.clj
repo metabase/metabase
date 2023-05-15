@@ -35,7 +35,7 @@
    [metabase.util.log :as log])
   (:import
    (java.io StringReader)
-   (java.sql ResultSet ResultSetMetaData Time Types)
+   (java.sql Connection ResultSet ResultSetMetaData Time Types)
    (java.time LocalDateTime OffsetDateTime OffsetTime)
    (java.util Date UUID)
    (org.postgresql.copy CopyManager)
@@ -786,11 +786,6 @@
 
 (sql/register-clause! ::from-stdin format-from-stdin :from)
 
-(defn- db->connection
-  [db-or-id]
-  (.unwrap (jdbc/get-connection (sql-jdbc.conn/db->pooled-connection-spec db-or-id))
-           PgConnection))
-
 (defn- sanitize-value
   ;; Per https://www.postgresql.org/docs/current/sql-copy.html#id-1.9.3.55.9.2
   ;; "Backslash characters (\) can be used in the COPY data to quote data characters that might otherwise be taken as
@@ -798,11 +793,10 @@
   ;; as part of a column value: backslash itself, newline, carriage return, and the current delimiter character."
   [v]
   (if (string? v)
-    (-> v
-        (str/replace "\\" "\\\\")
-        (str/replace "\n" "\\n")
-        (str/replace "\r" "\\r")
-        (str/replace "\t" "\\t"))
+    (str/replace v #"\\|\n|\r|\t" {"\\" "\\\\"
+                                   "\n" "\\n"
+                                   "\r" "\\r"
+                                   "\t" "\\t"})
     v))
 
 (defn- row->tsv
@@ -813,14 +807,15 @@
 
 (defmethod driver/insert-into :postgres
   [driver db-id table-name column-names values]
-  (let [copy-manager (CopyManager. (db->connection db-id))
-        [sql & _]    (sql/format {::copy       (keyword table-name)
-                                  :columns     (map keyword column-names)
-                                  ::from-stdin "''"}
-                                 :quoted true
-                                 :dialect (sql.qp/quote-style driver))
-        tsvs         (->> values
-                          (map row->tsv)
-                          (str/join "\n")
-                          (StringReader.))]
-    (.copyIn copy-manager ^String sql tsvs)))
+  (jdbc/with-db-connection [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
+    (let [copy-manager (CopyManager. (.unwrap (jdbc/get-connection conn) PgConnection))
+          [sql & _]    (sql/format {::copy       (keyword table-name)
+                                    :columns     (map keyword column-names)
+                                    ::from-stdin "''"}
+                                   :quoted true
+                                   :dialect (sql.qp/quote-style driver))
+          tsvs         (->> values
+                            (map row->tsv)
+                            (str/join "\n")
+                            (StringReader.))]
+      (.copyIn copy-manager ^String sql tsvs))))
