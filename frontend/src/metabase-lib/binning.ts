@@ -1,22 +1,29 @@
-import { to_array } from "cljs/cljs.core";
-import {
-  available_binning_strategies,
-  binning as _binning,
-  with_binning,
-} from "cljs/metabase.lib.core";
+import * as ML from "cljs/metabase.lib.js";
 import type { Bucket, ColumnMetadata, Query } from "./types";
 
-export function binning(query: Query, column: ColumnMetadata): Bucket | null {
-  return _binning(query, column);
+export function binning(column: ColumnMetadata): Bucket | null {
+  return ML.binning(column);
 }
 
-export function availableBinningStrategies(
+declare function AvailableBinningStrategiesFn(
   query: Query,
   column: ColumnMetadata,
-): Bucket[] {
-  return to_array(available_binning_strategies(query, column));
-}
+): Bucket[];
+
+declare function AvailableBinningStrategiesFn(
+  query: Query,
+  stageNumber: number,
+  column: ColumnMetadata,
+): Bucket[];
+
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
+export const availableBinningStrategies: typeof AvailableBinningStrategiesFn = (
+  ...args
+) => {
+  return ML.available_binning_strategies(...args) || [];
+};
 
 export function withBinning(column: ColumnMetadata, binningStrategy: Bucket) {
-  return with_binning(column, binningStrategy);
+  return ML.with_binning(column, binningStrategy);
 }
