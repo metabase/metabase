@@ -8,6 +8,8 @@ import visualizations from "metabase/visualizations";
 import { sanatizeResultData } from "metabase/visualizations/shared/utils/data";
 import { Visualization } from "metabase/visualizations/shared/types/visualization";
 
+import { UpdateQuestionOpts } from "metabase/query_builder/actions";
+
 import Question from "metabase-lib/Question";
 import Query from "metabase-lib/queries/Query";
 
@@ -48,10 +50,7 @@ interface ChartTypeSidebarProps {
     showSidebarTitle: boolean;
   }) => void;
   onCloseChartType: () => void;
-  updateQuestion: (
-    question: Question,
-    props: { reload: boolean; shouldUpdateUrl: boolean },
-  ) => void;
+  updateQuestion: (question: Question, props: UpdateQuestionOpts) => void;
   setUIControls: (props: { isShowingRawTable: boolean }) => void;
   query: Query;
 }
@@ -101,10 +100,9 @@ const ChartTypeSidebar = ({
         openChartSettings(e);
       } else {
         const newQuestion = question.setDisplay(display).lockDisplay(); // prevent viz auto-selection
-
         updateQuestion(newQuestion, {
-          reload: false,
           shouldUpdateUrl: question.query().isEditable(),
+          onDisplayUpdate: visualizations.get(display).onDisplayUpdate,
         });
         setUIControls({ isShowingRawTable: false });
       }
