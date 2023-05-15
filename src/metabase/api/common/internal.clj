@@ -310,19 +310,6 @@
         wildcard wildcard
         :else route))))
 
-
-(add-route-param-regexes "/:id/:model")
-;; => ["/:id/:model" :id #"[0-9]+"]
-
-(apply add-route-param-schema ['{model [:enum "card" "dashboard" "collection"]
-                                 id ms/PositiveInt} "/:model/:id/"])
-
-(apply add-route-param-schema ['{model [:enum "card" "dashboard" "collection"]
-                                 id-two ms/PositiveInt
-                                 id ms/PositiveInt} "/model/:id/:id-two"])
-;; => [#"[0-9]+" :id]
-
-
 ;;; ## ROUTE ARG AUTO PARSING
 
 (defn let-form-for-arg
