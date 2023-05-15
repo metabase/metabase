@@ -75,10 +75,10 @@
 
 (methodical/defmethod t2/table-name :model/Field [_model] :metabase_field)
 
-(doseq [k [:destination :field :origin :human_readable_field]]
- (methodical/defmethod t2.hydrate/model-for-automagic-hydration [#_model :default k]
-   [_original-model _k]
-   :model/Field))
+(methodical/defmethod t2/model-for-automagic-hydration [:default :destination]          [_model _k]  :model/Field)
+(methodical/defmethod t2/model-for-automagic-hydration [:default :field]                [_model _k]  :model/Field)
+(methodical/defmethod t2/model-for-automagic-hydration [:default :origin]               [_model _k]  :model/Field)
+(methodical/defmethod t2/model-for-automagic-hydration [:default :human_readable_field] [_model _k]  :model/Field)
 
 (defn- hierarchy-keyword-in [column-name & {:keys [ancestor-types]}]
   (fn [k]

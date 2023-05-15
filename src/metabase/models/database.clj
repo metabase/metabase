@@ -39,13 +39,8 @@
    :settings                    mi/transform-encrypted-json
    :dbms_version                mi/transform-json})
 
-(methodical/defmethod t2/model-for-automagic-hydration [#_model :default #_k :database]
-  [_original-model _k]
-  :model/Database)
-
-(methodical/defmethod t2/model-for-automagic-hydration [#_model :default #_k :db]
-  [_original-model _k]
-  :model/Database)
+(methodical/defmethod t2/model-for-automagic-hydration [:default :database] [_model _k] :model/Database)
+(methodical/defmethod t2/model-for-automagic-hydration [:default :db]       [_model _k] :model/Database)
 
 (doto :model/Database
   (derive :metabase/model)
