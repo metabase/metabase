@@ -3,9 +3,8 @@ import _ from "underscore";
 import { LocationDescriptorObject } from "history";
 import { checkNotNull } from "metabase/core/utils/types";
 import { extractEntityId } from "metabase/lib/urls";
-import { getMetadata } from "metabase/selectors/metadata";
 import Questions from "metabase/entities/questions";
-import { Card, CardId } from "metabase-types/api";
+import { CardId } from "metabase-types/api";
 import { MetabotEntityType, State } from "metabase-types/store";
 import Question from "metabase-lib/Question";
 import Metabot from "../../components/Metabot";
@@ -20,26 +19,24 @@ interface RouteProps {
 }
 
 interface CardLoaderProps {
-  card: Card;
+  model: Question;
 }
 
 interface StateProps {
   entityId: CardId;
   entityType: MetabotEntityType;
-  model: Question;
   initialPrompt?: string;
 }
 
 const mapStateToProps = (
   state: State,
-  { card, params, location }: CardLoaderProps & RouteProps,
+  { params, location }: CardLoaderProps & RouteProps,
 ): StateProps => {
   const entityId = checkNotNull(extractEntityId(params.slug));
 
   return {
     entityId,
     entityType: "model",
-    model: new Question(card, getMetadata(state)),
     initialPrompt: location?.query?.prompt,
   };
 };
@@ -48,7 +45,7 @@ const mapStateToProps = (
 export default _.compose(
   Questions.load({
     id: (state: State, { params }: RouteProps) => extractEntityId(params.slug),
-    entityAlias: "card",
+    entityAlias: "model",
   }),
   connect(mapStateToProps),
 )(Metabot);

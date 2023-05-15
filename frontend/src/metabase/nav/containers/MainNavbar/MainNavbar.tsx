@@ -11,8 +11,9 @@ import Questions from "metabase/entities/questions";
 
 import { getDashboard } from "metabase/dashboard/selectors";
 
-import type { Card, Dashboard } from "metabase-types/api";
+import type { Dashboard } from "metabase-types/api";
 import type { State } from "metabase-types/store";
+import Question from "metabase-lib/Question";
 
 import MainNavbarContainer from "./MainNavbarContainer";
 
@@ -28,7 +29,7 @@ import getSelectedItems, {
 import { NavRoot, Sidebar } from "./MainNavbar.styled";
 
 interface EntityLoaderProps {
-  card?: Card;
+  question?: Question;
 }
 
 interface StateProps {
@@ -63,7 +64,7 @@ function MainNavbar({
   isOpen,
   location,
   params,
-  card,
+  question,
   dashboard,
   openNavbar,
   closeNavbar,
@@ -92,10 +93,10 @@ function MainNavbar({
       getSelectedItems({
         pathname: location.pathname,
         params,
-        card,
+        question,
         dashboard,
       }),
-    [location, params, card, dashboard],
+    [location, params, question, dashboard],
   );
 
   return (
@@ -136,6 +137,6 @@ export default _.compose(
   Questions.load({
     id: maybeGetQuestionId,
     loadingAndErrorWrapper: false,
-    entityAlias: "card",
+    entityAlias: "question",
   }),
 )(MainNavbar);

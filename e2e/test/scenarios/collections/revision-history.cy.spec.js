@@ -185,9 +185,12 @@ function visitAndEditDashboard(id) {
 }
 
 function openRevisionHistory() {
+  cy.intercept("GET", "/api/revision*").as("revisionHistory");
   cy.get("main header").within(() => {
     cy.icon("info").click();
   });
+  cy.wait("@revisionHistory");
+
   rightSidebar().within(() => {
     cy.findByText("History");
   });

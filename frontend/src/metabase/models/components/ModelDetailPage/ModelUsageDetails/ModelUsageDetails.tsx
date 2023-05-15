@@ -10,7 +10,6 @@ import Questions, {
   getIcon as getQuestionIcon,
 } from "metabase/entities/questions";
 
-import type { Card } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 import type Question from "metabase-lib/Question";
 
@@ -28,13 +27,13 @@ interface OwnProps {
 }
 
 interface EntityLoaderProps {
-  cards: Card[];
+  questions: Question[];
 }
 
 type Props = OwnProps & EntityLoaderProps;
 
-function ModelUsageDetails({ model, cards, hasNewQuestionLink }: Props) {
-  if (cards.length === 0) {
+function ModelUsageDetails({ model, questions, hasNewQuestionLink }: Props) {
+  if (questions.length === 0) {
     return (
       <EmptyStateContainer>
         <EmptyStateTitle>{t`This model is not used by any questions yet.`}</EmptyStateTitle>
@@ -53,11 +52,14 @@ function ModelUsageDetails({ model, cards, hasNewQuestionLink }: Props) {
 
   return (
     <ul>
-      {cards.map(card => (
-        <li key={card.id}>
-          <CardListItem to={Urls.question(card)} aria-label={card.name}>
-            <Icon name={getQuestionIcon(card).name} />
-            <CardTitle>{card.name}</CardTitle>
+      {questions.map(question => (
+        <li key={question.id()}>
+          <CardListItem
+            to={Urls.question(question.card())}
+            aria-label={question.displayName() ?? ""}
+          >
+            <Icon name={getQuestionIcon(question.card()).name} />
+            <CardTitle>{question.displayName()}</CardTitle>
           </CardListItem>
         </li>
       ))}
@@ -74,6 +76,5 @@ function getCardListingQuery(state: State, { model }: OwnProps) {
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Questions.loadList({
-  listName: "cards",
   query: getCardListingQuery,
 })(ModelUsageDetails);
