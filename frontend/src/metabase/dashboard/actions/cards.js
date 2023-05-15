@@ -27,9 +27,9 @@ export const addCardToDashboard =
   ({ dashId, cardId, tabId }) =>
   async (dispatch, getState) => {
     await dispatch(Questions.actions.fetch({ id: cardId }));
-    const card = Questions.selectors.getObject(getState(), {
-      entityId: cardId,
-    });
+    const card = Questions.selectors
+      .getObject(getState(), { entityId: cardId })
+      .card();
     const { dashboards, dashcards } = getState().dashboard;
     const dashboard = dashboards[dashId];
     const existingCards = dashboard.ordered_cards
