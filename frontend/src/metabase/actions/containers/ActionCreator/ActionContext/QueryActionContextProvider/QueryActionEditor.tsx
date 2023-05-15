@@ -32,4 +32,5 @@ function QueryActionEditor({
 
 export { ACE_ELEMENT_ID };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default QueryActionEditor;

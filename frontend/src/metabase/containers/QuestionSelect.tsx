@@ -13,4 +13,5 @@ const QuestionName = ({ questionId }: { questionId: CardId }) => (
 
 const QuestionSelect = ItemSelect(QuestionPicker, QuestionName, "question");
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default QuestionSelect;

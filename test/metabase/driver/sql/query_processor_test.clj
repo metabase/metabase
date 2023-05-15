@@ -224,18 +224,18 @@
 (defn- compile-join [driver]
   (driver/with-driver driver
     (qp.store/with-store
-      (qp.store/store-database! (t2/instance :metabase.models.database/Database
+      (qp.store/store-database! (t2/instance :model/Database
                                              {:id       1
                                               :name     "test-data"
                                               :engine   driver
                                               :details  {}
                                               :settings {}}))
-      (qp.store/store-table!    (t2/instance :metabase.models.table/Table
+      (qp.store/store-table!    (t2/instance :model/Table
                                              {:id     1
                                               :db_id  1
                                               :schema "public"
                                               :name   "checkins"}))
-      (qp.store/store-field!    (t2/instance :metabase.models.field/Field
+      (qp.store/store-field!    (t2/instance :model/Field
                                              {:id            1
                                               :table_id      1
                                               :name          "id"

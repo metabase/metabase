@@ -59,6 +59,7 @@ function CreateCollectionModal({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect<
   unknown,
   CreateCollectionModalDispatchProps,

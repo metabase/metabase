@@ -24,6 +24,7 @@ import { getUniqueFieldId } from "./utils/fields";
  * Wrapper class for the entire metadata store
  */
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default class Metadata extends Base {
   databases: Record<string, Database>;
   schemas: Record<string, Schema>;

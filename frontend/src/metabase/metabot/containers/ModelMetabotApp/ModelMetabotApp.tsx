@@ -44,6 +44,7 @@ const mapStateToProps = (
   };
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   Questions.load({
     id: (state: State, { params }: RouteProps) => extractEntityId(params.slug),

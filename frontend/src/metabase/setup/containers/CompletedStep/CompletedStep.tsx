@@ -9,4 +9,5 @@ const mapStateToProps = (state: State) => ({
   isLocaleLoaded: isLocaleLoaded(state),
 });
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(mapStateToProps)(CompletedStep);

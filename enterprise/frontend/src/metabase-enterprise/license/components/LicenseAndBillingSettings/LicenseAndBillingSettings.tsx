@@ -177,6 +177,7 @@ const LicenseAndBillingSettings = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(
   (state: State): StateProps => ({
     settingValues: state.admin.settings.settings,

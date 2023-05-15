@@ -76,4 +76,5 @@ const ColumnRow = ({ field, isBordered, isSecondary }: ColumnRowProps) => (
   </tr>
 );
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default MetadataTableSchema;
