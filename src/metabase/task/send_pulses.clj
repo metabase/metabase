@@ -106,7 +106,8 @@
                                     :id)
             curr-monthday      (monthday now)
             curr-monthweek     (monthweek now)]
-        (send-pulses! curr-hour curr-weekday curr-monthday curr-monthweek)))
+        (send-pulses! curr-hour curr-weekday curr-monthday curr-monthweek))
+      (clear-pulse-channels!))
     (catch Throwable e
       (log/error e (trs "SendPulses task failed")))))
 
@@ -131,25 +132,4 @@
                     ;;
                     ;; See https://www.nurkiewicz.com/2012/04/quartz-scheduler-misfire-instructions.html
                     (cron/with-misfire-handling-instruction-fire-and-proceed))))]
-    (task/schedule-task! job trigger)))
-
-(jobs/defjob ^{:doc "Clear empty PulseChannels"} ClearPulseChannel [_]
-  (try
-    (task-history/with-task-history {:task "clear-pulse-channels"} (clear-pulse-channels!))
-    (catch Throwable e
-      (log/error e (trs "ClearPulseChannel task failed")))))
-
-(def ^:private clear-pulse-channel-job-key     "metabase.task.send-pulses.clear-pulse-channel.job")
-(def ^:private clear-pulse-channel-trigger-key "metabase.task.send-pulses.clear-pulse-channel.trigger")
-
-(defmethod task/init! ::ClearPulseChannel [_]
-  (let [job     (jobs/build
-                 (jobs/of-type ClearPulseChannel)
-                 (jobs/with-identity (jobs/key clear-pulse-channel-job-key)))
-        trigger (triggers/build
-                 (triggers/with-identity (triggers/key clear-pulse-channel-trigger-key))
-                 (triggers/start-now)
-                 (triggers/with-schedule
-                   ;; run every day at midnight
-                   (cron/cron-schedule "0 0 0 * * ? *")))]
     (task/schedule-task! job trigger)))

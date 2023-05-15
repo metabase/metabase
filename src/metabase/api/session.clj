@@ -331,8 +331,8 @@
                            :email email
                            :pulse-id pulse-id}))))
 
-(defn- check-hash [pulse-id email hash]
-  (throttle-check unsubscribe-throttler email)
+(defn- check-hash [pulse-id email hash ip-address]
+  (throttle-check unsubscribe-throttler ip-address)
   (when (not= hash (generate-hash pulse-id email))
     (throw (ex-info (tru "Invalid hash.")
                     {:type        type
@@ -340,36 +340,35 @@
 
 (api/defendpoint POST "/pulse/unsubscribe"
   "Allow non-users to unsubscribe from pulses/subscriptions, with the hash given through email."
-  [:as {{:keys [email hash pulse-id]} :body}]
+  [:as {{:keys [email hash pulse-id]} :body, :as request}]
   {pulse-id ms/PositiveInt
    email    :string
    hash     :string}
-  (check-hash pulse-id email hash)
+  (check-hash pulse-id email hash (request.u/ip-address request))
   (api/let-404 [pulse-channel (t2/select-one PulseChannel :pulse_id pulse-id :channel_type "email")]
-               (let [emails       (get-in pulse-channel [:details :emails])
-                     given-email? #(= % email)]
-                 (if (some given-email? emails)
-                   (t2/update! PulseChannel (:id pulse-channel) (assoc-in pulse-channel [:details :emails] (remove given-email? emails)))
-                   (throw (ex-info (tru "Email for pulse-id doesn't exist.")
-                                   {:type        type
-                                    :status-code 400}))))
+    (let [emails (get-in pulse-channel [:details :emails])]
+      (if (some #{email} emails)
+        (t2/update! PulseChannel (:id pulse-channel) (assoc-in pulse-channel [:details :emails] (remove #{email} emails)))
+        (throw (ex-info (tru "Email for pulse-id doesn't exist.")
+                        {:type        type
+                         :status-code 400}))))
                {:status :success}))
 
 (api/defendpoint POST "/pulse/unsubscribe/undo"
   "Allow non-users to undo an unsubscribe from pulses/subscriptions, with the hash given through email."
-  [:as {{:keys [email hash pulse-id]} :body}]
+  [:as {{:keys [email hash pulse-id]} :body, :as request}]
   {pulse-id ms/PositiveInt
    email    :string
    hash     :string}
-  (check-hash pulse-id email hash)
+  (check-hash pulse-id email hash (request.u/ip-address request))
   (api/let-404 [pulse-channel (t2/select-one PulseChannel :pulse_id pulse-id :channel_type "email")]
-               (let [emails       (get-in pulse-channel [:details :emails])
-                     given-email? #(= % email)]
-                 (if (some given-email? emails)
-                   (throw (ex-info (tru "Email for pulse-id already exists.")
-                                   {:type        type
-                                    :status-code 400}))
-                   (t2/update! PulseChannel (:id pulse-channel) (update-in pulse-channel [:details :emails] #(conj % email))))))
+    (let [emails       (get-in pulse-channel [:details :emails])
+          given-email? #(= % email)]
+      (if (some given-email? emails)
+        (throw (ex-info (tru "Email for pulse-id already exists.")
+                        {:type        type
+                         :status-code 400}))
+        (t2/update! PulseChannel (:id pulse-channel) (update-in pulse-channel [:details :emails] conj email)))))
   {:status :success})
 
 (api/define-routes +log-all-request-failures)

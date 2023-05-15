@@ -87,7 +87,8 @@
                     PulseChannel [_ {:pulse_id pulse-id}]]
       (#'send-pulses/clear-pulse-channels!)
       (is (= 0
-             (t2/count PulseChannel)))))
+             (t2/count PulseChannel)))
+      (is (:archived (t2/select-one Pulse :id pulse-id)))))
 
   (testing "Has PulseChannelRecipient"
     (mt/with-temp* [Pulse                 [{pulse-id :id} {}]
