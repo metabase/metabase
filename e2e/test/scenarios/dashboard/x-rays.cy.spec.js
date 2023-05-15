@@ -166,7 +166,7 @@ describe("scenarios > x-rays", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("See it").click();
 
-    cy.url().should("contain", "a-look-at-your-orders-table");
+    cy.url().should("contain", "a-look-at-orders");
 
     cy.get(".Card").contains("18,760");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
