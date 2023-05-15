@@ -43,6 +43,7 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
    [schema.core :as s]
@@ -231,7 +232,8 @@
              include-saved-questions-tables?
              include-editable-data-model?
              exclude-uneditable-details?]}]
-  (let [dbs (t2/select Database {:order-by [:%lower.name :%lower.engine]})
+  (let [dbs (t2/select Database {:where [:= :is_audit false]
+                                 :order-by [:%lower.name :%lower.engine]})
         filter-by-data-access? (not (or include-editable-data-model? exclude-uneditable-details?))]
     (cond-> (add-native-perms-info dbs)
       include-tables?              add-tables
@@ -240,14 +242,7 @@
       filter-by-data-access?       (#(filter mi/can-read? %))
       include-saved-questions-db?  (add-saved-questions-virtual-database :include-tables? include-saved-questions-tables?))))
 
-(def FetchAllIncludeValues
-  "Schema for matching the include parameter of the GET / endpoint"
-  (su/with-api-error-message
-    (s/maybe (s/eq "tables"))
-    (deferred-tru "include must be either empty or the value 'tables'")))
-
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/"
+(api/defendpoint GET "/"
   "Fetch all `Databases`.
 
   * `include=tables` means we should hydrate the Tables belonging to each DB. Default: `false`.
@@ -268,32 +263,28 @@
   * `exclude_uneditable_details` will only include DBs for which the current user can edit the DB details. Has no
     effect unless Enterprise Edition code is available and the advanced-permissions feature is enabled."
   [include_tables include_cards include saved include_editable_data_model exclude_uneditable_details]
-  {include_tables                (s/maybe su/BooleanString)
-   include_cards                 (s/maybe su/BooleanString)
-   include                       FetchAllIncludeValues
-   saved                         (s/maybe su/BooleanString)
-   include_editable_data_model   (s/maybe su/BooleanString)
-   exclude_uneditable_details    (s/maybe su/BooleanString)}
+  {include_tables                [:maybe :boolean]
+   include_cards                 [:maybe :boolean]
+   include                       (mu/with-api-error-message
+                                   [:maybe [:= "tables"]]
+                                   (deferred-tru "include must be either empty or the value 'tables'"))
+   saved                         [:maybe :boolean]
+   include_editable_data_model   [:maybe :boolean]
+   exclude_uneditable_details    [:maybe :boolean]}
   (when (and config/is-dev?
              (or include_tables include_cards))
     ;; don't need to i18n since this is dev-facing only
     (log/warn "GET /api/database?include_tables and ?include_cards are deprecated."
               "Prefer using ?include=tables and ?saved=true instead."))
-  (let [include-tables?                 (cond
-                                          (seq include)        (= include "tables")
-                                          (seq include_tables) (Boolean/parseBoolean include_tables))
-        include-saved-questions-db?     (cond
-                                          (seq saved)         (Boolean/parseBoolean saved)
-                                          (seq include_cards) (Boolean/parseBoolean include_cards))
+  (let [include-tables?                 (or (= include "tables") include_tables)
+        include-saved-questions-db?     (or saved include_cards)
         include-saved-questions-tables? (when include-saved-questions-db?
-                                          (if (seq include_cards)
-                                            true
-                                            include-tables?))
+                                          (if include_cards true include-tables?))
         db-list-res                     (or (dbs-list :include-tables?                 include-tables?
                                                       :include-saved-questions-db?     include-saved-questions-db?
                                                       :include-saved-questions-tables? include-saved-questions-tables?
-                                                      :include-editable-data-model?    (Boolean/parseBoolean include_editable_data_model)
-                                                      :exclude-uneditable-details?     (Boolean/parseBoolean exclude_uneditable_details))
+                                                      :include-editable-data-model?    include_editable_data_model
+                                                      :exclude-uneditable-details?     exclude_uneditable_details)
                                             [])]
     {:data  db-list-res
      :total (count db-list-res)}))
@@ -759,21 +750,21 @@
       ;; no error, proceed with creation. If record is inserted successfuly, publish a `:database-create` event.
       ;; Throw a 500 if nothing is inserted
       (u/prog1 (api/check-500 (first (t2/insert-returning-instances!
-                                       Database
-                                       (merge
-                                         {:name         name
-                                          :engine       engine
-                                          :details      details-or-error
-                                          :is_full_sync is-full-sync?
-                                          :is_on_demand (boolean is_on_demand)
-                                          :cache_ttl    cache_ttl
-                                          :creator_id   api/*current-user-id*}
-                                         (sync.schedules/schedule-map->cron-strings
-                                           (if (:let-user-control-scheduling details)
-                                             (sync.schedules/scheduling schedules)
-                                             (sync.schedules/default-randomized-schedule)))
-                                         (when (some? auto_run_queries)
-                                           {:auto_run_queries auto_run_queries})))))
+                                      Database
+                                      (merge
+                                       {:name         name
+                                        :engine       engine
+                                        :details      details-or-error
+                                        :is_full_sync is-full-sync?
+                                        :is_on_demand (boolean is_on_demand)
+                                        :cache_ttl    cache_ttl
+                                        :creator_id   api/*current-user-id*}
+                                       (sync.schedules/schedule-map->cron-strings
+                                        (if (:let-user-control-scheduling details)
+                                          (sync.schedules/scheduling schedules)
+                                          (sync.schedules/default-randomized-schedule)))
+                                       (when (some? auto_run_queries)
+                                         {:auto_run_queries auto_run_queries})))))
         (events/publish-event! :database-create <>)
         (snowplow/track-event! ::snowplow/database-connection-successful
                                api/*current-user-id*

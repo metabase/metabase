@@ -59,8 +59,8 @@ const DataSelectorDatabaseSchemaPicker = ({
   const sections: Sections = databases.map(database => ({
     name: database.is_saved_questions ? t`Saved Questions` : database.name,
     items:
-      !database.is_saved_questions && database.schemas.length > 1
-        ? database.schemas.map(schema => ({
+      !database.is_saved_questions && database.getSchemas().length > 1
+        ? database.getSchemas().map(schema => ({
             schema,
             name: schema.displayName() ?? "",
           }))
@@ -69,7 +69,7 @@ const DataSelectorDatabaseSchemaPicker = ({
     icon: database.is_saved_questions ? "collection" : "database",
     loading:
       selectedDatabase?.id === database.id &&
-      database.schemas.length === 0 &&
+      database.getSchemas().length === 0 &&
       isLoading,
     active: database.is_saved_questions || isSyncCompleted(database),
   }));
@@ -112,7 +112,7 @@ const DataSelectorDatabaseSchemaPicker = ({
     ? databases.findIndex(db => db.id === selectedDatabase.id)
     : -1;
 
-  if (openSection >= 0 && databases[openSection]?.schemas.length === 1) {
+  if (openSection >= 0 && databases[openSection]?.getSchemas().length === 1) {
     openSection = -1;
   }
 
@@ -136,4 +136,5 @@ const DataSelectorDatabaseSchemaPicker = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default DataSelectorDatabaseSchemaPicker;

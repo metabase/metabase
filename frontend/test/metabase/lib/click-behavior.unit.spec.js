@@ -1,11 +1,13 @@
 import _ from "underscore";
 import { metadata, PRODUCTS } from "__support__/sample_database_fixture";
 import * as dateFormatUtils from "metabase/lib/formatting/date";
+import { createMockCard } from "metabase-types/api/mocks";
 import {
   getDataFromClicked,
   getTargetsWithSourceFilters,
   formatSourceForTarget,
 } from "metabase-lib/parameters/utils/click-behavior";
+import Question from "metabase-lib/Question";
 
 describe("metabase/lib/click-behavior", () => {
   describe("getDataFromClicked", () => {
@@ -78,22 +80,25 @@ describe("metabase/lib/click-behavior", () => {
     it("should produce a template tag target", () => {
       const [{ id, name, target }] = getTargetsWithSourceFilters({
         isDash: false,
-        object: {
-          dataset_query: {
-            type: "native",
-            native: {
-              query: "{{foo}}",
-              "template-tags": {
-                my_variable: {
-                  "display-name": "My Variable",
-                  id: "foo123",
-                  name: "my_variable",
-                  type: "text",
+        object: new Question(
+          createMockCard({
+            dataset_query: {
+              type: "native",
+              native: {
+                query: "{{foo}}",
+                "template-tags": {
+                  my_variable: {
+                    "display-name": "My Variable",
+                    id: "foo123",
+                    name: "my_variable",
+                    type: "text",
+                  },
                 },
               },
             },
-          },
-        },
+          }),
+          metadata,
+        ),
         metadata: {},
       });
       expect(id).toEqual("foo123");
@@ -104,25 +109,28 @@ describe("metabase/lib/click-behavior", () => {
     it("should produce a template tag dimension target", () => {
       const [{ id, name, target }] = getTargetsWithSourceFilters({
         isDash: false,
-        object: {
-          dataset_query: {
-            type: "native",
-            native: {
-              query: "{{my_field_filter}}",
-              "template-tags": {
-                my_field_filter: {
-                  default: null,
-                  dimension: ["field", PRODUCTS.CATEGORY.id, null],
-                  "display-name": "My Field Filter",
-                  id: "foo123",
-                  name: "my_field_filter",
-                  type: "dimension",
-                  "widget-type": "category",
+        object: new Question(
+          createMockCard({
+            dataset_query: {
+              type: "native",
+              native: {
+                query: "{{my_field_filter}}",
+                "template-tags": {
+                  my_field_filter: {
+                    default: null,
+                    dimension: ["field", PRODUCTS.CATEGORY.id, null],
+                    "display-name": "My Field Filter",
+                    id: "foo123",
+                    name: "my_field_filter",
+                    type: "dimension",
+                    "widget-type": "category",
+                  },
                 },
               },
             },
-          },
-        },
+          }),
+          metadata,
+        ),
         metadata,
       });
       expect(id).toEqual("foo123");
@@ -279,22 +287,25 @@ describe("metabase/lib/click-behavior", () => {
         it(`should filter sources for a ${targetVariableType} variable target`, () => {
           const [{ sourceFilters }] = getTargetsWithSourceFilters({
             isDash: false,
-            object: {
-              dataset_query: {
-                type: "native",
-                native: {
-                  query: "{{foo}}",
-                  "template-tags": {
-                    my_variable: {
-                      "display-name": "My Variable",
-                      id: "foo123",
-                      name: "my_variable",
-                      type: targetVariableType,
+            object: new Question(
+              createMockCard({
+                dataset_query: {
+                  type: "native",
+                  native: {
+                    query: "{{foo}}",
+                    "template-tags": {
+                      my_variable: {
+                        "display-name": "My Variable",
+                        id: "foo123",
+                        name: "my_variable",
+                        type: targetVariableType,
+                      },
                     },
                   },
                 },
-              },
-            },
+              }),
+              metadata,
+            ),
             metadata,
           });
 
@@ -359,25 +370,28 @@ describe("metabase/lib/click-behavior", () => {
         it(`should filter sources for a ${field.base_type} dimension target`, () => {
           const [{ sourceFilters }] = getTargetsWithSourceFilters({
             isDash: false,
-            object: {
-              dataset_query: {
-                type: "native",
-                native: {
-                  query: "{{my_field_filter}}",
-                  "template-tags": {
-                    my_field_filter: {
-                      default: null,
-                      dimension: ["field", field.id, null],
-                      "display-name": "My Field Filter",
-                      id: "foo123",
-                      name: "my_field_filter",
-                      type: "dimension",
-                      "widget-type": "category",
+            object: new Question(
+              createMockCard({
+                dataset_query: {
+                  type: "native",
+                  native: {
+                    query: "{{my_field_filter}}",
+                    "template-tags": {
+                      my_field_filter: {
+                        default: null,
+                        dimension: ["field", field.id, null],
+                        "display-name": "My Field Filter",
+                        id: "foo123",
+                        name: "my_field_filter",
+                        type: "dimension",
+                        "widget-type": "category",
+                      },
                     },
                   },
                 },
-              },
-            },
+              }),
+              metadata,
+            ),
             metadata,
           });
           const filteredSources = _.mapObject(sources, (sources, sourceType) =>

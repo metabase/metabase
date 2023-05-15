@@ -9,7 +9,6 @@ import {
 } from "metabase-lib/parameters/utils/filters";
 import { isa, isDate } from "metabase-lib/types/utils/isa";
 import { TYPE } from "metabase-lib/types/constants";
-import Question from "metabase-lib/Question";
 import TemplateTagVariable from "metabase-lib/variables/TemplateTagVariable";
 import { TemplateTagDimension } from "metabase-lib/Dimension";
 
@@ -76,14 +75,13 @@ export function getTargetsWithSourceFilters({
   isAction,
   dashcard,
   object,
-  metadata,
 }) {
   if (isAction) {
     return getTargetsForAction(object);
   }
   return isDash
     ? getTargetsForDashboard(object, dashcard)
-    : getTargetsForQuestion(object, metadata);
+    : getTargetsForQuestion(object);
 }
 
 function getTargetsForAction(action) {
@@ -106,8 +104,8 @@ function getTargetsForAction(action) {
   });
 }
 
-function getTargetsForQuestion(question, metadata) {
-  const query = new Question(question, metadata).query();
+function getTargetsForQuestion(question) {
+  const query = question.query();
   return query
     .dimensionOptions()
     .all()

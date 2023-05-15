@@ -16,6 +16,7 @@ import {
   closeQuestionActions,
   visitCollection,
   undo,
+  openQuestionsSidebar,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -522,7 +523,7 @@ describe("scenarios > models", () => {
       cy.createDashboard().then(({ body: { id: dashboardId } }) => {
         visitDashboard(dashboardId);
         cy.icon("pencil").click();
-        cy.get(".QueryBuilder-section .Icon-add").click();
+        openQuestionsSidebar();
         sidebar().findByText("Orders Model").click();
         cy.button("Save").click();
         // The first fetch happened when visiting dashboard, and the second one upon saving it.

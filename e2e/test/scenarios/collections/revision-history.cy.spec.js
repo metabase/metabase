@@ -6,6 +6,7 @@ import {
   visitQuestion,
   questionInfoButton,
   rightSidebar,
+  openQuestionsSidebar,
 } from "e2e/support/helpers";
 
 const PERMISSIONS = {
@@ -68,7 +69,7 @@ describe("revision history", () => {
               cy.createDashboard().then(({ body }) => {
                 visitAndEditDashboard(body.id);
               });
-              cy.icon("add").last().click();
+              openQuestionsSidebar();
               // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
               cy.findByText("Orders, Count").click();
               saveDashboard();
@@ -175,7 +176,7 @@ describe("revision history", () => {
 });
 
 function clickRevert(event_name, index = 0) {
-  cy.findAllByText(event_name).eq(index).siblings("button").first().click();
+  cy.findAllByLabelText(event_name).eq(index).click();
 }
 
 function visitAndEditDashboard(id) {
@@ -184,9 +185,12 @@ function visitAndEditDashboard(id) {
 }
 
 function openRevisionHistory() {
+  cy.intercept("GET", "/api/revision*").as("revisionHistory");
   cy.get("main header").within(() => {
     cy.icon("info").click();
   });
+  cy.wait("@revisionHistory");
+
   rightSidebar().within(() => {
     cy.findByText("History");
   });
