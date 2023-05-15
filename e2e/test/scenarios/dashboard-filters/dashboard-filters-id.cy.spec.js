@@ -21,6 +21,7 @@ describe("scenarios > dashboard > filters > ID", () => {
     editDashboard();
     setFilter("ID");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Select…").click();
   });
   describe("should work for the primary key", () => {
@@ -40,6 +41,7 @@ describe("scenarios > dashboard > filters > ID", () => {
     });
 
     it("when set as the default filter", () => {
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Default value").next().click();
       addWidgetStringFilter("15");
 
@@ -70,6 +72,7 @@ describe("scenarios > dashboard > filters > ID", () => {
     });
 
     it("when set as the default filter", () => {
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Default value").next().click();
       addWidgetStringFilter("4");
 
@@ -102,6 +105,7 @@ describe("scenarios > dashboard > filters > ID", () => {
     });
 
     it("when set as the default filter", () => {
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Default value").next().click();
       addWidgetStringFilter("10");
 

@@ -64,6 +64,8 @@ export function setupUnauthorizedDatabaseEndpoints(db: Database) {
     status: 403,
     body: PERMISSION_ERROR,
   });
+
+  setupUnauthorizedSchemaEndpoints(db);
 }
 
 export function setupUnauthorizedDatabasesEndpoints(dbs: Database[]) {

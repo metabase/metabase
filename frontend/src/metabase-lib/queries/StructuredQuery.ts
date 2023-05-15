@@ -1722,6 +1722,7 @@ class StructuredQuery extends memoizeClass<StructuredQueryInner>(
   "topLevelQuery",
 )(StructuredQueryInner) {}
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default StructuredQuery;
 
 class NestedStructuredQuery extends StructuredQuery {

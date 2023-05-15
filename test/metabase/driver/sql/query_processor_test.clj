@@ -186,7 +186,7 @@
                mbql->native
                sql.qp-test-util/sql->sql-map)))))
 
-(deftest ^:paralell handle-source-query-params-test
+(deftest ^:parallel handle-source-query-params-test
   (driver/with-driver :h2
     (mt/with-everything-store
       (testing "params from source queries should get passed in to the top-level. Semicolons should be removed"

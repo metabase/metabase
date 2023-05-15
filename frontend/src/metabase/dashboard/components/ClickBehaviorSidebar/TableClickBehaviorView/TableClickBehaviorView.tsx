@@ -97,4 +97,5 @@ function TableClickBehaviorView({
   return <>{groupedColumns.map(renderColumnGroup)}</>;
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default TableClickBehaviorView;

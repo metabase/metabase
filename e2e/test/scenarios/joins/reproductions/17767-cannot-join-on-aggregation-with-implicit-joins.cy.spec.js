@@ -25,6 +25,7 @@ describe("issue 17767", () => {
 
     cy.icon("notebook").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Join data").click();
 
     // Join "Previous results" with
@@ -41,6 +42,7 @@ describe("issue 17767", () => {
       expect(response.body.error).to.not.exist;
     });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("xavier");
   });
 });

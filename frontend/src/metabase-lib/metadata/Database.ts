@@ -30,6 +30,8 @@ class DatabaseInner extends Base {
   name: string;
   engine: string;
   description: string;
+  creator_id?: number;
+  is_sample: boolean;
   is_saved_questions: boolean;
   tables: Table[];
   schemas: Schema[];
@@ -185,6 +187,7 @@ class DatabaseInner extends Base {
   }
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default class Database extends memoizeClass<DatabaseInner>(
   "tablesLookup",
 )(DatabaseInner) {}

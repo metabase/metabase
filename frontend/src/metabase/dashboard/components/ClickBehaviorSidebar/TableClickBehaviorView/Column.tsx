@@ -98,4 +98,5 @@ const Column = ({ column, clickBehavior, onClick }: ColumnProps) => (
   </SidebarItem>
 );
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Column;

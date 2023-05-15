@@ -14,7 +14,6 @@
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
    [methodical.core :as methodical]
-   [toucan.models :as models]
    [toucan2.core :as t2]))
 
 ;;; ----------------------------------------------- Constants + Entity -----------------------------------------------

@@ -1,12 +1,15 @@
 (ns metabase.lib.field
   (:require
+   [clojure.string :as str]
    [medley.core :as m]
    [metabase.lib.aggregation :as lib.aggregation]
+   [metabase.lib.binning :as lib.binning]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.join :as lib.join]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.normalize :as lib.normalize]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -17,6 +20,7 @@
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
    [metabase.shared.util.i18n :as i18n]
+   [metabase.util :as u]
    [metabase.util.humanization :as u.humanization]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
@@ -145,7 +149,9 @@
 
 ;;; TODO -- base type should be affected by `temporal-unit`, right?
 (defmethod lib.metadata.calculation/metadata-method :field
-  [query stage-number [_tag {:keys [source-field effective-type base-type temporal-unit join-alias], :as opts} :as field-ref]]
+  [query
+   stage-number
+   [_tag {:keys [base-type binning effective-type join-alias source-field temporal-unit], :as opts} :as field-ref]]
   (let [field-metadata (resolve-field-metadata query stage-number field-ref)
         metadata       (merge
                         {:lib/type :metadata/field}
@@ -158,6 +164,8 @@
                           {:base-type base-type})
                         (when temporal-unit
                           {::temporal-unit temporal-unit})
+                        (when binning
+                          {::binning binning})
                         (when join-alias
                           {::join-alias join-alias})
                         (when source-field
@@ -171,10 +179,11 @@
   [query stage-number {field-display-name :display-name
                        field-name         :name
                        temporal-unit      :unit
+                       binning            :binning
                        join-alias         :source_alias
                        fk-field-id        :fk-field-id
                        table-id           :table-id
-                       :as                _field-metadata} style]
+                       :as                field-metadata} style]
   (let [field-display-name (or field-display-name
                                (u.humanization/name->human-readable-name :simple field-name))
         join-display-name  (when (= style :long)
@@ -188,18 +197,22 @@
         display-name       (if join-display-name
                              (str join-display-name " → " field-display-name)
                              field-display-name)]
-    (if temporal-unit
-      (lib.util/format "%s (%s)" display-name (name temporal-unit))
-      display-name)))
+    (cond
+      temporal-unit (lib.util/format "%s: %s" display-name (-> (name temporal-unit)
+                                                               (str/replace \- \space)
+                                                               u/capitalize-en))
+      binning       (lib.util/format "%s: %s" display-name (lib.binning/binning-display-name binning field-metadata))
+      :else         display-name)))
 
 (defmethod lib.metadata.calculation/display-name-method :field
   [query
    stage-number
-   [_tag {:keys [join-alias temporal-unit source-field], :as _opts} _id-or-name, :as field-clause]
+   [_tag {:keys [binning join-alias temporal-unit source-field], :as _opts} _id-or-name, :as field-clause]
    style]
   (if-let [field-metadata (cond-> (resolve-field-metadata query stage-number field-clause)
                             join-alias    (assoc :source_alias join-alias)
                             temporal-unit (assoc :unit temporal-unit)
+                            binning       (assoc :binning binning)
                             source-field  (assoc :fk-field-id source-field))]
     (lib.metadata.calculation/display-name query stage-number field-metadata style)
     ;; mostly for the benefit of JS, which does not enforce the Malli schemas.
@@ -227,6 +240,7 @@
        (when-let [card (lib.metadata/card query card-id)]
          {:table {:name (:name card), :display-name (:name card)}})))))
 
+;;; ---------------------------------- Temporal Bucketing ----------------------------------------
 (defmethod lib.temporal-bucket/temporal-bucket-method :field
   [[_tag opts _id-or-name]]
   (:temporal-unit opts))
@@ -281,6 +295,43 @@
       (isa? effective-type :type/Time)     lib.temporal-bucket/time-bucket-options
       :else                                [])))
 
+;;; ---------------------------------------- Binning ---------------------------------------------
+(defmethod lib.binning/binning-method :field
+  [field-clause]
+  (-> field-clause lib.options/options :binning))
+
+(defmethod lib.binning/binning-method :metadata/field
+  [metadata]
+  (::binning metadata))
+
+(defmethod lib.binning/with-binning-method :field
+  [field-clause binning]
+  (lib.options/update-options field-clause u/assoc-dissoc :binning binning))
+
+(defmethod lib.binning/with-binning-method :metadata/field
+  [metadata binning]
+  (u/assoc-dissoc metadata ::binning binning))
+
+(defmethod lib.binning/available-binning-strategies-method :field
+  [query stage-number field-ref]
+  (lib.binning/available-binning-strategies query stage-number (resolve-field-metadata query stage-number field-ref)))
+
+(defmethod lib.binning/available-binning-strategies-method :metadata/field
+  [query _stage-number {:keys [effective-type fingerprint semantic-type] :as _field-metadata}]
+  (let [binning?        (some-> query lib.metadata/database :features (contains? :binning))
+        {min-value :min max-value :max} (get-in fingerprint [:type :type/Number])]
+    (cond
+      ;; TODO: Include the time and date binning strategies too; see metabase.api.table/assoc-field-dimension-options.
+      (and binning? min-value max-value
+           (isa? semantic-type :type/Coordinate))
+      (lib.binning/coordinate-binning-strategies)
+
+      (and binning? min-value max-value
+           (isa? effective-type :type/Number)
+           (not (isa? semantic-type :Relation/*)))
+      (lib.binning/numeric-binning-strategies))))
+
+;;; -------------------------------------- Join Alias --------------------------------------------
 (defmethod lib.join/current-join-alias-method :field
   [[_tag opts]]
   (get opts :join-alias))
@@ -316,10 +367,10 @@
                               {:join-alias join-alias})
                             (when-let [temporal-unit (::temporal-unit metadata)]
                               {:temporal-unit temporal-unit})
+                            (when-let [binning (::binning metadata)]
+                              {:binning binning})
                             (when-let [source-field-id (:fk-field-id metadata)]
-                              {:source-field source-field-id})
-                            ;; TODO -- binning options.
-                            )
+                              {:source-field source-field-id}))
           always-use-name? (#{:source/card :source/native :source/previous-stage} (:lib/source metadata))]
       [:field options (if always-use-name?
                         (:name metadata)

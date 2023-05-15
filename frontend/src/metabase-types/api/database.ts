@@ -25,6 +25,7 @@ export type DatabaseFeature =
   | "standard-deviation-aggregations"
   | "persist-models"
   | "persist-models-enabled"
+  | "schemas"
   | "set-timezone"
   | "left-join"
   | "right-join"
@@ -39,9 +40,6 @@ export interface Database extends DatabaseData {
   timezone?: string;
   native_permissions: NativePermissions;
   initial_sync_status: InitialSyncStatus;
-
-  settings?: DatabaseSettings | null;
-
   caveats?: string;
   points_of_interest?: string;
   created_at: ISO8601Time;
@@ -64,6 +62,7 @@ export interface DatabaseData {
   is_sample: boolean;
   is_full_sync: boolean;
   is_on_demand: boolean;
+  settings?: DatabaseSettings | null;
 }
 
 export interface DatabaseSchedules {

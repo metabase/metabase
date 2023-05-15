@@ -61,7 +61,7 @@
   []
   (server/start-web-server! #'handler/app)
   (when config/is-dev?
-    (malli-dev/start!))
+    (with-out-str (malli-dev/start!)))
   (when-not @initialized?
     (init!)))
 

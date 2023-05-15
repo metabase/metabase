@@ -57,6 +57,12 @@ export type FieldDimension = {
   name: string;
 };
 
+export type FieldDimensionOption = {
+  name: string;
+  mbql: unknown[] | null;
+  type: string;
+};
+
 export interface ConcreteField {
   id: FieldId;
   table_id: TableId;
@@ -78,8 +84,11 @@ export interface ConcreteField {
   fk_target_field_id: FieldId | null;
   target?: Field;
   values?: FieldValue[];
-  dimensions?: FieldDimension[];
   settings?: FieldFormattingSettings;
+
+  dimensions?: FieldDimension[];
+  default_dimension_option?: FieldDimensionOption;
+  dimension_options?: FieldDimensionOption[];
 
   max_value?: number;
   min_value?: number;
