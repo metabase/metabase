@@ -17,6 +17,7 @@ import stateFixture from "./sample_database_fixture.json";
 
 export const state = stateFixture as unknown as State;
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default state;
 
 export const SAMPLE_DATABASE_ID = 1;
@@ -32,7 +33,7 @@ function aliasTablesAndFields(metadata: Metadata) {
   // NOTE: this assume names don't conflict with other properties in Database/Table which I think is safe for Sample Database
   /* eslint-disable @typescript-eslint/ban-ts-comment */
   for (const database of Object.values(metadata.databases)) {
-    for (const table of database.tables) {
+    for (const table of database.getTables()) {
       if (!(table.name in database)) {
         // @ts-ignore
         database[table.name] = table;

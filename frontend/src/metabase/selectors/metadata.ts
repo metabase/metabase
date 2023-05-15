@@ -113,8 +113,9 @@ export const getMetadata: (
 
     // database
     hydrate(metadata.databases, "tables", database => {
-      if (database.tables?.length > 0) {
-        return database.tables
+      const tableIds = database.getPlainObject().tables ?? [];
+      if (tableIds.length > 0) {
+        return tableIds
           .map(tableId => metadata.table(tableId))
           .filter(table => table != null);
       }
@@ -141,9 +142,11 @@ export const getMetadata: (
     hydrate(metadata.tables, "schema", table => metadata.schema(table.schema));
 
     hydrate(metadata.databases, "schemas", database => {
-      if (database.schemas) {
-        return database.schemas.map(s => metadata.schema(s));
+      const schemaIds = database.getPlainObject().schemas;
+      if (schemaIds) {
+        return schemaIds.map(s => metadata.schema(s));
       }
+
       return Object.values(metadata.schemas).filter(
         s => s.database && s.database.id === database.id,
       );
@@ -154,11 +157,11 @@ export const getMetadata: (
       return tableIds
         ? // use the schema tables if they exist
           tableIds.map(table => metadata.table(table))
-        : schema.database && schema.database.tables.length > 0
+        : schema.database && schema.database.getTables().length > 0
         ? // if the schema has a database with tables, use those
-          schema.database.tables.filter(
-            table => table.schema_name === schema.name,
-          )
+          schema.database
+            .getTables()
+            .filter(table => table.schema_name === schema.name)
         : // otherwise use any loaded tables that match the schema id
           Object.values(metadata.tables).filter(
             table => table.schema && table.schema.id === schema.id,

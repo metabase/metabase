@@ -26,6 +26,7 @@ const mapStateToProps = (state: State, props: XraySectionProps) => ({
   database: getXrayDatabase(props),
 });
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   Databases.loadList(),
   connect(mapStateToProps),

@@ -37,9 +37,9 @@
    :mbql? true})
 
 (defn- mbql->native [query]
-  (binding [qp.store/*store* (atom {:tables {1 (t2/instance :metabase.models.table/Table {:name   "0123456"
-                                                                                          :schema nil
-                                                                                          :id     1})}})]
+  (binding [qp.store/*store* (atom {:tables {1 (t2/instance :model/Table {:name   "0123456"
+                                                                          :schema nil
+                                                                          :id     1})}})]
     (driver/mbql->native :googleanalytics (update query :query (partial merge {:source-table 1})))))
 
 (deftest basic-compilation-test

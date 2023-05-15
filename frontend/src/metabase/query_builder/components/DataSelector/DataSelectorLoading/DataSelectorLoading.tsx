@@ -16,4 +16,5 @@ const DataSelectorLoading = ({ header }: DataSelectorSectionHeaderProps) =>
     <LoadingAndErrorWrapper loading />
   );
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default DataSelectorLoading;

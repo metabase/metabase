@@ -138,4 +138,5 @@ const getSchemaOption = (schema: string) => {
   return schema;
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default HomeXraySection;
