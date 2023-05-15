@@ -775,20 +775,50 @@
   ;; that seems unlikely and there's not an easy way to find out.
   63)
 
+(defn- format-copy
+  [_clause table]
+  [(str "COPY " (sql/format-entity table))])
+
+(sql/register-clause! ::copy format-copy :insert-into)
+
+(defn- format-from-stdin
+  [_clause delimiter]
+  [(str "FROM STDIN NULL " delimiter)])
+
+(sql/register-clause! ::from-stdin format-from-stdin :from)
+
 (defn- db->connection
   [db-or-id]
-  (.unwrap (.getConnection ^DataSource (:datasource (sql-jdbc.conn/db->pooled-connection-spec db-or-id)))
+  (.unwrap (jdbc/get-connection (sql-jdbc.conn/db->pooled-connection-spec db-or-id))
            PgConnection))
 
+(defn- sanitize-value
+  ;; Per https://www.postgresql.org/docs/current/sql-copy.html#id-1.9.3.55.9.2
+  [v]
+  (if (string? v)
+    (-> v
+        (str/replace "\\" "\\\\")
+        (str/replace "\n" "\\n")
+        (str/replace "\r" "\\r")
+        (str/replace "\t" "\\t"))
+    v))
+
+(defn- row->tsv
+  [row]
+  (->> row
+       (map sanitize-value)
+       (str/join "\t")))
+
 (defmethod driver/insert-into :postgres
-  [_driver db-id table-name column-names values]
+  [driver db-id table-name column-names values]
   (let [copy-manager (CopyManager. (db->connection db-id))
-        sql          (format "COPY %s (%s) FROM STDIN NULL ''" table-name (str/join "," column-names))
-        tsv          (->> values
-                          (map (fn [row] (str/join "\t" row #_(map (comp
-                                                              (fn [v] (if (str/blank? v) "NULL" v))
-                                                              str)
-                                                             row))))
+        [sql & _]    (sql/format {::copy       (keyword table-name)
+                                  :columns     (map keyword column-names)
+                                  ::from-stdin "''"}
+                                 :quoted true
+                                 :dialect (sql.qp/quote-style driver))
+        tsvs         (->> values
+                          (map row->tsv)
                           (str/join "\n")
                           (StringReader.))]
-    (.copyIn copy-manager sql tsv)))
+    (.copyIn copy-manager ^String sql tsvs)))
