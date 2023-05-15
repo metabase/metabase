@@ -1,7 +1,8 @@
 import React from "react";
 import { t } from "ttag";
 import * as Lib from "metabase-lib";
-import BucketPickerPopover, {
+import {
+  BucketPickerPopover,
   BucketPickerPopoverProps,
 } from "./BucketPickerPopover";
 
@@ -18,7 +19,7 @@ function renderTriggerContent(bucket?: Lib.BucketDisplayInfo) {
   return bucket.displayName;
 }
 
-function BinningStrategyPickerPopover(
+export function BinningStrategyPickerPopover(
   props: Omit<
     BucketPickerPopoverProps,
     "triggerLabel" | "renderTriggerContent"
@@ -32,5 +33,3 @@ function BinningStrategyPickerPopover(
     />
   );
 }
-
-export default BinningStrategyPickerPopover;
