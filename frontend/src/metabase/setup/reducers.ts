@@ -68,6 +68,7 @@ export const isTrackingAllowed = handleActions(
   true,
 );
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default {
   step,
   locale,

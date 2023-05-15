@@ -10,6 +10,7 @@ interface TabButtonMenuProps<T> {
   closePopover: () => void;
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default function TabButtonMenu<T>({
   menuItems,
   value,

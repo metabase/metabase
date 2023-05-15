@@ -19,11 +19,11 @@ import type {
   Dashboard,
   DashboardId,
   DashboardOrderedCard,
-  Card,
   CardId,
   ClickBehavior,
   EntityCustomDestinationClickBehavior,
 } from "metabase-types/api";
+import Question from "metabase-lib/Question";
 
 import { SidebarItem } from "../SidebarItem";
 import { Heading } from "../ClickBehaviorSidebar.styled";
@@ -82,7 +82,7 @@ function PickerControl({
   );
 }
 
-function getTargetClickMappingsHeading(entity: Card | Dashboard) {
+function getTargetClickMappingsHeading(entity: Question | Dashboard) {
   return {
     dashboard: t`Pass values to this dashboard's filters (optional)`,
     native: t`Pass values to this question's variables (optional)`,
@@ -104,7 +104,7 @@ function TargetClickMappings({
   const Entity = isDash ? Dashboards : Questions;
   return (
     <Entity.Loader id={clickBehavior.targetId}>
-      {({ object }: { object: Card | Dashboard }) => (
+      {({ object }: { object: Question | Dashboard }) => (
         <div className="pt1">
           <Heading>{getTargetClickMappingsHeading(object)}</Heading>
           <ClickMappings
@@ -199,4 +199,5 @@ function LinkedEntityPicker({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default LinkedEntityPicker;

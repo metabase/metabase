@@ -30,4 +30,5 @@ const EmbeddingCustomizationInfo = ({
   return <SettingHeader id="embedding-customization-info" setting={setting} />;
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(mapStateToProps)(EmbeddingCustomizationInfo);

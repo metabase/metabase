@@ -44,6 +44,7 @@ const MetadataTablePicker = ({
   }
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Schemas.loadList({
   query: (_: State, { selectedDatabaseId }: OwnProps) => ({
     dbId: selectedDatabaseId,

@@ -25,6 +25,7 @@ export type DatabaseFeature =
   | "standard-deviation-aggregations"
   | "persist-models"
   | "persist-models-enabled"
+  | "schemas"
   | "set-timezone"
   | "left-join"
   | "right-join"

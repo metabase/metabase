@@ -42,6 +42,7 @@ const mapStateToProps = (state: unknown, props: CandidatesProps) => ({
   sampleUrl: getSampleUrl(state, props),
 });
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   Databases.loadList(),
   DatabaseCandidates.loadList({ query: getSampleQuery }),
