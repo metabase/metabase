@@ -187,7 +187,7 @@
     "@types/react-is": "^17.0.3",
     "@types/react-motion": "0.0.32",
     "@types/react-redux": "^7.1.24",
-    "@types/react-resizable": "^1.7.4",
+    "@types/react-resizable": "^3.0.4",
     "@types/react-router": "3.0.28",
     "@types/react-router-redux": "^4.0.53",
     "@types/react-textarea-autosize": "^4.3.6",
