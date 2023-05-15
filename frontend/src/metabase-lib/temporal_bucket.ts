@@ -1,13 +1,13 @@
 import { to_array } from "cljs/cljs.core";
 import {
-  temporal_bucket,
+  temporal_bucket_option,
   available_temporal_buckets,
   with_temporal_bucket,
 } from "cljs/metabase.lib.core";
-import type { Bucket, ColumnMetadata, Query } from "./types";
+import type { Bucket, ColumnMetadata, Clause, Query } from "./types";
 
-export function temporalBucket(column: ColumnMetadata): Bucket | null {
-  return temporal_bucket(query, column);
+export function temporalBucket(clause: Clause | ColumnMetadata): Bucket | null {
+  return temporal_bucket_option(clause);
 }
 
 export function availableTemporalBuckets(
