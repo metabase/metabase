@@ -49,8 +49,6 @@ export function Heading({
             value={content}
             autoFocus={justAdded}
             onChange={e => handleTextChange(e.target.value)}
-            // Prevents text cards from dragging when you actually want to select text
-            // See: https://github.com/metabase/metabase/issues/17039
             onMouseDown={preventDragging}
             onFocus={() => setIsFocused(true)}
             onBlur={() => setIsFocused(false)}
