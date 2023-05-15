@@ -9,6 +9,8 @@ export * from "./dashboard";
 export * from "./database";
 export * from "./dataset";
 export * from "./field";
+export * from "./metabot";
+export * from "./metric";
 export * from "./search";
 export * from "./segment";
 export * from "./session";
