@@ -19,7 +19,7 @@ describe("DataSelectorDatabaseSchemaPicker", () => {
         {
           id: 1,
           name: databaseName,
-          schemas: [
+          getSchemas: () => [
             {
               displayName: () => schemaName,
             },
@@ -45,7 +45,7 @@ describe("DataSelectorDatabaseSchemaPicker", () => {
           id: 1,
           is_saved_questions: true,
           name: databaseName,
-          schemas: [
+          getSchemas: () => [
             {
               displayName: () => schemaName,
             },

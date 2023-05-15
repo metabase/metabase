@@ -1,3 +1,4 @@
+import _ from "underscore";
 import {
   NativeQuery,
   NormalizedDatabase,
@@ -20,6 +21,7 @@ class Database {
 
   constructor(database: NormalizedDatabase) {
     this._plainObject = database;
+    this.tablesLookup = _.memoize(this.tablesLookup);
     Object.assign(this, database);
   }
 

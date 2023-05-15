@@ -113,9 +113,9 @@ export const getMetadata: (
 
     // database
     hydrate(metadata.databases, "tables", database => {
-      if (database.getTables().length > 0) {
-        return database
-          .getTables()
+      const tableIds = database.getPlainObject().tables ?? [];
+      if (tableIds.length > 0) {
+        return tableIds
           .map(tableId => metadata.table(tableId))
           .filter(table => table != null);
       }
@@ -142,9 +142,11 @@ export const getMetadata: (
     hydrate(metadata.tables, "schema", table => metadata.schema(table.schema));
 
     hydrate(metadata.databases, "schemas", database => {
-      if (database.schemas) {
-        return database.schemas.map(s => metadata.schema(s));
+      const schemaIds = database.getPlainObject().schemas;
+      if (schemaIds) {
+        return schemaIds.map(s => metadata.schema(s));
       }
+
       return Object.values(metadata.schemas).filter(
         s => s.database && s.database.id === database.id,
       );
