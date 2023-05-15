@@ -1,12 +1,12 @@
 import React from "react";
-import { Dashboard } from "metabase-types/api";
+import { CollectionId } from "metabase-types/api";
 
 import ItemPicker, { PickerValue, PickerItemId } from "./ItemPicker";
 
 export interface DashboardPickerProps {
   value?: PickerItemId;
   onChange: (dashboardId: PickerItemId | undefined) => void;
-  collectionId?: Dashboard["collection_id"];
+  collectionId?: CollectionId;
 }
 
 const DashboardPicker = ({

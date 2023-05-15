@@ -5,6 +5,7 @@ import userEvent from "@testing-library/user-event";
 import {
   setupMostRecentlyViewedDashboard,
   setupCollectionsEndpoints,
+  setupSearchEndpoints,
 } from "__support__/server-mocks";
 import {
   renderWithProviders,
@@ -18,6 +19,7 @@ import {
   createMockUser,
 } from "metabase-types/api/mocks";
 import { Collection, Dashboard } from "metabase-types/api";
+import { ROOT_COLLECTION as ROOT } from "metabase/entities/collections";
 import { AddToDashSelectDashModal } from "./AddToDashSelectDashModal";
 
 const CARD = createMockCard({ id: 1, name: "Model Uno", dataset: true });
@@ -35,8 +37,16 @@ const DASHBOARD = createMockDashboard({
   model: "dashboard",
 });
 
+const DASHBOARD_AT_ROOT = createMockDashboard({
+  id: 4,
+  name: "Dashboard at root",
+  collection_id: null,
+  model: "dashboard",
+});
+
 const DASHBOARDS = {
   [DASHBOARD.id]: DASHBOARD,
+  [DASHBOARD_AT_ROOT.id]: DASHBOARD_AT_ROOT,
 };
 
 const COLLECTION_1 = createMockCollection({
@@ -57,7 +67,17 @@ const PERSONAL_COLLECTION = createMockCollection({
   personal_owner_id: CURRENT_USER.id,
 });
 
-const COLLECTIONS = [COLLECTION_1, COLLECTION_2, PERSONAL_COLLECTION];
+const ROOT_COLLECTION = createMockCollection({
+  ...ROOT,
+  can_write: true,
+});
+
+const COLLECTIONS = [
+  ROOT_COLLECTION,
+  COLLECTION_1,
+  COLLECTION_2,
+  PERSONAL_COLLECTION,
+];
 
 interface SetupOpts {
   collections?: Collection[];
@@ -74,10 +94,11 @@ const setup = async ({
   error,
   waitForContent = true,
 }: SetupOpts = {}) => {
+  setupSearchEndpoints([]);
   setupCollectionsEndpoints(collections);
   mockCollectionItemsEndpoint([dashboard]);
   mockRootCollectionItemsEndpoint(collections, [dashboard]);
-  mockCollectionByIdEndpoint({ collections: COLLECTIONS, error });
+  mockCollectionByIdEndpoint({ collections, error });
   setupMostRecentlyViewedDashboard(noRecentDashboard ? undefined : dashboard);
 
   renderWithProviders(
@@ -143,16 +164,29 @@ describe("AddToDashSelectDashModal", () => {
       it("should preselected last visited dashboard in the picker", async () => {
         await setup();
 
-        const collectionToPresent = COLLECTIONS.find(
+        const dashboardCollection = COLLECTIONS.find(
           collection => collection.id === DASHBOARD.collection_id,
         );
 
         // breadcrumbs
         expect(
-          screen.getByText(`${collectionToPresent?.name}`),
+          screen.getByText(`${dashboardCollection?.name}`),
         ).toBeInTheDocument();
         // dashboard item
         expect(screen.getByText(DASHBOARD.name)).toBeInTheDocument();
+      });
+
+      describe("when last visited dashboard belongs to root", () => {
+        it("should render root collection", async () => {
+          await setup({
+            dashboard: DASHBOARD_AT_ROOT,
+          });
+
+          // breadcrumbs
+          expect(screen.getByText(ROOT_COLLECTION.name)).toBeInTheDocument();
+          // dashboard item
+          expect(screen.getByText(DASHBOARD_AT_ROOT.name)).toBeInTheDocument();
+        });
       });
     });
 
@@ -164,7 +198,7 @@ describe("AddToDashSelectDashModal", () => {
 
         // breadcrumbs show root collection only
         expect(screen.getByTestId("item-picker-header")).toHaveTextContent(
-          "Collections",
+          ROOT_COLLECTION.name,
         );
       });
     });
@@ -199,6 +233,10 @@ function mockRootCollectionItemsEndpoint(
       collection => collection.location !== "/",
     );
     const data = [...rootDashboards, ...rootCollections];
+
+    console.log({
+      rootDashboards,
+    });
 
     return {
       total: data.length,
