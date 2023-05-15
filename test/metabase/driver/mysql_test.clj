@@ -631,3 +631,10 @@
               #"Killed mysql process id [\d,]+ due to timeout."
               (#'mysql.ddl/execute-with-timeout! db-spec db-spec 10 ["select sleep(5)"])))
         (is (some? (#'mysql.ddl/execute-with-timeout! db-spec db-spec 5000 ["select sleep(0.1) as val"])))))))
+
+(deftest syncable-schemas-test
+  (mt/test-driver :mysql
+    (testing "`syncable-schemas` should return an empty set because mysql doesn't support schemas"
+      (mt/with-empty-db
+        (is (= #{}
+               (driver/syncable-schemas driver/*driver* (mt/id))))))))

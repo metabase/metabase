@@ -5,12 +5,12 @@ import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 
 import { ChartSettingsWithState } from "metabase/visualizations/components/ChartSettings";
 
-import {
+import type {
   Dashboard,
   DashboardOrderedCard,
+  Series,
   VisualizationSettings,
 } from "metabase-types/api";
-import { Series } from "metabase-types/types/Visualization";
 
 import DashCardActionButton from "./DashCardActionButton";
 
@@ -50,4 +50,5 @@ function ChartSettingsButton({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ChartSettingsButton;

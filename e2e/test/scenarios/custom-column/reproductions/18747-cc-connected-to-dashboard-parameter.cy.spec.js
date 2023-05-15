@@ -43,8 +43,10 @@ describe("issue 18747", () => {
     addNumberParameterToDashboard();
     mapParameterToCustomColumn();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Save").click();
     // wait for saving to finish
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("You're editing this dashboard.").should("not.exist");
 
     addValueToParameterFilter();

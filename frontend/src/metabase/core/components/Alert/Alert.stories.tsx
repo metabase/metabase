@@ -2,6 +2,7 @@ import React from "react";
 import type { ComponentStory } from "@storybook/react";
 import Alert from "./Alert";
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default {
   title: "Core/Alert",
   component: Alert,

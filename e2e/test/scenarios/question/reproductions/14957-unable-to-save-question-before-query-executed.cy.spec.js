@@ -11,6 +11,7 @@ describe.skip("issue 14957", { tags: "@external" }, () => {
   it("should save a question before query has been executed (metabase#14957)", () => {
     openNativeEditor({ databaseName: PG_DB_NAME }).type("select pg_sleep(60)");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
 
     cy.findByLabelText("Name").type("14957");

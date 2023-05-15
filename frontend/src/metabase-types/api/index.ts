@@ -10,7 +10,6 @@ export * from "./dashboard";
 export * from "./database";
 export * from "./dataset";
 export * from "./field";
-export * from "./foreign-key";
 export * from "./group";
 export * from "./metabot";
 export * from "./metric";

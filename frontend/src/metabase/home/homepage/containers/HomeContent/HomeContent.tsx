@@ -13,6 +13,7 @@ const mapStateToProps = (state: State) => ({
   isXrayEnabled: getSetting(state, "enable-xrays"),
 });
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   Databases.loadList({ loadingAndErrorWrapper: false }),
   RecentItems.loadList({ reload: true, loadingAndErrorWrapper: false }),

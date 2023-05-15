@@ -10,6 +10,7 @@ describe("issue 19742", () => {
   // and don't refresh the app state (like by doing cy.visit)
   it("shouldn't auto-close the data selector after a table was hidden", () => {
     cy.visit("/");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("New").click();
     selectFromDropdown("Question");
     selectFromDropdown("Sample Database");
@@ -18,10 +19,13 @@ describe("issue 19742", () => {
     cy.icon("gear").click();
     selectFromDropdown("Admin settings");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Data Model").click();
     hideTable("Orders");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Exit admin").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("New").click();
     selectFromDropdown("Question");
     selectFromDropdown("Sample Database");

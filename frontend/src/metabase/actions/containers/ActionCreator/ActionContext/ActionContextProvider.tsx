@@ -30,4 +30,5 @@ function ActionContextProvider({ initialAction, ...props }: Props) {
   return <QueryActionContextProvider {...props} />;
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ActionContextProvider;

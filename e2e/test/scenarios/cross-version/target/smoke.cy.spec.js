@@ -5,6 +5,7 @@ describe(`smoke test the migration to the version ${version}`, () => {
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 
     cy.visit("/");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Sign in to Metabase");
 
     cy.findByLabelText("Email address").type("admin@metabase.test");
@@ -15,14 +16,17 @@ describe(`smoke test the migration to the version ${version}`, () => {
 
     // Question 1
     cy.visit("/collection/root");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Quarterly Revenue").click();
     cy.wait("@cardQuery");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("It's okay to play around with saved questions");
     cy.button("Okay").click();
 
     cy.get("circle");
     cy.get(".line");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Goal");
     cy.get(".x-axis-label").invoke("text").should("eq", "Created At");
     cy.get(".y-axis-label").invoke("text").should("eq", "Revenue");
@@ -39,6 +43,7 @@ describe(`smoke test the migration to the version ${version}`, () => {
 
     // Question 2
     cy.visit("/collection/root");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Rating of Best-selling Products").click();
     cy.wait("@cardQuery");
 

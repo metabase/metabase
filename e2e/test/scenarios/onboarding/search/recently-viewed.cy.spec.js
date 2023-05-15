@@ -55,6 +55,7 @@ describe("search > recently viewed", () => {
   });
 
   it("allows to select an item from keyboard", () => {
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Recently viewed");
     cy.get("body").trigger("keydown", { key: "ArrowDown" });
     cy.get("body").trigger("keydown", { key: "ArrowDown" });
@@ -83,6 +84,7 @@ describeEE("search > recently viewed > enterprise features", () => {
   it("should show verified badge in the 'Recently viewed' list (metabase#18021)", () => {
     cy.findByPlaceholderText("Search…").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Recently viewed")
       .parent()
       .within(() => {

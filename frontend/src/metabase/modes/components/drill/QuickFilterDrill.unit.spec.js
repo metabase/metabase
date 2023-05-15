@@ -1,5 +1,5 @@
 import QuickFilterDrill from "metabase/modes/components/drill/QuickFilterDrill";
-import { createMockColumn } from "metabase-types/types/mocks/dataset";
+import { createMockColumn } from "metabase-types/api/mocks";
 import {
   ORDERS,
   PEOPLE,

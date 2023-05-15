@@ -68,4 +68,5 @@ const SummarizeColumnDrill: Drill = (opts: DrillOptions) => {
     .map(operator => getAction(operator as AggregationOperator, opts));
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default SummarizeColumnDrill;

@@ -68,8 +68,8 @@
         (with-redefs [load/pre-insert-user  (fn [user]
                                               (reset! user-pre-insert-called? true)
                                               (assoc user :password "test-password"))]
-          (cmd/load dump-dir "--mode"     :update
-                             "--on-error" :abort)
+          (cmd/load dump-dir "--mode"     "update"
+                             "--on-error" "abort")
           (is (true? @user-pre-insert-called?)))))))
 
 (deftest mode-update-remove-cards-test
@@ -108,7 +108,7 @@
               (testing "Create admin user"
                 (is (some? (ts/create! User, :is_superuser true)))
                 (is (t2/exists? User :is_superuser true)))
-              (is (nil? (cmd/load dump-dir "--on-error" :abort)))
+              (is (nil? (cmd/load dump-dir "--on-error" "abort")))
               (testing "verify that things were loaded as expected"
                 (is (= 1 (t2/count Dashboard)) "# Dashboards")
                 (is (= 2 (t2/count Card)) "# Cards")
@@ -128,7 +128,7 @@
                               yaml)))))
           (testing "load again, with --mode update, destination Dashboard should now only have one question."
             (ts/with-dest-db
-              (is (nil? (cmd/load dump-dir "--mode" :update, "--on-error" :abort)))
+              (is (nil? (cmd/load dump-dir "--mode" "update", "--on-error" "abort")))
               (is (= 1 (t2/count Dashboard)) "# Dashboards")
               (testing "Don't delete the Card even tho it was deleted. Just delete the DashboardCard"
                 (is (= 2 (t2/count Card)) "# Cards"))

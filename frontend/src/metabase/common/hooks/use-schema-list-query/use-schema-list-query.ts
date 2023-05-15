@@ -4,7 +4,8 @@ import {
   UseEntityListQueryProps,
   UseEntityListQueryResult,
 } from "metabase/common/hooks/use-entity-list-query";
-import { Schema, SchemaListQuery } from "metabase-types/api";
+import { SchemaListQuery } from "metabase-types/api";
+import Schema from "metabase-lib/metadata/Schema";
 
 export const useSchemaListQuery = (
   props: UseEntityListQueryProps<SchemaListQuery> = {},

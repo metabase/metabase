@@ -92,7 +92,7 @@
   [collection-id]
   (perms/revoke-collection-permissions! (perms-group/all-users) collection-id))
 
-(deftest card-xray-test
+(deftest question-xray-test
   (mt/with-non-admin-groups-no-root-collection-perms
     (let [cell-query (#'magic/encode-base64-json [:> [:field (mt/id :venues :price) nil] 5])]
       (doseq [test-fn
@@ -112,12 +112,43 @@
                                         [card-id cell-query]
                                         #(revoke-collection-permissions! collection-id))))))]]
         (tt/with-temp* [Collection [{collection-id :id}]
-                        Card       [{card-id :id} {:table_id      (mt/id :venues)
-                                                   :collection_id collection-id
-                                                   :dataset_query (mt/mbql-query venues
-                                                                    {:filter [:> $price 10]})}]]
-          (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
-          (test-fn collection-id card-id))))))
+                        Card [{card-id :id} {:table_id      (mt/id :venues)
+                                             :collection_id collection-id
+                                             :dataset_query (mt/mbql-query venues
+                                                              {:filter [:> $price 10]})}]]
+                       (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
+                       (test-fn collection-id card-id))))))
+
+
+(deftest model-xray-test
+  (testing "The API surface of a model (dataset = true) is very much like that of a question,
+  even though the underlying API will assert that dataset is true and the returned dashboard will be different."
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (let [cell-query (#'magic/encode-base64-json [:> [:field (mt/id :venues :price) nil] 5])]
+        (doseq [test-fn
+                [(fn [collection-id card-id]
+                   (testing "GET /api/automagic-dashboards/model/:id"
+                     (is (some? (api-call "model/%s" [card-id] #(revoke-collection-permissions! collection-id))))))
+
+                 (fn [collection-id card-id]
+                   (testing "GET /api/automagic-dashboards/model/:id/cell/:cell-query"
+                     (is (some? (api-call "model/%s/cell/%s"
+                                          [card-id cell-query]
+                                          #(revoke-collection-permissions! collection-id))))))
+
+                 (fn [collection-id card-id]
+                   (testing "GET /api/automagic-dashboards/model/:id/cell/:cell-query/rule/example/indepth"
+                     (is (some? (api-call "model/%s/cell/%s/rule/example/indepth"
+                                          [card-id cell-query]
+                                          #(revoke-collection-permissions! collection-id))))))]]
+          (tt/with-temp* [Collection [{collection-id :id}]
+                          Card [{card-id :id} {:table_id      (mt/id :venues)
+                                               :collection_id collection-id
+                                               :dataset_query (mt/mbql-query venues
+                                                                {:filter [:> $price 10]})
+                                               :dataset       true}]]
+                         (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
+                         (test-fn collection-id card-id)))))))
 
 (deftest adhoc-query-xray-test
   (let [query (#'magic/encode-base64-json

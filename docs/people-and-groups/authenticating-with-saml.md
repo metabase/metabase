@@ -55,9 +55,9 @@ However, the names of the fields in the Metabase SAML form won't always match th
 
 ### URL the IdP should redirect back to
 
-The redirect URL is the web address that people will be sent to after signing in with your IdP. To redirect people to your Metabase, your redirect URL should be your Metabase [Site URL](../configuring-metabase/settings.md#site-url), with `/auth/sso` at the end.
+The redirect URL is the web address that people will be sent to after signing in with your IdP. To redirect people to your Metabase, your redirect URL should be your Metabase [Site URL](../configuring-metabase/settings.md#site-url), with `/auth/sso/` at the end.
 
-For example, if your Metabase Site URL is `https://metabase.yourcompany.com`, you'll use `https://metabase.yourcompany.com/auth/sso` as the redirect URL in your IdP's SAML form.
+For example, if your Metabase Site URL is `https://metabase.yourcompany.com`, you'll use `https://metabase.yourcompany.com/auth/sso/` as the redirect URL in your IdP's SAML form.
 
 Different IdPs use different names for the redirect URL. Here are some common examples:
 

@@ -856,9 +856,9 @@
   {"card"       :model/Card
    "dataset"    :model/Card
    "collection" :metabase.models.collection/Collection
-   "database"   :metabase.models.database/Database
-   "dashboard"  :metabase.models.dashboard/Dashboard
-   "table"      :metabase.models.table/Table})
+   "database"   :model/Database
+   "dashboard"  :model/Dashboard
+   "table"      :model/Table})
 
 (defn- export-viz-link-card
   [settings]

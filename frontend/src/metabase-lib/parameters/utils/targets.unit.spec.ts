@@ -3,9 +3,9 @@ import {
   PRODUCTS,
   SAMPLE_DATABASE,
 } from "__support__/sample_database_fixture";
-import { ParameterDimensionTarget } from "metabase-types/types/Parameter";
 import { isDimensionTarget } from "metabase-types/guards";
-import type { Card } from "metabase-types/api";
+import type { Card, ParameterDimensionTarget } from "metabase-types/api";
+import { createMockTemplateTag } from "metabase-types/api/mocks";
 import Database from "metabase-lib/metadata/Database";
 import {
   getParameterTargetField,
@@ -75,9 +75,9 @@ describe("parameters/utils/targets", () => {
       const question = SAMPLE_DATABASE.nativeQuestion({
         query: "select * from PRODUCTS where CATEGORY = {{foo}}",
         "template-tags": {
-          foo: {
+          foo: createMockTemplateTag({
             type: "text",
-          },
+          }),
         },
       });
 
@@ -98,10 +98,10 @@ describe("parameters/utils/targets", () => {
       const question = SAMPLE_DATABASE.nativeQuestion({
         query: "select * from PRODUCTS where {{foo}}",
         "template-tags": {
-          foo: {
+          foo: createMockTemplateTag({
             type: "dimension",
             dimension: ["field", PRODUCTS.CATEGORY.id, null],
-          },
+          }),
         },
       });
 

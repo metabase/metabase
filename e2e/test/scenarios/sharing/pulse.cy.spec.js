@@ -13,7 +13,9 @@ describe("scenarios > pulse", { tags: "@external" }, () => {
 
     cy.findByPlaceholderText("Important metrics").click().type("pulse title");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Select a question").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Orders, Count").click();
 
     cy.findByPlaceholderText("Enter user names or email addresses")
@@ -21,12 +23,14 @@ describe("scenarios > pulse", { tags: "@external" }, () => {
       .blur();
 
     // pulse card preview
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("18,760");
 
     cy.button("Create pulse").click();
 
     cy.url().should("match", /\/collection\/root$/);
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("pulse title");
   });
 
@@ -54,7 +58,9 @@ describe("scenarios > pulse", { tags: "@external" }, () => {
 
     it("should load existing pulses", () => {
       cy.visit("/collection/root");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("pulse title").click({ force: true });
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("18,760");
     });
 
@@ -65,8 +71,10 @@ describe("scenarios > pulse", { tags: "@external" }, () => {
         .clear()
         .type("new pulse title");
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Save changes").click();
       cy.url().should("match", /\/collection\/root$/);
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("new pulse title");
     });
   });
