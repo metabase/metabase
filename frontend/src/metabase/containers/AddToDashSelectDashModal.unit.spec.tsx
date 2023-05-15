@@ -1,13 +1,12 @@
 import React from "react";
 import fetchMock from "fetch-mock";
 import { Route } from "react-router";
+import userEvent from "@testing-library/user-event";
 import {
   setupMostRecentlyViewedDashboard,
   setupCollectionsEndpoints,
 } from "__support__/server-mocks";
-
 import {
-  fireEvent,
   renderWithProviders,
   screen,
   waitForElementToBeRemoved,
@@ -21,7 +20,7 @@ import {
 import { Collection, Dashboard } from "metabase-types/api";
 import { AddToDashSelectDashModal } from "./AddToDashSelectDashModal";
 
-const card = createMockCard({ id: 1, name: "Model Uno", dataset: true });
+const CARD = createMockCard({ id: 1, name: "Model Uno", dataset: true });
 
 const CURRENT_USER = createMockUser({
   id: 1,
@@ -36,7 +35,7 @@ const DASHBOARD = createMockDashboard({
   model: "dashboard",
 });
 
-const dashboards = {
+const DASHBOARDS = {
   [DASHBOARD.id]: DASHBOARD,
 };
 
@@ -86,10 +85,10 @@ const setup = async ({
       path="/"
       component={() => (
         <AddToDashSelectDashModal
-          card={card}
+          card={CARD}
           onChangeLocation={() => undefined}
           onClose={() => undefined}
-          dashboards={dashboards}
+          dashboards={DASHBOARDS}
         />
       )}
     />,
@@ -115,7 +114,7 @@ describe("AddToDashSelectDashModal", () => {
         name: /create a new dashboard/i,
       });
 
-      fireEvent.click(createNewDashboard);
+      userEvent.click(createNewDashboard);
 
       // opened CreateDashboardModal
       expect(

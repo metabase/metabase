@@ -6,16 +6,17 @@ import Icon from "metabase/components/Icon";
 import Link from "metabase/core/components/Link";
 import ModalContent from "metabase/components/ModalContent";
 import DashboardPicker from "metabase/containers/DashboardPicker";
-import { CreateDashboardFormOwnProps } from "metabase/dashboard/containers/CreateDashboardForm";
 import * as Urls from "metabase/lib/urls";
 import CreateDashboardModal from "metabase/dashboard/containers/CreateDashboardModal";
-import { Card, Dashboard } from "metabase-types/api";
 import {
   useCollectionQuery,
   useMostRecentlyViewedDashboard,
 } from "metabase/common/hooks";
+import { coerceCollectionId } from "metabase/collections/utils";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import type { State } from "metabase-types/store";
+import type { Card, Dashboard } from "metabase-types/api";
+import type { CreateDashboardFormOwnProps } from "metabase/dashboard/containers/CreateDashboardForm";
 import { LinkContent } from "./AddToDashSelectDashModal.styled";
 
 function mapStateToProps(state: State) {
@@ -44,11 +45,11 @@ export const AddToDashSelectDashModal = ({
   const mostRecentDashboardQuery = useMostRecentlyViewedDashboard();
 
   const collectionId = mostRecentDashboardQuery.data?.collection_id;
-  // when no collectionId and loading is completed, we show root collection
+  // when collectionId is null and loading is completed, show root collection
   // as user didnt' visit any dashboard last 24hrs
   const collectionQuery = useCollectionQuery({
-    id: collectionId || "root",
-    enabled: typeof collectionId !== "undefined",
+    id: coerceCollectionId(collectionId),
+    enabled: collectionId !== undefined,
   });
 
   const navigateToDashboard: Required<CreateDashboardFormOwnProps>["onCreate"] =
