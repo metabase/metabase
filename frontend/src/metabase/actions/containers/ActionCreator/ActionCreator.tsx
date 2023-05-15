@@ -14,7 +14,6 @@ import Questions from "metabase/entities/questions";
 import { getMetadata } from "metabase/selectors/metadata";
 
 import type {
-  Card,
   CardId,
   DatabaseId,
   WritebackActionId,
@@ -47,11 +46,10 @@ interface ActionLoaderProps {
 }
 
 interface ModelLoaderProps {
-  modelCard: Card;
+  model?: Question;
 }
 
 interface StateProps {
-  model: Question;
   metadata: Metadata;
 }
 
@@ -68,8 +66,7 @@ type Props = OwnProps &
   StateProps &
   DispatchProps;
 
-const mapStateToProps = (state: State, { modelCard }: ModelLoaderProps) => ({
-  model: new Question(modelCard, getMetadata(state)),
+const mapStateToProps = (state: State) => ({
   metadata: getMetadata(state),
 });
 
@@ -98,7 +95,7 @@ function ActionCreator({
 
   const [isSaveModalShown, setShowSaveModal] = useState(false);
 
-  const isEditable = isNew || model.canWriteActions();
+  const isEditable = isNew || (model != null && model.canWriteActions());
 
   const handleCreate = async (values: CreateActionFormValues) => {
     if (action.type !== "query") {
@@ -124,7 +121,7 @@ function ActionCreator({
     if (isSavedAction(action)) {
       const reduxAction = await onUpdateAction({
         ...action,
-        model_id: model.id(),
+        model_id: model?.id(),
         visualization_settings: formSettings,
       });
       const updatedAction = Actions.HACK_getObjectFromAction(reduxAction);
@@ -170,7 +167,7 @@ function ActionCreator({
             initialValues={{
               name: action.name,
               description: action.description,
-              model_id: model.id(),
+              model_id: model?.id(),
             }}
             onCreate={handleCreate}
             onCancel={handleCloseNewActionModal}
@@ -218,7 +215,7 @@ export default _.compose(
   }),
   Questions.load({
     id: (state: State, props: OwnProps) => props?.modelId,
-    entityAlias: "modelCard",
+    entityAlias: "model",
   }),
   Database.loadList(),
   connect(mapStateToProps, mapDispatchToProps),
