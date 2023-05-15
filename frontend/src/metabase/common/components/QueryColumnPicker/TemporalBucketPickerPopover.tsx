@@ -1,7 +1,8 @@
 import React from "react";
 import { t } from "ttag";
 import * as Lib from "metabase-lib";
-import BucketPickerPopover, {
+import {
+  BucketPickerPopover,
   BucketPickerPopoverProps,
 } from "./BucketPickerPopover";
 
@@ -9,7 +10,7 @@ function renderTriggerContent(bucket?: Lib.BucketDisplayInfo) {
   return bucket ? t`by ${bucket.displayName}` : null;
 }
 
-function TemporalBucketPickerPopover(
+export function TemporalBucketPickerPopover(
   props: Omit<
     BucketPickerPopoverProps,
     "triggerLabel" | "renderTriggerContent"
@@ -23,5 +24,3 @@ function TemporalBucketPickerPopover(
     />
   );
 }
-
-export default TemporalBucketPickerPopover;
