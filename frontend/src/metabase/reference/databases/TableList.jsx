@@ -3,6 +3,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { t } from "ttag";
+import _ from "underscore";
 
 import S from "metabase/components/List/List.css";
 import R from "metabase/reference/Reference.css";
@@ -59,15 +60,11 @@ export const separateTablesBySchema = (
   tables,
   createSchemaSeparator,
   createListItem,
-) =>
-  tables
-    .sort((table1, table2) =>
-      table1.schema_name > table2.schema_name
-        ? 1
-        : table1.schema_name === table2.schema_name
-        ? 0
-        : -1,
-    )
+) => {
+  return _.chain(tables)
+    .sortBy(t => t.schema_name)
+    .sortBy(t => t.name)
+    .value()
     .map((table, index, sortedTables) => {
       if (!table || !table.id || !table.name) {
         return;
@@ -79,6 +76,7 @@ export const separateTablesBySchema = (
         ? [createSchemaSeparator(table), createListItem(table, index)]
         : createListItem(table, index);
     });
+};
 
 class TableList extends Component {
   static propTypes = {
@@ -123,12 +121,12 @@ class TableList extends Component {
                         createSchemaSeparator,
                         createListItem,
                       )
-                    : tables.map(
-                        (table, index) =>
+                    : _.sortBy(tables, "name").map(
+                        table =>
                           table &&
                           table.id &&
                           table.name &&
-                          createListItem(table, index),
+                          createListItem(table),
                       )}
                 </List>
               </div>
