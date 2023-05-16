@@ -1,6 +1,11 @@
 import React from "react";
-import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
+import {
+  setupCollectionsEndpoints,
+  setupCollectionItemsEndpoint,
+  setupRootCollectionItemsEndpoint,
+  setupPersonalCollectionItemsEndpont,
+} from "__support__/server-mocks";
 import {
   renderWithProviders,
   screen,
@@ -85,47 +90,18 @@ const DASHBOARD = {
   }),
 };
 
-function mockCollectionEndpoint({ extraCollections = [] } = {}) {
-  const collections = [...Object.values(COLLECTION), ...extraCollections];
-  fetchMock.get("path:/api/collection", collections);
-}
-
-function mockCollectionItemsEndpoint() {
-  fetchMock.get(/api\/collection\/\d+\/items/, url => {
-    const collectionIdParam = url.split("/")[5];
-    const collectionId =
-      collectionIdParam === "root" ? null : parseInt(collectionIdParam, 10);
-    const dashboards = Object.values(DASHBOARD).filter(
-      dashboard => dashboard.collection_id === collectionId,
-    );
-    return {
-      total: dashboards.length,
-      data: dashboards,
-    };
-  });
-
-  fetchMock.get("path:/api/collection/root/items", () => {
-    const dashboards = Object.values(DASHBOARD).filter(
-      dashboard => dashboard.collection_id === null,
-    );
-    const collections = Object.values(COLLECTION).filter(
-      collection => collection.location !== "/",
-    );
-    const data = [...dashboards, ...collections];
-    return {
-      total: data.length,
-      data,
-    };
-  });
-}
-
 async function setup({
   models = ["dashboard"],
   extraCollections = [],
   ...props
 } = {}) {
-  mockCollectionEndpoint({ extraCollections });
-  mockCollectionItemsEndpoint();
+  setupCollectionItemsEndpoint({ dashboards: Object.values(DASHBOARD) });
+  setupRootCollectionItemsEndpoint({
+    collections: Object.values(COLLECTION).concat(extraCollections),
+    dashboards: Object.values(DASHBOARD),
+  });
+  setupPersonalCollectionItemsEndpont({ collections: [COLLECTION.PERSONAL] });
+  setupCollectionsEndpoints(Object.values(COLLECTION).concat(extraCollections));
 
   const onChange = jest.fn();
 
@@ -253,5 +229,24 @@ describe("ItemPicker", () => {
     expect(list.getByText(COLLECTION_OTHER_USERS.name)).toBeInTheDocument();
     expect(list.getByText(COLLECTION.PERSONAL.name)).toBeInTheDocument();
     expect(list.getAllByTestId("item-picker-item")).toHaveLength(2);
+  });
+
+  it("preselects value in the correspondent collection", async () => {
+    await setup({
+      initialOpenCollectionId: DASHBOARD.REGULAR_CHILD.collection_id,
+      value: {
+        model: "dashboard",
+        id: DASHBOARD.REGULAR_CHILD.id,
+      },
+    });
+
+    const header = within(getItemPickerHeader());
+
+    // nested collection
+    expect(header.getByText(COLLECTION.ROOT.name)).toBeInTheDocument();
+    expect(header.getByText(COLLECTION.REGULAR.name)).toBeInTheDocument();
+
+    const list = within(getItemPickerList());
+    expect(list.getByText(DASHBOARD.REGULAR_CHILD.name)).toBeInTheDocument();
   });
 });
