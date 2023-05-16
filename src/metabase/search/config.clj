@@ -75,7 +75,6 @@
 (defmethod searchable-columns-for-model "card"
   [_]
   [:name
-   :dataset_query
    :description])
 
 (defmethod searchable-columns-for-model "dataset"
