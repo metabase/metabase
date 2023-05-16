@@ -300,17 +300,18 @@
                               (some :dashboard_id cards))]
     {:pulseLink (urls/dashboard-url dashboard-id)}))
 
-(defn- pulse-context [pulse {:keys [dashboard_id] :as dashboard}]
-  (merge (common-context)
-         {:emailType                 "pulse"
-          :title                     (:name pulse)
-          :titleUrl                  (params/dashboard-url (:id dashboard) (params/parameters pulse dashboard))
-          :dashboardDescription      (:description dashboard)
-          ;; There are legacy pulse that exists without being tied to a dashboard
-          :dashboardHasTabs          (when dashboard_id (dashboard/has-tabs? dashboard_id))
-          :creator                   (-> pulse :creator :common_name)
-          :sectionStyle              (style/style (style/section-style))}
-         (pulse-link-context pulse)))
+(defn- pulse-context [pulse dashboard]
+  (let [dashboard-id (:id dashboard)]
+   (merge (common-context)
+          {:emailType                 "pulse"
+           :title                     (:name pulse)
+           :titleUrl                  (params/dashboard-url dashboard-id (params/parameters pulse dashboard))
+           :dashboardDescription      (:description dashboard)
+           ;; There are legacy pulse that exists without being tied to a dashboard
+           :dashboardHasTabs          (when dashboard-id (dashboard/has-tabs? dashboard-id))
+           :creator                   (-> pulse :creator :common_name)
+           :sectionStyle              (style/style (style/section-style))}
+          (pulse-link-context pulse))))
 
 (defn- create-temp-file
   "Separate from `create-temp-file-or-throw` primarily so that we can simulate exceptions in tests"
