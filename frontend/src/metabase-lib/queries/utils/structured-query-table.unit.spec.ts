@@ -1,104 +1,95 @@
 import _ from "underscore";
 import { createMockMetadata } from "__support__/metadata";
 import {
+  createMockField,
+  createMockSavedQuestionsDatabase,
+  createMockStructuredDatasetQuery,
+  createMockStructuredQuery,
+  createMockTable,
+} from "metabase-types/api/mocks";
+import {
   createSampleDatabase,
-  ORDERS,
+  createSavedStructuredCard,
+  createStructuredModelCard,
+  createProductsIdField,
   ORDERS_ID,
-  PRODUCTS,
   PRODUCTS_ID,
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
-import Question from "metabase-lib/Question";
+import type Question from "metabase-lib/Question";
 import Table from "metabase-lib/metadata/Table";
-import Field from "metabase-lib/metadata/Field";
+import type Field from "metabase-lib/metadata/Field";
+import { getQuestionVirtualTableId } from "metabase-lib/metadata/utils/saved-questions";
 
 import type StructuredQuery from "../StructuredQuery";
 import { getStructuredQueryTable } from "./structured-query-table";
 
+const SAVED_QUESTIONS_DB = createMockSavedQuestionsDatabase();
+
+const modelField = createMockField({
+  ...createProductsIdField(),
+  display_name: "~*~Products.ID~*~",
+});
+
+const modelCard = createStructuredModelCard({
+  id: 1,
+  name: "Structured Model",
+  result_metadata: [modelField],
+});
+const modelTable = createMockTable({
+  id: getQuestionVirtualTableId(modelCard.id),
+  db_id: SAVED_QUESTIONS_DB.id,
+  name: modelCard.name,
+  display_name: modelCard.name,
+  fields: [modelField],
+});
+
+const card = createSavedStructuredCard({ id: 2, name: "Base question" });
+const cardTable = createMockTable({
+  id: getQuestionVirtualTableId(card.id),
+  db_id: SAVED_QUESTIONS_DB.id,
+  name: card.name,
+  display_name: card.name,
+  fields: [createMockField({ table_id: getQuestionVirtualTableId(card.id) })],
+});
+
+const nestedCard = createSavedStructuredCard({
+  id: 3,
+  name: "Question based on another question",
+  dataset_query: createMockStructuredDatasetQuery({
+    database: SAMPLE_DB_ID,
+    query: createMockStructuredQuery({
+      "source-table": getQuestionVirtualTableId(card.id),
+    }),
+  }),
+});
+
+const sourceQueryCard = createSavedStructuredCard({
+  id: 4,
+  name: "Question based on a source query",
+  dataset_query: createMockStructuredDatasetQuery({
+    database: SAMPLE_DB_ID,
+    query: createMockStructuredQuery({
+      "source-query": {
+        "source-table": PRODUCTS_ID,
+      },
+    }),
+  }),
+});
+
+const metadata = createMockMetadata({
+  databases: [createSampleDatabase(), SAVED_QUESTIONS_DB],
+  tables: [cardTable, modelTable],
+  questions: [card, nestedCard, modelCard, sourceQueryCard],
+});
+
 describe("metabase-lib/queries/utils/structured-query-table", () => {
-  const metadata = createMockMetadata({
-    databases: [createSampleDatabase()],
-  });
-
-  const ordersTable = metadata.table(ORDERS_ID) as Table;
-  const productsTable = metadata.table(PRODUCTS_ID) as Table;
-
   describe("Card that relies on another card as its source table", () => {
-    const NESTED_CARD_QUESTION = new Question(
-      {
-        dataset_query: {
-          database: SAMPLE_DB_ID,
-          query: {
-            "source-table": "card__1",
-          },
-          type: "query",
-        },
-        id: 2,
-        display: "table",
-        database_id: SAMPLE_DB_ID,
-        table_id: PRODUCTS_ID,
-        name: "Question based on another question",
-      },
-      metadata,
-    );
-
-    const BASE_QUESTION = new Question(
-      {
-        ...productsTable.newQuestion().card(),
-        id: 1,
-        display: "table",
-        database_id: SAMPLE_DB_ID,
-        table_id: PRODUCTS_ID,
-        name: "Base question",
-      },
-      metadata,
-    );
-
-    const NESTED_CARD_TABLE = new Table({
-      id: "card__1",
-      display_name: BASE_QUESTION.displayName(),
-      name: BASE_QUESTION.displayName(),
-    });
-    NESTED_CARD_TABLE.fields = [
-      new Field({
-        name: "boolean",
-        display_name: "boolean",
-        base_type: "type/Boolean",
-        effective_type: "type/Boolean",
-        semantic_type: null,
-        field_ref: [
-          "field",
-          "boolean",
-          {
-            "base-type": "type/Boolean",
-          },
-        ],
-      }),
-      new Field({
-        base_type: "type/Text",
-        display_name: "Foo",
-        effective_type: "type/Text",
-        field_ref: ["expression", "Foo"],
-        id: ["field", "Foo", { "base-type": "type/Text" }],
-        name: "Foo",
-        semantic_type: null,
-        table_id: "card__1",
-      }),
-      new Field({
-        id: PRODUCTS.CATEGORY,
-        display_name: "~*~ Category ~*~",
-      }),
-    ];
-
-    metadata.questions = {
-      [NESTED_CARD_QUESTION.id()]: NESTED_CARD_QUESTION,
-      [BASE_QUESTION.id()]: BASE_QUESTION,
-    };
-
-    metadata.tables[NESTED_CARD_TABLE.id] = NESTED_CARD_TABLE;
+    const nestedQuestion = metadata.question(nestedCard.id) as Question;
+    const virtualTable = metadata.table(cardTable.id) as Table;
 
     const table = getStructuredQueryTable(
-      NESTED_CARD_QUESTION.query() as StructuredQuery,
+      nestedQuestion.query() as StructuredQuery,
     );
 
     it("should return a table", () => {
@@ -106,88 +97,43 @@ describe("metabase-lib/queries/utils/structured-query-table", () => {
     });
 
     it("should return a virtual table based on the nested card", () => {
-      expect(table?.getPlainObject()).toEqual(
-        NESTED_CARD_TABLE.getPlainObject(),
-      );
-      expect(table?.fields).toEqual(NESTED_CARD_TABLE.fields);
+      expect(table?.getPlainObject()).toEqual(virtualTable.getPlainObject());
+      expect(table?.fields).toEqual(virtualTable.fields);
     });
   });
 
-  describe("Dataset/model card", () => {
-    const ORDERS_USER_ID_FIELD = metadata
-      .field(ORDERS.USER_ID)
-      ?.getPlainObject();
-    const OVERWRITTEN_USER_ID_FIELD_METADATA = {
-      ...ORDERS_USER_ID_FIELD,
-      display_name: "Foo",
-      description: "Bar",
-      fk_target_field_id: 1,
-      semantic_type: "type/Price",
-      settings: {
-        show_mini_bar: true,
-      },
-    };
+  describe("Model card", () => {
+    const model = metadata.question(modelCard.id) as Question;
 
-    const ORDERS_DATASET = ordersTable
-      .question()
-      .setCard({ ...ordersTable.question().card(), id: 3 })
-      .setDataset(true)
-      .setDisplayName("Dataset Question");
+    const table = getStructuredQueryTable(model.query() as StructuredQuery);
 
-    const ORDERS_DATASET_TABLE = new Table({
-      id: "card__3",
-      display_name: ORDERS_DATASET.displayName(),
-      name: ORDERS_DATASET.displayName(),
-      fields: [new Field(OVERWRITTEN_USER_ID_FIELD_METADATA)],
-    });
-
-    metadata.questions = {
-      [ORDERS_DATASET.id()]: ORDERS_DATASET,
-    };
-
-    metadata.tables[ORDERS_DATASET_TABLE.id] = ORDERS_DATASET_TABLE;
-
-    const table = getStructuredQueryTable(
-      ORDERS_DATASET.query() as StructuredQuery,
-    );
     it("should return a nested card table using the given query's question", () => {
       expect(table?.getPlainObject()).toEqual(
         expect.objectContaining({
-          display_name: "Dataset Question",
-          id: "card__3",
-          name: "Dataset Question",
+          id: modelTable.id,
+          name: modelTable.name,
+          display_name: modelTable.display_name,
         }),
       );
 
-      expect(table?.fields.map(field => field.getPlainObject())).toEqual([
-        OVERWRITTEN_USER_ID_FIELD_METADATA,
-      ]);
+      const [field] = table?.fields || [];
+      expect(field.getPlainObject()).toEqual(
+        expect.objectContaining({
+          ...modelField,
+          display_name: "~*~Products.ID~*~",
+        }),
+      );
     });
   });
 
   describe("Card that relies on a source query", () => {
-    const SOURCE_QUERY_QUESTION = new Question(
-      {
-        dataset_query: {
-          database: SAMPLE_DB_ID,
-          query: { "source-query": { "source-table": PRODUCTS_ID } },
-          type: "query",
-        },
-        id: 2,
-        display: "table",
-        database_id: SAMPLE_DB_ID,
-        table_id: PRODUCTS_ID,
-        name: "Question using a nested query",
-      },
-      metadata,
-    );
-
-    metadata.questions = {
-      [SOURCE_QUERY_QUESTION.id()]: SOURCE_QUERY_QUESTION,
-    };
+    const sourceQueryQuestion = metadata.question(
+      sourceQueryCard.id,
+    ) as Question;
+    const productsTable = metadata.table(PRODUCTS_ID) as Table;
 
     const table = getStructuredQueryTable(
-      SOURCE_QUERY_QUESTION.query() as StructuredQuery,
+      sourceQueryQuestion.query() as StructuredQuery,
     );
 
     it("should return a virtual table based on the nested query", () => {
@@ -200,9 +146,10 @@ describe("metabase-lib/queries/utils/structured-query-table", () => {
 
     it("should contain fields", () => {
       const fields = _.sortBy(
-        (table?.fields as Field[]).map(field => field.getPlainObject()),
+        (table?.fields || []).map(field => field.getPlainObject()),
         "name",
       );
+
       const nestedQueryProductFields = _.sortBy(
         productsTable.fields.map((field: Field) => {
           const column = field.dimension().column();
@@ -220,8 +167,10 @@ describe("metabase-lib/queries/utils/structured-query-table", () => {
   });
 
   describe("Card that has a concrete source table", () => {
+    const ordersTable = metadata.table(ORDERS_ID) as Table;
+
     const table = getStructuredQueryTable(
-      ordersTable.newQuestion().query() as StructuredQuery,
+      ordersTable.query() as StructuredQuery,
     );
 
     it("should return the concrete table stored on the Metadata object", () => {

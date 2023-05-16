@@ -1,51 +1,65 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
-import { createMockEntitiesState } from "__support__/store";
-import { getMetadata } from "metabase/selectors/metadata";
+import { render, screen, waitFor } from "@testing-library/react";
+import { createMockMetadata } from "__support__/metadata";
+import { checkNotNull } from "metabase/core/utils/types";
+import {
+  createMockForeignKey,
+  createMockForeignKeyField,
+} from "metabase-types/api/mocks";
 import {
   createSampleDatabase,
+  createOrdersTable,
+  createPeopleTable,
+  createProductsTable,
+  createReviewsTable,
+  PEOPLE_ID,
+  PRODUCTS,
   PRODUCTS_ID,
+  ORDERS_ID,
+  REVIEWS,
+  REVIEWS_ID,
 } from "metabase-types/api/mocks/presets";
-import { createMockState } from "metabase-types/store/mocks";
-import Table from "metabase-lib/metadata/Table";
+import type Table from "metabase-lib/metadata/Table";
 import { TableInfo } from "./TableInfo";
 
-const state = createMockState({
-  entities: createMockEntitiesState({
-    databases: [createSampleDatabase()],
-  }),
-});
-const metadata = getMetadata(state);
+const ordersTable = createOrdersTable({ fks: undefined });
+const peopleTable = createPeopleTable({ fields: undefined, fks: [] });
+const productsTable = createProductsTable();
+const reviewsTable = createReviewsTable({ description: null });
 
-const productsTable = new Table({
-  ...metadata.table(PRODUCTS_ID),
-  fields: [1, 2, 3],
-  fks: [
-    {
-      origin: {
-        table: {
-          id: 111,
-          db_id: 222,
-          display_name: "Connected Table",
-        },
-      },
-    },
+const productsProductId = checkNotNull(
+  productsTable.fields?.find(field => field.id === PRODUCTS.ID),
+);
+const reviewsProductId = checkNotNull(
+  reviewsTable.fields?.find(field => field.id === REVIEWS.PRODUCT_ID),
+);
+
+productsTable.fks = [
+  createMockForeignKey({
+    origin: createMockForeignKeyField({
+      ...reviewsProductId,
+      table: reviewsTable,
+    }),
+    destination: createMockForeignKeyField({
+      ...productsProductId,
+      table: productsTable,
+    }),
+  }),
+];
+
+const metadata = createMockMetadata({
+  databases: [
+    createSampleDatabase({
+      tables: [ordersTable, peopleTable, productsTable, reviewsTable],
+    }),
   ],
 });
-const tableWithoutDescription = new Table({
-  id: 123,
-  display_name: "Foo",
-  fields: [],
-});
-
-const fetchForeignKeys = jest.fn();
-const fetchMetadata = jest.fn();
 
 function setup({ id, table }: { table: Table | undefined; id: Table["id"] }) {
-  fetchForeignKeys.mockReset();
-  fetchMetadata.mockReset();
+  const fetchForeignKeys = jest.fn();
+  const fetchMetadata = jest.fn();
 
-  return render(
+  render(
     <TableInfo
       tableId={id}
       table={table}
@@ -53,55 +67,54 @@ function setup({ id, table }: { table: Table | undefined; id: Table["id"] }) {
       fetchMetadata={fetchMetadata}
     />,
   );
+
+  return { fetchForeignKeys, fetchMetadata };
 }
 
 describe("TableInfo", () => {
-  it("should fetch table metadata if fields are missing", () => {
-    setup({
-      id: PRODUCTS_ID,
-      table: new Table({
-        ...metadata.table(PRODUCTS_ID),
-        fields: undefined,
-        fks: [],
-      }),
+  it("should fetch table metadata if fields are missing", async () => {
+    const table = checkNotNull(metadata.table(PEOPLE_ID));
+    const { fetchForeignKeys, fetchMetadata } = setup({
+      id: table.id,
+      table: table,
     });
-    expect(fetchMetadata).toHaveBeenCalledWith({
-      id: PRODUCTS_ID,
-    });
+
+    await waitFor(() =>
+      expect(fetchMetadata).toHaveBeenCalledWith({ id: table.id }),
+    );
     expect(fetchForeignKeys).not.toHaveBeenCalled();
   });
 
-  it("should fetch table metadata if the table is undefined", () => {
-    setup({ id: 123, table: undefined });
+  it("should fetch table metadata if the table is undefined", async () => {
+    const { fetchForeignKeys, fetchMetadata } = setup({
+      id: 123,
+      table: undefined,
+    });
 
-    expect(fetchMetadata).toHaveBeenCalledWith({
-      id: 123,
-    });
-    expect(fetchForeignKeys).toHaveBeenCalledWith({
-      id: 123,
-    });
+    await waitFor(() =>
+      expect(fetchMetadata).toHaveBeenCalledWith({ id: 123 }),
+    );
+    expect(fetchForeignKeys).toHaveBeenCalledWith({ id: 123 });
   });
 
-  it("should fetch fks if fks are undefined on table", () => {
-    setup({
-      id: PRODUCTS_ID,
-      table: new Table({
-        ...metadata.table(PRODUCTS_ID),
-        fields: [1, 2, 3],
-        fks: undefined,
-      }),
+  it("should fetch fks if fks are undefined on table", async () => {
+    const table = checkNotNull(metadata.table(ORDERS_ID));
+    const { fetchForeignKeys, fetchMetadata } = setup({
+      id: table.id,
+      table: table,
     });
 
+    await waitFor(() =>
+      expect(fetchForeignKeys).toHaveBeenCalledWith({ id: table.id }),
+    );
     expect(fetchMetadata).not.toHaveBeenCalled();
-    expect(fetchForeignKeys).toHaveBeenCalledWith({
-      id: PRODUCTS_ID,
-    });
   });
 
   it("should not send requests fetching table metadata when metadata is already present", () => {
-    setup({
-      id: PRODUCTS_ID,
-      table: productsTable,
+    const table = checkNotNull(metadata.table(PRODUCTS_ID));
+    const { fetchForeignKeys, fetchMetadata } = setup({
+      id: table.id,
+      table,
     });
 
     expect(fetchForeignKeys).not.toHaveBeenCalled();
@@ -109,30 +122,29 @@ describe("TableInfo", () => {
   });
 
   it("should display a placeholder if table has no description", async () => {
-    setup({
-      id: tableWithoutDescription.id,
-      table: tableWithoutDescription,
-    });
-
+    const table = checkNotNull(metadata.table(REVIEWS_ID));
+    setup({ id: table.id, table });
     expect(await screen.findByText("No description")).toBeInTheDocument();
   });
 
   describe("after metadata has been fetched", () => {
+    const table = checkNotNull(metadata.table(PRODUCTS_ID));
+
     it("should display the given table's description", () => {
-      setup({ id: PRODUCTS_ID, table: productsTable });
-      expect(
-        screen.getByText(metadata.table(PRODUCTS_ID)?.description as string),
-      ).toBeInTheDocument();
+      setup({ id: table.id, table });
+      expect(screen.getByText(table.description as string)).toBeInTheDocument();
     });
 
     it("should show a count of columns on the table", () => {
-      setup({ id: PRODUCTS_ID, table: productsTable });
-      expect(screen.getByText("3 columns")).toBeInTheDocument();
+      setup({ id: table.id, table });
+      expect(
+        screen.getByText(`${table.fields.length} columns`),
+      ).toBeInTheDocument();
     });
 
     it("should list connected tables", () => {
-      setup({ id: PRODUCTS_ID, table: productsTable });
-      expect(screen.getByText("Connected Table")).toBeInTheDocument();
+      setup({ id: table.id, table });
+      expect(screen.getByText("Reviews")).toBeInTheDocument();
     });
   });
 });

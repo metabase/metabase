@@ -1,14 +1,21 @@
 import React from "react";
 import { render, screen, within } from "@testing-library/react";
+import { createMockMetadata } from "__support__/metadata";
 import { getBrokenUpTextMatcher } from "__support__/ui";
+import { checkNotNull } from "metabase/core/utils/types";
 import { createMockDatabase } from "metabase-types/api/mocks";
-import Database from "metabase-lib/metadata/Database";
 import { getHelpText } from "./ExpressionEditorTextfield/helper-text-strings";
 import ExpressionEditorHelpText, {
   ExpressionEditorHelpTextProps,
 } from "./ExpressionEditorHelpText";
 
-const DATABASE = new Database(createMockDatabase());
+const DB_ID = 1;
+
+const metadata = createMockMetadata({
+  databases: [createMockDatabase({ id: DB_ID })],
+});
+
+const DATABASE = checkNotNull(metadata.database(DB_ID));
 
 describe("ExpressionEditorHelpText", () => {
   it("should render expression function info, example and documentation link", async () => {
