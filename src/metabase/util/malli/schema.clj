@@ -218,7 +218,7 @@
 
 (def BooleanString
   "Schema for a string that is a valid representation of a boolean (either `true` or `false`).
-  Something that adheres to this schema is guaranteed to to work with `Boolean/parseBoolean`."
+   Defendpoint uses this to coerce the value for this schema to a boolean."
   (mu/with-api-error-message
     [:enum {:decode/json (fn [b] (contains? #{"true" true} b))} "true" "false" true false]
     (deferred-tru "value must be a valid boolean string (''true'' or ''false'').")))
