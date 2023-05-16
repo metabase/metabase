@@ -1,8 +1,14 @@
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-nocheck
 import _ from "underscore";
+import {
+  CardId,
+  DatabaseId,
+  FieldId,
+  MetricId,
+  SchemaId,
+  SegmentId,
+  TableId,
+} from "metabase-types/api";
 import type Question from "../Question";
-import Base from "./Base";
 import type Database from "./Database";
 import type Table from "./Table";
 import type Schema from "./Schema";
@@ -11,34 +17,20 @@ import type Metric from "./Metric";
 import type Segment from "./Segment";
 import { getUniqueFieldId } from "./utils/fields";
 
-/**
- * @typedef { import("./Metadata").DatabaseId } DatabaseId
- * @typedef { import("./Metadata").SchemaId } SchemaId
- * @typedef { import("./Metadata").TableId } TableId
- * @typedef { import("./Metadata").FieldId } FieldId
- * @typedef { import("./Metadata").MetricId } MetricId
- * @typedef { import("./Metadata").SegmentId } SegmentId
- */
-
-/**
- * Wrapper class for the entire metadata store
- */
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default class Metadata extends Base {
-  databases: Record<string, Database>;
-  schemas: Record<string, Schema>;
-  tables: Record<string, Table>;
-  fields: Record<string, Field>;
-  metrics: Record<string, Metric>;
-  segments: Record<string, Segment>;
-  questions: Record<string, Question>;
+class Metadata {
+  databases: Record<string, Database> = {};
+  schemas: Record<string, Schema> = {};
+  tables: Record<string, Table> = {};
+  fields: Record<string, Field> = {};
+  metrics: Record<string, Metric> = {};
+  segments: Record<string, Segment> = {};
+  questions: Record<string, Question> = {};
 
   /**
    * @deprecated this won't be sorted or filtered in a meaningful way
    * @returns {Database[]}
    */
-  databasesList({ savedQuestions = true } = {}) {
+  databasesList({ savedQuestions = true } = {}): Database[] {
     return _.chain(this.databases)
       .values()
       .filter(db => savedQuestions || !db.is_saved_questions)
@@ -50,7 +42,7 @@ export default class Metadata extends Base {
    * @deprecated this won't be sorted or filtered in a meaningful way
    * @returns {Table[]}
    */
-  tablesList() {
+  tablesList(): Table[] {
     return Object.values(this.tables);
   }
 
@@ -58,61 +50,36 @@ export default class Metadata extends Base {
    * @deprecated this won't be sorted or filtered in a meaningful way
    * @returns {Metric[]}
    */
-  metricsList() {
+  metricsList(): Metric[] {
     return Object.values(this.metrics);
   }
 
-  /**
-   * @deprecated this won't be sorted or filtered in a meaningful way
-   * @returns {Segment[]}
-   */
-  segmentsList() {
+  segmentsList(): Segment[] {
     return Object.values(this.segments);
   }
 
-  /**
-   * @param {SegmentId} segmentId
-   * @returns {?Segment}
-   */
-  segment(segmentId) {
+  segment(segmentId: SegmentId | undefined | number): Segment | null {
     return (segmentId != null && this.segments[segmentId]) || null;
   }
 
-  /**
-   * @param {MetricId} metricId
-   * @returns {?Metric}
-   */
-  metric(metricId): Metric | null {
+  metric(metricId: MetricId | undefined | null): Metric | null {
     return (metricId != null && this.metrics[metricId]) || null;
   }
 
-  /**
-   * @param {DatabaseId} databaseId
-   * @returns {?Database}
-   */
-  database(databaseId): Database | null {
+  database(databaseId: DatabaseId | undefined | null): Database | null {
     return (databaseId != null && this.databases[databaseId]) || null;
   }
 
-  /**
-   * @param {SchemaId} schemaId
-   * @returns {Schema}
-   */
-  schema(schemaId): Schema | null {
+  schema(schemaId: SchemaId | undefined | null): Schema | null {
     return (schemaId != null && this.schemas[schemaId]) || null;
   }
 
-  /**
-   *
-   * @param {TableId} tableId
-   * @returns {?Table}
-   */
-  table(tableId): Table | null {
+  table(tableId: TableId | undefined | number): Table | null {
     return (tableId != null && this.tables[tableId]) || null;
   }
 
   field(
-    fieldId: Field["id"] | Field["name"] | undefined | null,
+    fieldId: FieldId | string | undefined | null,
     tableId?: Table["id"] | undefined | null,
   ): Field | null {
     if (fieldId == null) {
@@ -127,7 +94,10 @@ export default class Metadata extends Base {
     return this.fields[uniqueId] || null;
   }
 
-  question(cardId): Question | null {
+  question(cardId: CardId | undefined | null): Question | null {
     return (cardId != null && this.questions[cardId]) || null;
   }
 }
+
+// eslint-disable-next-line import/no-default-export -- deprecated usage
+export default Metadata;
