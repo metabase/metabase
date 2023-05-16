@@ -33,6 +33,7 @@ jobs:
             const BRANCH_REF = context.ref;
             const FAILED_RUN = ${{ github.event.workflow_run.html_url }};
             const FAILED_WORKFLOW = ${{ github.event.workflow_run.name }};
+            const AUTHOR = ${{ github.event.workflow_run.head_commit.author.name }}
 
             if (ATTEMPT <= MAX_ATTEMPTS) {
               github.rest.actions.reRunWorkflowFailedJobs({
@@ -45,7 +46,6 @@ jobs:
               const { WebClient } = require('@slack/web-api');
               const slack = new WebClient('${{ secrets.SLACK_BOT_TOKEN }}');
 
-              const author = `@${context.actor}`;
               const breaking_commit = context.sha;
 
               await slack.chat.postMessage({
@@ -67,7 +67,7 @@ jobs:
                       "type": "section",
                       "text": {
                         "type": "mrkdwn",
-                        "text": `Commit <https://github.com/metabase/metabase/commit/${breaking_commit}|${breaking_commit.slice(0,7)}> by ${author} has failing tests on the \`${BRANCH}\` branch . :sad-panda:\nPlease fix ASAP. Emoji this message when it's fixed.`
+                        "text": `Commit <https://github.com/metabase/metabase/commit/${breaking_commit}|${breaking_commit.slice(0,7)}> by ${AUTHOR} has failing tests on the \`${BRANCH}\` branch . :sad-panda:\nPlease fix ASAP. Emoji this message when it's fixed.`
                       }
                     },
                     {
