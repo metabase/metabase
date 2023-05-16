@@ -84,7 +84,8 @@
 (defn- query-action
   [action-id]
   {:action_id     action-id
-   :database_id   (u/the-id (mt/db))})
+   :database_id   (u/the-id (mt/db))
+   :dataset_query (mt/query venues)})
 
 (def ^:private test-collection (make-result "collection test collection"
                                             :bookmark false
