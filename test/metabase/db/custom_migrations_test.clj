@@ -8,7 +8,9 @@
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.scheduler :as qs]
    [clojurewerkz.quartzite.triggers :as triggers]
+   [metabase.db.connection :as mdb.connection]
    [metabase.db.schema-migrations-test.impl :as impl]
+   [metabase.db.setup :as db.setup]
    [metabase.models :refer [Card Database User]]
    [metabase.models.interface :as mi]
    [metabase.task :as task]
@@ -117,3 +119,94 @@
                      json/parse-string
                      mi/normalize-visualization-settings
                      (#'mi/migrate-viz-settings)))))))))
+
+(deftest downgrade-dashboard-tabs-test
+ (testing "Migrations v47.00-017: update visualization_settings.column_settings legacy field refs"
+    (impl/test-migrations ["v47.00-017"] [migrate!]
+     (migrate!)
+     (let [{:keys [db-type ^javax.sql.DataSource data-source]} mdb.connection/*application-db*
+            migrate!    (partial db.setup/migrate! db-type data-source)
+           user-id      (first (t2/insert-returning-pks! User {:first_name  "Howard"
+                                                               :last_name   "Hughes"
+                                                               :email       "howard@aircraft.com"
+                                                               :password    "superstrong"
+                                                               :date_joined :%now}))
+           dashboard-id (first (t2/insert-returning-pks! :model/Dashboard {:name       "A dashboard"
+                                                                           :creator_id user-id}))
+           tab1-id      (first (t2/insert-returning-pks! :model/DashboardTab {:name         "Tab 1"
+                                                                              :position     0
+                                                                              :dashboard_id dashboard-id}))
+           tab2-id      (first (t2/insert-returning-pks! :model/DashboardTab {:name         "Tab 2"
+                                                                              :position     1
+                                                                              :dashboard_id dashboard-id}))
+           tab3-id      (first (t2/insert-returning-pks! :model/DashboardTab {:name         "Tab 3"
+                                                                              :position     2
+                                                                              :dashboard_id dashboard-id}))
+           default-card {:dashboard_id           dashboard-id
+                         :visualization_settings {:virtual_card {:display "text"}
+                                                  :text         "A text card"}}
+           tab1-card1-id (first (t2/insert-returning-pks! :model/DashboardCard (merge
+                                                                                 default-card
+                                                                                 {:dashboard_tab_id tab1-id
+                                                                                  :row              0
+                                                                                  :col              0
+                                                                                  :size_x           4
+                                                                                  :size_y           4})))
+
+           tab1-card2-id (first (t2/insert-returning-pks! :model/DashboardCard (merge
+                                                                                 default-card
+                                                                                 {:dashboard_tab_id tab1-id
+                                                                                  :row              2
+                                                                                  :col              0
+                                                                                  :size_x           2
+                                                                                  :size_y           6})))
+
+           tab2-card1-id (first (t2/insert-returning-pks! :model/DashboardCard (merge
+                                                                                 default-card
+                                                                                 {:dashboard_tab_id tab2-id
+                                                                                  :row              0
+                                                                                  :col              0
+                                                                                  :size_x           4
+                                                                                  :size_y           4})))
+
+           tab2-card2-id (first (t2/insert-returning-pks! :model/DashboardCard (merge
+                                                                                 default-card
+                                                                                 {:dashboard_tab_id tab2-id
+                                                                                  :row              4
+                                                                                  :col              0
+                                                                                  :size_x           4
+                                                                                  :size_y           2})))
+           tab3-card1-id (first (t2/insert-returning-pks! :model/DashboardCard (merge
+                                                                                 default-card
+                                                                                 {:dashboard_tab_id tab3-id
+                                                                                  :row              0
+                                                                                  :col              0
+                                                                                  :size_x           4
+                                                                                  :size_y           4})))
+
+           tab3-card2-id (first (t2/insert-returning-pks! :model/DashboardCard (merge
+                                                                                 default-card
+                                                                                 {:dashboard_tab_id tab3-id
+                                                                                  :row              4
+                                                                                  :col              0
+                                                                                  :size_x           4
+                                                                                  :size_y           2})))]
+      (migrate! :down 46)
+      (is (= [;; tab 1
+              {:id  tab1-card1-id
+               :row 0}
+              {:id  tab1-card2-id
+               :row 2}
+
+              ;; tab 2
+              {:id  tab2-card1-id
+               :row 8}
+              {:id  tab2-card2-id
+               :row 12}
+
+              ;; tab 3
+              {:id  tab3-card1-id
+               :row 14}
+              {:id  tab3-card2-id
+               :row 18}]
+             (t2/select-fn-vec #(select-keys % [:id :row]) :model/DashboardCard :dashboard_id dashboard-id)))))))

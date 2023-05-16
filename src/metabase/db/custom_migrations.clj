@@ -211,3 +211,31 @@
                                          :visualization_settings updated}))))
                             (t2/reducible-query {:select [:id :visualization_settings]
                                                  :from   [:report_card]})))))
+
+(defn- update-card-row-on-downgrade-for-dashboard-tab
+  [dashboard-id]
+  (let [ordered-tab+cards (->> (t2/query {:select    [:report_dashboardcard.* [:dashboard_tab.position :tab_position]]
+                                          :from      [:report_dashboardcard]
+                                          :where     [:= :report_dashboardcard.dashboard_id dashboard-id]
+                                          :left-join [:dashboard_tab [:= :dashboard_tab.id :report_dashboardcard.dashboard_tab_id]]})
+                               (group-by :tab_position)
+                               ;; sort by tab position
+                               (sort-by first))
+        cards->max-row (fn [cards] (apply max (map #(+ (:row %) (:size_y %)) cards)))]
+    (loop [position+cards ordered-tab+cards
+           next-tab-row   0]
+      (when-let [[tab-pos cards] (first position+cards)]
+        (if (zero? tab-pos)
+          (recur (rest position+cards) (long (cards->max-row cards)))
+          (do
+            (t2/query {:update :report_dashboardcard
+                       :set    {:row [:+ :row next-tab-row]}
+
+                       :where  [:= :dashboard_tab_id (:dashboard_tab_id (first cards))]})
+            (recur (rest position+cards) (long (+ next-tab-row (cards->max-row cards))))))))))
+
+(define-reversible-migration DownGradeDashboardTab
+  (log/info "No forward migration for DownGradeDashboardTab")
+  (run! update-card-row-on-downgrade-for-dashboard-tab
+        (eduction (map :dashboard_id) (t2/reducible-query {:select-distinct [:dashboard_id]
+                                                           :from            [:dashboard_tab]}))))
