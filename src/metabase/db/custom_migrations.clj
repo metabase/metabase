@@ -221,18 +221,18 @@
                                (group-by :tab_position)
                                ;; sort by tab position
                                (sort-by first))
-        cards->max-row (fn [cards] (apply max (map #(+ (:row %) (:size_y %)) cards)))]
+        cards->max-height (fn [cards] (apply max (map #(+ (:row %) (:size_y %)) cards)))]
     (loop [position+cards ordered-tab+cards
            next-tab-row   0]
       (when-let [[tab-pos cards] (first position+cards)]
         (if (zero? tab-pos)
-          (recur (rest position+cards) (long (cards->max-row cards)))
+          (recur (rest position+cards) (long (cards->max-height cards)))
           (do
             (t2/query {:update :report_dashboardcard
                        :set    {:row [:+ :row next-tab-row]}
 
                        :where  [:= :dashboard_tab_id (:dashboard_tab_id (first cards))]})
-            (recur (rest position+cards) (long (+ next-tab-row (cards->max-row cards))))))))))
+            (recur (rest position+cards) (long (+ next-tab-row (cards->max-height cards))))))))))
 
 (define-reversible-migration DownGradeDashboardTab
   (log/info "No forward migration for DownGradeDashboardTab")
