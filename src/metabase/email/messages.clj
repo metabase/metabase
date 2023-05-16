@@ -14,6 +14,7 @@
    [metabase.email :as email]
    [metabase.models.collection :as collection]
    [metabase.models.permissions :as perms]
+   [metabase.models.dashboard :as dashboard]
    [metabase.models.user :refer [User]]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
@@ -305,6 +306,7 @@
           :title                     (:name pulse)
           :titleUrl                  (params/dashboard-url (:id dashboard) (params/parameters pulse dashboard))
           :dashboardDescription      (:description dashboard)
+          :dashboardHasTabs          (dashboard/has-tabs? dashboard)
           :creator                   (-> pulse :creator :common_name)
           :sectionStyle              (style/style (style/section-style))}
          (pulse-link-context pulse)))
@@ -411,9 +413,16 @@
 
 (defn- render-result-card
   [timezone result]
-  (if (:card result)
+  (cond
+    (:card result)
     (render/render-pulse-section timezone result)
-    {:content (markdown/process-markdown (:text result) :html)}))
+
+    (:text result)
+    {:content (markdown/process-markdown (:text result) :html)}
+
+    ;; for content that are platform-specific
+    (:email result)
+    (recur timezone (:email result))))
 
 (defn- render-filters
   [notification dashboard]

@@ -155,7 +155,7 @@
     (virtual-card-of-type? dashcard "link")
     (dashcard-link-card->content dashcard)
 
-    ;; text cards has existed for a while and I'm not sure if all existing text cards
+    ;; text cards have existed for a while and I'm not sure if all existing text cards
     ;; will have virtual_card.display = "text", so assume everything else is a text card
     :else
     (let [parameters (merge-default-values (params/parameters pulse dashboard))]
@@ -173,7 +173,8 @@
 
 (defn- tab->text
   [{:keys [name]}]
-  {:text (str (format "# %s" name))})
+  {:slack {:text (str (format "# %s" name))}
+   :email {:text (str (format "# %s\n---" name))}})
 
 (defn- execute-dashboard
   "Fetch all the dashcards in a dashboard for a Pulse, and execute non-text cards.
@@ -220,26 +221,38 @@
         (str "…"))
     mrkdwn))
 
+(defn- card-result->attachment-data
+  [card-result channel-id]
+  (let [{{card-id :id, card-name :name, :as card} :card, dashcard :dashcard, result :result} card-result]
+    (cond
+      (and card result)
+     {:title           (or (-> dashcard :visualization_settings :card.title)
+                           card-name)
+      :rendered-info   (render/render-pulse-card :inline (defaulted-timezone card) card dashcard result)
+      :title_link      (urls/card-url card-id)
+      :attachment-name "image.png"
+      :channel-id      channel-id
+      :fallback        card-name}
+
+     (:text card-result)
+     (let [mrkdwn (markdown/process-markdown (:text card-result) :slack)]
+       (when (not (str/blank? mrkdwn))
+         {:blocks [{:type "section"
+                    :text {:type "mrkdwn"
+                           :text (truncate-mrkdwn mrkdwn block-text-length-limit)}}]}))
+
+     ;; for content that are platform-specific
+     (:slack card-result)
+     (recur (:slack card-result) channel-id))))
+
 (defn- create-slack-attachment-data
   "Returns a seq of slack attachment data structures, used in `create-and-upload-slack-attachments!`"
   [card-results]
   (let [channel-id (slack/files-channel)]
-    (->> (for [card-result card-results]
-           (let [{{card-id :id, card-name :name, :as card} :card, dashcard :dashcard, result :result} card-result]
-             (if (and card result)
-               {:title           (or (-> dashcard :visualization_settings :card.title)
-                                     card-name)
-                :rendered-info   (render/render-pulse-card :inline (defaulted-timezone card) card dashcard result)
-                :title_link      (urls/card-url card-id)
-                :attachment-name "image.png"
-                :channel-id      channel-id
-                :fallback        card-name}
-               (let [mrkdwn (markdown/process-markdown (:text card-result) :slack)]
-                 (when (not (str/blank? mrkdwn))
-                   {:blocks [{:type "section"
-                              :text {:type "mrkdwn"
-                                     :text (truncate-mrkdwn mrkdwn block-text-length-limit)}}]})))))
-         (remove nil?))))
+    (for [card-result card-results
+          :let        [attachment (card-result->attachment-data card-result channel-id)]
+          :when       attachment]
+      attachment)))
 
 (defn- subject
   [{:keys [name cards dashboard_id]}]
