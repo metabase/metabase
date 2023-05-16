@@ -4,11 +4,11 @@ import { createSelector } from "@reduxjs/toolkit";
 import type {
   Card,
   NormalizedDatabase,
-  NormalizedSchema,
-  NormalizedTable,
   NormalizedField,
   NormalizedMetric,
+  NormalizedSchema,
   NormalizedSegment,
+  NormalizedTable,
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
@@ -137,10 +137,10 @@ export const getMetadata: (
     hydrateList(metadata.tables, "segments", metadata.segments);
     hydrateList(metadata.tables, "metrics", metadata.metrics);
     Object.values(metadata.tables).forEach(table => {
-      table.db = hydrateTableDatabase(table, metadata);
+      table.db = metadata.database(table.db_id || table.db) ?? undefined;
     });
     Object.values(metadata.tables).forEach(table => {
-      table.schema = hydrateTableSchema(table, metadata);
+      table.schema = metadata.schema(table.schema) ?? undefined;
     });
     Object.values(metadata.databases).forEach(database => {
       database.schemas = hydrateDatabaseSchemas(database, metadata);
@@ -148,34 +148,19 @@ export const getMetadata: (
     Object.values(metadata.schemas).forEach(schema => {
       schema.tables = hydrateSchemaTables(schema, metadata);
     });
-
-    // segments
-    hydrate(
-      metadata.segments,
-      "table",
-      segment => metadata.table(segment.table_id) as Table,
-    );
-    // metrics
-    hydrate(
-      metadata.metrics,
-      "table",
-      metric => metadata.table(metric.table_id) as Table,
-    );
-    // fields
-    hydrate(metadata.fields, "table", field => metadata.table(field.table_id));
-    hydrate(metadata.fields, "target", field =>
-      metadata.field(field.fk_target_field_id),
-    );
-    hydrate(metadata.fields, "name_field", field =>
-      hydrateNameField(field, metadata),
-    );
-
-    hydrate(metadata.fields, "values", field => getFieldValues(field));
-    hydrate(
-      metadata.fields,
-      "remapping",
-      field => new Map(getRemappings(field)),
-    );
+    Object.values(metadata.segments).forEach(segment => {
+      segment.table = metadata.table(segment.table_id) ?? undefined;
+    });
+    Object.values(metadata.metrics).forEach(metric => {
+      metric.table = metadata.table(metric.table_id) ?? undefined;
+    });
+    Object.values(metadata.fields).forEach(field => {
+      field.table = metadata.table(field.table_id) ?? undefined;
+      field.target = metadata.field(field.fk_target_field_id) ?? undefined;
+      field.name_field = hydrateNameField(field, metadata);
+      field.values = getFieldValues(field);
+      field.remapping = new Map(getRemappings(field));
+    });
 
     return metadata;
   },
@@ -274,20 +259,6 @@ function createTable(table: NormalizedTable, metadata: Metadata): Table {
   return instance;
 }
 
-function hydrateTableDatabase(
-  table: Table,
-  metadata: Metadata,
-): Database | undefined {
-  return metadata.database(table.db_id || table.db) ?? undefined;
-}
-
-function hydrateTableSchema(
-  table: Table,
-  metadata: Metadata,
-): Schema | undefined {
-  return metadata.schema(table.schema) ?? undefined;
-}
-
 function createField(field: NormalizedField, metadata: Metadata) {
   // We need a way to distinguish field objects that come from the server
   // vs. those that are created client-side to handle lossy transformations between
@@ -299,9 +270,10 @@ function createField(field: NormalizedField, metadata: Metadata) {
   return instance;
 }
 
-function hydrateNameField(field: Field, metadata: Metadata) {
-  if (field.name_field != null) {
-    return metadata.field(field.name_field);
+function hydrateNameField(field: Field, metadata: Metadata): Field | undefined {
+  const nameFieldId = field.getPlainObject().name_field;
+  if (nameFieldId != null) {
+    return metadata.field(nameFieldId) ?? undefined;
   } else if (field.table && field.isPK()) {
     return _.find(field.table.getFields(), f => f.isEntityName());
   }
