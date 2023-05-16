@@ -36,7 +36,6 @@ export function nestedSettings(
     allStoredSettings,
     extra,
   ) {
-    console.log("getComputedSettingsForAllObjects");
     const allComputedSettings = {};
     for (const object of objects) {
       const key = getObjectKey(object);
@@ -110,12 +109,10 @@ export function nestedSettings(
       getDefault(series, settings) {
         const cache = new Map();
         return object => {
-          const key = getObjectKey(object); // ["name", name]
-          console.log("getDefault", settings, key);
+          const key = getObjectKey(object);
           if (!cache.has(key)) {
-            const inheritedSettings = getInheritedSettingsForObject(object); // if this was, say [field-id 1], this might yield some settings?
-            const storedSettings = settings[id][key] || {}; // id might be column_settings, key might be ["ref", ...] so I guess it was
-            console.log(storedSettings);
+            const inheritedSettings = getInheritedSettingsForObject(object);
+            const storedSettings = settings[id][key] || {};
             cache.set(key, {
               ...getComputedSettingsForObject(
                 series,
