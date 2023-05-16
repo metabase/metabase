@@ -120,7 +120,7 @@
                      (#'mi/migrate-viz-settings)))))))))
 
 (deftest migrate-legacy-result-metadata-field-refs-test
-  (testing "Migrations v47.00-027: update visualization_settings.column_settings legacy field refs"
+  (testing "Migrations v47.00-027: update report_card.result_metadata legacy field refs"
     (impl/test-migrations ["v47.00-027"] [migrate!]
       (let [result_metadata [{"field_ref" ["field-literal" "column_name" "type/Text"]}
                              {"field_ref" ["field-id" 39]}
