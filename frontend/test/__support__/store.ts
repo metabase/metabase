@@ -32,7 +32,7 @@ import {
   SavedQuestionDatabase,
 } from "metabase-types/api";
 import { EntitiesState } from "metabase-types/store";
-import { createPlaceholderEntitiesState } from "metabase-types/store/mocks";
+import { createMockNormalizedEntitiesState } from "metabase-types/store/mocks";
 
 export interface EntitiesStateOpts {
   actions?: WritebackAction[];
@@ -71,7 +71,7 @@ export const createMockEntitiesState = (
 ): EntitiesState => {
   const schema = normalize(opts, EntitiesSchema);
   return {
-    ...createPlaceholderEntitiesState(),
+    ...createMockNormalizedEntitiesState(),
     ...schema.entities,
   };
 };
