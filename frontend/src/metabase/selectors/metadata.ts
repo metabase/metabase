@@ -112,24 +112,12 @@ export const getMetadata: (
     metadata.questions = copyObjects(metadata, questions, createQuestion);
 
     // database
-    hydrate(metadata.databases, "tables", database => {
-      const tableIds = database.getPlainObject().tables ?? [];
-      if (tableIds.length > 0) {
-        return tableIds
-          .map(tableId => metadata.table(tableId))
-          .filter(table => table != null);
-      }
-
-      return Object.values(metadata.tables).filter(
-        table =>
-          !isVirtualCardId(table.id) &&
-          table.schema &&
-          table.db_id === database.id,
-      );
-    });
+    hydrate(metadata.databases, "tables", database =>
+      hydrateDatabaseTables(database, metadata),
+    );
     // schema
     hydrate(metadata.schemas, "database", schema =>
-      metadata.database(schema.getPlainObject().database),
+      hydrateSchemaDatabase(schema, metadata),
     );
 
     // table
@@ -141,32 +129,13 @@ export const getMetadata: (
     );
     hydrate(metadata.tables, "schema", table => metadata.schema(table.schema));
 
-    hydrate(metadata.databases, "schemas", database => {
-      const schemaIds = database.getPlainObject().schemas;
-      if (schemaIds) {
-        return schemaIds.map(s => metadata.schema(s));
-      }
+    hydrate(metadata.databases, "schemas", database =>
+      hydrateDatabaseSchemas(database, metadata),
+    );
 
-      return Object.values(metadata.schemas).filter(
-        s => s.database && s.database.id === database.id,
-      );
-    });
-
-    hydrate(metadata.schemas, "tables", schema => {
-      const tableIds = schema.getPlainObject().tables;
-      return tableIds
-        ? // use the schema tables if they exist
-          tableIds.map(table => metadata.table(table))
-        : schema.database && schema.database.getTables().length > 0
-        ? // if the schema has a database with tables, use those
-          schema.database
-            .getTables()
-            .filter(table => table.schema_name === schema.name)
-        : // otherwise use any loaded tables that match the schema id
-          Object.values(metadata.tables).filter(
-            table => table.schema && table.schema.id === schema.id,
-          );
-    });
+    hydrate(metadata.schemas, "tables", schema =>
+      hydrateSchemaTables(schema, metadata),
+    );
 
     // segments
     hydrate(
@@ -185,13 +154,9 @@ export const getMetadata: (
     hydrate(metadata.fields, "target", field =>
       metadata.field(field.fk_target_field_id),
     );
-    hydrate(metadata.fields, "name_field", field => {
-      if (field.name_field != null) {
-        return metadata.field(field.name_field);
-      } else if (field.table && field.isPK()) {
-        return _.find(field.table.getFields(), f => f.isEntityName());
-      }
-    });
+    hydrate(metadata.fields, "name_field", field =>
+      hydrateNameField(field, metadata),
+    );
 
     hydrate(metadata.fields, "values", field => getFieldValues(field));
     hydrate(
@@ -220,16 +185,72 @@ export const getMetadataWithHiddenTables = (
 
 // Utils
 
-function createDatabase(db: NormalizedDatabase, metadata: Metadata) {
-  const instance = new Database(db);
+function isNotNull<T>(value: T | null | undefined): value is T {
+  return value != null;
+}
+
+function createDatabase(
+  database: NormalizedDatabase,
+  metadata: Metadata,
+): Database {
+  const instance = new Database(database);
   instance.metadata = metadata;
   return instance;
 }
 
-function createSchema(schema: NormalizedSchema, metadata: Metadata) {
+function hydrateDatabaseTables(
+  database: Database,
+  metadata: Metadata,
+): Table[] {
+  const tableIds = database.getPlainObject().tables ?? [];
+  if (tableIds.length > 0) {
+    return tableIds.map(tableId => metadata.table(tableId)).filter(isNotNull);
+  }
+
+  return Object.values(metadata.tables).filter(
+    table =>
+      !isVirtualCardId(table.id) && table.schema && table.db_id === database.id,
+  );
+}
+
+function hydrateDatabaseSchemas(database: Database, metadata: Metadata) {
+  const schemaIds = database.getPlainObject().schemas;
+  if (schemaIds) {
+    return schemaIds.map(s => metadata.schema(s));
+  }
+
+  return Object.values(metadata.schemas).filter(
+    s => s.database && s.database.id === database.id,
+  );
+}
+
+function createSchema(schema: NormalizedSchema, metadata: Metadata): Schema {
   const instance = new Schema(schema);
   instance.metadata = metadata;
   return instance;
+}
+
+function hydrateSchemaDatabase(
+  schema: Schema,
+  metadata: Metadata,
+): Database | undefined {
+  return metadata.database(schema.getPlainObject().database) ?? undefined;
+}
+
+function hydrateSchemaTables(schema: Schema, metadata: Metadata) {
+  const tableIds = schema.getPlainObject().tables;
+  return tableIds
+    ? // use the schema tables if they exist
+      tableIds.map(table => metadata.table(table))
+    : schema.database && schema.database.getTables().length > 0
+    ? // if the schema has a database with tables, use those
+      schema.database
+        .getTables()
+        .filter(table => table.schema_name === schema.name)
+    : // otherwise use any loaded tables that match the schema id
+      Object.values(metadata.tables).filter(
+        table => table.schema && table.schema.id === schema.id,
+      );
 }
 
 function createTable(table: NormalizedTable, metadata: Metadata) {
@@ -247,6 +268,14 @@ function createField(field: NormalizedField, metadata: Metadata) {
   const instance = new Field({ ...field, _comesFromEndpoint: true });
   instance.metadata = metadata;
   return instance;
+}
+
+function hydrateNameField(field: Field, metadata: Metadata) {
+  if (field.name_field != null) {
+    return metadata.field(field.name_field);
+  } else if (field.table && field.isPK()) {
+    return _.find(field.table.getFields(), f => f.isEntityName());
+  }
 }
 
 function createMetric(metric: NormalizedMetric, metadata: Metadata) {
