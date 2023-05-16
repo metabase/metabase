@@ -217,7 +217,7 @@ describe("QueryBuilder", () => {
           initialRoute: `/model/${TEST_MODEL_CARD.id}/metadata`,
         });
 
-        const columnDisplayName = screen.getByTitle("Display name");
+        const columnDisplayName = await screen.findByTitle("Display name");
 
         userEvent.click(columnDisplayName);
         userEvent.type(columnDisplayName, "X");
