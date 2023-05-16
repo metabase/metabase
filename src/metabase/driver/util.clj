@@ -387,11 +387,10 @@
   ^bytes [^String s]
   (when s
     (let [[match _ encoding ^String data] (re-find #"data:([\w-/]*);?(base64|),(.*)" s)]
-      (if match
+      (when match
         (case encoding
           "base64" (u/decode-base64-to-bytes data)
-          (.getBytes data "UTF-8"))
-        (.getBytes s "UTF-8")))))
+          (.getBytes data "UTF-8"))))))
 
 (defn db-details-client->server
   "Currently, this transforms client side values for the various back into :type :secret for storage on the server.
@@ -414,7 +413,8 @@
                          val-kw     (subprop "-value")
                          source-kw  (subprop "-source")
                          path       (path-kw acc)
-                         value      (maybe-decode-data-url (val-kw acc))]
+                         raw-val    (val-kw acc)
+                         value      (or (maybe-decode-data-url raw-val) raw-val)]
                      (cond-> (assoc acc val-kw value)
                        ;; keywords here are associated to nil, rather than being dissoced, because they will be merged
                        ;; with the existing db-details blob to produce the final details
