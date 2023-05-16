@@ -10,8 +10,10 @@
     "yarn": "^1.12.3"
   },
   "dependencies": {
-    "@emotion/react": "^11.7.1",
+    "@emotion/react": "^11.11.0",
     "@emotion/styled": "^11.6.0",
+    "@mantine/core": "^6.0.11",
+    "@mantine/hooks": "^6.0.11",
     "@react-oauth/google": "^0.4.0",
     "@reduxjs/toolkit": "^1.9.3",
     "@snowplow/browser-tracker": "^3.1.6",

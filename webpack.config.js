@@ -62,7 +62,7 @@ const config = (module.exports = {
 
   externals: {
     canvg: "canvg",
-    dompurify: "dompurify"
+    dompurify: "dompurify",
   },
 
   // output to "dist"
@@ -160,6 +160,7 @@ const config = (module.exports = {
         process.env.MB_EDITION === "ee"
           ? ENTERPRISE_SRC_PATH + "/overrides"
           : SRC_PATH + "/lib/noop",
+      "@ui": SRC_PATH + "/ui",
     },
   },
   cache: useFilesystemCache
@@ -241,7 +242,8 @@ if (WEBPACK_BUNDLE === "hot") {
   config.output.filename = "[name].hot.bundle.js?[contenthash]";
 
   // point the publicPath (inlined in index.html by HtmlWebpackPlugin) to the hot-reloading server
-  config.output.publicPath = "http://localhost:8080/" + config.output.publicPath;
+  config.output.publicPath =
+    "http://localhost:8080/" + config.output.publicPath;
 
   config.module.rules.unshift({
     test: /\.(tsx?|jsx?)$/,
