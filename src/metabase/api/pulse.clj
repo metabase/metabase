@@ -26,7 +26,6 @@
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
    [metabase.util.urls :as urls]
    [schema.core :as s]
@@ -144,11 +143,11 @@
      (api/check-500
       (pulse/create-pulse! (map pulse/card->ref cards) channels pulse-data)))))
 
-(api/defendpoint GET "/:id"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/:id"
   "Fetch `Pulse` with ID. If the user is a recipient of the Pulse but does not have read permissions for its collection,
   we still return it but with some sensitive metadata removed."
   [id]
-  {id ms/PositiveInt}
   (api/let-404 [pulse (pulse/retrieve-pulse id)]
    (api/check-403 (mi/can-read? pulse))
    (-> pulse
@@ -225,7 +224,8 @@
   ;; return updated Pulse
   (pulse/retrieve-pulse id))
 
-(api/defendpoint GET "/form_input"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/form_input"
   "Provides relevant configuration information and user choices for creating/updating Pulses."
   []
   (validation/check-has-application-permission :subscription false)
@@ -266,10 +266,10 @@
       :context     :pulse
       :card-id     card-id})))
 
-(api/defendpoint GET "/preview_card/:id"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema GET "/preview_card/:id"
   "Get HTML rendering of a Card with `id`."
   [id]
-  {id ms/PositiveInt}
   (let [card   (api/read-check Card id)
         result (pulse-card-query-results card)]
     {:status 200
@@ -304,7 +304,6 @@
 (api/defendpoint-schema GET "/preview_card_png/:id"
   "Get PNG rendering of a Card with `id`."
   [id]
-  {id ms/PositiveInt}
   (let [card   (api/read-check Card id)
         result (pulse-card-query-results card)
         ba     (binding [render/*include-title* true]
@@ -329,11 +328,10 @@
   (metabase.pulse/send-pulse! (assoc body :creator_id api/*current-user-id*))
   {:ok true})
 
-
-(api/defendpoint DELETE "/:id/subscription"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema DELETE "/:id/subscription"
   "For users to unsubscribe themselves from a pulse subscription."
   [id]
-  {id ms/PositiveInt}
   (api/let-404 [pulse-id (t2/select-one-pk Pulse :id id)
                 pc-id    (t2/select-one-pk PulseChannel :pulse_id pulse-id :channel_type "email")
                 pcr-id   (t2/select-one-pk PulseChannelRecipient :pulse_channel_id pc-id :user_id api/*current-user-id*)]

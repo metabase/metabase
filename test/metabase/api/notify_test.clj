@@ -101,9 +101,8 @@
             (is (not (realized? full-sync?)))
             (is @smaller-sync))))
       (testing "errors on unrecognized scan options"
-        (is (= {:errors
-                {:scan "value may be nil, or if non-nil, value must be one of: `full`, `schema`."}}
-               (post {:scan :unrecognized} 400)))))))
+        (is (= {:scan "value may be nil, or if non-nil, value must be one of: `full`, `schema`."}
+               (:errors (post {:scan :unrecognized} 400))))))))
 
 ;; TODO - Consider generalizing this in the future. It was taken from `metabase.driver.postgres-test`
 ;; Perhaps if there's another instance where it is used put it somewhere common.
