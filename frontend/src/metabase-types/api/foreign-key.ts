@@ -1,7 +1,7 @@
 import type { ConcreteField } from "./field";
 import type { Table } from "./table";
 
-type ForeignKeyField = ConcreteField & {
+export type ForeignKeyField = ConcreteField & {
   table: Table;
 };
 
