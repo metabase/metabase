@@ -320,7 +320,7 @@
                                   is_deep_copy], :as _dashboard} :body}]
   {from-dashboard-id      [:maybe ms/PositiveInt]
    name                   [:maybe ms/NonBlankString]
-   description            [:maybe :str]
+   description            [:maybe :string]
    collection_id          [:maybe ms/PositiveInt]
    collection_position    [:maybe ms/PositiveInt]
    is_deep_copy           [:maybe :boolean]}
