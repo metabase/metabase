@@ -14,6 +14,7 @@
 (shared.ns/import-fn internal/same-day?)
 (shared.ns/import-fn internal/same-month?)
 (shared.ns/import-fn internal/same-year?)
+(shared.ns/import-fn internal/day-diff)
 
 (defn- prep-options [options]
   (merge internal/default-options (u/normalize-map options)))
