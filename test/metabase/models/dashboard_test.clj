@@ -38,6 +38,7 @@
                   DashboardCardSeries [_                 {:dashboardcard_id dashcard-id, :card_id series-id-2, :position 1}]]
     (is (= {:name               "Test Dashboard"
             :auto_apply_filters true
+            :collection_id      nil
             :description        nil
             :cache_ttl          nil
             :cards              [{:size_x  4
@@ -207,6 +208,7 @@
           empty-dashboard      {:name               "Revert Test"
                                 :description        "something"
                                 :auto_apply_filters true
+                                :collection_id      nil
                                 :cache_ttl          nil
                                 :cards              []}
           serialized-dashboard (revision/serialize-instance Dashboard (:id dashboard) dashboard)]
@@ -215,6 +217,7 @@
                 :description        nil
                 :cache_ttl          nil
                 :auto_apply_filters true
+                :collection_id      nil
                 :cards              [{:size_x  4
                                       :size_y  4
                                       :row     0
@@ -239,6 +242,7 @@
                 :description        nil
                 :cache_ttl          nil
                 :auto_apply_filters true
+                :collection_id      nil
                 :cards              [{:size_x  4
                                       :size_y  4
                                       :row     0
