@@ -5,6 +5,9 @@ import {
   saveDashboard,
   openQuestionsSidebar,
   undo,
+  dashboardCards,
+  sidebar,
+  popover,
 } from "e2e/support/helpers";
 
 function createNewTab() {
@@ -22,20 +25,24 @@ describe("scenarios > dashboard tabs", () => {
 
     editDashboard();
     createNewTab();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Orders").should("not.exist");
+    dashboardCards().within(() => {
+      cy.findByText("Orders").should("not.exist");
+    });
 
     cy.icon("pencil").click();
     openQuestionsSidebar();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Orders, Count").click();
+    sidebar().within(() => {
+      cy.findByText("Orders, Count").click();
+    });
     saveDashboard();
 
     cy.findByRole("tab", { name: "Page 1" }).click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Orders, count").should("not.exist");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Orders").should("be.visible");
+    dashboardCards().within(() => {
+      cy.findByText("Orders, count").should("not.exist");
+    });
+    dashboardCards().within(() => {
+      cy.findByText("Orders").should("be.visible");
+    });
   });
 
   it("should allow undoing a tab deletion", () => {
@@ -44,15 +51,19 @@ describe("scenarios > dashboard tabs", () => {
     createNewTab();
 
     cy.findByRole("tab", { name: "Page 1" }).findByRole("button").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Delete").click();
+    popover().within(() => {
+      cy.findByText("Delete").click();
+    });
     cy.findByRole("tab", { name: "Page 1" }).should("not.exist");
 
     undo();
     cy.findByRole("tab", { name: "Page 1" }).click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Orders, count").should("not.exist");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Orders").should("be.visible");
+
+    dashboardCards().within(() => {
+      cy.findByText("Orders, count").should("not.exist");
+    });
+    dashboardCards().within(() => {
+      cy.findByText("Orders").should("be.visible");
+    });
   });
 });
