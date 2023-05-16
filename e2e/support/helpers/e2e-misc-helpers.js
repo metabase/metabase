@@ -137,7 +137,7 @@ export function visitQuestion(id) {
  *
  * @param {number} dashboard_id
  */
-export function visitDashboard(dashboard_id) {
+export function visitDashboard(dashboard_id, { params = {} } = {}) {
   // Some users will not have permissions for this request
   cy.request({
     method: "GET",
@@ -172,7 +172,10 @@ export function visitDashboard(dashboard_id) {
         },
       );
 
-      cy.visit(`/dashboard/${dashboard_id}`);
+      cy.visit({
+        url: `/dashboard/${dashboard_id}`,
+        qs: params,
+      });
 
       cy.wait(aliases);
     } else {
@@ -253,11 +256,14 @@ export function visitPublicQuestion(id) {
   );
 }
 
-export function visitPublicDashboard(id) {
+export function visitPublicDashboard(id, { params = {} } = {}) {
   cy.request("POST", `/api/dashboard/${id}/public_link`).then(
     ({ body: { uuid } }) => {
       cy.signOut();
-      cy.visit(`/public/dashboard/${uuid}`);
+      cy.visit({
+        url: `/public/dashboard/${uuid}`,
+        qs: params,
+      });
     },
   );
 }
