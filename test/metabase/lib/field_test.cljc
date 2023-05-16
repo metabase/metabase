@@ -210,9 +210,13 @@
 (deftest ^:parallel available-temporal-buckets-test
   (doseq [{:keys [metadata expected-options]}
           [{:metadata         (get-in temporal-bucketing-mock-metadata [:fields :date])
-            :expected-options lib.temporal-bucket/date-bucket-options}
+            :expected-options (-> lib.temporal-bucket/date-bucket-options
+                                  (update 0 dissoc :default)
+                                  (assoc-in [2 :default] true))}
            {:metadata         (get-in temporal-bucketing-mock-metadata [:fields :datetime])
-            :expected-options lib.temporal-bucket/datetime-bucket-options}
+            :expected-options (-> lib.temporal-bucket/datetime-bucket-options
+                                  (update 2 dissoc :default)
+                                  (assoc-in [4 :default] true))}
            {:metadata         (get-in temporal-bucketing-mock-metadata [:fields :time])
             :expected-options lib.temporal-bucket/time-bucket-options}]]
     (testing (str (:base-type metadata) " Field")

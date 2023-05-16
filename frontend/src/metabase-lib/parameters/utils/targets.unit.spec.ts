@@ -1,6 +1,7 @@
 import { createMockMetadata } from "__support__/metadata";
 import { isDimensionTarget } from "metabase-types/guards";
 import type { Card, ParameterDimensionTarget } from "metabase-types/api";
+import { createMockTemplateTag } from "metabase-types/api/mocks";
 import {
   createSampleDatabase,
   PRODUCTS,
@@ -83,9 +84,9 @@ describe("parameters/utils/targets", () => {
       const question = db.nativeQuestion({
         query: "select * from PRODUCTS where CATEGORY = {{foo}}",
         "template-tags": {
-          foo: {
+          foo: createMockTemplateTag({
             type: "text",
-          },
+          }),
         },
       });
 
@@ -106,10 +107,10 @@ describe("parameters/utils/targets", () => {
       const question = db.nativeQuestion({
         query: "select * from PRODUCTS where {{foo}}",
         "template-tags": {
-          foo: {
+          foo: createMockTemplateTag({
             type: "dimension",
             dimension: ["field", PRODUCTS.CATEGORY, null],
-          },
+          }),
         },
       });
 

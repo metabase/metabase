@@ -1,87 +1,69 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
-import { createMockMetadata } from "__support__/metadata";
 import { checkNotNull } from "metabase/core/utils/types";
+import { Table } from "metabase-types/api";
 import {
+  createMockField,
   createMockForeignKey,
-  createMockForeignKeyField,
+  createMockTable,
 } from "metabase-types/api/mocks";
-import {
-  createSampleDatabase,
-  createOrdersTable,
-  createPeopleTable,
-  createProductsTable,
-  createReviewsTable,
-  ORDERS,
-  PRODUCTS,
-  PEOPLE_ID,
-  PRODUCTS_ID,
-  REVIEWS,
-} from "metabase-types/api/mocks/presets";
-import type Table from "metabase-lib/metadata/Table";
+import { createMockState } from "metabase-types/store/mocks";
+import { createMockEntitiesState } from "__support__/store";
+import { getMetadata } from "metabase/selectors/metadata";
+import { renderWithProviders, screen } from "__support__/ui";
 import ConnectedTables from "./ConnectedTables";
 
-const ordersTable = createOrdersTable();
-const productsTable = createProductsTable();
-const reviewsTable = createReviewsTable();
+const EMPTY_TABLE = createMockTable();
 
-const productsProductId = checkNotNull(
-  productsTable.fields?.find(field => field.id === PRODUCTS.ID),
-);
-const ordersProductId = checkNotNull(
-  ordersTable.fields?.find(field => field.id === ORDERS.PRODUCT_ID),
-);
-const reviewsProductId = checkNotNull(
-  reviewsTable.fields?.find(field => field.id === REVIEWS.PRODUCT_ID),
-);
-
-productsTable.fks = [
-  createMockForeignKey({
-    origin: createMockForeignKeyField({
-      ...ordersProductId,
-      table: ordersTable,
+const TABLE_WITH_FKS = createMockTable({
+  id: 1,
+  fks: [
+    createMockForeignKey({
+      origin: createMockField({
+        table: createMockTable({
+          id: 2,
+          display_name: "Foo",
+        }),
+      }),
     }),
-    destination: createMockForeignKeyField({
-      ...productsProductId,
-      table: productsTable,
-    }),
-  }),
-  createMockForeignKey({
-    origin: createMockForeignKeyField({
-      ...reviewsProductId,
-      table: reviewsTable,
-    }),
-    destination: createMockForeignKeyField({
-      ...productsProductId,
-      table: productsTable,
-    }),
-  }),
-];
-
-const metadata = createMockMetadata({
-  databases: [
-    createSampleDatabase({
-      tables: [ordersTable, productsTable, reviewsTable, createPeopleTable()],
+    createMockForeignKey({
+      origin: createMockField({
+        table: createMockTable({
+          id: 3,
+          display_name: "Bar",
+        }),
+      }),
     }),
   ],
 });
 
-function setup(table: Table) {
-  return render(<ConnectedTables table={table} />);
+interface SetupOpts {
+  table: Table;
+}
+
+function setup({ table }: SetupOpts) {
+  const state = createMockState({
+    entities: createMockEntitiesState({
+      tables: [table],
+    }),
+  });
+  const metadata = getMetadata(state);
+
+  return renderWithProviders(
+    <ConnectedTables table={checkNotNull(metadata.table(table.id))} />,
+  );
 }
 
 describe("ConnectedTables", () => {
   it("should show nothing when the table has no fks", () => {
-    const table = checkNotNull(metadata.table(PEOPLE_ID));
-    const { container } = setup(table);
+    const { container } = setup({ table: EMPTY_TABLE });
+
     expect(container).toBeEmptyDOMElement();
   });
 
   it("should show a label for each connected table", () => {
-    const table = checkNotNull(metadata.table(PRODUCTS_ID));
-    setup(table);
+    setup({ table: TABLE_WITH_FKS });
 
-    expect(screen.getByText("Orders")).toBeInTheDocument();
-    expect(screen.getByText("Reviews")).toBeInTheDocument();
+    expect(screen.getByText("Foo")).toBeInTheDocument();
+    expect(screen.getByText("Bar")).toBeInTheDocument();
   });
 });

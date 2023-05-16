@@ -63,3 +63,67 @@
   (is (= "Unknown unit"
          (lib.temporal-bucket/describe-temporal-unit :unknown-unit)
          (lib.temporal-bucket/describe-temporal-unit 2 :unknown-unit))))
+
+(deftest ^:parallel available-temporal-buckets-test
+  (let [column {:description nil
+                :lib/type :metadata/field
+                :database-is-auto-increment false
+                :fingerprint-version 5
+                :base-type :type/DateTimeWithLocalTZ
+                :semantic-type :type/CreationTimestamp
+                :database-required false
+                :table-id 806
+                :name "CREATED_AT"
+                :coercion-strategy nil
+                :lib/source :source/fields
+                :lib/source-column-alias "CREATED_AT"
+                :settings nil
+                :caveats nil
+                :nfc-path nil
+                :database-type "TIMESTAMP WITH TIME ZONE"
+                :effective-type :type/DateTimeWithLocalTZ
+                :fk-target-field-id nil
+                :custom-position 0
+                :active true
+                :id 3068
+                :parent-id nil
+                :points-of-interest nil
+                :visibility-type :normal
+                :lib/desired-column-alias "CREATED_AT"
+                :display-name "Created At"
+                :position 7
+                :has-field-values nil
+                :json-unfolding false
+                :preview-display true
+                :database-position 7
+                :fingerprint
+                {:global {:distinct-count 200, :nil% 0.0}}}
+        expected-units #{:minute :hour
+                         :day :week :month :quarter :year
+                         :minute-of-hour :hour-of-day
+                         :day-of-week :day-of-month :day-of-year
+                         :week-of-year :month-of-year :quarter-of-year}
+        expected-defaults [{:lib/type :type/temporal-bucketing-option, :unit :day, :default true}]]
+    (testing "missing fingerprint"
+      (let [column (dissoc column :fingerprint)
+            options (lib.temporal-bucket/available-temporal-buckets-method nil -1 column)]
+          (is (= expected-units
+                 (into #{} (map :unit) options)))
+          (is (= expected-defaults
+                 (filter :default options)))))
+    (testing "existing fingerprint"
+      (doseq [[latest unit] {"2019-04-15T13:34:19.931Z" :month
+                             "2017-04-15T13:34:19.931Z" :week
+                             "2016-05-15T13:34:19.931Z" :day
+                             "2016-04-27T13:34:19.931Z" :minute
+                             nil                        :day
+                             "garbage"                  :day}]
+        (testing latest
+          (let [bounds {:earliest "2016-04-26T19:29:55.147Z"
+                        :latest latest}
+                column (assoc-in column [:fingerprint :type :type/DateTime] bounds)
+                options (lib.temporal-bucket/available-temporal-buckets-method nil -1 column)]
+            (is (= expected-units
+                   (into #{} (map :unit) options)))
+            (is (= (assoc-in expected-defaults [0 :unit] unit)
+                   (filter :default options)))))))))

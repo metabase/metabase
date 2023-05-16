@@ -268,7 +268,7 @@ describe("StructuredQuery", () => {
       expect(db.question().query().cleanNesting().datasetQuery()).toEqual({
         type: "query",
         database: SAMPLE_DB_ID,
-        query: { "source-table": null },
+        query: { "source-table": undefined },
       });
     });
     it("should remove outer empty queries", () => {

@@ -1,25 +1,23 @@
 import React from "react";
 import { render, screen, within } from "@testing-library/react";
+import { checkNotNull } from "metabase/core/utils/types";
 import { createMockMetadata } from "__support__/metadata";
 import { getBrokenUpTextMatcher } from "__support__/ui";
-import { checkNotNull } from "metabase/core/utils/types";
-import { createMockDatabase } from "metabase-types/api/mocks";
+import {
+  createSampleDatabase,
+  SAMPLE_DB_ID,
+} from "metabase-types/api/mocks/presets";
 import { getHelpText } from "./ExpressionEditorTextfield/helper-text-strings";
 import ExpressionEditorHelpText, {
   ExpressionEditorHelpTextProps,
 } from "./ExpressionEditorHelpText";
 
-const DB_ID = 1;
-
-const metadata = createMockMetadata({
-  databases: [createMockDatabase({ id: DB_ID })],
-});
-
-const DATABASE = checkNotNull(metadata.database(DB_ID));
-
 describe("ExpressionEditorHelpText", () => {
+  const metadata = createMockMetadata({ databases: [createSampleDatabase()] });
+  const database = checkNotNull(metadata.database(SAMPLE_DB_ID));
+
   it("should render expression function info, example and documentation link", async () => {
-    await setup();
+    await setup({ helpText: getHelpText("datetime-diff", database, "UTC") });
 
     expect(
       screen.getByText('datetimeDiff([Created At], [Shipped At], "month")'),
@@ -46,7 +44,7 @@ describe("ExpressionEditorHelpText", () => {
   });
 
   it("should handle expression function without arguments", async () => {
-    await setup({ helpText: getHelpText("cum-count", DATABASE, "UTC") });
+    await setup({ helpText: getHelpText("cum-count", database, "UTC") });
 
     expect(screen.getAllByText("CumulativeCount")).toHaveLength(2);
 
@@ -65,7 +63,7 @@ describe("ExpressionEditorHelpText", () => {
   it("should render function arguments", async () => {
     const {
       props: { helpText },
-    } = await setup({ helpText: getHelpText("concat", DATABASE, "UTC") });
+    } = await setup({ helpText: getHelpText("concat", database, "UTC") });
 
     const argumentsBlock = screen.getByTestId(
       "expression-helper-popover-arguments",
@@ -82,9 +80,7 @@ async function setup(additionalProps?: Partial<ExpressionEditorHelpTextProps>) {
   const target = { current: null };
 
   const props: ExpressionEditorHelpTextProps = {
-    helpText:
-      additionalProps?.helpText ||
-      getHelpText("datetime-diff", DATABASE, "UTC"),
+    helpText: additionalProps?.helpText,
     width: 397,
     target,
     ...additionalProps,

@@ -71,8 +71,8 @@ describe("metabase-lib/queries/utils/virtual-table", () => {
     });
 
     it("should add a table reference to its fields", () => {
-      expect(table.fields.every(field => field.table === table)).toBe(true);
-      expect(table.fields.every(field => field.table_id === table.id)).toBe(
+      expect(table.fields?.every(field => field.table === table)).toBe(true);
+      expect(table.fields?.every(field => field.table_id === table.id)).toBe(
         true,
       );
     });

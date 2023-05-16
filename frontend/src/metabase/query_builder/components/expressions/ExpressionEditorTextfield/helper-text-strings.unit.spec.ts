@@ -1,15 +1,8 @@
-import { createMockMetadata } from "__support__/metadata";
 import { checkNotNull } from "metabase/core/utils/types";
 import { createMockDatabase } from "metabase-types/api/mocks/database";
-import { Database as IDatabase } from "metabase-types/api";
+import { Database } from "metabase-types/api";
+import { createMockMetadata } from "__support__/metadata";
 import { getHelpText } from "./helper-text-strings";
-
-function setup(opts?: Partial<IDatabase>) {
-  const rawDatabase = createMockDatabase(opts);
-  const metadata = createMockMetadata({ databases: [rawDatabase] });
-  const database = checkNotNull(metadata.database(rawDatabase.id));
-  return { database };
-}
 
 describe("getHelpText", () => {
   const reportTimezone = "US/Hawaii";
@@ -79,3 +72,10 @@ describe("getHelpText", () => {
     });
   });
 });
+
+function setup(dbOpts?: Partial<Database>) {
+  const database = createMockDatabase(dbOpts);
+  const metadata = createMockMetadata({ databases: [database] });
+
+  return { database: checkNotNull(metadata.database(database.id)) };
+}

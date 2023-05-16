@@ -73,7 +73,7 @@ describe("metabase-lib/queries/utils/native-query-table", () => {
     const virtualTable = metadata.table(MODEL_VIRTUAL_TABLE_ID) as Table;
 
     it("should return a nested card table using the given query's question", () => {
-      expect(virtualTable?.getPlainObject()).toEqual(
+      expect(virtualTable.getPlainObject()).toEqual(
         expect.objectContaining({
           id: "card__1",
           name: "Native Model Question",
@@ -81,7 +81,7 @@ describe("metabase-lib/queries/utils/native-query-table", () => {
         }),
       );
 
-      const [field] = virtualTable?.fields;
+      const [field] = virtualTable.getFields();
       expect(field.getPlainObject()).toEqual(
         expect.objectContaining({
           ...modelField,
