@@ -1,24 +1,22 @@
 import React, { ChangeEvent, FocusEvent } from "react";
 import FileInput from "metabase/core/components/FileInput";
-import { FormField, TreatBeforePosting } from "./types";
+import { FormField } from "./types";
 
 export interface FormTextFileWidgetProps {
   field: FormField;
-  treatBeforePosting?: TreatBeforePosting;
 }
 
 const FormTextFileWidget = ({
   field,
-  treatBeforePosting,
 }: FormTextFileWidgetProps): JSX.Element => {
   const { name, autoFocus, onChange, onBlur } = field;
 
   const handleChange = async (event: ChangeEvent<HTMLInputElement>) => {
-    onChange(await getFieldValue(event.target, treatBeforePosting));
+    onChange(await getFieldValue(event.target));
   };
 
   const handleBlur = async (event: FocusEvent<HTMLInputElement>) => {
-    onBlur(await getFieldValue(event.target, treatBeforePosting));
+    onBlur(await getFieldValue(event.target));
   };
 
   return (
@@ -32,10 +30,7 @@ const FormTextFileWidget = ({
   );
 };
 
-const getFieldValue = (
-  { files }: HTMLInputElement,
-  treatBeforePosting?: TreatBeforePosting,
-): Promise<string> => {
+const getFieldValue = ({ files }: HTMLInputElement): Promise<string> => {
   return new Promise((resolve, reject) => {
     if (!files?.length) {
       resolve("");
@@ -45,12 +40,7 @@ const getFieldValue = (
     const reader = new FileReader();
     reader.onload = () => resolve(String(reader.result));
     reader.onerror = () => reject();
-
-    if (treatBeforePosting === "base64") {
-      reader.readAsDataURL(files[0]);
-    } else {
-      reader.readAsText(files[0]);
-    }
+    reader.readAsDataURL(files[0]);
   });
 };
 

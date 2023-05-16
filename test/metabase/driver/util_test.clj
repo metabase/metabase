@@ -112,7 +112,6 @@
                                                      :ssl          true}}
                                      {:name                 "keystore-value"
                                       :type                 "textFile"
-                                      :treat-before-posting "base64"
                                       :visible-if           {:keystore-options "uploaded"}}
                                      {:name        "keystore-path"
                                       :type        "string"

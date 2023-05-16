@@ -39,7 +39,6 @@ export interface EngineField {
   default?: unknown;
   options?: EngineFieldOption[];
   "visible-if"?: Record<string, unknown>;
-  "treat-before-posting"?: EngineFieldTreatType;
 }
 
 export type EngineFieldType =

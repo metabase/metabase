@@ -10,12 +10,9 @@ import { useUniqueId } from "metabase/hooks/use-unique-id";
 import FileInput, { FileInputProps } from "metabase/core/components/FileInput";
 import FormField from "metabase/core/components/FormField";
 
-export type FormFileInputEncoding = "base64";
-
 export interface FormFileInputProps
   extends Omit<FileInputProps, "value" | "onChange" | "onBlur"> {
   name: string;
-  encoding?: FormFileInputEncoding;
   title?: string;
   description?: ReactNode;
   optional?: boolean;
@@ -24,7 +21,6 @@ export interface FormFileInputProps
 const FormFileInput = forwardRef(function FormFileInput(
   {
     name,
-    encoding,
     className,
     style,
     title,
@@ -39,9 +35,9 @@ const FormFileInput = forwardRef(function FormFileInput(
 
   const handleChange = useCallback(
     async (event: ChangeEvent<HTMLInputElement>) => {
-      setValue(await getFieldValue(event.target, encoding));
+      setValue(await getFieldValue(event.target));
     },
-    [encoding, setValue],
+    [setValue],
   );
 
   return (
@@ -66,10 +62,7 @@ const FormFileInput = forwardRef(function FormFileInput(
   );
 });
 
-const getFieldValue = (
-  { files }: HTMLInputElement,
-  encoding?: FormFileInputEncoding,
-): Promise<string> => {
+const getFieldValue = ({ files }: HTMLInputElement): Promise<string> => {
   return new Promise((resolve, reject) => {
     if (!files?.length) {
       resolve("");
@@ -79,12 +72,7 @@ const getFieldValue = (
     const reader = new FileReader();
     reader.onload = () => resolve(String(reader.result));
     reader.onerror = () => reject();
-
-    if (encoding === "base64") {
-      reader.readAsDataURL(files[0]);
-    } else {
-      reader.readAsText(files[0]);
-    }
+    reader.readAsDataURL(files[0]);
   });
 };
 

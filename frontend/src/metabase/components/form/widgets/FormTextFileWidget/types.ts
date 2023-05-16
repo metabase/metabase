@@ -5,5 +5,3 @@ export interface FormField {
   onChange: (value: string) => void;
   onBlur: (value: string) => void;
 }
-
-export type TreatBeforePosting = "base64";

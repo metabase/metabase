@@ -203,8 +203,8 @@
                 (String. ^bytes (:value (t2/select-one Secret :id id)) "UTF-8")
                 (value-kw details))]
     (case (options-kw details)
-      "uploaded" (String. ^bytes (driver.u/decode-uploaded value) "UTF-8")
-      "local" (slurp (if id value (path-kw details)))
+      "uploaded" (String. ^bytes (driver.u/maybe-decode-data-url value) "UTF-8")
+      "local"    (slurp (if id value (path-kw details)))
       value)))
 
 (def

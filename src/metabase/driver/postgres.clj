@@ -626,12 +626,12 @@
     "inet"  :type/IPAddress
     nil))
 
-(defn- pkcs-12-key-value?
-  "If a value was uploaded for the SSL key, return whether it's using the PKCS-12 format."
+(defn- key-file-ext
   [ssl-key-value]
   (when ssl-key-value
-    (= (second (re-find secret/uploaded-base-64-prefix-pattern ssl-key-value))
-       "x-pkcs12")))
+    (case (second (re-find secret/uploaded-base-64-prefix-pattern ssl-key-value))
+      "x-pkcs12" ".p12"
+      ".tmp")))
 
 (defn- ssl-params
   "Builds the params to include in the JDBC connection spec for an SSL connection."
@@ -655,7 +655,7 @@
       (assoc :sslrootcert (secret/value->file! ssl-root-cert :postgres))
 
       (has-value? ssl-client-key)
-      (assoc :sslkey (secret/value->file! ssl-client-key :postgres (when (pkcs-12-key-value? ssl-key-value) ".p12")))
+      (assoc :sslkey (secret/value->file! ssl-client-key :postgres (key-file-ext ssl-key-value)))
 
       (has-value? ssl-client-cert)
       (assoc :sslcert (secret/value->file! ssl-client-cert :postgres))

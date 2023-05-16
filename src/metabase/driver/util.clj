@@ -229,8 +229,7 @@
   (if (premium-features/is-hosted?)
     [(-> (assoc conn-prop
            :name (str prop-name "-value")
-           :type "textFile"
-           :treat-before-posting "base64")
+           :type "textFile")
          (dissoc :secret-kind))]
     [(cond-> {:name (str prop-name "-options")
               :display-name disp-nm
@@ -243,7 +242,6 @@
              visible-if (assoc :visible-if visible-if))
      (-> {:name (str prop-name "-value")
           :type "textFile"
-          :treat-before-posting "base64"
           :visible-if {(keyword (str prop-name "-options")) "uploaded"}}
        (dissoc :secret-kind))
      {:name (str prop-name "-path")
@@ -384,11 +382,16 @@
                 (assoc :visible-if v-ifs*))))
          final-props)))
 
-(defn decode-uploaded
-  "Decode `uploaded-data` as an uploaded field.
-  Optionally strip the Base64 MIME prefix."
-  ^bytes [uploaded-data]
-  (u/decode-base64-to-bytes (str/replace uploaded-data #"^data:[^;]+;base64," "")))
+(defn maybe-decode-data-url
+  "Returns bytes decoded from a string which may be encoded as a data URL"
+  ^bytes [^String s]
+  (when s
+    (let [[match _ encoding ^String data] (re-find #"data:([\w-/]*);?(base64|),(.*)" s)]
+      (if match
+        (case encoding
+          "base64" (u/decode-base64-to-bytes data)
+          (.getBytes data "UTF-8"))
+        (.getBytes s "UTF-8")))))
 
 (defn db-details-client->server
   "Currently, this transforms client side values for the various back into :type :secret for storage on the server.
@@ -398,36 +401,20 @@
   [driver db-details]
   (when db-details
     (assert (some? driver))
-    (let [secret-names->props    (reduce (fn [acc prop]
-                                           (if (= "secret" (:type prop))
-                                             (assoc acc (:name prop) prop)
-                                             acc))
-                                         {}
-                                         (driver/connection-properties driver))
-
-          secrets-server->client (reduce (fn [acc prop]
-                                           (assoc acc (keyword (:name prop)) prop))
-                                   {}
-                                   (connection-props-server->client driver (vals secret-names->props)))]
+    (let [secret-names->props (reduce (fn [acc prop]
+                                        (if (= "secret" (:type prop))
+                                          (assoc acc (:name prop) prop)
+                                          acc))
+                                      {}
+                                      (driver/connection-properties driver))]
       (reduce-kv (fn [acc prop-name _prop]
                    (let [subprop    (fn [suffix]
                                       (keyword (str prop-name suffix)))
                          path-kw    (subprop "-path")
                          val-kw     (subprop "-value")
                          source-kw  (subprop "-source")
-                         options-kw (subprop "-options")
                          path       (path-kw acc)
-                         get-treat  (fn []
-                                      (let [options (options-kw acc)]
-                                        (when (= "uploaded" options)
-                                          ;; the :treat-before-posting, if defined, would be applied to the client
-                                          ;; version of the -value property (the :type "textFile" one)
-                                          (let [textfile-prop (val-kw secrets-server->client)]
-                                            (:treat-before-posting textfile-prop)))))
-                         value      (let [^String v (val-kw acc)]
-                                      (case (get-treat)
-                                        "base64" (decode-uploaded v)
-                                        v))]
+                         value      (maybe-decode-data-url (val-kw acc))]
                      (cond-> (assoc acc val-kw value)
                        ;; keywords here are associated to nil, rather than being dissoced, because they will be merged
                        ;; with the existing db-details blob to produce the final details
