@@ -50,14 +50,14 @@ const NewModelOptions = (props: NewModelOptionsProps) => {
 
   useMount(() => {
     const { location } = props;
-    if (Object.keys(location.query).length > 0) {
+    if (location.search.length > 0) {
       const { database, table, ...options } = location.query;
       dispatch(
         push(
           Urls.newQuestion({
             ...options,
-            databaseId: database ? parseInt(database as string) : undefined,
-            tableId: table ? parseInt(table as string) : undefined,
+            databaseId: database ? Number(database) : undefined,
+            tableId: table ? Number(table) : undefined,
           }),
         ),
       );
@@ -125,6 +125,7 @@ const NewModelOptions = (props: NewModelOptionsProps) => {
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   Databases.loadList({
     loadingAndErrorWrapper: false,
