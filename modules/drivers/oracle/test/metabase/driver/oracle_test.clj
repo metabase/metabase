@@ -395,8 +395,9 @@
                                          [(-> (assoc
                                                ssl-details
                                                :ssl-truststore-value
-                                               (.encodeToString (Base64/getEncoder)
-                                                                (mt/file->bytes (:ssl-truststore-path ssl-details)))
+                                               (str "data:application/octet-stream;base64,"
+                                                    (.encodeToString (Base64/getEncoder)
+                                                                     (mt/file->bytes (:ssl-truststore-path ssl-details))))
                                                :ssl-truststore-options
                                                "uploaded")
                                               (dissoc :ssl-truststore-path))
