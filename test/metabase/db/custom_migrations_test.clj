@@ -9,7 +9,6 @@
    [clojurewerkz.quartzite.scheduler :as qs]
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.db.schema-migrations-test.impl :as impl]
-   [metabase.mbql.normalize :as mbql.normalize]
    [metabase.models :refer [Card Database User]]
    [metabase.models.interface :as mi]
    [metabase.task :as task]
@@ -166,15 +165,15 @@
           (testing "legacy result_metadata are updated to the current format"
             (is (= (->> result_metadata
                         json/generate-string
-                        (#'mi/result-metadata-out)
+                        ((:out mi/transform-result-metadata))
                         json/generate-string)
                    migrated-result-metadata)))
           (testing "result_metadata is equivalent before and after migration"
             (is (= (->> result_metadata
                         json/generate-string
-                        (#'mi/result-metadata-out)
+                        ((:out mi/transform-result-metadata))
                         json/generate-string)
                    (-> migrated-result-metadata
                        json/parse-string
-                       (#'mi/result-metadata-out)
+                       ((:out mi/transform-result-metadata))
                        json/generate-string)))))))))
