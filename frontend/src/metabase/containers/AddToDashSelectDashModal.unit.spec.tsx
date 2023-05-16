@@ -7,7 +7,6 @@ import {
   setupSearchEndpoints,
   setupCollectionByIdEndpoint,
   setupCollectionItemsEndpoint,
-  setupRootCollectionItemsEndpoint,
 } from "__support__/server-mocks";
 import {
   renderWithProviders,
@@ -98,8 +97,7 @@ const setup = async ({
 }: SetupOpts = {}) => {
   setupSearchEndpoints([]);
   setupCollectionsEndpoints(collections);
-  setupCollectionItemsEndpoint({ dashboards: [dashboard] });
-  setupRootCollectionItemsEndpoint({ collections, dashboards: [dashboard] });
+  setupCollectionItemsEndpoint({ dashboards: [dashboard], collections });
   setupCollectionByIdEndpoint({ collections, error });
   setupMostRecentlyViewedDashboard(noRecentDashboard ? undefined : dashboard);
 

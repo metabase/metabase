@@ -3,7 +3,6 @@ import userEvent from "@testing-library/user-event";
 import {
   setupCollectionsEndpoints,
   setupCollectionItemsEndpoint,
-  setupRootCollectionItemsEndpoint,
   setupPersonalCollectionItemsEndpont,
 } from "__support__/server-mocks";
 import {
@@ -95,8 +94,7 @@ async function setup({
   extraCollections = [],
   ...props
 } = {}) {
-  setupCollectionItemsEndpoint({ dashboards: Object.values(DASHBOARD) });
-  setupRootCollectionItemsEndpoint({
+  setupCollectionItemsEndpoint({
     collections: Object.values(COLLECTION).concat(extraCollections),
     dashboards: Object.values(DASHBOARD),
   });

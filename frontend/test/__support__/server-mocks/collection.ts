@@ -85,7 +85,7 @@ export function setupCollectionByIdEndpoint({
     return;
   }
 
-  fetchMock.get(/api\/collection\/\d+/, url => {
+  fetchMock.get(/api\/collection\/\d+|root|personal/, url => {
     const collectionIdParam = url.split("/")[5];
     const collectionId = Number(collectionIdParam);
 
@@ -104,7 +104,7 @@ function setupCollectionWithErrorById({
   error: string;
   status?: number;
 }) {
-  fetchMock.get(/api\/collection\/\d+/, () => {
+  fetchMock.get(/api\/collection\/\d+|personal|root/, () => {
     return {
       body: error,
       status,
@@ -112,38 +112,36 @@ function setupCollectionWithErrorById({
   });
 }
 
-export function setupRootCollectionItemsEndpoint({
+export function setupCollectionItemsEndpoint({
   collections = [],
   dashboards = [],
 }: {
+  dashboards: Dashboard[];
   collections: Collection[];
-  dashboards: Dashboard[];
 }) {
-  fetchMock.get("path:/api/collection/root/items", () => {
-    const rootDashboards = dashboards.filter(
-      dashboard => dashboard.collection_id === null,
-    );
-    const rootCollections = collections.filter(
-      collection => collection.location !== "/",
-    );
-    const data = [...rootDashboards, ...rootCollections];
-
-    return {
-      total: data.length,
-      data,
-    };
-  });
-}
-
-export function setupCollectionItemsEndpoint({
-  dashboards = [],
-}: {
-  dashboards: Dashboard[];
-}) {
-  fetchMock.get(/api\/collection\/\d+\/items/, url => {
+  fetchMock.get(/api\/collection\/(\d+|root)\/items/, url => {
     const collectionIdParam = url.split("/")[5];
 
     const collectionId = Number(collectionIdParam);
+    const isRootOrPersonal = Number.isNaN(collectionId);
+
+    // root or personal
+    if (isRootOrPersonal) {
+      if (collectionIdParam === "root") {
+        const rootDashboards = dashboards.filter(
+          dashboard => dashboard.collection_id === null,
+        );
+        const rootCollections = collections.filter(
+          collection => collection.location !== "/",
+        );
+        const data = [...rootDashboards, ...rootCollections];
+
+        return {
+          total: data.length,
+          data,
+        };
+      }
+    }
 
     const dashboardsOfCollection = dashboards.filter(
       dashboard => dashboard.collection_id === collectionId,
