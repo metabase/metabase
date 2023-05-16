@@ -711,7 +711,7 @@
 (deftest ^:parallel e2e-exclude-date-parts-test
   ;; Exclude bigquery from this test, because there's a bug with bigquery and exclusion of date parts (metabase#30790)
   (mt/test-drivers (disj (sql-parameters-engines) :bigquery-cloud-sdk)
-    (testing (str "test that excluding date parts work correctly. It should be enough to try just one type of exclusion, because"
+    (testing (str "test that excluding date parts work correctly. It should be enough to try just one type of exclusion "
                   "here, since handling them gets delegated to the functions in `metabase.driver.common.parameters.dates`, "
                   "which is fully-tested :D")
       (doseq [[exclusion-string expected] {"exclude-months-Jan"     962
