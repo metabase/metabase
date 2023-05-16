@@ -3,7 +3,7 @@ import { color } from "metabase/lib/colors";
 
 export const InputContainer = styled.div`
   border: none;
-  border-radius: 8px;
+  border-radius: 6px;
   display: flex;
   flex-direction: column;
   width: 100%;
