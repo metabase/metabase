@@ -9,6 +9,7 @@
    [clojurewerkz.quartzite.scheduler :as qs]
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.db.schema-migrations-test.impl :as impl]
+   [metabase.mbql.normalize :as mbql.normalize]
    [metabase.models :refer [Card Database User]]
    [metabase.models.interface :as mi]
    [metabase.task :as task]
@@ -117,3 +118,59 @@
                      json/parse-string
                      mi/normalize-visualization-settings
                      (#'mi/migrate-viz-settings)))))))))
+
+(deftest migrate-legacy-result-metadata-field-refs-test
+  (testing "Migrations v47.00-027: update visualization_settings.column_settings legacy field refs"
+    (impl/test-migrations ["v47.00-027"] [migrate!]
+      (let [result_metadata [{"field_ref" ["field-literal" "column_name" "type/Text"]}
+                             {"field_ref" ["field-id" 39]}
+                             {"field_ref" ["field" 40 nil]}
+                             {"field_ref" ["fk->" ["field-id" 39] ["field-id" 40]]}
+                             {"field_ref" ["fk->" 41 42]}]
+            expected        [{"field_ref" ["field" "column_name" {"base-type" "type/Text"}]}
+                             {"field_ref" ["field" 39 nil]}
+                             {"field_ref" ["field" 40 nil]}
+                             {"field_ref" ["field" 40 {"source-field" 39}]}
+                             {"field_ref" ["field" 42 {"source-field" 41}]}]
+            user-id     (t2/insert-returning-pks! User {:first_name  "Howard"
+                                                        :last_name   "Hughes"
+                                                        :email       "howard@aircraft.com"
+                                                        :password    "superstrong"
+                                                        :date_joined :%now})
+            database-id (t2/insert-returning-pks! Database {:name       "DB"
+                                                            :engine     "h2"
+                                                            :created_at :%now
+                                                            :updated_at :%now
+                                                            :details    "{}"})
+            card-id     (t2/insert-returning-pks! Card {:name                   "My Saved Question"
+                                                        :created_at             :%now
+                                                        :updated_at             :%now
+                                                        :creator_id             user-id
+                                                        :display                "table"
+                                                        :dataset_query          "{}"
+                                                        :visualization_settings "{}"
+                                                        :result_metadata        (json/generate-string result_metadata)
+                                                        :database_id            database-id
+                                                        :collection_id          nil})]
+        (migrate!)
+        (let [migrated-result-metadata (:result_metadata (t2/query-one {:select [:result_metadata]
+                                                                        :from   [:report_card]
+                                                                        :where  [:= :id card-id]}))]
+          (testing "legacy result_metadata field refs are updated"
+            (is (= expected
+                   (json/parse-string migrated-result-metadata))))
+          (testing "legacy result_metadata are updated to the current format"
+            (is (= (->> result_metadata
+                        json/generate-string
+                        (#'mi/result-metadata-out)
+                        json/generate-string)
+                   migrated-result-metadata)))
+          (testing "result_metadata is equivalent before and after migration"
+            (is (= (->> result_metadata
+                        json/generate-string
+                        (#'mi/result-metadata-out)
+                        json/generate-string)
+                   (-> migrated-result-metadata
+                       json/parse-string
+                       (#'mi/result-metadata-out)
+                       json/generate-string)))))))))

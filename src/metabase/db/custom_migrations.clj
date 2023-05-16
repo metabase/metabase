@@ -173,7 +173,7 @@
                      :set    {:json_unfolding true}
                      :where  [:in :metabase_field.id field-ids-to-update]}))))
 
-(defn- update-legacy-field-refs [viz-settings]
+(defn- update-legacy-field-refs-in-viz-settings [viz-settings]
   (let [old-to-new (fn [old]
                      (match old
                        ["ref" ref] ["ref" (match ref
@@ -205,9 +205,40 @@
                                  :set    {:visualization_settings visualization_settings}
                                  :where  [:= :id id]}))]
     (run! update! (eduction (keep (fn [{:keys [id visualization_settings]}]
-                                    (let [updated (update-legacy-field-refs visualization_settings)]
+                                    (let [updated (update-legacy-field-refs-in-viz-settings visualization_settings)]
                                       (when (not= visualization_settings updated)
                                         {:id                     id
                                          :visualization_settings updated}))))
                             (t2/reducible-query {:select [:id :visualization_settings]
+                                                 :from   [:report_card]})))))
+
+(defn- update-legacy-field-refs-in-result-metadata [result-metadata]
+  (let [old-to-new (fn [ref]
+                     (match ref
+                       ["field-id" x] ["field" x nil]
+                       ["field-literal" x y] ["field" x {"base-type" y}]
+                       ["fk->" x y] (let [x (match x
+                                              [_x0 x1] x1
+                                              x x)
+                                          y (match y
+                                              [_y0 y1] y1
+                                              y y)]
+                                      ["field" y {:source-field x}])
+                       _ ref))]
+    (->> result-metadata
+         (json/parse-string)
+         (map #(m/update-existing % "field_ref" old-to-new))
+         (json/generate-string))))
+
+(define-migration MigrateLegacyResultMetadataFieldRefs
+  (let [update! (fn [{:keys [id result_metadata]}]
+                  (t2/query-one {:update :report_card
+                                 :set    {:result_metadata result_metadata}
+                                 :where  [:= :id id]}))]
+    (run! update! (eduction (keep (fn [{:keys [id result_metadata]}]
+                                    (let [updated (update-legacy-field-refs-in-result-metadata result_metadata)]
+                                      (when (not= result_metadata updated)
+                                        {:id                     id
+                                         :result_metadata updated}))))
+                            (t2/reducible-query {:select [:id :result_metadata]
                                                  :from   [:report_card]})))))
