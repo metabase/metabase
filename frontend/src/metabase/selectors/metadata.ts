@@ -133,9 +133,11 @@ export const getMetadata: (
     });
 
     // table
-    hydrateList(metadata.tables, "fields", metadata.fields);
-    hydrateList(metadata.tables, "segments", metadata.segments);
-    hydrateList(metadata.tables, "metrics", metadata.metrics);
+    Object.values(metadata.tables).forEach(table => {
+      table.fields = hydrateTableFields(table, metadata);
+      table.segments = hydrateTableSegments(table, metadata);
+      table.metrics = hyrdateTableMetrics(table, metadata);
+    });
     Object.values(metadata.tables).forEach(table => {
       table.db = metadata.database(table.db_id || table.db) ?? undefined;
     });
@@ -259,7 +261,22 @@ function createTable(table: NormalizedTable, metadata: Metadata): Table {
   return instance;
 }
 
-function createField(field: NormalizedField, metadata: Metadata) {
+function hydrateTableFields(table: Table, metadata: Metadata): Field[] {
+  const fieldIds = table.getPlainObject().fields ?? [];
+  return fieldIds.map(id => metadata.field(id)).filter(isNotNull);
+}
+
+function hydrateTableSegments(table: Table, metadata: Metadata): Segment[] {
+  const segmentIds = table.getPlainObject().segments ?? [];
+  return segmentIds.map(id => metadata.segment(id)).filter(isNotNull);
+}
+
+function hyrdateTableMetrics(table: Table, metadata: Metadata): Metric[] {
+  const metricIds = table.getPlainObject().metrics ?? [];
+  return metricIds.map(id => metadata.metric(id)).filter(isNotNull);
+}
+
+function createField(field: NormalizedField, metadata: Metadata): Field {
   // We need a way to distinguish field objects that come from the server
   // vs. those that are created client-side to handle lossy transformations between
   // Field instances and FieldDimension instances.
@@ -279,45 +296,23 @@ function hydrateNameField(field: Field, metadata: Metadata): Field | undefined {
   }
 }
 
-function createMetric(metric: NormalizedMetric, metadata: Metadata) {
+function createMetric(metric: NormalizedMetric, metadata: Metadata): Metric {
   const instance = new Metric(metric);
   instance.metadata = metadata;
   return instance;
 }
 
-function createSegment(segment: NormalizedSegment, metadata: Metadata) {
+function createSegment(
+  segment: NormalizedSegment,
+  metadata: Metadata,
+): Segment {
   const instance = new Segment(segment);
   instance.metadata = metadata;
   return instance;
 }
 
-function createQuestion(card: Card, metadata: Metadata) {
+function createQuestion(card: Card, metadata: Metadata): Question {
   return new Question(card, metadata);
-}
-
-// calls a function to derive the value of a property for every object
-function hydrate<MetadataObject>(
-  objects: Record<string, MetadataObject>,
-  property: keyof MetadataObject,
-  getPropertyValue: (object: MetadataObject) => any,
-) {
-  for (const object of Object.values(objects)) {
-    object[property] = getPropertyValue(object);
-  }
-}
-
-// replaces lists of ids with the actual objects
-function hydrateList<MetadataObject, RelatedMetadataObject>(
-  objects: Record<string, MetadataObject>,
-  property: keyof MetadataObject,
-  targetObjects: Record<string, RelatedMetadataObject>,
-) {
-  hydrate(objects, property, object => {
-    const relatedObjectsIdList = (object[property] || []) as string[];
-    return relatedObjectsIdList
-      .map((id: string) => targetObjects[id])
-      .filter(Boolean);
-  });
 }
 
 function filterValues<T>(obj: Record<string, T>, pred: (obj: T) => boolean) {
