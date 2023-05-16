@@ -1062,9 +1062,7 @@
   {id                          ms/PositiveInt
    include_editable_data_model [:maybe ms/BooleanString]
    include_hidden              [:maybe ms/BooleanString]}
-  (let [include_editable_data_model (Boolean/parseBoolean include_editable_data_model)
-        include_hidden              (Boolean/parseBoolean include_hidden)
-        filter-schemas (fn [schemas]
+  (let [filter-schemas (fn [schemas]
                          (if include_editable_data_model
                            (if-let [f (u/ignore-exceptions
                                        (classloader/require 'metabase-enterprise.advanced-permissions.common)
@@ -1149,8 +1147,8 @@
   (api/check-404 (seq (schema-tables-list
                        id
                        schema
-                       (Boolean/parseBoolean include_hidden)
-                       (Boolean/parseBoolean include_editable_data_model)))))
+                       include_hidden
+                       include_editable_data_model))))
 
 (api/defendpoint GET "/:id/schema/"
   "Return a list of Tables for a Database whose `schema` is `nil` or an empty string."
@@ -1158,10 +1156,8 @@
   {id                          ms/PositiveInt
    include_hidden              [:maybe ms/BooleanString]
    include_editable_data_model [:maybe ms/BooleanString]}
-  (let [include_hidden              (Boolean/parseBoolean include_hidden)
-        include_editable_data_model (Boolean/parseBoolean include_editable_data_model)]
-    (api/check-404 (seq (concat (schema-tables-list id nil include_hidden include_editable_data_model)
-                                (schema-tables-list id "" include_hidden include_editable_data_model))))))
+  (api/check-404 (seq (concat (schema-tables-list id nil include_hidden include_editable_data_model)
+                              (schema-tables-list id "" include_hidden include_editable_data_model)))))
 
 (api/defendpoint GET ["/:virtual-db/schema/:schema"
                       :virtual-db (re-pattern (str mbql.s/saved-questions-virtual-database-id))]
