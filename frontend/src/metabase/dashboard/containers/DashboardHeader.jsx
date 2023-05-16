@@ -281,7 +281,7 @@ class DashboardHeader extends Component {
             }
           >
             <div>
-              <Tooltip tooltip={t`Add a heading or text box`}>
+              <Tooltip tooltip={t`Add a heading or text`}>
                 <DashboardHeaderButton
                   key="add-text"
                   onClick={showAddTextPopover}
