@@ -125,31 +125,29 @@ export const getMetadata: (
       Object.values(questions).map(c => [c.id, createQuestion(c, metadata)]),
     );
 
-    // database
-    hydrate(metadata.databases, "tables", database =>
-      hydrateDatabaseTables(database, metadata),
-    );
-    // schema
-    hydrate(metadata.schemas, "database", schema =>
-      hydrateSchemaDatabase(schema, metadata),
-    );
+    Object.values(metadata.databases).forEach(database => {
+      database.tables = hydrateDatabaseTables(database, metadata);
+    });
+    Object.values(metadata.schemas).forEach(schema => {
+      schema.database = hydrateSchemaDatabase(schema, metadata);
+    });
 
     // table
     hydrateList(metadata.tables, "fields", metadata.fields);
     hydrateList(metadata.tables, "segments", metadata.segments);
     hydrateList(metadata.tables, "metrics", metadata.metrics);
-    hydrate(metadata.tables, "db", table =>
-      metadata.database(table.db_id || table.db),
-    );
-    hydrate(metadata.tables, "schema", table => metadata.schema(table.schema));
-
-    hydrate(metadata.databases, "schemas", database =>
-      hydrateDatabaseSchemas(database, metadata),
-    );
-
-    hydrate(metadata.schemas, "tables", schema =>
-      hydrateSchemaTables(schema, metadata),
-    );
+    Object.values(metadata.tables).forEach(table => {
+      table.db = hydrateTableDatabase(table, metadata);
+    });
+    Object.values(metadata.tables).forEach(table => {
+      table.schema = hydrateTableSchema(table, metadata);
+    });
+    Object.values(metadata.databases).forEach(database => {
+      database.schemas = hydrateDatabaseSchemas(database, metadata);
+    });
+    Object.values(metadata.schemas).forEach(schema => {
+      schema.tables = hydrateSchemaTables(schema, metadata);
+    });
 
     // segments
     hydrate(
@@ -227,10 +225,13 @@ function hydrateDatabaseTables(
   );
 }
 
-function hydrateDatabaseSchemas(database: Database, metadata: Metadata) {
+function hydrateDatabaseSchemas(
+  database: Database,
+  metadata: Metadata,
+): Schema[] {
   const schemaIds = database.getPlainObject().schemas;
   if (schemaIds) {
-    return schemaIds.map(s => metadata.schema(s));
+    return schemaIds.map(s => metadata.schema(s)).filter(isNotNull);
   }
 
   return Object.values(metadata.schemas).filter(
@@ -251,11 +252,11 @@ function hydrateSchemaDatabase(
   return metadata.database(schema.getPlainObject().database) ?? undefined;
 }
 
-function hydrateSchemaTables(schema: Schema, metadata: Metadata) {
+function hydrateSchemaTables(schema: Schema, metadata: Metadata): Table[] {
   const tableIds = schema.getPlainObject().tables;
   return tableIds
     ? // use the schema tables if they exist
-      tableIds.map(table => metadata.table(table))
+      tableIds.map(table => metadata.table(table)).filter(isNotNull)
     : schema.database && schema.database.getTables().length > 0
     ? // if the schema has a database with tables, use those
       schema.database
@@ -267,10 +268,24 @@ function hydrateSchemaTables(schema: Schema, metadata: Metadata) {
       );
 }
 
-function createTable(table: NormalizedTable, metadata: Metadata) {
+function createTable(table: NormalizedTable, metadata: Metadata): Table {
   const instance = new Table(table);
   instance.metadata = metadata;
   return instance;
+}
+
+function hydrateTableDatabase(
+  table: Table,
+  metadata: Metadata,
+): Database | undefined {
+  return metadata.database(table.db_id || table.db) ?? undefined;
+}
+
+function hydrateTableSchema(
+  table: Table,
+  metadata: Metadata,
+): Schema | undefined {
+  return metadata.schema(table.schema) ?? undefined;
 }
 
 function createField(field: NormalizedField, metadata: Metadata) {

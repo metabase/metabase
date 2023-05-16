@@ -28,7 +28,7 @@ import { getUniqueFieldId } from "./utils/fields";
 export default class Metadata extends Base {
   databases: Record<string, Database>;
   schemas: Record<string, Schema>;
-  tables: Record<string, TableId>;
+  tables: Record<string, Table>;
   fields: Record<string, Field>;
   metrics: Record<string, Metric>;
   segments: Record<string, Segment>;
