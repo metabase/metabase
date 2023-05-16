@@ -1,3 +1,5 @@
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-nocheck
 import { PRODUCTS } from "__support__/sample_database_fixture";
 import Table from "./Table";
 

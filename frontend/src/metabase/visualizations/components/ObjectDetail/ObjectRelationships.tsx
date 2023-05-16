@@ -37,7 +37,9 @@ export function Relationships({
   const fkCountsByTable = foreignKeyCountsByOriginTable(tableForeignKeys);
 
   const sortedForeignTables = tableForeignKeys.sort((a, b) =>
-    a.origin.table.display_name.localeCompare(b.origin.table.display_name),
+    (a.origin.table?.display_name ?? "").localeCompare(
+      b.origin.table?.display_name ?? "",
+    ),
   );
 
   return (
@@ -55,8 +57,16 @@ export function Relationships({
           <Relationship
             key={`${fk.origin_id}-${fk.destination_id}`}
             fk={fk}
-            fkCountInfo={tableForeignKeyReferences?.[fk.origin.id]}
-            fkCount={fkCountsByTable?.[fk.origin.table.id] || 0}
+            fkCountInfo={
+              fk.origin.id != null
+                ? tableForeignKeyReferences?.[fk.origin.id]
+                : null
+            }
+            fkCount={
+              (fk.origin.table != null &&
+                fkCountsByTable?.[fk.origin.table?.id]) ||
+              0
+            }
             foreignKeyClicked={foreignKeyClicked}
           />
         ))}
@@ -81,7 +91,7 @@ function Relationship({
   const fkCountValue = fkCountInfo?.value || 0;
   const isLoaded = fkCountInfo?.status === 1;
   const fkClickable = isLoaded && Boolean(fkCountInfo.value);
-  const originTableName = fk.origin.table.display_name;
+  const originTableName = fk.origin.table?.display_name ?? "";
 
   const relationName = inflect(originTableName, fkCountValue);
 
