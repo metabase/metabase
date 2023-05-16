@@ -276,6 +276,7 @@
            (honeysql->replacement-snippet-info driver))
 
       (and (params.dates/date-type? param-type)
+           (string? value)
            (re-matches params.dates/date-exclude-regex value))
       (let [field-clause (field->clause driver field param-type)]
         (->> (params.dates/date-string->filter value field-clause)
