@@ -31,7 +31,6 @@ export function columnSettings({
   hidden,
   ...def
 } = {}) {
-  console.log("here in columnSettings");
   return nestedSettings("column_settings", {
     section: t`Formatting`,
     objectName: "column",

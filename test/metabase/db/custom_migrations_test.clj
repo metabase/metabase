@@ -121,25 +121,12 @@
 (deftest migrate-legacy-column-settings-field-refs-test
   (testing "Migrations v47.00-027: update visualization_settings.column_settings legacy field refs"
     (impl/test-migrations ["v47.00-027"] [migrate!]
-      (let [result_metadata (let [default-metadata {:base_type :type/BigInteger,
-                                                    :coercion_strategy nil,
-                                                    :description "This is a unique ID for the product. It is also called the “Invoice number” or “Confirmation number” in customer facing emails and screens.",
-                                                    :display_name "ID",
-                                                    :effective_type :type/BigInteger,
-                                                    :fingerprint nil,
-                                                    :id 37,
-                                                    :name "ID",
-                                                    :semantic_type :type/PK,
-                                                    :settings nil,
-                                                    :visibility_type "normal"}]
-                              [(merge default-metadata {:field_ref [:field 1 nil]
-                                                        :id 1})
-                               (merge default-metadata {:field_ref [:field 1 {:join-alias "Self-joined Table"}]
-                                                        :id 1})
-                               (merge default-metadata {:field_ref [:field 2 {:source-field 3}]
-                                                        :id 2})
-                               (merge default-metadata {:field_ref [:field "column_name" {:base-type :type/Text}]
-                                                        :id "column_name"})])
+      (let [result_metadata
+            [{:field_ref [:field 1 nil]}
+             {:field_ref [:field 1 {:join-alias "Self-joined Table"}]}
+             {:field_ref [:field 2 {:source-field 3}]}
+             {:field_ref [:field "column_name" {:base-type :type/Text}]}
+             {:field_ref [:name "column_name"]}]
             visualization-settings
             {"column_settings" (-> {["ref" ["field" 1 nil]]                                   {"column_title" "1"}
                                     ["ref" ["field" 2 {"source-field" 3}]]                    {"column_title" "2"}
@@ -148,7 +135,7 @@
                                    (update-keys json/generate-string))}
             expected
             {"column_settings" (-> {["ref" ["field" 1 nil]]                                   {"column_title" "1"}
-                                    ["ref" ["field" 1 {"join-alias" "Self-joined Table"}]]     {"column_title" "1"}
+                                    ["ref" ["field" 1 {"join-alias" "Self-joined Table"}]]    {"column_title" "1"}
                                     ["ref" ["field" 2 {"source-field" 3}]]                    {"column_title" "2"}
                                     ["ref" ["field" "column_name" {"base-type" "type/Text"}]] {"column_title" "3"}
                                     ["name" "column_name"]                                    {"column_title" "4"}}
