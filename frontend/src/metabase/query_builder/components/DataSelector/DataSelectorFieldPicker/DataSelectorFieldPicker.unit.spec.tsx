@@ -2,7 +2,7 @@ import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { ORDERS } from "__support__/sample_database_fixture";
 
-import type { Table } from "metabase-types/api/table";
+import Table from "metabase-lib/metadata/Table";
 
 import DataSelectorFieldPicker from "./DataSelectorFieldPicker";
 

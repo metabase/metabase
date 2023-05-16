@@ -44,6 +44,9 @@ const CollectionHeader = ({
         onUpdateCollection={onUpdateCollection}
       />
       <HeaderActions data-testid="collection-menu">
+        {canUpload && (
+          <CollectionUpload collection={collection} onUpload={onUpload} />
+        )}
         <CollectionTimeline collection={collection} />
         <CollectionBookmark
           collection={collection}
@@ -51,9 +54,6 @@ const CollectionHeader = ({
           onCreateBookmark={onCreateBookmark}
           onDeleteBookmark={onDeleteBookmark}
         />
-        {canUpload && (
-          <CollectionUpload collection={collection} onUpload={onUpload} />
-        )}
         <CollectionMenu
           collection={collection}
           isAdmin={isAdmin}
@@ -65,4 +65,5 @@ const CollectionHeader = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default withRouter(CollectionHeader);

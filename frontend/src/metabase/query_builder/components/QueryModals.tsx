@@ -355,4 +355,5 @@ class QueryModals extends React.Component<QueryModalsProps> {
   }
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(null, mapDispatchToProps)(QueryModals);

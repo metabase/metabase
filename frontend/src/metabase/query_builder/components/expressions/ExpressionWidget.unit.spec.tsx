@@ -1,5 +1,6 @@
 import React from "react";
 import userEvent from "@testing-library/user-event";
+import { checkNotNull } from "metabase/core/utils/types";
 import { getIcon, render, screen } from "__support__/ui";
 import { createMockEntitiesState } from "__support__/store";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -131,7 +132,7 @@ const createMockQueryForExpressions = () => {
   });
 
   const metadata = getMetadata(state);
-  const query = metadata.table(ORDERS_ID)?.query();
+  const query = checkNotNull(metadata.table(ORDERS_ID)).query();
 
   return query;
 };

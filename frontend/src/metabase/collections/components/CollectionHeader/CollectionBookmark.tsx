@@ -33,10 +33,12 @@ const CollectionBookmark = ({
   return (
     <BookmarkToggle
       isBookmarked={isBookmarked}
+      tooltipPlacement="bottom"
       onCreateBookmark={handleCreateBookmark}
       onDeleteBookmark={handleDeleteBookmark}
     />
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default CollectionBookmark;

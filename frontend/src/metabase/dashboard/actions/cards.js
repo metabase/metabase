@@ -24,12 +24,12 @@ function generateTemporaryDashcardId() {
 }
 
 export const addCardToDashboard =
-  ({ dashId, cardId }) =>
+  ({ dashId, cardId, tabId }) =>
   async (dispatch, getState) => {
     await dispatch(Questions.actions.fetch({ id: cardId }));
-    const card = Questions.selectors.getObject(getState(), {
-      entityId: cardId,
-    });
+    const card = Questions.selectors
+      .getObject(getState(), { entityId: cardId })
+      .card();
     const { dashboards, dashcards } = getState().dashboard;
     const dashboard = dashboards[dashId];
     const existingCards = dashboard.ordered_cards
@@ -42,6 +42,7 @@ export const addCardToDashboard =
     const dashcard = {
       id: generateTemporaryDashcardId(),
       dashboard_id: dashId,
+      dashboard_tab_id: tabId ?? null,
       card_id: card.id,
       card: card,
       series: [],
@@ -59,7 +60,11 @@ export const addCardToDashboard =
     dispatch(loadMetadataForDashboard([dashcard]));
   };
 
-export const addDashCardToDashboard = function ({ dashId, dashcardOverrides }) {
+export const addDashCardToDashboard = function ({
+  dashId,
+  dashcardOverrides,
+  tabId,
+}) {
   return function (dispatch, getState) {
     const { dashboards, dashcards } = getState().dashboard;
     const dashboard = dashboards[dashId];
@@ -75,6 +80,7 @@ export const addDashCardToDashboard = function ({ dashId, dashcardOverrides }) {
       card_id: null,
       card: null,
       dashboard_id: dashId,
+      dashboard_tab_id: tabId ?? null,
       series: [],
       ...getPositionForNewDashCard(
         existingCards,
@@ -89,7 +95,7 @@ export const addDashCardToDashboard = function ({ dashId, dashcardOverrides }) {
   };
 };
 
-export const addMarkdownDashCardToDashboard = function ({ dashId }) {
+export const addMarkdownDashCardToDashboard = function ({ dashId, tabId }) {
   const virtualTextCard = {
     ...createCard(),
     display: "text",
@@ -105,10 +111,11 @@ export const addMarkdownDashCardToDashboard = function ({ dashId }) {
   return addDashCardToDashboard({
     dashId: dashId,
     dashcardOverrides: dashcardOverrides,
+    tabId,
   });
 };
 
-export const addHeadingDashCardToDashboard = function ({ dashId }) {
+export const addHeadingDashCardToDashboard = function ({ dashId, tabId }) {
   const virtualTextCard = {
     ...createCard(),
     display: "heading",
@@ -125,10 +132,11 @@ export const addHeadingDashCardToDashboard = function ({ dashId }) {
   return addDashCardToDashboard({
     dashId: dashId,
     dashcardOverrides: dashcardOverrides,
+    tabId,
   });
 };
 
-export const addLinkDashCardToDashboard = function ({ dashId }) {
+export const addLinkDashCardToDashboard = function ({ dashId, tabId }) {
   const virtualLinkCard = {
     ...createCard(),
     display: "link",
@@ -144,11 +152,12 @@ export const addLinkDashCardToDashboard = function ({ dashId }) {
   return addDashCardToDashboard({
     dashId: dashId,
     dashcardOverrides: dashcardOverrides,
+    tabId,
   });
 };
 
 export const addActionToDashboard =
-  async ({ dashId, action, displayType }) =>
+  async ({ dashId, tabId, action, displayType }) =>
   dispatch => {
     const virtualActionsCard = {
       ...createCard(),
@@ -175,6 +184,7 @@ export const addActionToDashboard =
       addDashCardToDashboard({
         dashId: dashId,
         dashcardOverrides: dashcardOverrides,
+        tabId,
       }),
     );
   };

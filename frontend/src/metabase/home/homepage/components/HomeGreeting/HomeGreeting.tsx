@@ -57,4 +57,5 @@ const getMessage = (name: string | null | undefined): string => {
   return _.sample(options) ?? "";
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(mapStateToProps)(HomeGreeting);

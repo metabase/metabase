@@ -5,6 +5,7 @@ import {
   DimensionOptionsSection,
 } from "./types";
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default class DimensionOptions {
   name?: string;
   icon?: string;

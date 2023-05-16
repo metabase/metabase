@@ -57,6 +57,7 @@ describe("issue 25250", () => {
   });
 
   it("pivot table should show standalone values when collapsed to the sub-level grouping (metabase#25250)", () => {
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Product ID").should("be.visible");
 
     cy.findByTestId("viz-settings-button").click();

@@ -13,8 +13,6 @@ const questionDetails = {
 
 describeEE("issue 30535", () => {
   beforeEach(() => {
-    // TODO Remove the following line once the underlying issue is resolved!
-    cy.skipOn(true);
     restore();
     cy.signInAsAdmin();
 
@@ -34,6 +32,7 @@ describeEE("issue 30535", () => {
 
   it("user session should not apply sandboxing to a signed embedded question (metabase#30535)", () => {
     cy.icon("share").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Embed in your application").click();
 
     cy.document().then(doc => {

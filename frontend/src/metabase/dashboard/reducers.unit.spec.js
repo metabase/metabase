@@ -19,6 +19,7 @@ describe("dashboard reducers", () => {
   it("should return the initial state", () => {
     expect(initState).toEqual({
       dashboardId: null,
+      selectedTabId: null,
       dashboards: {},
       dashcardData: {},
       dashcards: {},
@@ -29,6 +30,7 @@ describe("dashboard reducers", () => {
         dashcardIds: [],
         loadingIds: [],
         startTime: null,
+        endTime: null,
         loadingStatus: "idle",
       },
       parameterValues: {},
@@ -37,6 +39,10 @@ describe("dashboard reducers", () => {
       slowCards: {},
       loadingControls: {},
       missingActionParameters: null,
+      autoApplyFilters: {
+        toastId: null,
+        toastDashboardId: null,
+      },
     });
   });
 
@@ -244,7 +250,7 @@ describe("dashboard reducers", () => {
           },
           {
             type: FETCH_DASHBOARD_CARD_DATA,
-            payload: {},
+            payload: { currentTime: 100 },
           },
         ),
       ).toMatchObject({
@@ -266,6 +272,7 @@ describe("dashboard reducers", () => {
           loadingIds: [],
           loadingStatus: "idle",
           startTime: null,
+          endTime: null,
         },
       });
     });
@@ -279,11 +286,17 @@ describe("dashboard reducers", () => {
               dashcardIds: [1, 2, 3],
               loadingIds: [3],
               loadingStatus: "running",
+              startTime: 100,
             },
           },
           {
             type: FETCH_CARD_DATA,
-            payload: { dashcard_id: 3, card_id: 1, result: {} },
+            payload: {
+              dashcard_id: 3,
+              card_id: 1,
+              result: {},
+              currentTime: 200,
+            },
           },
         ),
       ).toEqual({
@@ -292,7 +305,8 @@ describe("dashboard reducers", () => {
           dashcardIds: [1, 2, 3],
           loadingIds: [],
           loadingStatus: "complete",
-          startTime: null,
+          startTime: 100,
+          endTime: 200,
         },
         dashcardData: { 3: { 1: {} } },
       });

@@ -1,29 +1,30 @@
 (ns ^:mb/once metabase.automagic-dashboards.core-test
   (:require
-   [cheshire.core :as json]
-   [clojure.core.async :as a]
-   [clojure.set :as set]
-   [clojure.test :refer :all]
-   [java-time :as t]
-   [metabase.api.common :as api]
-   [metabase.automagic-dashboards.core :as magic]
-   [metabase.automagic-dashboards.rules :as rules]
-   [metabase.mbql.schema :as mbql.s]
-   [metabase.models :refer [Card Collection Database Field Metric Table]]
-   [metabase.models.interface :as mi]
-   [metabase.models.permissions :as perms]
-   [metabase.models.permissions-group :as perms-group]
-   [metabase.models.query :as query :refer [Query]]
-   [metabase.query-processor.async :as qp.async]
-   [metabase.sync :as sync]
-   [metabase.test :as mt]
-   [metabase.test.automagic-dashboards :as automagic-dashboards.test]
-   [metabase.util :as u]
-   [metabase.util.date-2 :as u.date]
-   [metabase.util.i18n :refer [tru]]
-   [ring.util.codec :as codec]
-   [schema.core :as s]
-   [toucan2.core :as t2]))
+    [cheshire.core :as json]
+    [clojure.core.async :as a]
+    [clojure.set :as set]
+    [clojure.string :as str]
+    [clojure.test :refer :all]
+    [java-time :as t]
+    [metabase.api.common :as api]
+    [metabase.automagic-dashboards.core :as magic]
+    [metabase.automagic-dashboards.rules :as rules]
+    [metabase.mbql.schema :as mbql.s]
+    [metabase.models :refer [Card Collection Database Field Metric Table Segment]]
+    [metabase.models.interface :as mi]
+    [metabase.models.permissions :as perms]
+    [metabase.models.permissions-group :as perms-group]
+    [metabase.models.query :as query :refer [Query]]
+    [metabase.query-processor.async :as qp.async]
+    [metabase.sync :as sync]
+    [metabase.test :as mt]
+    [metabase.test.automagic-dashboards :as automagic-dashboards.test]
+    [metabase.util :as u]
+    [metabase.util.date-2 :as u.date]
+    [metabase.util.i18n :refer [tru]]
+    [ring.util.codec :as codec]
+    [schema.core :as s]
+    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -568,6 +569,76 @@
                             :let [{:keys [name]} card]
                             :when name]
                         name)))))))))))
+
+(deftest model-title-does-not-leak-abstraction-test
+  (testing "The title of a model or question card should not be X model or X question, but just X."
+    (mt/dataset sample-dataset
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (let [source-query {:database (mt/id)
+                            :query    (mt/$ids
+                                        {:source-table $$products
+                                         :fields       [$products.category
+                                                        $products.price]})
+                            :type     :query}]
+          (mt/with-temp* [Collection [{collection-id :id}]
+                          Card       [model-card {:table_id        (mt/id :products)
+                                                  :collection_id   collection-id
+                                                  :dataset_query   source-query
+                                                  :result_metadata (mt/with-test-user
+                                                                     :rasta
+                                                                     (result-metadata-for-query
+                                                                       source-query))
+                                                  :dataset         true}]
+                          Card       [question-card {:table_id        (mt/id :products)
+                                                     :collection_id   collection-id
+                                                     :dataset_query   source-query
+                                                     :result_metadata (mt/with-test-user
+                                                                        :rasta
+                                                                        (result-metadata-for-query
+                                                                          source-query))
+                                                     :dataset         false}]]
+            (let [{model-dashboard-name :name} (mt/with-test-user :rasta (magic/automagic-analysis model-card nil))
+                  {question-dashboard-name :name} (mt/with-test-user :rasta (magic/automagic-analysis question-card nil))]
+              (is (false? (str/ends-with? model-dashboard-name "question")))
+              (is (false? (str/ends-with? model-dashboard-name "model")))
+              (is (true? (str/ends-with? model-dashboard-name (format "\"%s\"" (:name model-card)))))
+              (is (false? (str/ends-with? question-dashboard-name "question")))
+              (is (false? (str/ends-with? question-dashboard-name "model")))
+              (is (true? (str/ends-with? question-dashboard-name (format "\"%s\"" (:name question-card))))))))))))
+
+(deftest test-table-title-test
+  (testing "Given the current automagic_dashboards/field/GenericTable.yaml template, produce the expected dashboard title"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp* [Table [{table-name :name :as table} {:name "FOO"}]]
+        (= (format "A look at %s" (u/capitalize-en table-name))
+           (:name (mt/with-test-user :rasta (magic/automagic-analysis table nil))))))))
+
+(deftest test-field-title-test
+  (testing "Given the current automagic_dashboards/field/GenericField.yaml template, produce the expected dashboard title"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp* [Field [{field-name :name :as field} {:name "TOTAL"}]]
+        (= (format "A look at the %s field" (u/capitalize-en field-name))
+           (:name (mt/with-test-user :rasta (magic/automagic-analysis field nil))))))))
+
+(deftest test-metric-title-test
+  (testing "Given the current automagic_dashboards/metric/GenericMetric.yaml template, produce the expected dashboard title"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp* [Metric [{metric-name :name :as metric} {:table_id   (mt/id :venues)
+                                                              :definition {:aggregation [[:count]]}}]]
+        (= (format "A look at the %s metric" metric-name)
+           (:name (mt/with-test-user :rasta (magic/automagic-analysis metric nil))))))))
+
+(deftest test-segment-title-test
+  (testing "Given the current automagic_dashboards/metric/GenericTable.yaml template (This is the default template for segments), produce the expected dashboard title"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp* [Segment [{table-id    :table_id
+                                segment-name :name
+                                :as          segment} {:table_id   (mt/id :venues)
+                                                       :definition {:filter [:> [:field (mt/id :venues :price) nil] 10]}}]]
+        (= (format "A look at %s in the %s segment"
+                   (u/capitalize-en (t2/select-one-fn :name Table :id table-id))
+                   segment-name)
+           (:name (mt/with-test-user :rasta (magic/automagic-analysis segment nil))))))))
 
 (deftest model-with-joins-test
   ;; This model does a join of 3 tables and aliases columns.

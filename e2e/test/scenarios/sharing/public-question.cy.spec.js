@@ -71,6 +71,7 @@ describe("scenarios > question > public", () => {
 
     cy.wait("@publicQuery");
     // Name of a city from the expected results
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Winner");
   });
 

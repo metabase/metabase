@@ -47,4 +47,5 @@ const FontWidget = ({
   return <FontSelect value={value} options={options} onChange={handleChange} />;
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default FontWidget;
