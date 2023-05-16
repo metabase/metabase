@@ -294,9 +294,11 @@ describe("admin > database > add", () => {
 
       mockUploadServiceAccountJSON(serviceAccountJSON);
       mockSuccessfulDatabaseSave().then(({ request: { body } }) => {
-        expect(body.details["service-account-json"]).to.equal(
-          serviceAccountJSON,
-        );
+        expect(
+          Cypress.Blob.blobToBinaryString(
+            Cypress.Blob.dataURLToBlob(body.details["service-account-json"]),
+          ),
+        ).to.equal(serviceAccountJSON);
       });
     });
 
@@ -309,9 +311,11 @@ describe("admin > database > add", () => {
 
       mockUploadServiceAccountJSON(serviceAccountJSON);
       mockSuccessfulDatabaseSave().then(({ request: { body } }) => {
-        expect(body.details["service-account-json"]).to.equal(
-          serviceAccountJSON,
-        );
+        expect(
+          Cypress.Blob.blobToBinaryString(
+            Cypress.Blob.dataURLToBlob(body.details["service-account-json"]),
+          ),
+        ).to.equal(serviceAccountJSON);
       });
     });
   });
