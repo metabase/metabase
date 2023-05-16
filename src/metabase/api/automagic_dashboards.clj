@@ -22,6 +22,7 @@
    [metabase.transforms.materialize :as tf.materialize]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
    [ring.util.codec :as codec]
    [schema.core :as s]
@@ -62,6 +63,7 @@
 (api/defendpoint GET "/database/:id/candidates"
   "Return a list of candidates for automagic dashboards orderd by interestingness."
   [id]
+  {id ms/PositiveInt}
   (-> (t2/select-one Database :id id)
       api/read-check
       candidate-tables))

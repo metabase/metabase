@@ -18,6 +18,7 @@
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.hydrate :refer [hydrate]]
@@ -245,6 +246,7 @@
 (api/defendpoint DELETE "/:id/subscription"
   "For users to unsubscribe themselves from the given alert."
   [id]
+  {id ms/PositiveInt}
   (validation/check-has-application-permission :subscription false)
   (let [alert (pulse/retrieve-alert id)]
     (api/read-check alert)

@@ -705,6 +705,7 @@
 (api/defendpoint GET "/:id"
   "Fetch a specific Collection with standard details added"
   [id]
+  {id ms/PositiveInt}
   (collection-detail (api/read-check Collection id)))
 
 (api/defendpoint GET "/root/timelines"
@@ -718,7 +719,8 @@
 (api/defendpoint GET "/:id/timelines"
   "Fetch a specific Collection's timelines."
   [id include archived]
-  {include  [:maybe [:= "events"]]
+  {id       ms/PositiveInt
+   include  [:maybe [:= "events"]]
    archived [:maybe :boolean]}
   (timeline/timelines-for-collection id {:timeline/events?   (= include "events")
                                          :timeline/archived? archived}))

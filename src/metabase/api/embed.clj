@@ -308,12 +308,9 @@
 ;;; ------------------------------------------- /api/embed/card endpoints --------------------------------------------
 
 (api/defendpoint GET "/card/:token"
-  "Fetch a Card via a JSON Web Token signed with the `embedding-secret-key`.
-
-   Token should have the following format:
-
-     {:resource {:question <card-id>}}"
+  "Fetch a Card via a JSON Web Token signed with the `embedding-secret-key`."
   [token]
+  {token [:map [:resource [:map [:question ms/PositiveInt]]]]}
   (let [unsigned (embed/unsign token)]
     (check-embedding-enabled-for-card (embed/get-in-unsigned-token-or-throw unsigned [:resource :question]))
     (card-for-unsigned-token unsigned, :constraints [:enable_embedding true])))
@@ -337,8 +334,7 @@
       :constraints       constraints
       :options           options)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/card/:token/query"
+(api/defendpoint GET "/card/:token/query"
   "Fetch the results of running a Card using a JSON Web Token signed with the `embedding-secret-key`.
 
    Token should have the following format:
@@ -348,11 +344,10 @@
   [token & query-params]
   (run-query-for-unsigned-token-async (embed/unsign token) :api query-params))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET ["/card/:token/query/:export-format", :export-format api.dataset/export-format-regex]
+(api/defendpoint GET ["/card/:token/query/:export-format", :export-format api.dataset/export-format-regex]
   "Like `GET /api/embed/card/query`, but returns the results as a file in the specified format."
   [token export-format :as {:keys [query-params]}]
-  {export-format api.dataset/ExportFormat}
+  {export-format (into [:enum] api.dataset/export-formats)}
   (run-query-for-unsigned-token-async
    (embed/unsign token)
    export-format
@@ -393,6 +388,8 @@
    & {:keys [constraints qp-runner]
       :or   {constraints (qp.constraints/default-query-constraints)
              qp-runner   qp/process-query-and-save-execution!}}]
+  {dashcard-id ms/PositiveInt
+   card-id     ms/PositiveInt}
   (let [unsigned-token (embed/unsign token)
         dashboard-id   (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])]
     (check-embedding-enabled-for-dashboard dashboard-id)
@@ -407,11 +404,12 @@
       :constraints      constraints
       :qp-runner        qp-runner)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
+(api/defendpoint GET "/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
   "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the
   `embedding-secret-key`"
   [token dashcard-id card-id & query-params]
+  {dashcard-id ms/PositiveInt
+   card-id     ms/PositiveInt}
   (dashcard-results-for-signed-token-async token dashcard-id card-id :api query-params))
 
 
@@ -421,19 +419,19 @@
 
 ;;; -------------------------------------------------- Field Values --------------------------------------------------
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/card/:token/field/:field-id/values"
+(api/defendpoint GET "/card/:token/field/:field-id/values"
   "Fetch FieldValues for a Field that is referenced by an embedded Card."
   [token field-id]
+  {field-id ms/PositiveInt}
   (let [unsigned-token (embed/unsign token)
         card-id        (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])]
     (check-embedding-enabled-for-card card-id)
     (api.public/card-and-field-id->values card-id field-id)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/dashboard/:token/field/:field-id/values"
+(api/defendpoint GET "/dashboard/:token/field/:field-id/values"
   "Fetch FieldValues for a Field that is used as a param in an embedded Dashboard."
   [token field-id]
+  {field-id ms/PositiveInt}
   (let [unsigned-token (embed/unsign token)
         dashboard-id   (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])]
     (check-embedding-enabled-for-dashboard dashboard-id)
@@ -445,8 +443,10 @@
 (api/defendpoint GET "/card/:token/field/:field-id/search/:search-field-id"
   "Search for values of a Field that is referenced by an embedded Card."
   [token field-id search-field-id value limit]
-  {value ms/NonBlankString
-   limit [:maybe ms/PositiveInt]}
+  {field-id        ms/PositiveInt
+   search-field-id ms/PositiveInt
+   value           ms/NonBlankString
+   limit           [:maybe ms/PositiveInt]}
   (let [unsigned-token (embed/unsign token)
         card-id        (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])]
     (check-embedding-enabled-for-card card-id)
@@ -455,8 +455,10 @@
 (api/defendpoint GET "/dashboard/:token/field/:field-id/search/:search-field-id"
   "Search for values of a Field that is referenced by a Card in an embedded Dashboard."
   [token field-id search-field-id value limit]
-  {value ms/NonBlankString
-   limit [:maybe ms/PositiveInt]}
+  {field-id        ms/PositiveInt
+   search-field-id ms/PositiveInt
+   value           ms/NonBlankString
+   limit           [:maybe ms/PositiveInt]}
   (let [unsigned-token (embed/unsign token)
         dashboard-id   (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])]
     (check-embedding-enabled-for-dashboard dashboard-id)
@@ -470,7 +472,9 @@
   "Fetch remapped Field values. This is the same as `GET /api/field/:id/remapping/:remapped-id`, but for use with
   embedded Cards."
   [token field-id remapped-id value]
-  {value ms/NonBlankString}
+  {field-id    ms/PositiveInt
+   remapped-id ms/PositiveInt
+   value       ms/NonBlankString}
   (let [unsigned-token (embed/unsign token)
         card-id        (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])]
     (check-embedding-enabled-for-card card-id)
@@ -480,7 +484,9 @@
   "Fetch remapped Field values. This is the same as `GET /api/field/:id/remapping/:remapped-id`, but for use with
   embedded Dashboards."
   [token field-id remapped-id value]
-  {value ms/NonBlankString}
+  {field-id    ms/PositiveInt
+   remapped-id ms/PositiveInt
+   value       ms/NonBlankString}
   (let [unsigned-token (embed/unsign token)
         dashboard-id   (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])]
     (check-embedding-enabled-for-dashboard dashboard-id)
@@ -491,7 +497,9 @@
   "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the
   `embedding-secret-key` return the data in one of the export formats"
   [token export-format dashcard-id card-id, :as {:keys [query-params]}]
-  {export-format (into [:enum] api.dataset/export-formats)}
+  {dashcard-id   ms/PositiveInt
+   card-id       ms/PositiveInt
+   export-format (into [:enum] api.dataset/export-formats)}
   (dashcard-results-for-signed-token-async token
     dashcard-id
     card-id
