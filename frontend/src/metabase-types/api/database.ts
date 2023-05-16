@@ -97,3 +97,9 @@ export interface DatabaseListQuery {
 export interface DatabaseIdFieldListQuery {
   include_editable_data_model?: boolean;
 }
+
+export interface SavedQuestionDatabase {
+  id: -1337;
+  name: "Saved Questions";
+  is_saved_questions: true;
+}
