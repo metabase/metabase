@@ -80,7 +80,7 @@
             [:joins :conditions] (throw (ex-info (i18n/tru "Cannot remove the final join condition")
                                                  {:conditions (get-in stage location)}))
             [:joins :fields] (update-in stage (pop location) dissoc (peek location))))))
-            stage))
+    stage))
 
 ;;; TODO -- all of this `->pipeline` stuff should probably be merged into [[metabase.lib.convert]] at some point in
 ;;; the near future.
@@ -344,9 +344,9 @@
          (> cumulative-byte-count max-length-bytes) (subs s 0 (dec i))
          (>= i (count s))                           s
          :else                                      (recur (inc i)
-                                                           (+
-                                                            cumulative-byte-count
-                                                            (string-byte-count (string-character-at s i))))))
+                                                           (long (+
+                                                                  cumulative-byte-count
+                                                                  (string-byte-count (string-character-at s i)))))))
 
      :cljs
      (let [buf (js/Uint8Array. max-length-bytes)
