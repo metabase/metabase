@@ -30,7 +30,8 @@
    [metabase.util.urls :as urls]
    [schema.core :as s]
    [toucan.hydrate :refer [hydrate]]
-   [toucan2.core :as t2])
+   [toucan2.core :as t2]
+   [metabase.util.malli.schema :as ms])
   (:import
    (java.io ByteArrayInputStream)))
 
@@ -147,6 +148,7 @@
   "Fetch `Pulse` with ID. If the user is a recipient of the Pulse but does not have read permissions for its collection,
   we still return it but with some sensitive metadata removed."
   [id]
+  {id ms/PositiveInt}
   (api/let-404 [pulse (pulse/retrieve-pulse id)]
    (api/check-403 (mi/can-read? pulse))
    (-> pulse
@@ -267,6 +269,7 @@
 (api/defendpoint GET "/preview_card/:id"
   "Get HTML rendering of a Card with `id`."
   [id]
+  {id ms/PositiveInt}
   (let [card   (api/read-check Card id)
         result (pulse-card-query-results card)]
     {:status 200
@@ -301,6 +304,7 @@
 (api/defendpoint-schema GET "/preview_card_png/:id"
   "Get PNG rendering of a Card with `id`."
   [id]
+  {id ms/PositiveInt}
   (let [card   (api/read-check Card id)
         result (pulse-card-query-results card)
         ba     (binding [render/*include-title* true]
@@ -325,10 +329,11 @@
   (metabase.pulse/send-pulse! (assoc body :creator_id api/*current-user-id*))
   {:ok true})
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema DELETE "/:id/subscription"
+
+(api/defendpoint DELETE "/:id/subscription"
   "For users to unsubscribe themselves from a pulse subscription."
   [id]
+  {id ms/PositiveInt}
   (api/let-404 [pulse-id (t2/select-one-pk Pulse :id id)
                 pc-id    (t2/select-one-pk PulseChannel :pulse_id pulse-id :channel_type "email")
                 pcr-id   (t2/select-one-pk PulseChannelRecipient :pulse_channel_id pc-id :user_id api/*current-user-id*)]
