@@ -268,14 +268,12 @@
               (sql.qp/->honeysql driver form)))]
     (cond
       (params.ops/operator? param-type)
-      (let [[snippet & args]
-            (->> (assoc params :target [:template-tag (field->clause driver field param-type)])
-                 params.ops/to-clause
-                 mbql.u/desugar-filter-clause
-                 qp.wrap-value-literals/wrap-value-literals-in-mbql
-                 ->honeysql
-                 (honeysql->replacement-snippet-info driver))]
-        {:replacement-snippet snippet, :prepared-statement-args (vec args)})
+      (->> (assoc params :target [:template-tag (field->clause driver field param-type)])
+           params.ops/to-clause
+           mbql.u/desugar-filter-clause
+           qp.wrap-value-literals/wrap-value-literals-in-mbql
+           ->honeysql
+           (honeysql->replacement-snippet-info driver))
 
       (and (params.dates/date-type? param-type)
            (re-matches params.dates/date-exclude-regex value))
