@@ -189,7 +189,7 @@ export const getMetadata: (
       if (field.name_field != null) {
         return metadata.field(field.name_field);
       } else if (field.table && field.isPK()) {
-        return _.find(field.table.fields, f => f.isEntityName());
+        return _.find(field.table.getFields(), f => f.isEntityName());
       }
     });
 

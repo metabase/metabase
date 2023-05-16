@@ -38,7 +38,7 @@ function aliasTablesAndFields(metadata: Metadata) {
         // @ts-ignore
         database[table.name] = table;
       }
-      for (const field of table.fields) {
+      for (const field of table.getFields()) {
         if (!(field.name in table)) {
           // @ts-ignore
           table[field.name] = field;

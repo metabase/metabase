@@ -48,7 +48,7 @@ class Metric {
   }
 
   /** Column name when this metric is used in a query */
-  columnName() {
+  columnName(): string | null {
     const aggregation = this.aggregation();
 
     if (aggregation) {

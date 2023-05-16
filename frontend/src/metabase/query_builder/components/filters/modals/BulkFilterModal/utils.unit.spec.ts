@@ -37,7 +37,7 @@ describe("BulkFilterModal utils", () => {
     it("flags between filters with misordered arguments", () => {
       const filter = new Filter([
         "between",
-        ["field", ORDERS.fields[1].id, null],
+        ["field", ORDERS.fields?.[1].id, null],
         20,
         10,
       ]);
@@ -49,7 +49,7 @@ describe("BulkFilterModal utils", () => {
     it("hasBackwardsArguments identifies between filters with correctly ordered arguments", () => {
       const filter = new Filter([
         "between",
-        ["field", ORDERS.fields[1].id, null],
+        ["field", ORDERS.fields?.[1].id, null],
         20,
         100,
       ]);
@@ -62,7 +62,7 @@ describe("BulkFilterModal utils", () => {
   describe("swapFilterArguments", () => {
     it("swaps arguments in a between filter", () => {
       const filter = new Filter(
-        ["between", ["field", ORDERS.fields[1].id, null], 20, 10],
+        ["between", ["field", ORDERS.fields?.[1].id, null], 20, 10],
         null,
         query,
       );
@@ -77,7 +77,7 @@ describe("BulkFilterModal utils", () => {
   describe("handleEmptyBetween", () => {
     it("replaces a between filter with an empty second argument with a >= filter", () => {
       const filter = new Filter(
-        ["between", ["field", ORDERS.fields[1].id, null], 20, null],
+        ["between", ["field", ORDERS.fields?.[1].id, null], 20, null],
         null,
         query,
       );
@@ -90,7 +90,7 @@ describe("BulkFilterModal utils", () => {
 
     it("replaces a between filter with an empty first argument with a <= filter", () => {
       const filter = new Filter(
-        ["between", ["field", ORDERS.fields[1].id, null], undefined, 30],
+        ["between", ["field", ORDERS.fields?.[1].id, null], undefined, 30],
         null,
         query,
       );
@@ -105,7 +105,7 @@ describe("BulkFilterModal utils", () => {
   describe("fixBetweens", () => {
     it("handles empty between filters", () => {
       const filter = new Filter(
-        ["between", ["field", ORDERS.fields[1].id, null], 30, null],
+        ["between", ["field", ORDERS.fields?.[1].id, null], 30, null],
         null,
         query,
       );
@@ -118,7 +118,7 @@ describe("BulkFilterModal utils", () => {
 
     it("handles backwards between filters", () => {
       const filter = new Filter(
-        ["between", ["field", ORDERS.fields[1].id, null], 30, 20],
+        ["between", ["field", ORDERS.fields?.[1].id, null], 30, 20],
         null,
         query,
       );
@@ -131,7 +131,7 @@ describe("BulkFilterModal utils", () => {
 
     it("ignores valid between filters", () => {
       const filter = new Filter(
-        ["between", ["field", ORDERS.fields[1].id, null], 40, 50],
+        ["between", ["field", ORDERS.fields?.[1].id, null], 40, 50],
         null,
         query,
       );
@@ -144,7 +144,7 @@ describe("BulkFilterModal utils", () => {
 
     it("ignores non-between filters", () => {
       const filter = new Filter(
-        ["=", ["field", ORDERS.fields[1].id, null], 40, 50],
+        ["=", ["field", ORDERS.fields?.[1].id, null], 40, 50],
         null,
         query,
       );
@@ -177,9 +177,9 @@ describe("BulkFilterModal utils", () => {
       const testQuery = makeQuery({
         filter: [
           "and",
-          ["between", ["field", ORDERS.fields[1].id, null], 80, 50],
-          ["between", ["field", ORDERS.fields[1].id, null], 30, null],
-          ["=", ["field", ORDERS.fields[1].id, null], 8, 9, 7],
+          ["between", ["field", ORDERS.fields?.[1].id, null], 80, 50],
+          ["between", ["field", ORDERS.fields?.[1].id, null], 30, null],
+          ["=", ["field", ORDERS.fields?.[1].id, null], 8, 9, 7],
         ],
       });
 

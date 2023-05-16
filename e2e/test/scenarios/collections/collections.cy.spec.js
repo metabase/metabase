@@ -11,6 +11,8 @@ import {
   closeNavigationSidebar,
   openCollectionMenu,
   visitCollection,
+  openUnpinnedItemMenu,
+  getPinnedSection,
 } from "e2e/support/helpers";
 import { USERS, USER_GROUPS } from "e2e/support/cypress_data";
 import { displaySidebarChildOf } from "./helpers/e2e-collections-sidebar.js";
@@ -22,6 +24,7 @@ describe("scenarios > collection defaults", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    cy.intercept("GET", "/api/**/items?pinned_state*").as("getPinnedItems");
   });
 
   describe("new collection modal", () => {
@@ -447,6 +450,13 @@ describe("scenarios > collection defaults", () => {
         it("should be possible to apply bulk selection to all items (metabase#14705)", () => {
           cy.visit("/collection/root");
 
+          // Pin one item
+          openUnpinnedItemMenu("Orders, Count");
+          popover().findByText("Pin this").click();
+          getPinnedSection().within(() => {
+            cy.findByText("18,760");
+          });
+
           // Select one
           selectItemUsingCheckbox("Orders");
           // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -458,7 +468,7 @@ describe("scenarios > collection defaults", () => {
           cy.findByLabelText("Select all items").click();
           cy.icon("dash").should("not.exist");
           // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-          cy.findByText("5 items selected");
+          cy.findByText("4 items selected");
 
           // Deselect all
           cy.findByLabelText("Select all items").click();
