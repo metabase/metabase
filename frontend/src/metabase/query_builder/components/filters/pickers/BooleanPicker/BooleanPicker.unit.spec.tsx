@@ -1,64 +1,21 @@
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-nocheck
 import React from "react";
 import { render, screen } from "@testing-library/react";
-
 import { createMockMetadata } from "__support__/metadata";
 
-import { createSampleDatabase } from "metabase-types/api/mocks/presets";
+import { checkNotNull } from "metabase/core/utils/types";
+
+import { createMockField } from "metabase-types/api/mocks";
+import { createAdHocCard } from "metabase-types/api/mocks/presets";
+
 import Question from "metabase-lib/Question";
-import Field from "metabase-lib/metadata/Field";
 import Filter from "metabase-lib/queries/structured/Filter";
+import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
 import BooleanPicker, { BooleanPickerCheckbox } from "./index";
 
-const metadata = createMockMetadata({
-  databases: [createSampleDatabase()],
-});
-
-const booleanField = new Field({
-  database_type: "bool",
-  semantic_type: "type/Category",
-  table_id: 8,
-  name: "bool",
-  has_field_values: "list",
-  dimensions: {},
-  dimension_options: [],
-  effective_type: "type/Boolean",
-  id: 134,
-  base_type: "type/Boolean",
-  metadata,
-});
-
-const card = {
-  dataset_query: {
-    database: 5,
-    query: {
-      "source-table": 8,
-      filter: ["=", ["field", 134, null], true],
-    },
-    type: "query",
-  },
-  display: "table",
-  visualization_settings: {},
-};
-
-metadata.fields[booleanField.id] = booleanField;
-
-const question = new Question(card, metadata);
-
-const fieldRef = ["field", 134, null];
-const filters = {
-  True: new Filter(["=", fieldRef, true], null, question.query()),
-  False: new Filter(["=", fieldRef, false], null, question.query()),
-  Empty: new Filter(["is-null", fieldRef], null, question.query()),
-  "Not empty": new Filter(["not-null", fieldRef], null, question.query()),
-};
-
-const invalidFilter = new Filter(["=", fieldRef], question.query());
-
 const mockOnFilterChange = jest.fn();
-function setup(filter) {
+
+function setup(filter: Filter) {
   mockOnFilterChange.mockReset();
   return render(
     <BooleanPicker filter={filter} onFilterChange={mockOnFilterChange} />,
@@ -66,6 +23,33 @@ function setup(filter) {
 }
 
 describe("BooleanPicker", () => {
+  const metadata = createMockMetadata({
+    fields: [
+      createMockField({
+        id: 1,
+        base_type: "type/Boolean",
+        effective_type: "type/Boolean",
+      }),
+    ],
+  });
+
+  const field = checkNotNull(metadata.field(1));
+
+  const question = new Question(createAdHocCard(), metadata);
+  const query = question.query() as StructuredQuery;
+
+  const fieldRef = field.reference();
+
+  const filters = {
+    True: new Filter(["=", fieldRef, true], null, query),
+    False: new Filter(["=", fieldRef, false], null, query),
+    Empty: new Filter(["is-null", fieldRef], null, query),
+    "Not empty": new Filter(["not-null", fieldRef], null, query),
+  };
+
+  // @ts-expect-error — testing invalid filter clause
+  const invalidFilter = new Filter(["=", fieldRef], query);
+
   describe("BooleanPickerRadio", () => {
     it("should hide empty options when empty options are not selected", () => {
       setup(filters.True);
@@ -83,17 +67,15 @@ describe("BooleanPicker", () => {
       setup(filters.Empty);
 
       const option = screen.getByLabelText("Empty");
-      expect(option.checked).toBe(true);
 
+      expect(option).toBeChecked();
       expect(screen.getByLabelText("Not empty")).toBeInTheDocument();
     });
 
     Object.entries(filters).forEach(([label, filter]) => {
       it(`should have the "${label}" option selected when given the associated filter`, () => {
         setup(filter);
-
-        const option = screen.getByLabelText(label);
-        expect(option.checked).toBe(true);
+        expect(screen.getByLabelText(label)).toBeChecked();
       });
 
       it(`should correctly update the filter for the "${label}" option when it is selected`, () => {
@@ -121,6 +103,7 @@ describe("BooleanPicker", () => {
       expect(screen.getByLabelText("True")).toBeChecked();
       expect(screen.getByLabelText("False")).not.toBeChecked();
     });
+
     it("should render a false checkbox", () => {
       render(
         <BooleanPickerCheckbox

@@ -1,153 +1,98 @@
-/* eslint-disable @typescript-eslint/ban-ts-comment */
-
 import React from "react";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-
-import { renderWithProviders } from "__support__/ui";
 import { createMockMetadata } from "__support__/metadata";
+import { renderWithProviders } from "__support__/ui";
 
-import { createSampleDatabase } from "metabase-types/api/mocks/presets";
-import Field from "metabase-lib/metadata/Field";
-import Filter from "metabase-lib/queries/structured/Filter";
+import { checkNotNull } from "metabase/core/utils/types";
+
+import type { Field, FieldValue } from "metabase-types/api";
+import { createMockField } from "metabase-types/api/mocks";
+import { createAdHocCard } from "metabase-types/api/mocks/presets";
+
 import Question from "metabase-lib/Question";
-import StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import Filter from "metabase-lib/queries/structured/Filter";
+import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 
-import { InlineCategoryPickerComponent } from "./InlineCategoryPicker";
 import { MAX_INLINE_CATEGORIES } from "./constants";
-
-const metadata = createMockMetadata({
-  databases: [createSampleDatabase()],
-});
-
-const smallCategoryField = new Field({
-  database_type: "test",
-  semantic_type: "type/Category",
-  effective_type: "type/Text",
-  base_type: "type/Text",
-  table_id: 8,
-  name: "small_category_field",
-  has_field_values: "list",
-  values: [["Michaelangelo"], ["Donatello"], ["Raphael"], ["Leonardo"]],
-  dimensions: {},
-  dimension_options: [],
-  id: 137,
-  metadata,
-});
+import { InlineCategoryPickerComponent } from "./InlineCategoryPicker";
 
 // we want to make sure we always get enough unique field values
 // even if we change MAX_INLINE_CATEGORIES
-const turtleFactory = () => {
+const turtleFactory = (): FieldValue => {
   const name = ["Michaelangelo", "Donatello", "Raphael", "Leonardo"][
     Math.floor(Math.random() * 4)
   ];
   return [`${name}_${Math.round(Math.random() * 100000)}`];
 };
 
-const largeCategoryField = new Field({
-  database_type: "test",
-  semantic_type: "type/Category",
-  effective_type: "type/Text",
-  base_type: "type/Text",
-  table_id: 8,
-  name: "large_category_field",
-  has_field_values: "list",
-  values: new Array(MAX_INLINE_CATEGORIES + 1).fill(null).map(turtleFactory),
-  dimensions: {},
-  dimension_options: [],
-  id: 138,
-  metadata,
-});
+function createCategoryField(opts?: Partial<Field>): Field {
+  return createMockField({
+    base_type: "type/Text",
+    effective_type: "type/Text",
+    semantic_type: "type/Category",
+    has_field_values: "list",
+    ...opts,
+  });
+}
 
-const emptyCategoryField = new Field({
-  database_type: "test",
-  semantic_type: "type/Category",
-  effective_type: "type/Text",
-  base_type: "type/Text",
-  table_id: 8,
-  name: "empty_category_field",
-  has_field_values: "list",
-  values: [],
-  dimensions: {},
-  dimension_options: [],
-  id: 139,
-  metadata,
-});
-
-const nullCategoryField = new Field({
-  database_type: "test",
-  semantic_type: "type/Category",
-  effective_type: "type/Text",
-  base_type: "type/Text",
-  table_id: 8,
-  name: "null_category_field",
-  has_field_values: "list",
-  values: [[null], [undefined]],
-  dimensions: {},
-  dimension_options: [],
-  id: 140,
-  metadata,
-});
-
-const remappedCategoryField = new Field({
-  database_type: "test",
-  semantic_type: "type/Category",
-  effective_type: "type/Text",
-  base_type: "type/Text",
-  table_id: 8,
-  name: "small_category_field",
-  has_field_values: "list",
-  values: [
-    ["Michaelangelo", "party turtle"],
-    ["Donatello", "engineer turtle"],
-    ["Raphael", "cool turtle"],
-    ["Leonardo", "leader turtle"],
-  ],
-  dimensions: {},
-  dimension_options: [],
-  id: 141,
-  metadata,
-});
-
-// @ts-ignore
-metadata.fields[smallCategoryField.id] = smallCategoryField;
-// @ts-ignore
-metadata.fields[largeCategoryField.id] = largeCategoryField;
-// @ts-ignore
-metadata.fields[emptyCategoryField.id] = emptyCategoryField;
-// @ts-ignore
-metadata.fields[nullCategoryField.id] = nullCategoryField;
-// @ts-ignore
-metadata.fields[remappedCategoryField.id] = remappedCategoryField;
-
-const card = {
-  dataset_query: {
-    database: 5,
-    query: {
-      "source-table": 8,
-    },
-    type: "query",
-  },
-  display: "table",
-  visualization_settings: {},
-};
-
-const question = new Question(card, metadata);
-const query = question.query() as StructuredQuery;
-const smallDimension = smallCategoryField.dimension();
-const largeDimension = largeCategoryField.dimension();
-const emptyDimension = emptyCategoryField.dimension();
-const nullDimension = nullCategoryField.dimension();
-const remappedDimension = remappedCategoryField.dimension();
+const SMALL_CATEGORY_FIELD_ID = 1;
+const LARGE_CATEGORY_FIELD_ID = 2;
+const EMPTY_CATEGORY_FIELD = 3;
+const NULL_CATEGORY_FIELD = 4;
+const REMAPPED_CATEGORY_FIELD = 5;
 
 describe("InlineCategoryPicker", () => {
-  beforeEach(() => {
-    console.error = jest.fn();
-    console.warn = jest.fn();
+  const metadata = createMockMetadata({
+    fields: [
+      createCategoryField({
+        id: SMALL_CATEGORY_FIELD_ID,
+        values: [["Michaelangelo"], ["Donatello"], ["Raphael"], ["Leonardo"]],
+      }),
+      createCategoryField({
+        id: LARGE_CATEGORY_FIELD_ID,
+        values: new Array(MAX_INLINE_CATEGORIES + 1)
+          .fill(null)
+          .map(turtleFactory),
+      }),
+      createCategoryField({
+        id: EMPTY_CATEGORY_FIELD,
+        values: [],
+      }),
+      createCategoryField({
+        id: NULL_CATEGORY_FIELD,
+        values: [[null]],
+      }),
+      createCategoryField({
+        id: REMAPPED_CATEGORY_FIELD,
+        values: [
+          ["Michaelangelo", "party turtle"],
+          ["Donatello", "engineer turtle"],
+          ["Raphael", "cool turtle"],
+          ["Leonardo", "leader turtle"],
+        ],
+      }),
+    ],
   });
+
+  const question = new Question(createAdHocCard(), metadata);
+  const query = question.query() as StructuredQuery;
+
+  const smallCategoryField = checkNotNull(
+    metadata.field(SMALL_CATEGORY_FIELD_ID),
+  );
+  const largeCategoryField = checkNotNull(
+    metadata.field(LARGE_CATEGORY_FIELD_ID),
+  );
+  const emptyCategoryField = checkNotNull(metadata.field(EMPTY_CATEGORY_FIELD));
+  const nullCategoryField = checkNotNull(metadata.field(NULL_CATEGORY_FIELD));
+  const remappedCategoryField = checkNotNull(
+    metadata.field(REMAPPED_CATEGORY_FIELD),
+  );
+
   it("should render an inline category picker", () => {
     const testFilter = new Filter(
-      ["=", ["field", smallCategoryField.id, null], undefined],
+      ["=", smallCategoryField.reference(), undefined],
       null,
       query,
     );
@@ -161,7 +106,7 @@ describe("InlineCategoryPicker", () => {
         onChange={changeSpy}
         fieldValues={smallCategoryField.values}
         fetchFieldValues={fetchSpy}
-        dimension={smallDimension}
+        dimension={smallCategoryField.dimension()}
       />,
     );
 
@@ -173,7 +118,7 @@ describe("InlineCategoryPicker", () => {
 
   it("should render a loading spinner while loading", async () => {
     const testFilter = new Filter(
-      ["=", ["field", emptyCategoryField.id, null], undefined],
+      ["=", emptyCategoryField.reference(), undefined],
       null,
       query,
     );
@@ -187,7 +132,7 @@ describe("InlineCategoryPicker", () => {
         onChange={changeSpy}
         fieldValues={emptyCategoryField.values}
         fetchFieldValues={fetchSpy}
-        dimension={emptyDimension}
+        dimension={emptyCategoryField.dimension()}
       />,
     );
     screen.getByTestId("loading-spinner");
@@ -196,7 +141,7 @@ describe("InlineCategoryPicker", () => {
 
   it("should render a warning message on api failure", async () => {
     const testFilter = new Filter(
-      ["=", ["field", emptyCategoryField.id, null], undefined],
+      ["=", emptyCategoryField.reference(), undefined],
       null,
       query,
     );
@@ -210,7 +155,7 @@ describe("InlineCategoryPicker", () => {
         onChange={changeSpy}
         fieldValues={emptyCategoryField.values}
         fetchFieldValues={fetchSpy}
-        dimension={emptyDimension}
+        dimension={emptyCategoryField.dimension()}
       />,
     );
     await waitFor(() => expect(fetchSpy).toHaveBeenCalled());
@@ -219,7 +164,7 @@ describe("InlineCategoryPicker", () => {
 
   it(`should render up to ${MAX_INLINE_CATEGORIES} checkboxes`, () => {
     const testFilter = new Filter(
-      ["=", ["field", smallCategoryField.id, null], undefined],
+      ["=", smallCategoryField.reference(), undefined],
       null,
       query,
     );
@@ -233,7 +178,7 @@ describe("InlineCategoryPicker", () => {
         onChange={changeSpy}
         fieldValues={smallCategoryField.values}
         fetchFieldValues={fetchSpy}
-        dimension={smallDimension}
+        dimension={smallCategoryField.dimension()}
       />,
     );
 
@@ -245,7 +190,7 @@ describe("InlineCategoryPicker", () => {
 
   it(`should not render more than ${MAX_INLINE_CATEGORIES} checkboxes`, () => {
     const testFilter = new Filter(
-      ["=", ["field", largeCategoryField.id, null], undefined],
+      ["=", largeCategoryField.reference(), undefined],
       null,
       query,
     );
@@ -259,7 +204,7 @@ describe("InlineCategoryPicker", () => {
         onChange={changeSpy}
         fieldValues={largeCategoryField.values}
         fetchFieldValues={fetchSpy}
-        dimension={largeDimension}
+        dimension={largeCategoryField.dimension()}
       />,
     );
 
@@ -269,7 +214,7 @@ describe("InlineCategoryPicker", () => {
 
   it("should load existing filter selections", () => {
     const testFilter = new Filter(
-      ["=", ["field", smallCategoryField.id, null], "Donatello", "Leonardo"],
+      ["=", smallCategoryField.reference(), "Donatello", "Leonardo"],
       null,
       query,
     );
@@ -283,7 +228,7 @@ describe("InlineCategoryPicker", () => {
         onChange={changeSpy}
         fieldValues={smallCategoryField.values}
         fetchFieldValues={fetchSpy}
-        dimension={smallDimension}
+        dimension={smallCategoryField.dimension()}
       />,
     );
 
@@ -296,7 +241,7 @@ describe("InlineCategoryPicker", () => {
 
   it("should display remapped field values if present", () => {
     const testFilter = new Filter(
-      ["=", ["field", remappedCategoryField.id, null], "Donatello", "Leonardo"],
+      ["=", remappedCategoryField.reference(), "Donatello", "Leonardo"],
       null,
       query,
     );
@@ -310,7 +255,7 @@ describe("InlineCategoryPicker", () => {
         onChange={changeSpy}
         fieldValues={remappedCategoryField.values}
         fetchFieldValues={fetchSpy}
-        dimension={remappedDimension}
+        dimension={remappedCategoryField.dimension()}
       />,
     );
 
@@ -323,7 +268,7 @@ describe("InlineCategoryPicker", () => {
 
   it("should save a filter based on selection", () => {
     const testFilter = new Filter(
-      ["=", ["field", smallCategoryField.id, null], undefined],
+      ["=", smallCategoryField.reference(), undefined],
       null,
       query,
     );
@@ -337,7 +282,7 @@ describe("InlineCategoryPicker", () => {
         onChange={changeSpy}
         fieldValues={smallCategoryField.values}
         fetchFieldValues={fetchSpy}
-        dimension={smallDimension}
+        dimension={smallCategoryField.dimension()}
       />,
     );
 
@@ -346,14 +291,14 @@ describe("InlineCategoryPicker", () => {
     expect(changeSpy.mock.calls.length).toBe(1);
     expect(changeSpy.mock.calls[0][0]).toEqual([
       "=",
-      ["field", 137, null],
+      smallCategoryField.reference(),
       "Raphael",
     ]);
   });
 
   it("should fetch field values data if its not already loaded", async () => {
     const testFilter = new Filter(
-      ["=", ["field", emptyCategoryField.id, null], undefined],
+      ["=", emptyCategoryField.reference(), undefined],
       null,
       query,
     );
@@ -367,7 +312,7 @@ describe("InlineCategoryPicker", () => {
         onChange={changeSpy}
         fieldValues={emptyCategoryField.values}
         fetchFieldValues={fetchSpy}
-        dimension={emptyDimension}
+        dimension={emptyCategoryField.dimension()}
       />,
     );
     await waitFor(() => expect(fetchSpy).toHaveBeenCalled());
@@ -377,7 +322,7 @@ describe("InlineCategoryPicker", () => {
 
   it("should not fetch field values data if it is already present", async () => {
     const testFilter = new Filter(
-      ["=", ["field", largeCategoryField.id, null], undefined],
+      ["=", largeCategoryField.reference(), undefined],
       null,
       query,
     );
@@ -391,7 +336,7 @@ describe("InlineCategoryPicker", () => {
         onChange={changeSpy}
         fieldValues={largeCategoryField.values}
         fetchFieldValues={fetchSpy}
-        dimension={largeDimension}
+        dimension={largeCategoryField.dimension()}
       />,
     );
 
@@ -400,7 +345,7 @@ describe("InlineCategoryPicker", () => {
 
   it("should render a value picker if there are many options", () => {
     const testFilter = new Filter(
-      ["=", ["field", largeCategoryField.id, null], undefined],
+      ["=", largeCategoryField.reference(), undefined],
       null,
       query,
     );
@@ -414,7 +359,7 @@ describe("InlineCategoryPicker", () => {
         onChange={changeSpy}
         fieldValues={largeCategoryField.values}
         fetchFieldValues={fetchSpy}
-        dimension={largeDimension}
+        dimension={largeCategoryField.dimension()}
       />,
     );
 
@@ -425,7 +370,7 @@ describe("InlineCategoryPicker", () => {
   it("should render a value picker for no valid options", () => {
     // the small category picker would just render no checkboxes which looks funny
     const testFilter = new Filter(
-      ["=", ["field", nullCategoryField.id, null], undefined],
+      ["=", nullCategoryField.reference(), undefined],
       null,
       query,
     );
@@ -439,7 +384,7 @@ describe("InlineCategoryPicker", () => {
         onChange={changeSpy}
         fieldValues={nullCategoryField.values}
         fetchFieldValues={fetchSpy}
-        dimension={nullDimension}
+        dimension={nullCategoryField.dimension()}
       />,
     );
 
@@ -449,7 +394,7 @@ describe("InlineCategoryPicker", () => {
 
   it("should show field options inline for category fields with many options", () => {
     const testFilter = new Filter(
-      ["=", ["field", largeCategoryField.id, null], "Raphael 2", "Donatello 3"],
+      ["=", largeCategoryField.reference(), "Raphael 2", "Donatello 3"],
       null,
       query,
     );
@@ -463,7 +408,7 @@ describe("InlineCategoryPicker", () => {
         onChange={changeSpy}
         fieldValues={largeCategoryField.values}
         fetchFieldValues={fetchSpy}
-        dimension={largeDimension}
+        dimension={largeCategoryField.dimension()}
       />,
     );
 
@@ -474,14 +419,22 @@ describe("InlineCategoryPicker", () => {
   });
 
   const fieldSizes = [
-    { name: "large", field: largeCategoryField, dimension: largeDimension },
-    { name: "small", field: smallCategoryField, dimension: smallDimension },
+    {
+      name: "large",
+      field: largeCategoryField,
+      dimension: largeCategoryField.dimension(),
+    },
+    {
+      name: "small",
+      field: smallCategoryField,
+      dimension: smallCategoryField.dimension(),
+    },
   ];
 
   fieldSizes.forEach(({ name, field, dimension }) => {
     it(`should fall back to value picker if the filter operator is not = or != with a ${name} set of field values`, () => {
       const testFilter = new Filter(
-        ["contains", ["field", field.id, null], undefined],
+        ["contains", field.reference(), undefined],
         null,
         query,
       );
