@@ -1,10 +1,21 @@
 import {
+  NormalizedCollection,
   NormalizedDatabase,
+  NormalizedField,
+  NormalizedFieldDimension,
+  NormalizedMetric,
   NormalizedSchema,
+  NormalizedSegment,
   NormalizedTable,
+  NormalizedTimeline,
 } from "metabase-types/api";
 import { createMockDatabase } from "./database";
+import { createMockCollection } from "./collection";
+import { createMockField, createMockFieldDimension } from "./field";
+import { createMockMetric } from "./metric";
+import { createMockSegment } from "./segment";
 import { createMockSchema, createMockTable } from "./table";
+import { createMockTimeline } from "./timeline";
 
 export const createMockNormalizedDatabase = ({
   tables,
@@ -40,4 +51,60 @@ export const createMockNormalizedTable = ({
   fields,
   segments,
   metrics,
+});
+
+export const createMockNormalizedFieldDimension = ({
+  human_readable_field,
+  ...opts
+}: Partial<NormalizedFieldDimension> = {}): NormalizedFieldDimension => ({
+  ...createMockFieldDimension(opts),
+  human_readable_field,
+});
+
+export const createMockNormalizedField = ({
+  target,
+  table,
+  name_field,
+  dimensions,
+  ...opts
+}: Partial<NormalizedField>): NormalizedField => ({
+  ...createMockField(opts),
+  target,
+  table,
+  name_field,
+  dimensions,
+});
+
+export const createMockNormalizedSegment = ({
+  table,
+  ...opts
+}: Partial<NormalizedSegment> = {}): NormalizedSegment => ({
+  ...createMockSegment(opts),
+  table,
+});
+
+export const createMockNormalizedMetric = ({
+  table,
+  ...opts
+}: Partial<NormalizedMetric> = {}): NormalizedMetric => ({
+  ...createMockMetric(opts),
+  table,
+});
+
+export const createMockNormalizedTimeline = ({
+  collection,
+  events,
+  ...opts
+}: Partial<NormalizedTimeline> = {}): NormalizedTimeline => ({
+  ...createMockTimeline(opts),
+  collection,
+  events,
+});
+
+export const createMockNormalizedCollection = ({
+  items,
+  ...opts
+}: Partial<NormalizedCollection> = {}): NormalizedCollection => ({
+  ...createMockCollection(opts),
+  items,
 });
