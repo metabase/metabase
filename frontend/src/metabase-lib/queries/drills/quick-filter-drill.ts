@@ -1,10 +1,11 @@
-import type { DatasetColumn, RowValue } from "metabase-types/api";
-import { FieldFilter } from "metabase-types/api";
+import type { DatasetColumn, FieldFilter, RowValue } from "metabase-types/api";
 import {
   isa,
   isBoolean,
   isDate,
+  isLongText,
   isNumeric,
+  isString,
   isTypeFK,
   isTypePK,
 } from "metabase-lib/types/utils/isa";
@@ -12,23 +13,42 @@ import { TYPE } from "metabase-lib/types/constants";
 import { isLocalField } from "metabase-lib/queries/utils";
 import { fieldRefForColumn } from "metabase-lib/queries/utils/dataset";
 import type Question from "metabase-lib/Question";
-import StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import { ClickObject } from "metabase-lib/queries/drills/types";
 
 const INVALID_TYPES = [TYPE.Structured];
 
-export type QuickFilterOperatorType = "<" | ">" | "=" | "≠";
+export type QuickFilterOperatorType =
+  | "<"
+  | ">"
+  | "="
+  | "≠"
+  | "contains"
+  | "does-not-contain";
 
-type QuickFilterDrillOperator = {
-  name: QuickFilterOperatorType;
-  filter: FieldFilter;
-};
 export type QuickFilterDataValueType =
   | "null"
   | "date"
   | "numeric"
   | "boolean"
   | "text";
+
+export type QuickFilterResult =
+  | {
+      valueType: "null" | "boolean";
+      operators: { name: "=" | "≠"; filter: FieldFilter }[];
+    }
+  | {
+      valueType: "numeric" | "date";
+      operators: { name: "=" | "≠" | "<" | ">"; filter: FieldFilter }[];
+    }
+  | {
+      valueType: "text";
+      operators: {
+        name: "=" | "≠" | "contains" | "does-not-contain";
+        filter: FieldFilter;
+      }[];
+    };
 
 export function quickFilterDrill({
   question,
@@ -53,7 +73,10 @@ export function quickFilterDrill({
     return null;
   }
 
-  return getOperatorsForColumn(column, value);
+  return {
+    query: query as StructuredQuery,
+    operators: getOperatorsForColumn(column, value),
+  };
 }
 
 export function quickFilterDrillQuestion({
@@ -99,10 +122,7 @@ export function quickFilterDrillQuestion({
 function getOperatorsForColumn(
   column: DatasetColumn,
   value: RowValue,
-): {
-  operators: QuickFilterDrillOperator[];
-  valueType: QuickFilterDataValueType;
-} | null {
+): QuickFilterResult | null {
   const fieldRef = getColumnFieldRef(column);
 
   if (
@@ -127,6 +147,20 @@ function getOperatorsForColumn(
         { name: ">", filter: [">", fieldRef, typedValue] },
         { name: "=", filter: ["=", fieldRef, typedValue] },
         { name: "≠", filter: ["!=", fieldRef, typedValue] },
+      ],
+    };
+  }
+  if (isString(column) && isLongText(column)) {
+    const typedValue = value as string;
+
+    return {
+      valueType: "text",
+      operators: [
+        { name: "contains", filter: ["contains", fieldRef, typedValue] },
+        {
+          name: "does-not-contain",
+          filter: ["does-not-contain", fieldRef, typedValue],
+        },
       ],
     };
   } else {

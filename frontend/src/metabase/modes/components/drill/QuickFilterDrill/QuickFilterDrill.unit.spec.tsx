@@ -1,10 +1,24 @@
+import React from "react";
+import userEvent from "@testing-library/user-event";
 import {
+  metadata,
   ORDERS,
   PEOPLE,
+  REVIEWS,
   SAMPLE_DATABASE,
-  metadata,
 } from "__support__/sample_database_fixture";
 import { createMockColumn } from "metabase-types/api/mocks";
+import {
+  DatasetColumn,
+  DimensionReference,
+  RowValue,
+  StructuredDatasetQuery,
+} from "metabase-types/api";
+import {
+  PopoverClickAction,
+  QuestionChangeClickAction,
+} from "metabase/modes/types";
+import { renderWithProviders, screen } from "__support__/ui";
 import Question from "metabase-lib/Question";
 import { getUnsavedNativeQuestion } from "metabase-lib/mocks";
 import QuickFilterDrill from "./QuickFilterDrill";
@@ -19,6 +33,15 @@ const NUMBER_AND_DATE_FILTERS = [
 const NULL_FILTERS = [
   { name: "=", operator: "is-null" },
   { name: "≠", operator: "not-null" },
+];
+
+const LONG_TEXT_FILTERS = [
+  { name: "contains", title: "Contains…", selectOptionTitle: "Contains" },
+  {
+    name: "does-not-contain",
+    title: "Does not contain…",
+    selectOptionTitle: "Does not contain",
+  },
 ];
 
 const OTHER_FILTERS = [
@@ -59,11 +82,16 @@ function setup({
   question = ORDERS.question(),
   column,
   value = DEFAULT_NUMERIC_CELL_VALUE,
+}: {
+  question?: Question;
+  column?: DatasetColumn;
+  value?: RowValue;
 } = {}) {
   const actions = QuickFilterDrill({
     question,
     clicked: { column, value },
-  });
+  }) as QuestionChangeClickAction[];
+
   return {
     actions,
     cellValue: value,
@@ -79,18 +107,20 @@ describe("QuickFilterDrill", () => {
   it("should not be valid for native questions", () => {
     const actions = QuickFilterDrill({
       question: getUnsavedNativeQuestion(),
-      column: createMockColumn({
-        name: "TOTAL",
-        field_ref: ["field", "TOTAL", { base_type: "type/BigInteger" }],
-        base_type: "type/BigInteger",
-        source: "native",
-      }),
+      clicked: {
+        column: createMockColumn({
+          name: "TOTAL",
+          field_ref: ["field", 6, { "base-type": "type/BigInteger" }],
+          base_type: "type/BigInteger",
+          source: "native",
+        }),
+      },
     });
     expect(actions).toHaveLength(0);
   });
 
   it("should not be valid when clicked column is missing", () => {
-    const { actions } = setup({ column: null });
+    const { actions } = setup();
     expect(actions).toHaveLength(0);
   });
 
@@ -125,7 +155,9 @@ describe("QuickFilterDrill", () => {
       const { operator } = NUMBER_AND_DATE_FILTERS[i];
       it(`should correctly apply "${operator}" filter`, () => {
         const question = action.question();
-        expect(question.datasetQuery().query).toEqual({
+        expect(
+          (question.datasetQuery() as StructuredDatasetQuery).query,
+        ).toEqual({
           "source-table": ORDERS.id,
           filter: [
             operator,
@@ -155,7 +187,9 @@ describe("QuickFilterDrill", () => {
       const { operator } = NUMBER_AND_DATE_FILTERS[i];
       it(`should correctly apply "${operator}" filter`, () => {
         const question = action.question();
-        expect(question.datasetQuery().query).toEqual({
+        expect(
+          (question.datasetQuery() as StructuredDatasetQuery).query,
+        ).toEqual({
           "source-table": ORDERS.id,
           filter: [operator, joinedFieldRef, cellValue],
         });
@@ -169,7 +203,7 @@ describe("QuickFilterDrill", () => {
       question: new Question(AGGREGATED_QUESTION, metadata),
       column: createMockColumn({
         name: "count",
-        field_ref: ["aggregation", 0],
+        field_ref: ["aggregation", 0, null],
         base_type: "type/BigInteger",
         semantic_type: "type/Quantity",
         source: "aggregation",
@@ -187,7 +221,9 @@ describe("QuickFilterDrill", () => {
       const { operator } = NUMBER_AND_DATE_FILTERS[i];
       it(`should correctly apply "${operator}" filter`, () => {
         const question = action.question();
-        expect(question.datasetQuery().query).toEqual({
+        expect(
+          (question.datasetQuery() as StructuredDatasetQuery).query,
+        ).toEqual({
           "source-query": AGGREGATED_QUERY,
           filter: [
             operator,
@@ -204,7 +240,11 @@ describe("QuickFilterDrill", () => {
     const question = new Question(NESTED_QUESTION);
     question.query().isEditable = () => true;
 
-    const fieldRef = ["field", "count", { "base-type": "type/BigInteger" }];
+    const fieldRef: DimensionReference = [
+      "field",
+      "count",
+      { "base-type": "type/BigInteger" },
+    ];
     const { actions, cellValue } = setup({
       question,
       column: createMockColumn({
@@ -227,7 +267,9 @@ describe("QuickFilterDrill", () => {
       const { operator } = NUMBER_AND_DATE_FILTERS[i];
       it(`should correctly apply "${operator}" filter`, () => {
         const question = action.question();
-        expect(question.datasetQuery().query).toEqual({
+        expect(
+          (question.datasetQuery() as StructuredDatasetQuery).query,
+        ).toEqual({
           "source-table": NESTED_QUESTION_SOURCE_TABLE_ID,
           filter: [operator, fieldRef, cellValue],
         });
@@ -251,7 +293,9 @@ describe("QuickFilterDrill", () => {
       const { operator } = NULL_FILTERS[i];
       it(`should correctly apply "${operator}" filter`, () => {
         const question = action.question();
-        expect(question.datasetQuery().query).toEqual({
+        expect(
+          (question.datasetQuery() as StructuredDatasetQuery).query,
+        ).toEqual({
           "source-table": ORDERS.id,
           filter: [operator, clickedField.reference()],
         });
@@ -285,7 +329,9 @@ describe("QuickFilterDrill", () => {
       const { operator } = NUMBER_AND_DATE_FILTERS[i];
       it(`should correctly apply "${operator}" filter`, () => {
         const question = action.question();
-        expect(question.datasetQuery().query).toEqual({
+        expect(
+          (question.datasetQuery() as StructuredDatasetQuery).query,
+        ).toEqual({
           "source-table": ORDERS.id,
           filter: [operator, ORDERS.CREATED_AT.reference(), CELL_VALUE],
         });
@@ -342,11 +388,81 @@ describe("QuickFilterDrill", () => {
       const { operator } = OTHER_FILTERS[i];
       it(`should correctly apply "${operator}" filter`, () => {
         const question = action.question();
-        expect(question.datasetQuery().query).toEqual({
+        expect(
+          (question.datasetQuery() as StructuredDatasetQuery).query,
+        ).toEqual({
           "source-table": PEOPLE.id,
           filter: [operator, PEOPLE.NAME.reference(), CELL_VALUE],
         });
         expect(question.display()).toBe("table");
+      });
+    });
+  });
+
+  describe("long text cells", () => {
+    const CELL_VALUE =
+      "Enim consequatur voluptas temporibus iusto optio. Nihil et ea iste autem est. Accusamus sint corporis ullam.";
+    const actions = QuickFilterDrill({
+      question: REVIEWS.question(),
+      clicked: {
+        column: REVIEWS.BODY.column(),
+        value: CELL_VALUE,
+      },
+    }) as PopoverClickAction[];
+
+    it("should return correct filters", () => {
+      const filters = LONG_TEXT_FILTERS.map(({ title, name }) => ({
+        title,
+        name,
+      }));
+      expect(actions).toMatchObject(filters);
+    });
+
+    actions.forEach((action, index) => {
+      it(`should show popover on "${action.name}" filter action click`, () => {
+        expect(action.name).toBe(LONG_TEXT_FILTERS[index].name);
+        const { popover: PopoverComponent } = action;
+
+        const props = {
+          series: [],
+          onClick: jest.fn(),
+          onChangeCardAndRun: jest.fn(),
+          onChange: jest.fn(),
+          onResize: jest.fn(),
+          onClose: jest.fn(),
+        };
+
+        renderWithProviders(<PopoverComponent {...props} />);
+
+        // sets filter value to clicked action type (Contains) and cell value
+        expect(
+          screen.getByText(LONG_TEXT_FILTERS[index].selectOptionTitle),
+        ).toBeInTheDocument();
+        const valueInput = screen.getByPlaceholderText("Enter some text");
+        expect(valueInput).toBeInTheDocument();
+        expect(valueInput).toHaveValue(CELL_VALUE);
+
+        const applyButton = screen.getByText("Add filter");
+        expect(applyButton).toBeInTheDocument();
+
+        userEvent.click(applyButton);
+
+        expect(props.onChangeCardAndRun).toHaveBeenCalledTimes(1);
+        expect(props.onChangeCardAndRun).toHaveBeenCalledWith(
+          expect.objectContaining({
+            nextCard: expect.objectContaining({
+              dataset_query: {
+                database: 1,
+                query: {
+                  filter: [action.name, ["field", 29, null], CELL_VALUE],
+                  "source-table": 4,
+                },
+                type: "query",
+              },
+              display: "table",
+            }),
+          }),
+        );
       });
     });
   });
@@ -368,7 +484,9 @@ describe("QuickFilterDrill", () => {
       const { operator } = OTHER_FILTERS[i];
       it(`should correctly apply "${operator}" filter`, () => {
         const question = action.question();
-        expect(question.datasetQuery().query).toEqual({
+        expect(
+          (question.datasetQuery() as StructuredDatasetQuery).query,
+        ).toEqual({
           "source-table": PEOPLE.id,
           filter: [operator, PEOPLE.ZIP.reference(), cellValue],
         });

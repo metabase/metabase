@@ -5,6 +5,7 @@ import {
   VisualizationSettings,
 } from "metabase-types/api";
 import Question from "metabase-lib/Question";
+import Dimension from "metabase-lib/Dimension";
 
 type OnChangeCardAndRunOpts = {
   previousCard?: Card;
@@ -37,6 +38,7 @@ export interface ClickObject {
   value?: RowValue;
   column?: DatasetColumn;
   dimensions?: ClickObjectDimension[];
+  dimension?: Dimension; // used in table visualization
   event?: MouseEvent;
   element?: HTMLElement;
   seriesIndex?: number;
