@@ -9,4 +9,5 @@ export * from "./use-schema-list-query";
 export * from "./use-segment-list-query";
 export * from "./use-segment-query";
 export * from "./use-table-list-query";
+export * from "./use-table-metadata-query";
 export * from "./use-table-query";

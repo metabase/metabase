@@ -65,6 +65,12 @@ export interface TableQuery {
   include_editable_data_model?: boolean;
 }
 
+export interface TableMetadataQuery {
+  include_sensitive_fields?: boolean;
+  include_hidden_fields?: boolean;
+  include_editable_data_model?: boolean;
+}
+
 export interface TableListQuery {
   dbId?: DatabaseId;
   schemaName?: string;
