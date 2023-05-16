@@ -18,6 +18,16 @@ import type Metric from "./Metric";
 import type Segment from "./Segment";
 import { getUniqueFieldId } from "./utils/fields";
 
+interface MetadataOpts {
+  databases?: Record<string, Database>;
+  schemas?: Record<string, Schema>;
+  tables?: Record<string, Table>;
+  fields?: Record<string, Field>;
+  metrics?: Record<string, Metric>;
+  segments?: Record<string, Segment>;
+  questions?: Record<string, Question>;
+}
+
 class Metadata {
   databases: Record<string, Database> = {};
   schemas: Record<string, Schema> = {};
@@ -26,6 +36,10 @@ class Metadata {
   metrics: Record<string, Metric> = {};
   segments: Record<string, Segment> = {};
   questions: Record<string, Question> = {};
+
+  constructor(opts?: MetadataOpts) {
+    Object.assign(this, opts);
+  }
 
   /**
    * @deprecated this won't be sorted or filtered in a meaningful way
