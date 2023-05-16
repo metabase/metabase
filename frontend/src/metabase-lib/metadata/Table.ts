@@ -145,9 +145,9 @@ class Table {
 
   connectedTables(): Table[] {
     const fks = this.fks || [];
-    return fks
-      .map(fk => this.metadata?.field(fk.origin_id)?.table)
-      .filter(Boolean) as Table[];
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore
+    return fks.map(fk => new Table(fk.origin.table));
   }
 
   foreignTables(): Table[] {
