@@ -1,7 +1,7 @@
 import React from "react";
 import { t } from "ttag";
 
-import TabRow from "metabase/core/components/TabRow";
+import { TabRow } from "metabase/core/components/TabRow";
 import { SelectedTabId } from "metabase-types/store";
 
 import {
@@ -40,7 +40,7 @@ export function DashboardTabs({ isEditing }: DashboardTabsProps) {
               value={tab.id}
               label={tab.name}
               onRename={name => renameTab(tab.id, name)}
-              canEdit={isEditing}
+              canRename={isEditing}
               showMenu={isEditing}
               menuItems={[
                 {

@@ -3,8 +3,8 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { getIcon } from "__support__/ui";
 
-import TabRow from "../TabRow";
-import TabButton, { RenameableTabButtonProps } from "./TabButton";
+import { TabRow } from "../TabRow";
+import { TabButton, RenameableTabButtonProps } from "./TabButton";
 
 function setup(props?: Partial<RenameableTabButtonProps<string>>) {
   const action = jest.fn();

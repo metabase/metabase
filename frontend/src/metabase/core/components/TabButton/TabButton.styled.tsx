@@ -18,11 +18,10 @@ export const TabButtonInputWrapper = styled.span`
 export const TabButtonInputResizer = styled.span`
   visibility: hidden;
   white-space: pre;
+  padding-right: 2px;
 `;
 
 export const TabButtonInput = styled.input<TabButtonProps & { value: string }>`
-  box-sizing: border-box;
-
   position: absolute;
   width: 100%;
   left: 0;
