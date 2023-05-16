@@ -131,18 +131,12 @@ export const getMetadata: (
     Object.values(metadata.schemas).forEach(schema => {
       schema.database = hydrateSchemaDatabase(schema, metadata);
     });
-
-    // table
     Object.values(metadata.tables).forEach(table => {
+      table.db = metadata.database(table.db_id || table.db) ?? undefined;
+      table.schema = metadata.schema(table.schema) ?? undefined;
       table.fields = hydrateTableFields(table, metadata);
       table.segments = hydrateTableSegments(table, metadata);
       table.metrics = hyrdateTableMetrics(table, metadata);
-    });
-    Object.values(metadata.tables).forEach(table => {
-      table.db = metadata.database(table.db_id || table.db) ?? undefined;
-    });
-    Object.values(metadata.tables).forEach(table => {
-      table.schema = metadata.schema(table.schema) ?? undefined;
     });
     Object.values(metadata.databases).forEach(database => {
       database.schemas = hydrateDatabaseSchemas(database, metadata);
