@@ -1,6 +1,5 @@
 (ns metabase.search.scoring-test
   (:require
-   [cheshire.core :as json]
    [clojure.test :refer :all]
    [java-time :as t]
    [metabase.search.config :as search-config]
