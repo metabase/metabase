@@ -10,7 +10,7 @@ export const IconWrapper = styled.span`
 `;
 
 export const ClickActionButtonIcon = styled(Icon)`
-  margin-right: 0.75rem;
+  margin-right: 0.25rem;
 
   width: 0.875rem;
   height: 0.875rem;
