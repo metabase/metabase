@@ -695,28 +695,28 @@
                   "which is fully-tested :D")
       (is (= [0]
              (mt/first-row
-               (mt/format-rows-by [int]
-                 (process-native
-                   :native     {:query         (format "SELECT COUNT(*) FROM %s WHERE {{checkin_date}}"
-                                                       (checkins-identifier))
-                                :template-tags {"checkin_date" {:name         "checkin_date"
-                                                                :display-name "Checkin Date"
-                                                                :type         :dimension
-                                                                :widget-type  :date/relative
-                                                                :dimension    [:field (mt/id :checkins :date) nil]}}}
-                   :parameters [{:type   :date/relative
-                                 :target [:dimension [:template-tag "checkin_date"]]
-                                 :value  "thismonth"}]))))))))
-
+              (mt/format-rows-by [int]
+                                 (process-native
+                                  :native     {:query         (format "SELECT COUNT(*) FROM %s WHERE {{checkin_date}}"
+                                                                      (checkins-identifier))
+                                               :template-tags {"checkin_date" {:name         "checkin_date"
+                                                                               :display-name "Checkin Date"
+                                                                               :type         :dimension
+                                                                               :widget-type  :date/relative
+                                                                               :dimension    [:field (mt/id :checkins :date) nil]}}}
+                                  :parameters [{:type   :date/relative
+                                                :target [:dimension [:template-tag "checkin_date"]]
+                                                :value  "thismonth"}]))))))))
 
 (deftest ^:parallel e2e-exclude-date-parts-test
-  (mt/test-drivers (sql-parameters-engines)
+  ;; Exclude bigquery from this test, because there's a bug with bigquery and exclusion of date parts (metabase#30790)
+  (mt/test-drivers (disj (sql-parameters-engines) :bigquery-cloud-sdk)
     (testing (str "test that excluding date parts work correctly. It should be enough to try just one type of exclusion, because"
                   "here, since handling them gets delegated to the functions in `metabase.driver.common.parameters.dates`, "
                   "which is fully-tested :D")
       (doseq [[exclusion-string expected] {"exclude-months-Jan"     962
                                            "exclude-months-Jan-Feb" 892}]
-        (testing (format "test that excluding %s works correctly" exclusion-string)
+        (testing (format "test that excluding dates with %s works correctly" exclusion-string)
           (is (= [expected]
                  (mt/first-row
                   (mt/format-rows-by [int]
