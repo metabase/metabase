@@ -118,7 +118,7 @@
                      mi/normalize-visualization-settings
                      (#'mi/migrate-viz-settings)))))))))
 
-(deftest migrate-legacy-column-settings-field-refs-test
+(deftest add-join-alias-to-visualization-settings-field-refs-test
   (testing "Migrations v47.00-027: update visualization_settings.column_settings legacy field refs"
     (impl/test-migrations ["v47.00-027"] [migrate!]
       (let [result_metadata
