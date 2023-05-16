@@ -177,20 +177,19 @@ Eg. if Dashboard B includes a Card A that is derived from a
     ;; If that is non-nil, emit the report.
     (escape-report analysis)
     ;; If it's nil, there are no errors, and we can proceed to do the dump.
-    (let [closure  (descendants-closure targets)
-          models   (model-set opts)
+    (let [closure     (descendants-closure targets)
+          models      (model-set opts)
           ;; filter the selected models based on user options
-          by-model (-> (group-by first closure)
-                       (select-keys models)
-                       (update-vals #(set (map second %))))]
-      (concat
-       (eduction (map (fn [[model ids]]
+          by-model    (-> (group-by first closure)
+                          (select-keys models)
+                          (update-vals #(set (map second %))))
+          extract-ids (fn [[model ids]]
                         (eduction (map #(serdes/extract-one model opts %))
-                                  (db/select-reducible (symbol model) :id [:in ids]))))
-                 cat
-                 by-model)
-       ;; extract all non-content entities like data model and settings if necessary
-       (eduction (map #(serdes/extract-all % opts)) cat (remove (set serdes.models/content) models))))))
+                                  (db/select-reducible (symbol model) :id [:in ids])))]
+      (eduction cat
+                [(eduction (map extract-ids) cat by-model)
+                 ;; extract all non-content entities like data model and settings if necessary
+                 (eduction (map #(serdes/extract-all % opts)) cat (remove (set serdes.models/content) models))]))))
 
 (defn extract
   "Returns a reducible stream of entities to serialize"

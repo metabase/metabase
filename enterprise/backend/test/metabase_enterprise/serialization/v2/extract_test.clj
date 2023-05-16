@@ -1289,7 +1289,10 @@
 
       (testing "selecting a collection includes settings and data model by default"
         (is (= #{"Card" "Collection" "Dashboard" "Database" "Setting"}
-               (set (map (comp :model first serdes/path) (extract/extract {:targets [["Collection" coll1-id]]}))))))
+               (->> {:targets [["Collection" coll1-id]]}
+                    extract/extract
+                    (map (comp :model first serdes/path))
+                    set))))
 
       (testing "selecting a dashboard gets all cards its dashcards depend on"
         (testing "grandparent dashboard"
