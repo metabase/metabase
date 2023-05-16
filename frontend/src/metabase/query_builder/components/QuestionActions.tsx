@@ -20,6 +20,7 @@ import { color } from "metabase/lib/colors";
 import BookmarkToggle from "metabase/core/components/BookmarkToggle";
 import { getSetting } from "metabase/selectors/settings";
 import { canUseMetabotOnDatabase } from "metabase/metabot/utils";
+import Link from "metabase/core/components/Link";
 import Question from "metabase-lib/Question";
 
 import {
@@ -229,16 +230,28 @@ const QuestionActions = ({
         />
       </Tooltip>
       <Tooltip tooltip={t`More info`}>
-        <ViewHeaderIconButtonContainer>
-          <Button
-            onlyIcon
-            icon="info"
-            iconSize={HEADER_ICON_SIZE}
-            onClick={onInfoClick}
-            color={infoButtonColor}
-            data-testid="qb-header-info-button"
-          />
-        </ViewHeaderIconButtonContainer>
+        {question.isDataset() ? (
+          <Link to={Urls.modelDetail(question.card())}>
+            <Button
+              onlyIcon
+              icon="info"
+              iconSize={HEADER_ICON_SIZE}
+              color={infoButtonColor}
+              data-testid="qb-header-info-button"
+            />
+          </Link>
+        ) : (
+          <ViewHeaderIconButtonContainer>
+            <Button
+              onlyIcon
+              icon="info"
+              onClick={onInfoClick}
+              iconSize={HEADER_ICON_SIZE}
+              color={infoButtonColor}
+              data-testid="qb-header-info-button"
+            />
+          </ViewHeaderIconButtonContainer>
+        )}
       </Tooltip>
       <EntityMenu
         triggerAriaLabel={t`Move, archive, and more...`}
