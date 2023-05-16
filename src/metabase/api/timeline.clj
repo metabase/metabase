@@ -54,7 +54,8 @@
   "Fetch the [[Timeline]] with `id`. Include `include=events` to unarchived events included on the timeline. Add
   `archived=true` to return all events on the timeline, both archived and unarchived."
   [id include archived start end]
-  {include  [:maybe [:= "events"]]
+  {id       [:maybe ms/PositiveInt]
+   include  [:maybe [:= "events"]]
    archived [:maybe :boolean]
    start    [:maybe ms/TemporalString]
    end      [:maybe ms/TemporalString]}
@@ -75,7 +76,8 @@
   "Update the [[Timeline]] with `id`. Returns the timeline without events. Archiving a timeline will archive all of the
   events in that timeline."
   [id :as {{:keys [name default description icon collection_id archived] :as timeline-updates} :body}]
-  {name          [:maybe ms/NonBlankString]
+  {id            [:maybe ms/PositiveInt]
+   name          [:maybe ms/NonBlankString]
    default       [:maybe :boolean]
    description   [:maybe :string]
    icon          [:maybe (into [:enum] timeline/icons)]
@@ -95,6 +97,7 @@
 (api/defendpoint DELETE "/:id"
   "Delete a [[Timeline]]. Will cascade delete its events as well."
   [id]
+  {id [:maybe ms/PositiveInt]}
   (api/write-check Timeline id)
   (t2/delete! Timeline :id id)
   api/generic-204-no-content)
