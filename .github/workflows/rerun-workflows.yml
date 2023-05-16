@@ -32,6 +32,7 @@ jobs:
             const BRANCH = ${{ github.event.workflow_run.head_branch }};
             const BRANCH_REF = context.ref;
             const FAILED_RUN = ${{ github.event.workflow_run.html_url }};
+            const FAILED_WORKFLOW = ${{ github.event.workflow_run.name }};
 
             if (ATTEMPT <= MAX_ATTEMPTS) {
               github.rest.actions.reRunWorkflowFailedJobs({
@@ -54,7 +55,7 @@ jobs:
                     "type": "header",
                     "text": {
                       "type": "plain_text",
-                      "text": `:alert: CI is failing on ${BRANCH} :alert:`,
+                      "text": `:alert: CI is failing for ${FAILED_WORKFLOW} on ${BRANCH} :alert:`,
                       "emoji": true,
                     }
                   },
