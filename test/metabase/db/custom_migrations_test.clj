@@ -126,12 +126,16 @@
                              {"field_ref" ["field-id" 39]}
                              {"field_ref" ["field" 40 nil]}
                              {"field_ref" ["fk->" ["field-id" 39] ["field-id" 40]]}
-                             {"field_ref" ["fk->" 41 42]}]
+                             {"field_ref" ["fk->" 41 42]}
+                             {"field_ref" ["aggregation" 0]}
+                             {"field_ref" ["expression" "expr"]}]
             expected        [{"field_ref" ["field" "column_name" {"base-type" "type/Text"}]}
                              {"field_ref" ["field" 39 nil]}
                              {"field_ref" ["field" 40 nil]}
                              {"field_ref" ["field" 40 {"source-field" 39}]}
-                             {"field_ref" ["field" 42 {"source-field" 41}]}]
+                             {"field_ref" ["field" 42 {"source-field" 41}]}
+                             {"field_ref" ["aggregation" 0]}
+                             {"field_ref" ["expression" "expr"]}]
             user-id     (t2/insert-returning-pks! User {:first_name  "Howard"
                                                         :last_name   "Hughes"
                                                         :email       "howard@aircraft.com"
