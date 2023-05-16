@@ -209,7 +209,6 @@
                           :name            collection_name
                           :authority_level collection_authority_level}
          :scores          all-scores)
-        (update :dataset_query #(some-> % json/parse-string mbql.normalize/normalize))
         (dissoc
          :collection_id
          :collection_name
