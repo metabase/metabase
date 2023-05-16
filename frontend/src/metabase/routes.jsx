@@ -88,6 +88,7 @@ import { trackPageView } from "metabase/lib/analytics";
 
 import ActionCreatorModal from "metabase/actions/containers/ActionCreatorModal";
 import ModelDetailPage from "metabase/models/containers/ModelDetailPage";
+import { Preview } from "@ui/preview";
 import {
   CanAccessMetabot,
   IsNotAuthenticated,
@@ -344,6 +345,8 @@ export const getRoutes = store => (
       from="/collections/permissions"
       to="/admin/permissions/collections"
     />
+
+    <Route path="/ui/preview" component={Preview} />
 
     {/* MISC */}
     <Route path="/unauthorized" component={Unauthorized} />
