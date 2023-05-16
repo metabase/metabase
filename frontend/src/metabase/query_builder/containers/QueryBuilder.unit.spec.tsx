@@ -217,12 +217,15 @@ describe("QueryBuilder", () => {
           initialRoute: `/model/${TEST_MODEL_CARD.id}/metadata`,
         });
 
-        const descriptionInput = screen.getByTitle("Description");
-        userEvent.click(descriptionInput);
-        userEvent.type(descriptionInput, "anything");
+        const columnDisplayName = screen.getByTitle("Display name");
+
+        userEvent.click(columnDisplayName);
+        userEvent.type(columnDisplayName, "X");
 
         await waitFor(() => {
-          expect(descriptionInput).toHaveTextContent("anything");
+          expect(columnDisplayName).toHaveValue(
+            `${TEST_MODEL_DATASET_COLUMN.display_name}X`,
+          );
         });
 
         userEvent.tab();
