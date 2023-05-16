@@ -1,9 +1,7 @@
 (ns metabase.search.scoring
   (:require
-   [cheshire.core :as json]
    [clojure.string :as str]
    [java-time :as t]
-   [metabase.mbql.normalize :as mbql.normalize]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.search.config :as search-config]
    [metabase.search.util :as search-util]

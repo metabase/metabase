@@ -1,6 +1,5 @@
 (ns metabase.search.config
   (:require
-   [cheshire.core :as json]
    [metabase.models
     :refer [Action Card Collection Dashboard Database Metric Segment Table]]
    [metabase.models.setting :refer [defsetting]]
