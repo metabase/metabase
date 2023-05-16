@@ -69,6 +69,7 @@ export const createMockNormalizedField = ({
   ...opts
 }: Partial<NormalizedField>): NormalizedField => ({
   ...createMockField(opts),
+  uniqueId: "1",
   target,
   table,
   name_field,
