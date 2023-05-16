@@ -236,6 +236,21 @@
    [:map
     [:columns {:optional true} [:sequential lib.metadata/ColumnMetadata]]]])
 
+(defmethod lib.metadata.calculation/display-name-method :mbql.aggregation/operator
+  [_query _stage-number {:keys [display-info]}]
+  (:name (display-info)))
+
+(defmethod lib.metadata.calculation/display-info-method :mbql.aggregation/operator
+  [_query _stage-number {:keys [display-info requires-field?] short-name :short}]
+  (assoc (display-info)
+         :short short-name
+         :requires-field requires-field?))
+
+(mu/defn aggregation-columns :- [:maybe [:sequential lib.metadata/ColumnMetadata]]
+  "Return the columns for which `aggregation-operator` is applicable."
+  [aggregation-operator :- OperatorWithColumns]
+  (:columns aggregation-operator))
+
 (mu/defn available-aggregation-operators :- [:maybe [:sequential OperatorWithColumns]]
   ([query]
    (available-aggregation-operators query -1))
