@@ -100,6 +100,10 @@ export const isPopoverClickAction = (
   clickAction: ClickAction,
 ): clickAction is PopoverClickAction => "popover" in clickAction;
 
+export const isQuestionChangeClickAction = (
+  clickAction: ClickAction,
+): clickAction is QuestionChangeClickAction => "question" in clickAction;
+
 export const AlwaysDefaultClickAction = (
   clickAction: ClickAction,
 ): clickAction is AlwaysDefaultClickAction =>

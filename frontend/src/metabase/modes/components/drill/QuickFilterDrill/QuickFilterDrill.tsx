@@ -4,27 +4,26 @@ import { RowValue } from "metabase-types/api";
 import type {
   ClickActionButtonType,
   ClickActionProps,
+  PopoverClickAction,
   QuestionChangeClickAction,
 } from "metabase/modes/types";
-import { getColumnFilterDrillPopover } from "metabase/modes/components/drill/common/ColumnFilterDrillPopover";
-import { PopoverClickAction } from "metabase/modes/types";
 import {
-  QuickFilterDataValueType,
   quickFilterDrill,
+  QuickFilterDrillOperator,
   quickFilterDrillQuestion,
   QuickFilterOperatorType,
 } from "metabase-lib/queries/drills/quick-filter-drill";
 import Filter from "metabase-lib/queries/structured/Filter";
+import { getColumnFilterDrillPopover } from "../common/ColumnFilterDrillPopover";
 import { TextIcon } from "./QuickFilterDrill.styled";
 
-const DateButtonTitleMap: Record<QuickFilterOperatorType, string> = {
+export type DateQuickFilterOperatorType = "<" | ">" | "=" | "≠";
+
+const DateButtonTitleMap: Record<DateQuickFilterOperatorType, string> = {
   ["<"]: t`Before`,
   [">"]: t`After`,
   ["="]: t`On`,
   ["≠"]: t`Not on`,
-
-  ["contains"]: "",
-  ["does-not-contain"]: "",
 };
 
 const SPECIFIC_VALUE_TITLE_MAX_LENGTH = 20;
@@ -46,15 +45,10 @@ const getTextValueTitle = (value: string): string => {
   return value;
 };
 
-const getOperatorOverrides = ({
-  valueType,
-  name,
-  value,
-}: {
-  valueType: QuickFilterDataValueType;
-  name: QuickFilterOperatorType;
-  value: RowValue | undefined;
-}): {
+const getOperatorOverrides = (
+  { name, valueType }: QuickFilterDrillOperator,
+  value: RowValue | undefined,
+): {
   title?: string;
   icon?: React.ReactNode;
   buttonType?: ClickActionButtonType;
@@ -112,12 +106,11 @@ const QuickFilterDrill = ({
   }
 
   const { value } = clicked;
-  const {
-    query,
-    operators: { operators, valueType },
-  } = drill;
+  const { query, operators } = drill;
 
-  return operators.map(({ name, filter }) => {
+  return operators.map(operator => {
+    const { name, filter, valueType } = operator;
+
     if (CUSTOM_BEHAVIOR_OPERATORS.includes(name)) {
       return {
         name,
@@ -128,7 +121,7 @@ const QuickFilterDrill = ({
           query,
           initialFilter: new Filter(filter, 0, query),
         }),
-        ...getOperatorOverrides({ valueType, name, value }),
+        ...getOperatorOverrides(operator, value),
       };
     }
 
@@ -141,7 +134,7 @@ const QuickFilterDrill = ({
       extra: () => ({
         valueType,
       }),
-      ...getOperatorOverrides({ valueType, name, value }),
+      ...getOperatorOverrides(operator, value),
     };
   });
 };

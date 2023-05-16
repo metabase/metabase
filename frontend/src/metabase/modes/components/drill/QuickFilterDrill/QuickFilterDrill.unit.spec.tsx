@@ -8,13 +8,14 @@ import {
   SAMPLE_DATABASE,
 } from "__support__/sample_database_fixture";
 import { createMockColumn } from "metabase-types/api/mocks";
-import {
+import type {
   DatasetColumn,
   DimensionReference,
   RowValue,
   StructuredDatasetQuery,
 } from "metabase-types/api";
 import {
+  isQuestionChangeClickAction,
   PopoverClickAction,
   QuestionChangeClickAction,
 } from "metabase/modes/types";
@@ -98,6 +99,23 @@ function setup({
   };
 }
 
+const getActionQuestion = (
+  action: ReturnType<typeof QuickFilterDrill>[number],
+) => {
+  if (!isQuestionChangeClickAction(action)) {
+    throw new Error("Type of action does not contain question");
+  }
+
+  const question = action.question();
+
+  return {
+    question,
+
+    // all queries in QuestionChangeClickAction are Structured
+    query: (question.datasetQuery() as StructuredDatasetQuery).query,
+  };
+};
+
 describe("QuickFilterDrill", () => {
   it("should not be valid for top level actions", () => {
     const actions = QuickFilterDrill({ question: ORDERS.question() });
@@ -154,10 +172,8 @@ describe("QuickFilterDrill", () => {
     actions.forEach((action, i) => {
       const { operator } = NUMBER_AND_DATE_FILTERS[i];
       it(`should correctly apply "${operator}" filter`, () => {
-        const question = action.question();
-        expect(
-          (question.datasetQuery() as StructuredDatasetQuery).query,
-        ).toEqual({
+        const { question, query } = getActionQuestion(action);
+        expect(query).toEqual({
           "source-table": ORDERS.id,
           filter: [
             operator,
@@ -186,10 +202,8 @@ describe("QuickFilterDrill", () => {
     actions.forEach((action, i) => {
       const { operator } = NUMBER_AND_DATE_FILTERS[i];
       it(`should correctly apply "${operator}" filter`, () => {
-        const question = action.question();
-        expect(
-          (question.datasetQuery() as StructuredDatasetQuery).query,
-        ).toEqual({
+        const { question, query } = getActionQuestion(action);
+        expect(query).toEqual({
           "source-table": ORDERS.id,
           filter: [operator, joinedFieldRef, cellValue],
         });
@@ -220,10 +234,8 @@ describe("QuickFilterDrill", () => {
     actions.forEach((action, i) => {
       const { operator } = NUMBER_AND_DATE_FILTERS[i];
       it(`should correctly apply "${operator}" filter`, () => {
-        const question = action.question();
-        expect(
-          (question.datasetQuery() as StructuredDatasetQuery).query,
-        ).toEqual({
+        const { question, query } = getActionQuestion(action);
+        expect(query).toEqual({
           "source-query": AGGREGATED_QUERY,
           filter: [
             operator,
@@ -266,10 +278,8 @@ describe("QuickFilterDrill", () => {
     actions.forEach((action, i) => {
       const { operator } = NUMBER_AND_DATE_FILTERS[i];
       it(`should correctly apply "${operator}" filter`, () => {
-        const question = action.question();
-        expect(
-          (question.datasetQuery() as StructuredDatasetQuery).query,
-        ).toEqual({
+        const { question, query } = getActionQuestion(action);
+        expect(query).toEqual({
           "source-table": NESTED_QUESTION_SOURCE_TABLE_ID,
           filter: [operator, fieldRef, cellValue],
         });
@@ -292,10 +302,8 @@ describe("QuickFilterDrill", () => {
     actions.forEach((action, i) => {
       const { operator } = NULL_FILTERS[i];
       it(`should correctly apply "${operator}" filter`, () => {
-        const question = action.question();
-        expect(
-          (question.datasetQuery() as StructuredDatasetQuery).query,
-        ).toEqual({
+        const { question, query } = getActionQuestion(action);
+        expect(query).toEqual({
           "source-table": ORDERS.id,
           filter: [operator, clickedField.reference()],
         });
@@ -328,10 +336,8 @@ describe("QuickFilterDrill", () => {
     actions.forEach((action, i) => {
       const { operator } = NUMBER_AND_DATE_FILTERS[i];
       it(`should correctly apply "${operator}" filter`, () => {
-        const question = action.question();
-        expect(
-          (question.datasetQuery() as StructuredDatasetQuery).query,
-        ).toEqual({
+        const { question, query } = getActionQuestion(action);
+        expect(query).toEqual({
           "source-table": ORDERS.id,
           filter: [operator, ORDERS.CREATED_AT.reference(), CELL_VALUE],
         });
@@ -387,10 +393,8 @@ describe("QuickFilterDrill", () => {
     actions.forEach((action, i) => {
       const { operator } = OTHER_FILTERS[i];
       it(`should correctly apply "${operator}" filter`, () => {
-        const question = action.question();
-        expect(
-          (question.datasetQuery() as StructuredDatasetQuery).query,
-        ).toEqual({
+        const { question, query } = getActionQuestion(action);
+        expect(query).toEqual({
           "source-table": PEOPLE.id,
           filter: [operator, PEOPLE.NAME.reference(), CELL_VALUE],
         });
@@ -483,10 +487,8 @@ describe("QuickFilterDrill", () => {
     actions.forEach((action, i) => {
       const { operator } = OTHER_FILTERS[i];
       it(`should correctly apply "${operator}" filter`, () => {
-        const question = action.question();
-        expect(
-          (question.datasetQuery() as StructuredDatasetQuery).query,
-        ).toEqual({
+        const { question, query } = getActionQuestion(action);
+        expect(query).toEqual({
           "source-table": PEOPLE.id,
           filter: [operator, PEOPLE.ZIP.reference(), cellValue],
         });

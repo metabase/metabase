@@ -14,7 +14,7 @@ import { isLocalField } from "metabase-lib/queries/utils";
 import { fieldRefForColumn } from "metabase-lib/queries/utils/dataset";
 import type Question from "metabase-lib/Question";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
-import { ClickObject } from "metabase-lib/queries/drills/types";
+import type { ClickObject } from "metabase-lib/queries/drills/types";
 
 const INVALID_TYPES = [TYPE.Structured];
 
@@ -26,28 +26,17 @@ export type QuickFilterOperatorType =
   | "contains"
   | "does-not-contain";
 
-export type QuickFilterDataValueType =
-  | "null"
-  | "date"
-  | "numeric"
-  | "boolean"
-  | "text";
-
-export type QuickFilterResult =
-  | {
-      valueType: "null" | "boolean";
-      operators: { name: "=" | "≠"; filter: FieldFilter }[];
-    }
+export type QuickFilterDrillOperator =
+  | { valueType: "null" | "boolean"; name: "=" | "≠"; filter: FieldFilter }
   | {
       valueType: "numeric" | "date";
-      operators: { name: "=" | "≠" | "<" | ">"; filter: FieldFilter }[];
+      name: "=" | "≠" | "<" | ">";
+      filter: FieldFilter;
     }
   | {
       valueType: "text";
-      operators: {
-        name: "=" | "≠" | "contains" | "does-not-contain";
-        filter: FieldFilter;
-      }[];
+      name: "=" | "≠" | "contains" | "does-not-contain";
+      filter: FieldFilter;
     };
 
 export function quickFilterDrill({
@@ -77,6 +66,72 @@ export function quickFilterDrill({
     query: query as StructuredQuery,
     operators: getOperatorsForColumn(column, value),
   };
+}
+
+function getOperatorsForColumn(
+  column: DatasetColumn,
+  value: RowValue,
+): QuickFilterDrillOperator[] | null {
+  const fieldRef = getColumnFieldRef(column);
+
+  if (
+    INVALID_TYPES.some(type => column.base_type && isa(column.base_type, type))
+  ) {
+    return null;
+  } else if (value == null) {
+    const valueType = "null";
+
+    return [
+      { name: "=", valueType, filter: ["is-null", fieldRef] },
+      { name: "≠", valueType, filter: ["not-null", fieldRef] },
+    ];
+  } else if (isNumeric(column) || isDate(column)) {
+    const typedValue = value as string | number;
+    const valueType = isDate(column) ? "date" : "numeric";
+
+    return [
+      { name: "<", valueType, filter: ["<", fieldRef, typedValue] },
+      { name: ">", valueType, filter: [">", fieldRef, typedValue] },
+      { name: "=", valueType, filter: ["=", fieldRef, typedValue] },
+      { name: "≠", valueType, filter: ["!=", fieldRef, typedValue] },
+    ];
+  }
+  if (isString(column) && isLongText(column)) {
+    const typedValue = value as string;
+    const valueType = "text";
+
+    return [
+      {
+        name: "contains",
+        valueType,
+        filter: ["contains", fieldRef, typedValue],
+      },
+      {
+        name: "does-not-contain",
+        valueType,
+        filter: ["does-not-contain", fieldRef, typedValue],
+      },
+    ];
+  } else {
+    const valueType = isBoolean(column) ? "boolean" : "text";
+
+    return [
+      { name: "=", valueType, filter: ["=", fieldRef, value] },
+      { name: "≠", valueType, filter: ["!=", fieldRef, value] },
+    ];
+  }
+}
+
+function isLocalColumn(column: DatasetColumn) {
+  return isLocalField(column.field_ref);
+}
+
+function getColumnFieldRef(column: DatasetColumn) {
+  if (isLocalColumn(column)) {
+    return fieldRefForColumn(column);
+  } else {
+    return ["field", column.name, { "base-type": column.base_type }];
+  }
 }
 
 export function quickFilterDrillQuestion({
@@ -116,72 +171,5 @@ export function quickFilterDrillQuestion({
      * }
      */
     return query.nest().filter(filter).question();
-  }
-}
-
-function getOperatorsForColumn(
-  column: DatasetColumn,
-  value: RowValue,
-): QuickFilterResult | null {
-  const fieldRef = getColumnFieldRef(column);
-
-  if (
-    INVALID_TYPES.some(type => column.base_type && isa(column.base_type, type))
-  ) {
-    return null;
-  } else if (value == null) {
-    return {
-      valueType: "null",
-      operators: [
-        { name: "=", filter: ["is-null", fieldRef] },
-        { name: "≠", filter: ["not-null", fieldRef] },
-      ],
-    };
-  } else if (isNumeric(column) || isDate(column)) {
-    const typedValue = value as string | number;
-
-    return {
-      valueType: isDate(column) ? "date" : "numeric",
-      operators: [
-        { name: "<", filter: ["<", fieldRef, typedValue] },
-        { name: ">", filter: [">", fieldRef, typedValue] },
-        { name: "=", filter: ["=", fieldRef, typedValue] },
-        { name: "≠", filter: ["!=", fieldRef, typedValue] },
-      ],
-    };
-  }
-  if (isString(column) && isLongText(column)) {
-    const typedValue = value as string;
-
-    return {
-      valueType: "text",
-      operators: [
-        { name: "contains", filter: ["contains", fieldRef, typedValue] },
-        {
-          name: "does-not-contain",
-          filter: ["does-not-contain", fieldRef, typedValue],
-        },
-      ],
-    };
-  } else {
-    return {
-      valueType: isBoolean(column) ? "boolean" : "text",
-      operators: [
-        { name: "=", filter: ["=", fieldRef, value] },
-        { name: "≠", filter: ["!=", fieldRef, value] },
-      ],
-    };
-  }
-}
-
-function isLocalColumn(column: DatasetColumn) {
-  return isLocalField(column.field_ref);
-}
-
-function getColumnFieldRef(column: DatasetColumn) {
-  if (isLocalColumn(column)) {
-    return fieldRefForColumn(column);
-  } else {
-    return ["field", column.name, { "base-type": column.base_type }];
   }
 }
