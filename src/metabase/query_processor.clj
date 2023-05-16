@@ -126,6 +126,7 @@
    #'validate/validate-query
    #'expand-macros/expand-macros
    #'qp.resolve-referenced/resolve-referenced-card-resources
+   #'qp.add-source-metadata/add-source-metadata-for-source-queries
    #'parameters/substitute-parameters
    #'qp.resolve-source-table/resolve-source-tables
    #'qp.auto-bucket-datetimes/auto-bucket-datetimes

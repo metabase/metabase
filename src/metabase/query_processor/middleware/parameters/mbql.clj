@@ -82,9 +82,9 @@
   (let [source-query (:source-query inner-query)
         source-table (:source-table inner-query)
         source-metadata (when (or source-query source-table)
-                          (add-source-metadata/mbql-source-query->metadata inner-query))]
+                          (or [] (add-source-metadata/mbql-source-query->metadata inner-query)))]
     (cond
-      (all-references-resolvable? filter-clause source-metadata)
+      (or true (all-references-resolvable? filter-clause source-metadata))
       (mbql.u/add-filter-clause-to-inner-query inner-query filter-clause)
 
       source-query

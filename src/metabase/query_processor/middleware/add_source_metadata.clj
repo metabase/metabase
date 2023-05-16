@@ -115,6 +115,7 @@
   source queries that do not specify this information, we can often infer it by looking at the shape of the source
   query."
   [{query-type :type, :as query}]
+  (tap> 'add-source-metadata-for-source-queries)
   (if-not (= query-type :query)
     query
     (update query :query add-source-metadata-at-all-levels)))
