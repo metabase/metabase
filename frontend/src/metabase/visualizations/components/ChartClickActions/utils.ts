@@ -91,10 +91,30 @@ export const getGroupedAndSortedActions = (
 export const getGALabelForAction = (action: RegularClickAction) =>
   action ? `${action.section || ""}:${action.name || ""}` : null;
 
-export const getSectionTitle = (sectionKey: string): string | null => {
+const getFilterValueType = (actions: RegularClickAction[]): string =>
+  actions[0]?.extra?.().valueType as string;
+
+export const getFilterSectionTitle = (actions: RegularClickAction[]) => {
+  const valueType = getFilterValueType(actions);
+
+  if (valueType === "date") {
+    return t`Filter by this date`;
+  }
+
+  if (valueType === "text") {
+    return t`Filter by this text`;
+  }
+
+  return t`Filter by this value`;
+};
+
+export const getSectionTitle = (
+  sectionKey: string,
+  actions: RegularClickAction[],
+): string | null => {
   switch (sectionKey) {
     case "filter":
-      return t`Filter by this value`;
+      return getFilterSectionTitle(actions);
 
     case "sum":
       return t`Summarize`;
@@ -113,12 +133,26 @@ export type ContentDirectionType = "column" | "row";
 
 export const getSectionContentDirection = (
   sectionKey: string,
+  actions: RegularClickAction[],
 ): ContentDirectionType => {
   switch (sectionKey) {
-    case "sort":
     case "sum":
-    case "filter":
       return "row";
+
+    case "filter": {
+      const valueType = getFilterValueType(actions);
+
+      if (["boolean", "numeric", "null"].includes(valueType)) {
+        return "row";
+      }
+      break;
+    }
+
+    case "sort": {
+      if (actions.length > 1) {
+        return "row";
+      }
+    }
   }
 
   return "column";

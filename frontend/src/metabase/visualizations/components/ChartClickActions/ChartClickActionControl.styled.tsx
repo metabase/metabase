@@ -83,9 +83,9 @@ export const SortControl = styled(Button)`
   border: 1px solid ${alpha("brand", 0.35)};
   line-height: 1;
 
-  font-size: 12px;
+  font-size: 0.75rem;
 
-  padding: 3px 14px 1px;
+  padding: 0.1875rem 0.875rem 0.0625rem;
   border-radius: 100px;
 
   &:hover {
@@ -101,7 +101,7 @@ export const FormattingControl = styled(Button)`
   line-height: 1;
 
   border: none;
-  padding: 2px 4px;
+  padding: 0.125rem 0.25rem;
 
   &:hover {
     color: ${color("brand")};

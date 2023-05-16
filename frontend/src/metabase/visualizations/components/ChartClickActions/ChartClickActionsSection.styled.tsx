@@ -9,8 +9,9 @@ export const Section = styled.div<{
 }>`
   display: flex;
 
-  ${({ type }) =>
+  ${({ type, direction }) =>
     type === "sort" &&
+    direction === "row" &&
     css`
       margin-bottom: 0.5rem;
     `}

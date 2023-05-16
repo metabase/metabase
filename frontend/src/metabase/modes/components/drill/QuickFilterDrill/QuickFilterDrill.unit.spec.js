@@ -1,18 +1,19 @@
-import QuickFilterDrill from "metabase/modes/components/drill/QuickFilterDrill";
-import { createMockColumn } from "metabase-types/api/mocks";
 import {
   ORDERS,
   PEOPLE,
   SAMPLE_DATABASE,
   metadata,
 } from "__support__/sample_database_fixture";
+import { createMockColumn } from "metabase-types/api/mocks";
 import Question from "metabase-lib/Question";
+import { getUnsavedNativeQuestion } from "metabase-lib/mocks";
+import QuickFilterDrill from "./QuickFilterDrill";
 
 const NUMBER_AND_DATE_FILTERS = [
-  { name: "<", operator: "<" },
-  { name: ">", operator: ">" },
-  { name: "=", operator: "=" },
-  { name: "≠", operator: "!=" },
+  { name: "<", operator: "<", dateTitle: "Before" },
+  { name: ">", operator: ">", dateTitle: "After" },
+  { name: "=", operator: "=", dateTitle: "On" },
+  { name: "≠", operator: "!=", dateTitle: "Not on" },
 ];
 
 const NULL_FILTERS = [
@@ -77,18 +78,7 @@ describe("QuickFilterDrill", () => {
 
   it("should not be valid for native questions", () => {
     const actions = QuickFilterDrill({
-      question: new Question(
-        {
-          dataset_query: {
-            type: "native",
-            native: {
-              query: "SELECT * FROM ORDERS",
-            },
-            database: SAMPLE_DATABASE.id,
-          },
-        },
-        metadata,
-      ),
+      question: getUnsavedNativeQuestion(),
       column: createMockColumn({
         name: "TOTAL",
         field_ref: ["field", "TOTAL", { base_type: "type/BigInteger" }],
@@ -284,6 +274,13 @@ describe("QuickFilterDrill", () => {
       expect(actions).toMatchObject(filters);
     });
 
+    it("should return correct action titles", () => {
+      const filters = NUMBER_AND_DATE_FILTERS.map(({ dateTitle }) => ({
+        title: dateTitle,
+      }));
+      expect(actions).toMatchObject(filters);
+    });
+
     actions.forEach((action, i) => {
       const { operator } = NUMBER_AND_DATE_FILTERS[i];
       it(`should correctly apply "${operator}" filter`, () => {
@@ -310,6 +307,35 @@ describe("QuickFilterDrill", () => {
         name,
       }));
       expect(actions).toMatchObject(filters);
+    });
+
+    it("should return title with value for short values (<= 20 chars)", () => {
+      expect(actions).toMatchObject([
+        {
+          title: `Is ${CELL_VALUE}`,
+        },
+        {
+          title: `Is not ${CELL_VALUE}`,
+        },
+      ]);
+    });
+
+    it("should return title with value for long values (> 20 chars)", () => {
+      const CELL_VALUE = "Some Long Text value longer than 20 chars";
+      const { actions } = setup({
+        question: PEOPLE.question(),
+        column: PEOPLE.NAME.column(),
+        value: CELL_VALUE,
+      });
+
+      expect(actions).toMatchObject([
+        {
+          title: `Is this`,
+        },
+        {
+          title: `Is not this`,
+        },
+      ]);
     });
 
     actions.forEach((action, i) => {
