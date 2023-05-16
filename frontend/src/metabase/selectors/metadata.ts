@@ -103,13 +103,48 @@ export const getMetadata: (
   (databases, schemas, tables, fields, segments, metrics, questions) => {
     const metadata = new Metadata();
 
-    metadata.databases = copyObjects(metadata, databases, createDatabase);
-    metadata.schemas = copyObjects(metadata, schemas, createSchema);
-    metadata.tables = copyObjects(metadata, tables, createTable);
-    metadata.fields = copyObjects(metadata, fields, createField, "uniqueId");
-    metadata.segments = copyObjects(metadata, segments, createSegment);
-    metadata.metrics = copyObjects(metadata, metrics, createMetric);
-    metadata.questions = copyObjects(metadata, questions, createQuestion);
+    metadata.databases = copyObjects(
+      metadata,
+      databases,
+      createDatabase,
+      database => database.id,
+    );
+    metadata.schemas = copyObjects(
+      metadata,
+      schemas,
+      createSchema,
+      schema => schema.id,
+    );
+    metadata.tables = copyObjects(
+      metadata,
+      tables,
+      createTable,
+      table => table.id,
+    );
+    metadata.fields = copyObjects(
+      metadata,
+      fields,
+      createField,
+      field => field.uniqueId,
+    );
+    metadata.segments = copyObjects(
+      metadata,
+      segments,
+      createSegment,
+      segment => segment.id,
+    );
+    metadata.metrics = copyObjects(
+      metadata,
+      metrics,
+      createMetric,
+      metric => metric.id,
+    );
+    metadata.questions = copyObjects(
+      metadata,
+      questions,
+      createQuestion,
+      card => card.id,
+    );
 
     // database
     hydrate(metadata.databases, "tables", database =>
@@ -297,16 +332,14 @@ function createQuestion(card: Card, metadata: Metadata) {
 function copyObjects<RawObject, MetadataObject>(
   metadata: Metadata,
   objects: Record<string, RawObject>,
-  instantiate: (object: RawObject, metadata: Metadata) => MetadataObject,
-  identifierProp = "id",
+  getInstance: (object: RawObject, metadata: Metadata) => MetadataObject,
+  getInstanceId: (object: RawObject) => string | number | undefined,
 ) {
   const copies: Record<string, MetadataObject> = {};
   for (const object of Object.values(objects)) {
-    const objectId = object?.[identifierProp as keyof RawObject];
+    const objectId = getInstanceId(object);
     if (objectId != null) {
-      copies[objectId as unknown as string] = instantiate(object, metadata);
-    } else {
-      console.warn(`Missing ${identifierProp}:`, object);
+      copies[objectId] = getInstance(object, metadata);
     }
   }
   return copies;
