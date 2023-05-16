@@ -19,7 +19,8 @@
    [metabase.test.util :as tu]
    [metabase.util :as u]
    [toucan.util.test :as tt]
-   [toucan2.core :as t2])
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp])
   (:import
    (java.time LocalDateTime)))
 
@@ -167,7 +168,28 @@
             {:name "Apple"
              :cards [{:id 1} {:id 2}]}
             {:name "Next"
-             :cards [{:id 1} {:id 3}]})))))
+             :cards [{:id 1} {:id 3}]}))))
+ (t2.with-temp/with-temp
+   [Collection {coll-id :id} {:name "New collection"}]
+   (is (= "moved this Dashboard to New collection."
+          (build-sentence
+            (revision/diff-strs
+              Dashboard
+              {:name "Apple"}
+              {:name          "Apple"
+               :collection_id coll-id})))))
+ (t2.with-temp/with-temp
+   [Collection {coll-id-1 :id} {:name "Old collection"}
+    Collection {coll-id-2 :id} {:name "New collection"}]
+   (is (= "moved this Dashboard from Old collection to New collection."
+          (build-sentence
+            (revision/diff-strs
+              Dashboard
+              {:name          "Apple"
+               :collection_id coll-id-1}
+              {:name          "Apple"
+               :collection_id coll-id-2}))))))
+
 
 (deftest revert-dashboard!-test
   (tt/with-temp* [Dashboard           [{dashboard-id :id, :as dashboard}    {:name "Test Dashboard"}]

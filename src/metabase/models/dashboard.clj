@@ -180,7 +180,7 @@
 (defmethod revision/serialize-instance :model/Dashboard
   [_model _id dashboard]
   (-> dashboard
-      (select-keys [:description :name :cache_ttl :auto_apply_filters])
+      (select-keys [:collection_id :description :name :cache_ttl :auto_apply_filters])
       (assoc :cards (vec (for [dashboard-card (ordered-cards dashboard)]
                            (-> (select-keys dashboard-card [:size_x :size_y :row :col :id :card_id])
                                (assoc :series (mapv :id (dashboard-card/series dashboard-card)))))))))

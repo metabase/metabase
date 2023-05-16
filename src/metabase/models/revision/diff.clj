@@ -1,10 +1,10 @@
 (ns metabase.models.revision.diff
   (:require
    [clojure.core.match :refer [match]]
-   [metabase.util.i18n :refer [deferred-tru]]))
+   [metabase.util.i18n :refer [deferred-tru]]
+   [toucan2.core :as t2]))
 
 (defn- diff-strings* [k v1 v2 identifier]
-  (match [k v1 v2]
     [:name _ _]
     (deferred-tru "renamed {0} from \"{1}\" to \"{2}\"" identifier v1 v2)
 
@@ -40,6 +40,15 @@
 
     [:dataset_query _ _]
     (deferred-tru "modified the query")
+
+    [:collection_id nil (coll-id :guard int?)]
+    (deferred-tru "moved {0} to {1}" identifier (t2/select-one-fn :name 'Collection coll-id))
+
+    [:collection_id (prev-coll-id :guard int?) (coll-id :guard int?)]
+    (deferred-tru "moved {0} from {1} to {2}"
+      identifier
+      (t2/select-one-fn :name 'Collection prev-coll-id)
+      (t2/select-one-fn :name 'Collection coll-id))
 
     [:visualization_settings _ _]
     (deferred-tru "changed the visualization settings")

@@ -211,8 +211,9 @@
 (deftest dashboard-revision-description-test
   (testing "revision description for dashboard are generated correctly"
     (t2.with-temp/with-temp
-      [Card      {card-id-1 :id}    {:name "Card 1"}
-       Card      {card-id-2 :id}    {:name "Card 2"}]
+      [Collection {coll-id :id}   {:name "New Collection"}
+       Card       {card-id-1 :id} {:name "Card 1"}
+       Card       {card-id-2 :id} {:name "Card 2"}]
       ;; 0. create the dashboard
       (let [{dashboard-id :id} (mt/user-http-request :crowberto :post 200 "dashboard"
                                                      {:name "A dashboard"})]
@@ -256,14 +257,20 @@
                                           :col     2
                                           :row     2
                                           :card_id card-id-1}]}))
+        ;; 6. Move to a new collection
+        (mt/user-http-request :crowberto :put 200 (format "dashboard/%d" dashboard-id)
+                                                  {:collection_id coll-id})
 
-        ;; 6. revert to an earlier revision
+        ;; 7. revert to an earlier revision
         (let [earlier-revision-id (t2/select-one-pk Revision :model "Dashboard" :model_id dashboard-id {:order-by [[:timestamp :desc]]})]
           (mt/user-http-request :crowberto :post 200 "revision/revert"
                                 {:entity "dashboard" :id dashboard-id :revision_id earlier-revision-id}))
 
         (is (= [{:description          "reverted to an earlier revision."
                  :title                "reverted to an earlier revision."
+                 :has_multiple_changes false}
+                {:description          "moved this Dashboard to New Collection.",
+                 :title                "moved this Dashboard to New Collection.",
                  :has_multiple_changes false}
                 {:description          "rearranged the cards."
                  :title                "rearranged the cards."
@@ -286,60 +293,72 @@
                (map #(select-keys % [:description :title :has_multiple_changes])
                     (mt/user-http-request :crowberto :get 200 "revision" :entity "dashboard" :id dashboard-id))))
 
-       (t2/delete! Dashboard :id dashboard-id)))))
+        (t2/delete! Dashboard :id dashboard-id)))))
 
 (deftest card-revision-description-test
   (testing "revision description for card are generated correctly"
-    ;; 0. create the card
-    (let [{card-id :id} (mt/user-http-request :crowberto :post 200 "card"
-                                              {:name                   "A card"
-                                               :display                "table"
-                                               :dataset_query          (mt/mbql-query venues)
-                                               :visualization_settings {}})]
+    (t2.with-temp/with-temp
+      [Collection {coll-id :id} {:name "New Collection"}]
+      ;; 0. create the card
+      (let [{card-id :id} (mt/user-http-request :crowberto :post 200 "card"
+                                                {:name                   "A card"
+                                                 :display                "table"
+                                                 :dataset_query          (mt/mbql-query venues)
+                                                 :visualization_settings {}})]
 
-      ;; 1. rename
-      (mt/user-http-request :crowberto :put 200 (format "card/%d" card-id)
-                            {:name "New name"})
+        ;; 1. rename
+        (mt/user-http-request :crowberto :put 200 (format "card/%d" card-id)
+                              {:name "New name"})
 
-      ;; 2. turn to a model
-      (mt/user-http-request :crowberto :put 200 (format "card/%d" card-id)
-                            {:dataset true})
+        ;; 2. turn to a model
+        (mt/user-http-request :crowberto :put 200 (format "card/%d" card-id)
+                              {:dataset true})
 
-      ;; 3. edit query and metadata
-      (mt/user-http-request :crowberto :put 200 (format "card/%d" card-id)
-                            {:dataset_query (mt/mbql-query venues {:aggregation [[:count]]})
-                             :display       "scalar"})
+        ;; 3. edit query and metadata
+        (mt/user-http-request :crowberto :put 200 (format "card/%d" card-id)
+                              {:dataset_query (mt/mbql-query venues {:aggregation [[:count]]})
+                               :display       "scalar"})
 
-      ;; 4. add description
-      (mt/user-http-request :crowberto :put 200 (format "card/%d" card-id)
-                            {:description "meaningful number"})
+        ;; 4. add description
+        (mt/user-http-request :crowberto :put 200 (format "card/%d" card-id)
+                              {:description "meaningful number"})
 
 
-      ;; 5. revert to an earlier revision
-      (let [earlier-revision-id (t2/select-one-pk Revision :model "Card" :model_id card-id {:order-by [[:timestamp :desc]]})]
-        (mt/user-http-request :crowberto :post 200 "revision/revert"
-                              {:entity "card" :id card-id :revision_id earlier-revision-id}))
+        ;; 5. revert to an earlier revision
+        (mt/user-http-request :crowberto :put 200 (format "card/%d" card-id)
+                              {:collection_id coll-id})
 
-      (is (= [{:description          "reverted to an earlier revision.",
-               :title                "reverted to an earlier revision.",
-               :has_multiple_changes false}
-              {:description          "added a description."
-               :title                "added a description."
-               :has_multiple_changes false}
-              {:description          "changed the display from :table to :scalar, modified the query and edited the metadata."
-               :title                "edited this."
-               :has_multiple_changes true}
-              {:description          "turned this into a model and edited the metadata."
-               :title                "edited this."
-               :has_multiple_changes true}
-              {:description          "renamed this Card from \"A card\" to \"New name\"."
-               :title                "renamed this Card from \"A card\" to \"New name\"."
-               :has_multiple_changes false}
-              {:description "created this.", :title "created this.", :has_multiple_changes false}]
-             (map #(select-keys % [:description :title :has_multiple_changes])
-                  (mt/user-http-request :crowberto :get 200 "revision" :entity "card" :id card-id))))
-      ;; cleanup once we're done
-      (t2/delete! :model/Card :id card-id))))
+        ;; 6. revert to an earlier revision
+        (let [earlier-revision-id (t2/select-one-pk Revision :model "Card" :model_id card-id {:order-by [[:timestamp :desc]]})]
+          (mt/user-http-request :crowberto :post 200 "revision/revert"
+                                {:entity "card" :id card-id :revision_id earlier-revision-id}))
+
+
+        (is (= [{:description          "reverted to an earlier revision.",
+                 :title                "reverted to an earlier revision.",
+                 :has_multiple_changes false}
+                {:description          "moved this Card to New Collection.",
+                 :title                "moved this Card to New Collection.",
+                 :has_multiple_changes false}
+                {:description          "added a description."
+                 :title                "added a description."
+                 :has_multiple_changes false}
+                {:description          "changed the display from :table to :scalar, modified the query and edited the metadata."
+                 :title                "edited this."
+                 :has_multiple_changes true}
+                {:description          "turned this into a model and edited the metadata."
+                 :title                "edited this."
+                 :has_multiple_changes true}
+                {:description          "renamed this Card from \"A card\" to \"New name\"."
+                 :title                "renamed this Card from \"A card\" to \"New name\"."
+                 :has_multiple_changes false}
+                {:description          "created this."
+                 :title                "created this."
+                 :has_multiple_changes false}]
+               (map #(select-keys % [:description :title :has_multiple_changes])
+                    (mt/user-http-request :crowberto :get 200 "revision" :entity "card" :id card-id))))
+        ;; cleanup once we're done
+        (t2/delete! :model/Card :id card-id)))))
 
 (deftest revision-descriptions-are-i18ned-test
   (mt/with-mock-i18n-bundles {"fr" {:messages {"created this" "créé ceci"
