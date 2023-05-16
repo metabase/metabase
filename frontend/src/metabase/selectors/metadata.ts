@@ -1,4 +1,3 @@
-import _ from "underscore";
 import { createSelector } from "@reduxjs/toolkit";
 
 import type {
@@ -142,7 +141,7 @@ export const getMetadata: (
       table.schema = metadata.schema(table.schema) ?? undefined;
       table.fields = hydrateTableFields(table, metadata);
       table.segments = hydrateTableSegments(table, metadata);
-      table.metrics = hyrdateTableMetrics(table, metadata);
+      table.metrics = hydrateTableMetrics(table, metadata);
     });
     Object.values(metadata.databases).forEach(database => {
       database.schemas = hydrateDatabaseSchemas(database, metadata);
@@ -197,6 +196,48 @@ function createDatabase(
   return instance;
 }
 
+function createSchema(schema: NormalizedSchema, metadata: Metadata): Schema {
+  const instance = new Schema(schema);
+  instance.metadata = metadata;
+  return instance;
+}
+
+function createTable(table: NormalizedTable, metadata: Metadata): Table {
+  const instance = new Table(table);
+  instance.metadata = metadata;
+  return instance;
+}
+
+function createField(field: NormalizedField, metadata: Metadata): Field {
+  // We need a way to distinguish field objects that come from the server
+  // vs. those that are created client-side to handle lossy transformations between
+  // Field instances and FieldDimension instances.
+  // There are scenarios where we are failing to convert FieldDimensions back into Fields,
+  // and as a safeguard we instantiate a new Field that is missing most of its properties.
+  const instance = new Field({ ...field, _comesFromEndpoint: true });
+  instance.metadata = metadata;
+  return instance;
+}
+
+function createMetric(metric: NormalizedMetric, metadata: Metadata): Metric {
+  const instance = new Metric(metric);
+  instance.metadata = metadata;
+  return instance;
+}
+
+function createSegment(
+  segment: NormalizedSegment,
+  metadata: Metadata,
+): Segment {
+  const instance = new Segment(segment);
+  instance.metadata = metadata;
+  return instance;
+}
+
+function createQuestion(card: Card, metadata: Metadata): Question {
+  return new Question(card, metadata);
+}
+
 function hydrateDatabaseTables(
   database: Database,
   metadata: Metadata,
@@ -226,12 +267,6 @@ function hydrateDatabaseSchemas(
   );
 }
 
-function createSchema(schema: NormalizedSchema, metadata: Metadata): Schema {
-  const instance = new Schema(schema);
-  instance.metadata = metadata;
-  return instance;
-}
-
 function hydrateSchemaDatabase(
   schema: Schema,
   metadata: Metadata,
@@ -255,12 +290,6 @@ function hydrateSchemaTables(schema: Schema, metadata: Metadata): Table[] {
       );
 }
 
-function createTable(table: NormalizedTable, metadata: Metadata): Table {
-  const instance = new Table(table);
-  instance.metadata = metadata;
-  return instance;
-}
-
 function hydrateTableFields(table: Table, metadata: Metadata): Field[] {
   const fieldIds = table.getPlainObject().fields ?? [];
   return fieldIds.map(id => metadata.field(id)).filter(isNotNull);
@@ -271,20 +300,9 @@ function hydrateTableSegments(table: Table, metadata: Metadata): Segment[] {
   return segmentIds.map(id => metadata.segment(id)).filter(isNotNull);
 }
 
-function hyrdateTableMetrics(table: Table, metadata: Metadata): Metric[] {
+function hydrateTableMetrics(table: Table, metadata: Metadata): Metric[] {
   const metricIds = table.getPlainObject().metrics ?? [];
   return metricIds.map(id => metadata.metric(id)).filter(isNotNull);
-}
-
-function createField(field: NormalizedField, metadata: Metadata): Field {
-  // We need a way to distinguish field objects that come from the server
-  // vs. those that are created client-side to handle lossy transformations between
-  // Field instances and FieldDimension instances.
-  // There are scenarios where we are failing to convert FieldDimensions back into Fields,
-  // and as a safeguard we instantiate a new Field that is missing most of its properties.
-  const instance = new Field({ ...field, _comesFromEndpoint: true });
-  instance.metadata = metadata;
-  return instance;
 }
 
 function hydrateNameField(field: Field, metadata: Metadata): Field | undefined {
@@ -292,25 +310,6 @@ function hydrateNameField(field: Field, metadata: Metadata): Field | undefined {
   if (nameFieldId != null) {
     return metadata.field(nameFieldId) ?? undefined;
   } else if (field.table && field.isPK()) {
-    return _.find(field.table.getFields(), f => f.isEntityName());
+    return field.table.getFields().find(f => f.isEntityName());
   }
-}
-
-function createMetric(metric: NormalizedMetric, metadata: Metadata): Metric {
-  const instance = new Metric(metric);
-  instance.metadata = metadata;
-  return instance;
-}
-
-function createSegment(
-  segment: NormalizedSegment,
-  metadata: Metadata,
-): Segment {
-  const instance = new Segment(segment);
-  instance.metadata = metadata;
-  return instance;
-}
-
-function createQuestion(card: Card, metadata: Metadata): Question {
-  return new Question(card, metadata);
 }
