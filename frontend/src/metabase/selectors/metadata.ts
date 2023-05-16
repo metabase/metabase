@@ -150,14 +150,14 @@ export const getMetadata: (
       schema.tables = hydrateSchemaTables(schema, metadata);
     });
     Object.values(metadata.segments).forEach(segment => {
-      segment.table = metadata.table(segment.table_id) ?? undefined;
+      segment.table = hydrateSegmentTable(segment, metadata);
     });
     Object.values(metadata.metrics).forEach(metric => {
-      metric.table = metadata.table(metric.table_id) ?? undefined;
+      metric.table = hydrateMetricTable(metric, metadata);
     });
     Object.values(metadata.fields).forEach(field => {
-      field.table = metadata.table(field.table_id) ?? undefined;
-      field.target = metadata.field(field.fk_target_field_id) ?? undefined;
+      field.table = hydrateFieldTable(field, metadata);
+      field.target = hydrateFieldTarget(field, metadata);
       field.name_field = hydrateNameField(field, metadata);
       field.values = getFieldValues(field);
       field.remapping = new Map(getRemappings(field));
@@ -322,6 +322,20 @@ function hydrateTableMetrics(table: Table, metadata: Metadata): Metric[] {
   return metricIds.map(id => metadata.metric(id)).filter(isNotNull);
 }
 
+function hydrateFieldTable(
+  field: Field,
+  metadata: Metadata,
+): Table | undefined {
+  return metadata.table(field.table_id) ?? undefined;
+}
+
+function hydrateFieldTarget(
+  field: Field,
+  metadata: Metadata,
+): Field | undefined {
+  return metadata.field(field.fk_target_field_id) ?? undefined;
+}
+
 function hydrateNameField(field: Field, metadata: Metadata): Field | undefined {
   const nameFieldId = field.getPlainObject().name_field;
   if (nameFieldId != null) {
@@ -329,4 +343,18 @@ function hydrateNameField(field: Field, metadata: Metadata): Field | undefined {
   } else if (field.table && field.isPK()) {
     return field.table.getFields().find(f => f.isEntityName());
   }
+}
+
+function hydrateSegmentTable(
+  segment: Segment,
+  metadata: Metadata,
+): Table | undefined {
+  return metadata.table(segment.table_id) ?? undefined;
+}
+
+function hydrateMetricTable(
+  metric: Metric,
+  metadata: Metadata,
+): Table | undefined {
+  return metadata.table(metric.table_id) ?? undefined;
 }
