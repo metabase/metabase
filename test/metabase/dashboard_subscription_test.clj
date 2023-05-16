@@ -424,8 +424,6 @@
                                                        "?state=CA&state=NY&state=NJ&quarter_and_year=Q1-2021|*Sent from Metabase Test*>")}]}]}]}
                    (pulse.test-util/thunk->boolean pulse-results)))))}})))
 
-
-
 (deftest dashboard-with-link-card-test
   (tests {:pulse     {:skip_if_empty false}
           :dashboard pulse.test-util/test-dashboard}
@@ -703,7 +701,7 @@
                      {:text (format "### [https://metabase.com](https://metabase.com)")}]
                     (@#'metabase.pulse/execute-dashboard {:creator_id (mt/user->id :lucky)} dashboard)))))))))
 
-(deftest dashboard-with-tabs-test
+(deftest execute-dashboard-with-tabs-test
   (t2.with-temp/with-temp
     [Dashboard           {dashboard-id :id
                           :as dashboard}   {:name "Dashboard"}
@@ -730,10 +728,95 @@
                                             :row                    1
                                             :visualization_settings {:text "Card 1 tab-2"}}]
     (testing "tabs are correctly rendered"
-      (is (= [{:text "# The first tab"}
+      (is (= [{:slack {:text "# The first tab"}, :email {:text "# The first tab\n---"}}
               {:text "Card 1 tab-1"}
               {:text "Card 2 tab-1"}
-              {:text "# The second tab"}
+              {:slack {:text "# The second tab"}, :email {:text "# The second tab\n---"}}
               {:text "Card 1 tab-2"}
               {:text "Card 2 tab-2"}]
              (@#'metabase.pulse/execute-dashboard {:creator_id (mt/user->id :rasta)} dashboard))))))
+
+(deftest render-dashboard-with-tabs-test
+  (tests {:pulse     {:skip_if_empty false}
+          :dashboard pulse.test-util/test-dashboard}
+   "Dashboard that has link cards should render correctly"
+   {:card    (pulse.test-util/checkins-query-card {})
+
+    :fixture
+    (fn [{dashboard-id :dashboard-id} thunk]
+      (mt/with-temporary-setting-values [site-name "Metabase Test"]
+        (t2.with-temp/with-temp
+         [:model/DashboardTab {tab-id-2 :id}    {:name         "The second tab"
+                                                 :position     1
+                                                 :dashboard_id dashboard-id}
+          :model/DashboardTab {tab-id-1 :id}    {:name         "The first tab"
+                                                 :position     0
+                                                 :dashboard_id dashboard-id}
+          DashboardCard       _                 {:dashboard_id           dashboard-id
+                                                 :dashboard_tab_id       tab-id-1
+                                                 :row                    1
+                                                 :visualization_settings {:text "Card 1 tab-1"}}
+          DashboardCard       _                 {:dashboard_id           dashboard-id
+                                                 :dashboard_tab_id       tab-id-1
+                                                 :row                    2
+                                                 :visualization_settings {:text "Card 2 tab-1"}}
+          DashboardCard       _                 {:dashboard_id           dashboard-id
+                                                 :dashboard_tab_id       tab-id-2
+                                                 :row                    1
+                                                 :visualization_settings {:text "Card 1 tab-2"}}
+          DashboardCard       _                 {:dashboard_id           dashboard-id
+                                                 :dashboard_tab_id       tab-id-2
+                                                 :row                    2
+                                                 :visualization_settings {:text "Card 2 tab-2"}}]
+         ;; dashcards from this setup is currently not belong to any tabs, we should make sure them belong to one
+         (t2/update! :model/DashboardCard :dashboard_id dashboard-id :dashboard_tab_id nil {:dashboard_tab_id tab-id-1})
+         (thunk))))
+    :assert
+    {:email
+     (fn [_ _]
+      (is (every?
+            true?
+            (-> (mt/summarize-multipart-email
+                 #"The first tab"
+                 #"Card 1 tab-1"
+                 #"Card 2 tab-1"
+                 #"The second tab"
+                 #"Card 1 tab-2"
+                 #"Card 2 tab-2")
+                (get "rasta@metabase.com")
+                first
+                :body
+                first
+                vals))))
+
+     :slack
+     (fn [_ [pulse-results]]
+       (is (=? {:channel-id "#general",
+                :attachments
+                [{:blocks
+                  [{:type "header", :text {:type "plain_text", :text "Aviary KPIs", :emoji true}}
+                   {:type "section",
+                    :fields
+                    [{:type "mrkdwn", :text "*State*\nCA, NY, and NJ"}
+                     {:type "mrkdwn", :text "*Quarter and Year*\nQ1, 2021"}]}
+                   {:type "section", :fields [{:type "mrkdwn", :text "Sent by Rasta Toucan"}]}]}
+                 {:blocks [{:type "section", :text {:type "mrkdwn", :text "*The first tab*"}}]}
+                 {:title "Test card",
+                  :rendered-info {:attachments false, :content true, :render/text true},
+                  :title_link #"https://metabase.com/testmb/question/.+",
+                  :attachment-name "image.png",
+                  :channel-id "FOO",
+                  :fallback "Test card"}
+                 {:blocks [{:type "section", :text {:type "mrkdwn", :text "Card 1 tab-1"}}]}
+                 {:blocks [{:type "section", :text {:type "mrkdwn", :text "Card 2 tab-1"}}]}
+                 {:blocks [{:type "section", :text {:type "mrkdwn", :text "*The second tab*"}}]}
+                 {:blocks [{:type "section", :text {:type "mrkdwn", :text "Card 1 tab-2"}}]}
+                 {:blocks [{:type "section", :text {:type "mrkdwn", :text "Card 2 tab-2"}}]}
+                 {:blocks
+                  [{:type "divider"}
+                   {:type "context",
+                    :elements
+                    [{:type "mrkdwn",
+                      :text
+                      #"<https://metabase\.com/testmb/dashboard/\d+\?state=CA&state=NY&state=NJ&quarter_and_year=Q1-2021\|\*Sent from Metabase Test\*>"}]}]}]}
+               (pulse.test-util/thunk->boolean pulse-results))))}}))

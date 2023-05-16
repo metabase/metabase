@@ -185,8 +185,8 @@
     (mw.session/with-current-user pulse-creator-id
       (if (dashboard/has-tabs? dashboard)
         (let [ordered-tabs-with-cards (t2/hydrate (t2/select :model/DashboardTab :dashboard_id dashboard-id) :ordered-tab-cards)]
-          (doall (flatten (for [{:keys [cards] :as tab} ordered-tabs-with-cards]
-                            (concat [(tab->text tab)] (dashcards->content cards pulse dashboard))))))
+         (doall (flatten (for [{:keys [cards] :as tab} ordered-tabs-with-cards]
+                           (concat [(tab->text tab)] (dashcards->content cards pulse dashboard))))))
         (dashcards->content (t2/select DashboardCard :dashboard_id dashboard-id) pulse dashboard)))))
 
 (defn- database-id [card]
@@ -226,24 +226,24 @@
   (let [{{card-id :id, card-name :name, :as card} :card, dashcard :dashcard, result :result} card-result]
     (cond
       (and card result)
-     {:title           (or (-> dashcard :visualization_settings :card.title)
-                           card-name)
-      :rendered-info   (render/render-pulse-card :inline (defaulted-timezone card) card dashcard result)
-      :title_link      (urls/card-url card-id)
-      :attachment-name "image.png"
-      :channel-id      channel-id
-      :fallback        card-name}
+      {:title           (or (-> dashcard :visualization_settings :card.title)
+                            card-name)
+       :rendered-info   (render/render-pulse-card :inline (defaulted-timezone card) card dashcard result)
+       :title_link      (urls/card-url card-id)
+       :attachment-name "image.png"
+       :channel-id      channel-id
+       :fallback        card-name}
 
-     (:text card-result)
-     (let [mrkdwn (markdown/process-markdown (:text card-result) :slack)]
-       (when (not (str/blank? mrkdwn))
-         {:blocks [{:type "section"
-                    :text {:type "mrkdwn"
-                           :text (truncate-mrkdwn mrkdwn block-text-length-limit)}}]}))
+      (:text card-result)
+      (let [mrkdwn (markdown/process-markdown (:text card-result) :slack)]
+        (when (not (str/blank? mrkdwn))
+          {:blocks [{:type "section"
+                     :text {:type "mrkdwn"
+                            :text (truncate-mrkdwn mrkdwn block-text-length-limit)}}]}))
 
-     ;; for content that are platform-specific
-     (:slack card-result)
-     (recur (:slack card-result) channel-id))))
+      ;; for content that are platform-specific
+      (:slack card-result)
+      (recur (:slack card-result) channel-id))))
 
 (defn- create-slack-attachment-data
   "Returns a seq of slack attachment data structures, used in `create-and-upload-slack-attachments!`"
