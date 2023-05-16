@@ -130,6 +130,7 @@ jobs:
         uses: chromaui/action@v1
         env:
           PUBLISH_CHROMATIC: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
+          STORYBOOK_BUILD_TIMEOUT: 900000
         if: env.PUBLISH_CHROMATIC != null
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
