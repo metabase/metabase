@@ -83,3 +83,34 @@
                 :display-name "Sum"
                 :source_alias "Orders"}]
               (lib.metadata.calculation/metadata mlv2-query))))))
+
+(deftest ^:parallel temporal-bucketing-options-test
+  (mt/dataset sample-dataset
+    (let [query {:lib/type :mbql/query
+                 :stages   [{:lib/type     :mbql.stage/mbql
+                             :fields       [[:field
+                                             {:lib/uuid (str (random-uuid))}
+                                             (mt/id :products :created_at)]]
+                             :source-table (mt/id :products)}]
+                 :database (mt/id)}
+          query (lib/query (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                  query)]
+      (is (= [{:unit :minute}
+              {:unit :hour}
+              {:unit :day}
+              {:unit :week}
+              {:unit :month, :default true}
+              {:unit :quarter}
+              {:unit :year}
+              {:unit :minute-of-hour}
+              {:unit :hour-of-day}
+              {:unit :day-of-week}
+              {:unit :day-of-month}
+              {:unit :day-of-year}
+              {:unit :week-of-year}
+              {:unit :month-of-year}
+              {:unit :quarter-of-year}]
+             (->> (lib.metadata.calculation/metadata query)
+                  first
+                  (lib/available-temporal-buckets query)
+                  (mapv #(select-keys % [:unit :default]))))))))

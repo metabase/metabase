@@ -279,10 +279,9 @@ function CollectionContent({
                   }) => {
                     const hasPagination = metadata.total > PAGE_SIZE;
 
-                    const unselected = [
-                      ...pinnedItems,
-                      ...unpinnedItems,
-                    ].filter(item => !getIsSelected(item));
+                    const unselected = unpinnedItems.filter(
+                      item => !getIsSelected(item),
+                    );
                     const hasUnselected = unselected.length > 0;
 
                     const handleSelectAll = () => {

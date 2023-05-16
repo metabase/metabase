@@ -56,6 +56,7 @@ export type FieldValuesType = "list" | "search" | "none";
 
 export type FieldDimension = {
   name: string;
+  human_readable_field?: Field;
 };
 
 export type FieldDimensionOption = {

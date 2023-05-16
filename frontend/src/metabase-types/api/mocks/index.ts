@@ -13,6 +13,7 @@ export * from "./models";
 export * from "./modelIndexes";
 export * from "./parameters";
 export * from "./query";
+export * from "./schema";
 export * from "./segment";
 export * from "./table";
 export * from "./timeline";
