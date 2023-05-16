@@ -49,4 +49,5 @@ function ModelRelationships({ model, mainTable }: Props) {
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ModelRelationships;

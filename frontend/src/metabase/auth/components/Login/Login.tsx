@@ -55,4 +55,5 @@ const getSelectedProvider = (
   return provider?.Panel ? provider : undefined;
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Login;

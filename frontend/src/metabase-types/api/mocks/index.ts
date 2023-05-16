@@ -12,6 +12,7 @@ export * from "./metric";
 export * from "./models";
 export * from "./parameters";
 export * from "./query";
+export * from "./schema";
 export * from "./segment";
 export * from "./table";
 export * from "./timeline";

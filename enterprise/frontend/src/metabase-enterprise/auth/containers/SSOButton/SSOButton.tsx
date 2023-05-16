@@ -11,4 +11,5 @@ const mapDispatchToProps = {
   onLogin: loginSSO,
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(mapStateToProps, mapDispatchToProps)(SSOButton);

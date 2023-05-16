@@ -58,11 +58,11 @@
     (mt/dataset sample-dataset
       (mt/with-model-cleanup [Collection Card Dashboard]
         (let [generated-dashboard (mt/user-http-request :crowberto :get 200 (format "automagic-dashboards/table/%d" (mt/id :orders)))]
-          (is (=? {:description "Some metrics we found about your transactions."}
+          (is (=? {:description "Some metrics we found about transactions."}
                   generated-dashboard))
           (testing "Save the generated Dashboard"
             (let [saved-dashboard (mt/user-http-request :crowberto :post 200 "dashboard/save" generated-dashboard)]
-              (is (=? {:name "A look at your Orders table"}
+              (is (=? {:name "A look at Orders"}
                       saved-dashboard))
               (testing "Fetch the saved Dashboard"
                 (is (=? {:id (u/the-id saved-dashboard)}

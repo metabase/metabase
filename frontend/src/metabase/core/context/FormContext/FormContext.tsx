@@ -11,4 +11,5 @@ const FormContext = createContext<FormState>({
   status: "idle",
 });
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default FormContext;
