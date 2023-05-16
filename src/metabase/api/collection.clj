@@ -69,37 +69,35 @@
   By default, admin users will see all collections. To hide other user's collections pass in
   `?exclude-other-user-collections=true`."
   [archived exclude-other-user-collections namespace]
-  {archived                       [:maybe :boolean]
-   exclude-other-user-collections [:maybe :boolean]
+  {archived                       [:maybe ms/BooleanString]
+   exclude-other-user-collections [:maybe ms/BooleanString]
    namespace                      [:maybe ms/NonBlankString]}
-  (let [archived? (Boolean/parseBoolean archived)
-        exclude-other-user-collections? (Boolean/parseBoolean exclude-other-user-collections)]
-    (as-> (t2/select Collection
-            {:where    [:and
-                        [:= :archived archived?]
-                        [:= :namespace namespace]
-                        (collection/visible-collection-ids->honeysql-filter-clause
-                         :id
-                         (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]
-             :order-by [[:%lower.name :asc]]}) collections
-          ;; Remove other users' personal collections
-          (if exclude-other-user-collections?
-            (remove-other-users-personal-collections api/*current-user-id* collections)
-            collections)
-          ;; include Root Collection at beginning or results if archived isn't `true`
-      (if archived?
-        collections
-        (let [root (root-collection namespace)]
-          (cond->> collections
-            (mi/can-read? root)
-            (cons root))))
-      (hydrate collections :can_write)
-      ;; remove the :metabase.models.collection.root/is-root? tag since FE doesn't need it
-      ;; and for personal collections we translate the name to user's locale
-      (for [collection collections]
-        (-> collection
-            (dissoc ::collection.root/is-root?)
-            collection/personal-collection-with-ui-details)))))
+  (as-> (t2/select Collection
+                   {:where    [:and
+                               [:= :archived archived]
+                               [:= :namespace namespace]
+                               (collection/visible-collection-ids->honeysql-filter-clause
+                                :id
+                                (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]
+                    :order-by [[:%lower.name :asc]]}) collections
+    ;; Remove other users' personal collections
+    (if exclude-other-user-collections
+      (remove-other-users-personal-collections api/*current-user-id* collections)
+      collections)
+    ;; include Root Collection at beginning or results if archived isn't `true`
+    (if archived
+      collections
+      (let [root (root-collection namespace)]
+        (cond->> collections
+          (mi/can-read? root)
+          (cons root))))
+    (hydrate collections :can_write)
+    ;; remove the :metabase.models.collection.root/is-root? tag since FE doesn't need it
+    ;; and for personal collections we translate the name to user's locale
+    (for [collection collections]
+      (-> collection
+          (dissoc ::collection.root/is-root?)
+          collection/personal-collection-with-ui-details))))
 
 (api/defendpoint GET "/tree"
   "Similar to `GET /`, but returns Collections in a tree structure, e.g.

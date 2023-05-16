@@ -341,7 +341,8 @@
   "Transformer used on values coming over the API via defendpoint."
   (mtx/transformer
    (mtx/string-transformer)
-   (mtx/json-transformer)))
+   (mtx/json-transformer)
+   (mtx/transformer {:name "metabase-api"})))
 
 (defn- extract-symbols [in]
   (let [*symbols (atom [])]
