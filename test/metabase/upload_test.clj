@@ -515,3 +515,46 @@
             (testing "Check the data was uploaded into the table correctly"
               (is (= ["id", "ship", "captain"]
                      (column-names-for-table table))))))))))
+
+(deftest load-from-csv-injection-test
+  (testing "Upload a CSV file with very rude values"
+    (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+      (mt/with-empty-db
+        (upload/load-from-csv
+         driver/*driver*
+         (mt/id)
+         "upload_test"
+         (csv-file-with ["id integer); --,ship,captain"
+                         "1,Serenity,--Malcolm Reynolds"
+                         "2,;Millennium Falcon,Han Solo\""]
+                        "\"; -- Very rude filename"))
+        (testing "Table and Fields exist after sync"
+          (sync/sync-database! (mt/db))
+          (let [table (t2/select-one Table :db_id (mt/id))]
+            (is (=? {:name #"(?i)upload_test"} table))
+            (testing "Check the data was uploaded into the table correctly"
+              (is (= ["id_integer_____", "ship", "captain"]
+                     (column-names-for-table table)))
+              (is (= [[1   "Serenity"           "--Malcolm Reynolds"]
+                      [2   ";Millennium Falcon" "Han Solo\""]]
+                     (rows-for-table table))))))))))
+
+(deftest load-from-csv-eof-marker-test
+  (testing "Upload a CSV file with Postgres's 'end of input' marker"
+    (mt/test-drivers [:postgres]
+      (mt/with-empty-db
+        (upload/load-from-csv
+         driver/*driver*
+         (mt/id)
+         "upload_test"
+         (csv-file-with ["name"
+                         "Malcolm"
+                         "\\."
+                         "Han"]))
+        (testing "Table and Fields exist after sync"
+          (sync/sync-database! (mt/db))
+          (let [table (t2/select-one Table :db_id (mt/id))]
+            (is (=? {:name #"(?i)upload_test"} table))
+            (testing "Check the data was uploaded into the table correctly"
+              (is (= [["Malcolm"] ["\\."] ["Han"]]
+                     (rows-for-table table))))))))))
