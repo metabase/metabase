@@ -199,12 +199,20 @@ export const getRoutes = store => (
             <ModalRoute
               path="new"
               modal={ActionCreatorModal}
-              modalProps={{ wide: true, enableTransition: false, noOnClickOutsideWrapper: true }}
+              modalProps={{
+                wide: true,
+                enableTransition: false,
+                noOnClickOutsideWrapper: true,
+              }}
             />
             <ModalRoute
               path=":actionId"
               modal={ActionCreatorModal}
-              modalProps={{ wide: true, enableTransition: false, noOnClickOutsideWrapper: true }}
+              modalProps={{
+                wide: true,
+                enableTransition: false,
+                noOnClickOutsideWrapper: true,
+              }}
             />
           </Route>
           <Redirect from="*" to="usage" />
