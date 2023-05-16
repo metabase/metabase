@@ -155,6 +155,7 @@ class ChartClickActions extends Component<ChartClickActionsProps, State> {
           this.close();
         }}
         placement="bottom-start"
+        maxWidth={500}
         offset={[0, 8]}
         popperOptions={{
           modifiers: [
