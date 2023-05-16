@@ -17,7 +17,6 @@ export const EditModeContainer = styled.div`
     isFocused &&
     `
     border: 1px solid ${color("brand")};
-    border-radius: 8px;
     `}
 `;
 

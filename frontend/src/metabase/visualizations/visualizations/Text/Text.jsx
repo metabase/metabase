@@ -113,7 +113,6 @@ export function Text({
             onMouseDown={preventDragging}
             onFocus={() => setIsFocused(true)}
             onBlur={() => setIsFocused(false)}
-            isFocused={isFocused}
           />
         )}
       </EditModeContainer>

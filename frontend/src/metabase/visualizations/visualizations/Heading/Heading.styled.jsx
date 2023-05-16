@@ -11,7 +11,7 @@ export const InputContainer = styled.div`
   justify-content: center;
   overflow: hidden;
   padding: 0 0.65em;
-  padding-left: 0em;
+  padding-left: 0;
 
   ${({ isPreviewing }) =>
     !isPreviewing &&
@@ -28,6 +28,7 @@ export const InputContainer = styled.div`
 export const TextInput = styled.input`
   border: none;
   background: none;
+  max-height: 50%;
   color: ${color("text-dark")};
   font-size: 1.5em;
   font-weight: 700;
