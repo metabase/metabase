@@ -29,6 +29,7 @@
   These are not extracted and serialized separately, but they may need some processing done.
   For example, the models should also have their entity_id fields populated (if they have one)."
   ["DashboardCard"
+   "DashboardTab"
    "Dimension"
    "ParameterCard"
    "TimelineEvent"])
