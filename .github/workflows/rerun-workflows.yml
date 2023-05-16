@@ -31,6 +31,7 @@ jobs:
             const ATTEMPT = ${{ github.event.workflow_run.run_attempt }};
             const BRANCH = ${{ github.event.workflow_run.head_branch }};
             const BRANCH_REF = context.ref;
+            const FAILED_RUN = ${{ github.event.workflow_run.html_url }};
 
             if (ATTEMPT <= MAX_ATTEMPTS) {
               github.rest.actions.reRunWorkflowFailedJobs({
@@ -88,6 +89,15 @@ jobs:
                             "emoji": true
                           },
                           "url": `https://github.com/metabase/metabase/commits/${BRANCH_REF}`
+                        }
+                        {
+                          "type": "button",
+                          "text": {
+                            "type": "plain_text",
+                            "text": "Failed CI Run",
+                            "emoji": true
+                          },
+                          "url": `${FAILED_RUN}`
                         }
                       ]
                     }
