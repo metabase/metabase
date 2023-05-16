@@ -20,7 +20,7 @@ If you prefer to use a Docker container, we've got you covered.
 
 ## [Running on Podman](running-metabase-on-podman.md)
 
-Our Docker image is also compatible with Podman, if that is what you prefer.
+Our Docker image is also compatible with Podman.
 
 ## [Metabase Cloud](https://www.metabase.com/pricing)
 
