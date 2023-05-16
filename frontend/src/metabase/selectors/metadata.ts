@@ -137,8 +137,8 @@ export const getMetadata: (
       schema.database = hydrateSchemaDatabase(schema, metadata);
     });
     Object.values(metadata.tables).forEach(table => {
-      table.db = metadata.database(table.db_id || table.db) ?? undefined;
-      table.schema = metadata.schema(table.schema) ?? undefined;
+      table.db = hydrateTableDatabase(table, metadata);
+      table.schema = hydrateTableSchema(table, metadata);
       table.fields = hydrateTableFields(table, metadata);
       table.segments = hydrateTableSegments(table, metadata);
       table.metrics = hydrateTableMetrics(table, metadata);
@@ -288,6 +288,20 @@ function hydrateSchemaTables(schema: Schema, metadata: Metadata): Table[] {
       Object.values(metadata.tables).filter(
         table => table.schema && table.schema.id === schema.id,
       );
+}
+
+function hydrateTableDatabase(
+  table: Table,
+  metadata: Metadata,
+): Database | undefined {
+  return metadata.database(table.getPlainObject().db) || undefined;
+}
+
+function hydrateTableSchema(
+  table: Table,
+  metadata: Metadata,
+): Schema | undefined {
+  return metadata.schema(table.getPlainObject().schema) ?? undefined;
 }
 
 function hydrateTableFields(table: Table, metadata: Metadata): Field[] {
