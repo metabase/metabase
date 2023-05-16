@@ -126,8 +126,8 @@
   {exclude-archived               [:maybe :boolean]
    exclude-other-user-collections [:maybe :boolean]
    namespace                      [:maybe ms/NonBlankString]}
-  (let [exclude-archived? (Boolean/parseBoolean exclude-archived)
-        exclude-other-user-collections? (Boolean/parseBoolean exclude-other-user-collections)
+  (let [exclude-archived? exclude-archived
+        exclude-other-user-collections? exclude-other-user-collections
         coll-type-ids (reduce (fn [acc {:keys [collection_id dataset] :as _x}]
                                 (update acc (if dataset :dataset :card) conj collection_id))
                               {:dataset #{}

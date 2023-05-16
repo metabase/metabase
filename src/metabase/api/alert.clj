@@ -43,6 +43,7 @@
 (api/defendpoint GET "/:id"
   "Fetch an alert by ID"
   [id]
+  {id ms/PositiveInt}
   (-> (api/read-check (pulse/retrieve-alert id))
       (hydrate :can_write)))
 

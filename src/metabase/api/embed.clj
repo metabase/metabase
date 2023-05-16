@@ -308,12 +308,15 @@
 ;;; ------------------------------------------- /api/embed/card endpoints --------------------------------------------
 
 (api/defendpoint GET "/card/:token"
-  "Fetch a Card via a JSON Web Token signed with the `embedding-secret-key`."
+  "Fetch a Card via a JSON Web Token signed with the `embedding-secret-key`.
+
+   Token should have the following format:
+
+     {:resource {:question <card-id>}}"
   [token]
-  {token [:map [:resource [:map [:question ms/PositiveInt]]]]}
   (let [unsigned (embed/unsign token)]
     (check-embedding-enabled-for-card (embed/get-in-unsigned-token-or-throw unsigned [:resource :question]))
-    (card-for-unsigned-token unsigned, :constraints [:enable_embedding true])))
+    (card-for-unsigned-token unsigned, :constraints {:enable_embedding true})))
 
 (defn ^:private run-query-for-unsigned-token-async
   "Run the query belonging to Card identified by `unsigned-token`. Checks that embedding is enabled both globally and
@@ -666,6 +669,8 @@
   "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the
   `embedding-secret-key`"
   [token dashcard-id card-id & query-params]
+  {dashcard-id ms/PositiveInt
+   card-id ms/PositiveInt}
   (dashcard-results-for-signed-token-async token dashcard-id card-id :api query-params :qp-runner qp.pivot/run-pivot-query))
 
 (api/define-routes)
