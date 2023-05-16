@@ -49,7 +49,11 @@ const getNormalizedTables = createSelector(
   (tables, includeHiddenTables) =>
     includeHiddenTables
       ? tables
-      : filterValues(tables, table => table.visibility_type == null),
+      : Object.fromEntries(
+          Object.entries(tables).filter(
+            ([, table]) => table.visibility_type == null,
+          ),
+        ),
 );
 
 const getNormalizedFieldsUnfiltered = (state: State) => state.entities.fields;
@@ -64,17 +68,19 @@ const getNormalizedFields = createSelector(
     getIncludeSensitiveFields,
   ],
   (fields, tables, includeHiddenTables, includeSensitiveFields) =>
-    filterValues(fields, field => {
-      const table = tables[field.table_id];
+    Object.fromEntries(
+      Object.entries(fields).filter(([, field]) => {
+        const table = tables[field.table_id];
 
-      const shouldIncludeTable =
-        !table || table.visibility_type == null || includeHiddenTables;
+        const shouldIncludeTable =
+          !table || table.visibility_type == null || includeHiddenTables;
 
-      const shouldIncludeField =
-        field.visibility_type !== "sensitive" || includeSensitiveFields;
+        const shouldIncludeField =
+          field.visibility_type !== "sensitive" || includeSensitiveFields;
 
-      return shouldIncludeTable && shouldIncludeField;
-    }),
+        return shouldIncludeTable && shouldIncludeField;
+      }),
+    ),
 );
 
 const getNormalizedMetrics = (state: State) => state.entities.metrics;
@@ -307,14 +313,4 @@ function createSegment(
 
 function createQuestion(card: Card, metadata: Metadata): Question {
   return new Question(card, metadata);
-}
-
-function filterValues<T>(obj: Record<string, T>, pred: (obj: T) => boolean) {
-  const filtered: Record<string, T> = {};
-  for (const [k, v] of Object.entries(obj)) {
-    if (pred(v)) {
-      filtered[k] = v;
-    }
-  }
-  return filtered;
 }
