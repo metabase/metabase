@@ -64,6 +64,7 @@ export const ExplainerLink = styled(ExternalLink)`
   margin-top: ${space(2)};
 
   color: ${color("brand")};
+
   &:hover {
     color: ${lighten("brand", 0.1)};
   }
