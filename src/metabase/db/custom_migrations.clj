@@ -211,3 +211,32 @@
                                          :visualization_settings updated}))))
                             (t2/reducible-query {:select [:id :visualization_settings]
                                                  :from   [:report_card]})))))
+
+(defn- add-join-alias-to-field-refs [{:keys [visualization_settings result_metadata]}]
+  (let [result_metadata (json/parse-string result_metadata true)
+        visualization_settings (json/parse-string visualization_settings)]
+    (json/generate-string
+     (update visualization_settings "column_settings"
+             (fn [column_settings]
+               (into {}
+                     (mapcat (fn [[k v]]
+                               (match (vec (json/parse-string k))
+                                 ["ref" ["field" id _]] (->> result_metadata
+                                                             (filter #(= (:id %) id))
+                                                             (map (fn [metadata]
+                                                                    [(json/generate-string ["ref" (:field_ref metadata)]) v])))
+                                 _ [[k v]]))
+                             column_settings)))))))
+
+(define-migration AddJoinAliasToVisualizationSettingsFieldRefs
+  (let [update! (fn [{:keys [id visualization_settings]}]
+                  (t2/query-one {:update :report_card
+                                 :set    {:visualization_settings visualization_settings}
+                                 :where  [:= :id id]}))]
+    (run! update! (eduction (keep (fn [{:keys [id visualization_settings] :as card}]
+                                    (let [updated (add-join-alias-to-field-refs card)]
+                                      (when (not= visualization_settings updated)
+                                        {:id                     id
+                                         :visualization_settings updated}))))
+                            (t2/reducible-query {:select [:id :visualization_settings :result_metadata]
+                                                 :from   [:report_card]})))))
