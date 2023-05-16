@@ -5,6 +5,7 @@
    [toucan2.core :as t2]))
 
 (defn- diff-strings* [k v1 v2 identifier]
+  (match [k v1 v2]
     [:name _ _]
     (deferred-tru "renamed {0} from \"{1}\" to \"{2}\"" identifier v1 v2)
 
