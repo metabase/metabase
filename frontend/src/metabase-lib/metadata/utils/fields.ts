@@ -33,7 +33,9 @@ export function getIconForField(fieldOrColumn: any) {
   return type && ICON_MAPPING[type] ? ICON_MAPPING[type] : "unknown";
 }
 
-export function getUniqueFieldId(field: Field): number | string {
+export function getUniqueFieldId(
+  field: Pick<Field, "id" | "name" | "table_id">,
+): number | string {
   const { table_id } = field;
   const fieldIdentifier = getFieldIdentifier(field);
 
@@ -44,7 +46,9 @@ export function getUniqueFieldId(field: Field): number | string {
   return fieldIdentifier;
 }
 
-function getFieldIdentifier(field: Field): number | string {
+function getFieldIdentifier(
+  field: Pick<Field, "id" | "name">,
+): number | string {
   const { id, name } = field;
   if (Array.isArray(id)) {
     return id[1];

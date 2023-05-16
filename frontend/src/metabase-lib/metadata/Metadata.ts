@@ -3,6 +3,7 @@ import {
   CardId,
   DatabaseId,
   FieldId,
+  FieldReference,
   MetricId,
   SchemaId,
   SegmentId,
@@ -79,7 +80,7 @@ class Metadata {
   }
 
   field(
-    fieldId: FieldId | string | undefined | null,
+    fieldId: FieldId | FieldReference | undefined | null,
     tableId?: Table["id"] | undefined | null,
   ): Field | null {
     if (fieldId == null) {
@@ -88,8 +89,9 @@ class Metadata {
 
     const uniqueId = getUniqueFieldId({
       id: fieldId,
-      table_id: tableId,
-    } as Field);
+      name: "",
+      table_id: tableId ?? undefined,
+    });
 
     return this.fields[uniqueId] || null;
   }
