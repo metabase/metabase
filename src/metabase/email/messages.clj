@@ -13,8 +13,8 @@
    [metabase.driver.util :as driver.u]
    [metabase.email :as email]
    [metabase.models.collection :as collection]
-   [metabase.models.permissions :as perms]
    [metabase.models.dashboard :as dashboard]
+   [metabase.models.permissions :as perms]
    [metabase.models.user :refer [User]]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
@@ -300,13 +300,14 @@
                               (some :dashboard_id cards))]
     {:pulseLink (urls/dashboard-url dashboard-id)}))
 
-(defn- pulse-context [pulse dashboard]
+(defn- pulse-context [pulse {:keys [dashboard_id] :as dashboard}]
   (merge (common-context)
          {:emailType                 "pulse"
           :title                     (:name pulse)
           :titleUrl                  (params/dashboard-url (:id dashboard) (params/parameters pulse dashboard))
           :dashboardDescription      (:description dashboard)
-          :dashboardHasTabs          (dashboard/has-tabs? dashboard)
+          ;; There are legacy pulse that exists without being tied to a dashboard
+          :dashboardHasTabs          (when dashboard_id (dashboard/has-tabs? dashboard_id))
           :creator                   (-> pulse :creator :common_name)
           :sectionStyle              (style/style (style/section-style))}
          (pulse-link-context pulse)))
