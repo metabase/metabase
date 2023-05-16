@@ -320,7 +320,7 @@
 
 ;;; ----------------------------------------------------- Unsubscribe non-users from pulses -----------------------------------------------
 
-(def ^:private unsubscribe-throttler (throttle/make-throttler :email, :attempts-threshold 50))
+(def ^:private unsubscribe-throttler (throttle/make-throttler :unsubscribe, :attempts-threshold 50))
 
 (defn generate-hash
   "Generates hash to allow for non-users to unsubscribe from pulses/subscriptions."
