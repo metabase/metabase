@@ -247,4 +247,17 @@
               :display-name "expr"}]
             (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
                 (lib/expression "expr" (lib/absolute-datetime "2020" :month))
-                lib/expressions)))))
+                lib/expressions))))
+  (testing "collisions with other column names are detected and rejected"
+    (let [query (lib/query-for-table-name meta/metadata-provider "CATEGORIES")
+          ex    (try
+                  (lib/expression query "ID" (lib/field "CATEGORIES" "NAME"))
+                  nil
+                  (catch #?(:clj clojure.lang.ExceptionInfo :cljs js/Error) e
+                    e))]
+      (is (some? ex)
+          "Expected adding a conflicting expression to throw")
+      (is (= "Expression name conflicts with a column in the same query stage"
+             (ex-message ex)))
+      (is (= {:expression-name "ID"}
+             (ex-data ex))))))

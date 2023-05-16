@@ -18,6 +18,7 @@
    [metabase.lib.util :as lib.util]
    [metabase.shared.util.i18n :as i18n]
    [metabase.types :as types]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]))
 
 (mu/defn column-metadata->expression-ref :- :mbql.clause/expression
@@ -184,12 +185,22 @@
   [query stage-number [_coalesce _opts expr _null-expr]]
   (lib.metadata.calculation/column-name query stage-number expr))
 
+(defn- unique-name? [query stage-number expression-name]
+  (let [stage (lib.util/query-stage query stage-number)
+        cols  (lib.metadata.calculation/visible-columns query stage-number stage)
+        names (set (for [{col :name} cols]
+                     (u/lower-case-en col)))]
+    (not (names (u/lower-case-en expression-name)))))
+
 (mu/defn expression :- ::lib.schema/query
   "Adds an expression to query."
   ([query expression-name an-expression-clause]
    (expression query -1 expression-name an-expression-clause))
   ([query stage-number expression-name an-expression-clause]
    (let [stage-number (or stage-number -1)]
+     (when-not (unique-name? query stage-number expression-name)
+       (throw (ex-info "Expression name conflicts with a column in the same query stage"
+                       {:expression-name expression-name})))
      (lib.util/update-query-stage
        query stage-number
        update :expressions
