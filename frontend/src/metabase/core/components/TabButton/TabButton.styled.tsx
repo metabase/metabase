@@ -18,9 +18,6 @@ export const TabButtonInputWrapper = styled.span`
 export const TabButtonInputResizer = styled.span`
   visibility: hidden;
   white-space: pre;
-  /* For some reason the computed font-size is wrong (14px when it should be 13.33px) when using 
-  the same rem value as in TabButtonRoot so we have to manually define it in px */
-  font-size: 13.33px;
 `;
 
 export const TabButtonInput = styled.input<TabButtonProps & { value: string }>`
@@ -34,6 +31,7 @@ export const TabButtonInput = styled.input<TabButtonProps & { value: string }>`
   background-color: transparent;
 
   color: ${props => (props.isSelected ? color("brand") : color("text-dark"))};
+  font-size: inherit;
   font-weight: bold;
   text-align: center;
 
