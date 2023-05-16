@@ -1,5 +1,6 @@
 import { DatasetColumn } from "metabase-types/api";
 import {
+  createFieldReference,
   getBaseDimensionReference,
   getNormalizedDimensionReference,
   hasStringFieldName,
@@ -15,7 +16,7 @@ export const getColumnKey = (
   let fieldRef = column.field_ref;
 
   if (!fieldRef) {
-    fieldRef = ["field", column.name, null];
+    fieldRef = createFieldReference(column.name);
   }
 
   if (!isValidDimensionReference(fieldRef)) {
