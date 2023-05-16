@@ -103,47 +103,26 @@ export const getMetadata: (
   (databases, schemas, tables, fields, segments, metrics, questions) => {
     const metadata = new Metadata();
 
-    metadata.databases = copyObjects(
-      metadata,
-      databases,
-      createDatabase,
-      database => database.id,
+    metadata.databases = Object.fromEntries(
+      Object.values(databases).map(d => [d.id, createDatabase(d, metadata)]),
     );
-    metadata.schemas = copyObjects(
-      metadata,
-      schemas,
-      createSchema,
-      schema => schema.id,
+    metadata.schemas = Object.fromEntries(
+      Object.values(schemas).map(s => [s.id, createSchema(s, metadata)]),
     );
-    metadata.tables = copyObjects(
-      metadata,
-      tables,
-      createTable,
-      table => table.id,
+    metadata.tables = Object.fromEntries(
+      Object.values(tables).map(t => [t.id, createTable(t, metadata)]),
     );
-    metadata.fields = copyObjects(
-      metadata,
-      fields,
-      createField,
-      field => field.uniqueId,
+    metadata.fields = Object.fromEntries(
+      Object.values(fields).map(f => [f.uniqueId, createField(f, metadata)]),
     );
-    metadata.segments = copyObjects(
-      metadata,
-      segments,
-      createSegment,
-      segment => segment.id,
+    metadata.segments = Object.fromEntries(
+      Object.values(segments).map(s => [s.id, createSegment(s, metadata)]),
     );
-    metadata.metrics = copyObjects(
-      metadata,
-      metrics,
-      createMetric,
-      metric => metric.id,
+    metadata.metrics = Object.fromEntries(
+      Object.values(metrics).map(m => [m.id, createMetric(m, metadata)]),
     );
-    metadata.questions = copyObjects(
-      metadata,
-      questions,
-      createQuestion,
-      card => card.id,
+    metadata.questions = Object.fromEntries(
+      Object.values(questions).map(c => [c.id, createQuestion(c, metadata)]),
     );
 
     // database
@@ -327,22 +306,6 @@ function createSegment(segment: NormalizedSegment, metadata: Metadata) {
 
 function createQuestion(card: Card, metadata: Metadata) {
   return new Question(card, metadata);
-}
-
-function copyObjects<RawObject, MetadataObject>(
-  metadata: Metadata,
-  objects: Record<string, RawObject>,
-  getInstance: (object: RawObject, metadata: Metadata) => MetadataObject,
-  getInstanceId: (object: RawObject) => string | number | undefined,
-) {
-  const copies: Record<string, MetadataObject> = {};
-  for (const object of Object.values(objects)) {
-    const objectId = getInstanceId(object);
-    if (objectId != null) {
-      copies[objectId] = getInstance(object, metadata);
-    }
-  }
-  return copies;
 }
 
 // calls a function to derive the value of a property for every object
