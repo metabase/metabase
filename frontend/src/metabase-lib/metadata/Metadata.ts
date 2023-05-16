@@ -59,7 +59,7 @@ class Metadata {
     return Object.values(this.segments);
   }
 
-  segment(segmentId: SegmentId | undefined | number): Segment | null {
+  segment(segmentId: SegmentId | undefined | null): Segment | null {
     return (segmentId != null && this.segments[segmentId]) || null;
   }
 
@@ -75,7 +75,7 @@ class Metadata {
     return (schemaId != null && this.schemas[schemaId]) || null;
   }
 
-  table(tableId: TableId | undefined | number): Table | null {
+  table(tableId: TableId | undefined | null): Table | null {
     return (tableId != null && this.tables[tableId]) || null;
   }
 
