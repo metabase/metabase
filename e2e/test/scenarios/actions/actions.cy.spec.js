@@ -1,4 +1,5 @@
 import {
+  addModelDashboard,
   dashboardHeader,
   editDashboard,
   restore,
@@ -16,7 +17,11 @@ describe("scenarios > actions", () => {
 
   it("should not close Action Creator modal on outside click when editing dashboard", () => {
     setActionsEnabledForDB(SAMPLE_DB_ID);
-    addModelDashboard("GUI Dashboard", "dashboardId");
+    addModelDashboard({
+      name: "GUI Dashboard",
+      alias: "dashboardId",
+      modelDetails,
+    });
     cy.get("@dashboardId").then(id => {
       cy.visit(`/dashboard/${id}`);
     });
@@ -33,8 +38,7 @@ describe("scenarios > actions", () => {
           cy.findByText("Create new action").click();
         });
     });
-    cy.get("body").click("topLeft");
-    cy.get("body").click("bottomRight");
+    clickOutsideModal();
 
     cy.findByTestId("action-creator-body-container").should("exist");
   });
@@ -45,8 +49,7 @@ describe("scenarios > actions", () => {
     cy.visit("/");
     cy.findByTestId("new-item-button").click();
     cy.findAllByTestId("action-menu-item").contains("Action").click();
-    cy.get("body").click("topLeft");
-    cy.get("body").click("bottomRight");
+    clickOutsideModal();
     cy.findByTestId("action-creator-body-container").should("exist");
   });
 
@@ -60,8 +63,7 @@ describe("scenarios > actions", () => {
       cy.findByText("Create a snippet").click();
     });
 
-    cy.get("body").click("topLeft");
-    cy.get("body").click("bottomRight");
+    clickOutsideModal();
 
     cy.get(".Modal").contains("Create your new snippet").should("exist");
   });
@@ -94,13 +96,7 @@ const modelDetails = {
   dataset: true,
 };
 
-function addModelDashboard(name, alias) {
-  return cy
-    .createQuestionAndDashboard({
-      questionDetails: modelDetails,
-      dashboardDetails: { name },
-    })
-    .then(({ body: { dashboard_id } }) => {
-      cy.wrap(dashboard_id).as(alias);
-    });
+function clickOutsideModal() {
+  cy.get("body").click("topLeft");
+  cy.get("body").click("bottomRight");
 }
