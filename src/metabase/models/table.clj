@@ -13,7 +13,7 @@
    [metabase.models.segment :refer [Segment]]
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
-   [toucan.models :as models]
+   [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
 ;;; ----------------------------------------------- Constants + Entity -----------------------------------------------
@@ -32,26 +32,41 @@
                     `:type/Temporal`s, and from there on in alphabetical order."
   #{:database :alphabetical :custom :smart})
 
-
-(models/defmodel Table :metabase_table)
-
-(doto Table
-  (derive ::mi/read-policy.full-perms-for-perms-set)
-  (derive ::mi/write-policy.full-perms-for-perms-set))
-
-
 ;;; --------------------------------------------------- Lifecycle ----------------------------------------------------
 
-(defn- pre-insert [table]
+(def Table
+  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], not it's a reference to the toucan2 model name.
+  We'll keep this till we replace all the Table symbol in our codebase."
+  :model/Table)
+(methodical/defmethod t2/table-name :model/Table [_model] :metabase_table)
+
+(doto :model/Table
+  (derive :metabase/model)
+  (derive ::mi/read-policy.full-perms-for-perms-set)
+  (derive ::mi/write-policy.full-perms-for-perms-set)
+  (derive :hook/timestamped?))
+
+(t2/deftransforms :model/Table
+  {:entity_type     mi/transform-keyword
+   :visibility_type mi/transform-keyword
+   :field_order     mi/transform-keyword})
+
+(methodical/defmethod t2/model-for-automagic-hydration [:default :table]
+  [_original-model _k]
+  :model/Table)
+
+(t2/define-before-insert :model/Table
+  [table]
   (let [defaults {:display_name        (humanization/name->human-readable-name (:name table))
                   :field_order         (driver/default-field-order (t2/select-one-fn :engine Database :id (:db_id table)))
                   :initial_sync_status "incomplete"}]
     (merge defaults table)))
 
-(defn- pre-delete [{:keys [db_id schema id]}]
+(t2/define-before-delete :model/Table
+  [{:keys [db_id schema id]}]
   (t2/delete! Permissions :object [:like (str (perms/data-perms-path db_id schema id) "%")]))
 
-(defmethod mi/perms-objects-set Table
+(defmethod mi/perms-objects-set :model/Table
   [{db-id :db_id, schema :schema, table-id :id, :as table} read-or-write]
   ;; To read (e.g., fetch metadata) a Table you must have either self-service data permissions for the Table, or write
   ;; permissions for the Table (detailed below). `can-read?` checks the former, while `can-write?` checks the latter;
@@ -67,17 +82,7 @@
       :read  (perms/table-read-path table)
       :write (perms/data-model-write-perms-path db-id schema table-id))})
 
-(mi/define-methods
- Table
- {:hydration-keys (constantly [:table])
-  :types          (constantly {:entity_type     :keyword
-                               :visibility_type :keyword
-                               :field_order     :keyword})
-  :properties     (constantly {::mi/timestamped? true})
-  :pre-insert     pre-insert
-  :pre-delete     pre-delete})
-
-(defmethod serdes/hash-fields Table
+(defmethod serdes/hash-fields :model/Table
   [_table]
   [:schema :name (serdes/hydrated-hash :db)])
 

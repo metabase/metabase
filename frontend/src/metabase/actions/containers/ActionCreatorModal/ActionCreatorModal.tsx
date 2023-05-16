@@ -9,8 +9,9 @@ import Actions from "metabase/entities/actions";
 import Models from "metabase/entities/questions";
 import { setErrorPage } from "metabase/redux/app";
 
-import type { Card, WritebackAction } from "metabase-types/api";
+import type { WritebackAction } from "metabase-types/api";
 import type { AppErrorDescriptor, State } from "metabase-types/store";
+import Question from "metabase-lib/Question";
 
 import ActionCreator from "../ActionCreator";
 
@@ -25,7 +26,7 @@ interface OwnProps {
 
 interface EntityLoaderProps {
   action?: WritebackAction;
-  model: Card;
+  model: Question;
   loading?: boolean;
 }
 
@@ -52,7 +53,7 @@ function ActionCreatorModal({
 }: ActionCreatorModalProps) {
   const actionId = Urls.extractEntityId(params.actionId);
   const modelId = Urls.extractEntityId(params.slug);
-  const databaseId = model.database_id || model.dataset_query.database;
+  const databaseId = model.databaseId();
 
   useEffect(() => {
     if (loading === false) {
@@ -60,7 +61,7 @@ function ActionCreatorModal({
       const hasModelMismatch = action != null && action.model_id !== modelId;
 
       if (notFound || action?.archived) {
-        const nextLocation = Urls.modelDetail(model, "actions");
+        const nextLocation = Urls.modelDetail(model.card(), "actions");
         onChangeLocation(nextLocation);
       } else if (hasModelMismatch) {
         setErrorPage({ status: 404 });

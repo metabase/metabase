@@ -1,5 +1,6 @@
 /* eslint-disable react/prop-types */
 import React from "react";
+import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -12,7 +13,7 @@ import Link from "metabase/core/components/Link";
 
 class MetricListAppInner extends React.Component {
   render() {
-    const { metrics, tableSelector } = this.props;
+    const { metrics, tableSelector, setArchived } = this.props;
 
     return (
       <div className="px3 pb2">
@@ -34,7 +35,7 @@ class MetricListAppInner extends React.Component {
             {metrics.map(metric => (
               <MetricItem
                 key={metric.id}
-                onRetire={() => metric.setArchived(true)}
+                onRetire={() => setArchived(metric, true)}
                 metric={metric}
               />
             ))}
@@ -51,8 +52,9 @@ class MetricListAppInner extends React.Component {
 }
 
 const MetricListApp = _.compose(
-  Metrics.loadList({ wrapped: true }),
+  Metrics.loadList(),
   FilteredToUrlTable("metrics"),
+  connect(null, { setArchived: Metrics.actions.setArchived }),
 )(MetricListAppInner);
 
 export default MetricListApp;
