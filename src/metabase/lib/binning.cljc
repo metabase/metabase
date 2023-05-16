@@ -5,6 +5,7 @@
     [metabase.lib.metadata.calculation :as lib.metadata.calculation]
     [metabase.lib.schema :as lib.schema]
     [metabase.lib.schema.binning :as lib.schema.binning]
+    [metabase.shared.formatting.numbers :as fmt.num]
     [metabase.shared.util.i18n :as i18n]
     [metabase.util.malli :as mu]))
 
@@ -115,14 +116,6 @@
   []
   @*coordinate-binning-strategies)
 
-(defmethod lib.metadata.calculation/display-info-method ::binning-option
-  [_query _stage-number binning-option]
-  (select-keys binning-option [:display-name :default]))
-
-(defmethod lib.metadata.calculation/display-info-method ::binning
-  [_query _stage-number binning-value]
-  (select-keys binning-value [:display-name :default]))
-
 (defn binning-display-name
   "This is implemented outside of [[lib.metadata.calculation/display-name]] because it needs access to the field type.
   It's called directly by `:field` or `:metadata/field`'s [[lib.metadata.calculation/display-name]]."
@@ -130,6 +123,18 @@
   (when binning-options
     (case strategy
       :num-bins  (i18n/trun "{0} bin" "{0} bins" num-bins)
-      :bin-width (str bin-width (when (isa? (:semantic-type field-metadata) :type/Coordinate)
-                                  "°"))
+      :bin-width (str (fmt.num/format-number bin-width {})
+                      (when (isa? (:semantic-type field-metadata) :type/Coordinate)
+                        "°"))
       :default   (i18n/tru "Auto binned"))))
+
+(defmethod lib.metadata.calculation/display-info-method ::binning-option
+  [_query _stage-number binning-option]
+  (select-keys binning-option [:display-name :default]))
+
+(defmethod lib.metadata.calculation/display-info-method ::binning
+  [query stage-number binning-value]
+  (let [field-metadata ((:metadata-fn binning-value) query stage-number)]
+    (merge {:display-name (binning-display-name binning-value field-metadata)}
+           (when (= :default (:strategy binning-value))
+             {:default true}))))

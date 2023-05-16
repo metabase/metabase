@@ -323,13 +323,16 @@
   (some-> field-clause
           lib.options/options
           :binning
-          (assoc :lib/type ::lib.binning/binning)))
+          (assoc :lib/type    ::lib.binning/binning
+                 :metadata-fn (fn [query stage-number]
+                                (resolve-field-metadata query stage-number field-clause)))))
 
 (defmethod lib.binning/binning-method :metadata/field
   [metadata]
   (some-> metadata
           ::binning
-          (assoc :lib/type ::lib.binning/binning)))
+          (assoc :lib/type    ::lib.binning/binning
+                 :metadata-fn (constantly metadata))))
 
 (defmethod lib.binning/with-binning-method :field
   [field-clause binning]
