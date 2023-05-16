@@ -1,16 +1,20 @@
 (ns metabase.driver.mongo.parameters-test
-  (:require [cheshire.core :as json]
-            [cheshire.generate :as json.generate]
-            [clojure.set :as set]
-            [clojure.string :as str]
-            [clojure.test :refer :all]
-            [java-time :as t]
-            [metabase.driver.common.parameters :as params]
-            [metabase.driver.mongo.parameters :as mongo.params]
-            [metabase.models :refer [NativeQuerySnippet]]
-            [metabase.query-processor :as qp]
-            [metabase.test :as mt])
-  (:import com.fasterxml.jackson.core.JsonGenerator))
+  (:require
+   [cheshire.core :as json]
+   [cheshire.generate :as json.generate]
+   [clojure.set :as set]
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [java-time :as t]
+   [metabase.driver.common.parameters :as params]
+   [metabase.driver.mongo.parameters :as mongo.params]
+   [metabase.models :refer [NativeQuerySnippet]]
+   [metabase.query-processor :as qp]
+   [metabase.test :as mt])
+  (:import
+   (com.fasterxml.jackson.core JsonGenerator)))
+
+(set! *warn-on-reflection* true)
 
 (deftest ->utc-instant-test
   (doseq [t [#t "2020-03-14"
@@ -303,7 +307,7 @@
     (testing "text params"
       (testing "using nested fields as parameters (#11597)"
         (mt/dataset geographical-tips
-          (is (= [[5 "tupac"]]
+          (is (= [["tupac" 5]]
                  (mt/rows
                    (qp/process-query
                      (mt/query tips
@@ -311,7 +315,8 @@
                         :native     {:query         (json/generate-string
                                                      [{:$match (json-raw "{{username}}")}
                                                       {:$sort {:_id 1}}
-                                                      {:$project {"username" "$source.username"}}
+                                                      {:$project {"username" "$source.username"
+                                                                  "_id" 1}}
                                                       {:$limit 1}])
                                      :collection    "tips"
                                      :template-tags {"username" {:name         "username"

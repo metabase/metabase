@@ -6,10 +6,10 @@
    [metabase.models :refer [ApplicationPermissionsRevision Permissions]]
    [metabase.models.application-permissions-revision :as a-perm-revision]
    [metabase.models.permissions :as perms]
-   [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 ;;; ---------------------------------------------------- Schemas -----------------------------------------------------
 
@@ -26,10 +26,10 @@
   "Returns a map of group-id -> application permissions paths.
   Only groups that has at least one application permission enabled will be included."
   []
-  (let [application-permissions (db/select Permissions
-                                       {:where [:or
-                                                [:= :object "/"]
-                                                [:like :object (hx/literal "/application/%")]]})]
+  (let [application-permissions (t2/select Permissions
+                                           {:where [:or
+                                                    [:= :object "/"]
+                                                    [:like :object (h2x/literal "/application/%")]]})]
     (into {} (for [[group-id perms] (group-by :group_id application-permissions)]
                {group-id (set (map :object perms))}))))
 
@@ -80,7 +80,7 @@
     (perms/log-permissions-changes diff-old changes)
     (perms/check-revision-numbers old-graph new-graph)
     (when (seq changes)
-      (db/transaction
+      (t2/with-transaction [_conn]
        (doseq [[group-id changes] changes]
          (update-application-permissions! group-id changes))
        (perms/save-perms-revision! ApplicationPermissionsRevision (:revision old-graph) (:groups old-graph) changes)))))

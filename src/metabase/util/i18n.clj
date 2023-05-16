@@ -3,15 +3,17 @@
   (:require
    [cheshire.generate :as json.generate]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [clojure.walk :as walk]
    [metabase.util.i18n.impl :as i18n.impl]
+   [metabase.util.log :as log]
    [potemkin :as p]
    [potemkin.types :as p.types]
    [schema.core :as s])
   (:import
    (java.text MessageFormat)
    (java.util Locale)))
+
+(set! *warn-on-reflection* true)
 
 (p/import-vars
  [i18n.impl
@@ -165,7 +167,7 @@
   (validate-number-of-args format-string args)
   `(SiteLocalizedString. ~format-string ~(vec args) {}))
 
-(def ^String ^{:arglists '([& args])} str*
+(def ^String ^{:arglists '([& args]) :redef true} str*
   "Ensures that `trs`/`tru` isn't called prematurely, during compilation."
   (if *compile-files*
     (fn [& _]
@@ -248,8 +250,6 @@
   [format-string format-string-pl n]
   `(str* (deferred-trsn ~format-string ~format-string-pl ~n)))
 
-;; TODO - I seriously doubt whether these are still actually needed now that `tru` and `trs` generate forms wrapped in
-;; `str` by default
 (defn localized-string?
   "Returns true if `x` is a system or user localized string instance"
   [x]

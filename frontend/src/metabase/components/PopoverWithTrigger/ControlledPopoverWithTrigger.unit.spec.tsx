@@ -7,25 +7,46 @@ import ControlledPopoverWithTrigger, {
   PopoverWithTriggerContent,
 } from "./ControlledPopoverWithTrigger";
 
-function setup(props: ControlledPopoverWithTriggerProps) {
-  return render(
+console.error = jest.fn();
+
+type SetupProps = Partial<ControlledPopoverWithTriggerProps> & {
+  visible: ControlledPopoverWithTriggerProps["visible"];
+};
+
+function setup({
+  triggerContent = "trigger content",
+  popoverContent = <div>popover content</div>,
+  onClose = jest.fn(),
+  onOpen = jest.fn(),
+  ...props
+}: SetupProps) {
+  const utils = render(
     <div>
       <div>something outside of the popover</div>
-      <ControlledPopoverWithTrigger {...props} />
+      <ControlledPopoverWithTrigger
+        {...props}
+        triggerContent={triggerContent}
+        popoverContent={popoverContent}
+        onOpen={onOpen}
+        onClose={onClose}
+      />
     </div>,
   );
+  return {
+    ...utils,
+    onOpen,
+    onClose,
+    props: {
+      triggerContent,
+      popoverContent,
+      onClose,
+      onOpen,
+      ...props,
+    },
+  };
 }
 
-const onClose = jest.fn();
-const onOpen = jest.fn();
-const popoverContent = <div>popover content</div>;
-const triggerContent = "trigger content";
-
 describe("ControlledPopoverWithTrigger", () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
-
   describe("renderTrigger", () => {
     const renderTrigger: RenderTrigger = ({ visible, onClick }) => (
       <button onClick={onClick} data-visible={visible}>
@@ -33,17 +54,8 @@ describe("ControlledPopoverWithTrigger", () => {
       </button>
     );
 
-    beforeEach(() => {
-      setup({
-        visible: false,
-        renderTrigger,
-        popoverContent,
-        onClose,
-        onOpen,
-      });
-    });
-
     it("the component should accept a function that returns a trigger", () => {
+      setup({ visible: false, renderTrigger });
       expect(screen.getByText("custom trigger")).toBeInTheDocument();
       expect(screen.getByText("custom trigger")).toHaveAttribute(
         "data-visible",
@@ -52,28 +64,21 @@ describe("ControlledPopoverWithTrigger", () => {
     });
 
     it("should be clickable via the onClick prop the function receives as an argument", () => {
+      const { onOpen } = setup({ visible: false, renderTrigger });
       userEvent.click(screen.getByText("custom trigger"));
       expect(onOpen).toHaveBeenCalled();
     });
   });
 
   describe("triggerContent", () => {
-    beforeEach(() => {
-      setup({
-        visible: false,
-        triggerContent,
-        popoverContent,
-        onClose,
-        onOpen,
-      });
-    });
-
     it("should render a trigger button with the given content", () => {
+      setup({ visible: false });
       expect(screen.getByRole("button")).toBeInTheDocument();
       expect(screen.getByRole("button")).toHaveTextContent("trigger content");
     });
 
     it("should be clickable and trigger the onOpen prop of the component", () => {
+      const { onOpen } = setup({ visible: false });
       userEvent.click(screen.getByText("trigger content"));
       expect(onOpen).toHaveBeenCalled();
     });
@@ -81,103 +86,58 @@ describe("ControlledPopoverWithTrigger", () => {
 
   describe("visible", () => {
     it("should be openable/closable via the visible prop", async () => {
-      const props = {
-        triggerContent,
-        popoverContent,
-        onClose,
-        onOpen,
-      };
-
-      const { rerender } = render(
-        <ControlledPopoverWithTrigger visible={true} {...props} />,
-      );
+      const { rerender, props } = setup({ visible: true });
 
       expect(await screen.findByText("popover content")).toBeVisible();
 
-      rerender(<ControlledPopoverWithTrigger visible={false} {...props} />);
+      rerender(<ControlledPopoverWithTrigger {...props} visible={false} />);
 
-      expect(await screen.findByText("popover content")).not.toBeVisible();
+      expect(screen.queryByText("popover content")).not.toBeInTheDocument();
     });
   });
 
   describe("when the popover is open", () => {
-    beforeEach(() => {
-      setup({
-        visible: true,
-        triggerContent,
-        popoverContent,
-        onClose,
-        onOpen,
-      });
-    });
-
-    it("should show the popover content", () => {
-      expect(screen.getByText("popover content")).toBeVisible();
+    it("should show the popover content", async () => {
+      setup({ visible: true });
+      expect(await screen.findByText("popover content")).toBeVisible();
     });
 
     it("should be able to trigger an onClose event via an outside click", () => {
+      const { onClose } = setup({ visible: true });
       userEvent.click(screen.getByText("something outside of the popover"));
       expect(onClose).toHaveBeenCalled();
     });
 
     it("should be able to trigger an onClose event via an Esc press", () => {
+      const { onClose } = setup({ visible: true });
       userEvent.type(document.body, "{Escape}");
       expect(onClose).toHaveBeenCalled();
     });
   });
 
   describe("popoverContent fn prop", () => {
-    beforeEach(() => {
-      const popoverContent: PopoverWithTriggerContent = ({ closePopover }) => (
-        <button onClick={closePopover}>popover content</button>
-      );
+    const popoverContent: PopoverWithTriggerContent = ({ closePopover }) => (
+      <button onClick={closePopover}>popover content</button>
+    );
 
-      setup({
-        visible: true,
-        triggerContent,
-        popoverContent,
-        onClose,
-        onOpen,
-      });
-    });
-
-    it("should pass the onClose prop to the popoverContent fn", () => {
-      userEvent.click(screen.getByText("popover content"));
+    it("should pass the onClose prop to the popoverContent fn", async () => {
+      const { onClose } = setup({ visible: true, popoverContent });
+      userEvent.click(await screen.findByText("popover content"));
       expect(onClose).toHaveBeenCalled();
     });
   });
 
   describe("disabled true, visible false", () => {
-    beforeEach(() => {
-      setup({
-        disabled: true,
-        visible: false,
-        triggerContent,
-        popoverContent,
-        onClose,
-        onOpen,
-      });
-    });
-
     it("should prevent the triggering of the onOpen fn", () => {
+      const { onOpen } = setup({ disabled: true, visible: false });
       userEvent.click(screen.getByText("trigger content"));
       expect(onOpen).not.toHaveBeenCalled();
     });
   });
 
   describe("disabled true, visible true", () => {
-    beforeEach(() => {
-      setup({
-        disabled: true,
-        visible: true,
-        triggerContent,
-        popoverContent,
-        onClose,
-        onOpen,
-      });
-    });
-
     it("should not render the popover", () => {
+      setup({ disabled: true, visible: true });
       expect(screen.queryByText("popover content")).not.toBeInTheDocument();
     });
   });

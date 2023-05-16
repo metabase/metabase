@@ -1,17 +1,17 @@
 import React, { useCallback, useMemo } from "react";
 import { connect } from "react-redux";
 import _ from "underscore";
+import { useMount } from "react-use";
 
 import { getHasDataAccess } from "metabase/selectors/data";
 import { getSetting } from "metabase/selectors/settings";
 
-import { useOnMount } from "metabase/hooks/use-on-mount";
-
 import Databases from "metabase/entities/databases";
 import Search from "metabase/entities/search";
 
-import type { Database, DatabaseId } from "metabase-types/api";
+import type { DatabaseId } from "metabase-types/api";
 import type { State } from "metabase-types/store";
+import Database from "metabase-lib/metadata/Database";
 
 import {
   getRootCollectionVirtualSchemaId,
@@ -46,15 +46,16 @@ type DataPickerProps = DataPickerOwnProps &
   DatabaseListLoaderProps &
   SearchListLoaderProps;
 
-function mapStateToProps(state: State) {
+function mapStateToProps(state: State, { databases }: DatabaseListLoaderProps) {
   return {
     hasNestedQueriesEnabled: getSetting(state, "enable-nested-queries"),
-    hasDataAccess: getHasDataAccess(state),
+    hasDataAccess: getHasDataAccess(databases),
   };
 }
 
 function DataPicker({
-  databases,
+  value,
+  databases: allDatabases,
   search: modelLookupResult,
   filters: customFilters = {},
   hasNestedQueriesEnabled,
@@ -73,13 +74,21 @@ function DataPicker({
     [customFilters],
   );
 
+  const databases = useMemo(
+    () => allDatabases.filter(database => !database.is_saved_questions),
+    [allDatabases],
+  );
+
   const dataTypes = useMemo(
     () =>
       getDataTypes({
         hasModels: modelLookupResult.length > 0,
+        hasSavedQuestions: allDatabases.some(
+          database => database.is_saved_questions,
+        ),
         hasNestedQueriesEnabled,
       }).filter(type => filters.types(type.id)),
-    [filters, modelLookupResult, hasNestedQueriesEnabled],
+    [allDatabases, filters, modelLookupResult, hasNestedQueriesEnabled],
   );
 
   const handleDataTypeChange = useCallback(
@@ -113,13 +122,13 @@ function DataPicker({
     [databases, onChange],
   );
 
-  useOnMount(() => {
-    if (dataTypes.length === 1) {
+  useMount(() => {
+    if (dataTypes.length === 1 && value.type !== dataTypes[0].id) {
       handleDataTypeChange(dataTypes[0].id);
     }
   });
 
-  const handleBack = useCallback(() => {
+  const handleReset = useCallback(() => {
     onChange({
       type: undefined,
       databaseId: undefined,
@@ -128,21 +137,26 @@ function DataPicker({
     });
   }, [onChange]);
 
+  const canGoBack = dataTypes.length > 1;
+
   return (
     <DataPickerView
       {...props}
+      value={value}
       dataTypes={dataTypes}
       searchQuery={search.query}
       hasDataAccess={hasDataAccess}
       onDataTypeChange={handleDataTypeChange}
-      onBack={handleBack}
+      onBack={canGoBack ? handleReset : undefined}
     />
   );
 }
 
 const DataPickerContainer = _.compose(
   // Required for `hasDataAccess` check
-  Databases.loadList(),
+  Databases.loadList({
+    query: { saved: true },
+  }),
 
   // Lets the picker check there is
   // at least one model, to offer for selection
@@ -156,6 +170,7 @@ const DataPickerContainer = _.compose(
   connect(mapStateToProps),
 )(DataPicker);
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Object.assign(DataPickerContainer, {
   Provider: DataPickerContextProvider,
 });

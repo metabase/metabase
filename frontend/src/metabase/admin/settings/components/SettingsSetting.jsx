@@ -63,7 +63,7 @@ export default class SettingsSetting extends Component {
 
     return (
       // TODO - this formatting needs to be moved outside this component
-      <SettingRoot>
+      <SettingRoot data-testid={`${setting.key}-setting`}>
         {!setting.noHeader && (
           <SettingHeader id={settingId} setting={setting} />
         )}

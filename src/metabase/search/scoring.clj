@@ -126,8 +126,8 @@
 (defn prefix-scorer
   "How much does the search query match the beginning of the result? "
   [query-tokens match-tokens]
-  (let [query (str/lower-case (str/join " " query-tokens))
-        match (str/lower-case (str/join " " match-tokens))]
+  (let [query (u/lower-case-en (str/join " " query-tokens))
+        match (u/lower-case-en (str/join " " match-tokens))]
     (/ (prefix-counter query match)
        (count-token-chars query-tokens))))
 
@@ -158,7 +158,7 @@
   [{:keys [model collection_position]}]
   ;; We experimented with favoring lower collection positions, but it wasn't good
   ;; So instead, just give a bonus for items that are pinned at all
-  (if (and (#{"card" "dashboard" "pulse"} model)
+  (if (and (#{"card" "dashboard"} model)
            ((fnil pos? 0) collection_position))
     1
     0))
@@ -193,8 +193,7 @@
 (defn- serialize
   "Massage the raw result from the DB and match data into something more useful for the client"
   [result all-scores relevant-scores]
-  (let [{:keys [name display_name collection_id collection_name collection_authority_level
-                collection_app_id]} result
+  (let [{:keys [name display_name collection_id collection_name collection_authority_level]} result
         matching-columns            (into #{} (remove nil? (map :column relevant-scores)))
         match-context-thunk         (first (keep :match-context-thunk relevant-scores))]
     (-> result
@@ -208,14 +207,12 @@
                            (match-context-thunk))
          :collection     {:id              collection_id
                           :name            collection_name
-                          :authority_level collection_authority_level
-                          :app_id          collection_app_id}
+                          :authority_level collection_authority_level}
          :scores          all-scores)
         (update :dataset_query #(some-> % json/parse-string mbql.normalize/normalize))
         (dissoc
          :collection_id
          :collection_name
-         :collection_app_id
          :display_name))))
 
 (defn weights-and-scores

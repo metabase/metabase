@@ -5,10 +5,11 @@ import { isSyncCompleted } from "metabase/lib/syncing";
 
 import Icon from "metabase/components/Icon";
 import AccordionList from "metabase/core/components/AccordionList";
-import DataSelectorLoading from "../DataSelectorLoading";
+import Database from "metabase-lib/metadata/Database";
+import Schema from "metabase-lib/metadata/Schema";
 
+import DataSelectorLoading from "../DataSelectorLoading";
 import { RawDataBackButton } from "../DataSelector.styled";
-import type { Database, Schema } from "../types";
 import { PickerSpinner } from "./DataSelectorDatabaseSchemaPicker.styled";
 
 type DataSelectorDatabaseSchemaPicker = {
@@ -58,17 +59,17 @@ const DataSelectorDatabaseSchemaPicker = ({
   const sections: Sections = databases.map(database => ({
     name: database.is_saved_questions ? t`Saved Questions` : database.name,
     items:
-      !database.is_saved_questions && database.schemas.length > 1
-        ? database.schemas.map(schema => ({
+      !database.is_saved_questions && database.getSchemas().length > 1
+        ? database.getSchemas().map(schema => ({
             schema,
-            name: schema.displayName(),
+            name: schema.displayName() ?? "",
           }))
         : [],
     className: database.is_saved_questions ? "bg-light" : null,
-    icon: database.is_saved_questions ? "all" : "database",
+    icon: database.is_saved_questions ? "collection" : "database",
     loading:
       selectedDatabase?.id === database.id &&
-      database.schemas.length === 0 &&
+      database.getSchemas().length === 0 &&
       isLoading,
     active: database.is_saved_questions || isSyncCompleted(database),
   }));
@@ -106,12 +107,12 @@ const DataSelectorDatabaseSchemaPicker = ({
   }
 
   let openSection = selectedSchema
-    ? databases.findIndex(db => db.id === selectedSchema.database.id)
+    ? databases.findIndex(db => db.id === selectedSchema.database?.id)
     : selectedDatabase
     ? databases.findIndex(db => db.id === selectedDatabase.id)
     : -1;
 
-  if (openSection >= 0 && databases[openSection]?.schemas.length === 1) {
+  if (openSection >= 0 && databases[openSection]?.getSchemas().length === 1) {
     openSection = -1;
   }
 
@@ -135,4 +136,5 @@ const DataSelectorDatabaseSchemaPicker = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default DataSelectorDatabaseSchemaPicker;

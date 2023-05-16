@@ -7,12 +7,13 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]))
 
+(set! *warn-on-reflection* true)
+
 (defn- maybe-parse-not-null-error [_database error-message]
-  (let [[match? value column]
-        (re-find #"ERROR:\s+(\w+) value in column \"([^\"]+)\" violates not-null constraint" error-message)]
-    (when match?
-      [{:message (tru "{0} violates not-null constraint" value)
-        :column column}])))
+  (when-let [[_ _value column]
+             (re-find #"ERROR:\s+(\w+) value in column \"([^\"]+)\" violates not-null constraint" error-message)]
+    [{:message (tru "violates not-null constraint")
+      :column column}]))
 
   ;; TODO -- we should probably be TTL caching this information. Otherwise parsing 100 errors for a bulk action will
   ;; result in 100 identical data warehouse queries. It's not like constraint columns are something we would expect to
@@ -71,6 +72,7 @@
    :type/Float               "FLOAT"
    :type/Integer             "INTEGER"
    :type/IPAddress           "INET"
+   :type/JSON                "JSON"
    :type/Text                "TEXT"
    :type/Time                "TIME"
    :type/TimeWithTZ          "TIME WITH TIME ZONE"
@@ -88,3 +90,13 @@
         (throw e))
       (finally
         (.releaseSavepoint conn savepoint)))))
+
+;;; Add returning * so that we don't have to make an additional query.
+(defmethod sql-jdbc.actions/prepare-query* [:postgres :row/create]
+  [_driver _action hsql-query]
+  (assoc hsql-query :returning [:*]))
+
+;;; Result is already the created row.
+(defmethod sql-jdbc.actions/select-created-row :postgres
+  [_driver _create-hsql _conn result]
+  result)

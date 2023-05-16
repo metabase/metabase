@@ -6,21 +6,27 @@
    [clojure.set :as set]
    [clojure.walk :as walk]
    [medley.core :as m]
+   [metabase.db.query :as mdb.query]
    [metabase.db.util :as mdb.u]
    [metabase.driver :as driver]
    [metabase.mbql.util :as mbql.u]
-   [metabase.models.field :refer [Field]]
-   [metabase.models.table :refer [Table]]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.add-implicit-clauses
     :as qp.add-implicit-clauses]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]
-   [toucan.db :as db]))
+   [metabase.util.i18n :refer [tru]]))
 
-(defn- implicitly-joined-fields [x]
-  (set (mbql.u/match x [:field _ (_ :guard (every-pred :source-field (complement :join-alias)))] &match)))
+(defn- implicitly-joined-fields
+  "Find fields that come from implicit join in form `x`, presumably a query.
+  Fields from metadata are not considered. It is expected, that field which would cause implicit join is in the query
+  and not just in it's metadata. Example of query having `:source-field` fields in `:source-metadata` and no use of
+  `:source-field` field in corresponding `:source-query` would be the one, that uses remappings. See
+  [[metabase.models.params.custom-values-test/with-mbql-card-test]]."
+  [x]
+  (set (mbql.u/match x [:field _ (_ :guard (every-pred :source-field (complement :join-alias)))]
+                     (when-not (some #{:source-metadata} &parents)
+                       &match))))
 
 (defn- join-alias [dest-table-name source-fk-field-name]
   (str dest-table-name "__via__" source-fk-field-name))
@@ -30,18 +36,18 @@
   `joined-field` and `:joins` clauses."
   [fk-field-ids]
   (when (seq fk-field-ids)
-    (let [infos (db/query {:select    [[:source-fk.id    :fk-field-id]
-                                       [:source-fk.name  :fk-name]
-                                       [:target-pk.id    :pk-id]
-                                       [:target-table.id :source-table]
-                                       [:target-table.name :table-name]]
-                           :from      [[Field :source-fk]]
-                           :left-join [[Field :target-pk]    [:= :source-fk.fk_target_field_id :target-pk.id]
-                                       [Table :target-table] [:= :target-pk.table_id :target-table.id]]
-                           :where     [:and
-                                       [:in :source-fk.id (set fk-field-ids)]
-                                       [:= :target-table.db_id (u/the-id (qp.store/database))]
-                                       (mdb.u/isa :source-fk.semantic_type :type/FK)]})]
+    (let [infos (mdb.query/query {:select    [[:source-fk.id    :fk-field-id]
+                                              [:source-fk.name  :fk-name]
+                                              [:target-pk.id    :pk-id]
+                                              [:target-table.id :source-table]
+                                              [:target-table.name :table-name]]
+                                  :from      [[:metabase_field :source-fk]]
+                                  :left-join [[:metabase_field :target-pk]    [:= :source-fk.fk_target_field_id :target-pk.id]
+                                              [:metabase_table :target-table] [:= :target-pk.table_id :target-table.id]]
+                                  :where     [:and
+                                              [:in :source-fk.id (set fk-field-ids)]
+                                              [:= :target-table.db_id (u/the-id (qp.store/database))]
+                                              (mdb.u/isa :source-fk.semantic_type :type/FK)]})]
       (for [{:keys [pk-id fk-name table-name fk-field-id], :as info} infos]
         (let [join-alias (join-alias table-name fk-name)]
           (-> info
@@ -77,26 +83,47 @@
 (defn- distinct-fields [fields]
   (m/distinct-by mbql.u/remove-namespaced-options fields))
 
-(defn- add-join-alias-to-fields-with-source-field
-  "Add `:field` `:join-alias` to `:field` clauses with `:source-field` in `form`."
+(defn- construct-fk-field-id->join-alias
   [form]
   ;; Build a map of FK Field ID -> alias used for IMPLICIT joins. Only implicit joins have `:fk-field-id`
-  (let [fk-field-id->join-alias (reduce
-                                 (fn [m {:keys [fk-field-id], join-alias :alias}]
-                                   (if (or (not fk-field-id)
-                                           (get m fk-field-id))
-                                     m
-                                     (assoc m fk-field-id join-alias)))
-                                 {}
-                                 (visible-joins form))]
+  (reduce
+   (fn [m {:keys [fk-field-id], join-alias :alias}]
+     (if (or (not fk-field-id)
+             (get m fk-field-id))
+       m
+       (assoc m fk-field-id join-alias)))
+   {}
+   (visible-joins form)))
+
+(defn- add-implicit-joins-aliases-to-metadata
+  "Add `:join-alias`es to fields containing `:source-field` in `:source-metadata` of `query`.
+  It is required, that `:source-query` has already it's joins resolved. It is valid, when no `:join-alias` could be
+  found. For examaple during remaps, metadata contain fields with `:source-field`, that are not used further in their
+  `:source-query`."
+  [{:keys [source-query] :as query}]
+  (let [fk-field-id->join-alias (construct-fk-field-id->join-alias source-query)]
+    (update query :source-metadata
+            #(mbql.u/replace %
+               [:field id-or-name (opts :guard (every-pred :source-field (complement :join-alias)))]
+               (let [join-alias (fk-field-id->join-alias (:source-field opts))]
+                 (if (some? join-alias)
+                   [:field id-or-name (assoc opts :join-alias join-alias)]
+                   &match))))))
+
+(defn- add-join-alias-to-fields-with-source-field
+  "Add `:field` `:join-alias` to `:field` clauses with `:source-field` in `form`. Ignore `:source-metadata`."
+  [form]
+  (let [fk-field-id->join-alias (construct-fk-field-id->join-alias form)]
     (cond-> (mbql.u/replace form
               [:field id-or-name (opts :guard (every-pred :source-field (complement :join-alias)))]
-              (let [join-alias (or (fk-field-id->join-alias (:source-field opts))
-                                   (throw (ex-info (tru "Cannot find matching FK Table ID for FK Field {0}"
-                                                        (fk-field-id->join-alias (:source-field opts)))
-                                                   {:resolving  &match
-                                                    :candidates fk-field-id->join-alias})))]
-                [:field id-or-name (assoc opts :join-alias join-alias)]))
+              (if-not (some #{:source-metadata} &parents)
+                (let [join-alias (or (fk-field-id->join-alias (:source-field opts))
+                                     (throw (ex-info (tru "Cannot find matching FK Table ID for FK Field {0}"
+                                                          (fk-field-id->join-alias (:source-field opts)))
+                                                     {:resolving  &match
+                                                      :candidates fk-field-id->join-alias})))]
+                  [:field id-or-name (assoc opts :join-alias join-alias)])
+                &match))
       (sequential? (:fields form)) (update :fields distinct-fields))))
 
 (defn- already-has-join?
@@ -213,15 +240,19 @@
       (seq required-joins) (update :joins topologically-sort-joins))))
 
 (defn- resolve-implicit-joins [query]
-  (walk/postwalk
-   (fn [form]
-     (if (and (map? form)
-              ((some-fn :source-query :source-table) form)
-              (not (:condition form)))
-       (resolve-implicit-joins-this-level form)
-       form))
-   query))
+  (let [has-source-query-and-metadata? (every-pred map? :source-query :source-metadata)
+        query? (every-pred map? (some-fn :source-query :source-table) #(not (contains? % :condition)))]
+    (walk/postwalk
+     (fn [form]
+       (cond-> form
+         ;; `:source-metadata` of `:source-query` in this `form` are on this level. This `:source-query` has already
+         ;;   its implicit joins resolved by `postwalk`. The following code updates its metadata too.
+         (has-source-query-and-metadata? form)
+         add-implicit-joins-aliases-to-metadata
 
+         (query? form)
+         resolve-implicit-joins-this-level))
+     query)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                   Middleware                                                   |

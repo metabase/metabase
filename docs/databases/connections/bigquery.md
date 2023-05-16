@@ -1,19 +1,12 @@
 ---
-title: Working with Google BigQuery in Metabase
+title: Google BigQuery
 redirect_from:
   - /docs/latest/administration-guide/databases/bigquery
 ---
 
-# Working with Google BigQuery in Metabase
+# Google BigQuery
 
-This page provides information on how to create and manage a connection to a Google [BigQuery](https://cloud.google.com/bigquery) dataset, including one that uses [files stored in Google Drive](https://cloud.google.com/bigquery/external-data-drive) as a data source, like Google Sheets (GSheets).
-
-
-- [Prerequisites](#prerequisites)
-- [Google Cloud Platform: creating a service account and JSON file](#google-cloud-platform-creating-a-service-account-and-json-file)
-- [Metabase: Adding a BigQuery dataset](#metabase-adding-a-bigquery-dataset)
-- [Connecting Metabase to Google Drive data sources](#connecting-metabase-to-google-drive-data-sources)
-- [Using Legacy SQL](#using-legacy-sql)
+To add a database connection, click on the **gear** icon in the top right, and navigate to **Admin settings** > **Databases** > **Add a database**.
 
 ## Prerequisites
 
@@ -21,7 +14,7 @@ You'll need to have a [Google Cloud Platform](https://cloud.google.com/) account
 
 ## Google Cloud Platform: creating a service account and JSON file
 
-You'll first need a [service account](https://cloud.google.com/iam/docs/service-accounts) JSON file that Metabase can use to access your BigQuery dataset. Service accounts are intended for non-human users (such as applications like Metabase) to authenticate (who am I?) and authorize (what can I do?) their API calls.
+You'll first need a [service account](https://cloud.google.com/iam/docs/service-account-overview) JSON file that Metabase can use to access your BigQuery dataset. Service accounts are intended for non-human users (such as applications like Metabase) to authenticate (who am I?) and authorize (what can I do?) their API calls.
 
 To create the service account JSON file, follow Google's documentation on [setting up a service account](https://cloud.google.com/iam/docs/creating-managing-service-accounts) for your BigQuery dataset. Here's the basic flow:
 
@@ -41,84 +34,93 @@ For more information on **roles** in BigQuery, see [Google Cloud Platform's docu
 
 > **You can only download the key once**. If you delete the key, you'll need to create another service account with the same roles.
 
-## Metabase: adding a BigQuery dataset
+## Settings
 
-Once you have created and downloaded your service account JSON file for your BigQuery dataset, head over to your Metabase instance, click on the **settings** cog, and select **Admin** to bring up Admin mode. In the **Databases** section, click on the **Add database** button in the upper right.
+You can edit these settings at any time. Just remember to save your changes.
 
-On the **ADD DATABASE** page, select **BigQuery** from the **Database type** dropdown. Metabase will present you with the relevant configuration settings to fill out:
+### Display name
 
-### Settings
+The display name for the database in the Metabase interface.
 
-#### Display name
-
-**Name** is the title of your database in Metabase.
-
-#### Project ID (override)
+### Project ID
 
 Each BigQuery dataset will have a **Project ID**. You can find this ID via the [Google Cloud Console](https://console.cloud.google.com/). If you're not sure where to find the **Project ID**, see Google's documentation on [getting information on datasets](https://cloud.google.com/bigquery/docs/dataset-metadata#getting_dataset_information).
 
 > When entering the **Project ID**, omit the Project ID prefix. For example, if your ID is `project_name:project_id`, only enter `project_id`.
 
-#### Service account JSON file
+### Service account JSON file
 
-Upload the service account JSON file you created when following the [steps above](#google-cloud-platform-creating-a-service-account-and-json-file). The JSON file contains the credentials your Metabase application will need to read and query your dataset, as defined by the **roles** you added to the service account. If you need to add additional **roles**, you have to create another service account, download the JSON file, and upload the file to Metabase.
+The JSON file contains the credentials your Metabase application will need to access BigQuery datasets, as defined by the **roles** you added to the service account. If you need to add additional **roles**, you have to create another service account, download the JSON file, and upload the file to Metabase.
 
-#### Datasets
+### Datasets
 
-Here you can specify which datasets you want to sync and scan. Options are:
+You can specify which BigQuery datasets you want to sync and scan. Options are:
 
 - All
 - Only these...
 - All except...
 
-For the Only these and All except options, you can input a comma-separated list of values to tell Metabase which datasets you want to include (or exclude). For example:
+> A BigQuery dataset is similar to a schema. Make sure to enter your dataset names (like `marketing`), _not_ your table names (`marketing.campaigns`).
+
+Let's say you have three datasets: foo, bar, and baz.
+
+To sync all three datasets, select **Only these...** and enter:
 
 ```
 foo,bar,baz
 ```
 
-You can use the `*` wildcard to match multiple datasets.
+To sync datasets based on a string match, use the `*` wildcard:
 
-Let's say you have three datasets: foo, bar, and baz.
-
-- If you have **Only these...** set, and enter the string `b*`, you'll sync with bar and baz.
-- If you have **All except...** set, and enter the string `b*`, you'll just sync foo.
+- To sync bar and baz, select **Only these...** and enter the string `b*`.
+- To sync foo only, select **All except...**  and enter the string `b*`.
 
 Note that only the `*` wildcard is supported; you can't use other special characters or regexes.
 
-### Advanced settings
+### Use the Java Virtual Machine (JVM) timezone
 
-#### Use the Java Virtual Machine (JVM) timezone
+We suggest you leave this off unless you're doing manual [timezone](../../configuring-metabase/timezones.md) casting in many or most of your queries with this data.
 
-_Default: Off_
+### Include User ID and query hash in queries
 
-We suggest you leave this off unless you're doing manual timezone casting in many or most of your queries with this data.
+This can be useful for [auditing](../../usage-and-performance-tools/audit.md) and debugging, but prevents BigQuery from caching results and may increase your costs.
 
-#### Include User ID and query hash in queries
+### Re-run queries for simple explorations
 
-_Default: On_
+Turn this option **OFF** if people want to click **Run** (the play button) before applying any [Summarize](../../questions/query-builder/introduction.md#grouping-your-metrics) or filter selections.
 
-This can be useful for auditing and debugging, but prevents BigQuery from caching results and may increase your costs.
+By default, Metabase will execute a query as soon as you choose an grouping option from the **Summarize** menu or a filter condition from the [drill-through menu](https://www.metabase.com/learn/questions/drill-through). If your database is slow, you may want to disable re-running to avoid loading data on each click.
 
-#### Rerun queries for simple explorations
+### Choose when Metabase syncs and scans
 
-_Default: On_
+Turn this option **ON** to manage the queries that Metabase uses to stay up to date with your database. For more information, see [Syncing and scanning databases](../sync-scan.md#syncing-and-scanning-databases).
 
-We execute the underlying query when you explore data using Summarize or Filter. If performance is slow, you can try disabling this option to see if there's an improvement.
+#### Database syncing
 
-#### Choose when Metabase syncs and scans
+If you've selected **Choose when syncs and scans happen** > **ON**, you'll be able to set:
 
-_Default: Off_
+- The frequency of the [sync](../sync-scan.md#how-database-syncs-work): hourly (default) or daily.
+- The time to run the sync, in the timezone of the server where your Metabase app is running.
 
-Metabase does a lightweight hourly sync and an intensive daily scan of field values. If you have a large database, we recommend turning this on and reviewing when and how often the field value scans happen.
+#### Scanning for filter values
 
-#### Periodically refingerprint tables
+Metabase can scan the values present in each field in this database to enable checkbox filters in dashboards and questions. This can be a somewhat resource-intensive process, particularly if you have a very large database.
 
-_Default: Off_
+If you've selected **Choose when syncs and scans happen** > **ON**, you'll see the following options under **Scanning for filter values**:
 
-This enables Metabase to scan for additional field values during syncs allowing smarter behavior, like improved auto-binning on your bar charts.
+- **Regularly, on a schedule** allows you to run [scan queries](../sync-scan.md#how-database-scans-work) at a frequency that matches the rate of change to your database. The time is set in the timezone of the server where your Metabase app is running. This is the best option for a small database, or tables with distinct values that get updated often.
+- **Only when adding a new filter widget** is a great option if you want scan queries to run on demand. Turning this option **ON** means that Metabase will only scan and cache the values of the field(s) that are used when a new filter is added to a dashboard or SQL question.
+- **Never, I'll do this manually if I need to** is an option for databases that are either prohibitively large, or which never really have new values added. Use the [Re-scan field values now](../sync-scan.md#manually-scanning-column-values) button to run a manual scan and bring your filter values up to date.
 
-#### Default reset cache duration
+### Periodically refingerprint tables
+
+> Periodic refingerprinting will increase the load on your database.
+
+Turn this option **ON** to scan a sample of values every time Metabase runs a [sync](../sync-scan.md#how-database-syncs-work).
+
+A fingerprinting query examines the first 10,000 rows from each column and uses that data to guesstimate how many unique values each column has, what the minimum and maximum values are for numeric and timestamp columns, and so on. If you leave this option **OFF**, Metabase will only fingerprint your columns once during setup.
+
+### Default result cache duration
 
 {% include plans-blockquote.html feature="Database-specific caching" %}
 
@@ -131,19 +133,19 @@ Options are:
 
 If you are on a paid plan, you can also set cache duration per questions. See [Advanced caching controls](../../configuring-metabase/caching.md#advanced-caching-controls).
 
-### Save your database configuration
-
-When you're done, click the **Save** button.
-
-Give Metabase some time to sync with your BigQuery dataset, then exit Admin mode, click on **Browse Data**, find your database, and start exploring your data.
-
 ## Connecting Metabase to Google Drive data sources
 
-To connect to a data source stored in Google Drive (like a Google Sheet) first make sure you've completed the steps above, including creating a project in Google Cloud Platform, adding a BigQuery dataset, and creating a [service account](#google-cloud-platform-creating-a-service-account-and-json-file). Then:
+You can connect Metabase to Google Drive data sources via BigQuery. There is some setup involved, but basically what you'll be doing is creating a dataset in BigQuery and adding an external table to that dataset that points to a Google Sheet. Useful for uploading CSVs to Google Sheets, and then analyzing and visualizing the data with Metabase.
+
+To connect to a data source stored in Google Drive (like a Google Sheet), first make sure you've completed the steps above, including:
+
+- creating a project in Google Cloud Platform,
+- adding a BigQuery dataset, and
+- creating a [service account](#google-cloud-platform-creating-a-service-account-and-json-file).
 
 ### Share your Google Drive source with the service account
 
-While viewing your Drive file, (e.g., a Google Sheet), click the **Share** button in the top right. In the text box labeled **Add people or groups**, paste in the email of your service account, which you can find on the [Service Accounts page](https://console.cloud.google.com/projectselector2/iam-admin/serviceaccounts?supportedpurview=project) in the Google Cloud Console.
+While viewing your Drive file, (e.g., a Google Sheet with an uploaded CSV file), click the **Share** button in the top right. In the text box labeled **Add people or groups**, paste in the email of your service account, which you can find on the [Service Accounts page](https://console.cloud.google.com/projectselector2/iam-admin/serviceaccounts?supportedpurview=project) in the Google Cloud Console.
 
 That email address will look something like `service-account-name@your-project-name.iam.gserviceaccount.com`, with the your service account and project names filled in accordingly.
 
@@ -157,13 +159,13 @@ Next, using the Google Cloud Console, [create an external table](https://cloud.g
 
 Be sure to specify the correct **Drive URI** and file format.
 
-If you haven't already [added your BigQuery dataset to Metabase](#metabase-adding-a-bigquery-dataset), go ahead and do that now.
+If you haven't already, [connect your Metabase to your BigQuery](#google-bigquery).
 
 Once you've completed these steps, you'll be able to ask questions and create dashboards in Metabase using a Google Drive source as your data.
 
 ## Using Legacy SQL
 
-As of version 0.30.0, Metabase tells BigQuery to interpret SQL queries as [Standard SQL](https://cloud.google.com/bigquery/docs/reference/standard-sql/). If you prefer using [Legacy SQL](https://cloud.google.com/bigquery/docs/reference/legacy-sql) instead, you can tell Metabase to do so by including a `#legacySQL` directive at the beginning of your query, for example:
+As of version 0.30.0, Metabase tells BigQuery to interpret SQL queries as [Standard SQL (GoogleSQL)](https://cloud.google.com/bigquery/docs/introduction-sql). If you prefer using [Legacy SQL](https://cloud.google.com/bigquery/docs/reference/legacy-sql) instead, you can tell Metabase to do so by including a `#legacySQL` directive at the beginning of your query, for example:
 
 ```sql
 #legacySQL

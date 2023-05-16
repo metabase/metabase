@@ -2,7 +2,7 @@
   "Tests for handling queries with nested expressions."
   (:require
    [clojure.test :refer :all]
-   [honeysql.core :as hsql]
+   [honey.sql :as sql]
    [java-time :as t]
    [medley.core :as m]
    [metabase.driver :as driver]
@@ -21,7 +21,7 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (deftest basic-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
@@ -42,6 +42,13 @@
                                    :limit        10}
                     :limit        5}))))))))
 
+(defn- sql-driver? []
+  (isa? driver/hierarchy driver/*driver* :sql))
+
+(defn- compile-to-native [mbql-query]
+  (cond-> (qp/compile mbql-query)
+    (sql-driver?) :query))
+
 (deftest basic-sql-source-query-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
     (testing "make sure we can do a basic query with a SQL source-query"
@@ -50,18 +57,19 @@
                      [3 -118.428 11 2 "The Apple Pan"                34.0406]
                      [4 -118.465 29 2 "Wurstküche"                   33.9997]
                      [5 -118.261 20 2 "Brite Spot Family Restaurant" 34.0778]]
-              :cols (mapv (partial qp.test/native-query-col :venues) [:id :longitude :category_id :price :name :latitude])}
+              :cols (mapv (partial qp.test/native-query-col :venues)
+                          [:id :longitude :category_id :price :name :latitude])}
              (mt/format-rows-by [int 4.0 int int str 4.0]
-               (let [{source-query :query} (qp/compile
-                                            (mt/mbql-query venues
-                                              {:fields [$id $longitude $category_id $price $name $latitude]}))]
+               (let [native-query (compile-to-native
+                                   (mt/mbql-query venues
+                                     {:fields [$id $longitude $category_id $price $name $latitude]}))]
                  (qp.test/rows-and-cols
-                   (mt/run-mbql-query venues
-                     {:source-query {:native source-query}
-                      :order-by     [[:asc *venues.id]]
-                      :limit        5})))))))))
+                  (mt/run-mbql-query venues
+                    {:source-query {:native native-query}
+                     :order-by     [[:asc *venues.id]]
+                     :limit        5})))))))))
 
-(defn- breakout-results [& {:keys [has-source-metadata? native-source?]
+(defn breakout-results [& {:keys [has-source-metadata? native-source?]
                             :or   {has-source-metadata? true
                                    native-source?       false}}]
   {:rows [[1 22]
@@ -189,19 +197,16 @@
                                                      (when dataset?
                                                        {:info {:metadata/dataset-metadata (:result_metadata card)}}))))))))))))
 
-
-
-(deftest sql-source-query-breakout-aggregation-test
+(deftest ^:parallel sql-source-query-breakout-aggregation-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
     (testing "make sure we can do a query with breakout and aggregation using a SQL source query"
       (is (= (:rows (breakout-results))
              (mt/rows
               (mt/format-rows-by [int int]
                 (mt/run-mbql-query venues
-                  {:source-query {:native (:query (qp/compile (mt/mbql-query venues)))}
+                  {:source-query {:native (compile-to-native (mt/mbql-query venues))}
                    :aggregation  [:count]
                    :breakout     [*price]}))))))))
-
 
 (defn- mbql-card-def
   "Basic MBQL Card definition. Pass kv-pair clauses for the inner query."
@@ -262,34 +267,37 @@
   (testing "Make sure we can run queries using source table `card__id` format."
     ;; This is the format that is actually used by the frontend; it gets translated to the normal `source-query`
     ;; format by middleware. It's provided as a convenience so only minimal changes need to be made to the frontend.
-    (mt/with-temp Card [card (venues-mbql-card-def)]
-      (is (= (breakout-results)
-             (qp.test/rows-and-cols
-               (mt/format-rows-by [int int]
-                 (qp/process-query
-                  (query-with-source-card card
-                    (mt/$ids venues
-                      {:aggregation [:count]
-                       :breakout    [$price]}))))))))))
+    (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :basic-aggregations)
+      (mt/with-temp Card [card (venues-mbql-card-def)]
+        (is (= (breakout-results)
+               (qp.test/rows-and-cols
+                (mt/format-rows-by [int int]
+                  (qp/process-query
+                   (query-with-source-card card
+                     (mt/$ids venues
+                       {:aggregation [:count]
+                        :breakout    [$price]})))))))))))
 
 (deftest grouped-expression-in-card-test
   (testing "Nested grouped expressions work (#23862)."
-    (mt/with-temp Card [card {:dataset_query
-                              (mt/mbql-query venues
-                                {:aggregation [[:count]]
-                                 :breakout [[:expression "Price level"]]
-                                 :expressions {"Price level" [:case [[[:> $price 2] "expensive"]] {:default "budget"}]}
-                                 :limit 2})}]
-      (is (= [["budget"    81]
-              ["expensive" 19]]
-             (mt/rows
-              (qp/process-query
-               (query-with-source-card card))))))))
+    ;; TODO make this work for other drivers supporting :nested-queries :expressions :basic-aggregations
+    (mt/test-drivers #{:h2 :postgres :mongo}
+      (mt/with-temp Card [card {:dataset_query
+                                (mt/mbql-query venues
+                                               {:aggregation [[:count]]
+                                                :breakout [[:expression "Price level"]]
+                                                :expressions {"Price level" [:case [[[:> $price 2] "expensive"]] {:default "budget"}]}
+                                                :limit 2})}]
+        (is (= [["budget"    81]
+                ["expensive" 19]]
+               (mt/rows
+                (qp/process-query
+                 (query-with-source-card card)))))))))
 
 (deftest card-id-native-source-queries-test
   (let [run-native-query
         (fn [sql]
-          (mt/with-temp Card [card {:dataset_query {:database (mt/id), :type :native. :native {:query sql}}}]
+          (mt/with-temp Card [card {:dataset_query {:database (mt/id), :type :native, :native {:query sql}}}]
             (qp.test/rows-and-cols
               (mt/format-rows-by [int int]
                 (qp/process-query
@@ -307,22 +315,23 @@
            (run-native-query "SELECT * FROM VENUES -- small comment here\n"))
         "Ensure trailing comments followed by a newline are trimmed and don't cause a wrapping SQL query to fail")))
 
-
 (deftest filter-by-field-literal-test
   (testing "make sure we can filter by a field literal"
-    (is (= {:rows [[1 "Red Medicine" 4 10.0646 -165.374 3]]
-            :cols (mapv (partial qp.test/col :venues)
-                        [:id :name :category_id :latitude :longitude :price])}
-           (qp.test/rows-and-cols
-             (mt/run-mbql-query venues
-               {:source-query {:source-table $$venues}
-                :filter       [:= *id 1]}))))))
+    ;; TODO make this work for other drivers supporting :nested-queries
+    (mt/test-drivers #{:h2 :postgres :mongo}
+      (is (= {:rows [[1 "Red Medicine" 4 10.0646 -165.374 3]]
+              :cols (mapv (partial qp.test/col :venues)
+                          [:id :name :category_id :latitude :longitude :price])}
+             (qp.test/rows-and-cols
+              (mt/run-mbql-query venues
+                                 {:source-query {:source-table $$venues}
+                                  :filter       [:= *id 1]})))))))
 
 (defn- honeysql->sql
   "Convert `honeysql-form` to the format returned by `compile`. Writing HoneySQL is a lot easier that writing
   giant SQL strings for the 'expected' part of the tests below."
   [honeysql-form]
-  (let [[sql & params] (hsql/format honeysql-form :quoting :ansi)]
+  (let [[sql & params] (sql/format honeysql-form {:dialect :ansi, :quoted true, :quoted-snake false})]
     {:query  sql
      :params (seq params)}))
 
@@ -344,14 +353,14 @@
                     [:source.LONGITUDE :LONGITUDE]
                     [:source.PRICE :PRICE]]
            :from   [[venues-source-honeysql :source]]
-           :where  [:= (hsql/raw "\"source\".\"BIRD.ID\"") 1]
-           :limit  10})
+           :where  [:= [:raw "\"source\".\"BIRD.ID\""] [:inline 1]]
+           :limit  [:inline 10]})
          (qp/compile
-           {:database (mt/id)
-            :type     :query
-            :query    {:source-query {:source-table (mt/id :venues)}
-                       :filter       [:= [:field "BIRD.ID" {:base-type :type/Integer}] 1]
-                       :limit        10}}))
+          {:database (mt/id)
+           :type     :query
+           :query    {:source-query {:source-table (mt/id :venues)}
+                      :filter       [:= [:field "BIRD.ID" {:base-type :type/Integer}] 1]
+                      :limit        10}}))
       (str "make sure that dots in field literal identifiers get handled properly so you can't reference fields "
            "from other tables using them"))
   (is (= (honeysql->sql
@@ -363,25 +372,25 @@
                     [:source.PRICE :PRICE]]
            :from   [[venues-source-honeysql :source]]
            :where  [:and
-                    [:>= (hsql/raw "\"source\".\"BIRD.ID\"") (t/zoned-date-time "2017-01-01T00:00Z[UTC]")]
-                    [:< (hsql/raw "\"source\".\"BIRD.ID\"")  (t/zoned-date-time "2017-01-08T00:00Z[UTC]")]]
-           :limit  10})
+                    [:>= [:raw "\"source\".\"BIRD.ID\""] (t/zoned-date-time "2017-01-01T00:00Z[UTC]")]
+                    [:< [:raw "\"source\".\"BIRD.ID\""]  (t/zoned-date-time "2017-01-08T00:00Z[UTC]")]]
+           :limit  [:inline 10]})
          (qp/compile
-           (mt/mbql-query venues
-             {:source-query {:source-table $$venues}
-              :filter       [:= !week.*BIRD.ID/DateTime "2017-01-01"]
-              :limit        10})))
+          (mt/mbql-query venues
+            {:source-query {:source-table $$venues}
+             :filter       [:= !week.*BIRD.ID/DateTime "2017-01-01"]
+             :limit        10})))
       "make sure that field-literals work as DateTimeFields"))
 
 (deftest aggregatation-references-test
   (testing "make sure that aggregation references match up to aggregations from the same level they're from"
     ;; e.g. the ORDER BY in the source-query should refer the 'stddev' aggregation, NOT the 'avg' aggregation
-    (is (= {:query  (str "SELECT avg(\"source\".\"stddev\") AS \"avg\" FROM ("
-                         "SELECT \"PUBLIC\".\"VENUES\".\"PRICE\" AS \"PRICE\", stddev_pop(\"PUBLIC\".\"VENUES\".\"ID\") AS \"stddev\" "
+    (is (= {:query  (str "SELECT AVG(\"source\".\"stddev\") AS \"avg\" FROM ("
+                         "SELECT \"PUBLIC\".\"VENUES\".\"PRICE\" AS \"PRICE\", STDDEV_POP(\"PUBLIC\".\"VENUES\".\"ID\") AS \"stddev\" "
                          "FROM \"PUBLIC\".\"VENUES\" "
                          "GROUP BY \"PUBLIC\".\"VENUES\".\"PRICE\" "
                          "ORDER BY \"stddev\" DESC, \"PUBLIC\".\"VENUES\".\"PRICE\" ASC"
-                         ") \"source\"")
+                         ") AS \"source\"")
             :params nil}
            (qp/compile
             (mt/mbql-query venues
@@ -401,7 +410,7 @@
                                      VENUES.LONGITUDE   AS LONGITUDE
                                      VENUES.PRICE       AS PRICE]
                             :from [VENUES]}
-                           source]
+                           AS source]
                 :group-by [source.CATEGORY_ID]
                 :order-by [source.CATEGORY_ID ASC]
                 :limit    [10]}
@@ -422,7 +431,7 @@
              :from   [[venues-source-honeysql :source]]
              :where  [:or [:not= :source.text "Coo"]
                       [:= :source.text nil]]
-             :limit  10})
+             :limit  [:inline 10]})
            (qp/compile
             (mt/mbql-query nil
               {:source-query {:source-table $$venues}
@@ -439,8 +448,8 @@
                       [:source.LONGITUDE :LONGITUDE]
                       [:source.PRICE :PRICE]]
              :from   [[venues-source-honeysql :source]]
-             :where  [:> :source.sender_id 3]
-             :limit  10})
+             :where  [:> :source.sender_id [:inline 3]]
+             :limit  [:inline 10]})
            (qp/compile
             (mt/mbql-query nil
               {:source-query {:source-table $$venues}
@@ -449,7 +458,7 @@
 
 (deftest native-query-with-default-params-as-source-test
   (testing "make sure using a native query with default params as a source works"
-    (is (= {:query  "SELECT \"source\".* FROM (SELECT * FROM PRODUCTS WHERE CATEGORY = ? LIMIT 10) \"source\" LIMIT 1048575"
+    (is (= {:query  "SELECT \"source\".* FROM (SELECT * FROM PRODUCTS WHERE CATEGORY = ? LIMIT 10) AS \"source\" LIMIT 1048575"
             :params ["Widget"]}
            (mt/with-temp Card [card {:dataset_query {:database (mt/id)
                                                      :type     :native
@@ -465,65 +474,68 @@
                 :query    {:source-table (str "card__" (u/the-id card))}}))))))
 
 (deftest correct-column-metadata-test
-  (testing "make sure a query using a source query comes back with the correct columns metadata"
-    (is (= (map (partial qp.test/col :venues)
-                [:id :name :category_id :latitude :longitude :price])
-           ;; todo: i don't know why the results don't have the information
-           (mt/cols
-             (mt/with-temp Card [card (venues-mbql-card-def)]
-               (qp/process-query (query-with-source-card card)))))))
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
+    (testing "make sure a query using a source query comes back with the correct columns metadata"
+      (is (= (map (partial qp.test/col :venues)
+                  [:id :name :category_id :latitude :longitude :price])
+             ;; todo: i don't know why the results don't have the information
+             (mt/cols
+              (mt/with-temp Card [card (venues-mbql-card-def)]
+                (qp/process-query (query-with-source-card card)))))))
 
-  (testing "make sure a breakout/aggregate query using a source query comes back with the correct columns metadata"
-    (is (= [(qp.test/breakout-col (qp.test/col :venues :price))
-            (qp.test/aggregate-col :count)]
-           (mt/cols
-             (mt/with-temp Card [card (venues-mbql-card-def)]
-               (qp/process-query
-                (query-with-source-card card
-                  (mt/$ids venues
-                    {:aggregation [[:count]]
-                     :breakout    [$price]}))))))))
+    (testing "make sure a breakout/aggregate query using a source query comes back with the correct columns metadata"
+      (is (= [(qp.test/breakout-col (qp.test/col :venues :price))
+              (qp.test/aggregate-col :count)]
+             (mt/cols
+              (mt/with-temp Card [card (venues-mbql-card-def)]
+                (qp/process-query
+                 (query-with-source-card card
+                   (mt/$ids venues
+                     {:aggregation [[:count]]
+                      :breakout    [$price]})))))))))
 
   (testing "make sure nested queries return the right columns metadata for SQL source queries and datetime breakouts"
     (is (= [(-> (qp.test/breakout-col (qp.test/field-literal-col :checkins :date))
                 (assoc :field_ref    [:field "DATE" {:base-type :type/Date, :temporal-unit :day}]
                        :unit         :day)
-                ;; because this field literal comes from a native query that does not include `:source-metadata` it won't have
-                ;; the usual extra keys
+                  ;; because this field literal comes from a native query that does not include `:source-metadata` it won't have
+                  ;; the usual extra keys
                 (dissoc :semantic_type :coercion_strategy :table_id
                         :id :settings :fingerprint :nfc_path))
             (qp.test/aggregate-col :count)]
            (mt/cols
-             (mt/with-temp Card [card {:dataset_query {:database (mt/id)
-                                                       :type     :native
-                                                       :native   {:query "SELECT * FROM CHECKINS"}}}]
-               (qp/process-query
-                (query-with-source-card card
-                  (mt/$ids checkins
-                    {:aggregation [[:count]]
-                     :breakout    [!day.*date]})))))))))
+            (mt/with-temp Card [card {:dataset_query {:database (mt/id)
+                                                      :type     :native
+                                                      :native   {:query "SELECT * FROM CHECKINS"}}}]
+              (qp/process-query
+               (query-with-source-card card
+                                       (mt/$ids checkins
+                                                {:aggregation [[:count]]
+                                                 :breakout    [!day.*date]})))))))))
 
 (deftest breakout-year-test
-  (testing (str "make sure when doing a nested query we give you metadata that would suggest you should be able to "
-                "break out a *YEAR*")
-    (let [source-query (mt/$ids checkins
-                         {:source-table $$checkins
-                          :aggregation  [[:count]]
-                          :breakout     [!year.date]})]
-      (mt/with-temp Card [card (mbql-card-def source-query)]
-        (let [[date-col count-col] (for [col (-> (qp/process-query {:database (mt/id), :type :query, :query source-query})
-                                                 :data :cols)]
-                                     (-> (into {} col)
-                                         (assoc :source :fields)))]
-          ;; since the bucketing is happening in the source query rather than at this level, the field ref should
-          ;; return temporal unit `:default` rather than the upstream bucketing unit. You wouldn't want to re-apply
-          ;; the `:year` bucketing if you used this query in another subsequent query, so the field ref doesn't
-          ;; include the unit; however `:unit` is still `:year` so the frontend can use the correct formatting to
-          ;; display values of the column.
-          (is (= [(assoc date-col  :field_ref [:field (mt/id :checkins :date) {:temporal-unit :default}], :unit :year)
-                  (assoc count-col :field_ref [:field "count" {:base-type (:base_type count-col)}])]
-                 (mt/cols
-                  (qp/process-query (query-with-source-card card))))))))))
+  ;; TODO make this work for other drivers supporting :nested-queries
+  (mt/test-drivers #{:h2 :postgres :mongo}
+    (testing (str "make sure when doing a nested query we give you metadata that would suggest you should be able to "
+                  "break out a *YEAR*")
+      (let [source-query (mt/$ids checkins
+                           {:source-table $$checkins
+                            :aggregation  [[:count]]
+                            :breakout     [!year.date]})]
+        (mt/with-temp Card [card (mbql-card-def source-query)]
+          (let [[date-col count-col] (for [col (-> (qp/process-query {:database (mt/id), :type :query, :query source-query})
+                                                   :data :cols)]
+                                       (-> (into {} col)
+                                           (assoc :source :fields)))]
+            ;; since the bucketing is happening in the source query rather than at this level, the field ref should
+            ;; return temporal unit `:default` rather than the upstream bucketing unit. You wouldn't want to re-apply
+            ;; the `:year` bucketing if you used this query in another subsequent query, so the field ref doesn't
+            ;; include the unit; however `:unit` is still `:year` so the frontend can use the correct formatting to
+            ;; display values of the column.
+            (is (= [(assoc date-col  :field_ref [:field (mt/id :checkins :date) {:temporal-unit :default}], :unit :year)
+                    (assoc count-col :field_ref [:field "count" {:base-type (:base_type count-col)}])]
+                   (mt/cols
+                    (qp/process-query (query-with-source-card card)))))))))))
 
 (defn- completed-status [{:keys [status], :as results}]
   (if (= status :completed)
@@ -533,13 +545,13 @@
 (deftest time-interval-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
     (testing "make sure using a time interval filter works"
-      (is (= :completed
-             (mt/with-temp Card [card (mbql-card-def (mt/$ids {:source-table $$checkins}))]
-               (-> (query-with-source-card card
-                     (mt/$ids checkins
-                       {:filter [:time-interval *date -30 :day]}))
-                   qp/process-query
-                   completed-status)))))))
+      (mt/with-temp Card [card (mbql-card-def (mt/$ids {:source-table $$checkins}))]
+        (let [query (query-with-source-card card
+                      (mt/$ids checkins
+                        {:filter [:time-interval *date -30 :day]}))]
+          (mt/with-native-query-testing-context query
+            (is (=? {:status :completed}
+                    (qp/process-query query)))))))))
 
 (deftest datetime-field-literals-in-filters-and-breakouts-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
@@ -555,16 +567,17 @@
                    completed-status)))))))
 
 (deftest drag-to-filter-timeseries-test
-  (testing "make sure timeseries queries generated by \"drag-to-filter\" work correctly"
-    (mt/with-temp Card [card (mbql-card-def (mt/$ids {:source-table $$checkins}))]
-      (is (= :completed
-             (-> (query-with-source-card card
-                   (mt/$ids checkins
-                     {:aggregation [[:count]]
-                      :breakout    [!week.*date]
-                      :filter      [:between !week.*date "2014-02-01T00:00:00-08:00" "2014-05-01T00:00:00-07:00"]}))
-                 (qp/process-query)
-                 (completed-status)))))))
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
+    (testing "make sure timeseries queries generated by \"drag-to-filter\" work correctly"
+      (mt/with-temp Card [card (mbql-card-def (mt/$ids {:source-table $$checkins}))]
+        (is (= :completed
+               (-> (query-with-source-card card
+                     (mt/$ids checkins
+                       {:aggregation [[:count]]
+                        :breakout    [!week.*date]
+                        :filter      [:between !week.*date "2014-02-01T00:00:00-08:00" "2014-05-01T00:00:00-07:00"]}))
+                   (qp/process-query)
+                   (completed-status))))))))
 
 (deftest macroexpansion-test
   (testing "Make sure that macro expansion works inside of a neested query, when using a compound filter clause (#5974)"
@@ -730,16 +743,16 @@
                     :order-by     [[:asc $id]]}}))))))))
 
 (deftest parse-datetime-strings-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :foreign-keys)
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
     (testing "Make sure we parse datetime strings when compared against type/DateTime field literals (#9007)"
       (is (= [[395]
               [980]]
              (mt/formatted-rows [int]
                (mt/run-mbql-query checkins
-                 {:source-query {:source-table $$checkins
-                                 :order-by     [[:asc $id]]}
+                 {:source-query {:source-table $$checkins}
                   :fields       [$id]
-                  :filter       [:= *date "2014-03-30"]})))))))
+                  :filter       [:= *date "2014-03-30"]
+                  :order-by     [[:asc $id]]})))))))
 
 (deftest aapply-filters-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :foreign-keys)
@@ -756,7 +769,8 @@
                   :filter       [:starts-with $venue_id->venues.name "F"]})))))))
 
 (deftest two-of-the-same-aggregations-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :foreign-keys)
+  ;; TODO make this work for other drivers supporting :nested-queries
+  (mt/test-drivers (disj (mt/normal-drivers-with-feature :nested-queries) :vertica :sqlite :presto-jdbc)
     (testing "Do nested queries work with two of the same aggregation? (#9767)"
       (is (= [["2014-02-01T00:00:00Z" 302 1804]
               ["2014-03-01T00:00:00Z" 350 2362]]
@@ -934,8 +948,8 @@
                            (ean-metadata (qp/process-query query))))))))))))))
 
 (defn- field-id->name [field-id]
-  (let [{field-name :name, table-id :table_id} (db/select-one [Field :name :table_id] :id field-id)
-        table-name                             (db/select-one-field :name Table :id table-id)]
+  (let [{field-name :name, table-id :table_id} (t2/select-one [Field :name :table_id] :id field-id)
+        table-name                             (t2/select-one-fn :name Table :id table-id)]
     (format "%s.%s" table-name field-name)))
 
 (deftest inception-test
@@ -1222,10 +1236,10 @@
         (let [q1        (mt/mbql-query orders
                           {:aggregation [[:count]]
                            :filter      [:between $created_at "2020-02-01" "2020-02-29"]})
-              q1-native {:query  (str "SELECT count(*) AS \"count\" "
+              q1-native {:query  (str "SELECT COUNT(*) AS \"count\" "
                                       "FROM \"PUBLIC\".\"ORDERS\" "
-                                      "WHERE (\"PUBLIC\".\"ORDERS\".\"CREATED_AT\" >= ?"
-                                      " AND \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" < ?)")
+                                      "WHERE (\"PUBLIC\".\"ORDERS\".\"CREATED_AT\" >= ?)"
+                                      " AND (\"PUBLIC\".\"ORDERS\".\"CREATED_AT\" < ?)")
                          :params [#t "2020-02-01T00:00Z[UTC]" #t "2020-03-01T00:00Z[UTC]"]}]
           (testing "original query"
             (when (= driver/*driver* :h2)
@@ -1239,7 +1253,7 @@
               (when (= driver/*driver* :h2)
                 (is (= (update q1-native :query (fn [s]
                                                   (format (str "SELECT \"source\".\"count\" AS \"count\" "
-                                                               "FROM (%s) \"source\" "
+                                                               "FROM (%s) AS \"source\" "
                                                                "LIMIT 1048575")
                                                           s)))
                        (qp/compile q2))))
@@ -1326,7 +1340,9 @@
                        (qp/process-query query)))))))))))
 
 (deftest breakout-on-temporally-bucketed-implicitly-joined-column-inside-source-query-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :basic-aggregations :left-join)
+  (mt/test-drivers (disj (mt/normal-drivers-with-feature :nested-queries :basic-aggregations :left-join)
+                         ;; mongodb doesn't support foreign keys required by this test
+                         :mongo)
     (testing (str "Should be able to breakout on a temporally-bucketed, implicitly-joined column from the source query "
                   "incorrectly using `:field` literals to refer to the Field (#16389)")
       ;; See #19757 for more details on why this query is broken
@@ -1368,3 +1384,16 @@
                     ["Widget"    5061]]
                    (mt/formatted-rows [str int]
                      (qp/process-query query))))))))))
+
+(deftest unfolded-json-with-custom-expression-test
+  (testing "Should keep roots of unfolded JSON fields in the nested query (#29184)"
+    (mt/test-driver :postgres
+      (mt/dataset json
+        (let [db    (t2/select-one 'Database :name "json" :engine driver/*driver*)
+              table (t2/select-one 'Table :db_id (:id db) :name "json")
+              field (t2/select-one 'Field :table_id (:id table)
+                                   :name "json_bit → title")]
+          (is (seq (mt/run-mbql-query json
+                                      {:expressions  {"substring" [:substring [:field (:id field) nil] 1 10]}
+                                       :fields       [[:expression "substring"]
+                                                      [:field (:id field) nil]]}))))))))

@@ -1,5 +1,5 @@
+import { mockSettings } from "__support__/settings";
 import { msToSeconds, hoursToSeconds } from "metabase/lib/time";
-import MetabaseSettings from "metabase/lib/settings";
 import { getQuestionsImplicitCacheTTL, validateCacheTTL } from "./utils";
 
 describe("validateCacheTTL", () => {
@@ -30,17 +30,10 @@ describe("getQuestionsImplicitCacheTTL", () => {
     cacheTTLMultiplier = DEFAULT_CACHE_TTL_MULTIPLIER,
     minCacheThreshold = 60,
   } = {}) {
-    const spy = jest.spyOn(MetabaseSettings, "get");
-    spy.mockImplementation(key => {
-      if (key === "enable-query-caching") {
-        return cachingEnabled;
-      }
-      if (key === "query-caching-ttl-ratio") {
-        return cachingEnabled ? cacheTTLMultiplier : null;
-      }
-      if (key === "query-caching-min-ttl") {
-        return cachingEnabled ? minCacheThreshold : null;
-      }
+    mockSettings({
+      "enable-query-caching": cachingEnabled,
+      "query-caching-ttl-ratio": cachingEnabled ? cacheTTLMultiplier : null,
+      "query-caching-min-ttl": cachingEnabled ? minCacheThreshold : null,
     });
 
     return {

@@ -4,6 +4,7 @@
    [metabase.integrations.common :as integrations.common]
    [metabase.integrations.ldap.default-implementation :as default-impl]
    [metabase.integrations.ldap.interface :as i]
+   [metabase.models.interface :as mi]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.models.user :as user :refer [User]]
    [metabase.public-settings.premium-features
@@ -13,7 +14,7 @@
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db])
+   [toucan2.core :as t2])
   (:import
    (com.unboundid.ldap.sdk LDAPConnectionPool)))
 
@@ -41,7 +42,7 @@
 
 (defn- attribute-synced-user
   [{:keys [attributes first-name last-name email]}]
-  (when-let [user (db/select-one [User :id :last_login :first_name :last_name :login_attributes :is_active]
+  (when-let [user (t2/select-one [User :id :last_login :first_name :last_name :login_attributes :is_active]
                                  :%lower.email (u/lower-case-en email))]
     (let [syncable-attributes (syncable-user-attributes attributes)
           old-first-name (:first_name user)
@@ -55,8 +56,8 @@
                           {:last_name last-name}))]
       (if (seq user-changes)
         (do
-          (db/update! User (:id user) user-changes)
-          (db/select-one [User :id :last_login :is_active] :id (:id user))) ; Reload updated user
+          (t2/update! User (:id user) user-changes)
+          (t2/select-one [User :id :last_login :is_active] :id (:id user))) ; Reload updated user
         user))))
 
 (defenterprise-schema find-user :- (s/maybe EEUserInfo)
@@ -73,7 +74,7 @@
                           (ldap-group-membership-filter))]
       (assoc user-info :attributes (syncable-user-attributes result)))))
 
-(defenterprise-schema fetch-or-create-user! :- (class User)
+(defenterprise-schema fetch-or-create-user! :- (mi/InstanceOf User)
   "Using the `user-info` (from `find-user`) get the corresponding Metabase user, creating it if necessary."
   :feature :any
   [{:keys [first-name last-name email groups attributes], :as user-info} :- EEUserInfo

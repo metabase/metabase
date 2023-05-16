@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from "react";
+import React, { useCallback } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 import Form from "metabase/core/components/Form";
@@ -73,4 +73,5 @@ const SlackForm = ({
 const SLACK_CHANNEL_PROMPT = t`Finally, open Slack, create a public channel and enter its name below.`;
 const SLACK_CHANNEL_DESCRIPTION = t`This channel shouldn't really be used by anyone — we'll upload charts and tables here before sending out dashboard subscriptions (it's a Slack requirement).`;
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default SlackForm;

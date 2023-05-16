@@ -61,4 +61,5 @@ function SidebarHeader({ className, title, icon, onBack, onClose }: Props) {
   );
 }
 
-export default SidebarHeader;
+// eslint-disable-next-line import/no-default-export -- deprecated usage
+export default Object.assign(SidebarHeader, { Root: HeaderRoot });

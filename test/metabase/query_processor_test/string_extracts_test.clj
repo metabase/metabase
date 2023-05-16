@@ -1,6 +1,8 @@
 (ns metabase.query-processor-test.string-extracts-test
   (:require
    [clojure.test :refer :all]
+   [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.test.data :as data]))
@@ -45,13 +47,28 @@
 (deftest test-substring
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
     (is (= "Red" (test-string-extract [:substring [:field (data/id :venues :name) nil] 1 3])))
+    ;; 0 is normalized 1 to by the normalize/canonicalize processing
+    (is (= "Red" (test-string-extract [:substring [:field (data/id :venues :name) nil] 0 3])))
     (is (= "ed Medicine" (test-string-extract [:substring [:field (data/id :venues :name) nil] 2])))
     (is (= "Red Medicin" (test-string-extract [:substring [:field (data/id :venues :name) nil]
-                                               1 [:- [:length [:field (data/id :venues :name) nil]] 1]])))))
+                                               1 [:- [:length [:field (data/id :venues :name) nil]] 1]])))
+    (is (= "ne" (test-string-extract [:substring [:field (data/id :venues :name) nil]
+                                      [:- [:length [:field (data/id :venues :name) nil]] 1]])))))
 
 (deftest test-replace
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
-    (is (= "Red Baloon" (test-string-extract [:replace [:field (data/id :venues :name) nil] "Medicine" "Baloon"])))))
+    (when
+      (or (not= driver/*driver* :mongo)
+          ;; mongo supports $replaceAll since version 4.4
+          (driver.u/semantic-version-gte
+            (-> (mt/db) :dbms_version :semantic-version)
+            [4 4]))
+      (is (= "Red Baloon" (test-string-extract [:replace [:field (data/id :venues :name) nil] "Medicine" "Baloon"])))
+      (is (= "Rod Modicino" (test-string-extract [:replace [:field (data/id :venues :name) nil] "e" "o"])))
+      (is (= "Red" (test-string-extract [:replace [:field (data/id :venues :name) nil] " Medicine" ""])))
+      (is (= "Larry's The Prime Rib" (test-string-extract
+                                       [:replace [:field (data/id :venues :name) nil] "Lawry's" "Larry's"]
+                                       [:= [:field (data/id :venues :name) nil] "Lawry's The Prime Rib"]))))))
 
 (deftest test-coalesce
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
@@ -83,13 +100,6 @@
                 (mt/run-mbql-query venues)
                 (mt/formatted-rows [identity int])
                 first)))))
-
-(deftest replace-escaping-test
-  (mt/test-drivers
-    (mt/normal-drivers-with-feature :expressions)
-    (is (= "Larry's The Prime Rib" (test-string-extract
-                                    [:replace [:field (data/id :venues :name) nil] "Lawry's" "Larry's"]
-                                    [:= [:field (data/id :venues :name) nil] "Lawry's The Prime Rib"])))))
 
 (deftest regex-match-first-escaping-test
   (mt/test-drivers

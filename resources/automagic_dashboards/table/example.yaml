@@ -20,9 +20,9 @@ applies_to: "*"
 # Only aggregations ("metrics") defined here can be used in cards.
 # Each metric is a map of metric name to metric definition which is again a map with
 # two keys: metric (a MBQL expression) and score (between 0 and 100) used to
-# determine the metric's importance. If score is omitted, 100 is assmumed.
+# determine the metric's importance. If score is omitted, 100 is assumumed.
 # To reference dimensions defined within this heuristic use the form
-# [dimension, DimensionName] (this is an extenssion to MBQL that is not available
+# [dimension, DimensionName] (this is an extension to MBQL that is not available
 # outside these heuristics definitions).
 # One can also use shorthand where instead of a map, the definition is directly
 # MBQL.
@@ -39,9 +39,9 @@ metrics:
 # Filters
 #
 # Each filter has the form of a map of filter name to filter definition,
-# which is agian a map with two keys: filter (a MBQL expression) and score (between
+# which is again a map with two keys: filter (a MBQL expression) and score (between
 # 0 and 100) used to determine the metric's importance. If score is omitted, 100 is
-# assmumed. One can also use shorthand where instead of a map, the
+# assumed. One can also use shorthand where instead of a map, the
 # definition is directly filter MBQL.
 # Filter can be overloaded. The highest scoring filter from among those that
 # reference dimensions that match at least one field will be used.
@@ -54,10 +54,10 @@ filters:
 #
 # Dimensions define bindings to fields. A single dimension can match multiple
 # fields. Primary mode of matching is by field type, but several refinements are
-# available (name, where a foregin key points to). For a list of available field
+# available (name, where a foreign key points to). For a list of available field
 # types see the namespace metabase.type.
 # Each dimension has the form of a map of dimension name to dimension definition,
-# which is agian a map. One can also use shorthand where instead of a map, the
+# which is again a map. One can also use shorthand where instead of a map, the
 # definition is directly field_type.
 # Dimensions can be overloaded. The highest scoring definition from among those that
 # match at least one field will be used.
@@ -97,11 +97,11 @@ groups:
 # Cards
 #
 # Cards that go on the dashboard.
-# If a dimension thath matches multiple fields is referenced, multiple cards will be
+# If a dimension that matches multiple fields is referenced, multiple cards will be
 # produced.
 # Cards can be overloaded. The highest scoring definition from among those for which
 # all dimensions referenced match at least one field will be used.
-# Only the 9 highest scoring cards are shown. By default cards are sized 6x4 grid
+# Only the 9 highest scoring cards are shown. By default, cards are sized 6x4 grid
 # units but this can be overridden.
 
 cards:

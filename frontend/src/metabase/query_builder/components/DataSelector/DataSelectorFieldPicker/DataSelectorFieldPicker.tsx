@@ -3,8 +3,8 @@ import { t } from "ttag";
 
 import AccordionList from "metabase/core/components/AccordionList";
 import Icon from "metabase/components/Icon";
-import type { Field } from "metabase-types/api/field";
-import type { Table } from "metabase-types/api/table";
+import type Table from "metabase-lib/metadata/Table";
+import type Field from "metabase-lib/metadata/Field";
 import DataSelectorLoading from "../DataSelectorLoading";
 
 import {
@@ -31,10 +31,7 @@ type HeaderProps = {
 
 type FieldWithName = {
   name: string;
-  field: {
-    id: number;
-    dimension: () => any;
-  };
+  field: Field;
 };
 
 const DataSelectorFieldPicker = ({
@@ -57,7 +54,7 @@ const DataSelectorFieldPicker = ({
     {
       name: header,
       items: fields.map(field => ({
-        name: field.display_name,
+        name: field.displayName(),
         field: field,
       })),
     },
@@ -96,4 +93,5 @@ const Header = ({ onBack, selectedTable }: HeaderProps) => (
   </HeaderContainer>
 );
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default DataSelectorFieldPicker;

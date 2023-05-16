@@ -6,7 +6,7 @@ import {
   isNumberParameter,
   isStringParameter,
 } from "metabase-lib/parameters/utils/parameter-type";
-import { isNative } from "metabase-lib/queries/utils";
+import Question from "metabase-lib/Question";
 
 export function syncParametersAndEmbeddingParams(before, after) {
   if (after.parameters && before.embedding_params) {
@@ -55,11 +55,19 @@ export function expandInlineCard(card) {
 }
 
 export function isVirtualDashCard(dashcard) {
-  return _.isObject(dashcard.visualization_settings.virtual_card);
+  return _.isObject(dashcard?.visualization_settings?.virtual_card);
+}
+
+export function getVirtualCardType(dashcard) {
+  return dashcard?.visualization_settings?.virtual_card?.display;
+}
+
+export function isLinkDashCard(dashcard) {
+  return getVirtualCardType(dashcard) === "link";
 }
 
 export function isNativeDashCard(dashcard) {
-  return isNative(dashcard.card?.dataset_query);
+  return dashcard.card && new Question(dashcard.card).isNative();
 }
 
 // For a virtual (text) dashcard without any parameters, returns a boolean indicating whether we should display the
@@ -93,6 +101,10 @@ export function getAllDashboardCards(dashboard) {
     }
   }
   return results;
+}
+
+export function hasDatabaseActionsEnabled(database) {
+  return database.settings?.["database-enable-actions"] ?? false;
 }
 
 export function getDashboardType(id) {

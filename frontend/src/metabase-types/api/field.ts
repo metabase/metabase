@@ -1,7 +1,23 @@
 import { RowValue } from "./dataset";
-import { TableId } from "./table";
+import { Table, TableId } from "./table";
 
 export type FieldId = number;
+
+export interface FieldFingerprint {
+  global?: FieldGlobalFingerprint;
+  type?: FieldTypeFingerprint;
+}
+
+export interface FieldGlobalFingerprint {
+  "distinct-count"?: number;
+  "nil%"?: number;
+}
+
+export interface FieldTypeFingerprint {
+  "type/Text"?: TextFieldFingerprint;
+  "type/Number"?: NumberFieldFingerprint;
+  "type/DateTime"?: DateTimeFieldFingerprint;
+}
 
 export type TextFieldFingerprint = {
   "average-length": number;
@@ -21,38 +37,36 @@ export type NumberFieldFingerprint = {
 };
 
 export type DateTimeFieldFingerprint = {
-  earliest: "2016-04-26T19:29:55.147Z";
-  latest: "2019-04-15T13:34:19.931Z";
+  earliest: string;
+  latest: string;
 };
-
-export interface FieldFingerprint {
-  global: {
-    "distinct-count"?: number;
-    "nil%": number;
-  };
-  type?: {
-    "type/Text"?: TextFieldFingerprint;
-    "type/Number"?: NumberFieldFingerprint;
-    "type/DateTime"?: DateTimeFieldFingerprint;
-  };
-}
 
 export type FieldVisibilityType =
   | "details-only"
   | "hidden"
   | "normal"
-  | "retired";
+  | "retired"
+  | "sensitive";
 
 type HumanReadableFieldValue = string;
-type FieldValue = [RowValue] | [RowValue, HumanReadableFieldValue];
+export type FieldValue = [RowValue] | [RowValue, HumanReadableFieldValue];
+
+export type FieldValuesType = "list" | "search" | "none";
 
 export type FieldDimension = {
   name: string;
 };
 
-export interface Field {
-  id?: FieldId;
+export type FieldDimensionOption = {
+  name: string;
+  mbql: unknown[] | null;
+  type: string;
+};
+
+export interface ConcreteField {
+  id: FieldId;
   table_id: TableId;
+  table?: Table;
 
   name: string;
   display_name: string;
@@ -60,7 +74,7 @@ export interface Field {
 
   base_type: string;
   effective_type?: string;
-  semantic_type: string;
+  semantic_type: string | null;
 
   active: boolean;
   visibility_type: FieldVisibilityType;
@@ -68,20 +82,42 @@ export interface Field {
   position: number;
 
   parent_id?: FieldId;
-  fk_target_field_id?: FieldId;
+  fk_target_field_id: FieldId | null;
+  target?: Field;
   values?: FieldValue[];
-  dimensions?: FieldDimension;
+  settings?: FieldFormattingSettings;
+
+  dimensions?: FieldDimension[];
+  default_dimension_option?: FieldDimensionOption;
+  dimension_options?: FieldDimensionOption[];
 
   max_value?: number;
   min_value?: number;
+  has_field_values: FieldValuesType;
 
   caveats?: string | null;
   points_of_interest?: string;
 
   nfc_path: string[] | null;
-  fingerprint?: FieldFingerprint;
+  json_unfolding: boolean | null;
+  coercion_strategy: string | null;
+  fingerprint: FieldFingerprint | null;
 
   last_analyzed: string;
   created_at: string;
   updated_at: string;
+}
+
+export interface FieldValues {
+  field_id: FieldId;
+  values: FieldValue[];
+  has_more_values: boolean;
+}
+
+export type Field = Omit<ConcreteField, "id"> & {
+  id?: FieldId;
+};
+
+export interface FieldFormattingSettings {
+  currency?: string;
 }

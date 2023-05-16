@@ -1,23 +1,32 @@
 (ns metabase.api.notify-test
   (:require
    [clj-http.client :as http]
+   [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.http-client :as client]
-   [metabase.models.database :as database]
+   [metabase.models.database :as database :refer [Database]]
+   [metabase.server.middleware.auth :as mw.auth]
    [metabase.server.middleware.util :as mw.util]
-   [metabase.sync]
+   [metabase.sync :as sync]
    [metabase.sync.sync-metadata]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :web-server))
 
-(deftest unauthenticated-test
+(deftest authentication-test
   (testing "POST /api/notify/db/:id"
-    (testing "endpoint should require authentication"
-      (is (= (get mw.util/response-forbidden :body)
-             (client/client :post 403 "notify/db/100"))))))
+    (testing "endpoint requires MB_API_KEY set"
+      (mt/with-temporary-setting-values [api-key nil]
+        (is (= (-> mw.auth/key-not-set-response :body str)
+               (client/client :post 403 "notify/db/100")))))
+    (testing "endpoint requires authentication"
+      (mt/with-temporary-setting-values [api-key "test-api-key"] ;; set in :test but not in :dev
+        (is (= (get mw.util/response-forbidden :body)
+               (client/client :post 403 "notify/db/100")))))))
 
 (def api-headers {:headers {"X-METABASE-APIKEY" "test-api-key"
                             "Content-Type"      "application/json"}})
@@ -95,3 +104,59 @@
         (is (= {:errors
                 {:scan "value may be nil, or if non-nil, value must be one of: `full`, `schema`."}}
                (post {:scan :unrecognized} 400)))))))
+
+;; TODO - Consider generalizing this in the future. It was taken from `metabase.driver.postgres-test`
+;; Perhaps if there's another instance where it is used put it somewhere common.
+
+(defn- drop-if-exists-and-create-db!
+  "Drop a Postgres database named `db-name` if it already exists; then create a new empty one with that name."
+  [db-name]
+  (let [spec (sql-jdbc.conn/connection-details->spec :postgres (mt/dbdef->connection-details :postgres :server nil))]
+    ;; kill any open connections
+    (jdbc/query spec ["SELECT pg_terminate_backend(pg_stat_activity.pid)
+                       FROM pg_stat_activity
+                       WHERE pg_stat_activity.datname = ?;" db-name])
+    ;; create the DB
+    (jdbc/execute! spec [(format "DROP DATABASE IF EXISTS \"%s\";
+                                  CREATE DATABASE \"%s\";"
+                                 db-name db-name)]
+                   {:transaction? false})))
+
+(deftest add-new-table-sync-test
+  (mt/test-driver :postgres
+    (testing "Ensure we have the ability to add a single new table"
+      (let [db-name "add_new_table_sync_test_table"
+            details (mt/dbdef->connection-details :postgres :db {:database-name db-name})]
+        (drop-if-exists-and-create-db! db-name)
+        (mt/with-temp* [Database [database {:engine :postgres, :details (assoc details :dbname db-name)}]]
+          (let [spec     (sql-jdbc.conn/connection-details->spec :postgres details)
+                exec!    (fn [spec statements] (doseq [statement statements] (jdbc/execute! spec [statement])))
+                tableset #(set (map (fn [{:keys [schema name]}] (format "%s.%s" schema name)) (t2/select 'Table :db_id (:id %))))
+                post     (fn post-api
+                           ([payload] (post-api payload 200))
+                           ([payload expected-code]
+                            (mt/with-temporary-setting-values [api-key "test-api-key"]
+                              (mt/client-full-response
+                               :post expected-code (format "notify/db/%d/new-table" (:id database))
+                               {:request-options api-headers}
+                               (merge {:synchronous? true}
+                                      payload)))))
+                sync!    #(sync/sync-database! database)]
+            ;; Create the initial table and sync it.
+            (exec! spec ["CREATE TABLE public.FOO (val bigint NOT NULL);"])
+            (sync!)
+            (let [tables (tableset database)]
+              (is (= #{"public.foo"} tables)))
+            ;; We can't add an existing table
+            (is (= 400 (:status (post {:schema_name "public" :table_name "foo"} 400))))
+            ;; We can't add a nonexistent table
+            (is (= 404 (:status (post {:schema_name "public" :table_name "bar"} 404))))
+            ;; Create two more tables that are not yet synced
+            (exec! spec ["CREATE TABLE public.BAR (val bigint NOT NULL);"
+                         "CREATE TABLE public.FERN (val bigint NOT NULL);"])
+            ;; This will add bar to metabase (but not fern).
+            (is (= 200 (:status (post {:schema_name "public" :table_name "bar"}))))
+            ;; Assert that only the synced tables are present.
+            (let [tables (tableset database)]
+              (is (= #{"public.foo" "public.bar"} tables))
+              (is (false? (contains? tables "public.fern"))))))))))

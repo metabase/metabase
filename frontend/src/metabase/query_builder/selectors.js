@@ -1,10 +1,10 @@
 /*eslint no-use-before-define: "error"*/
 
 import d3 from "d3";
-import { createSelector } from "reselect";
+import { createSelector } from "@reduxjs/toolkit";
 import createCachedSelector from "re-reselect";
 import _ from "underscore";
-import { assocIn, getIn, merge, updateIn } from "icepick";
+import { getIn, merge, updateIn } from "icepick";
 
 // Needed due to wrong dependency resolution order
 // eslint-disable-next-line no-unused-vars
@@ -25,6 +25,7 @@ import { parseTimestamp } from "metabase/lib/time";
 import { getMode as getQuestionMode } from "metabase/modes/lib/modes";
 import { getSortedTimelines } from "metabase/lib/timelines";
 import { getSetting } from "metabase/selectors/settings";
+import { getDashboardById } from "metabase/dashboard/selectors";
 import {
   getXValues,
   isTimeseries,
@@ -32,12 +33,13 @@ import {
 import ObjectMode from "metabase/modes/components/modes/ObjectMode";
 
 import { LOAD_COMPLETE_FAVICON } from "metabase/hoc/Favicon";
+import * as ML from "metabase-lib/v2";
 import { getCardUiParameters } from "metabase-lib/parameters/utils/cards";
 import {
   normalizeParameters,
   normalizeParameterValue,
 } from "metabase-lib/parameters/utils/parameter-values";
-import { isPK } from "metabase-lib/types/utils/isa";
+import { getIsPKFromTablePredicate } from "metabase-lib/types/utils/isa";
 import Mode from "metabase-lib/Mode";
 import NativeQuery from "metabase-lib/queries/NativeQuery";
 import Question from "metabase-lib/Question";
@@ -82,11 +84,14 @@ export const getOriginalCard = state => state.qb.originalCard;
 export const getLastRunCard = state => state.qb.lastRunCard;
 
 export const getParameterValues = state => state.qb.parameterValues;
+export const getParameterValuesSearchCache = state =>
+  state.qb.parameterValuesSearchCache;
 
 export const getMetadataDiff = state => state.qb.metadataDiff;
 
 export const getEntities = state => state.entities;
-export const getVisibleTimelineIds = state => state.qb.visibleTimelineIds;
+export const getVisibleTimelineEventIds = state =>
+  state.qb.visibleTimelineEventIds;
 export const getSelectedTimelineEventIds = state =>
   state.qb.selectedTimelineEventIds;
 
@@ -136,18 +141,25 @@ export const getFirstQueryResult = createSelector([getQueryResults], results =>
   Array.isArray(results) ? results[0] : null,
 );
 
+export const getTableId = createSelector([getCard], card =>
+  getIn(card, ["dataset_query", "query", "source-table"]),
+);
+
 export const getPKColumnIndex = createSelector(
-  [getFirstQueryResult],
-  result => {
+  [getFirstQueryResult, getTableId],
+  (result, tableId) => {
     if (!result) {
       return;
     }
     const { cols } = result.data;
-    const hasMultiplePks = cols.filter(isPK).length > 1;
+
+    const hasMultiplePks =
+      cols.filter(getIsPKFromTablePredicate(tableId)).length > 1;
+
     if (hasMultiplePks) {
       return -1;
     }
-    return cols.findIndex(isPK);
+    return cols.findIndex(getIsPKFromTablePredicate(tableId));
   },
 );
 
@@ -177,10 +189,6 @@ export const getQueryStartTime = state => state.qb.queryStartTime;
 export const getDatabaseId = createSelector(
   [getCard],
   card => card && card.dataset_query && card.dataset_query.database,
-);
-
-export const getTableId = createSelector([getCard], card =>
-  getIn(card, ["dataset_query", "query", "source-table"]),
 );
 
 export const getTableForeignKeyReferences = state =>
@@ -342,53 +350,16 @@ export const getQuestionFromCard = createCachedSelector(
   (metadata, card) => new Question(card, metadata),
 )((_state, card) => card.id);
 
-function normalizeClause(clause) {
-  return typeof clause?.raw === "function" ? clause.raw() : clause;
-}
-
-// Certain differences in a query should be ignored. `normalizeQuery`
-// standardizes the query before comparison in `getIsResultDirty`.
-export function normalizeQuery(query, tableMetadata) {
-  if (!query) {
-    return query;
-  }
-  if (query.query) {
-    if (tableMetadata) {
-      query = updateIn(query, ["query", "fields"], fields => {
-        fields = fields
-          ? // if the query has fields, copy them before sorting
-            [...fields]
-          : // if the fields aren't set, we get them from the table metadata
-            tableMetadata.fields.map(({ id }) => ["field", id, null]);
-        return fields.sort((a, b) =>
-          JSON.stringify(b).localeCompare(JSON.stringify(a)),
-        );
-      });
-    }
-    ["aggregation", "breakout", "filter", "joins", "order-by"].forEach(
-      clauseList => {
-        if (query.query[clauseList]) {
-          query = updateIn(query, ["query", clauseList], clauses =>
-            clauses.map(normalizeClause),
-          );
-        }
-      },
-    );
-  }
-  if (query.native && query.native["template-tags"] == null) {
-    query = assocIn(query, ["native", "template-tags"], {});
-  }
-  return query;
-}
-
 function isQuestionEditable(question) {
   return !question?.query().readOnly();
 }
 
-function areQueriesEqual(queryA, queryB, tableMetadata) {
-  const normalizedQueryA = normalizeQuery(queryA, tableMetadata);
-  const normalizedQueryB = normalizeQuery(queryB, tableMetadata);
-  return _.isEqual(normalizedQueryA, normalizedQueryB);
+function areLegacyQueriesEqual(queryA, queryB, tableMetadata) {
+  return ML.areLegacyQueriesEqual(
+    queryA,
+    queryB,
+    tableMetadata?.fields.map(({ id }) => id),
+  );
 }
 
 // Model questions may be composed via the `composeDataset` method.
@@ -407,12 +378,12 @@ function areModelsEquivalent({
 
   const composedOriginal = originalQuestion.composeDataset();
 
-  const isLastRunComposed = areQueriesEqual(
+  const isLastRunComposed = areLegacyQueriesEqual(
     lastRunQuestion.datasetQuery(),
     composedOriginal.datasetQuery(),
     tableMetadata,
   );
-  const isCurrentComposed = areQueriesEqual(
+  const isCurrentComposed = areLegacyQueriesEqual(
     currentQuestion.datasetQuery(),
     composedOriginal.datasetQuery(),
     tableMetadata,
@@ -420,7 +391,7 @@ function areModelsEquivalent({
 
   const isLastRunEquivalentToCurrent =
     isLastRunComposed &&
-    areQueriesEqual(
+    areLegacyQueriesEqual(
       currentQuestion.datasetQuery(),
       originalQuestion.datasetQuery(),
       tableMetadata,
@@ -428,7 +399,7 @@ function areModelsEquivalent({
 
   const isCurrentEquivalentToLastRun =
     isCurrentComposed &&
-    areQueriesEqual(
+    areLegacyQueriesEqual(
       lastRunQuestion.datasetQuery(),
       originalQuestion.datasetQuery(),
       tableMetadata,
@@ -444,7 +415,7 @@ function areQueriesEquivalent({
   tableMetadata,
 }) {
   return (
-    areQueriesEqual(
+    areLegacyQueriesEqual(
       lastRunQuestion?.datasetQuery(),
       currentQuestion?.datasetQuery(),
       tableMetadata,
@@ -775,19 +746,13 @@ export const getFilteredTimelines = createSelector(
   },
 );
 
-export const getVisibleTimelines = createSelector(
-  [getFilteredTimelines, getVisibleTimelineIds],
-  (timelines, timelineIds) => {
-    return timelines.filter(t => timelineIds.includes(t.id));
-  },
-);
-
 export const getVisibleTimelineEvents = createSelector(
-  [getVisibleTimelines],
-  timelines =>
+  [getFilteredTimelines, getVisibleTimelineEventIds],
+  (timelines, visibleTimelineEventIds) =>
     _.chain(timelines)
       .map(timeline => timeline.events)
       .flatten()
+      .filter(event => visibleTimelineEventIds.includes(event.id))
       .sortBy(event => event.timestamp)
       .value(),
 );
@@ -965,9 +930,21 @@ export const getNativeQueryFn = createSelector(
   (datasetQuery, parameters) => {
     let lastResult = undefined;
 
-    return async () => {
-      lastResult ??= await MetabaseApi.native({ ...datasetQuery, parameters });
+    return async (options = {}) => {
+      lastResult ??= await MetabaseApi.native({
+        ...datasetQuery,
+        parameters,
+        ...options,
+      });
       return lastResult;
     };
   },
 );
+
+export const getDashboardId = state => {
+  return state.qb.dashboardId;
+};
+
+export const getDashboard = state => {
+  return getDashboardById(state, getDashboardId(state));
+};

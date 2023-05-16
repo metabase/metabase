@@ -13,7 +13,7 @@ import NativeQuery, {
 } from "metabase-lib/queries/NativeQuery";
 import AtomicQuery from "metabase-lib/queries/AtomicQuery";
 import InternalQuery from "metabase-lib/queries/InternalQuery";
-import Query from "metabase-lib/queries/Query";
+import BaseQuery from "metabase-lib/queries/Query";
 import Metadata from "metabase-lib/metadata/Metadata";
 import Database from "metabase-lib/metadata/Database";
 import Table from "metabase-lib/metadata/Table";
@@ -22,34 +22,35 @@ import { AggregationDimension, FieldDimension } from "metabase-lib/Dimension";
 import { isFK } from "metabase-lib/types/utils/isa";
 import { memoizeClass, sortObject } from "metabase-lib/utils";
 
+import type {
+  Card as CardObject,
+  CollectionId,
+  DatabaseId,
+  DatasetColumn,
+  DatasetQuery,
+  DependentMetadataItem,
+  TableId,
+  RowValue,
+  Parameter as ParameterObject,
+  ParameterValues,
+  ParameterId,
+  VisualizationSettings,
+} from "metabase-types/api";
+
+import * as AGGREGATION from "metabase-lib/queries/utils/aggregation";
+import * as FILTER from "metabase-lib/queries/utils/filter";
+import * as QUERY from "metabase-lib/queries/utils/query";
+
 // TODO: remove these dependencies
 import * as Urls from "metabase/lib/urls";
 import { getCardUiParameters } from "metabase-lib/parameters/utils/cards";
-import {
-  DashboardApi,
-  CardApi,
-  maybeUsePivotEndpoint,
-  MetabaseApi,
-} from "metabase/services";
-import { ParameterValues } from "metabase-types/types/Parameter";
-import { Card as CardObject, DatasetQuery } from "metabase-types/types/Card";
-import { VisualizationSettings } from "metabase-types/api/card";
-import { Column, Dataset, Value } from "metabase-types/types/Dataset";
-import { TableId } from "metabase-types/types/Table";
-import { DatabaseId } from "metabase-types/types/Database";
-import {
-  ClickObject,
-  DimensionValue,
-} from "metabase-types/types/Visualization";
-import { DependentMetadataItem } from "metabase-types/types/Query";
 import { utf8_to_b64url } from "metabase/lib/encoding";
-import { CollectionId, Parameter as ParameterObject } from "metabase-types/api";
 
+import { getParameterValuesBySlug } from "metabase-lib/parameters/utils/parameter-values";
 import {
-  getParameterValuesBySlug,
-  normalizeParameters,
-} from "metabase-lib/parameters/utils/parameter-values";
-import { remapParameterValuesToTemplateTags } from "metabase-lib/parameters/utils/template-tags";
+  getTemplateTagParametersFromCard,
+  remapParameterValuesToTemplateTags,
+} from "metabase-lib/parameters/utils/template-tags";
 import { fieldFilterParameterToMBQLFilter } from "metabase-lib/parameters/utils/mbql";
 import { getQuestionVirtualTableId } from "metabase-lib/metadata/utils/saved-questions";
 import {
@@ -72,6 +73,13 @@ import {
   ALERT_TYPE_TIMESERIES_GOAL,
 } from "metabase-lib/Alert";
 import { getBaseDimensionReference } from "metabase-lib/references";
+import type {
+  ClickObject,
+  ClickObjectDimension,
+} from "metabase-lib/queries/drills/types";
+
+import type { Query } from "./types";
+import * as ML from "./v2";
 
 export type QuestionCreatorOpts = {
   databaseId?: DatabaseId;
@@ -141,6 +149,10 @@ class QuestionInner {
   }
 
   card() {
+    return this._doNotCallSerializableCard();
+  }
+
+  _doNotCallSerializableCard() {
     return this._card;
   }
 
@@ -191,6 +203,7 @@ class QuestionInner {
       }
     }
 
+    // `dataset_query` is null for questions on a dashboard the user don't have access to
     console.warn("Unknown query type: " + datasetQuery?.type);
   }
 
@@ -202,11 +215,19 @@ class QuestionInner {
     return this.query() instanceof StructuredQuery;
   }
 
+  setEnableEmbedding(enabled: boolean): Question {
+    return this.setCard(assoc(this._card, "enable_embedding", enabled));
+  }
+
+  setEmbeddingParams(params: Record<string, any> | null): Question {
+    return this.setCard(assoc(this._card, "embedding_params", params));
+  }
+
   /**
    * Returns a new Question object with an updated query.
    * The query is saved to the `dataset_query` field of the Card object.
    */
-  setQuery(newQuery: Query): Question {
+  setQuery(newQuery: BaseQuery): Question {
     if (this._card.dataset_query !== newQuery.datasetQuery()) {
       return this.setCard(
         assoc(this.card(), "dataset_query", newQuery.datasetQuery()),
@@ -264,16 +285,16 @@ class QuestionInner {
     return this._card && this._card.dataset;
   }
 
+  setDataset(dataset) {
+    return this.setCard(assoc(this.card(), "dataset", dataset));
+  }
+
   isPersisted() {
     return this._card && this._card.persisted;
   }
 
   setPersisted(isPersisted) {
     return this.setCard(assoc(this.card(), "persisted", isPersisted));
-  }
-
-  setDataset(dataset) {
-    return this.setCard(assoc(this.card(), "dataset", dataset));
   }
 
   setPinned(pinned: boolean) {
@@ -444,6 +465,13 @@ class QuestionInner {
   }
 
   /**
+   * How many filters or other widgets are this question's values used for?
+   */
+  getParameterUsageCount(): number {
+    return this.card().parameter_usage_count || 0;
+  }
+
+  /**
    * Question is valid (as far as we know) and can be executed
    */
   canRun(): boolean {
@@ -452,6 +480,22 @@ class QuestionInner {
 
   canWrite(): boolean {
     return this._card && this._card.can_write;
+  }
+
+  canWriteActions(): boolean {
+    const database = this.database();
+
+    return (
+      this.canWrite() &&
+      database != null &&
+      database.canWrite() &&
+      database.hasActionsEnabled()
+    );
+  }
+
+  supportsImplicitActions(): boolean {
+    const query = this.query();
+    return query instanceof StructuredQuery && !query.hasAnyClauses();
   }
 
   canAutoRun(): boolean {
@@ -524,8 +568,8 @@ class QuestionInner {
   }
 
   drillUnderlyingRecords(
-    dimensions: DimensionValue[],
-    column?: Column,
+    dimensions: ClickObjectDimension[],
+    column?: DatasetColumn,
   ): Question {
     let query = this.query();
     if (!(query instanceof StructuredQuery)) {
@@ -572,6 +616,25 @@ class QuestionInner {
     return distribution(this, column) || this;
   }
 
+  usesMetric(metricId): boolean {
+    return (
+      this.isStructured() &&
+      _.any(
+        QUERY.getAggregations(this.query().query()),
+        aggregation => AGGREGATION.getMetric(aggregation) === metricId,
+      )
+    );
+  }
+
+  usesSegment(segmentId): boolean {
+    return (
+      this.isStructured() &&
+      QUERY.getFilters(this.query().query()).some(
+        filter => FILTER.isSegment(filter) && filter[1] === segmentId,
+      )
+    );
+  }
+
   composeThisQuery(): Question | null | undefined {
     if (this.id()) {
       const card = {
@@ -602,7 +665,7 @@ class QuestionInner {
     });
   }
 
-  drillPK(field: Field, value: Value): Question | null | undefined {
+  drillPK(field: Field, value: RowValue): Question | null | undefined {
     const query = this.query();
 
     if (!(query instanceof StructuredQuery)) {
@@ -644,7 +707,10 @@ class QuestionInner {
     return resultedQuery.question();
   }
 
-  _syncStructuredQueryColumnsAndSettings(previousQuestion, previousQuery) {
+  private _syncStructuredQueryColumnsAndSettings(
+    previousQuestion,
+    previousQuery,
+  ) {
     const query = this.query();
 
     if (
@@ -667,19 +733,31 @@ class QuestionInner {
     );
 
     const graphMetrics = this.setting("graph.metrics");
+
     if (
       graphMetrics &&
-      addedColumnNames.length > 0 &&
-      removedColumnNames.length === 0
+      (addedColumnNames.length > 0 || removedColumnNames.length > 0)
     ) {
       const addedMetricColumnNames = addedColumnNames.filter(
         name =>
           query.columnDimensionWithName(name) instanceof AggregationDimension,
       );
 
-      if (addedMetricColumnNames.length > 0) {
+      const removedMetricColumnNames = removedColumnNames.filter(
+        name =>
+          previousQuery.columnDimensionWithName(name) instanceof
+          AggregationDimension,
+      );
+
+      if (
+        addedMetricColumnNames.length > 0 ||
+        removedMetricColumnNames.length > 0
+      ) {
         return this.updateSettings({
-          "graph.metrics": [...graphMetrics, ...addedMetricColumnNames],
+          "graph.metrics": [
+            ..._.difference(graphMetrics, removedMetricColumnNames),
+            ...addedMetricColumnNames,
+          ],
         });
       }
     }
@@ -699,7 +777,7 @@ class QuestionInner {
             const dimension = query.columnDimensionWithName(name);
             return {
               name: name,
-              field_ref: getBaseDimensionReference(dimension.mbql()),
+              fieldRef: getBaseDimensionReference(dimension.mbql()),
               enabled: true,
             };
           }),
@@ -832,6 +910,10 @@ class QuestionInner {
     return this._card && this._card.id;
   }
 
+  setId(id: number | undefined): Question {
+    return this.setCard(assoc(this.card(), "id", id));
+  }
+
   markDirty(): Question {
     return this.setCard(
       dissoc(assoc(this.card(), "original_card_id", this.id()), "id"),
@@ -876,6 +958,10 @@ class QuestionInner {
     return this._card && this._card.public_uuid;
   }
 
+  setPublicUUID(public_uuid: string | null): Question {
+    return this.setCard({ ...this._card, public_uuid });
+  }
+
   database(): Database | null | undefined {
     const query = this.query();
     return query && typeof query.database === "function"
@@ -896,6 +982,10 @@ class QuestionInner {
   tableId(): TableId | null | undefined {
     const table = this.table();
     return table ? table.id : null;
+  }
+
+  isArchived(): boolean {
+    return this._card && this._card.archived;
   }
 
   getUrl({
@@ -1052,65 +1142,12 @@ class QuestionInner {
     return true;
   }
 
-  /**
-   * Runs the query and returns an array containing results for each single query.
-   *
-   * If we have a saved and clean single-query question, we use `CardApi.query` instead of a ad-hoc dataset query.
-   * This way we benefit from caching and query optimizations done by Metabase backend.
-   */
-  async apiGetResults({
-    cancelDeferred,
-    isDirty = false,
-    ignoreCache = false,
-    collectionPreview = false,
-  } = {}): Promise<[Dataset]> {
-    // TODO Atte Keinänen 7/5/17: Should we clean this query with Query.cleanQuery(query) before executing it?
-    const canUseCardApiEndpoint = !isDirty && this.isSaved();
-    const parameters = normalizeParameters(this.parameters());
+  setParameter(id: ParameterId, parameter: ParameterObject) {
+    const newParameters = this.parameters().map(oldParameter =>
+      oldParameter.id === id ? parameter : oldParameter,
+    );
 
-    if (canUseCardApiEndpoint) {
-      const dashboardId = this._card.dashboardId;
-      const dashcardId = this._card.dashcardId;
-
-      const queryParams = {
-        cardId: this.id(),
-        dashboardId,
-        dashcardId,
-        ignore_cache: ignoreCache,
-        collection_preview: collectionPreview,
-        parameters,
-      };
-      return [
-        await maybeUsePivotEndpoint(
-          dashboardId ? DashboardApi.cardQuery : CardApi.query,
-          this.card(),
-          this.metadata(),
-        )(queryParams, {
-          cancelled: cancelDeferred.promise,
-        }),
-      ];
-    } else {
-      const getDatasetQueryResult = datasetQuery => {
-        const datasetQueryWithParameters = { ...datasetQuery, parameters };
-        return maybeUsePivotEndpoint(
-          MetabaseApi.dataset,
-          this.card(),
-          this.metadata(),
-        )(
-          datasetQueryWithParameters,
-          cancelDeferred
-            ? {
-                cancelled: cancelDeferred.promise,
-              }
-            : {},
-        );
-      };
-
-      const datasetQueries = this.atomicQueries().map(query =>
-        query.datasetQuery(),
-      );
-      return Promise.all(datasetQueries.map(getDatasetQueryResult));
-    }
+    return this.setParameters(newParameters);
   }
 
   setParameters(parameters) {
@@ -1158,7 +1195,7 @@ class QuestionInner {
       return (
         q &&
         new Question(q.card(), this.metadata())
-          .setParameters([])
+          .setParameters(getTemplateTagParametersFromCard(q.card()))
           .setDashboardProps({
             dashboardId: undefined,
             dashcardId: undefined,
@@ -1209,7 +1246,7 @@ class QuestionInner {
     return utf8_to_b64url(JSON.stringify(sortObject(cardCopy)));
   }
 
-  convertParametersToMbql() {
+  private _convertParametersToMbql() {
     if (!this.isStructured()) {
       return this;
     }
@@ -1234,16 +1271,50 @@ class QuestionInner {
     return hasQueryBeenAltered ? question.markDirty() : question;
   }
 
+  _getMLv2Query(metadata = this._metadata): Query {
+    // cache the metadata provider we create for our metadata.
+    if (metadata === this._metadata) {
+      if (!this.__mlv2MetadataProvider) {
+        this.__mlv2MetadataProvider = ML.metadataProvider(
+          this.databaseId(),
+          metadata,
+        );
+      }
+      metadata = this.__mlv2MetadataProvider;
+    }
+
+    if (this.__mlv2QueryMetadata !== metadata) {
+      this.__mlv2QueryMetadata = null;
+      this.__mlv2Query = null;
+    }
+
+    if (!this.__mlv2Query) {
+      this.__mlv2QueryMetadata = metadata;
+      this.__mlv2Query = ML.fromLegacyQuery(
+        this.databaseId(),
+        metadata,
+        this.datasetQuery(),
+      );
+    }
+
+    return this.__mlv2Query;
+  }
+
+  generateQueryDescription() {
+    const query = this._getMLv2Query();
+    return ML.suggestedName(query);
+  }
+
   getUrlWithParameters(parameters, parameterValues, { objectId, clean } = {}) {
     const includeDisplayIsLocked = true;
 
     if (this.isStructured()) {
       const questionWithParameters = this.setParameters(parameters);
 
-      if (!this.query().readOnly()) {
+      if (this.query().isEditable()) {
         return questionWithParameters
           .setParameterValues(parameterValues)
-          .convertParametersToMbql()
+          ._convertParametersToMbql()
           .getUrl({
             clean,
             originalQuestion: this,
@@ -1276,6 +1347,7 @@ class QuestionInner {
   }
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default class Question extends memoizeClass<QuestionInner>("query")(
   QuestionInner,
 ) {

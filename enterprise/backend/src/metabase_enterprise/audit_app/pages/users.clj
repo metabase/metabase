@@ -1,9 +1,8 @@
 (ns metabase-enterprise.audit-app.pages.users
   (:require
-   [honeysql.core :as hsql]
    [metabase-enterprise.audit-app.interface :as audit.i]
    [metabase-enterprise.audit-app.pages.common :as common]
-   [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.honey-sql-2 :as h2x]
    [ring.util.codec :as codec]
    [schema.core :as s]))
 
@@ -18,7 +17,7 @@
    :results  (common/reducible-query
               {:with     [[:user_qe {:select   [:executor_id
                                                 [:%count.* :executions]
-                                                [(hx/cast :date :started_at) :day]]
+                                                [(h2x/cast :date :started_at) :day]]
                                      :from     [:query_execution]
                                      :group-by [:executor_id :day]}]]
                :select   [[:%count.* :users]
@@ -39,7 +38,7 @@
    ;; them(!)
    :results  (let [active       (common/query
                                  {:select   [[(common/grouped-datetime datetime-unit :started_at) :date]
-                                             [:%distinct-count.executor_id :count]]
+                                             [[::h2x/distinct-count :executor_id] :count]]
                                   :from     [:query_execution]
                                   :group-by [(common/grouped-datetime datetime-unit :started_at)]})
                    date->active (zipmap (map :date active) (map :count active))
@@ -76,9 +75,9 @@
                :from      [[:core_user :u]]
                :left-join [:qe_count [:= :qe_count.executor_id :u.id]]
                :order-by  [[:count :desc]
-                           [:%lower.u.last_name :asc]
-                           [:%lower.u.first_name :asc]
-                           [:%lower.u.email :asc]]
+                           [[:lower :u.last_name] :asc]
+                           [[:lower :u.first_name] :asc]
+                           [[:lower :u.email] :asc]]
                :limit     10})})
 
 ;; Query that returns the 10 Users with the most saved objects in descending order.
@@ -102,7 +101,7 @@
                                               :group-by [:creator_id]}]]
                :select    [[:u.id :user_id]
                            [(common/user-full-name :u) :user_name]
-                           [(hx/+ (common/zero-if-null :card_saves.count)
+                           [(h2x/+ (common/zero-if-null :card_saves.count)
                                   (common/zero-if-null :dashboard_saves.count)
                                   (common/zero-if-null :pulse_saves.count))
                             :saves]]
@@ -132,15 +131,15 @@
                                         :limit    10}]]
                :select    [[:u.id :user_id]
                            [(common/user-full-name :u) :name]
-                           [(hsql/call :case [:not= :exec_time.execution_time_ms nil] :exec_time.execution_time_ms
-                              :else 0)
+                           [[:case [:not= :exec_time.execution_time_ms nil] :exec_time.execution_time_ms
+                             :else 0]
                             :execution_time_ms]]
                :from      [[:core_user :u]]
                :left-join [:exec_time [:= :exec_time.executor_id :u.id]]
                :order-by  [[:execution_time_ms :desc]
-                           [:%lower.u.last_name :asc]
-                           [:%lower.u.first_name :asc]
-                           [:%lower.u.email :asc]]
+                           [[:lower :u.last_name] :asc]
+                           [[:lower :u.first_name] :asc]
+                           [[:lower :u.email] :asc]]
                :limit     10})})
 
 ;; A table of all the Users for this instance, and various statistics about them (see metadata below).
@@ -187,19 +186,27 @@
                                              :left-join [[:core_user :u] [:= :u.id :p.creator_id]]
                                              :group-by  [:u.id]}]
                              [:users {:select [[(common/user-full-name :u) :name]
-                                               [(hsql/call :case
-                                                  [:= :u.is_superuser true]
-                                                  (hx/literal "Admin")
-                                                  :else
-                                                  (hx/literal "User"))
+                                               [[:case
+                                                 [:= :u.is_superuser true]
+                                                 (h2x/literal "Admin")
+                                                 :else
+                                                 (h2x/literal "User")]
                                                 :role]
                                                :id
                                                :date_joined
-                                               [(hsql/call :case
-                                                  [:= nil :u.sso_source]
-                                                  (hx/literal "Email")
-                                                  :else
-                                                  :u.sso_source)
+                                               [[:case
+                                                 [:= "google" :u.sso_source]
+                                                 (h2x/literal "Google Sign-In")
+                                                 [:= "saml" :u.sso_source]
+                                                 (h2x/literal "SAML")
+                                                 [:= "jwt" :u.sso_source]
+                                                 (h2x/literal "JWT")
+                                                 [:= "ldap" :u.sso_source]
+                                                 (h2x/literal "LDAP")
+                                                 [:= nil :u.sso_source]
+                                                 (h2x/literal "Email")
+                                                 :else
+                                                 :u.sso_source]
                                                 :signup_method]
                                                :last_name
                                                :first_name]
@@ -220,8 +227,8 @@
                              :questions_saved  [:= :u.id :questions_saved.id]
                              :dashboards_saved [:= :u.id :dashboards_saved.id]
                              :pulses_saved     [:= :u.id :pulses_saved.id]]
-                 :order-by  [[:%lower.u.last_name :asc]
-                             [:%lower.u.first_name :asc]]}
+                 :order-by  [[[:lower :u.last_name] :asc]
+                             [[:lower :u.first_name] :asc]]}
                 (common/add-search-clause query-string :u.first_name :u.last_name)))}))
 
 ;; Return a log of all query executions, including information about the Card associated with the query and the
@@ -288,7 +295,7 @@
                           [:u.id :user_id]
                           [(common/user-full-name :u) :user_name]]
               :from      [[:view_log :vl]]
-              :where     [:= :vl.model (hx/literal "dashboard")]
+              :where     [:= :vl.model (h2x/literal "dashboard")]
               :join      [[:report_dashboard :dash] [:= :vl.model_id :dash.id]
                           [:core_user :u]           [:= :vl.user_id :u.id]]
               :left-join [[:collection :coll] [:= :dash.collection_id :coll.id]]

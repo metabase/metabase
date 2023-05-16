@@ -2,6 +2,7 @@ import React, { useCallback } from "react";
 import PropTypes from "prop-types";
 import _ from "underscore";
 
+import { useSelector } from "metabase/lib/redux";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 
 import ParameterSidebar from "metabase/parameters/components/ParameterSidebar";
@@ -10,6 +11,8 @@ import * as MetabaseAnalytics from "metabase/lib/analytics";
 import ClickBehaviorSidebar from "./ClickBehaviorSidebar";
 import DashboardInfoSidebar from "./DashboardInfoSidebar";
 import { AddCardSidebar } from "./add-card-sidebar/AddCardSidebar";
+import { ActionSidebar } from "./ActionSidebar";
+import { getSelectedTabId } from "./DashboardTabs";
 
 DashboardSidebars.propTypes = {
   dashboard: PropTypes.object,
@@ -27,6 +30,7 @@ DashboardSidebars.propTypes = {
   setParameterName: PropTypes.func.isRequired,
   setParameterDefaultValue: PropTypes.func.isRequired,
   setParameterIsMultiSelect: PropTypes.func.isRequired,
+  setParameterQueryType: PropTypes.func.isRequired,
   setParameterSourceType: PropTypes.func.isRequired,
   setParameterSourceConfig: PropTypes.func.isRequired,
   setParameterFilteringParameters: PropTypes.func.isRequired,
@@ -59,6 +63,7 @@ export function DashboardSidebars({
   setParameterName,
   setParameterDefaultValue,
   setParameterIsMultiSelect,
+  setParameterQueryType,
   setParameterSourceType,
   setParameterSourceConfig,
   setParameterFilteringParameters,
@@ -71,15 +76,17 @@ export function DashboardSidebars({
   setDashboardAttribute,
   saveDashboardAndCards,
 }) {
+  const tabId = useSelector(getSelectedTabId);
   const handleAddCard = useCallback(
     cardId => {
       addCardToDashboard({
         dashId: dashboard.id,
         cardId: cardId,
+        tabId,
       });
       MetabaseAnalytics.trackStructEvent("Dashboard", "Add Card");
     },
-    [addCardToDashboard, dashboard.id],
+    [addCardToDashboard, dashboard.id, tabId],
   );
 
   if (isFullscreen) {
@@ -94,6 +101,22 @@ export function DashboardSidebars({
           onSelect={handleAddCard}
         />
       );
+    case SIDEBAR_NAME.action: {
+      const onUpdateVisualizationSettings = settings =>
+        onUpdateDashCardVisualizationSettings(
+          sidebar.props.dashcardId,
+          settings,
+        );
+
+      return (
+        <ActionSidebar
+          dashboard={dashboard}
+          dashcardId={sidebar.props.dashcardId}
+          onUpdateVisualizationSettings={onUpdateVisualizationSettings}
+          onClose={closeSidebar}
+        />
+      );
+    }
     case SIDEBAR_NAME.clickBehavior:
       return (
         <ClickBehaviorSidebar
@@ -124,6 +147,7 @@ export function DashboardSidebars({
           onChangeName={setParameterName}
           onChangeDefaultValue={setParameterDefaultValue}
           onChangeIsMultiSelect={setParameterIsMultiSelect}
+          onChangeQueryType={setParameterQueryType}
           onChangeSourceType={setParameterSourceType}
           onChangeSourceConfig={setParameterSourceConfig}
           onChangeFilteringParameters={setParameterFilteringParameters}

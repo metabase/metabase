@@ -9,14 +9,16 @@
    [metabase.models.table :as table :refer [Table]]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
-(deftest describe-database-test
+(set! *warn-on-reflection* true)
+
+(deftest ^:parallel describe-database-test
   (is (= {:tables (set (for [table ["CATEGORIES" "VENUES" "CHECKINS" "USERS"]]
                          {:name table, :schema "PUBLIC", :description nil}))}
          (driver/describe-database :h2 (mt/db)))))
 
-(deftest describe-table-test
+(deftest ^:parallel describe-table-test
   (is (= {:name   "VENUES"
           :schema "PUBLIC"
           :fields #{{:name              "ID"
@@ -24,56 +26,68 @@
                      :base-type         :type/BigInteger
                      :pk?               true
                      :database-position 0
-                     :database-required false}
+                     :database-required false
+                     :database-is-auto-increment true
+                     :json-unfolding    false}
                     {:name              "NAME"
                      :database-type     "CHARACTER VARYING"
                      :base-type         :type/Text
                      :database-position 1
-                     :database-required false}
+                     :database-required false
+                     :database-is-auto-increment false
+                     :json-unfolding    false}
                     {:name              "CATEGORY_ID"
                      :database-type     "INTEGER"
                      :base-type         :type/Integer
                      :database-position 2
-                     :database-required false}
+                     :database-required false
+                     :database-is-auto-increment false
+                     :json-unfolding    false}
                     {:name              "LATITUDE"
                      :database-type     "DOUBLE PRECISION"
                      :base-type         :type/Float
                      :database-position 3
-                     :database-required false}
+                     :database-required false
+                     :database-is-auto-increment false
+                     :json-unfolding    false}
                     {:name              "LONGITUDE"
                      :database-type     "DOUBLE PRECISION"
                      :base-type         :type/Float
                      :database-position 4
-                     :database-required false}
+                     :database-required false
+                     :database-is-auto-increment false
+                     :json-unfolding    false}
                     {:name              "PRICE"
                      :database-type     "INTEGER"
                      :base-type         :type/Integer
                      :database-position 5
-                     :database-required false}}}
-         (driver/describe-table :h2 (mt/db) (db/select-one Table :id (mt/id :venues))))))
+                     :database-required false
+                     :database-is-auto-increment false
+                     :json-unfolding    false}}}
+         (driver/describe-table :h2 (mt/db) (t2/select-one Table :id (mt/id :venues))))))
 
-(deftest describe-table-fks-test
+(deftest ^:parallel describe-table-fks-test
   (is (= #{{:fk-column-name   "CATEGORY_ID"
             :dest-table       {:name   "CATEGORIES"
                                :schema "PUBLIC"}
             :dest-column-name "ID"}}
-         (driver/describe-table-fks :h2 (mt/db) (db/select-one Table :id (mt/id :venues))))))
+         (driver/describe-table-fks :h2 (mt/db) (t2/select-one Table :id (mt/id :venues))))))
 
-(deftest table-rows-sample-test
+(deftest ^:parallel table-rows-sample-test
   (mt/test-drivers (sql-jdbc.tu/sql-jdbc-drivers)
     (is (= [["20th Century Cafe"]
             ["25°"]
             ["33 Taps"]
             ["800 Degrees Neapolitan Pizzeria"]
             ["BCD Tofu House"]]
-           (->> (metadata-queries/table-rows-sample (db/select-one Table :id (mt/id :venues))
-                  [(db/select-one Field :id (mt/id :venues :name))]
+           (->> (metadata-queries/table-rows-sample (t2/select-one Table :id (mt/id :venues))
+                  [(t2/select-one Field :id (mt/id :venues :name))]
                   (constantly conj))
                 ;; since order is not guaranteed do some sorting here so we always get the same results
                 (sort-by first)
                 (take 5))))))
 
-(deftest table-rows-seq-test
+(deftest ^:parallel table-rows-seq-test
   (mt/test-drivers (sql-jdbc.tu/sql-jdbc-drivers)
     (is (= [{:name "Red Medicine", :price 3, :category_id 4, :id 1}
             {:name "Stout Burgers & Beers", :price 2, :category_id 11, :id 2}
@@ -82,14 +96,14 @@
             {:name "Brite Spot Family Restaurant", :price 2, :category_id 20, :id 5}]
            (for [row (take 5 (sort-by :id (driver/table-rows-seq driver/*driver*
                                                                  (mt/db)
-                                                                 (db/select-one Table :id (mt/id :venues)))))]
+                                                                 (t2/select-one Table :id (mt/id :venues)))))]
              ;; different DBs use different precisions for these
              (-> (dissoc row :latitude :longitude)
                  (update :price int)
                  (update :category_id int)
                  (update :id int)))))))
 
-(deftest invalid-ssh-credentials-test
+(deftest ^:parallel invalid-ssh-credentials-test
   (mt/test-driver :postgres
     (testing "Make sure invalid ssh credentials are detected if a direct connection is possible"
       (is (thrown?
@@ -121,7 +135,7 @@
 
 ;;; --------------------------------- Tests for splice-parameters-into-native-query ----------------------------------
 
-(deftest splice-parameters-native-test
+(deftest ^:parallel splice-parameters-native-test
   (mt/test-drivers (sql-jdbc.tu/sql-jdbc-drivers)
     (testing (str "test splicing a single param\n"
                   "(This test won't work if a driver that doesn't use single quotes for string literals comes along. "
@@ -171,7 +185,7 @@
          :type     :native
          :native   spliced})))))
 
-(deftest splice-parameters-mbql-test
+(deftest ^:parallel splice-parameters-mbql-test
   (testing "`splice-parameters-into-native-query` should generate a query that works correctly"
     (mt/test-drivers (sql-jdbc.tu/sql-jdbc-drivers)
       (mt/$ids venues

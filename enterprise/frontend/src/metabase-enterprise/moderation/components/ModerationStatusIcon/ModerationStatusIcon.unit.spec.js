@@ -1,25 +1,20 @@
 import React from "react";
-import { render } from "@testing-library/react";
+import { render, getIcon, queryIcon } from "__support__/ui";
 import ModerationStatusIcon from "./ModerationStatusIcon";
-
-const VERIFIED_ICON_SELECTOR = ".Icon-verified";
 
 describe("ModerationReviewBanner", () => {
   it("should show an icon when given a real moderation status", () => {
     render(<ModerationStatusIcon status="verified" />);
-
-    expect(document.querySelector(VERIFIED_ICON_SELECTOR)).toBeTruthy();
+    expect(getIcon("verified")).toBeInTheDocument();
   });
 
   it("should not show an icon when given an undefined status", () => {
     render(<ModerationStatusIcon status={undefined} />);
-
-    expect(document.querySelector(VERIFIED_ICON_SELECTOR)).toBeNull();
+    expect(queryIcon("verified")).not.toBeInTheDocument();
   });
 
   it("should not show an icon when given a status that does not match any existing moderation status", () => {
     render(<ModerationStatusIcon status="foo" />);
-
-    expect(document.querySelector(VERIFIED_ICON_SELECTOR)).toBeNull();
+    expect(queryIcon("verified")).not.toBeInTheDocument();
   });
 });

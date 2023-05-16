@@ -1,5 +1,5 @@
 import React from "react";
-import { render } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { ModerationReviewBanner } from "./ModerationReviewBanner";
 
 const moderationReview = {
@@ -12,13 +12,13 @@ const currentUser = { id: 2, common_name: "Bar" };
 
 describe("ModerationReviewBanner", () => {
   it("should show text concerning the given review", () => {
-    const { getByText } = render(
+    render(
       <ModerationReviewBanner
         moderationReview={moderationReview}
         user={moderator}
         currentUser={currentUser}
       />,
     );
-    expect(getByText("Foo verified this")).toBeTruthy();
+    expect(screen.getByText("Foo verified this")).toBeInTheDocument();
   });
 });

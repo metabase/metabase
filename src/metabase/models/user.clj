@@ -2,27 +2,32 @@
   (:require
    [clojure.data :as data]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
+   [metabase.db.query :as mdb.query]
+   [metabase.integrations.common :as integrations.common]
    [metabase.models.collection :as collection]
+   [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.permissions-group-membership
     :as perms-group-membership
     :refer [PermissionsGroupMembership]]
-   [metabase.models.serialization.hash :as serdes.hash]
+   [metabase.models.serialization :as serdes]
    [metabase.models.session :refer [Session]]
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.util :as u]
-   [metabase.util.i18n :as i18n :refer [deferred-tru trs]]
+   [metabase.util.i18n :as i18n :refer [deferred-tru trs tru]]
+   [metabase.util.log :as log]
    [metabase.util.password :as u.password]
    [metabase.util.schema :as su]
    [schema.core :as schema]
-   [toucan.db :as db]
-   [toucan.models :as models])
+   [toucan.models :as models]
+   [toucan2.core :as t2])
   (:import
    (java.util UUID)))
+
+(set! *warn-on-reflection* true)
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
@@ -50,7 +55,7 @@
   (assert (u/email? email))
   (assert ((every-pred string? (complement str/blank?)) password))
   (when locale
-    (assert (i18n/available-locale? locale)))
+    (assert (i18n/available-locale? locale) (tru "Invalid locale: {0}" (pr-str locale))))
   (merge
    insert-default-values
    user
@@ -69,43 +74,47 @@
     ;; add the newly created user to the magic perms groups
     (binding [perms-group-membership/*allow-changing-all-users-group-members* true]
       (log/info (trs "Adding User {0} to All Users permissions group..." user-id))
-      (db/insert! PermissionsGroupMembership
+      (t2/insert! PermissionsGroupMembership
         :user_id  user-id
         :group_id (:id (perms-group/all-users))))
     (when superuser?
       (log/info (trs "Adding User {0} to Admin permissions group..." user-id))
-      (db/insert! PermissionsGroupMembership
+      (t2/insert! PermissionsGroupMembership
         :user_id  user-id
         :group_id (:id (perms-group/admin))))))
 
 (defn- pre-update
   [{reset-token :reset_token, superuser? :is_superuser, active? :is_active, :keys [email id locale], :as user}]
   ;; when `:is_superuser` is toggled add or remove the user from the 'Admin' group as appropriate
-  (when (some? superuser?)
-    (let [membership-exists? (db/exists? PermissionsGroupMembership
-                               :group_id (:id (perms-group/admin))
-                               :user_id  id)]
+  (let [in-admin-group?  (t2/exists? PermissionsGroupMembership
+                           :group_id (:id (perms-group/admin))
+                           :user_id  id)]
+    ;; Do not let the last admin archive themselves
+    (when (and in-admin-group?
+               (false? active?))
+      (perms-group-membership/throw-if-last-admin!))
+    (when (some? superuser?)
       (cond
         (and superuser?
-             (not membership-exists?))
-        (db/insert! PermissionsGroupMembership
-          :group_id (u/the-id (perms-group/admin))
-          :user_id  id)
-        ;; don't use [[db/delete!]] here because that does the opposite and tries to update this user which leads to a
+             (not in-admin-group?))
+        (t2/insert! PermissionsGroupMembership
+                    :group_id (u/the-id (perms-group/admin))
+                    :user_id  id)
+        ;; don't use [[t2/delete!]] here because that does the opposite and tries to update this user which leads to a
         ;; stack overflow of calls between the two. TODO - could we fix this issue by using a `post-delete` method?
         (and (not superuser?)
-             membership-exists?)
-        (db/simple-delete! PermissionsGroupMembership
+             in-admin-group?)
+        (t2/delete! (t2/table-name PermissionsGroupMembership)
           :group_id (u/the-id (perms-group/admin))
           :user_id  id))))
   ;; make sure email and locale are valid if set
   (when email
     (assert (u/email? email)))
   (when locale
-    (assert (i18n/available-locale? locale)))
+    (assert (i18n/available-locale? locale) (tru "Invalid locale: {0}" (pr-str locale))))
   ;; delete all subscriptions to pulses/alerts/etc. if the User is getting archived (`:is_active` status changes)
   (when (false? active?)
-    (db/delete! 'PulseChannelRecipient :user_id id))
+    (t2/delete! 'PulseChannelRecipient :user_id id))
   ;; If we're setting the reset_token then encrypt it before it goes into the DB
   (cond-> user
     true        (merge (hashed-password-values user))
@@ -132,7 +141,7 @@
 (def admin-or-self-visible-columns
   "Sequence of columns that we can/should return for admins fetching a list of all Users, or for the current user
   fetching themselves. Needed to power the admin page."
-  (into default-user-columns [:google_auth :ldap_auth :sso_source :is_active :updated_at :login_attributes :locale]))
+  (into default-user-columns [:sso_source :is_active :updated_at :login_attributes :locale]))
 
 (def non-admin-or-self-visible-columns
   "Sequence of columns that we will allow non-admin Users to see when fetching a list of Users. Why can non-admins see
@@ -144,20 +153,20 @@
   "Sequence of columns Group Managers can see when fetching a list of Users.."
   (into non-admin-or-self-visible-columns [:is_superuser :last_login]))
 
-(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class User)
-  models/IModel
-  (merge models/IModelDefaults
-         {:default-fields (constantly default-user-columns)
-          :hydration-keys (constantly [:author :creator :user])
-          :properties     (constantly {:updated-at-timestamped? true})
-          :pre-insert     pre-insert
-          :post-insert    post-insert
-          :pre-update     pre-update
-          :post-select    post-select
-          :types          (constantly {:login_attributes :json-no-keywordization
-                                       :settings         :encrypted-json})}))
+(mi/define-methods
+ User
+ {:default-fields (constantly default-user-columns)
+  :hydration-keys (constantly [:author :creator :user])
+  :properties     (constantly {::mi/updated-at-timestamped? true})
+  :pre-insert     pre-insert
+  :post-insert    post-insert
+  :pre-update     pre-update
+  :post-select    post-select
+  :types          (constantly {:login_attributes :json-no-keywordization
+                               :settings         :encrypted-json
+                               :sso_source       :keyword})})
 
-(defmethod serdes.hash/identity-hash-fields User
+(defmethod serdes/hash-fields User
   [_user]
   [:email])
 
@@ -165,7 +174,7 @@
   "Fetch set of IDs of PermissionsGroup a User belongs to."
   [user-or-id]
   (when user-or-id
-    (db/select-field :group_id PermissionsGroupMembership :user_id (u/the-id user-or-id))))
+    (t2/select-fn-set :group_id PermissionsGroupMembership :user_id (u/the-id user-or-id))))
 
 (def UserGroupMembership
   "Group Membership info of a User.
@@ -173,17 +182,6 @@
   {:id                                su/IntGreaterThanZero
    ;; is_group_manager only included if `advanced-permissions` is enabled
    (schema/optional-key :is_group_manager) schema/Bool})
-
-(schema/defn user-group-memberships :- (schema/maybe [UserGroupMembership])
-  "Return a list of group memberships a User belongs to.
-  Group membership is a map  with 2 keys [:id :is_group_manager], in which `is_group_manager` will only returned if
-  advanced-permissions is available."
-  [user-or-id]
-  (when user-or-id
-    (let [selector (cond-> [PermissionsGroupMembership [:group_id :id]]
-                     (premium-features/enable-advanced-permissions?)
-                     (conj :is_group_manager))]
-      (db/select selector :user_id (u/the-id user-or-id)))))
 
 ;;; -------------------------------------------------- Permissions ---------------------------------------------------
 
@@ -195,21 +193,21 @@
           ;; Current User always gets readwrite perms for their Personal Collection and for its descendants! (1 DB Call)
           (map perms/collection-readwrite-path (collection/user->personal-collection-and-descendant-ids user-or-id))
           ;; include the other Perms entries for any Group this User is in (1 DB Call)
-          (map :object (db/query {:select [:p.object]
-                                  :from   [[:permissions_group_membership :pgm]]
-                                  :join   [[:permissions_group :pg] [:= :pgm.group_id :pg.id]
-                                           [:permissions :p]        [:= :p.group_id :pg.id]]
-                                  :where  [:= :pgm.user_id user-id]}))))))
+          (map :object (mdb.query/query {:select [:p.object]
+                                         :from   [[:permissions_group_membership :pgm]]
+                                         :join   [[:permissions_group :pg] [:= :pgm.group_id :pg.id]
+                                                  [:permissions :p]        [:= :p.group_id :pg.id]]
+                                         :where  [:= :pgm.user_id user-id]}))))))
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
-(defn add-user-group-memberships
+(mi/define-batched-hydration-method add-user-group-memberships
+  :user_group_memberships
   "Add to each `user` a list of Group Memberships Info with each item is a map with 2 keys [:id :is_group_manager].
   In which `is_group_manager` is only added when `advanced-permissions` is enabled."
-  {:batched-hydrate :user_group_memberships}
   [users]
   (when (seq users)
-    (let [user-id->memberships (group-by :user_id (db/select [PermissionsGroupMembership :user_id [:group_id :id] :is_group_manager]
+    (let [user-id->memberships (group-by :user_id (t2/select [PermissionsGroupMembership :user_id [:group_id :id] :is_group_manager]
                                                              :user_id [:in (set (map u/the-id users))]))
           membership->group    (fn [membership]
                                  (select-keys membership
@@ -218,34 +216,34 @@
       (for [user users]
         (assoc user :user_group_memberships (map membership->group (user-id->memberships (u/the-id user))))))))
 
-(defn add-group-ids
+(mi/define-batched-hydration-method add-group-ids
+  :group_ids
   "Efficiently add PermissionsGroup `group_ids` to a collection of `users`.
   TODO: deprecate :group_ids and use :user_group_memberships instead"
-  {:batched-hydrate :group_ids}
   [users]
   (when (seq users)
-    (let [user-id->memberships (group-by :user_id (db/select [PermissionsGroupMembership :user_id :group_id]
+    (let [user-id->memberships (group-by :user_id (t2/select [PermissionsGroupMembership :user_id :group_id]
                                                     :user_id [:in (set (map u/the-id users))]))]
       (for [user users]
         (assoc user :group_ids (set (map :group_id (user-id->memberships (u/the-id user)))))))))
 
-(defn add-has-invited-second-user
+(mi/define-batched-hydration-method add-has-invited-second-user
+  :has_invited_second_user
   "Adds the `has_invited_second_user` flag to a collection of `users`. This should be `true` for only the user who
   underwent the initial app setup flow (with an ID of 1), iff more than one user exists. This is used to modify
   the wording for this user on a homepage banner that prompts them to add their database."
-  {:batched-hydrate :has_invited_second_user}
   [users]
   (when (seq users)
-    (let [user-count (db/count User)]
+    (let [user-count (t2/count User)]
       (for [user users]
         (assoc user :has_invited_second_user (and (= (:id user) 1)
                                                   (> user-count 1)))))))
 
-(defn add-is-installer
+(mi/define-batched-hydration-method add-is-installer
+  :is_installer
   "Adds the `is_installer` flag to a collection of `users`. This should be `true` for only the user who
   underwent the initial app setup flow (with an ID of 1). This is used to modify the experience of the
   starting page for users."
-  {:batched-hydrate :is_installer}
   [users]
   (when (seq users)
     (for [user users]
@@ -279,8 +277,19 @@
    :email                                  su/Email
    (schema/optional-key :password)         (schema/maybe su/NonBlankString)
    (schema/optional-key :login_attributes) (schema/maybe LoginAttributes)
-   (schema/optional-key :google_auth)      schema/Bool
-   (schema/optional-key :ldap_auth)        schema/Bool})
+   (schema/optional-key :sso_source)       (schema/maybe su/NonBlankString)})
+
+(def DefaultUser
+  "Standard form of a user (for consumption by the frontend and such)"
+  {:id           su/IntGreaterThanOrEqualToZero
+   :email        su/NonBlankString
+   :first_name   su/NonBlankString
+   :last_name    su/NonBlankString
+   :common_name  su/NonBlankString
+   :last_login   schema/Any
+   :date_joined  schema/Any
+   :is_qbnewb    schema/Bool
+   :is_superuser schema/Bool})
 
 (def ^:private Invitor
   "Map with info about the admin creating the user, used in the new user notification code"
@@ -291,7 +300,7 @@
 (schema/defn ^:private insert-new-user!
   "Creates a new user, defaulting the password when not provided"
   [new-user :- NewUser]
-  (db/insert! User (update new-user :password #(or % (str (UUID/randomUUID))))))
+  (first (t2/insert-returning-instances! User (update new-user :password #(or % (str (UUID/randomUUID)))))))
 
 (defn serdes-synthesize-user!
   "Creates a new user with a default password, when deserializing eg. a `:creator_id` field whose email address doesn't
@@ -310,10 +319,11 @@
   "Convenience for creating a new user via Google Auth. This account is considered active immediately; thus all active
   admins will receive an email right away."
   [new-user :- NewUser]
-  (u/prog1 (insert-new-user! (assoc new-user :google_auth true))
+  (u/prog1 (insert-new-user! (assoc new-user :sso_source "google"))
     ;; send an email to everyone including the site admin if that's set
-    (classloader/require 'metabase.email.messages)
-    ((resolve 'metabase.email.messages/send-user-joined-admin-notification-email!) <>, :google-auth? true)))
+    (when (integrations.common/send-new-sso-user-admin-email?)
+      (classloader/require 'metabase.email.messages)
+      ((resolve 'metabase.email.messages/send-user-joined-admin-notification-email!) <>, :google-auth? true))))
 
 (schema/defn create-new-ldap-auth-user!
   "Convenience for creating a new user via LDAP. This account is considered active immediately; thus all active admins
@@ -323,7 +333,7 @@
    (-> new-user
        ;; We should not store LDAP passwords
        (dissoc :password)
-       (assoc :ldap_auth true))))
+       (assoc :sso_source "ldap"))))
 
 ;;; TODO -- it seems like maybe this should just be part of the [[pre-update]] logic whenever `:password` changes; then
 ;;; we can remove this function altogether.
@@ -334,21 +344,21 @@
   by [[pre-insert]] or [[pre-update]])"
   [user-id password]
   ;; when changing/resetting the password, kill any existing sessions
-  (db/simple-delete! Session :user_id user-id)
+  (t2/delete! (t2/table-name Session) :user_id user-id)
   ;; NOTE: any password change expires the password reset token
-  (db/update! User user-id
-    :password        password
-    :reset_token     nil
-    :reset_triggered nil))
+  (t2/update! User user-id
+              {:password        password
+               :reset_token     nil
+               :reset_triggered nil}))
 
 (defn set-password-reset-token!
   "Updates a given `User` and generates a password reset token for them to use. Returns the URL for password reset."
   [user-id]
   {:pre [(integer? user-id)]}
   (u/prog1 (str user-id \_ (UUID/randomUUID))
-    (db/update! User user-id
-      :reset_token     <>
-      :reset_triggered (System/currentTimeMillis))))
+    (t2/update! User user-id
+                {:reset_token     <>
+                 :reset_triggered (System/currentTimeMillis)})))
 
 (defn form-password-reset-url
   "Generate a properly formed password reset url given a password reset token."
@@ -365,12 +375,13 @@
         new-group-ids      (set (map u/the-id new-groups-or-ids))
         [to-remove to-add] (data/diff old-group-ids new-group-ids)]
     (when (seq (concat to-remove to-add))
-      (db/transaction
+      (t2/with-transaction [_conn]
        (when (seq to-remove)
-         (db/delete! PermissionsGroupMembership :user_id user-id, :group_id [:in to-remove]))
+         (t2/delete! PermissionsGroupMembership :user_id user-id, :group_id [:in to-remove]))
        ;; a little inefficient, but we need to do a separate `insert!` for each group we're adding membership to,
        ;; because `insert-many!` does not currently trigger methods such as `pre-insert`. We rely on those methods to
        ;; do things like automatically set the `is_superuser` flag for a User
+       ;; TODO use multipel insert here
        (doseq [group-id to-add]
-         (db/insert! PermissionsGroupMembership {:user_id user-id, :group_id group-id}))))
+         (t2/insert! PermissionsGroupMembership {:user_id user-id, :group_id group-id}))))
     true))

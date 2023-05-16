@@ -13,8 +13,8 @@ describe("ResetPassword", () => {
 
     await waitFor(() => {
       expect(props.onValidatePasswordToken).toHaveBeenCalledWith(props.token);
-      expect(screen.getByText("New password")).toBeInTheDocument();
     });
+    expect(screen.getByText("New password")).toBeInTheDocument();
   });
 
   it("should show an error message when token validation fails", async () => {
@@ -26,8 +26,8 @@ describe("ResetPassword", () => {
 
     await waitFor(() => {
       expect(props.onValidatePasswordToken).toHaveBeenCalledWith(props.token);
-      expect(screen.getByText(/that's an expired link/)).toBeInTheDocument();
     });
+    expect(screen.getByText(/that's an expired link/)).toBeInTheDocument();
   });
 
   it("should show a success message when the form is submitted", async () => {
@@ -41,25 +41,25 @@ describe("ResetPassword", () => {
 
     await waitFor(() => {
       expect(props.onValidatePasswordToken).toHaveBeenCalledWith(props.token);
-      expect(screen.getByText("New password")).toBeInTheDocument();
     });
+    expect(screen.getByText("New password")).toBeInTheDocument();
 
     userEvent.type(screen.getByLabelText("Create a password"), "test");
     userEvent.type(screen.getByLabelText("Confirm your password"), "test");
 
     await waitFor(() => {
       expect(props.onValidatePassword).toHaveBeenCalledWith("test");
-      expect(screen.getByText("Save new password")).toBeEnabled();
     });
+    expect(screen.getByText("Save new password")).toBeEnabled();
 
     userEvent.click(screen.getByText("Save new password"));
 
     await waitFor(() => {
       expect(props.onResetPassword).toHaveBeenCalledWith(props.token, "test");
-      expect(props.onRedirect).toHaveBeenCalledWith("/");
-      expect(props.onShowToast).toHaveBeenCalledWith({
-        message: "You've updated your password.",
-      });
+    });
+    expect(props.onRedirect).toHaveBeenCalledWith("/");
+    expect(props.onShowToast).toHaveBeenCalledWith({
+      message: "You've updated your password.",
     });
   });
 });

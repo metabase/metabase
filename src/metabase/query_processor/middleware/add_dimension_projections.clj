@@ -25,19 +25,18 @@
   `name` is `:remapped_from` `:category_id`."
   (:require
    [clojure.data :as data]
-   [clojure.tools.logging :as log]
    [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
    [metabase.models.dimension :refer [Dimension]]
-   [metabase.models.field :refer [Field]]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]
-   [toucan.hydrate :refer [hydrate]]))
+   [toucan.hydrate :refer [hydrate]]
+   [toucan2.core :as t2]))
 
 (def ^:private ExternalRemappingDimensionInitialInfo
   "External remapping dimensions when they're first fetched from the app DB. We'll add extra info to this."
@@ -61,7 +60,7 @@
   [fields :- [mbql.s/Field]]
   (when-let [field-ids (not-empty (set (mbql.u/match fields [:field (id :guard integer?) _] id)))]
     (letfn [(thunk []
-              (m/index-by :field_id (db/select [Dimension :id :field_id :name :human_readable_field_id]
+              (m/index-by :field_id (t2/select [Dimension :id :field_id :name :human_readable_field_id]
                                       :field_id [:in field-ids]
                                       :type     "external")))]
       (if (qp.store/initialized?)
@@ -85,7 +84,11 @@
     ;;
     ;; Not sure this isn't broken. Probably better to have [[metabase.query-processor.util.add-alias-info]] do the name
     ;; deduplication instead.
-    (let [unique-name (comp (mbql.u/unique-name-generator) :name Field)]
+    (let [name-generator (mbql.u/unique-name-generator)
+          unique-name    (fn [field-id]
+                           (qp.store/fetch-and-store-fields! #{field-id})
+                           (let [field (qp.store/field field-id)]
+                             (name-generator (:name field))))]
       (vec
        (mbql.u/match fields
          ;; don't match Fields that have been joined from another Table
@@ -399,7 +402,7 @@
 (s/defn ^:private col->dim-map :- (s/maybe InternalDimensionInfo)
   "Given a `:col` map from the results, return a map of information about the `internal` dimension used for remapping
   it."
-  [idx {{remap-to :name, remap-type :type, field-id :field_id}         :dimensions
+  [idx {[{remap-to :name, remap-type :type, field-id :field_id}]       :dimensions
         {values :values, human-readable-values :human_readable_values} :values
         :as                                                            col}]
   (when (and field-id

@@ -5,15 +5,18 @@
    [clojure.string :as str]
    [metabase.integrations.common :as integrations.common]
    [metabase.integrations.ldap.interface :as i]
+   [metabase.models.interface :as mi]
    [metabase.models.user :as user :refer [User]]
    [metabase.public-settings.premium-features
     :refer [defenterprise-schema]]
    [metabase.util :as u]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db])
+   [toucan2.core :as t2])
   (:import
    (com.unboundid.ldap.sdk DN Filter LDAPConnectionPool)))
+
+(set! *warn-on-reflection* true)
 
 ;;; --------------------------------------------------- find-user ----------------------------------------------------
 
@@ -116,12 +119,12 @@
       flatten
       set))
 
-(defenterprise-schema fetch-or-create-user! :- (class User)
+(defenterprise-schema fetch-or-create-user! :- (mi/InstanceOf User)
   "Using the `user-info` (from `find-user`) get the corresponding Metabase user, creating it if necessary."
   metabase-enterprise.enhancements.integrations.ldap
   [{:keys [first-name last-name email groups]} :- i/UserInfo
    {:keys [sync-groups?], :as settings}        :- i/LDAPSettings]
-  (let [user     (db/select-one [User :id :last_login :first_name :last_name :is_active]
+  (let [user     (t2/select-one [User :id :last_login :first_name :last_name :is_active]
                    :%lower.email (u/lower-case-en email))
         new-user (if user
                    (let [old-first-name (:first_name user)
@@ -131,8 +134,8 @@
                                           (when (not= last-name old-last-name) {:last_name last-name}))]
                      (if (seq user-changes)
                        (do
-                         (db/update! User (:id user) user-changes)
-                         (db/select-one [User :id :last_login :is_active] :id (:id user))) ; Reload updated user
+                         (t2/update! User (:id user) user-changes)
+                         (t2/select-one [User :id :last_login :is_active] :id (:id user))) ; Reload updated user
                        user))
                    (-> (user/create-new-ldap-auth-user! {:first_name first-name
                                                          :last_name  last-name

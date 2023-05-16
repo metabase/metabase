@@ -3,6 +3,7 @@
   time, context it was executed in, etc."
   (:require
    [metabase.mbql.schema :as mbql.s]
+   [metabase.models.interface :as mi]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [schema.core :as s]
@@ -21,10 +22,9 @@
   ;; sadly we have 2 ways to reference the row count :(
   (assoc query-execution :row_count (or result_rows 0)))
 
-(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class QueryExecution)
-  models/IModel
-  (merge models/IModelDefaults
-         {:types       (constantly {:json_query :json, :status :keyword, :context :keyword})
-          :pre-insert  pre-insert
-          :pre-update  (fn [& _] (throw (Exception. (tru "You cannot update a QueryExecution!"))))
-          :post-select post-select}))
+(mi/define-methods
+ QueryExecution
+ {:types       (constantly {:json_query :json, :status :keyword, :context :keyword})
+  :pre-insert  pre-insert
+  :pre-update  (fn [& _] (throw (Exception. (tru "You cannot update a QueryExecution!"))))
+  :post-select post-select})

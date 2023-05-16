@@ -35,6 +35,7 @@ function ParametersList({
   className,
 
   parameters,
+  question,
   dashboard,
   editingParameter,
 
@@ -47,7 +48,6 @@ function ParametersList({
 
   setParameterValue,
   setParameterIndex,
-  removeParameter,
   setEditingParameter,
 }) {
   const handleSortStart = () => {
@@ -97,6 +97,7 @@ function ParametersList({
           isNightMode={isNightMode}
           parameter={valuePopulatedParameter}
           parameters={parameters}
+          question={question}
           dashboard={dashboard}
           editingParameter={editingParameter}
           setEditingParameter={setEditingParameter}

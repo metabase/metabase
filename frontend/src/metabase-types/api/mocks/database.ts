@@ -12,6 +12,10 @@ export const COMMON_DATABASE_FEATURES: DatabaseFeature[] = [
   "nested-queries",
   "standard-deviation-aggregations",
   "persist-models",
+  "left-join",
+  "right-join",
+  "inner-join",
+  "full-join",
 ];
 
 export const createMockDatabase = (opts?: Partial<Database>): Database => ({
@@ -21,6 +25,7 @@ export const createMockDatabase = (opts?: Partial<Database>): Database => ({
   is_sample: false,
   is_saved_questions: false,
   created_at: "2015-01-01T20:10:30.200",
+  updated_at: "2015-01-01T20:10:30.200",
   timezone: "UTC",
   native_permissions: "write",
   initial_sync_status: "complete",

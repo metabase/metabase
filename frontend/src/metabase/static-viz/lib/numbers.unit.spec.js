@@ -63,8 +63,7 @@ describe("formatNumber", () => {
     const number = 1500;
 
     const text = formatNumber(number, {
-      minimum_fraction_digits: 2,
-      maximum_fraction_digits: 2,
+      decimals: 2,
     });
 
     expect(text).toEqual("1,500.00");

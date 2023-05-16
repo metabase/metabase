@@ -1,12 +1,12 @@
 import React, { useEffect, useCallback, useRef, KeyboardEvent } from "react";
 
+import { usePrevious } from "react-use";
 import { Collection } from "metabase-types/api";
 
 import { TreeNode } from "metabase/components/tree/TreeNode";
 import { TreeNodeProps } from "metabase/components/tree/types";
 
 import CollectionDropTarget from "metabase/containers/dnd/CollectionDropTarget";
-import { usePrevious } from "metabase/hooks/use-previous";
 
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { getCollectionIcon } from "metabase/entities/collections";
@@ -140,4 +140,5 @@ const DroppableSidebarCollectionLink = React.forwardRef<
   );
 });
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default DroppableSidebarCollectionLink;

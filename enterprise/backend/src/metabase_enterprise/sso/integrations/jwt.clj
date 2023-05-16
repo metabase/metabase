@@ -17,6 +17,8 @@
   (:import
    (java.net URLEncoder)))
 
+(set! *warn-on-reflection* true)
+
 (defn fetch-or-create-user!
   "Returns a session map for the given `email`. Will create the user if needed."
   [first-name last-name email user-attributes]
@@ -25,7 +27,7 @@
   (let [user {:first_name       first-name
               :last_name        last-name
               :email            email
-              :sso_source       "jwt"
+              :sso_source       :jwt
               :login_attributes user-attributes}]
     (or (sso-utils/fetch-and-update-login-attributes! user)
         (sso-utils/create-new-sso-user! user))))

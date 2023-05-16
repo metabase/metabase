@@ -1,6 +1,6 @@
 import React from "react";
 import { t } from "ttag";
-import Tooltip from "metabase/components/Tooltip";
+import Tooltip from "metabase/core/components/Tooltip";
 import { StoreIcon, StoreIconRoot, StoreIconWrapper } from "./StoreLink.styled";
 
 const StoreLink = () => {
@@ -15,4 +15,5 @@ const StoreLink = () => {
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default StoreLink;

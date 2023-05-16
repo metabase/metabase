@@ -3,7 +3,6 @@
   only thing that is subject to these sorts of checks are *ad-hoc* queries, i.e. queries that have not yet been saved
   as a Card. Saved Cards are subject to the permissions of the Collection to which they belong."
   (:require
-   [clojure.tools.logging :as log]
    [metabase.api.common :as api]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.util :as mbql.u]
@@ -13,9 +12,10 @@
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 ;;; ---------------------------------------------- Permissions Checking ----------------------------------------------
 
@@ -69,7 +69,7 @@
    (s/eq ::native)
    su/IntGreaterThanZero))
 
-(s/defn tables->permissions-path-set :- #{perms/Path}
+(s/defn tables->permissions-path-set :- #{perms/PathSchema}
   "Given a sequence of `tables-or-ids` referenced by a query, return a set of required permissions. A truthy value for
   `segmented-perms?` will return segmented permissions for the table rather that full table permissions.
 
@@ -82,7 +82,7 @@
            native-perms-fn]} :- PermsOptions]
   (let [table-ids           (filter integer? tables-or-ids)
         table-id->schema    (when (seq table-ids)
-                              (db/select-id->field :schema Table :id [:in table-ids]))
+                              (t2/select-pk->fn :schema Table :id [:in table-ids]))
         table-or-id->schema #(if (integer? %)
                                (table-id->schema %)
                                (:schema %))
@@ -100,11 +100,11 @@
                              (table-or-id->schema table-or-id)
                              (u/the-id table-or-id)))))))
 
-(s/defn ^:private source-card-read-perms :- #{perms/Path}
+(s/defn ^:private source-card-read-perms :- #{perms/PathSchema}
   "Calculate the permissions needed to run an ad-hoc query that uses a Card with `source-card-id` as its source
   query."
   [source-card-id :- su/IntGreaterThanZero]
-  (mi/perms-objects-set (or (db/select-one ['Card :collection_id] :id source-card-id)
+  (mi/perms-objects-set (or (t2/select-one ['Card :collection_id] :id source-card-id)
                            (throw (Exception. (tru "Card {0} does not exist." source-card-id))))
                        :read))
 
@@ -115,7 +115,7 @@
   (binding [api/*current-user-id* nil]
     ((resolve 'metabase.query-processor/preprocess) query)))
 
-(s/defn ^:private mbql-permissions-path-set :- #{perms/Path}
+(s/defn ^:private mbql-permissions-path-set :- #{perms/PathSchema}
   "Return the set of required permissions needed to run an adhoc `query`.
 
   Also optionally specify `throw-exceptions?` -- normally this function avoids throwing Exceptions to avoid breaking
@@ -145,7 +145,7 @@
         (log/error e))
       #{"/db/0/"})))                    ; DB 0 will never exist
 
-(s/defn ^:private perms-set* :- #{perms/Path}
+(s/defn ^:private perms-set* :- #{perms/PathSchema}
   "Does the heavy lifting of creating the perms set. `opts` will indicate whether exceptions should be thrown and
   whether full or segmented table permissions should be returned."
   [{query-type :type, database :database, :as query} perms-opts :- PermsOptions]

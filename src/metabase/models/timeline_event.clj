@@ -1,16 +1,13 @@
 (ns metabase.models.timeline-event
   (:require
    [metabase.models.interface :as mi]
-   [metabase.models.serialization.base :as serdes.base]
-   [metabase.models.serialization.hash :as serdes.hash]
-   [metabase.models.serialization.util :as serdes.util]
-   [metabase.util :as u]
+   [metabase.models.serialization :as serdes]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.honey-sql-2 :as h2x]
    [schema.core :as s]
-   [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
-   [toucan.models :as models]))
+   [toucan.models :as models]
+   [toucan2.core :as t2]))
 
 (models/defmodel TimelineEvent :timeline_event)
 
@@ -30,18 +27,16 @@
 (defmethod mi/perms-objects-set TimelineEvent
   [event read-or-write]
   (let [timeline (or (:timeline event)
-                     (db/select-one 'Timeline :id (:timeline_id event)))]
+                     (t2/select-one 'Timeline :id (:timeline_id event)))]
     (mi/perms-objects-set timeline read-or-write)))
 
 ;;;; hydration
 
-(defn timeline
+(mi/define-simple-hydration-method timeline
+  :timeline
   "Attach the parent `:timeline` to this [[TimelineEvent]]."
-  {:hydrate :timeline}
   [{:keys [timeline_id]}]
-  (db/select-one 'Timeline :id timeline_id))
-
-;(hydrate (db/select-one 'TimelineEvent))
+  (t2/select-one 'Timeline :id timeline_id))
 
 (defn- fetch-events
   "Fetch events for timelines in `timeline-ids`. Can include optional `start` and `end` dates in the options map, as
@@ -67,10 +62,10 @@
                            [:and
                             [:= :time_matters false]
                             (when start
-                              [:<= (hx/->date start) (hx/->date :timestamp)])
+                              [:<= (h2x/->date start) (h2x/->date :timestamp)])
                             (when end
-                              [:<= (hx/->date :timestamp) (hx/->date end)])]])]}]
-    (hydrate (db/select TimelineEvent clause) :creator)))
+                              [:<= (h2x/->date :timestamp) (h2x/->date end)])]])]}]
+    (hydrate (t2/select TimelineEvent clause) :creator)))
 
 (defn include-events
   "Include events on `timelines` passed in. Options are optional and include whether to return unarchived events or all
@@ -93,23 +88,20 @@
 
 ;;;; model
 
-(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class TimelineEvent)
-  models/IModel
-  (merge
-   models/IModelDefaults
-   ;; todo: add hydration keys??
-   {:properties (constantly {:timestamped? true})}))
+(mi/define-methods
+ TimelineEvent
+ {:properties (constantly {::mi/timestamped? true})})
 
-(defmethod serdes.hash/identity-hash-fields TimelineEvent
+(defmethod serdes/hash-fields TimelineEvent
   [_timeline-event]
-  [:name :timestamp (serdes.hash/hydrated-hash :timeline) :created_at])
+  [:name :timestamp (serdes/hydrated-hash :timeline) :created_at])
 
 ;;;; serialization
 ;; TimelineEvents are inlined under their Timelines, but we can reuse the [[load-one!]] logic using [[load-xform]].
-(defmethod serdes.base/load-xform "TimelineEvent" [event]
+(defmethod serdes/load-xform "TimelineEvent" [event]
   (-> event
-      serdes.base/load-xform-basics
-      (update :timeline_id serdes.util/import-fk 'Timeline)
-      (update :creator_id  serdes.util/import-user)
+      serdes/load-xform-basics
+      (update :timeline_id serdes/*import-fk* 'Timeline)
+      (update :creator_id  serdes/*import-user*)
       (update :timestamp   u.date/parse)
       (update :created_at  #(if (string? %) (u.date/parse %) %))))

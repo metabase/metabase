@@ -1,8 +1,11 @@
 import _ from "underscore";
 import { t, ngettext, msgid } from "ttag";
 import moment from "moment-timezone";
+
 import { parseTimestamp } from "metabase/lib/time";
 import MetabaseUtils from "metabase/lib/utils";
+
+import { PasswordComplexity, SettingKey, Settings } from "metabase-types/api";
 
 const n2w = (n: number) => MetabaseUtils.numberToWord(n);
 
@@ -50,85 +53,21 @@ const PASSWORD_COMPLEXITY_CLAUSES = {
   },
 };
 
-// TODO: dump this from backend settings definitions
-export type SettingName =
-  | "application-name"
-  | "admin-email"
-  | "analytics-uuid"
-  | "anon-tracking-enabled"
-  | "site-locale"
-  | "user-locale"
-  | "available-locales"
-  | "available-timezones"
-  | "custom-formatting"
-  | "custom-geojson"
-  | "email-configured?"
-  | "enable-embedding"
-  | "enable-enhancements?"
-  | "enable-public-sharing"
-  | "enable-xrays"
-  | "experimental-enable-actions"
-  | "persisted-models-enabled"
-  | "engines"
-  | "ga-code"
-  | "ga-enabled"
-  | "google-auth-enabled"
-  | "google-auth-client-id"
-  | "has-sample-database?"
-  | "has-user-setup"
-  | "hide-embed-branding?"
-  | "is-hosted?"
-  | "ldap-enabled"
-  | "ldap-configured?"
-  | "other-sso-enabled?"
-  | "enable-password-login"
-  | "map-tile-server-url"
-  | "password-complexity"
-  | "persisted-model-refresh-interval-hours"
-  | "premium-features"
-  | "search-typeahead-enabled"
-  | "setup-token"
-  | "site-url"
-  | "site-uuid"
-  | "token-status"
-  | "types"
-  | "version-info-last-checked"
-  | "version-info"
-  | "version"
-  | "subscription-allowed-domains"
-  | "cloud-gateway-ips"
-  | "snowplow-enabled"
-  | "snowplow-url"
-  | "deprecation-notice-version"
-  | "show-database-syncing-modal"
-  | "premium-embedding-token"
-  | "metabase-store-managed"
-  | "application-colors"
-  | "application-font"
-  | "available-fonts"
-  | "enable-query-caching"
-  | "start-of-week"
-  | "report-timezone-short";
-
-type SettingsMap = Record<SettingName, any>; // provides access to Metabase application settings
-
 type SettingListener = (value: any) => void;
 
-class Settings {
-  _settings: Partial<SettingsMap>;
-  _listeners: Partial<Record<SettingName, SettingListener[]>> = {};
+class MetabaseSettings {
+  _settings: Partial<Settings>;
+  _listeners: Partial<{ [key: string]: SettingListener[] }> = {};
 
-  constructor(settings: Partial<SettingsMap> = {}) {
+  constructor(settings: Partial<Settings> = {}) {
     this._settings = settings;
   }
 
-  get(key: SettingName, defaultValue: any = null) {
-    return this._settings[key] !== undefined
-      ? this._settings[key]
-      : defaultValue;
+  get<T extends SettingKey>(key: T): Partial<Settings>[T] {
+    return this._settings[key];
   }
 
-  set(key: SettingName, value: any) {
+  set<T extends SettingKey>(key: T, value: Settings[T]) {
     if (this._settings[key] !== value) {
       this._settings[key] = value;
       const listeners = this._listeners[key];
@@ -143,15 +82,15 @@ class Settings {
     }
   }
 
-  setAll(settings: SettingsMap) {
-    const keys = Object.keys(settings) as SettingName[];
+  setAll(settings: Settings) {
+    const keys = Object.keys(settings) as SettingKey[];
 
     keys.forEach(key => {
       this.set(key, settings[key]);
     });
   }
 
-  on(key: SettingName, callback: SettingListener) {
+  on(key: SettingKey, callback: SettingListener) {
     this._listeners[key] = this._listeners[key] || [];
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     this._listeners[key]!.push(callback);
@@ -166,12 +105,12 @@ class Settings {
     return this.get("enable-enhancements?");
   }
 
-  isEmailConfigured() {
-    return this.get("email-configured?");
+  isEmailConfigured(): boolean {
+    return !!this.get("email-configured?");
   }
 
   isHosted(): boolean {
-    return this.get("is-hosted?");
+    return !!this.get("is-hosted?");
   }
 
   cloudGatewayIps(): string[] {
@@ -223,6 +162,10 @@ class Settings {
     return this.get("anon-tracking-enabled") || false;
   }
 
+  uploadsEnabled() {
+    return !!(this.get("uploads-enabled") && this.get("uploads-database-id"));
+  }
+
   googleAnalyticsEnabled() {
     return this.get("ga-enabled") || false;
   }
@@ -267,7 +210,7 @@ class Settings {
   }
 
   docsUrl(page = "", anchor = "") {
-    let { tag } = this.get("version", {});
+    let { tag } = this.get("version") || {};
     const matches = tag && tag.match(/v[01]\.(\d+)(?:\.\d+)?(-.*)?/);
 
     if (matches) {
@@ -306,10 +249,6 @@ class Settings {
     return `https://store.metabase.com/${path}`;
   }
 
-  upgradeUrl() {
-    return "https://www.metabase.com/upgrade/";
-  }
-
   migrateToCloudGuideUrl() {
     return "https://www.metabase.com/cloud/docs/migrate/guide";
   }
@@ -330,27 +269,13 @@ class Settings {
     return result != null && result >= 0;
   }
 
-  /*
-    We expect the versionInfo to take on the JSON structure detailed below.
-    The 'older' section should contain only the last 5 previous versions, we don't need to go on forever.
-    The highlights for a version should just be text and should be limited to 5 items tops.
-    type VersionInfo = {
-      latest: Version,
-      older: Version[]
-    };
-    type Version = {
-      version: string, // e.x. "v0.17.1"
-      released: ISO8601Time,
-      patch: bool,
-      highlights: string[]
-    };
-  */
   versionInfo() {
-    return this.get("version-info", {});
+    return this.get("version-info") || {};
   }
 
   currentVersion() {
-    return this.get("version", {}).tag;
+    const version = this.get("version") || {};
+    return version.tag;
   }
 
   latestVersion() {
@@ -366,9 +291,12 @@ class Settings {
     return this.isHosted() || this.isEnterprise();
   }
 
-  // returns a map that looks like {total: 6, digit: 1}
-  passwordComplexityRequirements() {
-    return this.get("password-complexity", {});
+  isMetabotEnabled() {
+    return this.get("is-metabot-enabled");
+  }
+
+  passwordComplexityRequirements(): PasswordComplexity {
+    return this.get("password-complexity") || {};
   }
 
   /**
@@ -399,7 +327,7 @@ class Settings {
     }
   }
 
-  subscriptionAllowedDomains() {
+  subscriptionAllowedDomains(): string[] {
     const setting = this.get("subscription-allowed-domains") || "";
     return setting ? setting.split(",") : [];
   }
@@ -414,4 +342,5 @@ function makeRegexTest(property: string, regex: RegExp) {
 const initValues =
   typeof window !== "undefined" ? _.clone(window.MetabaseBootstrap) : null;
 
-export default new Settings(initValues);
+// eslint-disable-next-line import/no-default-export -- deprecated usage
+export default new MetabaseSettings(initValues);

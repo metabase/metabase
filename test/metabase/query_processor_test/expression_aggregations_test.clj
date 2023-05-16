@@ -114,6 +114,23 @@
                                  [:* [:count $id] [:sum $price]]]]
                   :breakout    [$price]})))))))
 
+(deftest nested-post-multi-aggregation-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :expression-aggregations)
+    (testing "nested post-aggregation math: count + (count * sum)"
+      (is (= [[1   990 22 22 2.0]
+              [2 10502 59 59 2.0]
+              [3   689 13 13 2.0]
+              [4   186  6  6 0.0]]
+             (mt/formatted-rows [int int int int float]
+               (mt/run-mbql-query venues
+                 {:aggregation [[:+
+                                 [:count $id]
+                                 [:* [:count $id] [:sum [:+ $price 1]]]]
+                                [:count $id]
+                                [:count]
+                                [:* 2 [:share [:< $price 4]]]]
+                  :breakout    [$price]})))))))
+
 (deftest math-inside-aggregations-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expression-aggregations)
     (testing "post aggregation math + math inside aggregations: max(venue_price) + min(venue_price - id)"
@@ -125,6 +142,23 @@
                (mt/run-mbql-query venues
                  {:aggregation [[:+ [:max $price] [:min [:- $price $id]]]]
                   :breakout    [$price]})))))))
+
+(deftest integer-aggregation-division-test
+  (testing "division of two sum aggregations (#30262)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :expression-aggregations)
+      (mt/dataset sample-dataset
+        (testing "expression parts not selected"
+          (is (= [[27]]
+                 (mt/formatted-rows [int]
+                   (mt/run-mbql-query orders
+                     {:aggregation [[:/ [:sum $product_id] [:sum $quantity]]]})))))
+        (testing "expression parts also selected"
+         (is (= [[1885900 69540 27]]
+                (mt/formatted-rows [int int int]
+                  (mt/run-mbql-query orders
+                    {:aggregation [[:sum $product_id]
+                                   [:sum $quantity]
+                                   [:/ [:sum $product_id] [:sum $quantity]]]})))))))))
 
 (deftest aggregation-without-field-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expression-aggregations)

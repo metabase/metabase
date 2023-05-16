@@ -1,4 +1,4 @@
-(ns metabase.api.session-test
+(ns ^:mb/once metabase.api.session-test
   "Tests for /api/session"
   (:require
    [cheshire.core :as json]
@@ -23,9 +23,11 @@
    [metabase.util :as u]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db])
+   [toucan2.core :as t2])
   (:import
    (java.util UUID)))
+
+(set! *warn-on-reflection* true)
 
 ;; one of the tests below compares the way properties for the H2 driver are translated, so we need to make sure it's
 ;; loaded
@@ -63,7 +65,7 @@
                         :ip_address         su/NonBlankString
                         :active             (s/eq true)
                         s/Keyword s/Any}
-                       (db/select-one LoginHistory :user_id (mt/user->id :rasta), :session_id (:id response)))))))
+                       (t2/select-one LoginHistory :user_id (mt/user->id :rasta), :session_id (:id response)))))))
     (testing "Test that 'remember me' checkbox sets Max-Age attribute on session cookie"
       (let [body (assoc (mt/user->credentials :rasta) :remember true)
             response (mt/client-full-response :post 200 "session" body)]
@@ -80,10 +82,13 @@
                            "exception")
                     (s/one (s/eq "Authentication endpoint error")
                            "log message")]
-                   (first (mt/with-log-messages-for-level :error
-                            (mt/client :post 400 "session" {:email (:email user), :password "wooo"}))))))))
+                   (->> (mt/with-log-messages-for-level :error
+                          (mt/client :post 400 "session" {:email (:email user), :password "wooo"}))
+                        ;; geojson can throw errors and we want the authentication error
+                        (filter (fn [[_log-level _error message]] (= message "Authentication endpoint error")))
+                        first))))))
 
-(deftest login-validation-test
+(deftest ^:parallel login-validation-test
   (testing "POST /api/session"
     (testing "Test for required params"
       (is (= {:errors {:username "value must be a non-blank string."}}
@@ -145,25 +150,23 @@
 
 (deftest failure-threshold-throttling-test
   (testing "Test that source based throttling kicks in after the login failure threshold (50) has been reached"
-    ;; disable this when we're testing drivers since it tends to F L A K E.
-    (mt/disable-flaky-test-when-running-driver-tests-in-ci
-      (with-redefs [api.session/login-throttlers          (cleaned-throttlers #'api.session/login-throttlers
-                                                                              [:username :ip-address])
-                    public-settings/source-address-header (constantly "x-forwarded-for")]
-        (dotimes [n 50]
-          (let [response    (send-login-request (format "user-%d" n)
-                                                {"x-forwarded-for" "10.1.2.3"})
-                status-code (:status response)]
-            (assert (= status-code 401) (str "Unexpected response status code:" status-code))))
-        (let [error (fn []
-                      (-> (send-login-request "last-user" {"x-forwarded-for" "10.1.2.3"})
-                          :body
-                          json/parse-string
-                          (get-in ["errors" "username"])))]
-          (is (re= #"^Too many attempts! You must wait \d+ seconds before trying again\.$"
-                   (error)))
-          (is (re= #"^Too many attempts! You must wait \d+ seconds before trying again\.$"
-                   (error))))))))
+    (with-redefs [api.session/login-throttlers          (cleaned-throttlers #'api.session/login-throttlers
+                                                                            [:username :ip-address])
+                  public-settings/source-address-header (constantly "x-forwarded-for")]
+      (dotimes [n 50]
+        (let [response    (send-login-request (format "user-%d" n)
+                                              {"x-forwarded-for" "10.1.2.3"})
+              status-code (:status response)]
+          (assert (= status-code 401) (str "Unexpected response status code:" status-code))))
+      (let [error (fn []
+                    (-> (send-login-request "last-user" {"x-forwarded-for" "10.1.2.3"})
+                        :body
+                        json/parse-string
+                        (get-in ["errors" "username"])))]
+        (is (re= #"^Too many attempts! You must wait \d+ seconds before trying again\.$"
+                 (error)))
+        (is (re= #"^Too many attempts! You must wait \d+ seconds before trying again\.$"
+                 (error)))))))
 
 (deftest failure-threshold-per-request-source
   (testing "The same as above, but ensure that throttling is done on a per request source basis."
@@ -196,7 +199,7 @@
       ;; Session
       (test.users/clear-cached-session-tokens!)
       (let [session-id       (test.users/username->token :rasta)
-            login-history-id (db/select-one-id LoginHistory :session_id session-id)]
+            login-history-id (t2/select-one-pk LoginHistory :session_id session-id)]
         (testing "LoginHistory should have been recorded"
           (is (integer? login-history-id)))
         ;; Ok, calling the logout endpoint should delete the Session in the DB. Don't worry, `test-users` will log back
@@ -204,7 +207,7 @@
         (mt/user-http-request :rasta :delete 204 "session")
         ;; check whether it's still there -- should be GONE
         (is (= nil
-               (db/select-one Session :id session-id)))
+               (t2/select-one Session :id session-id)))
         (testing "LoginHistory item should still exist, but session_id should be set to nil (active = false)"
           (is (schema= {:id                 (s/eq login-history-id)
                         :timestamp          java.time.OffsetDateTime
@@ -214,7 +217,7 @@
                         :ip_address         su/NonBlankString
                         :active             (s/eq false)
                         s/Keyword           s/Any}
-                       (db/select-one LoginHistory :id login-history-id))))))))
+                       (t2/select-one LoginHistory :id login-history-id))))))))
 
 (deftest forgot-password-test
   (testing "POST /api/session/forgot_password"
@@ -225,11 +228,11 @@
       (testing "Test that we can initiate password reset"
         (mt/with-fake-inbox
           (letfn [(reset-fields-set? []
-                    (let [{:keys [reset_token reset_triggered]} (db/select-one [User :reset_token :reset_triggered]
+                    (let [{:keys [reset_token reset_triggered]} (t2/select-one [User :reset_token :reset_triggered]
                                                                                :id (mt/user->id :rasta))]
                       (boolean (and reset_token reset_triggered))))]
             ;; make sure user is starting with no values
-            (db/update! User (mt/user->id :rasta), :reset_token nil, :reset_triggered nil)
+            (t2/update! User (mt/user->id :rasta) {:reset_token nil, :reset_triggered nil})
             (assert (not (reset-fields-set?)))
             ;; issue reset request (token & timestamp should be saved)
             (is (= nil
@@ -280,7 +283,7 @@
                         :new "whateverUP12!!"}]
           (mt/with-temp User [{:keys [email id]} {:password (:old password), :reset_triggered (System/currentTimeMillis)}]
             (let [token (u/prog1 (str id "_" (UUID/randomUUID))
-                          (db/update! User id, :reset_token <>))
+                          (t2/update! User id {:reset_token <>}))
                   creds {:old {:password (:old password)
                                :username email}
                          :new {:password (:new password)
@@ -302,7 +305,7 @@
               (testing "check that reset token was cleared"
                 (is (= {:reset_token     nil
                         :reset_triggered nil}
-                       (mt/derecordize (db/select-one [User :reset_token :reset_triggered], :id id))))))))))))
+                       (mt/derecordize (t2/select-one [User :reset_token :reset_triggered], :id id))))))))))))
 
 (deftest reset-password-validation-test
   (testing "POST /api/session/reset_password"
@@ -324,7 +327,7 @@
 
     (testing "Test that an expired token doesn't work"
       (let [token (str (mt/user->id :rasta) "_" (UUID/randomUUID))]
-        (db/update! User (mt/user->id :rasta), :reset_token token, :reset_triggered 0)
+        (t2/update! User (mt/user->id :rasta) {:reset_token token, :reset_triggered 0})
         (is (= {:errors {:password "Invalid reset token"}}
                (mt/client :post 400 "session/reset_password" {:token    token
                                                               :password "whateverUP12!!"})))))))
@@ -333,7 +336,7 @@
   (testing "GET /session/password_reset_token_valid"
     (testing "Check that a valid, unexpired token returns true"
       (let [token (str (mt/user->id :rasta) "_" (UUID/randomUUID))]
-        (db/update! User (mt/user->id :rasta), :reset_token token, :reset_triggered (dec (System/currentTimeMillis)))
+        (t2/update! User (mt/user->id :rasta) {:reset_token token, :reset_triggered (dec (System/currentTimeMillis))})
         (is (= {:valid true}
                (mt/client :get 200 "session/password_reset_token_valid", :token token)))))
 
@@ -343,27 +346,27 @@
 
     (testing "Check that an expired but valid token returns false"
       (let [token (str (mt/user->id :rasta) "_" (UUID/randomUUID))]
-        (db/update! User (mt/user->id :rasta), :reset_token token, :reset_triggered 0)
+        (t2/update! User (mt/user->id :rasta) {:reset_token token, :reset_triggered 0})
         (is (= {:valid false}
                (mt/client :get 200 "session/password_reset_token_valid", :token token)))))))
 
 (deftest properties-test
   (testing "GET /session/properties"
     (testing "Unauthenticated"
-      (is (= (set (keys (setting/user-readable-values-map :public)))
+      (is (= (set (keys (setting/user-readable-values-map #{:public})))
              (set (keys (mt/client :get 200 "session/properties"))))))
 
     (testing "Authenticated normal user"
-      (is (= (set (keys (merge
-                         (setting/user-readable-values-map :public)
-                         (setting/user-readable-values-map :authenticated))))
+      (is (= (set (keys (setting/user-readable-values-map #{:public :authenticated})))
              (set (keys (mt/user-http-request :lucky :get 200 "session/properties"))))))
 
+    (testing "Authenticated settings manager"
+      (with-redefs [setting/has-advanced-setting-access? (constantly true)]
+        (is (= (set (keys (setting/user-readable-values-map #{:public :authenticated :settings-manager})))
+               (set (keys (mt/user-http-request :lucky :get 200 "session/properties")))))))
+
     (testing "Authenticated super user"
-      (is (= (set (keys (merge
-                         (setting/user-readable-values-map :public)
-                         (setting/user-readable-values-map :authenticated)
-                         (setting/user-readable-values-map :admin))))
+      (is (= (set (keys (setting/user-readable-values-map #{:public :authenticated :settings-manager :admin})))
              (set (keys (mt/user-http-request :crowberto :get 200 "session/properties"))))))))
 
 (deftest properties-i18n-test
@@ -440,16 +443,16 @@
       (mt/with-temporary-setting-values [ldap-user-base "cn=wrong,cn=com"]
         (mt/with-temp User [_ {:email    "ngoc@metabase.com"
                                :password "securedpassword"}]
-            (is (schema= SessionResponse
-                         (mt/client :post 200 "session" {:username "ngoc@metabase.com"
-                                                         :password "securedpassword"}))))))
+          (is (schema= SessionResponse
+                       (mt/client :post 200 "session" {:username "ngoc@metabase.com"
+                                                       :password "securedpassword"}))))))
 
     (testing "Test that we can login with LDAP with new user"
       (try
         (is (schema= SessionResponse
                      (mt/client :post 200 "session" {:username "sbrown20", :password "1234"})))
         (finally
-          (db/delete! User :email "sally.brown@metabase.com"))))
+          (t2/delete! User :email "sally.brown@metabase.com"))))
 
     (testing "Test that we can login with LDAP multiple times if the email stored in LDAP contains upper-case
              characters (#13739)"
@@ -461,7 +464,7 @@
              SessionResponse
              (mt/client :post 200 "session" {:username "John.Smith@metabase.com", :password "strongpassword"})))
         (finally
-          (db/delete! User :email "John.Smith@metabase.com"))))
+          (t2/delete! User :email "John.Smith@metabase.com"))))
 
     (testing "test that group sync works even if ldap doesn't return uid (#22014)"
       (mt/with-temp PermissionsGroup [group {:name "Accounting"}]
@@ -469,13 +472,14 @@
           [ldap-group-mappings (json/generate-string {"cn=Accounting,ou=Groups,dc=metabase,dc=com" [(:id group)]})]
           (is (schema= SessionResponse
                        (mt/client :post 200 "session" {:username "fred.taylor@metabase.com", :password "pa$$word"})))
-          (let [user-id (db/select-one-id User :email "fred.taylor@metabase.com")]
-            (is (= true (db/exists? PermissionsGroupMembership :group_id (:id group) (:user_id user-id))))))))))
+          (testing "PermissionsGroupMembership should exist"
+            (let [user-id (t2/select-one-pk User :email "fred.taylor@metabase.com")]
+              (is (t2/exists? PermissionsGroupMembership :group_id (u/the-id group) :user_id (u/the-id user-id))))))))))
 
 (deftest no-password-no-login-test
   (testing "A user with no password should not be able to do password-based login"
     (mt/with-temp User [user]
-      (db/update! User (u/the-id user) :password nil, :password_salt nil)
+      (t2/update! User (u/the-id user) {:password nil, :password_salt nil})
       (let [device-info {:device_id          "Cam's Computer"
                          :device_description "The computer where Cam wrote this test"
                          :ip_address         "192.168.1.1"}]

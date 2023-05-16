@@ -1,12 +1,13 @@
 import React from "react";
+import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
-import nock from "nock";
 import {
   renderWithProviders,
   screen,
   waitForElementToBeRemoved,
   within,
 } from "__support__/ui";
+import { createMockUser } from "metabase-types/api/mocks";
 import ItemPicker from "./ItemPicker";
 
 function collection({
@@ -36,11 +37,11 @@ function dashboard({ id, name, collection_id = null }) {
   };
 }
 
-const CURRENT_USER = {
+const CURRENT_USER = createMockUser({
   id: 1,
   personal_collection_id: 100,
   is_superuser: true,
-};
+});
 
 const COLLECTION = {
   ROOT: collection({ id: "root", name: "Our analytics", location: null }),
@@ -86,41 +87,36 @@ const DASHBOARD = {
 
 function mockCollectionEndpoint({ extraCollections = [] } = {}) {
   const collections = [...Object.values(COLLECTION), ...extraCollections];
-  nock(location.origin).get("/api/collection").reply(200, collections);
+  fetchMock.get("path:/api/collection", collections);
 }
 
 function mockCollectionItemsEndpoint() {
-  nock(location.origin)
-    .persist()
-    .get(/\/api\/collection\/(root|[1-9]\d*)\/items.*/)
-    .reply(200, url => {
-      const collectionIdParam = url.split("/")[3];
-      const collectionId =
-        collectionIdParam === "root" ? null : parseInt(collectionIdParam, 10);
-      const dashboards = Object.values(DASHBOARD).filter(
-        dashboard => dashboard.collection_id === collectionId,
-      );
-      return {
-        total: dashboards.length,
-        data: dashboards,
-      };
-    });
+  fetchMock.get(/api\/collection\/\d+\/items/, url => {
+    const collectionIdParam = url.split("/")[5];
+    const collectionId =
+      collectionIdParam === "root" ? null : parseInt(collectionIdParam, 10);
+    const dashboards = Object.values(DASHBOARD).filter(
+      dashboard => dashboard.collection_id === collectionId,
+    );
+    return {
+      total: dashboards.length,
+      data: dashboards,
+    };
+  });
 
-  nock(location.origin)
-    .get("/api/collection/root/items")
-    .reply(200, () => {
-      const dashboards = Object.values(DASHBOARD).filter(
-        dashboard => dashboard.collection_id === null,
-      );
-      const collections = Object.values(COLLECTION).filter(
-        collection => collection.location !== "/",
-      );
-      const data = [...dashboards, ...collections];
-      return {
-        total: data.length,
-        data,
-      };
-    });
+  fetchMock.get("path:/api/collection/root/items", () => {
+    const dashboards = Object.values(DASHBOARD).filter(
+      dashboard => dashboard.collection_id === null,
+    );
+    const collections = Object.values(COLLECTION).filter(
+      collection => collection.location !== "/",
+    );
+    const data = [...dashboards, ...collections];
+    return {
+      total: data.length,
+      data,
+    };
+  });
 }
 
 async function setup({
@@ -136,7 +132,9 @@ async function setup({
   renderWithProviders(
     <ItemPicker models={models} onChange={onChange} {...props} />,
     {
-      currentUser: CURRENT_USER,
+      storeInitialState: {
+        currentUser: CURRENT_USER,
+      },
     },
   );
 
@@ -146,54 +144,51 @@ async function setup({
 }
 
 function getItemPickerHeader() {
-  return within(screen.getByTestId("item-picker-header"));
+  return screen.getByTestId("item-picker-header");
 }
 
 function getItemPickerList() {
-  return within(screen.getByTestId("item-picker-list"));
+  return screen.getByTestId("item-picker-list");
 }
 
 function queryListItem(itemName) {
-  const node = getItemPickerList()
+  return within(getItemPickerList())
     .queryByText(itemName)
     .closest("[data-testid=item-picker-item]");
-  return within(node);
 }
 
 async function openCollection(itemName) {
-  const collectionNode = queryListItem(itemName);
+  const collectionNode = within(queryListItem(itemName));
   userEvent.click(collectionNode.getByLabelText("chevronright icon"));
   await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
 }
 
 describe("ItemPicker", () => {
-  afterEach(() => {
-    nock.cleanAll();
-  });
-
   it("displays items from the root collection by default", async () => {
     await setup();
 
     // Breadcrumbs
     expect(
-      getItemPickerHeader().queryByText(/Our analytics/i),
+      within(getItemPickerHeader()).getByText(/Our analytics/i),
     ).toBeInTheDocument();
 
     // Content
-    expect(screen.queryByText(DASHBOARD.REGULAR.name)).toBeInTheDocument();
-    expect(screen.queryByText(COLLECTION.REGULAR.name)).toBeInTheDocument();
-    expect(screen.queryByText(COLLECTION.PERSONAL.name)).toBeInTheDocument();
+    expect(screen.getByText(DASHBOARD.REGULAR.name)).toBeInTheDocument();
+    expect(screen.getByText(COLLECTION.REGULAR.name)).toBeInTheDocument();
+    expect(screen.getByText(COLLECTION.PERSONAL.name)).toBeInTheDocument();
     expect(screen.queryAllByTestId("item-picker-item")).toHaveLength(3);
   });
 
   it("does not display read-only collections", async () => {
     await setup();
-    expect(screen.queryByText(COLLECTION.READ_ONLY.name)).toBeNull();
+    expect(
+      screen.queryByText(COLLECTION.READ_ONLY.name),
+    ).not.toBeInTheDocument();
   });
 
   it("displays read-only collections if they have writable children", async () => {
     await setup({ extraCollections: [COLLECTION_READ_ONLY_CHILD_WRITABLE] });
-    expect(screen.queryByText(COLLECTION.READ_ONLY.name)).toBeInTheDocument();
+    expect(screen.getByText(COLLECTION.READ_ONLY.name)).toBeInTheDocument();
   });
 
   it("can open nested collection", async () => {
@@ -201,35 +196,35 @@ describe("ItemPicker", () => {
 
     await openCollection(COLLECTION.REGULAR.name);
 
-    const header = getItemPickerHeader();
-    const list = getItemPickerList();
+    const header = within(getItemPickerHeader());
+    const list = within(getItemPickerList());
 
     // Breadcrumbs
-    expect(header.queryByText(/Our analytics/i)).toBeInTheDocument();
-    expect(header.queryByText(COLLECTION.REGULAR.name)).toBeInTheDocument();
+    expect(header.getByText(/Our analytics/i)).toBeInTheDocument();
+    expect(header.getByText(COLLECTION.REGULAR.name)).toBeInTheDocument();
 
     // Content
-    expect(list.queryByText(COLLECTION.REGULAR_CHILD.name)).toBeInTheDocument();
-    expect(list.queryByText(DASHBOARD.REGULAR_CHILD.name)).toBeInTheDocument();
-    expect(list.queryAllByTestId("item-picker-item")).toHaveLength(2);
+    expect(list.getByText(COLLECTION.REGULAR_CHILD.name)).toBeInTheDocument();
+    expect(list.getByText(DASHBOARD.REGULAR_CHILD.name)).toBeInTheDocument();
+    expect(list.getAllByTestId("item-picker-item")).toHaveLength(2);
   });
 
   it("can navigate back from a currently open nested collection", async () => {
     await setup();
     await openCollection(COLLECTION.REGULAR.name);
-    let header = getItemPickerHeader();
+    let header = within(getItemPickerHeader());
 
     userEvent.click(header.getByText(/Our analytics/i));
 
-    header = getItemPickerHeader();
-    const list = getItemPickerList();
+    header = within(getItemPickerHeader());
+    const list = within(getItemPickerList());
 
-    expect(header.queryByText(COLLECTION.REGULAR.name)).toBeNull();
+    expect(header.queryByText(COLLECTION.REGULAR.name)).not.toBeInTheDocument();
 
-    expect(list.queryByText(DASHBOARD.REGULAR.name)).toBeInTheDocument();
-    expect(list.queryByText(COLLECTION.REGULAR.name)).toBeInTheDocument();
-    expect(list.queryByText(COLLECTION.PERSONAL.name)).toBeInTheDocument();
-    expect(list.queryAllByTestId("item-picker-item")).toHaveLength(3);
+    expect(list.getByText(DASHBOARD.REGULAR.name)).toBeInTheDocument();
+    expect(list.getByText(COLLECTION.REGULAR.name)).toBeInTheDocument();
+    expect(list.getByText(COLLECTION.PERSONAL.name)).toBeInTheDocument();
+    expect(list.getAllByTestId("item-picker-item")).toHaveLength(3);
   });
 
   it("calls onChange when selecting an item", async () => {
@@ -254,7 +249,7 @@ describe("ItemPicker", () => {
 
     userEvent.click(screen.getByText(/All personal collections/i));
 
-    const list = getItemPickerList();
+    const list = within(getItemPickerList());
     expect(list.getByText(COLLECTION_OTHER_USERS.name)).toBeInTheDocument();
     expect(list.getByText(COLLECTION.PERSONAL.name)).toBeInTheDocument();
     expect(list.getAllByTestId("item-picker-item")).toHaveLength(2);

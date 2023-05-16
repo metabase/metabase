@@ -2,7 +2,7 @@
  ["src" "resources"]
 
  :deps
- {com.facebook.presto/presto-jdbc {:mvn/version "0.278.1"}}
+ {com.facebook.presto/presto-jdbc {:mvn/version "0.280"}}
 
  :metabase.driver/parents
- #{:presto-common}}
+ #{:sql-jdbc}}

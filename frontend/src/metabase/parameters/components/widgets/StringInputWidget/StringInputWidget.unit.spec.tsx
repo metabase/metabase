@@ -33,10 +33,10 @@ describe("StringInputWidget", () => {
 
       const button = screen.getByRole("button", { name: "Update filter" });
       expect(button).toBeInTheDocument();
-      expect(button).toHaveAttribute("disabled");
+      expect(button).toBeDisabled();
 
       userEvent.type(screen.getByRole("textbox"), "bar");
-      expect(button).not.toHaveAttribute("disabled");
+      expect(button).toBeEnabled();
     });
 
     it("should let you update the input with a new value", () => {
@@ -71,7 +71,7 @@ describe("StringInputWidget", () => {
       );
 
       const values = screen.getAllByRole("list")[0];
-      expect(values.textContent).toEqual("foobar");
+      expect(values).toHaveTextContent("foobar");
     });
 
     it("should correctly parse number inputs", () => {
@@ -87,7 +87,7 @@ describe("StringInputWidget", () => {
       userEvent.type(input, "foo{enter}bar{enter}baz{enter}");
 
       const values = screen.getAllByRole("list")[0];
-      expect(values.textContent).toEqual("foobarbaz");
+      expect(values).toHaveTextContent("foobarbaz");
 
       const button = screen.getByRole("button", { name: "Add filter" });
       userEvent.click(button);

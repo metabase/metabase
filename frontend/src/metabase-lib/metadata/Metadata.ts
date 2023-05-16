@@ -1,13 +1,14 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
 import _ from "underscore";
-import Metric from "metabase-lib/metadata/Metric";
 import type Question from "../Question";
 import Base from "./Base";
 import type Database from "./Database";
 import type Table from "./Table";
 import type Schema from "./Schema";
 import type Field from "./Field";
+import type Metric from "./Metric";
+import type Segment from "./Segment";
 import { getUniqueFieldId } from "./utils/fields";
 
 /**
@@ -23,10 +24,15 @@ import { getUniqueFieldId } from "./utils/fields";
  * Wrapper class for the entire metadata store
  */
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default class Metadata extends Base {
-  databases: { [databaseId: string]: Database };
-  questions: { [cardId: string]: Question };
-  tables: { [tableId: string]: Table };
+  databases: Record<string, Database>;
+  schemas: Record<string, Schema>;
+  tables: Record<string, TableId>;
+  fields: Record<string, Field>;
+  metrics: Record<string, Metric>;
+  segments: Record<string, Segment>;
+  questions: Record<string, Question>;
 
   /**
    * @deprecated this won't be sorted or filtered in a meaningful way
@@ -123,23 +129,5 @@ export default class Metadata extends Base {
 
   question(cardId): Question | null {
     return (cardId != null && this.questions[cardId]) || null;
-  }
-
-  /**
-   * @private
-   * @param {Object.<number, Database>} databases
-   * @param {Object.<number, Table>} tables
-   * @param {Object.<number, Field>} fields
-   * @param {Object.<number, Metric>} metrics
-   * @param {Object.<number, Segment>} segments
-   */
-
-  /* istanbul ignore next */
-  _constructor(databases: Database[], tables, fields, metrics, segments) {
-    this.databases = databases;
-    this.tables = tables;
-    this.fields = fields;
-    this.metrics = metrics;
-    this.segments = segments;
   }
 }

@@ -1,6 +1,5 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-
 import {
   ColumnItemIcon,
   ColumnItemSpan,
@@ -11,9 +10,12 @@ import {
   ColumnItemColorPicker,
 } from "./ColumnItem.styled";
 
-const ActionIcon = ({ icon, onClick }) => (
+const ActionIcon = ({ icon, onClick, ...props }) => (
   <ColumnItemIcon
-    name={icon}
+    data-testid={props["data-testid"]}
+    onlyIcon
+    icon={icon}
+    iconSize={16}
     onClick={e => {
       e.stopPropagation();
       onClick(e.target);
@@ -51,10 +53,34 @@ const ColumnItem = ({
         )}
         <ColumnItemContent>
           <ColumnItemSpan>{title}</ColumnItemSpan>
-          {onEdit && <ActionIcon icon="ellipsis" onClick={onEdit} />}
-          {onAdd && <ActionIcon icon="add" onClick={onAdd} />}
-          {onRemove && <ActionIcon icon="eye_outline" onClick={onRemove} />}
-          {onEnable && <ActionIcon icon="eye_crossed_out" onClick={onEnable} />}
+          {onEdit && (
+            <ActionIcon
+              icon="ellipsis"
+              onClick={onEdit}
+              data-testid={`${title}-settings-button`}
+            />
+          )}
+          {onAdd && (
+            <ActionIcon
+              icon="add"
+              onClick={onAdd}
+              data-testid={`${title}-add-button`}
+            />
+          )}
+          {onRemove && (
+            <ActionIcon
+              icon="eye_outline"
+              onClick={onRemove}
+              data-testid={`${title}-hide-button`}
+            />
+          )}
+          {onEnable && (
+            <ActionIcon
+              icon="eye_crossed_out"
+              onClick={onEnable}
+              data-testid={`${title}-show-button`}
+            />
+          )}
         </ColumnItemContent>
       </ColumnItemContainer>
     </ColumnItemRoot>

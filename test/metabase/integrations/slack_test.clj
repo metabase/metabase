@@ -14,6 +14,8 @@
    (org.apache.http NameValuePair)
    (org.apache.http.client.utils URLEncodedUtils)))
 
+(set! *warn-on-reflection* true)
+
 (defn- parse-query-string [query-string]
   (into {} (for [^NameValuePair pair (URLEncodedUtils/parse (str query-string) (Charset/forName "UTF-8"))]
              [(keyword (.getName pair)) (.getValue pair)])))

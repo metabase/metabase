@@ -15,13 +15,21 @@ import { EmptyStateContainer } from "./SearchResults.styled";
 const propTypes = {
   list: PropTypes.array,
   onChangeLocation: PropTypes.func,
+  onEntitySelect: PropTypes.func,
   searchText: PropTypes.string,
 };
 
-const SearchResults = ({ list, onChangeLocation, searchText }) => {
+const SearchResults = ({
+  list,
+  onChangeLocation,
+  onEntitySelect,
+  searchText,
+}) => {
   const { reset, getRef, cursorIndex } = useListKeyboardNavigation({
     list,
-    onEnter: item => onChangeLocation(item.getUrl()),
+    onEnter: onEntitySelect
+      ? onEntitySelect
+      : item => onChangeLocation(item.getUrl()),
     resetOnListChange: false,
   });
 
@@ -40,6 +48,7 @@ const SearchResults = ({ list, onChangeLocation, searchText }) => {
               result={item}
               compact={true}
               isSelected={cursorIndex === index}
+              onClick={onEntitySelect}
             />
           </li>
         ))
@@ -65,6 +74,7 @@ export default _.compose(
     query: (_state, props) => ({
       q: props.searchText,
       limit: DEFAULT_SEARCH_LIMIT,
+      models: props.models,
     }),
   }),
 )(SearchResults);

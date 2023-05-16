@@ -1,4 +1,4 @@
-import type { Field as FieldRef } from "metabase-types/types/Query";
+import type { FieldReference } from "metabase-types/api";
 import { isVirtualCardId } from "metabase-lib/metadata/utils/saved-questions";
 import type Field from "metabase-lib/metadata/Field";
 import type Table from "metabase-lib/metadata/Table";
@@ -39,17 +39,18 @@ function getFieldsForSourceQueryTable(
   const metadata = originalQuery.metadata();
   return sourceQuery.columns().map(column => {
     // Not sure why we build out `id` like this, but it's what the old code did
-    const id: FieldRef = [
+    const id: FieldReference = [
       "field",
       column.name,
       {
-        "base-type": column.base_type,
+        "base-type": column.base_type as string,
       },
     ];
 
     const virtualField = createVirtualField({
       ...column,
       id,
+      source: "fields",
       query: originalQuery,
       metadata,
     });
@@ -65,7 +66,7 @@ function getSourceQueryTable(query: StructuredQuery): Table {
 
   return createVirtualTable({
     id: sourceTableId,
-    db: sourceQuery.database(),
+    db: sourceQuery.database() ?? undefined,
     fields,
     metadata: sourceQuery.metadata(),
     // intentionally set these to "" so that we fallback to a title of "Previous results" in join steps

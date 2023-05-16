@@ -7,7 +7,6 @@
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
    [clojure.test :as t]
-   [clojure.tools.logging :as log]
    [java-time]
    [metabase.config :as config]
    [metabase.server.middleware.session :as mw.session]
@@ -15,9 +14,12 @@
    [metabase.test.initialize :as initialize]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [ring.util.codec :as codec]
    [schema.core :as schema]))
+
+(set! *warn-on-reflection* true)
 
 ;;; build-url
 
@@ -34,11 +36,10 @@
   (str *url-prefix* url (when (seq query-parameters)
                           (str "?" (str/join \& (letfn [(url-encode [s]
                                                           (cond-> s
-                                                            (keyword? s) u/qualified-name
-                                                            true         codec/url-encode))]
+                                                            (keyword? s)       u/qualified-name
+                                                            true               codec/url-encode))]
                                                   (for [[k v] query-parameters]
                                                     (str (url-encode k) \= (url-encode v)))))))))
-
 
 ;;; parse-response
 
@@ -123,7 +124,7 @@
       (or (:id response)
           (throw (ex-info "Unexpected response" {:response response}))))
     (catch Throwable e
-      (println "Failed to authenticate with credentials" credentials e)
+      (log/errorf "Failed to authenticate with credentials %s %s" credentials e)
       (throw (ex-info "Failed to authenticate with credentials"
                       {:credentials credentials}
                       e)))))
@@ -197,7 +198,7 @@
         request-map (merge (build-request-map credentials http-body) request-options)
         request-fn  (method->request-fn method)
         url         (build-url url query-parameters)
-        method-name (str/upper-case (name method))
+        method-name (u/upper-case-en (name method))
         _           (log/debug method-name (pr-str url) (pr-str request-map))
         thunk       (fn []
                       (try
@@ -247,7 +248,7 @@
   {:arglists '([credentials? method expected-status-code? url request-options? http-body-map? & query-parameters])}
   [& args]
   (let [parsed (parse-http-client-args args)]
-    (log/trace (pr-str (parse-http-client-args args)))
+    (log/trace parsed)
     (u/with-timeout response-timeout-ms
       (-client parsed))))
 

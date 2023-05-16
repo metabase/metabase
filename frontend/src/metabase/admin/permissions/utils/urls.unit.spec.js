@@ -22,7 +22,7 @@ describe("getDatabaseFocusPermissionsUrl", () => {
     expect(url).toEqual("/admin/permissions/data/database/1/schema/my_schema");
   });
 
-  it("when entityId is a schema id it returns database permissions url", () => {
+  it("when entityId is a sub-schema id it returns database permissions url", () => {
     const url = getDatabaseFocusPermissionsUrl({
       databaseId: 1,
       schemaName: "my_schemas/schema",

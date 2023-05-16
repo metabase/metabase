@@ -164,6 +164,16 @@ describe("metabase-lib/expressions/resolve", () => {
       expect(() => expr(["concat", ["coalesce", "B", 1]])).not.toThrow();
     });
 
+    describe("arg validation", () => {
+      it("should not allow substring with index=0", () => {
+        expect(() => expr(["substring", "foo", 0, 1])).toThrow();
+      });
+
+      it("should allow substring with index=1", () => {
+        expect(() => expr(["substring", "foo", 1, 1])).not.toThrow();
+      });
+    });
+
     describe("datetime functions", () => {
       it("should resolve unchained functions", () => {
         expect(() => expr(["get-week", "2022-01-01"])).not.toThrow();
@@ -253,9 +263,9 @@ describe("metabase-lib/expressions/resolve", () => {
 
     it("should handle Distinct/Min/Max aggregating over non-numbers", () => {
       // DISTINCT(COALESCE("F")) also for MIN and MAX
-      expect(() => aggregation(["distinct", ["coalesce", "F"]]).not.toThrow());
-      expect(() => aggregation(["min", ["coalesce", "F"]]).not.toThrow());
-      expect(() => aggregation(["max", ["coalesce", "F"]]).not.toThrow());
+      expect(() => aggregation(["distinct", ["coalesce", "F"]])).not.toThrow();
+      expect(() => aggregation(["min", ["coalesce", "F"]])).not.toThrow();
+      expect(() => aggregation(["max", ["coalesce", "F"]])).not.toThrow();
     });
   });
 

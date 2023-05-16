@@ -1,5 +1,4 @@
 import React from "react";
-import _ from "underscore";
 
 import Icon from "metabase/components/Icon";
 import { TabBar, Tab, RadioInput } from "./EditorTabs.styled";
@@ -54,4 +53,5 @@ function EditorTabs({ currentTab, options, onChange, ...props }: Props) {
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default EditorTabs;

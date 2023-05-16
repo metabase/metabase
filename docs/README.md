@@ -9,6 +9,8 @@ redirect_from:
 
 # Metabase documentation
 
+![Metabase dashboard](./images/metabase-product-screenshot.png)
+
 Metabase is an open-source business intelligence platform. You can use Metabase to ask questions about your data, or embed Metabase in your app to let your customers explore their data on their own.
 
 ## First steps
@@ -51,6 +53,8 @@ Metabase's reference documentation.
 
 - [Databases overview](./databases/start.md)
 - [Adding and managing databases](./databases/connecting.md)
+- [Database users, roles, and privileges](./databases/users-roles-privileges.md)
+- [Syncing and scanning databases](./databases/sync-scan.md)
 - [Encrypting your database connection](./databases/encrypting-details-at-rest.md)
 - [SSH tunneling](./databases/ssh-tunnel.md)
 - [SSL certificate](./databases/ssl-certificates.md)
@@ -78,7 +82,7 @@ Metabase's reference documentation.
 #### Sharing
 
 - [Sharing answers](./questions/sharing/answers.md)
-- [Setting and getting alerts](./questions/sharing/alerts.md)
+- [Alerts](./questions/sharing/alerts.md)
 - [Public sharing](./questions/sharing/public-links.md)
 
 ### Dashboards
@@ -89,15 +93,23 @@ Metabase's reference documentation.
 - [Interactive dashboards](./dashboards/interactive.md)
 - [Charts with multiple series](./dashboards/multiple-series.md)
 - [Dashboard subscriptions](./dashboards/subscriptions.md)
+- [Actions on dashboards](./dashboards/actions.md)
 
 ### Data modeling
 
 - [Data modeling overview](./data-modeling/start.md)
 - [Models](./data-modeling/models.md)
-- [Metadata editing](./data-modeling/metadata-editing.md)
+- [Data model admin settings](./data-modeling/metadata-editing.md)
 - [Field types](./data-modeling/field-types.md)
 - [Formatting defaults](./data-modeling/formatting.md)
 - [Segments and metrics](./data-modeling/segments-and-metrics.md)
+
+### Actions
+
+- [Actions overview](./actions/start.md)
+- [Introduction to actions](./actions/introduction.md)
+- [Basic actions](./actions/basic.md)
+- [Custom actions](./actions/custom.md)
 
 ### Organization
 
@@ -136,6 +148,7 @@ Metabase's reference documentation.
 - [Collection permissions](./permissions/collections.md)
 - [Application permissions](./permissions/application.md)
 - [Data sandboxes](./permissions/data-sandboxes.md)
+- [Data sandbox examples](./permissions/data-sandbox-examples.md)
 - [SQL snippets folder permissions](./permissions/snippets.md)
 
 ### Embedding
@@ -169,6 +182,10 @@ Metabase's reference documentation.
 - [Auditing tools](./usage-and-performance-tools/audit.md)
 - [Admin tools](./usage-and-performance-tools/tools.md)
 
+### Cloud
+
+- [Documentation for Metabase Cloud and Store](https://www.metabase.com/docs/latest/cloud/start)
+
 ### Metabase API
 
 - [Metabase API documentation](./api-documentation.md)
@@ -182,6 +199,10 @@ Metabase's reference documentation.
 
 - [Developer guide](./developers-guide/start.md)
 
+### Paid features
+
+Some Metabase plans offer [additional features](./paid-features/start.md).
+
 ## Getting help
 
 ### Troubleshooting
@@ -190,23 +211,15 @@ Metabase's reference documentation.
 - [Metabase forum](https://discourse.metabase.com/)
 - [Configuring logging](./configuring-metabase/log-configuration.md)
 
-### [Tutorials and guides](https://www.metabase.com/learn)
+### Tutorials and guides
 
 [Learn Metabase](https://www.metabase.com/learn) has a ton of articles on how to use Metabase, data best practices, and more.
 
 ## More resources
 
-### [Learn Metabase](https://www.metabase.com/learn)
-
-Guides on working with data.
-
 ### [Discussion](https://discourse.metabase.com)
 
 Share and connect with other Metabasers.
-
-### [Paid features](./paid-features/start.md)
-
-Some [Metabase plans](https://www.metabase.com/pricing) offer additional features.
 
 ### [Metabase Cloud](https://www.metabase.com/cloud/docs)
 
@@ -231,6 +244,10 @@ We tweet stuff.
 ### [Source code repository on GitHub](https://github.com/metabase/metabase)
 
 Follow us on GitHub.
+
+### [List of releases](./releases.md)
+
+A list of all Metabase releases, including both the Enterprise Edition and the Open Source Edition.
 
 ### [Developers guide](./developers-guide/start.md)
 

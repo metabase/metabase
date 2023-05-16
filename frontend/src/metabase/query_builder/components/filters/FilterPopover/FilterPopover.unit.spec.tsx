@@ -1,7 +1,7 @@
 import "__support__/ui-mocks";
 import React from "react";
 
-import { fireEvent, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders } from "__support__/ui";
@@ -51,7 +51,7 @@ describe("FilterPopover", () => {
           />,
         );
 
-        screen.getByTestId("date-picker");
+        expect(screen.getByTestId("date-picker")).toBeInTheDocument();
       });
     });
     describe("filter operator selection", () => {
@@ -64,8 +64,8 @@ describe("FilterPopover", () => {
             onChangeFilter={dummyFunction}
           />,
         );
-        screen.getByText("Equal to");
-        screen.getByText("1,234");
+        expect(screen.getByText("Equal to")).toBeInTheDocument();
+        expect(screen.getByText("1,234")).toBeInTheDocument();
       });
     });
     describe("filter options", () => {
@@ -79,8 +79,8 @@ describe("FilterPopover", () => {
             onChangeFilter={dummyFunction}
           />,
         );
-        expect(screen.queryByText("Include")).toBeNull();
-        expect(screen.queryByText("today")).toBeNull();
+        expect(screen.queryByText("Include")).not.toBeInTheDocument();
+        expect(screen.queryByText("today")).not.toBeInTheDocument();
       });
 
       it('should show "case-sensitive" option to the user for "contains" filters', () => {
@@ -92,11 +92,12 @@ describe("FilterPopover", () => {
             onChangeFilter={dummyFunction}
           />,
         );
-        screen.getByText("Case sensitive");
+        expect(screen.getByText("Case sensitive")).toBeInTheDocument();
       });
 
       // Note: couldn't get it to work with React Testing library no matter what!
       // Tried to click on checkbox, label, their parent - nothing seems to be working, while it works fine in UI
+      // eslint-disable-next-line jest/no-disabled-tests, jest/expect-expect
       it.skip("should let the user toggle an option", async () => {
         const filter = new Filter(RELATIVE_DAY_FILTER, null, QUERY);
         renderWithProviders(
@@ -107,11 +108,12 @@ describe("FilterPopover", () => {
           />,
         );
         const ellipsis = screen.getByLabelText("ellipsis icon");
-        fireEvent.click(ellipsis);
+        userEvent.click(ellipsis);
         const includeToday = await screen.findByText("Include today");
-        fireEvent.click(includeToday);
+        userEvent.click(includeToday);
       });
 
+      // eslint-disable-next-line jest/no-disabled-tests
       it.skip("should let the user toggle a date filter type", async () => {
         const filter = new Filter(RELATIVE_DAY_FILTER, null, QUERY);
         renderWithProviders(
@@ -123,9 +125,12 @@ describe("FilterPopover", () => {
         );
         const back = screen.getByLabelText("chevronleft icon");
         userEvent.click(back);
-        await screen.findByTestId("date-picker-shortcuts");
+        expect(
+          await screen.findByTestId("date-picker-shortcuts"),
+        ).toBeInTheDocument();
       });
 
+      // eslint-disable-next-line jest/no-disabled-tests
       it.skip("should let the user toggle a text filter type", async () => {
         const filter = new Filter(STRING_CONTAINS_FILTER, null, QUERY);
         renderWithProviders(
@@ -138,7 +143,9 @@ describe("FilterPopover", () => {
         userEvent.click(await screen.findByText("Contains"));
         userEvent.click(await screen.findByText("Is"));
 
-        await screen.findByTestId("date-picker-shortcuts");
+        expect(
+          await screen.findByTestId("date-picker-shortcuts"),
+        ).toBeInTheDocument();
       });
     });
   });

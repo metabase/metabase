@@ -26,8 +26,8 @@ export const colors = {
   error: "#ED6E6E",
   warning: "#F9CF48",
   "text-dark": "#4C5773",
-  "text-medium": "#949AAB",
-  "text-light": "#B8BBC3",
+  "text-medium": "#696E7B",
+  "text-light": "#949AAB",
   "text-white": "#FFFFFF",
   "bg-black": "#2E353B",
   "bg-dark": "#93A1AB",
@@ -59,6 +59,7 @@ const aliases: Record<string, (palette: ColorPalette) => string> = {
   pulse: palette => color("accent4", palette),
 
   "brand-light": palette => lighten(color("brand", palette), 0.532),
+  "brand-lighter": palette => lighten(color("brand", palette), 0.598), // #EEF6FC for brand
   focus: palette => getFocusColor("brand", palette),
 
   "accent0-light": palette => tint(color(`accent0`, palette)),

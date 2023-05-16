@@ -12,6 +12,7 @@
    [metabase.mbql.util.match :as mbql.match]
    [metabase.models.humanization :as humanization]
    [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.middleware.escape-join-aliases :as escape-join-aliases]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util :as qp.util]
@@ -695,12 +696,19 @@
 (defn add-column-info
   "Middleware for adding type information about the columns in the query results (the `:cols` key)."
   [{query-type :type, :as query
-    {:keys [:metadata/dataset-metadata]} :info} rff]
+    {:keys [:metadata/dataset-metadata :alias/escaped->original]} :info} rff]
   (fn add-column-info-rff* [metadata]
-    (if (= query-type :query)
-      (rff (cond-> (assoc metadata :cols (merged-column-info query metadata))
-             (seq dataset-metadata)
-             (update :cols qp.util/combine-metadata dataset-metadata)))
+    (if (and (= query-type :query)
+             ;; we should have type metadata eiter in the query fields
+             ;; or in the result metadata for the following code to work
+             (or (->> query :query keys (some #{:aggregation :breakout :fields}))
+                 (every? :base_type (:cols metadata))))
+      (let [query (cond-> query
+                    (seq escaped->original) ;; if we replaced aliases, restore them
+                    (escape-join-aliases/restore-aliases escaped->original))]
+        (rff (cond-> (assoc metadata :cols (merged-column-info query metadata))
+               (seq dataset-metadata)
+               (update :cols qp.util/combine-metadata dataset-metadata))))
       ;; rows sampling is only needed for native queries! TODO ­ not sure we really even need to do for native
       ;; queries...
       (let [metadata (cond-> (update metadata :cols annotate-native-cols)

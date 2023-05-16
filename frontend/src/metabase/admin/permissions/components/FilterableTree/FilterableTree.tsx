@@ -76,7 +76,7 @@ export const FilterableTree = ({
                 {/* @ts-ignore */}
                 <EmptyState
                   message={emptyState?.text ?? t`Nothing here`}
-                  icon={emptyState?.icon ?? "all"}
+                  icon={emptyState?.icon ?? "folder"}
                 />
               </EmptyStateContainer>
             }

@@ -2,7 +2,9 @@
 import React from "react";
 
 import cx from "classnames";
-import Select, { Option } from "metabase/core/components/Select";
+import { Option } from "metabase/core/components/Select";
+
+import { SelectWithHighlightingIcon } from "./ChartSettingSelect.styled";
 
 const ChartSettingSelect = ({
   // Use null if value is undefined. If we pass undefined, Select will create an
@@ -16,7 +18,7 @@ const ChartSettingSelect = ({
   placeholderNoOptions,
   ...props
 }) => (
-  <Select
+  <SelectWithHighlightingIcon
     className={cx(className, "block")}
     disabled={
       options.length === 0 ||
@@ -33,7 +35,7 @@ const ChartSettingSelect = ({
         {option.name}
       </Option>
     ))}
-  </Select>
+  </SelectWithHighlightingIcon>
 );
 
 export default ChartSettingSelect;

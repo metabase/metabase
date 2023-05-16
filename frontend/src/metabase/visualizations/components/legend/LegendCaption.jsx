@@ -1,7 +1,8 @@
 import React from "react";
 import PropTypes from "prop-types";
 import { iconPropTypes } from "metabase/components/Icon";
-import Tooltip from "metabase/components/Tooltip";
+import Tooltip from "metabase/core/components/Tooltip";
+import Markdown from "metabase/core/components/Markdown";
 import Ellipsified from "metabase/core/components/Ellipsified";
 import LegendActions from "./LegendActions";
 import {
@@ -9,6 +10,7 @@ import {
   LegendDescriptionIcon,
   LegendLabel,
   LegendLabelIcon,
+  LegendRightContent,
 } from "./LegendCaption.styled";
 
 const propTypes = {
@@ -37,12 +39,21 @@ const LegendCaption = ({
       >
         <Ellipsified>{title}</Ellipsified>
       </LegendLabel>
-      {description && (
-        <Tooltip tooltip={description} maxWidth="22em">
-          <LegendDescriptionIcon className="hover-child" />
-        </Tooltip>
-      )}
-      {actionButtons && <LegendActions>{actionButtons}</LegendActions>}
+      <LegendRightContent>
+        {description && (
+          <Tooltip
+            tooltip={
+              <Markdown disallowHeading unstyleLinks>
+                {description}
+              </Markdown>
+            }
+            maxWidth="22em"
+          >
+            <LegendDescriptionIcon className="hover-child hover-child--smooth" />
+          </Tooltip>
+        )}
+        {actionButtons && <LegendActions>{actionButtons}</LegendActions>}
+      </LegendRightContent>
     </LegendCaptionRoot>
   );
 };

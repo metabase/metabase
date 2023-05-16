@@ -1,6 +1,6 @@
-import { createSelector } from "reselect";
+import { createSelector } from "@reduxjs/toolkit";
 
-import type { Settings, SettingKey } from "metabase-types/api";
+import type { Settings, SettingKey, TokenFeatures } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 export const getSettings = createSelector(
@@ -12,3 +12,31 @@ export const getSetting = <T extends SettingKey>(
   state: State,
   key: T,
 ): Settings[T] => getSettings(state)[key];
+
+interface UpgradeUrlOpts {
+  utm_media: string;
+}
+
+export const getUpgradeUrl = createSelector(
+  (state: State) => getUtmSource(getSetting(state, "token-features")),
+  (state: State) => getSetting(state, "active-users-count"),
+  (state: State, opts: UpgradeUrlOpts) => opts.utm_media,
+  (source, count, media) => {
+    const url = new URL("https://www.metabase.com/upgrade");
+    url.searchParams.append("utm_media", media);
+    url.searchParams.append("utm_source", source);
+    if (count != null) {
+      url.searchParams.append("utm_users", String(count));
+    }
+
+    return url.toString();
+  },
+);
+
+const getUtmSource = (features: TokenFeatures) => {
+  if (features.sso) {
+    return features.hosting ? "pro-cloud" : "pro-self-hosted";
+  } else {
+    return features.hosting ? "starter" : "oss";
+  }
+};

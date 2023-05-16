@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import ReactDOM from "react-dom";
 import PropTypes from "prop-types";
@@ -6,15 +5,15 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import Icon from "metabase/components/Icon";
-import Tooltip from "metabase/components/Tooltip";
+import Tooltip from "metabase/core/components/Tooltip";
 
 import * as AGGREGATION from "metabase-lib/queries/utils/aggregation";
 import Aggregation from "metabase-lib/queries/structured/Aggregation";
+import ExpressionWidget from "../expressions/ExpressionWidget";
+import ExpressionWidgetHeader from "../expressions/ExpressionWidgetHeader";
 import QueryDefinitionTooltip from "../QueryDefinitionTooltip";
-import ExpressionPopover from "../ExpressionPopover";
 
 import {
-  ExpressionPopoverRoot,
   AggregationItemList,
   AggregationFieldList,
 } from "./AggregationPopover.styled";
@@ -46,16 +45,12 @@ export default class AggregationPopover extends Component {
   static propTypes = {
     aggregation: PropTypes.array,
     onChangeAggregation: PropTypes.func.isRequired,
-    onClose: PropTypes.func.isRequired,
+    onClose: PropTypes.func,
 
     query: PropTypes.object,
 
     // passing a dimension disables the field picker and only shows relevant aggregations
     dimension: PropTypes.object,
-
-    // DEPRECATED: replaced with `query`
-    tableMetadata: PropTypes.object,
-    datasetQuery: PropTypes.object,
 
     aggregationOperators: PropTypes.array,
 
@@ -64,6 +59,8 @@ export default class AggregationPopover extends Component {
     showRawData: PropTypes.bool,
 
     width: PropTypes.number,
+    maxHeight: PropTypes.number,
+    alwaysExpanded: PropTypes.bool,
   };
 
   static defaultProps = {
@@ -146,7 +143,7 @@ export default class AggregationPopover extends Component {
     return (
       aggregationOperators ||
       dimension?.aggregationOperators() ||
-      query.table().aggregationOperators()
+      query.aggregationOperators()
     ).filter(
       aggregationOperator =>
         showRawData || aggregationOperator.short !== "rows",
@@ -317,6 +314,13 @@ export default class AggregationPopover extends Component {
     }));
   }
 
+  onChangeExpression = (name, expression) => {
+    const aggregation = AGGREGATION.setName(expression, name);
+
+    this.setState({ aggregation });
+    this.commitAggregation(aggregation);
+  };
+
   render() {
     const { query } = this.props;
     const table = query.table();
@@ -327,35 +331,20 @@ export default class AggregationPopover extends Component {
 
     if (editingAggregation) {
       return (
-        <ExpressionPopoverRoot>
-          <ExpressionPopover
-            title={CUSTOM_SECTION_NAME}
-            query={query}
-            expression={aggregation}
-            startRule="aggregation"
-            onChange={parsedExpression =>
-              this.setState({
-                aggregation: AGGREGATION.setContent(
-                  this.state.aggregation,
-                  parsedExpression,
-                ),
-                error: null,
-              })
-            }
-            onBack={this.onClearAggregation}
-            onDone={() => this.commitAggregation(this.state.aggregation)}
-            name={AGGREGATION.getName(this.state.aggregation)}
-            onChangeName={name =>
-              this.setState({
-                aggregation: name
-                  ? AGGREGATION.setName(aggregation, name)
-                  : aggregation,
-              })
-            }
-          />
-        </ExpressionPopoverRoot>
+        <ExpressionWidget
+          name={AGGREGATION.getName(this.state.aggregation)}
+          query={query}
+          expression={aggregation}
+          withName
+          startRule="aggregation"
+          header={<ExpressionWidgetHeader onBack={this.onClearAggregation} />}
+          onChangeExpression={this.onChangeExpression}
+          onClose={this.onClearAggregation}
+        />
       );
-    } else if (choosingField) {
+    }
+
+    if (choosingField) {
       const [agg, fieldId] = aggregation;
       return (
         <div style={{ minWidth: 300 }}>
@@ -383,27 +372,27 @@ export default class AggregationPopover extends Component {
           />
         </div>
       );
-    } else {
-      return (
-        <AggregationItemList
-          width={this.props.width}
-          maxHeight={this.props.maxHeight}
-          alwaysExpanded={this.props.alwaysExpanded}
-          sections={sections}
-          onChange={this.onPickAggregation}
-          itemIsSelected={this.itemIsSelected.bind(this)}
-          renderSectionIcon={section => <Icon name={section.icon} size={18} />}
-          renderItemExtra={this.renderItemExtra.bind(this)}
-          getItemClassName={item =>
-            item.metric?.archived ? "text-medium" : null
-          }
-          onChangeSection={(section, sectionIndex) => {
-            if (section.custom) {
-              this.onPickAggregation({ custom: true });
-            }
-          }}
-        />
-      );
     }
+
+    return (
+      <AggregationItemList
+        width={this.props.width}
+        maxHeight={this.props.maxHeight}
+        alwaysExpanded={this.props.alwaysExpanded}
+        sections={sections}
+        onChange={this.onPickAggregation}
+        itemIsSelected={this.itemIsSelected.bind(this)}
+        renderSectionIcon={section => <Icon name={section.icon} size={18} />}
+        renderItemExtra={this.renderItemExtra.bind(this)}
+        getItemClassName={item =>
+          item.metric?.archived ? "text-medium" : null
+        }
+        onChangeSection={(section, sectionIndex) => {
+          if (section.custom) {
+            this.onPickAggregation({ custom: true });
+          }
+        }}
+      />
+    );
   }
 }

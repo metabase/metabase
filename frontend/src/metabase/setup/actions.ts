@@ -16,7 +16,7 @@ export const SET_LOCALE_LOADED = "metabase/setup/SET_LOCALE_LOADED";
 export const setLocale = createThunkAction(
   SET_LOCALE_LOADED,
   (locale: Locale) => async (dispatch: any) => {
-    dispatch.action(SET_LOCALE, locale);
+    dispatch({ type: SET_LOCALE, payload: locale });
     await loadLocalization(locale.code);
   },
 );
@@ -52,7 +52,7 @@ export const LOAD_LOCALE_DEFAULTS = "metabase/setup/LOAD_LOCALE_DEFAULTS";
 export const loadLocaleDefaults = createThunkAction(
   LOAD_LOCALE_DEFAULTS,
   () => async (dispatch: any) => {
-    const data = MetabaseSettings.get("available-locales");
+    const data = MetabaseSettings.get("available-locales") || [];
     const locale = getDefaultLocale(getLocales(data));
     await dispatch(setLocale(locale));
   },

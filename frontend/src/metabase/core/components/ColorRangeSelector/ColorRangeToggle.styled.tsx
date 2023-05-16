@@ -8,6 +8,7 @@ export const ToggleRoot = styled.div`
 
 export const ToggleColorRange = styled(ColorRange)`
   flex: 1 1 auto;
+  cursor: default;
 `;
 
 export const ToggleButton = styled(Button)`

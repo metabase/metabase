@@ -7,11 +7,11 @@
    [metabase.test :as mt]
    [metabase.test.data :as data]
    [metabase.util :as u]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (deftest with-temp-vals-in-db-test
   (testing "let's make sure this acutally works right!"
-    (let [position #(db/select-one-field :position Field :id (data/id :venues :price))]
+    (let [position #(t2/select-one-fn :position Field :id (data/id :venues :price))]
       (mt/with-temp-vals-in-db Field (data/id :venues :price) {:position -1}
         (is (= -1
                (position))))
@@ -23,7 +23,7 @@
      (mt/with-temp-vals-in-db Field (data/id :venues :price) {:position -1}
        (throw (Exception.))))
     (is (= 5
-           (db/select-one-field :position Field :id (data/id :venues :price))))))
+           (t2/select-one-fn :position Field :id (data/id :venues :price))))))
 
 (setting/defsetting test-util-test-setting
   "Another internal test setting"

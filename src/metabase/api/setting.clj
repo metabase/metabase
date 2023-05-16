@@ -5,6 +5,7 @@
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.models.setting :as setting]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]))
 
 (defn- do-with-setting-access-control
@@ -24,13 +25,15 @@
   `(do-with-setting-access-control (fn [] ~@body)))
 
 ;; TODO: deprecate /api/session/properties and have a single endpoint for listing settings
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/"
   "Get all `Settings` and their values. You must be a superuser or have `setting` permission to do this.
   For non-superusers, a list of visible settings and values can be retrieved using the /api/session/properties endpoint."
   []
   (validation/check-has-application-permission :setting)
-  (setting/admin-writable-settings))
+  (setting/writable-settings))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema PUT "/"
   "Update multiple `Settings` values. If called by a non-superuser, only user-local settings can be updated."
   [:as {settings :body}]
@@ -38,13 +41,14 @@
     (setting/set-many! settings))
   api/generic-204-no-content)
 
-(api/defendpoint-schema GET "/:key"
+(api/defendpoint GET "/:key"
   "Fetch a single `Setting`."
   [key]
-  {key su/NonBlankString}
+  {key ms/NonBlankString}
   (with-setting-access-control
     (setting/user-facing-value key)))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema PUT "/:key"
   "Create/update a `Setting`. If called by a non-admin, only user-local settings can be updated.
    This endpoint can also be used to delete Settings by passing `nil` for `:value`."

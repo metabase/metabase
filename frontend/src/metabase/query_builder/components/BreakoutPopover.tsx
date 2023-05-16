@@ -1,6 +1,6 @@
 import React from "react";
 
-import type Field from "metabase-lib/metadata/Field";
+import type { ConcreteFieldReference } from "metabase-types/api";
 import type Breakout from "metabase-lib/queries/structured/Breakout";
 import type DimensionOptions from "metabase-lib/DimensionOptions";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
@@ -11,12 +11,12 @@ interface BreakoutPopoverProps {
   className?: string;
   query: StructuredQuery;
   breakout?: Breakout;
-  breakoutOptions: DimensionOptions;
+  breakoutOptions?: DimensionOptions;
   width?: number;
   maxHeight?: number;
   alwaysExpanded?: boolean;
-  onChangeBreakout: (breakout: Field) => void;
-  onClose: () => void;
+  onChangeBreakout: (breakout: ConcreteFieldReference) => void;
+  onClose?: () => void;
 }
 
 const BreakoutPopover = ({
@@ -46,7 +46,7 @@ const BreakoutPopover = ({
       query={query}
       metadata={query.metadata()}
       fieldOptions={fieldOptions}
-      onFieldChange={(field: Field) => {
+      onFieldChange={(field: ConcreteFieldReference) => {
         onChangeBreakout(field);
         if (onClose) {
           onClose();
@@ -61,4 +61,5 @@ const BreakoutPopover = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default BreakoutPopover;

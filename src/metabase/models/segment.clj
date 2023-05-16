@@ -4,15 +4,24 @@
   (:require
    [clojure.set :as set]
    [medley.core :as m]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.query :as lib.query]
+   [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.mbql.util :as mbql.u]
    [metabase.models.interface :as mi]
    [metabase.models.revision :as revision]
-   [metabase.models.serialization.base :as serdes.base]
-   [metabase.models.serialization.hash :as serdes.hash]
-   [metabase.models.serialization.util :as serdes.util]
+   [metabase.models.serialization :as serdes]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [toucan.db :as db]
-   [toucan.models :as models]))
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   [methodical.core :as methodical]
+   [toucan.models :as models]
+   [toucan2.core :as t2]
+   [toucan2.tools.hydrate :as t2.hydrate]))
 
 (models/defmodel Segment :segment)
 
@@ -25,28 +34,55 @@
   (u/prog1 updates
     ;; throw an Exception if someone tries to update creator_id
     (when (contains? updates :creator_id)
-      (when (not= creator_id (db/select-one-field :creator_id Segment :id id))
+      (when (not= creator_id (t2/select-one-fn :creator_id Segment :id id))
         (throw (UnsupportedOperationException. (tru "You cannot update the creator_id of a Segment.")))))))
 
 (defmethod mi/perms-objects-set Segment
   [segment read-or-write]
   (let [table (or (:table segment)
-                  (db/select-one ['Table :db_id :schema :id] :id (u/the-id (:table_id segment))))]
+                  (t2/select-one ['Table :db_id :schema :id] :id (u/the-id (:table_id segment))))]
     (mi/perms-objects-set table read-or-write)))
 
-(u/strict-extend #_{:clj-kondo/ignore [:metabase/disallow-class-or-type-on-model]} (class Segment)
-  models/IModel
-  (merge
-   models/IModelDefaults
-   {:types          (constantly {:definition :metric-segment-definition})
-    :properties     (constantly {:timestamped? true
-                                 :entity_id    true})
-    :hydration-keys (constantly [:segment])
-    :pre-update     pre-update}))
+(mi/define-methods
+ Segment
+ {:types          (constantly {:definition :metric-segment-definition})
+  :properties     (constantly {::mi/timestamped? true
+                               ::mi/entity-id    true})
+  :hydration-keys (constantly [:segment])
+  :pre-update     pre-update})
 
-(defmethod serdes.hash/identity-hash-fields Segment
-  [_segment]
-  [:name (serdes.hash/hydrated-hash :table) :created_at])
+(mu/defn ^:private definition-description :- [:maybe ::lib.schema.common/non-blank-string]
+  "Calculate a nice description of a Segment's definition."
+  [metadata-provider :- lib.metadata/MetadataProvider
+   {table-id :table_id, :keys [definition], :as _segment}]
+  (when (seq definition)
+    (when-let [{database-id :db-id} (when table-id (lib.metadata.protocols/table metadata-provider table-id))]
+      (try
+        (let [definition (merge {:source-table table-id}
+                                definition)
+              query      (lib.query/query-from-legacy-inner-query metadata-provider database-id definition)]
+          (lib/describe-top-level-key query :filters))
+        (catch Throwable e
+          (log/error e (tru "Error calculating Segment description: {0}" (ex-message e)))
+          nil)))))
+
+(defn- warmed-metadata-provider [segments]
+  (let [metadata-provider (doto (lib.metadata.jvm/application-database-metadata-provider)
+                            (lib.metadata.protocols/store-metadatas! :metadata/segment segments))
+        field-ids         (mbql.u/referenced-field-ids (map :definition segments))
+        fields            (lib.metadata.protocols/bulk-metadata metadata-provider :metadata/field field-ids)
+        table-ids         (into #{}
+                                (comp cat (map :table_id))
+                                [fields segments])]
+    ;; this is done for side effects
+    (lib.metadata.protocols/bulk-metadata metadata-provider :metadata/table table-ids)
+    metadata-provider))
+
+(methodical/defmethod t2.hydrate/batched-hydrate [Segment :definition_description]
+  [_model _key segments]
+  (let [metadata-provider (warmed-metadata-provider segments)]
+    (for [segment segments]
+      (assoc segment :definition_description (definition-description metadata-provider segment)))))
 
 
 ;;; --------------------------------------------------- Revisions ----------------------------------------------------
@@ -74,30 +110,33 @@
 
 
 ;;; ------------------------------------------------ Serialization ---------------------------------------------------
-(defmethod serdes.base/extract-one "Segment"
+
+(defmethod serdes/hash-fields Segment
+  [_segment]
+  [:name (serdes/hydrated-hash :table) :created_at])
+
+(defmethod serdes/extract-one "Segment"
   [_model-name _opts segment]
-  (-> (serdes.base/extract-one-basics "Segment" segment)
-      (update :table_id   serdes.util/export-table-fk)
-      (update :creator_id serdes.util/export-user)
-      (update :definition serdes.util/export-mbql)))
+  (-> (serdes/extract-one-basics "Segment" segment)
+      (update :table_id   serdes/*export-table-fk*)
+      (update :creator_id serdes/*export-user*)
+      (update :definition serdes/export-mbql)))
 
-(defmethod serdes.base/load-xform "Segment" [segment]
+(defmethod serdes/load-xform "Segment" [segment]
   (-> segment
-      serdes.base/load-xform-basics
-      (update :table_id   serdes.util/import-table-fk)
-      (update :creator_id serdes.util/import-user)
-      (update :definition serdes.util/import-mbql)))
+      serdes/load-xform-basics
+      (update :table_id   serdes/*import-table-fk*)
+      (update :creator_id serdes/*import-user*)
+      (update :definition serdes/import-mbql)))
 
-(defmethod serdes.base/serdes-dependencies "Segment" [{:keys [definition table_id]}]
-  (into [] (set/union #{(serdes.util/table->path table_id)}
-                      (serdes.util/mbql-deps definition))))
+(defmethod serdes/dependencies "Segment" [{:keys [definition table_id]}]
+  (into [] (set/union #{(serdes/table->path table_id)}
+                      (serdes/mbql-deps definition))))
 
-(defmethod serdes.base/storage-path "Segment" [segment _ctx]
-  (let [{:keys [id label]} (-> segment serdes.base/serdes-path last)]
+(defmethod serdes/storage-path "Segment" [segment _ctx]
+  (let [{:keys [id label]} (-> segment serdes/path last)]
     (-> segment
         :table_id
-        serdes.util/table->path
-        serdes.util/storage-table-path-prefix
-        (concat ["segments" (serdes.base/storage-leaf-file-name id label)]))))
-
-(serdes.base/register-ingestion-path! "Segment" (serdes.base/ingestion-matcher-collected "databases" "Segment"))
+        serdes/table->path
+        serdes/storage-table-path-prefix
+        (concat ["segments" (serdes/storage-leaf-file-name id label)]))))

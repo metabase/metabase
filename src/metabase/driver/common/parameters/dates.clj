@@ -15,6 +15,8 @@
   (:import
    (java.time.temporal Temporal)))
 
+(set! *warn-on-reflection* true)
+
 (s/defn date-type?
   "Is param type `:date` or some subtype like `:date/month-year`?"
   [param-type :- s/Keyword]

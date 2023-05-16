@@ -1,4 +1,4 @@
-(ns metabase.async.streaming-response-test
+(ns ^:mb/once metabase.async.streaming-response-test
   (:require
    [clj-http.client :as http]
    [clojure.core.async :as a]
@@ -13,8 +13,12 @@
    [metabase.test :as mt]
    [metabase.util :as u])
   (:import
+   (jakarta.servlet AsyncContext ServletOutputStream)
+   (jakarta.servlet.http HttpServletResponse)
    (java.util.concurrent Executors)
    (org.apache.commons.lang3.concurrent BasicThreadFactory$Builder)))
+
+(set! *warn-on-reflection* true)
 
 (driver/register! ::test-driver)
 
@@ -67,7 +71,7 @@
                 (try
                   (when-let [chan @start-execution-chan]
                     (a/>!! chan ::started))
-                  (Thread/sleep sleep)
+                  (Thread/sleep (long sleep))
                   (respond {:cols [{:name "Sleep", :base_type :type/Integer}]} [[sleep]])
                   (catch InterruptedException e
                     (reset! canceled? true)
@@ -138,7 +142,7 @@
                    (loop [[wait & more] (repeat 10 50)]
                      (or @canceled?
                          (when wait
-                           (Thread/sleep wait)
+                           (Thread/sleep (long wait))
                            (recur more))))))))))))
 
 (def ^:private ^:dynamic *number-of-cans* nil)
@@ -151,16 +155,16 @@
                                    (.write os (.getBytes (format "%s cans" *number-of-cans*) "UTF-8"))))
             complete-promise   (promise)]
         (server.protocols/respond streaming-response
-                                  {:response      (reify javax.servlet.http.HttpServletResponse
+                                  {:response      (reify HttpServletResponse
                                                     (setStatus [_ _])
                                                     (getOutputStream [_]
-                                                      (proxy [javax.servlet.ServletOutputStream] []
+                                                      (proxy [ServletOutputStream] []
                                                         (write
                                                           ([byytes]
                                                            (.write os ^bytes byytes))
                                                           ([byytes offset length]
                                                            (.write os ^bytes byytes offset length))))))
-                                   :async-context (reify javax.servlet.AsyncContext
+                                   :async-context (reify AsyncContext
                                                     (complete [_]
                                                       (deliver complete-promise true)))})
         (is (= true

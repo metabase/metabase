@@ -14,11 +14,7 @@ import type Schema from "metabase-lib/metadata/Schema";
 
 import { getCollectionVirtualSchemaId } from "metabase-lib/metadata/utils/saved-questions";
 
-import type {
-  DataPickerProps,
-  DataPickerSelectedItem,
-  VirtualTable,
-} from "../types";
+import type { DataPickerProps, DataPickerSelectedItem } from "../types";
 import useSelectedTables from "../useSelectedTables";
 
 import { buildCollectionTree } from "./utils";
@@ -27,6 +23,7 @@ import CardPickerView from "./CardPickerView";
 
 interface CardPickerOwnProps extends DataPickerProps {
   targetModel: "model" | "question";
+  isMultiSelect?: boolean;
   onBack?: () => void;
 }
 
@@ -37,11 +34,12 @@ interface CardPickerStateProps {
 interface CollectionsLoaderProps {
   collectionTree: Collection[];
   collections: Collection[];
-  rootCollection: Collection;
+  rootCollection?: Collection;
+  allLoading: boolean;
 }
 
 interface SchemaLoaderProps {
-  schema?: Schema & { tables: VirtualTable[] };
+  schema?: Schema;
 }
 
 type CardPickerProps = CardPickerOwnProps &
@@ -63,6 +61,8 @@ function CardPickerContainer({
   schema: selectedSchema,
   currentUser,
   targetModel,
+  isMultiSelect,
+  allLoading,
   onChange,
   onBack,
 }: CardPickerProps) {
@@ -70,7 +70,7 @@ function CardPickerContainer({
 
   const { selectedTableIds, toggleTableIdSelection } = useSelectedTables({
     initialValues: value.tableIds,
-    mode: "multiple",
+    isMultiSelect,
   });
 
   const collectionsMap = useMemo(
@@ -133,6 +133,7 @@ function CardPickerContainer({
       virtualTables={selectedSchema?.tables}
       selectedItems={selectedItems}
       targetModel={targetModel}
+      isLoading={allLoading}
       onSelectCollection={handleSelectedCollectionChange}
       onSelectedVirtualTable={handleSelectedTablesChange}
       onBack={onBack}
@@ -140,6 +141,7 @@ function CardPickerContainer({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   Collections.load({
     id: "root",
@@ -147,7 +149,7 @@ export default _.compose(
     loadingAndErrorWrapper: false,
   }),
   Collections.loadList({
-    query: () => ({ tree: true }),
+    query: () => ({ tree: true, "exclude-archived": true }),
     listName: "collectionTree",
   }),
   Collections.loadList({

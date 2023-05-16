@@ -9,6 +9,8 @@
    (org.apache.commons.io IOUtils)
    (org.fit.cssbox.misc Base64Coder)))
 
+(set! *warn-on-reflection* true)
+
 (defn- hash-bytes
   "Generate a hash to be used in a Content-ID"
   [^bytes img-bytes]

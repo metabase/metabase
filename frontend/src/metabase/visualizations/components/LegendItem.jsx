@@ -4,7 +4,7 @@ import PropTypes from "prop-types";
 
 import cx from "classnames";
 import Icon, { iconPropTypes } from "metabase/components/Icon";
-import Tooltip from "metabase/components/Tooltip";
+import Tooltip from "metabase/core/components/Tooltip";
 import Ellipsified from "metabase/core/components/Ellipsified";
 
 import { IconContainer } from "./LegendItem.styled";
@@ -53,11 +53,14 @@ export default class LegendItem extends Component {
           "no-decoration flex align-center fullscreen-normal-text fullscreen-night-text",
           {
             mr1: showTitle,
-            muted: isMuted,
             "cursor-pointer": onClick,
           },
         )}
-        style={{ overflowX: "hidden", flex: "0 1 auto" }}
+        style={{
+          overflowX: "hidden",
+          flex: "0 1 auto",
+          opacity: isMuted ? 0.4 : 1,
+        }}
         onMouseEnter={onMouseEnter}
         onMouseLeave={onMouseLeave}
         onClick={onClick}

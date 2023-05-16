@@ -2,11 +2,13 @@
   (:require [cheshire.core :as json]
             [clj-http.client :as http]
             [clojure.core.async :as a]
-            [clojure.tools.logging :as log]
             [metabase.query-processor.error-type :as qp.error-type]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs tru]]
+            [metabase.util.log :as log]
             [metabase.util.ssh :as ssh]))
+
+(set! *warn-on-reflection* true)
 
 (defn details->url
   "Helper for building a Druid URL.

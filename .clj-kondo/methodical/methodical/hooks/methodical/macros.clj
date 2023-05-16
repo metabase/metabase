@@ -114,13 +114,14 @@
                         [(hooks/token-node 'do)
                          multimethod]
                         (filter some? (vals other-stuff))
-                        [(hooks/list-node
-                          (list*
-                           (hooks/token-node 'fn)
-                           (hooks/token-node (if (contains? #{nil :around} (some-> (:qualifier parsed) hooks/sexpr))
-                                               'next-method
-                                               '__FN__NAME__THAT__YOU__CANNOT__REFER__TO__))
-                           fn-tail))]))]
+                        [(-> (hooks/list-node
+                              (list*
+                               (hooks/token-node 'fn)
+                               (hooks/token-node (if (contains? #{nil :around} (some-> (:qualifier parsed) hooks/sexpr))
+                                                   'next-method
+                                                   '__FN__NAME__THAT__YOU__CANNOT__REFER__TO__))
+                               fn-tail))
+                             (vary-meta update :clj-kondo/ignore conj :redundant-fn-wrapper))]))]
       #_(println "=>")
       #_(clojure.pprint/pprint (hooks/sexpr result))
       {:node result})))
@@ -128,7 +129,9 @@
 ;;; this stuff is for debugging things to make sure we didn't do something dumb
 (comment
   (defn defmethod* [form]
-    (hooks/sexpr (:node (defmethod {:node (hooks/parse-string (str form))}))))
+    (binding [*print-meta* true]
+      (clojure.pprint/pprint
+       (hooks/sexpr (:node (defmethod {:node (hooks/parse-string (str form))}))))))
 
   (defmethod* '(defmethod mf :second [& _] 2))
 
@@ -140,7 +143,12 @@
 
   (defmethod* '(m/defmethod mf1 :docstring
                  "Docstring"
-                 [_x])))
+                 [_x]))
+
+  (defmethod* '(m/defmethod mf1 :around :dispatch-value
+                 "Docstring"
+                 [x]
+                 (next-method x))))
 
 (defn defmulti
   [{{[_ multimethod-name & args] :children, :as node} :node}]

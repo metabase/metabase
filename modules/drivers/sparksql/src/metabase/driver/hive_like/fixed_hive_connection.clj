@@ -1,7 +1,10 @@
 (ns metabase.driver.hive-like.fixed-hive-connection
-  (:import [java.sql Connection ResultSet SQLException]
-           java.util.Properties
-           org.apache.hive.jdbc.HiveConnection))
+  (:import
+   (java.sql Connection ResultSet SQLException)
+   (java.util Properties)
+   (org.apache.hive.jdbc HiveConnection)))
+
+(set! *warn-on-reflection* true)
 
 (defn fixed-hive-connection
   "Subclass of [[org.apache.hive.jdbc.HiveConnection]] has a few special overrides to make things work as expected with

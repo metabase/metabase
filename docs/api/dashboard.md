@@ -20,6 +20,8 @@ Delete the publicly-accessible link to this Dashboard.
 
 Delete a Dashboard.
 
+  This will remove also any questions/models/segments/metrics that use this database.
+
 ### PARAMS:
 
 *  **`id`**
@@ -46,9 +48,9 @@ Get `Dashboards`. With filter option `f` (default `all`), restrict results as fo
 
 *  **`f`** value may be nil, or if non-nil, value must be one of: `all`, `archived`, `mine`.
 
-## `GET /api/dashboard/:dashboard-id/dashcard/:dashcard-id/execute/:slug`
+## `GET /api/dashboard/:dashboard-id/dashcard/:dashcard-id/execute`
 
-Fetches the values for filling in execution parameters.
+Fetches the values for filling in execution parameters. Pass PK parameters and values to select.
 
 ### PARAMS:
 
@@ -56,7 +58,7 @@ Fetches the values for filling in execution parameters.
 
 *  **`dashcard-id`** value must be an integer greater than zero.
 
-*  **`slug`** value must be a non-blank string.
+*  **`parameters`** value must be a valid JSON string.
 
 ## `GET /api/dashboard/:id`
 
@@ -89,8 +91,8 @@ Fetch possible values of the parameter whose ID is `:param-key` that contain `:q
 
 ## `GET /api/dashboard/:id/params/:param-key/values`
 
-Fetch possible values of the parameter whose ID is `:param-key`. Optionally restrict these values by passing query
-  parameters like `other-parameter=value` e.g.
+Fetch possible values of the parameter whose ID is `:param-key`. If the values come directly from a query, optionally
+  restrict these values by passing query parameters like `other-parameter=value` e.g.
 
     ;; fetch values for Dashboard 1 parameter 'abc' that are possible when parameter 'def' is set to 100
     GET /api/dashboard/1/params/abc/values?def=100.
@@ -176,8 +178,6 @@ Create a new Dashboard.
 
 *  **`collection_position`** value may be nil, or if non-nil, value must be an integer greater than zero.
 
-*  **`is_app_page`** value may be nil, or if non-nil, value must be a boolean.
-
 *  **`_dashboard`**
 
 ## `POST /api/dashboard/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query`
@@ -216,7 +216,7 @@ Run the query associated with a Saved Question (`Card`) in the context of a `Das
 
 *  **`request-parameters`**
 
-## `POST /api/dashboard/:dashboard-id/dashcard/:dashcard-id/execute/:slug`
+## `POST /api/dashboard/:dashboard-id/dashcard/:dashcard-id/execute`
 
 Execute the associated Action in the context of a `Dashboard` and `DashboardCard` that includes it.
 
@@ -228,8 +228,6 @@ Execute the associated Action in the context of a `Dashboard` and `DashboardCard
 *  **`dashboard-id`** value must be an integer greater than zero.
 
 *  **`dashcard-id`** value must be an integer greater than zero.
-
-*  **`slug`** value must be a non-blank string.
 
 *  **`parameters`** value may be nil, or if non-nil, value must be a map with schema: (
   value must be a map with schema: (
@@ -276,13 +274,23 @@ Copy a Dashboard.
 
 ## `POST /api/dashboard/:id/cards`
 
-Add a `Card` to a Dashboard.
+Add a `Card` or `Action` to a Dashboard.
 
 ### PARAMS:
 
-*  **`id`** 
+*  **`size_y`** value must be an integer greater than zero.
+
+*  **`row`** value must be an integer greater than or equal to zero.
+
+*  **`size_x`** value must be an integer greater than zero.
+
+*  **`action_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
 
 *  **`cardId`** value may be nil, or if non-nil, value must be an integer greater than zero.
+
+*  **`col`** value must be an integer greater than or equal to zero.
+
+*  **`id`** 
 
 *  **`parameter_mappings`** value may be nil, or if non-nil, value must be an array. Each value must be a map with schema: (
   parameter_id : value must be a non-blank string.
@@ -369,8 +377,6 @@ Update a Dashboard.
 *  **`name`** value may be nil, or if non-nil, value must be a non-blank string.
 
 *  **`caveats`** value may be nil, or if non-nil, value must be a string.
-
-*  **`is_app_page`** value may be nil, or if non-nil, value must be a boolean.
 
 *  **`embedding_params`** value may be nil, or if non-nil, value must be a valid embedding params map.
 

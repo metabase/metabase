@@ -1,4 +1,6 @@
 import { assoc, dissoc, assocIn, updateIn, chain, merge } from "icepick";
+import reduceReducers from "reduce-reducers";
+
 import { handleActions, combineReducers } from "metabase/lib/redux";
 import Dashboards from "metabase/entities/dashboards";
 
@@ -22,7 +24,6 @@ import {
   REMOVE_PARAMETER,
   FETCH_CARD_DATA,
   CLEAR_CARD_DATA,
-  UPDATE_DASHCARD_ID,
   MARK_CARD_AS_SLOW,
   SET_PARAMETER_VALUE,
   FETCH_DASHBOARD_CARD_DATA,
@@ -31,15 +32,17 @@ import {
   HIDE_ADD_PARAMETER_POPOVER,
   SET_SIDEBAR,
   CLOSE_SIDEBAR,
-  FETCH_DASHBOARD_PARAMETER_FIELD_VALUES_WITH_CACHE,
-  SAVE_DASHBOARD_AND_CARDS,
   SET_DOCUMENT_TITLE,
   SET_SHOW_LOADING_COMPLETE_FAVICON,
   RESET,
   SET_PARAMETER_VALUES,
+  UNDO_REMOVE_CARD_FROM_DASH,
+  SHOW_AUTO_APPLY_FILTERS_TOAST,
+  tabsReducer,
 } from "./actions";
 
 import { isVirtualDashCard, syncParametersAndEmbeddingParams } from "./utils";
+import { INITIAL_DASHBOARD_STATE } from "./constants";
 
 const dashboardId = handleActions(
   {
@@ -49,7 +52,7 @@ const dashboardId = handleActions(
     },
     [RESET]: { next: state => null },
   },
-  null,
+  INITIAL_DASHBOARD_STATE.dashboardId,
 );
 
 const isEditing = handleActions(
@@ -60,7 +63,7 @@ const isEditing = handleActions(
     },
     [RESET]: { next: state => null },
   },
-  null,
+  INITIAL_DASHBOARD_STATE.isEditing,
 );
 
 const loadingControls = handleActions(
@@ -75,7 +78,7 @@ const loadingControls = handleActions(
     }),
     [RESET]: { next: state => ({}) },
   },
-  {},
+  INITIAL_DASHBOARD_STATE.loadingControls,
 );
 
 function newDashboard(before, after, isDirty) {
@@ -146,7 +149,7 @@ const dashboards = handleActions(
         ),
     },
   },
-  {},
+  INITIAL_DASHBOARD_STATE.dashboards,
 );
 
 const dashcards = handleActions(
@@ -164,7 +167,7 @@ const dashcards = handleActions(
       }),
     },
     [SET_MULTIPLE_DASHCARD_ATTRIBUTES]: {
-      next: (state, { payload: dashcards }) => {
+      next: (state, { payload: { dashcards } }) => {
         const nextState = { ...state };
         dashcards.forEach(({ id, attributes }) => {
           nextState[id] = {
@@ -217,12 +220,16 @@ const dashcards = handleActions(
       ...state,
       [dashcardId]: { ...state[dashcardId], isRemoved: true },
     }),
+    [UNDO_REMOVE_CARD_FROM_DASH]: (state, { payload: { dashcardId } }) => ({
+      ...state,
+      [dashcardId]: { ...state[dashcardId], isRemoved: false },
+    }),
     [MARK_NEW_CARD_SEEN]: (state, { payload: dashcardId }) => ({
       ...state,
       [dashcardId]: { ...state[dashcardId], justAdded: false },
     }),
   },
-  {},
+  INITIAL_DASHBOARD_STATE.dashcards,
 );
 
 const isAddParameterPopoverOpen = handleActions(
@@ -232,7 +239,7 @@ const isAddParameterPopoverOpen = handleActions(
     [INITIALIZE]: () => false,
     [RESET]: () => false,
   },
-  false,
+  INITIAL_DASHBOARD_STATE.isAddParameterPopoverOpen,
 );
 
 const dashcardData = handleActions(
@@ -247,16 +254,9 @@ const dashcardData = handleActions(
       next: (state, { payload: { cardId, dashcardId } }) =>
         assocIn(state, [dashcardId, cardId]),
     },
-    [UPDATE_DASHCARD_ID]: {
-      next: (state, { payload: { oldDashcardId, newDashcardId } }) =>
-        chain(state)
-          .assoc(newDashcardId, state[oldDashcardId])
-          .dissoc(oldDashcardId)
-          .value(),
-    },
     [RESET]: { next: state => ({}) },
   },
-  {},
+  INITIAL_DASHBOARD_STATE.dashcardData,
 );
 
 const slowCards = handleActions(
@@ -268,45 +268,58 @@ const slowCards = handleActions(
       }),
     },
   },
-  {},
+  INITIAL_DASHBOARD_STATE.slowCards,
 );
 
 const parameterValues = handleActions(
   {
     [INITIALIZE]: { next: () => ({}) }, // reset values
-    [SET_PARAMETER_VALUE]: {
-      next: (state, { payload: { id, value } }) => assoc(state, id, value),
-    },
-    [REMOVE_PARAMETER]: {
-      next: (state, { payload: { id } }) => dissoc(state, id),
-    },
     [FETCH_DASHBOARD]: {
       next: (state, { payload: { parameterValues } }) => parameterValues,
+    },
+    [SET_PARAMETER_VALUE]: {
+      next: (state, { payload: { id, value, isDraft } }) => {
+        if (!isDraft) {
+          return assoc(state, id, value);
+        }
+
+        return state;
+      },
     },
     [SET_PARAMETER_VALUES]: {
       next: (state, { payload }) => payload,
     },
+    [REMOVE_PARAMETER]: {
+      next: (state, { payload: { id } }) => dissoc(state, id),
+    },
     [RESET]: { next: state => ({}) },
   },
-  {},
+  INITIAL_DASHBOARD_STATE.parameterValues,
 );
 
-const parameterValuesSearchCache = handleActions(
+const draftParameterValues = handleActions(
   {
     [INITIALIZE]: { next: () => ({}) },
-    [SAVE_DASHBOARD_AND_CARDS]: {
-      next: () => ({}),
+    [FETCH_DASHBOARD]: {
+      next: (
+        state,
+        { payload: { dashboard, parameterValues, preserveParameters } },
+      ) =>
+        preserveParameters && !dashboard.auto_apply_filters
+          ? state
+          : parameterValues,
     },
-    [FETCH_DASHBOARD_PARAMETER_FIELD_VALUES_WITH_CACHE]: {
-      next: (state, { payload }) =>
-        payload
-          ? assoc(state, payload.cacheKey, {
-              results: payload.results,
-              has_more_values: payload.has_more_values,
-            })
-          : state,
+    [SET_PARAMETER_VALUE]: {
+      next: (state, { payload: { id, value } }) =>
+        assoc(state ?? {}, id, value),
     },
-    [RESET]: { next: state => ({}) },
+    [SET_PARAMETER_VALUES]: {
+      next: (state, { payload }) => payload,
+    },
+    [REMOVE_PARAMETER]: {
+      next: (state, { payload: { id } }) => dissoc(state, id),
+    },
+    [RESET]: { next: () => ({}) },
   },
   {},
 );
@@ -333,25 +346,20 @@ const loadingDashCards = handleActions(
       },
     },
     [FETCH_DASHBOARD_CARD_DATA]: {
-      next: state => ({
+      next: (state, { payload: { currentTime } }) => ({
         ...state,
         loadingStatus: state.dashcardIds.length > 0 ? "running" : "idle",
-        startTime:
-          state.dashcardIds.length > 0 &&
-          // check that performance is defined just in case
-          typeof performance === "object"
-            ? performance.now()
-            : null,
+        startTime: state.dashcardIds.length > 0 ? currentTime : null,
       }),
     },
     [FETCH_CARD_DATA]: {
-      next: (state, { payload: { dashcard_id } }) => {
+      next: (state, { payload: { dashcard_id, currentTime } }) => {
         const loadingIds = state.loadingIds.filter(id => id !== dashcard_id);
         return {
           ...state,
           loadingIds,
           ...(loadingIds.length === 0
-            ? { startTime: null, loadingStatus: "complete" }
+            ? { endTime: currentTime, loadingStatus: "complete" }
             : {}),
         };
       },
@@ -373,12 +381,7 @@ const loadingDashCards = handleActions(
       }),
     },
   },
-  {
-    dashcardIds: [],
-    loadingIds: [],
-    startTime: null,
-    loadingStatus: "idle",
-  },
+  INITIAL_DASHBOARD_STATE.loadingDashCards,
 );
 
 const DEFAULT_SIDEBAR = { props: {} };
@@ -406,7 +409,7 @@ const sidebar = handleActions(
       next: () => DEFAULT_SIDEBAR,
     },
   },
-  DEFAULT_SIDEBAR,
+  INITIAL_DASHBOARD_STATE.sidebar,
 );
 
 const missingActionParameters = handleActions(
@@ -418,21 +421,41 @@ const missingActionParameters = handleActions(
       next: (state, payload) => null,
     },
   },
-  null,
+  INITIAL_DASHBOARD_STATE.missingActionParameters,
 );
 
-export default combineReducers({
-  dashboardId,
-  isEditing,
-  loadingControls,
-  dashboards,
-  dashcards,
-  dashcardData,
-  slowCards,
-  parameterValues,
-  loadingDashCards,
-  isAddParameterPopoverOpen,
-  sidebar,
-  parameterValuesSearchCache,
-  missingActionParameters,
-});
+export const autoApplyFilters = handleActions(
+  {
+    [SHOW_AUTO_APPLY_FILTERS_TOAST]: {
+      next: (state, { payload: { toastId, dashboardId } }) => ({
+        ...state,
+        toastId,
+        toastDashboardId: dashboardId,
+      }),
+    },
+  },
+  INITIAL_DASHBOARD_STATE.autoApplyFilters,
+);
+
+export default reduceReducers(
+  INITIAL_DASHBOARD_STATE,
+  combineReducers({
+    dashboardId,
+    isEditing,
+    loadingControls,
+    dashboards,
+    dashcards,
+    dashcardData,
+    slowCards,
+    parameterValues,
+    draftParameterValues,
+    loadingDashCards,
+    isAddParameterPopoverOpen,
+    sidebar,
+    missingActionParameters,
+    autoApplyFilters,
+    // Combined reducer needs to init state for every slice
+    selectedTabId: (state = INITIAL_DASHBOARD_STATE.selectedTabId) => state,
+  }),
+  tabsReducer,
+);

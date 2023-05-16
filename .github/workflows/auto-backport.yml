@@ -6,7 +6,7 @@ on:
 jobs:
   create-backport:
     if: github.event.pull_request.merged == true && (contains(github.event.pull_request.labels.*.name, 'backport') && github.event.action == 'closed' || github.event.label.name == 'backport')
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v3
         with:
@@ -54,7 +54,7 @@ jobs:
           git checkout master
           git push -u origin ${BACKPORT_BRANCH}
 
-          BACKPORT_PR_URL=$(hub pull-request -b "${TARGET_BRANCH}" -h "${BACKPORT_BRANCH}" -l "auto-backported" -a "${GITHUB_ACTOR}" -F- <<<"🤖 backported \"${ORIGINAL_TITLE}\"
+          BACKPORT_PR_URL=$(hub pull-request -b "${TARGET_BRANCH}" -h "${BACKPORT_BRANCH}" -l "was-backported" -a "${GITHUB_ACTOR}" -F- <<<"🤖 backported \"${ORIGINAL_TITLE}\"
 
           #${ORIGINAL_PULL_REQUEST_NUMBER}")
 

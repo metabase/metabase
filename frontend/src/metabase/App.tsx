@@ -1,7 +1,8 @@
-import React, { ErrorInfo, ReactNode, useState } from "react";
+import React, { ReactNode, useState } from "react";
 import { connect } from "react-redux";
 import { Location } from "history";
 
+import { useMount } from "react-use";
 import ScrollToTop from "metabase/hoc/ScrollToTop";
 import {
   Archived,
@@ -9,7 +10,7 @@ import {
   NotFound,
   Unauthorized,
 } from "metabase/containers/ErrorPages";
-import UndoListing from "metabase/containers/UndoListing";
+import { UndoListing } from "metabase/containers/UndoListing";
 
 import {
   getErrorPage,
@@ -18,18 +19,18 @@ import {
   getIsNavBarEnabled,
 } from "metabase/selectors/app";
 import { setErrorPage } from "metabase/redux/app";
-import { useOnMount } from "metabase/hooks/use-on-mount";
 import { initializeIframeResizer } from "metabase/lib/dom";
 
 import AppBanner from "metabase/components/AppBanner";
 import AppBar from "metabase/nav/containers/AppBar";
 import Navbar from "metabase/nav/containers/Navbar";
-import StatusListing from "metabase/status/containers/StatusListing";
+import StatusListing from "metabase/status/components/StatusListing";
 import { ContentViewportContext } from "metabase/core/context/ContentViewportContext";
 
 import { AppErrorDescriptor, State } from "metabase-types/store";
 
 import { AppContainer, AppContent, AppContentContainer } from "./App.styled";
+import ErrorBoundary from "./ErrorBoundary";
 
 const getErrorComponent = ({ status, data, context }: AppErrorDescriptor) => {
   if (status === 403 || data?.error_code === "unauthorized") {
@@ -80,18 +81,6 @@ const mapDispatchToProps: AppDispatchProps = {
   onError: setErrorPage,
 };
 
-class ErrorBoundary extends React.Component<{
-  onError: (errorInfo: ErrorInfo) => void;
-}> {
-  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    this.props.onError(errorInfo);
-  }
-
-  render() {
-    return this.props.children;
-  }
-}
-
 function App({
   errorPage,
   isAdminApp,
@@ -102,7 +91,7 @@ function App({
 }: AppProps) {
   const [viewportElement, setViewportElement] = useState<HTMLElement | null>();
 
-  useOnMount(() => {
+  useMount(() => {
     initializeIframeResizer();
   });
 
@@ -111,7 +100,7 @@ function App({
       <ScrollToTop>
         <AppContainer className="spread">
           <AppBanner />
-          {isAppBarVisible && <AppBar isNavBarEnabled={isNavBarEnabled} />}
+          {isAppBarVisible && <AppBar />}
           <AppContentContainer isAdminApp={isAdminApp}>
             {isNavBarEnabled && <Navbar />}
             <AppContent ref={setViewportElement}>
@@ -128,6 +117,7 @@ function App({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect<AppStateProps, unknown, AppRouterOwnProps, State>(
   mapStateToProps,
   mapDispatchToProps,

@@ -2,6 +2,7 @@ import React from "react";
 import type { ComponentStory } from "@storybook/react";
 import Button from "./Button";
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default {
   title: "Core/Button",
   component: Button,
@@ -25,4 +26,10 @@ Primary.args = {
 export const WithIcon = Template.bind({});
 WithIcon.args = {
   icon: "chevrondown",
+};
+
+export const OnlyText = Template.bind({});
+OnlyText.args = {
+  onlyText: true,
+  children: "Click Me",
 };

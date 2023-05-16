@@ -22,7 +22,9 @@ describe("UnsubscribeModal", () => {
 
     render(<UnsubscribeModal item={alert} type="alert" />);
 
-    screen.getByText("this alert", { exact: false });
+    expect(
+      screen.getByText("this alert", { exact: false }),
+    ).toBeInTheDocument();
   });
 
   it("should render a pulse", () => {
@@ -30,10 +32,12 @@ describe("UnsubscribeModal", () => {
 
     render(<UnsubscribeModal item={pulse} type="pulse" />);
 
-    screen.getByText("this subscription", { exact: false });
+    expect(
+      screen.getByText("this subscription", { exact: false }),
+    ).toBeInTheDocument();
   });
 
-  it("should close if unsubscribed successfully", () => {
+  it("should close if unsubscribed successfully", async () => {
     const alert = getAlert();
     const onUnsubscribe = jest.fn();
     const onArchive = jest.fn();
@@ -53,14 +57,14 @@ describe("UnsubscribeModal", () => {
 
     screen.getByText("Unsubscribe").click();
 
-    waitFor(() => {
+    await waitFor(() => {
       expect(onUnsubscribe).toHaveBeenCalledWith(alert);
-      expect(onArchive).not.toHaveBeenCalled();
-      expect(onClose).toHaveBeenCalled();
     });
+    expect(onArchive).not.toHaveBeenCalled();
+    expect(onClose).toHaveBeenCalled();
   });
 
-  it("should proceed with archiving if the notification is created by the user", () => {
+  it("should proceed with archiving if the notification is created by the user", async () => {
     const user = getUser();
     const alert = getAlert({ creator: user });
     const onUnsubscribe = jest.fn();
@@ -82,14 +86,14 @@ describe("UnsubscribeModal", () => {
 
     screen.getByText("Unsubscribe").click();
 
-    waitFor(() => {
+    await waitFor(() => {
       expect(onUnsubscribe).toHaveBeenCalledWith(alert);
-      expect(onArchive).toHaveBeenCalledWith(alert, "alert", true);
-      expect(onClose).not.toHaveBeenCalled();
     });
+    expect(onArchive).toHaveBeenCalledWith(alert, "alert", true);
+    expect(onClose).not.toHaveBeenCalled();
   });
 
-  it("should not close on a submit error", () => {
+  it("should not close on a submit error", async () => {
     const user = getUser();
     const alert = getAlert();
     const onUnsubscribe = jest.fn();
@@ -111,11 +115,11 @@ describe("UnsubscribeModal", () => {
 
     screen.getByText("Unsubscribe").click();
 
-    waitFor(() => {
-      screen.getByText("An error occurred");
-      expect(onUnsubscribe).toHaveBeenCalled();
-      expect(onArchive).not.toHaveBeenCalled();
-      expect(onClose).not.toHaveBeenCalled();
+    await waitFor(() => {
+      expect(screen.getByText("An error occurred")).toBeInTheDocument();
     });
+    expect(onUnsubscribe).toHaveBeenCalled();
+    expect(onArchive).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
   });
 });

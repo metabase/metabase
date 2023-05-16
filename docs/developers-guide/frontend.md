@@ -126,6 +126,7 @@ We use ESLint to enforce additional rules. It is integrated into the Webpack bui
 For the most part we follow the [Airbnb React/JSX Style Guide](https://github.com/airbnb/javascript/tree/master/react). ESLint and Prettier should take care of a majority of the rules in the Airbnb style guide. Exceptions will be noted in this document.
 
 - Prefer React [function components over class components](https://reactjs.org/docs/components-and-props.html#function-and-class-components)
+- Avoid creating new components within the `containers` folder, as this approach has been deprecated. Instead, store both connected and view components in the `components` folder for a more unified and efficient organization. If a connected component grows substantially in size and you need to extract a view component, opt for using the `View` suffix.
 - For control components, typically we use `value` and `onChange`. Controls that have options (e.x. `Radio`, `Select`) usually take an `options` array of objects with `name` and `value` properties.
 - Components named like `FooModal` and `FooPopover` typically refer to the modal/popover _content_ which should be used inside a `Modal`/`ModalWithTrigger` or `Popover`/`PopoverWithTrigger`
 - Components named like `FooWidget` typically include a `FooPopover` inside a `PopoverWithTrigger` with some sort of trigger element, often `FooName`
@@ -449,3 +450,92 @@ Here, clicking on the following will open `<Popover />` components:
 - `Pick the metric you want to see`
 - `Pick a column to group by`
 - `Sort` icon with arrows pointing up and down above `Visualize` button
+
+
+## Unit testing
+
+### Setup pattern
+
+We use the following pattern to unit test components:
+
+```tsx
+import React from "react";
+import userEvent from "@testing-library/user-event";
+import { Collection } from "metabase-types/api";
+import { createMockCollection } from "metabase-types/api/mocks";
+import { renderWithProviders, screen } from "__support__/ui";
+import CollectionHeader from "./CollectionHeader";
+
+interface SetupOpts {
+  collection: Collection;
+}
+
+const setup = ({ collection }: SetupOpts) => {
+  const onUpdateCollection = jest.fn();
+
+  renderWithProviders(
+    <CollectionHeader
+      collection={collection}
+      onUpdateCollection={onUpdateCollection}
+    />
+  );
+
+  return { onUpdateCollection };
+};
+
+describe("CollectionHeader", () => {
+  it("should be able to update the name of the collection", () => {
+    const collection = createMockCollection({
+      name: "Old name",
+    });
+
+    const { onUpdateCollection } = setup({
+      collection,
+    });
+
+    userEvent.clear(screen.getByDisplayValue("Old name"));
+    userEvent.type(screen.getByPlaceholderText("Add title"), "New title");
+    userEvent.tab();
+
+    expect(onUpdateCollection).toHaveBeenCalledWith({
+      ...collection,
+      name: "New name",
+    })
+  });
+});
+```
+
+Key points:
+- `setup` function
+- `renderWithProviders` adds providers used by the app, including `redux`
+
+### Request mocking
+
+We use `fetchMock` to mock requests:
+
+```tsx
+import fetchMock from "fetch-mock";
+import { setupCollectionsEndpoints } from "__support__/server-mocks";
+
+interface SetupOpts {
+  collections: Collection[];
+}
+
+const setup = ({ collections }: SetupOpts) => {
+  setupCollectionsEndpoints(collections);
+
+  // renderWithProviders and other setup
+};
+
+describe("Component", () => {
+  it("renders correclty", async () => {
+    setup();
+    expect(await screen.findByText("Collection")).toBeInTheDocument();
+  });
+});
+```
+
+Key points:
+- Create `scope` in `setup`
+- Call helpers from `__support__/server-mocks` to setup endpoints for your data
+- Call `nock.clearAll` to remove all mocks

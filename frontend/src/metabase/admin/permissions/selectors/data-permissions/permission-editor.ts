@@ -1,4 +1,5 @@
-import { createSelector } from "reselect";
+import { createSelector } from "@reduxjs/toolkit";
+import type { Selector } from "@reduxjs/toolkit";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
@@ -8,7 +9,12 @@ import Groups from "metabase/entities/groups";
 import Tables from "metabase/entities/tables";
 
 import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";
-import { Group, GroupsPermissions } from "metabase-types/api";
+import {
+  DatabaseId,
+  Group,
+  GroupsPermissions,
+  TableId,
+} from "metabase-types/api";
 import { State } from "metabase-types/store";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import Schema from "metabase-lib/metadata/Schema";
@@ -19,13 +25,18 @@ import {
   getPermissionSubject,
 } from "../../utils/data-entity-id";
 
-import { DataRouteParams, RawGroupRouteParams } from "../../types";
+import {
+  DataRouteParams,
+  RawGroupRouteParams,
+  PermissionSectionConfig,
+} from "../../types";
 import { buildFieldsPermissions } from "./fields";
 import { buildTablesPermissions } from "./tables";
 import { buildSchemasPermissions } from "./schemas";
 import {
   getDatabasesEditorBreadcrumbs,
   getGroupsDataEditorBreadcrumbs,
+  EditorBreadcrumb,
 } from "./breadcrumbs";
 import { getOrderedGroups } from "./groups";
 
@@ -52,7 +63,14 @@ export const getLoadingDatabaseTablesError = (
   });
 };
 
-const getRouteParams = (_state: State, props: { params: DataRouteParams }) => {
+type RouteParamsSelectorParameters = {
+  params: DataRouteParams;
+};
+
+const getRouteParams = (
+  _state: State,
+  props: RouteParamsSelectorParameters,
+) => {
   const { databaseId, schemaName, tableId } = props.params;
   return {
     databaseId,
@@ -248,92 +266,124 @@ export const getDatabasesPermissionEditor = createSelector(
   },
 );
 
-export const getGroupsDataPermissionEditor = createSelector(
-  getMetadataWithHiddenTables,
-  getRouteParams,
-  getDataPermissions,
-  getOrderedGroups,
-  (metadata, params, permissions, groups: Group[][]) => {
-    const { databaseId, schemaName, tableId } = params;
-    const database = metadata?.database(databaseId);
+type DataPermissionEditorEntity = {
+  id: Group["id"];
+  name: Group["name"];
+  hint: string | null;
+  entityId: {
+    databaseId?: DatabaseId;
+    schemaName?: Schema["name"];
+    tableId?: TableId;
+  };
+  permissions?: PermissionSectionConfig[];
+};
 
-    if (!permissions || databaseId == null || !database) {
-      return null;
-    }
+type DataPermissionEditorProps = {
+  title: string;
+  filterPlaceholder: string;
+  breadcrumbs: EditorBreadcrumb[] | null;
+  columns: { name: string }[];
+  entities: DataPermissionEditorEntity[];
+};
 
-    const sortedGroups = groups.flat();
+type GetGroupsDataPermissionEditorSelectorParameters =
+  RouteParamsSelectorParameters & {
+    includeHiddenTables?: boolean;
+  };
 
-    const defaultGroup = _.find(sortedGroups, isDefaultGroup);
+type GetGroupsDataPermissionEditorSelector = Selector<
+  State,
+  DataPermissionEditorProps | null,
+  GetGroupsDataPermissionEditorSelectorParameters[]
+>;
 
-    if (!defaultGroup) {
-      throw new Error("No default group found");
-    }
+export const getGroupsDataPermissionEditor: GetGroupsDataPermissionEditorSelector =
+  createSelector(
+    getMetadataWithHiddenTables,
+    getRouteParams,
+    getDataPermissions,
+    getOrderedGroups,
+    (metadata, params, permissions, groups) => {
+      const { databaseId, schemaName, tableId } = params;
+      const database = metadata?.database(databaseId);
 
-    const permissionSubject = getPermissionSubject(params);
-    const columns = [
-      { name: t`Group name` },
-      { name: t`Data access` },
-      { name: t`Native query editing` },
-      ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.getDataColumns(permissionSubject),
-    ];
-
-    const entities = sortedGroups.map(group => {
-      const isAdmin = isAdminGroup(group);
-      let groupPermissions;
-
-      if (tableId != null) {
-        groupPermissions = buildFieldsPermissions(
-          {
-            databaseId,
-            schemaName,
-            tableId,
-          },
-          group.id,
-          isAdmin,
-          permissions,
-          defaultGroup,
-          database,
-        );
-      } else if (schemaName != null) {
-        groupPermissions = buildTablesPermissions(
-          {
-            databaseId,
-            schemaName,
-          },
-          group.id,
-          isAdmin,
-          permissions,
-          defaultGroup,
-        );
-      } else if (databaseId != null) {
-        groupPermissions = buildSchemasPermissions(
-          {
-            databaseId,
-          },
-          group.id,
-          isAdmin,
-          permissions,
-          defaultGroup,
-        );
+      if (!permissions || databaseId == null || !database) {
+        return null;
       }
 
-      return {
-        id: group.id,
-        name: group.name,
-        hint: isAdmin
-          ? t`The Administrators group is special, and always has Unrestricted access.`
-          : null,
-        entityId: params,
-        permissions: groupPermissions,
-      };
-    });
+      const sortedGroups = groups.flat();
 
-    return {
-      title: t`Permissions for`,
-      filterPlaceholder: t`Search for a group`,
-      breadcrumbs: getGroupsDataEditorBreadcrumbs(params, metadata),
-      columns,
-      entities,
-    };
-  },
-);
+      const defaultGroup = _.find(sortedGroups, isDefaultGroup);
+
+      if (!defaultGroup) {
+        throw new Error("No default group found");
+      }
+
+      const permissionSubject = getPermissionSubject(params);
+      const columns = [
+        { name: t`Group name` },
+        { name: t`Data access` },
+        { name: t`Native query editing` },
+        ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.getDataColumns(permissionSubject),
+      ];
+
+      const entities = sortedGroups.map(group => {
+        const isAdmin = isAdminGroup(group);
+        let groupPermissions;
+
+        if (tableId != null) {
+          groupPermissions = buildFieldsPermissions(
+            {
+              databaseId,
+              schemaName,
+              tableId,
+            },
+            group.id,
+            isAdmin,
+            permissions,
+            defaultGroup,
+            database,
+          );
+        } else if (schemaName != null) {
+          groupPermissions = buildTablesPermissions(
+            {
+              databaseId,
+              schemaName,
+            },
+            group.id,
+            isAdmin,
+            permissions,
+            defaultGroup,
+          );
+        } else if (databaseId != null) {
+          groupPermissions = buildSchemasPermissions(
+            {
+              databaseId,
+            },
+            group.id,
+            isAdmin,
+            permissions,
+            defaultGroup,
+          );
+        }
+
+        return {
+          id: group.id,
+          name: group.name,
+          hint: isAdmin
+            ? t`The Administrators group is special, and always has Unrestricted access.`
+            : null,
+          entityId: params,
+          permissions: groupPermissions,
+        };
+      });
+
+      return {
+        title: t`Permissions for`,
+        filterPlaceholder: t`Search for a group`,
+        breadcrumbs: getGroupsDataEditorBreadcrumbs(params, metadata),
+        columns,
+        entities,
+      };
+    },
+  );

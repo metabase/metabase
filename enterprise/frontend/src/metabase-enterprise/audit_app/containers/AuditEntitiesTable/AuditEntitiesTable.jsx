@@ -2,7 +2,7 @@ import React from "react";
 import PropTypes from "prop-types";
 import _ from "underscore";
 
-import { usePrevious } from "metabase/hooks/use-previous";
+import { usePrevious } from "react-use";
 import AuditTableWithSearch from "../AuditTableWithSearch";
 
 const propTypes = {

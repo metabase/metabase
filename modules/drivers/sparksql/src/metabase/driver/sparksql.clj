@@ -1,26 +1,32 @@
 (ns metabase.driver.sparksql
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure.string :as str]
-            [honeysql.core :as hsql]
-            [honeysql.helpers :as hh]
-            [medley.core :as m]
-            [metabase.connection-pool :as connection-pool]
-            [metabase.driver :as driver]
-            [metabase.driver.hive-like :as hive-like]
-            [metabase.driver.hive-like.fixed-hive-connection :as fixed-hive-connection]
-            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-            [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-            [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
-            [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
-            [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.driver.sql.util :as sql.u]
-            [metabase.driver.sql.util.unprepare :as unprepare]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.query-processor.store :as qp.store]
-            [metabase.query-processor.util :as qp.util]
-            [metabase.query-processor.util.add-alias-info :as add]
-            [metabase.util.honeysql-extensions :as hx])
-  (:import [java.sql Connection ResultSet]))
+  (:require
+   [clojure.java.jdbc :as jdbc]
+   [clojure.string :as str]
+   [honey.sql :as sql]
+   [honey.sql.helpers :as sql.helpers]
+   [medley.core :as m]
+   [metabase.connection-pool :as connection-pool]
+   [metabase.driver :as driver]
+   [metabase.driver.hive-like :as hive-like]
+   [metabase.driver.hive-like.fixed-hive-connection
+    :as fixed-hive-connection]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.driver.sql.parameters.substitution
+    :as sql.params.substitution]
+   [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.sql.util :as sql.u]
+   [metabase.driver.sql.util.unprepare :as unprepare]
+   [metabase.mbql.util :as mbql.u]
+   [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.util :as qp.util]
+   [metabase.query-processor.util.add-alias-info :as add]
+   [metabase.util.honey-sql-2 :as h2x])
+  (:import
+   (java.sql Connection ResultSet)))
+
+(set! *warn-on-reflection* true)
 
 (driver/register! :sparksql, :parent :hive-like)
 
@@ -51,27 +57,36 @@
                                                        :else                   source-table)))]
     (parent-method driver field-clause)))
 
+(defn- format-over
+  "e.g. ROW_NUMBER() OVER (ORDER BY field DESC) AS __rownum__"
+  [_fn [expr partition]]
+  (let [[expr-sql & expr-args]           (sql/format-expr expr      {:nested true})
+        [partition-sql & partition-args] (sql/format-expr partition {:nested true})]
+    (into [(format "%s OVER %s" expr-sql partition-sql)]
+          cat
+          [expr-args
+           partition-args])))
+
+(sql/register-fn! ::over #'format-over)
+
 (defmethod sql.qp/apply-top-level-clause [:sparksql :page]
-  [_ _ honeysql-form {{:keys [items page]} :page}]
+  [_driver _clause honeysql-form {{:keys [items page]} :page}]
   (let [offset (* (dec page) items)]
     (if (zero? offset)
       ;; if there's no offset we can simply use limit
-      (hh/limit honeysql-form items)
+      (sql.helpers/limit honeysql-form items)
       ;; if we need to do an offset we have to do nesting to generate a row number and where on that
-      (let [over-clause (format "row_number() OVER (%s)"
-                                (first (hsql/format (select-keys honeysql-form [:order-by])
-                                                    :allow-dashed-names? true
-                                                    :quoting :mysql)))]
-        (-> (apply hh/select (map last (:select honeysql-form)))
-            (hh/from (hh/merge-select honeysql-form [(hsql/raw over-clause) :__rownum__]))
-            (hh/where [:> :__rownum__ offset])
-            (hh/limit items))))))
+      (let [over-clause [::over :%row_number (select-keys honeysql-form [:order-by])]]
+        (-> (apply sql.helpers/select (map last (:select honeysql-form)))
+            (sql.helpers/from (sql.helpers/select honeysql-form [over-clause :__rownum__]))
+            (sql.helpers/where [:> :__rownum__ [:inline offset]])
+            (sql.helpers/limit [:inline items]))))))
 
 (defmethod sql.qp/apply-top-level-clause [:sparksql :source-table]
   [driver _ honeysql-form {source-table-id :source-table}]
   (let [{table-name :name, schema :schema} (qp.store/table source-table-id)]
-    (hh/from honeysql-form [(sql.qp/->honeysql driver (hx/identifier :table schema table-name))
-                            (sql.qp/->honeysql driver (hx/identifier :table-alias source-table-alias))])))
+    (sql.helpers/from honeysql-form [(sql.qp/->honeysql driver (h2x/identifier :table schema table-name))
+                                     [(sql.qp/->honeysql driver (h2x/identifier :table-alias source-table-alias))]])))
 
 
 ;;; ------------------------------------------- Other Driver Method Impls --------------------------------------------
@@ -179,18 +194,21 @@
 ;; the current HiveConnection doesn't support .createStatement
 (defmethod sql-jdbc.execute/statement-supported? :sparksql [_] false)
 
-(doseq [feature [:basic-aggregations
-                 :binning
-                 :expression-aggregations
-                 :expressions
-                 :native-parameters
-                 :nested-queries
-                 :standard-deviation-aggregations]]
-  (defmethod driver/supports? [:sparksql feature] [_ _] true))
+(doseq [[feature supported?] {:basic-aggregations              true
+                              :binning                         true
+                              :expression-aggregations         true
+                              :expressions                     true
+                              :native-parameters               true
+                              :nested-queries                  true
+                              :standard-deviation-aggregations true
+                              :test/jvm-timezone-setting       false}]
+  (defmethod driver/database-supports? [:sparkql feature] [_driver _feature _db] supported?))
 
 ;; only define an implementation for `:foreign-keys` if none exists already. In test extensions we define an alternate
 ;; implementation, and we don't want to stomp over that if it was loaded already
-(when-not (get (methods driver/supports?) [:sparksql :foreign-keys])
-  (defmethod driver/supports? [:sparksql :foreign-keys] [_ _] true))
+(when-not (get (methods driver/database-supports?) [:sparksql :foreign-keys])
+  (defmethod driver/database-supports? [:sparksql :foreign-keys] [_driver _feature _db] true))
 
-(defmethod sql.qp/quote-style :sparksql [_] :mysql)
+(defmethod sql.qp/quote-style :sparksql
+  [_driver]
+  :mysql)

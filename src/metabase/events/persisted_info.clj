@@ -1,12 +1,12 @@
 (ns metabase.events.persisted-info
   (:require
    [clojure.core.async :as a]
-   [clojure.tools.logging :as log]
    [metabase.events :as events]
    [metabase.models :refer [Database PersistedInfo]]
    [metabase.models.persisted-info :as persisted-info]
    [metabase.public-settings :as public-settings]
-   [toucan.db :as db]))
+   [metabase.util.log :as log]
+   [toucan2.core :as t2]))
 
 (def ^:private persisted-info-topics
   "The `Set` of event topics which are subscribed to add persisted-info to new models."
@@ -32,8 +32,8 @@
     ;; is only supposed to be that initial edge when the dataset is being changed.
     (when (and (:dataset card)
                (public-settings/persisted-models-enabled)
-               (get-in (db/select-one Database :id (:database_id card)) [:options :persist-models-enabled])
-               (nil? (db/select-one-field :id PersistedInfo :card_id (:id card))))
+               (get-in (t2/select-one Database :id (:database_id card)) [:options :persist-models-enabled])
+               (nil? (t2/select-one-fn :id PersistedInfo :card_id (:id card))))
       (persisted-info/turn-on-model! (:actor_id card) card))
     (catch Throwable e
       (log/warn (format "Failed to process persisted-info event. %s" (:topic event)) e))))

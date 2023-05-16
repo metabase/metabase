@@ -135,7 +135,7 @@ describe("parameters/utils/mbql", () => {
         date().quarter(1).format("YYYY-MM-DD"),
       ]);
     });
-    it.skip("should parse exclude-quarters-1-2", () => {
+    it("should parse exclude-quarters-1-2", () => {
       expect(dateParameterValueToMBQL("exclude-quarters-1-2", null)).toEqual([
         "!=",
         ["field", null, { "temporal-unit": "quarter-of-year" }],
@@ -183,7 +183,14 @@ describe("parameters/utils/mbql", () => {
             { type: "string/starts-with", value: "1" },
             null,
           ),
-        ).toEqual(["starts-with", null, "1"]);
+        ).toEqual([
+          "starts-with",
+          null,
+          "1",
+          {
+            "case-sensitive": false,
+          },
+        ]);
       });
     });
 
@@ -278,12 +285,19 @@ describe("parameters/utils/mbql", () => {
         fieldFilterParameterToMBQLFilter(
           {
             target: ["dimension", ["field", PRODUCTS.CATEGORY.id, null]],
-            type: "string/starts-with",
+            type: "string/contains",
             value: "foo",
           },
           metadata,
         ),
-      ).toEqual(["starts-with", ["field", PRODUCTS.CATEGORY.id, null], "foo"]);
+      ).toEqual([
+        "contains",
+        ["field", PRODUCTS.CATEGORY.id, null],
+        "foo",
+        {
+          "case-sensitive": false,
+        },
+      ]);
 
       expect(
         fieldFilterParameterToMBQLFilter(
@@ -294,7 +308,12 @@ describe("parameters/utils/mbql", () => {
           },
           metadata,
         ),
-      ).toEqual(["starts-with", ["field", PRODUCTS.CATEGORY.id, null], "foo"]);
+      ).toEqual([
+        "starts-with",
+        ["field", PRODUCTS.CATEGORY.id, null],
+        "foo",
+        { "case-sensitive": false },
+      ]);
     });
 
     it("should return mbql filter for category parameter", () => {

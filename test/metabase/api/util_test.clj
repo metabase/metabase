@@ -2,8 +2,8 @@
   "Tests for /api/util"
   (:require
    [clojure.test :refer :all]
-   [clojure.tools.logging :as log]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.util.log :as log]))
 
 (deftest password-check-test
   (testing "POST /api/util/password_check"

@@ -15,7 +15,7 @@ export interface FontWidgetProps {
 const FontWidget = ({
   setting,
   settingValues,
-  availableFonts = MetabaseSettings.get("available-fonts"),
+  availableFonts = MetabaseSettings.get("available-fonts") || [],
   onChange,
   onChangeSetting,
 }: FontWidgetProps): JSX.Element => {
@@ -47,4 +47,5 @@ const FontWidget = ({
   return <FontSelect value={value} options={options} onChange={handleChange} />;
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default FontWidget;

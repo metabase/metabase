@@ -1,27 +1,43 @@
 import React, { ReactNode } from "react";
-import GreetingSection from "../../containers/HomeGreeting";
+import { connect } from "react-redux";
+import { getSetting } from "metabase/selectors/settings";
+import MetabotWidget from "metabase/metabot/components/MetabotWidget";
+import { State } from "metabase-types/store";
+import HomeGreeting from "../HomeGreeting";
 import {
   LayoutBody,
   LayoutIllustration,
   LayoutRoot,
 } from "./HomeLayout.styled";
 
-export interface HomeLayoutProps {
-  showIllustration?: boolean;
+interface OwnProps {
+  hasMetabot?: boolean;
   children?: ReactNode;
 }
 
+interface StateProps {
+  hasIllustration?: boolean;
+}
+
+type HomeLayoutProps = OwnProps & StateProps;
+
+const mapStateToProps = (state: State) => ({
+  hasIllustration: getSetting(state, "show-lighthouse-illustration"),
+});
+
 const HomeLayout = ({
-  showIllustration,
+  hasMetabot,
+  hasIllustration,
   children,
 }: HomeLayoutProps): JSX.Element => {
   return (
     <LayoutRoot>
-      {showIllustration && <LayoutIllustration />}
-      <GreetingSection />
+      {hasIllustration && <LayoutIllustration />}
+      {hasMetabot ? <MetabotWidget /> : <HomeGreeting />}
       <LayoutBody>{children}</LayoutBody>
     </LayoutRoot>
   );
 };
 
-export default HomeLayout;
+// eslint-disable-next-line import/no-default-export -- deprecated usage
+export default connect(mapStateToProps)(HomeLayout);

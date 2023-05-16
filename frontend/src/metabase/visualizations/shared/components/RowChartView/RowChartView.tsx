@@ -199,7 +199,7 @@ const RowChartView = <TDatum,>({
           stroke={theme.axis.color}
           tickStroke={theme.axis.color}
           tickLabelProps={() => ({
-            fill: theme.axis.color,
+            fill: theme.axis.ticks.color,
             fontSize: theme.axis.ticks.size,
             fontWeight: theme.axis.ticks.weight,
             textAnchor: "end",
@@ -235,4 +235,5 @@ const RowChartView = <TDatum,>({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default RowChartView;

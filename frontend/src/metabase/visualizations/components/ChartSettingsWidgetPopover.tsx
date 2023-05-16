@@ -49,7 +49,6 @@ const ChartSettingsWidgetPopover = ({
 
   return (
     <TippyPopover
-      hideOnClick
       reference={anchor}
       content={
         widgets.length > 0 ? (
@@ -89,4 +88,5 @@ const ChartSettingsWidgetPopover = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ChartSettingsWidgetPopover;

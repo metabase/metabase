@@ -4,9 +4,11 @@
    [metabase.db.connection :as mdb.connection]
    [metabase.models.setting :as setting :refer [defsetting Setting]]
    [metabase.models.user :refer [User]]
-   [toucan.db :as db])
+   [toucan2.core :as t2])
   (:import
    (java.util UUID)))
+
+(set! *warn-on-reflection* true)
 
 (defsetting setup-token
   "A token used to signify that an instance has permissions to create the initial User. This is created upon the first
@@ -31,7 +33,7 @@
   ;; value or setting DB values and the like
   (or (when-let [mb-setup-token (env/env :mb-setup-token)]
         (setting/set-value-of-type! :string :setup-token mb-setup-token))
-      (db/select-one-field :value Setting :key "setup-token")
+      (t2/select-one-fn :value Setting :key "setup-token")
       (setting/set-value-of-type! :string :setup-token (str (UUID/randomUUID)))))
 
 (defsetting has-user-setup
@@ -48,7 +50,7 @@
   :getter     (let [app-db-id->user-exists? (atom {})]
                 (fn []
                   (or (get @app-db-id->user-exists? (mdb.connection/unique-identifier))
-                      (let [exists? (db/exists? User)]
+                      (let [exists? (t2/exists? User)]
                         (swap! app-db-id->user-exists? assoc (mdb.connection/unique-identifier) exists?)
                         exists?))))
   :doc        false)

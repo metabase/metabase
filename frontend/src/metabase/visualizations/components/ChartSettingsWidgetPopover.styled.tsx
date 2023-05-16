@@ -31,6 +31,10 @@ export const PopoverTabs = styled(Radio)`
     justify-content: center;
     padding-bottom: 0.75rem;
   }
+
+  ${Radio.RadioLabelText} {
+    flex: none;
+  }
 `;
 
 export const PopoverTitle = styled.h3`

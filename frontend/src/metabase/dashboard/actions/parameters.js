@@ -1,26 +1,28 @@
 import { assoc } from "icepick";
 import _ from "underscore";
+import { t } from "ttag";
 
 import { createAction, createThunkAction } from "metabase/lib/redux";
+import { addUndo, dismissUndo } from "metabase/redux/undo";
 
 import {
   createParameter,
   setParameterName as setParamName,
-  getFilteringParameterValuesMap,
-  getParameterValuesSearchKey,
 } from "metabase/parameters/utils/dashboards";
 import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-values";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 
-import { DashboardApi } from "metabase/services";
-
 import { getMetadata } from "metabase/selectors/metadata";
+import { isActionDashCard } from "metabase/actions/utils";
+import { saveDashboardAndCards } from "metabase/dashboard/actions/save";
 import {
   getDashboard,
+  getDraftParameterValues,
+  getIsAutoApplyFilters,
   getParameterValues,
-  getDashboardParameterValuesSearchCache,
-  getDashboardParameterValuesCache,
   getParameters,
+  getDashboardId,
+  getAutoApplyFiltersToastId,
 } from "../selectors";
 
 import { isVirtualDashCard } from "../utils";
@@ -108,10 +110,17 @@ export const setParameterMapping = createThunkAction(
   (parameter_id, dashcard_id, card_id, target) => (dispatch, getState) => {
     const dashcard = getState().dashboard.dashcards[dashcard_id];
     const isVirtual = isVirtualDashCard(dashcard);
+    const isAction = isActionDashCard(dashcard);
+
     let parameter_mappings = dashcard.parameter_mappings || [];
-    parameter_mappings = parameter_mappings.filter(
-      m => m.card_id !== card_id || m.parameter_id !== parameter_id,
-    );
+
+    // allow mapping the same parameter to multiple action targets
+    if (!isAction) {
+      parameter_mappings = parameter_mappings.filter(
+        m => m.card_id !== card_id || m.parameter_id !== parameter_id,
+      );
+    }
+
     if (target) {
       if (isVirtual) {
         // If this is a virtual (text) card, remove any existing mappings for the target, since text card variables
@@ -130,6 +139,23 @@ export const setParameterMapping = createThunkAction(
       setDashCardAttributes({
         id: dashcard_id,
         attributes: { parameter_mappings },
+      }),
+    );
+  },
+);
+
+export const SET_ACTION_FOR_DASHCARD =
+  "metabase/dashboard/SET_ACTION_FOR_DASHCARD";
+export const setActionForDashcard = createThunkAction(
+  SET_PARAMETER_MAPPING,
+  (dashcard, newAction) => dispatch => {
+    dispatch(
+      setDashCardAttributes({
+        id: dashcard.id,
+        attributes: {
+          action_id: newAction.id,
+          action: newAction,
+        },
       }),
     );
   },
@@ -160,13 +186,25 @@ export const setParameterFilteringParameters = createThunkAction(
 export const SET_PARAMETER_VALUE = "metabase/dashboard/SET_PARAMETER_VALUE";
 export const setParameterValue = createThunkAction(
   SET_PARAMETER_VALUE,
-  (parameterId, value) => (dispatch, getState) => {
-    return { id: parameterId, value };
+  (parameterId, value) => (_dispatch, getState) => {
+    const isSettingDraftParameterValues = !getIsAutoApplyFilters(getState());
+    return { id: parameterId, value, isDraft: isSettingDraftParameterValues };
   },
 );
 
 export const SET_PARAMETER_VALUES = "metabase/dashboard/SET_PARAMETER_VALUES";
 export const setParameterValues = createAction(SET_PARAMETER_VALUES);
+
+// Auto-apply filters
+const APPLY_DRAFT_PARAMETER_VALUES =
+  "metabase/dashboard/APPLY_DRAFT_PARAMETER_VALUES";
+export const applyDraftParameterValues = createThunkAction(
+  APPLY_DRAFT_PARAMETER_VALUES,
+  () => (dispatch, getState) => {
+    const draftParameterValues = getDraftParameterValues(getState());
+    dispatch(setParameterValues(draftParameterValues));
+  },
+);
 
 export const SET_PARAMETER_DEFAULT_VALUE =
   "metabase/dashboard/SET_PARAMETER_DEFAULT_VALUE";
@@ -191,6 +229,19 @@ export const setParameterIsMultiSelect = createThunkAction(
       isMultiSelect: isMultiSelect,
     }));
     return { id: parameterId, isMultiSelect };
+  },
+);
+
+export const SET_PARAMETER_QUERY_TYPE =
+  "metabase/dashboard/SET_PARAMETER_QUERY_TYPE";
+export const setParameterQueryType = createThunkAction(
+  SET_PARAMETER_QUERY_TYPE,
+  (parameterId, queryType) => (dispatch, getState) => {
+    updateParameter(dispatch, getState, parameterId, parameter => ({
+      ...parameter,
+      values_query_type: queryType,
+    }));
+    return { id: parameterId, queryType };
   },
 );
 
@@ -252,58 +303,6 @@ export const HIDE_ADD_PARAMETER_POPOVER =
   "metabase/dashboard/HIDE_ADD_PARAMETER_POPOVER";
 export const hideAddParameterPopover = createAction(HIDE_ADD_PARAMETER_POPOVER);
 
-export const FETCH_DASHBOARD_PARAMETER_FIELD_VALUES_WITH_CACHE =
-  "metabase/dashboard/FETCH_DASHBOARD_PARAMETER_FIELD_VALUES_WITH_CACHE";
-
-export const fetchDashboardParameterValuesWithCache = createThunkAction(
-  FETCH_DASHBOARD_PARAMETER_FIELD_VALUES_WITH_CACHE,
-  ({ dashboardId, parameter, parameters, query }) =>
-    async (dispatch, getState) => {
-      const parameterValuesSearchCache = getDashboardParameterValuesSearchCache(
-        getState(),
-      );
-      const filteringParameterValues = getFilteringParameterValuesMap(
-        parameter,
-        parameters,
-      );
-      const cacheKey = getParameterValuesSearchKey({
-        dashboardId,
-        parameterId: parameter.id,
-        query,
-        filteringParameterValues,
-      });
-
-      if (parameterValuesSearchCache[cacheKey]) {
-        return;
-      }
-
-      const endpoint = query
-        ? DashboardApi.parameterSearch
-        : DashboardApi.parameterValues;
-      const { values, has_more_values } = await endpoint({
-        paramId: parameter.id,
-        dashId: dashboardId,
-        query,
-        ...filteringParameterValues,
-      });
-
-      return {
-        cacheKey,
-        results: values.map(value => [].concat(value)),
-        has_more_values: query ? true : has_more_values,
-      };
-    },
-);
-
-export const fetchDashboardParameterValues =
-  args => async (dispatch, getState) => {
-    await dispatch(fetchDashboardParameterValuesWithCache(args));
-    const dashboardParameterValuesCache = getDashboardParameterValuesCache(
-      getState(),
-    );
-    return dashboardParameterValuesCache.get(args) || [];
-  };
-
 export const setOrUnsetParameterValues =
   parameterIdValuePairs => (dispatch, getState) => {
     const parameterValues = getParameterValues(getState());
@@ -327,3 +326,56 @@ export const setParameterValuesFromQueryParams =
 
     dispatch(setParameterValues(parameterValues));
   };
+
+export const TOGGLE_AUTO_APPLY_FILTERS =
+  "metabase/dashboard/TOGGLE_AUTO_APPLY_FILTERS";
+export const toggleAutoApplyFilters = createThunkAction(
+  TOGGLE_AUTO_APPLY_FILTERS,
+  isEnabled => (dispatch, getState) => {
+    const dashboardId = getDashboardId(getState());
+
+    dispatch(
+      setDashboardAttributes({
+        id: dashboardId,
+        attributes: { auto_apply_filters: isEnabled },
+      }),
+    );
+    dispatch(saveDashboardAndCards(true));
+  },
+);
+
+export const SHOW_AUTO_APPLY_FILTERS_TOAST =
+  "metabase/dashboard/SHOW_AUTO_APPLY_FILTERS_TOAST";
+export const showAutoApplyFiltersToast = createThunkAction(
+  SHOW_AUTO_APPLY_FILTERS_TOAST,
+  () => (dispatch, getState) => {
+    const action = toggleAutoApplyFilters(false);
+    const toastId = _.uniqueId();
+    const dashboardId = getDashboardId(getState());
+
+    dispatch(
+      addUndo({
+        id: toastId,
+        icon: null,
+        timeout: null,
+        message: t`You can make this dashboard snappier by turning off auto-applying filters.`,
+        action,
+        actionLabel: t`Turn off`,
+      }),
+    );
+
+    return { toastId, dashboardId };
+  },
+);
+
+export const CLOSE_AUTO_APPLY_FILTERS_TOAST =
+  "metabase/dashboard/SHOW_AUTO_APPLY_FILTERS_TOAST";
+export const closeAutoApplyFiltersToast = createThunkAction(
+  CLOSE_AUTO_APPLY_FILTERS_TOAST,
+  () => (dispatch, getState) => {
+    const toastId = getAutoApplyFiltersToastId(getState());
+    if (toastId) {
+      dispatch(dismissUndo(toastId, false));
+    }
+  },
+);

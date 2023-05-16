@@ -7,112 +7,144 @@
    [clojure.spec.alpha :as s]
    [clojure.spec.gen.alpha :as gen]
    [clojure.walk :as walk]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [trs]]))
+
+(set! *warn-on-reflection* true)
 
 (defmulti ^:private convert
   "convert values from the naively converted json to what we REALLY WANT"
   first)
 
-(defmethod convert :kw->int
-  [[_ k]]
-  (Integer/parseInt (name k)))
-
-(defmethod convert :str->kw
-  [[_ s]]
-  (keyword s))
+(defmethod convert :kw->int [[_ k]] (Integer/parseInt (name k)))
+(defmethod convert :str->kw [[_ s]] (keyword s))
 
 ;; Convert a keyword to string without excluding the namespace.
 ;; e.g: :schema/name => "schema/name".
 ;; Primarily used for schema-name since schema are allowed to have "/"
 ;; and calling (name s) returning a substring after "/".
-(defmethod convert :kw->str
-  [[_ s]]
-  (u/qualified-name s))
-
-(defmethod convert :nil->none
-  [[_ _]]
-  :none)
-
-(defmethod convert :identity
-  [[_ x]]
-  x)
+(defmethod convert :kw->str [[_ s]] (u/qualified-name s))
+(defmethod convert :nil->none [[_ _]] :none)
+(defmethod convert :identity [[_ x]] x)
+(defmethod convert :global-execute [[_ x]] x)
+(defmethod convert :db-exeute [[_ x]] x)
 
 ;;; --------------------------------------------------- Common ----------------------------------------------------
 
-;; ids come in asa keywordized numbers
+(defn- kw-int->int-decoder [kw-int]
+  (if (int? kw-int)
+    kw-int
+    (parse-long (name kw-int))))
+
+(def DecodableKwInt
+  "Integer malli schema that knows how to decode itself from the :123 sort of shape used in perm-graphs"
+  [:int {:decode/perm-graph kw-int->int-decoder}])
+
+(def ^:private Id DecodableKwInt)
+(def ^:private GroupId DecodableKwInt)
+
+;; ids come in as keywordized numbers
 (s/def ::id (s/with-gen (s/or :kw->int (s/and keyword? #(re-find #"^\d+$" (name %))))
               #(gen/fmap (comp keyword str) (s/gen pos-int?))))
 
-(s/def ::native (s/or :str->kw #{"write" "none" "full" "limited"}
-                      :nil->none nil?))
+(def ^:private Native
+  "native permissions"
+  [:maybe [:enum :write :none :full :limited]])
 
 ;;; ------------------------------------------------ Data Permissions ------------------------------------------------
 
-(s/def ::schema-name (s/or :kw->str keyword?))
+(def ^:private TablePerms
+  [:or
+   [:enum :all :segmented :none :full :limited]
+   [:map
+    [:read {:optional true} [:enum :all :none]]
+    [:query {:optional true} [:enum :all :none :segmented]]]])
 
-;; {:groups {1 {:data {:schemas {"PUBLIC" ::schema-perms-granular}}}}} =>
-;; {:groups {1 {:data {:schemas {"PUBLIC" {1 :all}}}}}}
-(s/def ::read (s/or :str->kw #{"all" "none"}))
-(s/def ::query (s/or :str->kw #{"all" "none" "segmented"}))
+(def ^:private SchemaPerms
+  [:or
+   [:keyword {:title "schema name"}]
+   [:map-of Id TablePerms]])
 
-(s/def ::table-perms-granular (s/keys :opt-un [::read ::query]))
+(def ^:private SchemaGraph
+  [:map-of
+   [:string {:decode/perm-graph name}]
+   SchemaPerms])
 
-(s/def ::table-perms (s/or :str->kw #{"all" "segmented" "none" "full" "limited"}
-                           :identity ::table-perms-granular))
+(def ^:private Schemas
+  [:or
+   [:enum :all :segmented :none :block :full :limited]
+   SchemaGraph])
 
-(s/def ::table-graph (s/map-of ::id ::table-perms
-                               :conform-keys true))
+(def ^:private DataPerms
+  [:map
+   [:native {:optional true} Native]
+   [:schemas {:optional true} Schemas]])
 
-(s/def ::schema-perms (s/or :str->kw #{"all" "segmented" "none" "full" "limited"}
-                            :identity ::table-graph))
+(def StrictDataPerms
+  "data perms that care about how native and schemas keys related to one another.
+  If you have write access for native queries, you must have data access to all schemas."
+  [:and
+   DataPerms
+   [:fn {:error/fn (fn [_ _] (trs "Invalid DB permissions: If you have write access for native queries, you must have data access to all schemas."))}
+    (fn [{:keys [native schemas]}]
+      (not (and (= native :write) schemas (not= schemas :all))))]])
 
-;; {:groups {1 {:data {:schemas {"PUBLIC" ::schema-perms}}}}}
-(s/def ::schema-graph (s/map-of ::schema-name ::schema-perms
-                                :conform-keys true))
+(def ^:private DbGraph
+  [:schema {:registry {"DataPerms" DataPerms}}
+   [:map-of
+    Id
+    [:map
+     [:data {:optional true} "DataPerms"]
+     [:query {:optional true} "DataPerms"]
+     [:download {:optional true} "DataPerms"]
+     [:data-model {:optional true} "DataPerms"]
+     ;; We use :yes and :no instead of booleans for consistency with the application perms graph, and
+     ;; consistency with the language used on the frontend.
+     [:details {:optional true} [:enum :yes :no]]
+     [:execute {:optional true} [:enum :all :none]]]]])
 
-;; {:groups {1 {:data {:schemas ::schemas}}}}
-(s/def ::schemas (s/or :str->kw   #{"all" "segmented" "none" "block" "full" "limited"}
-                       :nil->none nil?
-                       :identity  ::schema-graph))
+(def StrictDbGraph
+  "like db-graph, but if you have write access for native queries, you must have data access to all schemas."
+  [:schema {:registry {"StrictDataPerms" StrictDataPerms}}
+   [:map-of
+    Id
+    [:map
+     [:data {:optional true} "StrictDataPerms"]
+     [:query {:optional true} "StrictDataPerms"]
+     [:download {:optional true} "StrictDataPerms"]
+     [:data-model {:optional true} "StrictDataPerms"]
+     ;; We use :yes and :no instead of booleans for consistency with the application perms graph, and
+     ;; consistency with the language used on the frontend.
+     [:details {:optional true} [:enum :yes :no]]
+     [:execute {:optional true} [:enum :all :none]]]]])
 
-(s/def ::data (s/keys :opt-un [::native ::schemas]))
+(def DataPermissionsGraph
+  "Used to transform, and verify data permissions graph"
+  [:map [:groups [:map-of GroupId [:maybe DbGraph]]]])
 
-(s/def ::download (s/keys :opt-un [::native ::schemas]))
+(def StrictData
+  "Top level strict data graph schema"
+  [:map
+   [:groups [:map-of GroupId [:maybe StrictDbGraph]]]
+   [:revision int?]])
 
-(s/def ::data-model (s/keys :opt-un [::native ::schemas]))
 
-;; We use "yes" and "no" instead of booleans for consistency with the application perms graph, and consistency with the
-;; language used on the frontend.
-(s/def ::details (s/or :str->kw #{"yes" "no"}))
+;;; --------------------------------------------- Execution Permissions ----------------------------------------------
 
-(s/def ::db-perms (s/keys :opt-un [::data ::download ::data-model ::details]))
+(s/def ::execute (s/or :str->kw #{"all" "none"}))
 
-(s/def ::db-graph (s/map-of ::id ::db-perms
-                            :conform-keys true))
+(s/def ::execute-graph
+  (s/or :global-execute ::execute
+        :db-exeute      (s/map-of ::id ::execute
+                                  :conform-keys true)))
 
-(s/def :metabase.api.permission-graph.data/groups
-  (s/map-of ::id ::db-graph
+(s/def :metabase.api.permission-graph.execution/groups
+  (s/map-of ::id
+            ::execute-graph
             :conform-keys true))
 
-(s/def ::data-permissions-graph
-  (s/keys :req-un [:metabase.api.permission-graph.data/groups]))
-
-;;; --------------------------------------------- Collection Permissions ---------------------------------------------
-
-(s/def ::collections
-  (s/map-of (s/or :identity ::id
-                  :str->kw  #{"root"})
-            (s/or :str->kw #{"read" "write" "none"})))
-
-(s/def ::collection-graph
-  (s/map-of ::id ::collections))
-
-(s/def :metabase.api.permission-graph.collection/groups
-  (s/map-of ::id ::collection-graph
-            :conform-keys true))
-
-(s/def ::collection-permissions-graph
-  (s/keys :req-un [:metabase.api.permission-graph.collection/groups]))
+(s/def ::execution-permissions-graph
+  (s/keys :req-un [:metabase.api.permission-graph.execution/groups]))
 
 (defn converted-json->graph
   "The permissions graph is received as JSON. That JSON is naively converted. This performs a further conversion to

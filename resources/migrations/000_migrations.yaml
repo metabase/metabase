@@ -13045,6 +13045,517 @@ databaseChangeLog:
             type: mysql,mariadb
 
   - changeSet:
+      id: v46.00-000
+      author: snoe
+      comment: Added 0.46.0 - Unify action representation
+      changes:
+        - createTable:
+            tableName: implicit_action
+            remarks: An action with dynamic parameters based on the underlying model
+            columns:
+              - column:
+                  name: action_id
+                  type: int
+                  remarks: The associated action
+                  constraints:
+                    nullable: false
+                    referencedTableName: action
+                    referencedColumnNames: id
+                    foreignKeyName: fk_implicit_action_action_id
+                    deleteCascade: true
+              - column:
+                  name: kind
+                  type: ${text.type}
+                  remarks: The kind of implicit action create/update/delete
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v46.00-001
+      author: snoe
+      comment: Added 0.46.0 - Unify action representation
+      changes:
+        - addColumn:
+            tableName: action
+            columns:
+              - column:
+                  name: model_id
+                  remarks: The associated model
+                  type: int
+
+  - changeSet:
+      id: v46.00-002
+      author: snoe
+      comment: Added 0.46.0 - Unify action representation
+      changes:
+        - addColumn:
+            tableName: action
+            columns:
+              - column:
+                  name: name
+                  remarks: The name of the action
+                  type: varchar(254)
+
+  - changeSet:
+      id: v46.00-003
+      author: snoe
+      comment: Added 0.46.0 - Unify action representation
+      changes:
+        - addColumn:
+            tableName: action
+            columns:
+              - column:
+                  name: description
+                  remarks: The description of the action
+                  type: ${text.type}
+
+  - changeSet:
+      id: v46.00-004
+      author: snoe
+      comment: Added 0.46.0 - Unify action representation
+      changes:
+        - addColumn:
+            tableName: action
+            columns:
+              - column:
+                  name: parameters
+                  remarks: The saved parameters for this action
+                  type: ${text.type}
+
+  - changeSet:
+      id: v46.00-005
+      author: snoe
+      comment: Added 0.46.0 - Unify action representation
+      changes:
+        - addColumn:
+            tableName: action
+            columns:
+              - column:
+                  name: parameter_mappings
+                  remarks: The saved parameter mappings for this action
+                  type: ${text.type}
+  - changeSet:
+      id: v46.00-006
+      author: snoe
+      comment: Added 0.46.0 - Unify action representation
+      changes:
+        - addColumn:
+            tableName: action
+            columns:
+              - column:
+                  name: visualization_settings
+                  remarks: The UI visualization_settings for this action
+                  type: ${text.type}
+
+  - changeSet:
+      id: v46.00-007
+      author: snoe
+      comment: Added 0.46.0 - Unify action representation
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: action
+            baseColumnNames: model_id
+            referencedTableName: report_card
+            referencedColumnNames: id
+            constraintName: fk_action_model_id
+
+  - changeSet:
+      id: v46.00-008
+      author: snoe
+      comment: Added 0.46.0 - Unify action representation
+      changes:
+        - addColumn:
+            tableName: query_action
+            columns:
+              - column:
+                  name: database_id
+                  remarks: The associated database
+                  type: int
+
+  - changeSet:
+      id: v46.00-009
+      author: snoe
+      comment: Added 0.46.0 - Unify action representation
+      changes:
+        - addColumn:
+            tableName: query_action
+            columns:
+              - column:
+                  name: dataset_query
+                  remarks: The MBQL writeback query
+                  type: ${text.type}
+
+  - changeSet:
+      id: v46.00-010
+      author: snoe
+      comment: Added 0.46.0 - Unify action representation
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: query_action
+            baseColumnNames: database_id
+            referencedTableName: metabase_database
+            referencedColumnNames: id
+            constraintName: fk_query_action_database_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v46.00-011
+      author: snoe
+      validCheckSum: ANY
+      comment: Added 0.46.0 - Unify action representation
+      changes:
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              ALTER TABLE query_action DROP PRIMARY KEY, ADD PRIMARY KEY pk_query_action (action_id);
+        - sql:
+            dbms: h2
+            sql: >-
+              ALTER TABLE query_action DROP PRIMARY KEY;
+              ALTER TABLE query_action ADD CONSTRAINT pk_query_action PRIMARY KEY (action_id);
+        - sql:
+            dbms: postgresql
+            sql: >-
+              ALTER TABLE query_action DROP CONSTRAINT pk_query_action;
+              ALTER TABLE query_action ADD CONSTRAINT pk_query_action PRIMARY KEY (action_id);
+      rollback:
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              ALTER TABLE query_action DROP PRIMARY KEY, ADD PRIMARY KEY pk_query_action (action_id, card_id);
+        - sql:
+            dbms: h2
+            sql: >-
+              ALTER TABLE query_action DROP CONSTRAINT fk_query_action_ref_action_id;
+              ALTER TABLE query_action DROP PRIMARY KEY;
+              ALTER TABLE query_action ADD CONSTRAINT fk_query_action_ref_action_id FOREIGN KEY (action_id) REFERENCES action(id) ON DELETE CASCADE;
+              ALTER TABLE query_action ADD CONSTRAINT pk_query_action PRIMARY KEY (action_id, card_id);
+        - sql:
+            dbms: postgresql
+            sql: >-
+              ALTER TABLE query_action DROP CONSTRAINT pk_query_action;
+              ALTER TABLE query_action ADD CONSTRAINT pk_query_action PRIMARY KEY (action_id, card_id);
+
+  - changeSet:
+      id: v46.00-012
+      author: snoe
+      comment: Added 0.46.0 - Unify action representation
+      changes:
+        - dropNotNullConstraint:
+            tableName: query_action
+            columnDataType: int
+            columnName: card_id
+
+  # migration for developers and internal use of actions created in 45 during a short period.
+  - changeSet:
+      id: v46.00-013
+      author: snoe
+      comment: Added 0.46.0 - Unify action representation
+      validCheckSum: ANY
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO action (type, model_id, name)
+              SELECT 'implicit', card_id, slug
+              FROM model_action
+              WHERE action_id is null AND slug in ('insert','update','delete');
+
+              INSERT INTO implicit_action (action_id, kind)
+              SELECT
+                id,
+                case name
+                  when 'insert' then 'row/create'
+                  when 'update' then 'row/update'
+                  when 'delete' then 'row/delete'
+                end
+              FROM action
+              WHERE type = 'implicit';
+
+              UPDATE action
+              SET model_id = (SELECT card_id
+                              FROM model_action
+                              WHERE model_action.action_id = action.id)
+              WHERE model_id is null;
+
+              DELETE FROM action WHERE model_id is null;
+
+              UPDATE report_dashboardcard
+              SET action_id = (SELECT action.id
+                               FROM action
+                               LEFT JOIN implicit_action ON implicit_action.action_id = action.id
+                               WHERE action.model_id = report_dashboardcard.card_id
+                               AND coalesce((
+                                  CASE implicit_action.kind
+                                     WHEN 'row/create' THEN 'insert'
+                                     WHEN 'row/delete' THEN 'delete'
+                                     WHEN 'row/update' THEN 'update'
+                                  END), ('action_' || action.id)) =
+                                  substring(report_dashboardcard.visualization_settings,
+                                    position('"action_slug":"' in report_dashboardcard.visualization_settings)+15,
+                                    position('"' in
+                                      substring(report_dashboardcard.visualization_settings,
+                                        position('"action_slug":"' in visualization_settings)+15)) - 1))
+              WHERE report_dashboardcard.visualization_settings like '%action_slug%';
+
+              UPDATE query_action SET
+                dataset_query = (select dataset_query from report_card where report_card.id = query_action.card_id),
+                database_id = (select database_id from report_card where report_card.id = query_action.card_id);
+
+              UPDATE action SET
+                name = (
+                  select name
+                  from query_action
+                  inner join report_card on report_card.id = query_action.card_id
+                  where query_action.action_id = action.id),
+                description = (
+                  select description
+                  from query_action
+                  inner join report_card on report_card.id = query_action.card_id
+                  where query_action.action_id = action.id),
+                parameters = (
+                  select parameters
+                  from query_action
+                  inner join report_card on report_card.id = query_action.card_id
+                  where query_action.action_id = action.id),
+                parameter_mappings = (
+                  select parameter_mappings
+                  from query_action
+                  inner join report_card on report_card.id = query_action.card_id
+                  where query_action.action_id = action.id),
+                visualization_settings = (
+                  select visualization_settings
+                  from query_action
+                  inner join report_card on report_card.id = query_action.card_id
+                  where query_action.action_id = action.id)
+              WHERE type = 'query';
+      rollback: # no-op, we do not care to preserve actions from 46->45
+
+  - changeSet:
+      id: v46.00-014
+      author: snoe
+      comment: Added 0.46.0 - Unify action representation
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: query_action
+            constraintName: fk_query_action_ref_card_id
+      rollback:
+
+  - changeSet:
+      id: v46.00-015
+      author: snoe
+      comment: Added 0.46.0 - Unify action representation
+      changes:
+        - dropColumn:
+            tableName: query_action
+            columnName: card_id
+
+      rollback:
+        - addColumn:
+            tableName: query_action
+            columns:
+              - column:
+                  name: card_id
+                  type: int
+                  remarks: The related card
+                  constraints:
+                    nullable: false
+                    referencedTableName: report_card
+                    referencedColumnNames: id
+                    foreignKeyName: fk_query_action_ref_card_id
+                    deleteCascade: true
+
+  - changeSet:
+      id: v46.00-016
+      author: snoe
+      comment: Added 0.46.0 - Unify action representation
+      changes:
+        - sql:
+            sql: >-
+              DELETE FROM report_card
+              WHERE is_write = true;
+
+              DELETE FROM model_action;
+      rollback: # we do not care to preserve actions from 46->45
+        - sql:
+            sql: >-
+              DELETE FROM report_dashboardcard WHERE action_id is not null;
+              DELETE FROM action;
+
+  - changeSet:
+      id: v46.00-017
+      author: snoe
+      comment: Added 0.46.0 - Unify action representation
+      changes:
+        - dropColumn:
+            tableName: http_action
+            columnName: name
+      rollback:
+        - addColumn:
+            tableName: http_action
+            columns:
+              - column:
+                  name: name
+                  type: varchar(254)
+                  remarks: The name of this action
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v46.00-018
+      author: snoe
+      comment: Added 0.46.0 - Unify action representation
+      changes:
+        - dropColumn:
+            tableName: http_action
+            columnName: description
+      rollback:
+        - addColumn:
+            tableName: http_action
+            columns:
+              - column:
+                  name: description
+                  type: ${text.type}
+                  remarks: An optional description for this action
+
+  - changeSet:
+      id: v46.00-019
+      author: snoe
+      comment: Added 0.46.0 - Unify action representation
+      changes:
+        - dropColumn:
+            tableName: report_card
+            columnName: is_write
+      rollback:
+        - addColumn:
+            columns:
+              - column:
+                  name: is_write
+                  type: boolean
+                  defaultValueBoolean: false
+                  remarks: Indicates that this query will perform writes to a db
+                  constraints:
+                    nullable: false
+            tableName: report_card
+
+  - changeSet:
+      id: v46.00-020
+      author: snoe
+      comment: Added 0.46.0 - Unify action representation
+      changes:
+        - addNotNullConstraint:
+            tableName: query_action
+            columnName: database_id
+            columnDataType: int
+
+  - changeSet:
+      id: v46.00-021
+      author: snoe
+      comment: Added 0.46.0 - Unify action representation
+      changes:
+        - addNotNullConstraint:
+            tableName: query_action
+            columnName: dataset_query
+            columnDataType: ${text.type}
+
+  - changeSet:
+      id: v46.00-022
+      author: snoe
+      comment: Added 0.46.0 - Unify action representation
+      changes:
+        - addNotNullConstraint:
+            tableName: query_action
+            columnName: dataset_query
+            columnDataType: ${text.type}
+
+  - changeSet:
+      id: v46.00-023
+      author: snoe
+      comment: Added 0.46.0 - Unify action representation
+      changes:
+        - addNotNullConstraint:
+            tableName: action
+            columnName: model_id
+            columnDataType: int
+
+  - changeSet:
+      id: v46.00-024
+      author: snoe
+      comment: Added 0.46.0 - Unify action representation
+      changes:
+        - addNotNullConstraint:
+            tableName: action
+            columnName: name
+            columnDataType: varchar(254)
+
+  - changeSet:
+      id: v46.00-025
+      author: snoe
+      comment: Added 0.46.0 - Unify action representation
+      changes:
+        - dropTable:
+            tableName: model_action
+      rollback:
+        - createTable:
+            tableName: model_action
+            remarks: Ties actions to models
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: entity_id
+                  type: char(21)
+                  remarks: Random NanoID tag for unique identity.
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: slug
+                  type: varchar(254)
+                  remarks: The referenceable name for this action
+                  constraints:
+                    nullable: false
+              - column:
+                  name: card_id
+                  type: int
+                  remarks: The associated model
+                  constraints:
+                    nullable: false
+                    referencedTableName: report_card
+                    referencedColumnNames: id
+                    foreignKeyName: fk_model_action_ref_card_id
+                    deleteCascade: true
+              - column:
+                  name: action_id
+                  type: int
+                  remarks: The associated action
+                  constraints:
+                    nullable: true
+                    referencedTableName: action
+                    referencedColumnNames: id
+                    foreignKeyName: fk_model_action_ref_action_id
+                    deleteCascade: true
+              - column:
+                  name: requires_pk
+                  remarks: Indicates that the primary key(s) need to be passed in as parameters
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: parameter_mappings
+                  type: ${text.type}
+                  remarks: Mappings for primary keys to action parameters
+              - column:
+                  name: visualization_settings
+                  type: ${text.type}
+                  remarks: Settings for rendering the action
+
+  - changeSet:
       id: v46.00-026
       author: metamben
       comment: Added 0.46.0 -- add field for tracking DBMS versions
@@ -13234,6 +13745,875 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_parameter_card_ref_card_id
             onDelete: CASCADE
+
+  - changeSet:
+      id: v46.00-036
+      author: metamben
+      comment: App containers are removed in 0.46.0
+      changes:
+        - dropTable:
+            tableName: app_permission_graph_revision
+      rollback:
+        - createTable:
+            tableName: app_permission_graph_revision
+            remarks: 'Used to keep track of changes made to app permissions.'
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: before
+                  type: ${text.type}
+                  remarks: 'Serialized JSON of the apps graph before the changes.'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: after
+                  type: ${text.type}
+                  remarks: 'Serialized JSON of the apps graph after the changes.'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: int
+                  remarks: 'The ID of the admin who made this set of changes.'
+                  constraints:
+                    nullable: false
+                    referencedTableName: core_user
+                    referencedColumnNames: id
+                    foreignKeyName: fk_app_permission_graph_revision_user_id
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: 'The timestamp of when these changes were made.'
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: remark
+                  type: ${text.type}
+                  remarks: 'Optional remarks explaining why these changes were made.'
+
+  - changeSet:
+      id: v46.00-037
+      author: metamben
+      comment: App pages are removed in 0.46.0
+      changes:
+        - dropColumn:
+            tableName: report_dashboard
+            columnName: is_app_page
+      rollback:
+        - addColumn:
+            columns:
+              - column:
+                  name: is_app_page
+                  type: boolean
+                  defaultValueBoolean: false
+                  remarks: Indicates that this dashboard serves as a page of an app
+                  constraints:
+                    nullable: false
+            tableName: report_dashboard
+
+  - changeSet:
+      id: v46.00-038
+      author: metamben
+      comment: App containers are removed in 0.46.0
+      changes:
+        - dropTable:
+            tableName: app
+      rollback:
+        - createTable:
+            tableName: app
+            remarks: Defines top level concerns for App
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: entity_id
+                  type: char(21)
+                  remarks: Random NanoID tag for unique identity.
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: collection_id
+                  type: int
+                  remarks: The associated collection
+                  constraints:
+                    nullable: false
+                    referencedTableName: collection
+                    referencedColumnNames: id
+                    foreignKeyName: fk_app_ref_collection_id
+                    deleteCascade: true
+                    unique: true
+              - column:
+                  name: dashboard_id
+                  type: int
+                  remarks: The homepage of the app
+              - column:
+                  remarks: JSON for the navigation items of the app
+                  name: nav_items
+                  type: ${text.type}
+              - column:
+                  remarks: JSON for frontend related additions, such as styling
+                  name: options
+                  type: ${text.type}
+              - column:
+                  remarks: The timestamp of when the app was created
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: The timestamp of when the app was updated
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: app
+            baseColumnNames: dashboard_id
+            referencedTableName: report_dashboard
+            referencedColumnNames: id
+            constraintName: fk_app_ref_dashboard_id
+            onDelete: SET NULL
+
+  - changeSet:
+      id: v46.00-039
+      author: qnkhuat
+      comment: Added 0.46.0 - add entity_id to parameter_card
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                remarks: Random NanoID tag for unique identity.
+                name: entity_id
+                type: char(21)
+                constraints:
+                  nullable: true
+                  unique: true
+            tableName: parameter_card
+
+  - changeSet:
+      id: v46.00-040
+      author: tsmacdonald
+      comment: Added 0.46.0 -- Bump default dashcard size to 4x4
+      changes:
+        - addDefaultValue:
+            tableName: report_dashboardcard
+            columnName: size_x
+            defaultValue: 4
+
+  - changeSet:
+      id: v46.00-041
+      author: tsmacdonald
+      comment: Added 0.46.0 -- Bump default dashcard size to 4x4
+      changes:
+        - addDefaultValue:
+            tableName: report_dashboardcard
+            columnName: size_y
+            defaultValue: 4
+
+  - changeSet:
+      id: v46.00-042
+      author: tsmacdonald
+      comment: Added 0.46.0 -- index query_execution.executor_id
+      changes:
+        - createIndex:
+            tableName: query_execution
+            columns:
+              - column:
+                  name: executor_id
+            indexName: idx_query_execution_executor_id
+
+  - changeSet:
+      id: v46.00-043
+      author: tsmacdonald
+      comment: Added 0.46.0 -- index query_execution.context
+      changes:
+        - createIndex:
+            tableName: query_execution
+            columns:
+              - column:
+                  name: context
+            indexName: idx_query_execution_context
+
+  - changeSet:
+      id: v46.00-045
+      author: calherries
+      comment: Added 0.46.0 -- add public_uuid to action.
+      changes:
+        - addColumn:
+            tableName: action
+            columns:
+              - column:
+                  name: public_uuid
+                  type: char(36)
+                  remarks: 'Unique UUID used to in publically-accessible links to this Action.'
+                  constraints:
+                    unique: true
+
+  - changeSet:
+      id: v46.00-051
+      author: calherries
+      comment: Added 0.46.0 -- drop defaults for dashcard's position and size
+      changes:
+        - dropDefaultValue:
+            tableName: report_dashboardcard
+            columnName: row
+      rollback:
+        - addDefaultValue:
+            tableName: report_dashboardcard
+            columnName: row
+            defaultValueNumeric: 4
+
+  - changeSet:
+      id: v46.00-052
+      author: calherries
+      comment: Added 0.46.0 -- drop defaults for dashcard's position and size
+      changes:
+        - dropDefaultValue:
+            tableName: report_dashboardcard
+            columnName: col
+      rollback:
+        - addDefaultValue:
+            tableName: report_dashboardcard
+            columnName: col
+            defaultValueNumeric: 4
+
+  - changeSet:
+      id: v46.00-053
+      author: calherries
+      comment: Added 0.46.0 -- drop defaults for dashcard's position and size
+      changes:
+        - dropDefaultValue:
+            tableName: report_dashboardcard
+            columnName: size_x
+      rollback:
+        - addDefaultValue:
+            tableName: report_dashboardcard
+            columnName: size_x
+            defaultValueNumeric: 4
+
+  - changeSet:
+      id: v46.00-054
+      author: calherries
+      comment: Added 0.46.0 -- drop defaults for dashcard's position and size
+      changes:
+        - dropDefaultValue:
+            tableName: report_dashboardcard
+            columnName: size_y
+      rollback:
+        - addDefaultValue:
+            tableName: report_dashboardcard
+            columnName: size_y
+            defaultValueNumeric: 4
+
+  - changeSet:
+      id: v46.00-055
+      author: calherries
+      comment: Added 0.46.0 -- add made_public_by_id
+      changes:
+        - addColumn:
+            tableName: action
+            columns:
+              - column:
+                  name: made_public_by_id
+                  type: int
+                  remarks: 'The ID of the User who first publically shared this Action.'
+
+  - changeSet:
+      id: v46.00-056
+      author: calherries
+      comment: Added 0.46.0 -- add public_uuid and made_public_by_id to action. public_uuid is indexed
+      changes:
+        - createIndex:
+            tableName: action
+            indexName: idx_action_public_uuid
+            columns:
+              column:
+                name: public_uuid
+
+  - changeSet:
+      id: v46.00-057
+      author: dpsutton
+      comment: Added 0.46.0 -- parameter_card.parameter_id long enough to hold a uuid
+      changes:
+        - modifyDataType:
+            tableName: parameter_card
+            columnName: parameter_id
+            newDataType: varchar(36)
+      rollback: #nothing to do, char(32) or char(36) are equivalent
+
+  - changeSet:
+      id: v46.00-058
+      author: calherries
+      comment: Added 0.46.0 -- add FK constraint for action.made_public_by_id with core_user.id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: action
+            baseColumnNames: made_public_by_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_action_made_public_by_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v46.00-059
+      author: tsmacdonald
+      comment: Added 0.46.0 -- add actions.creator_id
+      changes:
+        - addColumn:
+            tableName: action
+            columns:
+              - column:
+                  name: creator_id
+                  type: int
+                  remarks: 'The user who created the action'
+      rollback:
+        - dropColumn:
+            tableName: action
+            columnName: creator_id
+
+  - changeSet:
+      id: v46.00-060
+      author: tsmacdonald
+      comment: Added 0.46.0 -- action.creator_id index
+      changes:
+        - createIndex:
+            tableName: action
+            columns:
+              - column:
+                  name: creator_id
+            indexName: idx_action_creator_id
+      rollback:
+        - dropIndex:
+            tableName: action
+            indexName: idx_action_creator_id
+
+  - changeSet:
+      id: v46.00-061
+      author: tsmacdonald
+      comment: Added 0.46.0 -- action.creator_id index
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: action
+            baseColumnNames: creator_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_action_creator_id
+            nullable: false
+
+  - changeSet:
+      id: v46.00-062
+      author: tsmacdonald
+      comment: Added 0.46.0 -- add actions.archived
+      changes:
+        - addColumn:
+            tableName: action
+            columns:
+              - column:
+                  name: archived
+                  type: boolean
+                  defaultValueBoolean: false
+                  remarks: 'Whether or not the action has been archived'
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropColumn:
+            tableName: action
+            columnName: archived
+
+  - changeSet:
+      id: v46.00-064
+      author: noahmoss
+      comment: Added 0.46.0 -- rename `group_table_access_policy` to `sandboxes`
+      changes:
+        - renameTable:
+            newTableName: sandboxes
+            oldTableName: group_table_access_policy
+
+  - changeSet:
+      id: v46.00-065
+      author: noahmoss
+      comment: Added 0.46.0 -- add `permission_id` to `sandboxes`
+      changes:
+      - addColumn:
+          tableName: sandboxes
+          columns:
+          - column:
+              name: permission_id
+              type: int
+              remarks: The ID of the corresponding permissions path for this sandbox
+
+  - changeSet:
+      id: v46.00-066
+      author: noahmoss
+      comment: Added 0.46.0 -- backfill `permission_id` values in `sandboxes`
+      changes:
+        - sql: >-
+            UPDATE sandboxes s
+            SET permission_id = (
+              SELECT id
+              FROM permissions p
+              WHERE
+                p.object LIKE CONCAT('%/table/', s.table_id, '/query/segmented/')
+                AND p.group_id = s.group_id
+            );
+      rollback:
+        # not required, new values added here are dropped in the rollback of v46.00-065
+
+  - changeSet:
+      id: v46.00-067
+      author: noahmoss
+      comment: Added 0.46.0 -- remove orphaned entries in `sandboxes`
+      changes:
+        - sql: >-
+            DELETE FROM sandboxes
+            WHERE permission_id IS NULL;
+      rollback: # not required, orphaned sandboxes should not be re-added to the DB
+
+  - changeSet:
+      id: v46.00-070
+      author: calherries
+      comment: Added 0.46.0 - add entity_id column to action
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                remarks: Random NanoID tag for unique identity.
+                name: entity_id
+                type: char(21)
+                constraints:
+                  nullable: true
+                  unique: true
+            tableName: action
+
+  - changeSet:
+      id: v46.00-074
+      author: metamben
+      comment: Added 0.46.0 -- increase precision of updated_at of report_card
+      changes:
+        - modifyDataType:
+            tableName: report_card
+            columnName: updated_at
+            newDataType: ${timestamp_type}
+      rollback:
+        - modifyDataType:
+            tableName: report_card
+            columnName: updated_at
+            newDataType: DATETIME
+
+  - changeSet:
+      id: v46.00-075
+      author: noahmoss
+      comment: Add foreign key constraint on sandboxes.permission_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: sandboxes
+            baseColumnNames: permission_id
+            referencedTableName: permissions
+            referencedColumnNames: id
+            constraintName: fk_sandboxes_ref_permissions
+            nullable: true
+      rollback:
+      # Not required because a rollback would drop the `permission_id` column anyway
+
+  - changeSet:
+      id: v46.00-076
+      author: noahmoss
+      comment: Remove foreign key constraint on sandboxes.permission_id
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: sandboxes
+            constraintName: fk_sandboxes_ref_permissions
+      rollback:
+      # Not required because a rollback would drop the `permission_id` column anyway
+
+  - changeSet:
+      id: v46.00-077
+      author: noahmoss
+      comment: Add foreign key constraint on sandboxes.permission_id with the appropriate onDelete policy
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: sandboxes
+            baseColumnNames: permission_id
+            referencedTableName: permissions
+            referencedColumnNames: id
+            constraintName: fk_sandboxes_ref_permissions
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v46.00-079
+      author: john-metabase
+      comment: Added 0.46.0 -- migrates Databases using deprecated and removed presto driver to presto-jdbc
+      changes:
+        - sql: UPDATE metabase_database SET engine = 'presto-jdbc' WHERE engine = 'presto'
+      rollback: # nothing to do, since we don't know which drivers used to be presto
+
+  - changeSet:
+      id: v46.00-080
+      author: noahmoss
+      comment: Migrate data permission paths from v1 to v2 (splitting them into separate data and query permissions)
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.SplitDataPermissions"
+
+  - changeSet:
+      id: v46.00-084
+      author: qnkhuat
+      comment: Added 0.46.0 - CASCADE delete for action.model_id
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: action
+            constraintName: fk_action_model_id
+      rollback:
+        - addForeignKeyConstraint:
+            baseTableName: action
+            baseColumnNames: model_id
+            referencedTableName: report_card
+            referencedColumnNames: id
+            constraintName: fk_action_model_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v46.00-085
+      author: qnkhuat
+      comment: Added 0.46.0 - CASCADE delete for action.model_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: action
+            baseColumnNames: model_id
+            referencedTableName: report_card
+            referencedColumnNames: id
+            constraintName: fk_action_model_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v46.00-086
+      author: calherries
+      comment: Added 0.46.0 - Delete the abandonment email task
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.DeleteAbandonmentEmailTask"
+
+  - changeSet:
+      id: v47.00-001
+      author: calherries
+      comment: Added 0.47.0 -- set base-type to type/JSON for JSON database-types for postgres and mysql
+      changes:
+        - sql:
+            sql: >-
+              UPDATE metabase_field f
+              SET base_type = 'type/JSON'
+              WHERE EXISTS (
+                SELECT *
+                FROM metabase_database d
+                JOIN metabase_table t ON t.db_id = d.id
+                WHERE f.table_id = t.id
+                  AND lower(f.database_type) in ('json', 'jsonb')
+                  AND d.engine in ('postgres', 'mysql')
+              )
+      rollback:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              UPDATE metabase_field f
+              SET base_type = case when d.engine = 'postgres' then 'type/Structured' else 'type/SerializedJSON' end
+              FROM metabase_database d
+              JOIN metabase_table t ON t.db_id = d.id
+              WHERE f.table_id = t.id
+                AND lower(f.database_type) in ('json', 'jsonb')
+                AND d.engine in ('postgres', 'mysql')
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              UPDATE metabase_field f
+              JOIN metabase_table t ON f.table_id = t.id
+              JOIN metabase_database d ON t.db_id = d.id
+              SET base_type = case when d.engine = 'postgres' then 'type/Structured' else 'type/SerializedJSON' end
+              WHERE lower(f.database_type) in ('json', 'jsonb')
+                AND d.engine in ('postgres', 'mysql')
+        - sql:
+            dbms: h2
+            sql: >-
+              MERGE INTO metabase_field f
+              USING (
+                SELECT f.id, case when d.engine = 'postgres' then 'type/Structured' else 'type/SerializedJSON' end as base_type
+                FROM metabase_field f
+                JOIN metabase_table t ON f.table_id = t.id
+                JOIN metabase_database d ON t.db_id = d.id
+                WHERE lower(f.database_type) in ('json', 'jsonb')
+                  AND d.engine in ('postgres', 'mysql')
+              ) as updates
+              ON f.id = updates.id
+              WHEN MATCHED THEN
+                UPDATE SET f.base_type = updates.base_type;
+
+  - changeSet:
+      id: v47.00-002
+      author: calherries
+      comment: Added 0.47.0 - Add json_unfolding column to metabase_field
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                remarks: 'Enable/disable JSON unfolding for a field'
+                name: json_unfolding
+                type: boolean
+                defaultValueBoolean: false
+                constraints:
+                  nullable: false
+            tableName: metabase_field
+
+  - changeSet:
+      id: v47.00-003
+      author: calherries
+      comment: Added 0.47.0 - Populate metabase_field.json_unfolding based on base_type
+      changes:
+        - sql:
+            sql: >-
+              UPDATE metabase_field
+              SET json_unfolding = true
+              WHERE base_type = 'type/JSON';
+      rollback: # nothing to do, since json_unfolding is new in 47
+
+  - changeSet:
+      id: v47.00-004
+      author: qnkhuat
+      comment: Added 0.47.0 - Add auto_incremented to metabase_field
+      changes:
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: database_is_auto_increment
+                  type: boolean
+                  remarks: Indicates this field is auto incremented
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v47.00-005
+      author: winlost
+      comment: Added 0.47.0 - Add auto_apply_filters to dashboard
+      changes:
+        - addColumn:
+            tableName: report_dashboard
+            columns:
+              - column:
+                  name: auto_apply_filters
+                  type: boolean
+                  remarks: Whether or not to auto-apply filters on a dashboard
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v47.00-006
+      author: qnkhuat
+      comment: Added 0.47.0 - Add dashboard_tab table
+      changes:
+        - createTable:
+            tableName: dashboard_tab
+            remarks: "Join table connecting dashboard to dashboardcards"
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: dashboard_id
+                  type: int
+                  remarks: The dashboard that a tab is on
+                  constraints:
+                    nullable: false
+                    referencedTableName: report_dashboard
+                    referencedColumnNames: id
+                    foreignKeyName: fk_dashboard_tab_ref_dashboard_id
+                    deleteCascade: true
+              - column:
+                  name: name
+                  remarks: Displayed name of the tab
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: position
+                  remarks: Position of the tab with respect to others tabs in dashboard
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: entity_id
+                  type: char(21)
+                  remarks: Random NanoID tag for unique identity.
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: created_at
+                  remarks: The timestamp at which the tab was created
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  remarks: The timestamp at which the tab was last updated
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v47.00-007
+      author: qnkhuat
+      comment: Added 0.47.0 -- add report_dashboardcard.dashboard_tab_id
+      changes:
+        - addColumn:
+            tableName: report_dashboardcard
+            columns:
+              - column:
+                  name: dashboard_tab_id
+                  type: int
+                  remarks: The referenced tab id that dashcard is on, it's nullable for dashboard with no tab
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v47.00-008
+      author: qnkhuat
+      comment: Added 0.47.0 -- add report_dashboardcard.dashboard_tab_id fk constraint
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: report_dashboardcard
+            baseColumnNames: dashboard_tab_id
+            referencedTableName: dashboard_tab
+            referencedColumnNames: id
+            constraintName: fk_report_dashboardcard_ref_dashboard_tab_id
+            deleteCascade: true
+
+  - changeSet:
+      id: v47.00-009
+      author: qwef
+      comment: Added 0.47.0 - Replace user google_auth and ldap_auth columns with sso_source values
+      changes:
+        - sql:
+            sql: UPDATE core_user SET sso_source = 'google' WHERE google_auth = true;
+      rollback:
+        - sql:
+            sql: UPDATE core_user SET google_auth = true, sso_source = NULL WHERE sso_source = 'google';
+
+  - changeSet:
+      id: v47.00-010
+      author: tsmacdonald
+      comment: Added 0.47.0 - Make metabase_table.name long enough for H2 names
+      changes:
+        - modifyDataType:
+            tableName: metabase_table
+            columnName: name
+            newDataType: varchar(256)
+      rollback: # no rollback needed, varchar(256) is backwards compatible
+
+  - changeSet:
+      id: v47.00-011
+      author: tsmacdonald
+      comment: Added 0.47.0 - Make metabase_table.display_name long enough for H2 names
+      changes:
+        - modifyDataType:
+            tableName: metabase_table
+            columnName: display_name
+            newDataType: varchar(256)
+      rollback: # no rollback needed, varchar(256) is backwards compatible
+
+  - changeSet:
+      id: v47.00-012
+      author: qwef
+      comment: Added 0.47.0 - Replace user google_auth and ldap_auth columns with sso_source values
+      changes:
+        - dropColumn:
+            tableName: core_user
+            columnName: google_auth
+      rollback:
+        - addColumn:
+            tableName: core_user
+            columns:
+              - column:
+                  name: google_auth
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v47.00-013
+      author: qwef
+      comment: Added 0.47.0 - Replace user google_auth and ldap_auth columns with sso_source values
+      changes:
+        - sql:
+            sql: UPDATE core_user SET sso_source = 'ldap' WHERE ldap_auth = true;
+      rollback:
+        - sql:
+            sql: UPDATE core_user SET ldap_auth = true, sso_source = NULL WHERE sso_source = 'ldap';
+
+  - changeSet:
+      id: v47.00-014
+      author: qwef
+      comment: Added 0.47.0 - Replace user google_auth and ldap_auth columns with sso_source values
+      changes:
+        - dropColumn:
+            tableName: core_user
+            columnName: ldap_auth
+      rollback:
+        - addColumn:
+            tableName: core_user
+            columns:
+              - column:
+                  name: ldap_auth
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v47.00-015
+      author: escherize
+      comment: added 0.47.0 - Add is_audit to metabase_database
+      changes:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: is_audit
+                  type: boolean
+                  defaultValueBoolean: false
+                  remarks: 'Only the app db, visible to admins via auditing should have this set true.'
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v47.00-016
+      author: calherres
+      comment: Added 0.47.0 - Migrate the report_card.visualization_settings.column_settings field refs from legacy format
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.MigrateLegacyColumnSettingsFieldRefs"
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

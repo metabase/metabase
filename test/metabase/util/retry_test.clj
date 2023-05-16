@@ -1,4 +1,4 @@
-(ns metabase.util.retry-test
+(ns ^:mb/once metabase.util.retry-test
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase.test.util :as tu]

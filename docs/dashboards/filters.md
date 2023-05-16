@@ -23,7 +23,8 @@ You can choose from a number of filter types:
 - [Time](#time-filters)
 - [Location](#location-filters)
 - [ID](#id-filter)
-- [Other Categories](#other-categories)
+- [Number](#number-filter)
+- [Text or categories](#text-or-category-filter)
 
 The type of filter you choose will determine what the filter widget will look like, as well as which fields you’ll be able to filter your cards by:
 
@@ -53,38 +54,57 @@ There are four types of Location filters to choose from:
 
 The ID filter provides a simple input box where you can type the ID of a user, order, etc.
 
-### Other Categories
+### Number filter
 
-The Other Categories filter is a flexible filter type that will let you create either a dropdown menu or an input box to filter on any category field in your cards.
+You can choose from:
 
-**Note:** If you're trying to filter Native/SQL questions, you'll need to [add a bit of additional markup to your query](../questions/native-editor/sql-parameters.md) in order to use a dashboard filter with that question. For an in-depth article on this, check out [Adding filters to dashboards with SQL questions](https://www.metabase.com/learn/dashboards/filters).
+- Equal to
+- Not equal to
+- Between
+- Greater than or equal to
+- Less than or equal to
+
+### Text or category filter
+
+A flexible filter type that will let you create either a dropdown menu or an input box to filter on any category field in your cards. Options include:
+
+- **Is**. Select one or more values from a list or search box.
+- **Is not**. Exclude one or more specific values.
+- **Contains**. Match values that contain the entered text.
+- **Does not contain**. Filter out values that contain the entered text.
+- **Starts with**. Match values that begin with the entered text.
+- **Ends with**. Match values that end with the entered text.
+
+## Filtering dashboards with native/SQL questions
+
+If you're trying to filter native/SQL questions, you'll need to [add a bit of additional markup to your query](../questions/native-editor/sql-parameters.md) in order to use a dashboard filter with that question. For an in-depth article on this, check out [Adding filters to dashboards with SQL questions](https://www.metabase.com/learn/dashboards/filters).
 
 ## Example filter
 
-Let's add a filter widget to our dashboard. We'll select a **Time** filter, and then select the **Month and Year** option.
+Let's add a filter widget to our dashboard. We'll select a **Text or Category** filter, and then select the **Is** option to select one or more values from a list.
 
-![Choose filter type](./images/filter-type.png)
+Metabase will display a filter editing sidebar where you can wire up your new filter to each applicable card. Each card will feature a dropdown menu where you can select the column to filter. The sidebar on the right displays the settings for the current filter.
 
-Metabase will display a filter editing interface where you can wire up your new filter to each applicable card.
+If there’s a card on your dashboard that you don’t want to use with the filter, or that doesn’t make sense to use with the filter, that’s okay — the filter will only be applied to the cards you select.
 
-![Wiring up the cards](./images/wiring-cards.png)
+Here we've wired up a Text filter to a card on the `Analytics.Event.Button.Label` field:
 
-Each card will feature a dropdown menu where you can select the column to filter. The sidebar on the right displays the settings for the current filter. If there’s a card on your dashboard that you don’t want to use with the filter, or that doesn’t make sense to use with the filter, that’s okay — the filter will only be applied to the cards you select.
+![Wiring up a dashboard filter to a card](./images/wiring-cards.png)
 
-So here’s what we’re doing — when we pick a month and year with our new filter, the filter needs to know which column in the card to filter on. For example, if we have a **Total Orders** card, and each order has a `Date Ordered` as well as a `Date Delivered` column, we have to pick which of those columns to filter — do we want to see all the orders _placed_ in January, or do we want to see all the orders _delivered_ in January? So, for each card on our dashboard, we’ll pick a date column to connect to the filter. If one of your cards says there aren’t any valid columns, that just means that card doesn’t contain any columns that match the kind of filter you chose.
-
-![Select fields](./images/select-fields.png)
-
-Before we **Save** our changes, we can use the right sidebar to customize the **Label** of our new filter, or set a **Default value**.
-
-When you're finished wiring up the filter, click **Done** at the bottom of the sidebar, then click on **Save** in the top right to save the dashboard with your new filter.
+Before we **Save** our changes, we can edit our filter's settings.
 
 ## Editing a filter
 
 - **To edit a filter**: click the **pencil** icon to enter dashboard editing mode, then click the **gear** icon button on the filter you want to change. You can wire up individual cards to the filter, and use the sidebar to update the label.
+- **To remove a filter**: click on the filter's **gear** icon to open the filter sidebar. Under the **Settings** tab, click **Remove** in the sidebar. If you accidentally remove a filter, just click **Cancel** in the top-right to exit dashboard editing mode without saving your changes.
 - **To reorder your filters**: click on the grabber handle on the left side of a filter, then drag the filter to a different position.
 - **To set a default value**: click on the filter's **gear** icon to open the filter sidebar. Under the **Settings** tab, enter a value in the **Default value** input field.
-- **To remove a filter**: click on the filter's **gear** icon to open the filter sidebar. Under the **Settings** tab, click **Remove** in the sidebar. If you accidentally remove a filter, just click **Cancel** in the top-right to exit dashboard editing mode without saving your changes.
+- **To change the selectable values in a filter**: click on the gear icon for that filter, and under "How should users filter on this column", click on the **Dropdown list**, then click **Edit**. You can specify where the values should come from:
+    - From connected fields
+    - From another model or question
+    - Custom list
+
+![Selectable values](./images/selectable-values.png)
 
 ## Using filters
 

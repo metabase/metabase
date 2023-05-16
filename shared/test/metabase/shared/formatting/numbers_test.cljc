@@ -3,7 +3,7 @@
    [clojure.test :refer [are deftest is testing]]
    [metabase.shared.formatting.numbers :as numbers]))
 
-(deftest basics-test
+(deftest ^:parallel basics-test
   (testing "format-number basics"
     (are [s n] (= s (numbers/format-number n {}))
          "0"   0
@@ -53,13 +53,13 @@
          "1.01"     1.011
          "1.01"     1.0111)))
 
-(deftest negative-in-parentheses-test
+(deftest ^:parallel negative-in-parentheses-test
   (are [s n] (= s (numbers/format-number n {:negative-in-parentheses true}))
        "7"   7
        "(4)" -4
        "0"   0))
 
-(deftest compact-mode-test
+(deftest ^:parallel compact-mode-test
   (testing "zero"
     (is (= "0" (numbers/format-number 0 {:compact true}))))
 
@@ -161,7 +161,7 @@
          "$-1.2M"  -1234567.89 "USD"
          "CN¥1.2M" 1234567.89  "CNY")))
 
-(deftest currency-test
+(deftest ^:parallel currency-test
   (are [s n c] (= s (numbers/format-number n {:number-style "currency" :currency c :locale "en"}))
        "$1.23"           1.23        "USD"
        "-$1.23"          -1.23       "USD"
@@ -176,19 +176,17 @@
        "$1,234.56"       1234.56     "USD"
        "$1,234,567.89"   1234567.89  "USD"
        "-$1,234,567.89"  -1234567.89 "USD"
-       "₿6.35"           6.34527     "BTC" ;; Tests fix-currency-symbols logic in CLJS, Intl returns "BTC" by default.
-       "CN¥1,234,567.89" 1234567.89  "CNY"
-       "¥1,234,567.89"   1234567.89  "JPY")
+       "₿6.34527873"     6.345278729 "BTC" ;; BTC is not natively supported, but we fix the symbols. 8 decimal places!
+       "¥1,234,568"      1234567.89  "JPY" ;; 0 decimal places for JPY.
+       "CN¥1,234,567.89" 1234567.89  "CNY")
 
   (testing "by name"
-    (let [labels #?(:clj  {"USD" "US Dollar"
-                           "BTC" "Bitcoin"
-                           "CNY" "Chinese Yuan"
-                           "JPY" "Japanese Yen"}
-                    :cljs {"USD" "US dollars"
-                           "BTC" "BTC"
-                           "CNY" "Chinese yuan"
-                           "JPY" "Japanese yen"})]
+    (let [labels {"USD" "US dollars"
+                  ;; TODO Override this in the JS side? This is the only spot where the names from Intl.NumberFormat and
+                  ;; metabase.shared.util.currency differ.
+                  "BTC" #?(:clj "Bitcoins" :cljs "BTC")
+                  "CNY" "Chinese yuan"
+                  "JPY" "Japanese yen"}]
       (are [s n c] (= (str s " " (get labels c))
                       (numbers/format-number n {:number-style "currency" :currency c :currency-style "name"}))
            "1.23"           1.23        "USD"
@@ -204,9 +202,9 @@
            "1,234.56"       1234.56     "USD"
            "1,234,567.89"   1234567.89  "USD"
            "-1,234,567.89"  -1234567.89 "USD"
-           "6.35"           6.34527     "BTC"
+           "6.34527298"     6.345272982 "BTC"
            "1,234,567.89"   1234567.89  "CNY"
-           "1,234,567.89"   1234567.89  "JPY")))
+           "1,234,568"      1234567.89  "JPY")))
 
   (testing "by code"
     (are [s n c] (= s (numbers/format-number n {:number-style "currency" :currency c :currency-style "code"}))
@@ -224,11 +222,11 @@
          "USD\u00a01,234.56"       1234.56     "USD"
          "USD\u00a01,234,567.89"   1234567.89  "USD"
          "-USD\u00a01,234,567.89"  -1234567.89 "USD"
-         "BTC\u00a06.35"           6.34527     "BTC"
+         "BTC\u00a06.34527192"     6.345271916 "BTC"
          "CNY\u00a01,234,567.89"   1234567.89  "CNY"
-         "JPY\u00a01,234,567.89"   1234567.89  "JPY")))
+         "JPY\u00a01,234,568"      1234567.89  "JPY")))
 
-(deftest scientific-test
+(deftest ^:parallel scientific-test
   (testing "defaults to 0-2 decimal places if not specified"
     (are [s n] (= s (numbers/format-number n {:number-style "scientific"}))
          "0e+0"     0

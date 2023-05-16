@@ -1,7 +1,7 @@
 import React from "react";
 import cx from "classnames";
 
-import Tooltip from "metabase/components/Tooltip";
+import Tooltip from "metabase/core/components/Tooltip";
 
 import { BaseFieldDefinition } from "metabase-types/forms";
 
@@ -85,4 +85,5 @@ function FormFieldView({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default FormFieldView;

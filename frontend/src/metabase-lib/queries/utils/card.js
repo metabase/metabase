@@ -6,35 +6,11 @@ import { normalizeParameterValue } from "metabase-lib/parameters/utils/parameter
 import { deriveFieldOperatorFromParameter } from "metabase-lib/parameters/utils/operators";
 import * as Q_DEPRECATED from "metabase-lib/queries/utils"; // legacy
 
-export const STRUCTURED_QUERY_TEMPLATE = {
-  type: "query",
-  database: null,
-  query: {
-    "source-table": null,
-    aggregation: undefined,
-    breakout: undefined,
-    filter: undefined,
-  },
-};
-
-export const NATIVE_QUERY_TEMPLATE = {
-  type: "native",
-  database: null,
-  native: {
-    query: "",
-    "template-tags": {},
-  },
-};
-
 export function isStructured(card) {
   return card.dataset_query.type === "query";
 }
 
-export function isNative(card) {
-  return card.dataset_query.type === "native";
-}
-
-export function cardVisualizationIsEquivalent(cardA, cardB) {
+function cardVisualizationIsEquivalent(cardA, cardB) {
   return _.isEqual(
     _.pick(cardA, "display", "visualization_settings"),
     _.pick(cardB, "display", "visualization_settings"),
@@ -67,14 +43,6 @@ export function getQuery(card) {
   } else {
     return null;
   }
-}
-
-export function getTableMetadata(card, metadata) {
-  const query = getQuery(card);
-  if (query && query["source-table"] != null) {
-    return metadata.table(query["source-table"]) || null;
-  }
-  return null;
 }
 
 // NOTE Atte Keinänen 7/5/17: Still used in dashboards and public questions.
@@ -117,24 +85,24 @@ export function applyParameters(
     const options =
       deriveFieldOperatorFromParameter(parameter)?.optionsDefaults;
 
+    const queryParameter = {
+      type,
+      value: normalizeParameterValue(type, value),
+      id: parameter.id,
+    };
+
+    if (options) {
+      queryParameter.options = options;
+    }
+
     if (mapping) {
       // mapped target, e.x. on a dashboard
-      datasetQuery.parameters.push({
-        type,
-        value: normalizeParameterValue(type, value),
-        target: mapping.target,
-        options,
-        id: parameter.id,
-      });
+      queryParameter.target = mapping.target;
+      datasetQuery.parameters.push(queryParameter);
     } else if (parameter.target) {
       // inline target, e.x. on a card
-      datasetQuery.parameters.push({
-        type,
-        value: normalizeParameterValue(type, value),
-        target: parameter.target,
-        options,
-        id: parameter.id,
-      });
+      queryParameter.target = parameter.target;
+      datasetQuery.parameters.push(queryParameter);
     }
   }
 

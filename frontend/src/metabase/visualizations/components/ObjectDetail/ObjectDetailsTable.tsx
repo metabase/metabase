@@ -1,8 +1,8 @@
-import React from "react";
+import React, { useMemo } from "react";
 import cx from "classnames";
 import { t } from "ttag";
 
-import { DatasetData } from "metabase-types/types/Dataset";
+import type { DatasetData, VisualizationSettings } from "metabase-types/api";
 
 import ExpandableString from "metabase/query_builder/components/ExpandableString";
 import EmptyState from "metabase/components/EmptyState";
@@ -10,8 +10,9 @@ import EmptyState from "metabase/components/EmptyState";
 import { formatValue, formatColumn } from "metabase/lib/formatting";
 import { isa, isID } from "metabase-lib/types/utils/isa";
 import { TYPE } from "metabase-lib/types/constants";
+import { findColumnIndexForColumnSetting } from "metabase-lib/queries/utils/dataset";
 
-import { OnVisualizationClickType } from "./types";
+import type { OnVisualizationClickType } from "./types";
 import {
   ObjectDetailsTable,
   GridContainer,
@@ -41,8 +42,12 @@ export function DetailsTableCell({
   const clicked = { column: null, value: null };
   let isLink;
 
+  const columnSettings = settings?.column?.(column) ?? {};
+  const columnTitle =
+    columnSettings?.["_column_title_full"] || formatColumn(column);
+
   if (isColumnName) {
-    cellValue = column !== null ? formatColumn(column) : null;
+    cellValue = column !== null ? columnTitle : null;
     clicked.column = column;
     isLink = false;
   } else {
@@ -61,7 +66,7 @@ export function DetailsTableCell({
       cellValue = <pre className="ObjectJSON">{formattedJson}</pre>;
     } else {
       cellValue = formatValue(value, {
-        ...settings.column(column),
+        ...columnSettings,
         jsx: true,
         rich: true,
       });
@@ -103,9 +108,9 @@ export function DetailsTableCell({
 export interface DetailsTableProps {
   data: DatasetData;
   zoomedRow: unknown[];
-  settings: unknown;
+  settings: VisualizationSettings;
   onVisualizationClick: OnVisualizationClickType;
-  visualizationIsClickable: (clicked: any) => boolean;
+  visualizationIsClickable: (clicked: unknown) => boolean;
 }
 
 export function DetailsTable({
@@ -115,11 +120,37 @@ export function DetailsTable({
   onVisualizationClick,
   visualizationIsClickable,
 }: DetailsTableProps): JSX.Element {
-  const { cols } = data;
-  const row = zoomedRow;
+  const { cols: columns } = data;
+  const columnSettings = settings["table.columns"];
+
+  const { cols, row } = useMemo(() => {
+    if (!columnSettings) {
+      return { cols: columns, row: zoomedRow };
+    }
+    const columnIndexes = columnSettings
+      .filter(columnSetting => columnSetting?.enabled)
+      .map(columnSetting =>
+        findColumnIndexForColumnSetting(columns, columnSetting),
+      )
+      .filter(
+        (columnIndex: number) =>
+          columnIndex >= 0 && columnIndex < columns.length,
+      );
+
+    return {
+      cols: columnIndexes.map((i: number) => columns[i]) as any[],
+      row: columnIndexes.map((i: number) => zoomedRow[i]),
+    };
+  }, [columns, zoomedRow, columnSettings]);
+
+  if (!cols?.length) {
+    return (
+      <EmptyState message={t`Select at least one column`} className="p3" />
+    );
+  }
 
   if (!row?.length) {
-    return <EmptyState message={t`No details found`} />;
+    return <EmptyState message={t`No details found`} className="p3" />;
   }
 
   return (

@@ -9,8 +9,10 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan.db :as db]
-   [toucan.util.test :as tt]))
+   [toucan.util.test :as tt]
+   [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 (defn- add-column-info [query metadata]
   (mt/with-everything-store
@@ -21,7 +23,7 @@
 ;;; |                                             column-info (:native)                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(deftest native-column-info-test
+(deftest ^:parallel native-column-info-test
   (testing "native column info"
     (testing "should still infer types even if the initial value(s) are `nil` (#4256, #6924)"
       (is (= [:type/Integer]
@@ -54,13 +56,13 @@
 
 (defn- info-for-field
   ([field-id]
-   (into {} (db/select-one (into [Field] (disj (set @#'qp.store/field-columns-to-fetch) :database_type))
+   (into {} (t2/select-one (into [Field] (disj (set @#'qp.store/field-columns-to-fetch) :database_type))
                            :id field-id)))
 
   ([table-key field-key]
    (info-for-field (mt/id table-key field-key))))
 
-(deftest col-info-field-ids-test
+(deftest ^:parallel col-info-field-ids-test
   (testing {:base-type "make sure columns are comming back the way we'd expect for :field clauses"}
     (mt/with-everything-store
       (mt/$ids venues
@@ -72,7 +74,7 @@
                  {:type :query, :query {:fields [$price]}}
                  {:columns [:price]}))))))))
 
-(deftest col-info-for-fks-and-joins-test
+(deftest ^:parallel col-info-for-fks-and-joins-test
   (mt/with-everything-store
     (mt/$ids venues
       (testing (str "when a `:field` with `:source-field` (implicit join) is used, we should add in `:fk_field_id` "
@@ -123,7 +125,7 @@
                                       :strategy     :left-join}]}}
                    {:columns [:name]})))))))))
 
-(deftest col-info-for-field-with-temporal-unit-test
+(deftest ^:parallel col-info-for-field-with-temporal-unit-test
   (mt/with-everything-store
     (mt/$ids venues
       (testing "when a `:field` with `:temporal-unit` is used, we should add in info about the `:unit`"
@@ -179,7 +181,7 @@
                           :limit           1}}
                  nil))))))))
 
-(deftest col-info-for-binning-strategy-test
+(deftest ^:parallel col-info-for-binning-strategy-test
   (testing "when binning strategy is used, include `:binning_info`"
     (is (= [{:name         "price"
              :base_type    :type/Number
@@ -194,17 +196,16 @@
                                                             :bin-width 5
                                                             :min-value -100
                                                             :max-value 100}}]}]
-           (doall
-            (annotate/column-info
-             {:type  :query
-              :query {:fields [[:field "price" {:base-type     :type/Number
-                                                :temporal-unit :month
-                                                :binning       {:strategy  :num-bins
-                                                                :num-bins  10
-                                                                :bin-width 5
-                                                                :min-value -100
-                                                                :max-value 100}}]]}}
-             {:columns [:price]}))))))
+           (annotate/column-info
+            {:type  :query
+             :query {:fields [[:field "price" {:base-type     :type/Number
+                                               :temporal-unit :month
+                                               :binning       {:strategy  :num-bins
+                                                               :num-bins  10
+                                                               :bin-width 5
+                                                               :min-value -100
+                                                               :max-value 100}}]]}}
+            {:columns [:price]})))))
 
 (deftest col-info-combine-parent-field-names-test
   (testing "For fields with parents we should return them with a combined name including parent's name"
@@ -253,7 +254,7 @@
                 :base_type       :type/Text}
                (into {} (#'annotate/col-info-for-field-clause {} [:field (u/the-id child) nil]))))))))
 
-(deftest col-info-field-literals-test
+(deftest ^:parallel col-info-field-literals-test
   (testing "field literals should get the information from the matching `:source-metadata` if it was supplied"
     (mt/with-everything-store
       (is (= {:name          "sum"
@@ -267,7 +268,7 @@
                 {:name "sum", :display_name "sum of User ID", :base_type :type/Integer, :semantic_type :type/FK}]}
               [:field "sum" {:base-type :type/Integer}]))))))
 
-(deftest col-info-expressions-test
+(deftest ^:parallel col-info-expressions-test
   (mt/with-everything-store
     (testing "col info for an `expression` should work as expected"
       (is (= {:base_type       :type/Float
@@ -329,7 +330,7 @@
        {:name         (annotate/aggregation-name ag-clause)
         :display_name (annotate/aggregation-display-name inner-query ag-clause)}))))
 
-(deftest aggregation-names-test
+(deftest ^:parallel aggregation-names-test
   (testing "basic aggregations"
     (testing ":count"
       (is (= {:name "count", :display_name "Count"}
@@ -396,7 +397,7 @@
    (binding [driver/*driver* :h2]
      (#'annotate/col-info-for-aggregation-clause inner-query clause))))
 
-(deftest col-info-for-aggregation-clause-test
+(deftest ^:parallel col-info-for-aggregation-clause-test
   (mt/with-everything-store
     (testing "basic aggregation clauses"
       (testing "`:count` (no field)"
@@ -470,7 +471,7 @@
       first
       (select-keys [:base_type :semantic_type])))
 
-(deftest computed-columns-inference
+(deftest ^:parallel computed-columns-inference
   (letfn [(infer [expr] (-> (mt/mbql-query venues
                                            {:expressions {"expr" expr}
                                             :fields [[:expression "expr"]]
@@ -539,7 +540,7 @@
                                                     :year]])))
   (is (not (#'annotate/datetime-arithmetics? [:+ [:field (mt/id :checkins :date) nil] 3]))))
 
-(deftest temporal-extract-test
+(deftest ^:parallel temporal-extract-test
   (is (= {:base_type :type/DateTime}
          (infered-col-type [:datetime-add [:field (mt/id :checkins :date) nil] 2 :month])))
   (is (= {:base_type :type/DateTime}
@@ -547,7 +548,7 @@
   (is (= {:base_type :type/DateTime}
          (infered-col-type [:datetime-add [:field (mt/id :users :last_login) nil] 2 :month]))))
 
-(deftest test-string-extracts
+(deftest ^:parallel test-string-extracts
   (is (= {:base_type :type/Text}
          (infered-col-type  [:trim "foo"])))
   (is (= {:base_type :type/Text}
@@ -574,7 +575,7 @@
           :semantic_type :type/Name}
          (infered-col-type  [:coalesce [:field (mt/id :venues :name) nil] "bar"]))))
 
-(deftest unique-name-key-test
+(deftest ^:parallel unique-name-key-test
   (testing "Make sure `:cols` always come back with a unique `:name` key (#8759)"
     (is (= {:cols
             [{:base_type     :type/Number
@@ -615,7 +616,7 @@
                     {:name "count", :display_name "count", :base_type :type/Number}
                     {:name "count_2", :display_name "count_2", :base_type :type/Number}]})))))
 
-(deftest expressions-keys-test
+(deftest ^:parallel expressions-keys-test
   (testing "make sure expressions come back with the right set of keys, including `:expression_name` (#8854)"
     (is (= {:name            "discount_price"
             :display_name    "discount_price"
@@ -632,7 +633,7 @@
                :cols
                second)))))
 
-(deftest deduplicate-expression-names-test
+(deftest ^:parallel deduplicate-expression-names-test
   (testing "make sure multiple expressions come back with deduplicated names"
     (testing "expressions in aggregations"
       (is (= [{:base_type :type/Float, :name "expression", :display_name "0.9 * Average of Price", :source :aggregation, :field_ref [:aggregation 0]}
@@ -710,7 +711,7 @@
                   :cols
                   (map :display_name)))))))))
 
-(deftest inception-test
+(deftest ^:parallel inception-test
   (testing "Should return correct metadata for an 'inception-style' nesting of source > source > source with a join (#14745)"
     (mt/dataset sample-dataset
       ;; these tests look at the metadata for just one column so it's easier to spot the differences.
@@ -795,3 +796,32 @@
           (is (= "alias → B Column" (-> results :data :results_metadata
                                         :columns second :display_name))
               "Results metadata cols has wrong display name"))))))
+
+(deftest ^:parallel preserve-original-join-alias-test
+  (testing "The join alias for the `:field_ref` in results metadata should match the one originally specified (#27464)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
+      (mt/dataset sample-dataset
+        (let [join-alias "Products with a very long name - Product ID with a very long name"
+              results    (mt/run-mbql-query orders
+                           {:joins  [{:source-table $$products
+                                      :condition    [:= $product_id [:field %products.id {:join-alias join-alias}]]
+                                      :alias        join-alias
+                                      :fields       [[:field %products.title {:join-alias join-alias}]]}]
+                            :fields [$orders.id
+                                     [:field %products.title {:join-alias join-alias}]]
+                            :limit  4})]
+          (doseq [[location metadata] {"data.cols"                     (mt/cols results)
+                                       "data.results_metadata.columns" (get-in results [:data :results_metadata :columns])}]
+            (testing location
+              (is (= (mt/$ids
+                       [{:display_name "ID"
+                         :field_ref    $orders.id}
+                        (merge
+                         {:display_name (str join-alias " → Title")
+                          :field_ref    [:field %products.title {:join-alias join-alias}]}
+                         ;; `source_alias` is only included in `data.cols`, but not in `results_metadata`
+                         (when (= location "data.cols")
+                           {:source_alias join-alias}))])
+                     (map
+                      #(select-keys % [:display_name :field_ref :source_alias])
+                      metadata))))))))))

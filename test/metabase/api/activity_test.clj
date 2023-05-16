@@ -4,10 +4,9 @@
    [clojure.test :refer :all]
    [java-time :as t]
    [metabase.api.activity :as api.activity]
+   [metabase.events.view-log :as view-log]
    [metabase.models.activity :refer [Activity]]
-   [metabase.models.app :refer [App]]
    [metabase.models.card :refer [Card]]
-   [metabase.models.collection :refer [Collection]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.interface :as mi]
    [metabase.models.query-execution :refer [QueryExecution]]
@@ -17,7 +16,9 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -59,19 +60,11 @@
                                          :user_id   (mt/user->id :rasta)
                                          :model     "user"
                                          :details   {}
-                                         :timestamp #t "2015-09-10T05:33:43.641Z[UTC]"}]
-                    Dashboard [page {:is_app_page true}]
-                    Activity [activity4 {:topic     "dashboard-create"
-                                         :user_id   (mt/user->id :crowberto)
-                                         :model     "dashboard"
-                                         :model_id  (u/the-id page)
-                                         :details   {:description "Because I can too!"
-                                                     :name        "Hehehe"}
-                                         :timestamp #t "2015-09-10T04:53:01.632Z[UTC]"}]]
+                                         :timestamp #t "2015-09-10T05:33:43.641Z[UTC]"}]]
       (letfn [(fetch-activity [activity]
                 (merge
                  activity-defaults
-                 (db/select-one [Activity :id :user_id :details :model :model_id] :id (u/the-id activity))))]
+                 (t2/select-one [Activity :id :user_id :details :model :model_id] :id (u/the-id activity))))]
         (is (= [(merge
                  (fetch-activity activity2)
                  {:topic "dashboard-create"
@@ -81,29 +74,72 @@
                  {:topic "user-joined"
                   :user  (activity-user-info :rasta)})
                 (merge
-                 (fetch-activity activity4)
-                 {:topic        "dashboard-create"
-                  :user         (activity-user-info :crowberto)
-                  :model_exists true
-                  :model        "page"})
-                (merge
                  (fetch-activity activity1)
                  {:topic   "install"
                   :user_id nil
                   :user    nil})]
                ;; remove other activities from the API response just in case -- we're not interested in those
-               (let [these-activity-ids (set (map u/the-id [activity1 activity2 activity3 activity4]))]
+               (let [these-activity-ids (set (map u/the-id [activity1 activity2 activity3]))]
                  (for [activity (mt/user-http-request :crowberto :get 200 "activity")
                        :when    (contains? these-activity-ids (u/the-id activity))]
                    (dissoc activity :timestamp)))))))))
 
-;;; GET /recent_views
-
-;; Things we are testing for:
-;;  1. ordering is sorted by most recent
-;;  2. results are filtered to current user
-;;  3. `:model_object` is hydrated in each result
-;;  4. we filter out entries where `:model_object` is nil (object doesn't exist)
+(deftest recent-views-test
+  (mt/with-temp* [Card      [card1 {:name                   "rand-name"
+                                    :creator_id             (mt/user->id :crowberto)
+                                    :display                "table"
+                                    :visualization_settings {}}]
+                  Card      [archived  {:name                   "archived-card"
+                                        :creator_id             (mt/user->id :crowberto)
+                                        :display                "table"
+                                        :archived               true
+                                        :visualization_settings {}}]
+                  Dashboard [dash {:name        "rand-name2"
+                                   :description "rand-name2"
+                                   :creator_id  (mt/user->id :crowberto)}]
+                  Table     [table1 {:name "rand-name"}]
+                  Table     [hidden-table {:name            "hidden table"
+                                           :visibility_type "hidden"}]
+                  Card      [dataset {:name                   "rand-name"
+                                      :dataset                true
+                                      :creator_id             (mt/user->id :crowberto)
+                                      :display                "table"
+                                      :visualization_settings {}}]]
+    (testing "recent_views endpoint shows the current user's recently viewed items."
+      (mt/with-model-cleanup [ViewLog]
+        (mt/with-test-user :crowberto
+          (mt/with-temporary-setting-values [user-recent-views []]
+            (doseq [event [{:topic :card-query :item dataset}
+                           {:topic :card-query :item dataset}
+                           {:topic :card-query :item card1}
+                           {:topic :card-query :item card1}
+                           {:topic :card-query :item card1}
+                           {:topic :dashboard-read :item dash}
+                           {:topic :card-query :item card1}
+                           {:topic :dashboard-read :item dash}
+                           {:topic :table-read :item table1}
+                           {:topic :card-query :item archived}
+                           {:topic :table-read :item hidden-table}]]
+              (view-log/handle-view-event!
+               ;; view log entries look for the `:actor_id` in the item being viewed to set that view's :user_id
+               (assoc-in event [:item :actor_id] (mt/user->id :crowberto))))
+            (testing "No duplicates or archived items are returned."
+              (let [recent-views (mt/user-http-request :crowberto :get 200 "activity/recent_views")]
+                (is (partial=
+                     [{:model "table" :model_id (u/the-id table1)}
+                      {:model "dashboard" :model_id (u/the-id dash)}
+                      {:model "card" :model_id (u/the-id card1)}
+                      {:model "dataset" :model_id (u/the-id dataset)}]
+                     recent-views))))))
+        (mt/with-test-user :rasta
+          (mt/with-temporary-setting-values [user-recent-views []]
+            (view-log/handle-view-event! {:topic :card-query :item (assoc dataset :actor_id (mt/user->id :rasta))})
+            (view-log/handle-view-event! {:topic :card-query :item (assoc card1 :actor_id (mt/user->id :crowberto))})
+            (testing "Only the user's own views are returned."
+              (let [recent-views (mt/user-http-request :rasta :get 200 "activity/recent_views")]
+                (is (partial=
+                     [{:model "dataset" :model_id (u/the-id dataset)}]
+                     (reverse recent-views)))))))))))
 
 (defn- create-views!
   "Insert views [user-id model model-id]. Views are entered a second apart with last view as most recent."
@@ -123,56 +159,8 @@
                         (reverse views)
                         (range))
                    (group-by #(if (:card_id %) :card :other)))]
-    (db/insert-many! ViewLog (:other views))
-    (db/insert-many! QueryExecution (:card views))))
-
-(deftest recent-views-test
-  (mt/with-temp* [Card      [card1 {:name                   "rand-name"
-                                    :creator_id             (mt/user->id :crowberto)
-                                    :display                "table"
-                                    :visualization_settings {}}]
-                  Card      [archived  {:name                   "archived-card"
-                                        :creator_id             (mt/user->id :crowberto)
-                                        :display                "table"
-                                        :archived               true
-                                        :visualization_settings {}}]
-                  Collection [{coll-id :id} {}]
-                  App [{app-id :id} {:collection_id coll-id}]
-                  Dashboard [page {:name        "rand-name"
-                                   :description "rand-name"
-                                   :creator_id  (mt/user->id :crowberto)
-                                   :is_app_page true
-                                   :collection_id coll-id}]
-                  Dashboard [dash {:name        "rand-name2"
-                                   :description "rand-name2"
-                                   :creator_id  (mt/user->id :crowberto)}]
-                  Table     [table1 {:name "rand-name"}]
-                  Table     [hidden-table {:name            "hidden table"
-                                           :visibility_type "hidden"}]
-                  Card      [dataset {:name                   "rand-name"
-                                      :dataset                true
-                                      :creator_id             (mt/user->id :crowberto)
-                                      :display                "table"
-                                      :visualization_settings {}}]]
-    (mt/with-model-cleanup [ViewLog QueryExecution]
-      (create-views! [[(mt/user->id :crowberto) "card"      (:id dataset)]
-                      [(mt/user->id :crowberto) "dashboard" (:id page)]
-                      [(mt/user->id :crowberto) "card"      (:id card1)]
-                      [(mt/user->id :crowberto) "card"      36478]
-                      [(mt/user->id :crowberto) "dashboard" (:id dash)]
-                      [(mt/user->id :crowberto) "table"     (:id table1)]
-                      ;; most recent for crowberto are archived card and hidden table
-                      [(mt/user->id :crowberto) "card"      (:id archived)]
-                      [(mt/user->id :crowberto) "table"     (:id hidden-table)]
-                      [(mt/user->id :rasta)     "card"      (:id card1)]])
-      (let [recent-views (mt/user-http-request :crowberto :get 200 "activity/recent_views")]
-        (is (partial= [{:model "table"     :model_id (:id table1)}
-                       {:model "dashboard" :model_id (:id dash) :model_object {:is_app_page false}}
-                       {:model "card"      :model_id (:id card1)}
-                       {:model "page"      :model_id (:id page) :model_object {:is_app_page true
-                                                                               :app_id app-id}}
-                       {:model "dataset"   :model_id (:id dataset)}]
-                      recent-views))))))
+    (t2/insert! ViewLog (:other views))
+    (t2/insert! QueryExecution (:card views))))
 
 (deftest popular-items-test
   (mt/with-temp* [Card      [card1 {:name                   "rand-name"
@@ -187,13 +175,9 @@
                   Dashboard [dash1 {:name        "rand-name"
                                     :description "rand-name"
                                     :creator_id  (mt/user->id :crowberto)}]
-                  Collection [{coll-id :id} {}]
-                  App [{app-id :id} {:collection_id coll-id}]
                   Dashboard [dash2 {:name        "other-dashboard"
                                     :description "just another dashboard"
-                                    :creator_id  (mt/user->id :crowberto)
-                                    :is_app_page true
-                                    :collection_id coll-id}]
+                                    :creator_id  (mt/user->id :crowberto)}]
                   Table     [table1 {:name "rand-name"}]
                   Table     [_hidden-table {:name            "hidden table"
                                             :visibility_type "hidden"}]
@@ -236,8 +220,7 @@
                          [(mt/user->id :rasta) "table"     (:id table1)]
                          [(mt/user->id :rasta) "card"      (:id card1)]]))
         (is (partial= [{:model "dashboard" :model_id (:id dash1)}
-                       {:model "page"      :model_id (:id dash2) :model_object {:is_app_page true
-                                                                                :app_id app-id}}
+                       {:model "dashboard" :model_id (:id dash2)}
                        {:model "card"      :model_id (:id card1)}
                        {:model "dataset"   :model_id (:id dataset)}
                        {:model "table"     :model_id (:id table1)}]

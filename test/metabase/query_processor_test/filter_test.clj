@@ -112,86 +112,76 @@
                    {:aggregation [[:count]]
                     :filter      [:between !day.date "2015-04-01" "2015-05-01"]}))))))))
 
-(defn- mongo-major-version [db]
-  (when (= driver/*driver* :mongo)
-    (-> (driver/dbms-version :mongo db) :semantic-version first)))
-
 (defn- timezone-arithmetic-drivers []
   (set/intersection
-   ;; we also want to test this against MongoDB but [[mt/normal-drivers-with-feature]] would normally not include that
-   ;; since MongoDB only supports expressions if version is 4.0 or above and [[mt/normal-drivers-with-feature]]
-   ;; currently uses [[driver/supports?]] rather than [[driver/database-supports?]] (TODO FIXME, see #23422)
-   (conj (mt/normal-drivers-with-feature :expressions) :mongo)
-   (timezones-test/timezone-aware-column-drivers)))
+    (mt/normal-drivers-with-feature :expressions)
+    (mt/normal-drivers-with-feature :date-arithmetics)
+    (timezones-test/timezone-aware-column-drivers)))
 
 (deftest temporal-arithmetic-test
   (testing "Should be able to use temporal arithmetic expressions in filters (#22531)"
     (mt/test-drivers (timezone-arithmetic-drivers)
       (mt/dataset attempted-murders
-        (when-not (some-> (mongo-major-version (mt/db))
-                          (< 5))
-          (doseq [offset-unit [:year :day]
-                  interval-unit [:year :day]
-                  compare-op [:between := :< :<= :> :>=]
-                  compare-order (cond-> [:field-first]
-                                  (not= compare-op :between) (conj :value-first))]
-            (let [query (mt/mbql-query attempts
-                          {:aggregation [[:count]]
-                           :filter      (cond-> [compare-op]
-                                          (= compare-order :field-first)
-                                          (conj [:+ !default.datetime_tz [:interval 3 offset-unit]]
-                                                [:relative-datetime -7 interval-unit])
-                                          (= compare-order :value-first)
-                                          (conj [:relative-datetime -7 interval-unit]
-                                                [:+ !default.datetime_tz [:interval 3 offset-unit]])
-                                          (= compare-op :between)
-                                          (conj [:relative-datetime 0 interval-unit]))})]
-              ;; we are not interested in the exact result, just want to check
-              ;; that the query can be compiled and executed
-              (mt/with-native-query-testing-context query
-                (let [[[result]] (mt/formatted-rows [int]
-                                   (qp/process-query query))]
-                  (if (= driver/*driver* :mongo)
-                    (is (or (nil? result)
-                            (pos-int? result)))
-                    (is (nat-int? result))))))))))))
+        (doseq [offset-unit   [:year :day]
+                interval-unit [:year :day]
+                compare-op    [:between := :< :<= :> :>=]
+                compare-order (cond-> [:field-first]
+                                (not= compare-op :between) (conj :value-first))]
+          (let [query (mt/mbql-query attempts
+                        {:aggregation [[:count]]
+                         :filter      (cond-> [compare-op]
+                                        (= compare-order :field-first)
+                                        (conj [:+ !default.datetime_tz [:interval 3 offset-unit]]
+                                              [:relative-datetime -7 interval-unit])
+                                        (= compare-order :value-first)
+                                        (conj [:relative-datetime -7 interval-unit]
+                                              [:+ !default.datetime_tz [:interval 3 offset-unit]])
+                                        (= compare-op :between)
+                                        (conj [:relative-datetime 0 interval-unit]))})]
+            ;; we are not interested in the exact result, just want to check
+            ;; that the query can be compiled and executed
+            (mt/with-native-query-testing-context query
+              (let [[[result]] (mt/formatted-rows [int]
+                                 (qp/process-query query))]
+                (if (= driver/*driver* :mongo)
+                  (is (or (nil? result)
+                          (pos-int? result)))
+                  (is (nat-int? result)))))))))))
 
 (deftest nonstandard-temporal-arithmetic-test
   (testing "Nonstandard temporal arithmetic should also be supported"
     (mt/test-drivers (timezone-arithmetic-drivers)
       (mt/dataset attempted-murders
-        (when-not (some-> (mongo-major-version (mt/db))
-                          (< 5))
-          (doseq [offset-unit [:year :day]
-                  interval-unit [:year :day]
-                  compare-op [:between := :< :<= :> :>=]
-                  add-op [:+ #_:-] ; TODO support subtraction like sql.qp/add-interval-honeysql-form (#23423)
-                  compare-order (cond-> [:field-first]
-                                  (not= compare-op :between) (conj :value-first))]
-            (let [add-fn (fn [field interval]
-                           (if (= add-op :-)
-                             [add-op field interval interval]
-                             [add-op interval field interval]))
-                  query (mt/mbql-query attempts
-                          {:aggregation [[:count]]
-                           :filter      (cond-> [compare-op]
-                                          (= compare-order :field-first)
-                                          (conj (add-fn !default.datetime_tz [:interval 3 offset-unit])
-                                                [:relative-datetime -7 interval-unit])
-                                          (= compare-order :value-first)
-                                          (conj [:relative-datetime -7 interval-unit]
-                                                (add-fn !default.datetime_tz [:interval 3 offset-unit]))
-                                          (= compare-op :between)
-                                          (conj [:relative-datetime 0 interval-unit]))})]
-              ;; we are not interested in the exact result, just want to check
-              ;; that the query can be compiled and executed
-              (mt/with-native-query-testing-context query
-                (let [[[result]] (mt/formatted-rows [int]
-                                   (qp/process-query query))]
-                  (if (= driver/*driver* :mongo)
-                    (is (or (nil? result)
-                            (pos-int? result)))
-                    (is (nat-int? result))))))))))))
+        (doseq [offset-unit   [:year :day]
+                interval-unit [:year :day]
+                compare-op    [:between := :< :<= :> :>=]
+                add-op        [:+ #_:-] ; TODO support subtraction like sql.qp/add-interval-honeysql-form (#23423)
+                compare-order (cond-> [:field-first]
+                                (not= compare-op :between) (conj :value-first))]
+          (let [add-fn (fn [field interval]
+                         (if (= add-op :-)
+                           [add-op field interval interval]
+                           [add-op interval field interval]))
+                query  (mt/mbql-query attempts
+                         {:aggregation [[:count]]
+                          :filter      (cond-> [compare-op]
+                                         (= compare-order :field-first)
+                                         (conj (add-fn !default.datetime_tz [:interval 3 offset-unit])
+                                               [:relative-datetime -7 interval-unit])
+                                         (= compare-order :value-first)
+                                         (conj [:relative-datetime -7 interval-unit]
+                                               (add-fn !default.datetime_tz [:interval 3 offset-unit]))
+                                         (= compare-op :between)
+                                         (conj [:relative-datetime 0 interval-unit]))})]
+            ;; we are not interested in the exact result, just want to check
+            ;; that the query can be compiled and executed
+            (mt/with-native-query-testing-context query
+              (let [[[result]] (mt/formatted-rows [int]
+                                 (qp/process-query query))]
+                (if (= driver/*driver* :mongo)
+                  (is (or (nil? result)
+                          (pos-int? result)))
+                  (is (nat-int? result)))))))))))
 
 (deftest or-test
   (mt/test-drivers (mt/normal-drivers)

@@ -1,8 +1,11 @@
-import { act, fireEvent, screen } from "@testing-library/react";
 import React from "react";
-import nock from "nock";
-import { renderWithProviders } from "__support__/ui";
-import LicenseAndBillingSettings from ".";
+import fetchMock from "fetch-mock";
+import userEvent from "@testing-library/user-event";
+
+import { renderWithProviders, screen } from "__support__/ui";
+import { createMockAdminState } from "metabase-types/store/mocks";
+
+import LicenseAndBillingSettings from "./LicenseAndBillingSettings";
 
 const setupState = ({
   token,
@@ -14,13 +17,7 @@ const setupState = ({
   env_name?: string;
   features?: string[];
 }) => {
-  const settings = {
-    values: {
-      "token-features": {},
-    },
-  };
-
-  const admin = {
+  const admin = createMockAdminState({
     settings: {
       settings: [
         {
@@ -31,21 +28,17 @@ const setupState = ({
         },
       ],
     },
-  };
+  });
+
   return {
     storeInitialState: {
       admin,
-      settings,
-    },
-    reducers: {
-      settings: () => settings,
-      admin: () => admin,
     },
   };
 };
 
 const mockTokenStatus = (valid: boolean, features: string[] = []) => {
-  nock(location.origin).get("/api/premium-features/token/status").reply(200, {
+  fetchMock.get("path:/api/premium-features/token/status", {
     valid,
     "valid-thru": "2099-12-31T12:00:00",
     features,
@@ -53,18 +46,15 @@ const mockTokenStatus = (valid: boolean, features: string[] = []) => {
 };
 
 const mockTokenNotExist = () => {
-  nock(location.origin).get("/api/premium-features/token/status").reply(404);
+  fetchMock.get("path:/api/premium-features/token/status", 404);
 };
 
 const mockUpdateToken = (valid: boolean) => {
-  nock(location.origin)
-    .put("/api/setting/premium-embedding-token")
-    .reply(valid ? 200 : 400);
+  fetchMock.put("path:/api/setting/premium-embedding-token", valid ? 200 : 400);
 };
 
 describe("LicenseAndBilling", () => {
   afterEach(() => {
-    nock.cleanAll();
     jest.restoreAllMocks();
   });
 
@@ -153,14 +143,8 @@ describe("LicenseAndBilling", () => {
       ),
     ).toBeInTheDocument();
 
-    const licenseInput = screen.getByTestId("license-input");
-    const activateButton = screen.getByTestId("activate-button");
-
-    const token = "invalid";
-    await act(async () => {
-      await fireEvent.change(licenseInput, { target: { value: token } });
-      await fireEvent.click(activateButton);
-    });
+    userEvent.type(screen.getByTestId("license-input"), "invalid");
+    userEvent.click(screen.getByTestId("activate-button"));
 
     expect(
       await screen.findByText(
@@ -180,13 +164,7 @@ describe("LicenseAndBilling", () => {
       ),
     ).toBeInTheDocument();
 
-    const licenseInput = screen.getByTestId("license-input");
-    const activateButton = screen.getByTestId("activate-button");
-
-    const token = "valid";
-    await act(async () => {
-      await fireEvent.change(licenseInput, { target: { value: token } });
-      await fireEvent.click(activateButton);
-    });
+    userEvent.type(screen.getByTestId("license-input"), "valid");
+    userEvent.click(screen.getByTestId("activate-button"));
   });
 });

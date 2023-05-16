@@ -7,7 +7,7 @@ import React, {
 } from "react";
 import { t } from "ttag";
 import Icon from "metabase/components/Icon";
-import Tooltip from "metabase/components/Tooltip";
+import Tooltip from "metabase/core/components/Tooltip";
 import { InputSize } from "../../style/types";
 import {
   InputField,
@@ -131,6 +131,7 @@ const Input = forwardRef(function Input(
   );
 });
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Object.assign(Input, {
   Root: InputRoot,
   Field: InputField,

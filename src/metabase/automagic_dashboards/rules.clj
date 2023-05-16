@@ -1,5 +1,5 @@
 (ns metabase.automagic-dashboards.rules
-  "Validation, transformation to cannonical form, and loading of heuristics."
+  "Validation, transformation to canonical form, and loading of heuristics."
   (:require
    [clojure.string :as str]
    [metabase.automagic-dashboards.populate :as populate]
@@ -14,6 +14,8 @@
    [schema.spec.core :as spec])
   (:import
    (java.nio.file Files Path)))
+
+(set! *warn-on-reflection* true)
 
 (def ^Long ^:const max-score
   "Maximal (and default) value for heuristics scores."
@@ -130,7 +132,7 @@
    su/Map])
 
 (def ^{:arglists '([form])} dimension-form?
-  "Does form denote a dimension referece?"
+  "Does form denote a dimension reference?"
   (complement (s/checker DimensionForm)))
 
 (defn collect-dimensions

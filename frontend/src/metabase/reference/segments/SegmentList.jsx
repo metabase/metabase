@@ -5,7 +5,7 @@ import { connect } from "react-redux";
 import { t } from "ttag";
 import MetabaseSettings from "metabase/lib/settings";
 
-import S from "metabase/components/List.css";
+import S from "metabase/components/List/List.css";
 
 import List from "metabase/components/List";
 import ListItem from "metabase/components/ListItem";
@@ -63,20 +63,17 @@ class SegmentList extends Component {
               <div className="wrapper wrapper--trim">
                 <List>
                   {Object.values(entities).map(
-                    (entity, index) =>
+                    entity =>
                       entity &&
                       entity.id &&
                       entity.name && (
-                        <li className="relative" key={entity.id}>
-                          <ListItem
-                            id={entity.id}
-                            index={index}
-                            name={entity.display_name || entity.name}
-                            description={entity.description}
-                            url={`/reference/segments/${entity.id}`}
-                            icon="segment"
-                          />
-                        </li>
+                        <ListItem
+                          key={entity.id}
+                          name={entity.display_name || entity.name}
+                          description={entity.description}
+                          url={`/reference/segments/${entity.id}`}
+                          icon="segment"
+                        />
                       ),
                   )}
                 </List>

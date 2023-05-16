@@ -4,7 +4,7 @@ import Radio, { RadioOption, RadioProps } from "metabase/core/components/Radio";
 import FormField from "metabase/core/components/FormField";
 
 export interface FormRadioProps<
-  TValue extends Key,
+  TValue extends Key = string,
   TOption = RadioOption<TValue>,
 > extends Omit<
     RadioProps<TValue, TOption>,
@@ -54,4 +54,5 @@ const FormRadio = forwardRef(function FormRadio<
   );
 });
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default FormRadio;

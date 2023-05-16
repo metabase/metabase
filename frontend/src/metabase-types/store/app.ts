@@ -17,5 +17,4 @@ export interface AppBreadCrumbs {
 export interface AppState {
   errorPage: AppErrorDescriptor | null;
   isNavbarOpen: boolean;
-  breadcrumbs: AppBreadCrumbs;
 }

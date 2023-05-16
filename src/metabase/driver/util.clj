@@ -4,7 +4,6 @@
    [clojure.core.memoize :as memoize]
    [clojure.set :as set]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [metabase.config :as config]
    [metabase.db.connection :as mdb.connection]
    [metabase.driver :as driver]
@@ -13,7 +12,10 @@
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru trs]]
-   [toucan.db :as db])
+   [metabase.util.log :as log]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
+   [toucan2.core :as t2])
   (:import
    (java.io ByteArrayInputStream)
    (java.security KeyFactory KeyStore PrivateKey)
@@ -22,30 +24,32 @@
    (javax.net SocketFactory)
    (javax.net.ssl KeyManagerFactory SSLContext TrustManagerFactory X509TrustManager)))
 
+(set! *warn-on-reflection* true)
+
 (def ^:private connection-error-messages
   "Generic error messages that drivers should return in their implementation
   of [[metabase.driver/humanize-connection-error-message]]."
   {:cannot-connect-check-host-and-port
    {:message (deferred-tru
-              (str "Hmm, we couldn''t connect to the database."
-                   " "
-                   "Make sure your Host and Port settings are correct"))
+               (str "Hmm, we couldn''t connect to the database."
+                    " "
+                    "Make sure your Host and Port settings are correct"))
     :errors  {:host (deferred-tru "check your host settings")
               :port (deferred-tru "check your port settings")}}
 
    :ssh-tunnel-auth-fail
    {:message (deferred-tru
-              (str "We couldn''t connect to the SSH tunnel host."
-                   " "
-                   "Check the Username and Password."))
+               (str "We couldn''t connect to the SSH tunnel host."
+                    " "
+                    "Check the Username and Password."))
     :errors  {:tunnel-user (deferred-tru "check your username")
               :tunnel-pass (deferred-tru "check your password")}}
 
    :ssh-tunnel-connection-fail
    {:message (deferred-tru
-              (str "We couldn''t connect to the SSH tunnel host."
-                   " "
-                   "Check the Host and Port."))
+               (str "We couldn''t connect to the SSH tunnel host."
+                    " "
+                    "Check the Host and Port."))
     :errors  {:tunnel-host (deferred-tru "check your host settings")
               :tunnel-port (deferred-tru "check your port settings")}}
 
@@ -160,16 +164,6 @@
         (log/error e (trs "Failed to connect to database"))
         false))))
 
-(defn report-timezone-if-supported
-  "Returns the report-timezone if `driver` supports setting it's timezone and a report-timezone has been specified by
-  the user."
-  [driver]
-  (when (driver/supports? driver :set-timezone)
-    (let [report-tz (driver/report-timezone)]
-      (when (seq report-tz)
-        report-tz))))
-
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               Driver Resolution                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -179,7 +173,7 @@
    ^{::memoize/args-fn (fn [[db-id]]
                          [(mdb.connection/unique-identifier) db-id])}
    (fn [db-id]
-     (db/select-one-field :engine 'Database, :id db-id))
+     (t2/select-one-fn :engine 'Database, :id db-id))
    :ttl/threshold 1000))
 
 (defn database->driver
@@ -211,6 +205,25 @@
   (set (for [driver (descendants driver/hierarchy :metabase.driver/driver)
              :when  (driver/available? driver)]
          driver)))
+
+(s/defn semantic-version-gte
+  "Returns true if xv is greater than or equal to yv according to semantic versioning.
+   xv and yv are sequences of integers of the form `[major minor ...]`, where only
+   major is obligatory.
+   Examples:
+   (semantic-version-gte [4 1] [4 1]) => true
+   (semantic-version-gte [4 0 1] [4 1]) => false
+   (semantic-version-gte [4 1] [4]) => true
+   (semantic-version-gte [3 1] [4]) => false"
+  [xv :- [su/IntGreaterThanOrEqualToZero] yv :- [su/IntGreaterThanOrEqualToZero]] :- s/Bool
+  (loop [xv (seq xv), yv (seq yv)]
+    (or (nil? yv)
+        (let [[x & xs] xv
+              [y & ys] yv
+              x (if (nil? x) 0 x)
+              y (if (nil? y) 0 y)]
+          (or (> x y)
+              (and (>= x y) (recur xs ys)))))))
 
 (defn- file-upload-props [{prop-name :name, visible-if :visible-if, disp-nm :display-name, :as conn-prop}]
   (if (premium-features/is-hosted?)
@@ -292,16 +305,16 @@
      {:name (str prop-name "-patterns")
       :type "text"
       :placeholder "E.x. public,auth*"
-      :description (trs "Comma separated names of {0} that should appear in Metabase" (str/lower-case disp-name))
+      :description (trs "Comma separated names of {0} that should appear in Metabase" (u/lower-case-en disp-name))
       :visible-if  {(keyword type-prop-nm) "inclusion"}
-      :helper-text (trs "You can use patterns like \"auth*\" to match multiple {0}" (str/lower-case disp-name))
+      :helper-text (trs "You can use patterns like \"auth*\" to match multiple {0}" (u/lower-case-en disp-name))
       :required true}
      {:name (str prop-name "-patterns")
       :type "text"
       :placeholder "E.x. public,auth*"
-      :description (trs "Comma separated names of {0} that should NOT appear in Metabase" (str/lower-case disp-name))
+      :description (trs "Comma separated names of {0} that should NOT appear in Metabase" (u/lower-case-en disp-name))
       :visible-if  {(keyword type-prop-nm) "exclusion"}
-      :helper-text (trs "You can use patterns like \"auth*\" to match multiple {0}" (str/lower-case disp-name))
+      :helper-text (trs "You can use patterns like \"auth*\" to match multiple {0}" (u/lower-case-en disp-name))
       :required true}]))
 
 
@@ -442,7 +455,6 @@
     "mysql"
     "oracle"
     "postgres"
-    "presto"
     "presto-jdbc"
     "redshift"
     "snowflake"
@@ -453,7 +465,7 @@
 
 (def partner-drivers
   "The set of other drivers in the partnership program"
-  #{"exasol" "firebolt" "starburst"})
+  #{"clickhouse" "exasol" "firebolt" "ocient" "starburst"})
 
 (defn driver-source
   "Return the source type of the driver: official, partner, or community"

@@ -1,28 +1,32 @@
 (ns metabase.driver.hive-like
-  (:require [buddy.core.codecs :as codecs]
-            [clojure.string :as str]
-            [honeysql.core :as hsql]
-            [honeysql.format :as hformat]
-            [java-time :as t]
-            [metabase.driver :as driver]
-            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-            [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-            [metabase.driver.sql-jdbc.execute.legacy-impl :as sql-jdbc.legacy]
-            [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
-            [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.driver.sql.util :as sql.u]
-            [metabase.driver.sql.util.unprepare :as unprepare]
-            [metabase.util.date-2 :as u.date]
-            [metabase.util.honeysql-extensions :as hx])
-  (:import [java.sql ResultSet Types]
-           [java.time LocalDate OffsetDateTime ZonedDateTime]))
+  (:require
+   [buddy.core.codecs :as codecs]
+   [clojure.string :as str]
+   [honey.sql :as sql]
+   [java-time :as t]
+   [metabase.driver :as driver]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.driver.sql-jdbc.execute.legacy-impl :as sql-jdbc.legacy]
+   [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.sql.util :as sql.u]
+   [metabase.driver.sql.util.unprepare :as unprepare]
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.honey-sql-2 :as h2x])
+  (:import
+   (java.sql ResultSet Types)
+   (java.time LocalDate OffsetDateTime ZonedDateTime)))
+
+(set! *warn-on-reflection* true)
 
 (driver/register! :hive-like
-  :parent #{:sql-jdbc ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set}
-  :abstract? true)
+                  :parent #{:sql-jdbc ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set}
+                  :abstract? true)
 
-(defmethod driver/database-supports? [:hive-like :now] [_driver _feat _db] true)
-(defmethod driver/database-supports? [:hive-like :datetime-diff] [_driver _feat _db] true)
+(doseq [[feature supported?] {:now           true
+                              :datetime-diff true}]
+  (defmethod driver/database-supports? [:hive-like feature] [_driver _feature _db] supported?))
 
 (defmethod driver/escape-alias :hive-like
   [driver s]
@@ -70,126 +74,160 @@
     #"map"              :type/Dictionary
     #".*"               :type/*))
 
+(defmethod sql.qp/honey-sql-version :hive-like
+  [_driver]
+  2)
+
 (defmethod sql.qp/current-datetime-honeysql-form :hive-like
   [_]
-  (hx/with-database-type-info :%now "timestamp"))
+  (h2x/with-database-type-info :%now "timestamp"))
 
 (defmethod sql.qp/unix-timestamp->honeysql [:hive-like :seconds]
   [_ _ expr]
-  (hx/->timestamp (hsql/call :from_unixtime expr)))
+  (h2x/->timestamp [:from_unixtime expr]))
 
 (defn- date-format [format-str expr]
-  (hsql/call :date_format expr (hx/literal format-str)))
+  [:date_format expr (h2x/literal format-str)])
 
 (defn- str-to-date [format-str expr]
-  (hx/->timestamp
-   (hsql/call :from_unixtime
-              (hsql/call :unix_timestamp
-                         expr (hx/literal format-str)))))
+  (h2x/->timestamp [:from_unixtime [:unix_timestamp expr (h2x/literal format-str)]]))
 
 (defn- trunc-with-format [format-str expr]
   (str-to-date format-str (date-format format-str expr)))
 
-(defmethod sql.qp/date [:hive-like :default]         [_ _ expr] (hx/->timestamp expr))
-(defmethod sql.qp/date [:hive-like :minute]          [_ _ expr] (trunc-with-format "yyyy-MM-dd HH:mm" (hx/->timestamp expr)))
-(defmethod sql.qp/date [:hive-like :minute-of-hour]  [_ _ expr] (hsql/call :minute (hx/->timestamp expr)))
-(defmethod sql.qp/date [:hive-like :hour]            [_ _ expr] (trunc-with-format "yyyy-MM-dd HH" (hx/->timestamp expr)))
-(defmethod sql.qp/date [:hive-like :hour-of-day]     [_ _ expr] (hsql/call :hour (hx/->timestamp expr)))
-(defmethod sql.qp/date [:hive-like :day]             [_ _ expr] (trunc-with-format "yyyy-MM-dd" (hx/->timestamp expr)))
-(defmethod sql.qp/date [:hive-like :day-of-month]    [_ _ expr] (hsql/call :dayofmonth (hx/->timestamp expr)))
-(defmethod sql.qp/date [:hive-like :day-of-year]     [_ _ expr] (hx/->integer (date-format "D" (hx/->timestamp expr))))
-(defmethod sql.qp/date [:hive-like :month]           [_ _ expr] (hsql/call :trunc (hx/->timestamp expr) (hx/literal :MM)))
-(defmethod sql.qp/date [:hive-like :month-of-year]   [_ _ expr] (hsql/call :month (hx/->timestamp expr)))
-(defmethod sql.qp/date [:hive-like :quarter-of-year] [_ _ expr] (hsql/call :quarter (hx/->timestamp expr)))
-(defmethod sql.qp/date [:hive-like :year]            [_ _ expr] (hsql/call :trunc (hx/->timestamp expr) (hx/literal :year)))
+(defmethod sql.qp/date [:hive-like :default]         [_ _ expr] (h2x/->timestamp expr))
+(defmethod sql.qp/date [:hive-like :minute]          [_ _ expr] (trunc-with-format "yyyy-MM-dd HH:mm" (h2x/->timestamp expr)))
+(defmethod sql.qp/date [:hive-like :minute-of-hour]  [_ _ expr] [:minute (h2x/->timestamp expr)])
+(defmethod sql.qp/date [:hive-like :hour]            [_ _ expr] (trunc-with-format "yyyy-MM-dd HH" (h2x/->timestamp expr)))
+(defmethod sql.qp/date [:hive-like :hour-of-day]     [_ _ expr] [:hour (h2x/->timestamp expr)])
+(defmethod sql.qp/date [:hive-like :day]             [_ _ expr] (trunc-with-format "yyyy-MM-dd" (h2x/->timestamp expr)))
+(defmethod sql.qp/date [:hive-like :day-of-month]    [_ _ expr] [:dayofmonth (h2x/->timestamp expr)])
+(defmethod sql.qp/date [:hive-like :day-of-year]     [_ _ expr] (h2x/->integer (date-format "D" (h2x/->timestamp expr))))
+(defmethod sql.qp/date [:hive-like :month]           [_ _ expr] [:trunc (h2x/->timestamp expr) (h2x/literal :MM)])
+(defmethod sql.qp/date [:hive-like :month-of-year]   [_ _ expr] [:month (h2x/->timestamp expr)])
+(defmethod sql.qp/date [:hive-like :quarter-of-year] [_ _ expr] [:quarter (h2x/->timestamp expr)])
+(defmethod sql.qp/date [:hive-like :year]            [_ _ expr] [:trunc (h2x/->timestamp expr) (h2x/literal :year)])
 
-(defrecord DateExtract [unit expr]
-  hformat/ToSql
-  (to-sql [_this]
-    (format "extract(%s FROM %s)" (name unit) (hformat/to-sql expr))))
+(def ^:private date-extract-units
+  "See https://spark.apache.org/docs/3.3.0/api/sql/#extract"
+  #{:year :y :years :yr :yrs
+    :yearofweek
+    :quarter :qtr
+    :month :mon :mons :months
+    :week :w :weeks
+    :day :d :days
+    :dayofweek :dow
+    :dayofweek_iso :dow_iso
+    :doy
+    :hour :h :hours :hr :hrs
+    :minute :m :min :mins :minutes
+    :second :s :sec :seconds :secs})
+
+(defn- format-date-extract
+  [_fn [unit expr]]
+  {:pre [(contains? date-extract-units unit)]}
+  (let [[expr-sql & expr-args] (sql/format-expr expr {:nested true})]
+    (into [(format "extract(%s FROM %s)" (name unit) expr-sql)]
+          expr-args)))
+
+(sql/register-fn! ::date-extract #'format-date-extract)
+
+(defn- format-interval
+  "Interval actually supports more than just plain numbers, but that's all we currently need. See
+  https://spark.apache.org/docs/latest/sql-ref-literals.html#interval-literal"
+  [_fn [amount unit]]
+  {:pre [(number? amount)
+         ;; other units are supported too but we're not currently supporting them.
+         (#{:year :month :week :day :hour :minute :second :millisecond} unit)]}
+  [(format "(interval '%d' %s)" (long amount) (name unit))])
+
+(sql/register-fn! ::interval #'format-interval)
 
 (defmethod sql.qp/date [:hive-like :day-of-week]
   [driver _unit expr]
-  (sql.qp/adjust-day-of-week driver (-> (->DateExtract :dow (hx/->timestamp expr))
-                                        (hx/with-database-type-info "integer"))))
+  (sql.qp/adjust-day-of-week driver (-> [::date-extract :dow (h2x/->timestamp expr)]
+                                        (h2x/with-database-type-info "integer"))))
 
 (defmethod sql.qp/date [:hive-like :week]
-  [driver _ expr]
+  [driver _unit expr]
   (let [week-extract-fn (fn [expr]
-                          (-> (hsql/call :date_sub
-                                         (hx/+ (hx/->timestamp expr)
-                                               (hsql/raw "interval '1' day"))
-                                         (->DateExtract :dow (hx/->timestamp expr)))
-                              (hx/with-database-type-info "timestamp")))]
+                          (-> [:date_sub
+                               (h2x/+ (h2x/->timestamp expr)
+                                      [::interval 1 :day])
+                               [::date-extract :dow (h2x/->timestamp expr)]]
+                              (h2x/with-database-type-info "timestamp")))]
     (sql.qp/adjust-start-of-week driver week-extract-fn expr)))
 
 
-(defmethod sql.qp/date [:hive-like :week-of-year-iso] [_driver _ expr] (hsql/call :weekofyear (hx/->timestamp expr)))
+(defmethod sql.qp/date [:hive-like :week-of-year-iso]
+  [_driver _unit expr]
+  [:weekofyear (h2x/->timestamp expr)])
 
 (defmethod sql.qp/date [:hive-like :quarter]
-  [_ _ expr]
-  (hsql/call :add_months
-    (hsql/call :trunc (hx/->timestamp expr) (hx/literal :year))
-    (hx/* (hx/- (hsql/call :quarter (hx/->timestamp expr))
-                1)
-          3)))
+  [_driver _unit expr]
+  [:add_months
+   [:trunc (h2x/->timestamp expr) (h2x/literal :year)]
+   (h2x/* (h2x/- [:quarter (h2x/->timestamp expr)]
+                 1)
+          3)])
 
 (defmethod sql.qp/->honeysql [:hive-like :replace]
   [driver [_ arg pattern replacement]]
-  (hsql/call :regexp_replace
-    (sql.qp/->honeysql driver arg)
-    (sql.qp/->honeysql driver pattern)
-    (sql.qp/->honeysql driver replacement)))
+  [:regexp_replace
+   (sql.qp/->honeysql driver arg)
+   (sql.qp/->honeysql driver pattern)
+   (sql.qp/->honeysql driver replacement)])
 
 (defmethod sql.qp/->honeysql [:hive-like :regex-match-first]
   [driver [_ arg pattern]]
-  (hsql/call :regexp_extract (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern) 0))
+  [:regexp_extract (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern) 0])
 
 (defmethod sql.qp/->honeysql [:hive-like :median]
   [driver [_ arg]]
-  (hsql/call :percentile (sql.qp/->honeysql driver arg) 0.5))
+  [:percentile (sql.qp/->honeysql driver arg) 0.5])
 
 (defmethod sql.qp/->honeysql [:hive-like :percentile]
   [driver [_ arg p]]
-  (hsql/call :percentile (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver p)))
+  [:percentile (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver p)])
 
 (defmethod sql.qp/add-interval-honeysql-form :hive-like
   [driver hsql-form amount unit]
   (if (= unit :quarter)
     (recur driver hsql-form (* amount 3) :month)
-    (hx/+ (hx/->timestamp hsql-form) (hsql/raw (format "(INTERVAL '%d' %s)" (int amount) (name unit))))))
+    (h2x/+ (h2x/->timestamp hsql-form)
+           [::interval amount unit])))
 
 (defmethod sql.qp/datetime-diff [:hive-like :year]
   [driver _unit x y]
-  (hsql/call :div (sql.qp/datetime-diff driver :month x y) 12))
+  [:div (sql.qp/datetime-diff driver :month x y) 12])
 
 (defmethod sql.qp/datetime-diff [:hive-like :quarter]
   [driver _unit x y]
-  (hsql/call :div (sql.qp/datetime-diff driver :month x y) 3))
+  [:div (sql.qp/datetime-diff driver :month x y) 3])
 
 (defmethod sql.qp/datetime-diff [:hive-like :month]
   [_driver _unit x y]
-  (hx/->integer (hsql/call :months_between y x)))
+  (h2x/->integer [:months_between y x]))
 
 (defmethod sql.qp/datetime-diff [:hive-like :week]
   [_driver _unit x y]
-  (hsql/call :div (hsql/call :datediff y x) 7))
+  [:div [:datediff y x] 7])
 
 (defmethod sql.qp/datetime-diff [:hive-like :day]
   [_driver _unit x y]
-  (hsql/call :datediff y x))
+  [:datediff y x])
 
 (defmethod sql.qp/datetime-diff [:hive-like :hour]
   [driver _unit x y]
-  (hsql/call :div (sql.qp/datetime-diff driver :second x y) 3600))
+  [:div (sql.qp/datetime-diff driver :second x y) 3600])
 
 (defmethod sql.qp/datetime-diff [:hive-like :minute]
   [driver _unit x y]
-  (hsql/call :div (sql.qp/datetime-diff driver :second x y) 60))
+  [:div (sql.qp/datetime-diff driver :second x y) 60])
 
 (defmethod sql.qp/datetime-diff [:hive-like :second]
   [_driver _unit x y]
-  (hsql/call :- (hsql/call :unix_timestamp y) (hsql/call :unix_timestamp x)))
+  [:- [:unix_timestamp y] [:unix_timestamp x]])
 
 (def ^:dynamic *param-splice-style*
   "How we should splice params into SQL (i.e. 'unprepare' the SQL). Either `:friendly` (the default) or `:paranoid`.

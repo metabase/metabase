@@ -4,7 +4,6 @@
    [clj-http.client :as http]
    [clojure.core.memoize :as memoize]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [java-time :as t]
    [metabase.config :as config]
    [metabase.models.setting :as setting :refer [defsetting]]
@@ -15,10 +14,13 @@
    [metabase.util.i18n
     :as i18n
     :refer [available-locales-with-names deferred-tru trs tru]]
+   [metabase.util.log :as log]
    [metabase.util.password :as u.password]
-   [toucan.db :as db])
+   [toucan2.core :as t2])
   (:import
    (java.util UUID)))
+
+(set! *warn-on-reflection* true)
 
 ;; These modules register settings but are otherwise unused. They still must be imported.
 (comment metabase.public-settings.premium-features/keep-me)
@@ -223,9 +225,9 @@
 
 (defsetting enable-query-caching
   (deferred-tru "Enabling caching will save the results of queries that take a long time to run.")
-  :type    :boolean
-  :default false
-  :visibility :settings-manager)
+  :type       :boolean
+  :default    false
+  :visibility :authenticated)
 
 (defsetting persisted-models-enabled
   (deferred-tru "Allow persisting models into the source database.")
@@ -480,7 +482,7 @@
   "Whether this instance has a Sample Database database"
   :visibility :authenticated
   :setter     :none
-  :getter     (fn [] (db/exists? 'Database, :is_sample true))
+  :getter     (fn [] (t2/exists? 'Database, :is_sample true))
   :doc        false)
 
 (defsetting password-complexity
@@ -538,7 +540,18 @@
          "although it is used to set the WEEK_START session variable in Snowflake."))
   :visibility :public
   :type       :keyword
-  :default    :sunday)
+  :default    :sunday
+  :getter     (fn []
+                ;; if something invalid is somehow in the DB just fall back to Sunday
+                (when-let [value (setting/get-value-of-type :keyword :start-of-week)]
+                  (if (#{:monday :tuesday :wednesday :thursday :friday :saturday :sunday} value)
+                    value
+                    :sunday)))
+  :setter      (fn [new-value]
+                 (when new-value
+                   (assert (#{:monday :tuesday :wednesday :thursday :friday :saturday :sunday} (keyword new-value))
+                           (trs "Invalid day of week: {0}" (pr-str new-value))))
+                 (setting/set-value-of-type! :keyword :start-of-week new-value)))
 
 (defsetting ssh-heartbeat-interval-sec
   (deferred-tru "Controls how often the heartbeats are sent when an SSH tunnel is established (in seconds).")
@@ -583,6 +596,27 @@
   :getter     (fn []
                 (let [v (setting/get-value-of-type :boolean :show-database-syncing-modal)]
                   (if (nil? v)
-                    (not (db/exists? 'Database :is_sample false, :initial_sync_status "complete"))
+                    (not (t2/exists? 'Database :is_sample false, :initial_sync_status "complete"))
                     ;; frontend should set this value to `true` after the modal has been shown once
                     v))))
+
+(defsetting uploads-enabled
+  (deferred-tru "Whether or not uploads are enabled")
+  :visibility :authenticated
+  :type       :boolean
+  :default    false)
+
+(defsetting uploads-database-id
+  (deferred-tru "Database ID for uploads")
+  :visibility :authenticated
+  :type       :integer)
+
+(defsetting uploads-schema-name
+  (deferred-tru "Schema name for uploads")
+  :visibility   :authenticated
+  :type         :string)
+
+(defsetting uploads-table-prefix
+  (deferred-tru "Prefix for upload table names")
+  :visibility   :authenticated
+  :type         :string)

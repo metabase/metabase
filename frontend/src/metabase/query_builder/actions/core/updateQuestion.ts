@@ -1,18 +1,15 @@
 import _ from "underscore";
 import { assocIn } from "icepick";
 
-import { Dataset } from "metabase-types/api";
-import { Series } from "metabase-types/types/Visualization";
+import { loadMetadataForCard } from "metabase/questions/actions";
+
+import { Dataset, Series } from "metabase-types/api";
 import { Dispatch, GetState, QueryBuilderMode } from "metabase-types/store";
-import {
-  getTemplateTagsForParameters,
-  getTemplateTagParameters,
-} from "metabase-lib/parameters/utils/template-tags";
 import Question from "metabase-lib/Question";
 import NativeQuery from "metabase-lib/queries/NativeQuery";
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import { getTemplateTagParametersFromCard } from "metabase-lib/parameters/utils/template-tags";
 
-import { isSupportedTemplateTagForModel } from "metabase-lib/metadata/utils/models";
 import {
   getFirstQueryResult,
   getIsShowingTemplateTagsEditor,
@@ -26,7 +23,6 @@ import { setIsShowingTemplateTagsEditor } from "../native";
 import { runQuestionQuery } from "../querying";
 import { onCloseQuestionInfo, setQueryBuilderMode } from "../ui";
 
-import { loadMetadataForCard } from "./metadata";
 import { getQuestionWithDefaultVisualizationSettings } from "./utils";
 
 function hasNewColumns(question: Question, queryResult: Dataset) {
@@ -100,7 +96,7 @@ function shouldTemplateTagEditorBeVisible({
   }
 }
 
-type UpdateQuestionOpts = {
+export type UpdateQuestionOpts = {
   run?: boolean | "auto";
   shouldUpdateUrl?: boolean;
   shouldStartAdHocQuestion?: boolean;
@@ -172,12 +168,15 @@ export const updateQuestion = (
       if (isPivot && hasBreakouts) {
         const key = "pivot_table.column_split";
         const rawSeries = getRawSeries(getState()) as Series;
-        const series = assocIn(rawSeries, [0, "card"], newQuestion.card());
-        const setting = getQuestionWithDefaultVisualizationSettings(
-          newQuestion,
-          series,
-        ).setting(key);
-        newQuestion = newQuestion.updateSettings({ [key]: setting });
+
+        if (rawSeries) {
+          const series = assocIn(rawSeries, [0, "card"], newQuestion.card());
+          const setting = getQuestionWithDefaultVisualizationSettings(
+            newQuestion,
+            series,
+          ).setting(key);
+          newQuestion = newQuestion.updateSettings({ [key]: setting });
+        }
       }
 
       run = checkShouldRerunPivotTableQuestion({
@@ -198,11 +197,9 @@ export const updateQuestion = (
       );
     }
 
-    const newDatasetQuery = newQuestion.query().datasetQuery();
     // Sync card's parameters with the template tags;
-    if (newDatasetQuery.type === "native") {
-      const templateTags = getTemplateTagsForParameters(newQuestion.card());
-      const parameters = getTemplateTagParameters(templateTags);
+    if (newQuestion.isNative()) {
+      const parameters = getTemplateTagParametersFromCard(newQuestion.card());
       newQuestion = newQuestion.setParameters(parameters);
     }
 

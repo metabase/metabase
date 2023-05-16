@@ -1,28 +1,44 @@
 (ns metabase.test.data.presto-jdbc
   "Presto JDBC driver test extensions."
-  (:require [clojure.string :as str]
-            [clojure.test :refer :all]
-            [metabase.config :as config]
-            [metabase.connection-pool :as connection-pool]
-            [metabase.driver :as driver]
-            [metabase.driver.ddl.interface :as ddl.i]
-            [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-            [metabase.test.data.dataset-definitions :as defs]
-            [metabase.test.data.interface :as tx]
-            [metabase.test.data.sql :as sql.tx]
-            [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
-            [metabase.test.data.sql-jdbc.execute :as execute]
-            [metabase.test.data.sql-jdbc.load-data :as load-data]
-            [metabase.test.data.sql.ddl :as ddl]
-            [metabase.util :as u])
-  (:import [java.sql Connection DriverManager PreparedStatement]))
+  (:require
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [metabase.config :as config]
+   [metabase.connection-pool :as connection-pool]
+   [metabase.driver :as driver]
+   [metabase.driver.ddl.interface :as ddl.i]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.test.data.dataset-definitions :as defs]
+   [metabase.test.data.interface :as tx]
+   [metabase.test.data.sql :as sql.tx]
+   [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
+   [metabase.test.data.sql-jdbc.execute :as execute]
+   [metabase.test.data.sql-jdbc.load-data :as load-data]
+   [metabase.test.data.sql.ddl :as ddl]
+   [metabase.util.log :as log])
+  (:import
+   (java.sql Connection DriverManager PreparedStatement)))
+
+(set! *warn-on-reflection* true)
 
 (sql-jdbc.tx/add-test-extensions! :presto-jdbc)
 
 (defmethod tx/sorts-nil-first? :presto-jdbc [_ _] false)
 
 ;; during unit tests don't treat presto as having FK support
-(defmethod driver/supports? [:presto-jdbc :foreign-keys] [_ _] (not config/is-test?))
+(defmethod driver/database-supports? [:presto-jdbc :foreign-keys] [_driver _feature _db] (not config/is-test?))
+
+(defmethod tx/aggregate-column-info :presto-jdbc
+  ([driver ag-type]
+   ((get-method tx/aggregate-column-info ::tx/test-extensions) driver ag-type))
+
+  ([driver ag-type field]
+   (merge
+    ((get-method tx/aggregate-column-info ::tx/test-extensions) driver ag-type field)
+    (when (= ag-type :sum)
+      {:base_type :type/BigInteger}))))
+
+(prefer-method tx/aggregate-column-info :presto-jdbc ::tx/test-extensions)
 
 ;; in the past, we had to manually update our Docker image and add a new catalog for every new dataset definition we
 ;; added. That's insane. Just use the `test-data` catalog and put everything in that, and use
@@ -119,7 +135,7 @@
             (sql-jdbc.execute/set-parameters! driver stmt params)
             (let [tbl-nm        ((comp last :components) (into {} table-identifier))
                   rows-affected (.executeUpdate stmt)]
-              (println (format "[%s] Inserted %d rows into %s." driver rows-affected tbl-nm))))
+              (log/infof "[%s] Inserted %d rows into %s." driver rows-affected tbl-nm)))
           (catch Throwable e
             (throw (ex-info (format "[%s] Error executing SQL: %s" driver (ex-message e))
                      {:driver driver, :sql sql, :params params}
@@ -130,7 +146,7 @@
 
 (defmethod sql.tx/qualified-name-components :presto-jdbc
   ;; use the default schema from the in-memory connector
-  ([_ _db-name]                       [test-catalog-name "default"])
+  ([_ _db-name]                      [test-catalog-name "default"])
   ([_ db-name table-name]            [test-catalog-name "default" (tx/db-qualified-table-name db-name table-name)])
   ([_ db-name table-name field-name] [test-catalog-name "default" (tx/db-qualified-table-name db-name table-name) field-name]))
 
@@ -155,13 +171,11 @@
       (is (= "CREATE TABLE \"test_data\".\"default\".\"categories\" (\"id\" INTEGER, \"name\" VARCHAR) ;"
              (sql.tx/create-table-sql :presto-jdbc db-def table-def))))))
 
-(defmethod ddl.i/format-name :presto-jdbc [_ table-or-field-name]
-  (u/snake-key table-or-field-name))
+(defmethod ddl.i/format-name :presto-jdbc
+  [_driver table-or-field-name]
+  (str/replace table-or-field-name #"-" "_"))
 
 ;; Presto doesn't support FKs, at least not adding them via DDL
 (defmethod sql.tx/add-fk-sql :presto-jdbc
   [_ _ _ _]
   nil)
-
-;; FIXME Presto actually has very good timezone support
-#_(defmethod tx/has-questionable-timezone-support? :presto-jdbc [_] true)

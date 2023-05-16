@@ -1,17 +1,10 @@
-import { assoc, updateIn } from "icepick";
-
 import { createAction } from "redux-actions";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { createThunkAction } from "metabase/lib/redux";
-import Utils from "metabase/lib/utils";
 
 import Questions from "metabase/entities/questions";
 import { getMetadata } from "metabase/selectors/metadata";
-import {
-  getTemplateTagsForParameters,
-  getTemplateTagParameters,
-} from "metabase-lib/parameters/utils/template-tags";
 import {
   getDataReferenceStack,
   getNativeEditorCursorOffset,
@@ -152,43 +145,30 @@ export const insertSnippet = snip => (dispatch, getState) => {
 };
 
 export const SET_TEMPLATE_TAG = "metabase/qb/SET_TEMPLATE_TAG";
-export const setTemplateTag = createThunkAction(
-  SET_TEMPLATE_TAG,
-  templateTag => {
+export const setTemplateTag = createThunkAction(SET_TEMPLATE_TAG, tag => {
+  return (dispatch, getState) => {
+    const question = getQuestion(getState());
+    const newQuestion = question
+      .query()
+      .setTemplateTag(tag.name, tag)
+      .question();
+
+    dispatch(updateQuestion(newQuestion));
+  };
+});
+
+export const SET_TEMPLATE_TAG_CONFIG = "metabase/qb/SET_TEMPLATE_TAG_CONFIG";
+export const setTemplateTagConfig = createThunkAction(
+  SET_TEMPLATE_TAG_CONFIG,
+  (tag, parameter) => {
     return (dispatch, getState) => {
-      const {
-        qb: { card, uiControls },
-      } = getState();
+      const question = getQuestion(getState());
+      const newQuestion = question
+        .query()
+        .setTemplateTagConfig(tag, parameter)
+        .question();
 
-      const updatedCard = Utils.copy(card);
-
-      // when the query changes on saved card we change this into a new query w/ a known starting point
-      if (uiControls.queryBuilderMode !== "dataset" && updatedCard.id) {
-        delete updatedCard.id;
-        delete updatedCard.name;
-        delete updatedCard.description;
-      }
-
-      // we need to preserve the order of the keys to avoid UI jumps
-      const updatedTagsCard = updateIn(
-        updatedCard,
-        ["dataset_query", "native", "template-tags"],
-        tags => {
-          const { name } = templateTag;
-          const newTag =
-            tags[name] && tags[name].type !== templateTag.type
-              ? // when we switch type, null out any default
-                { ...templateTag, default: null }
-              : templateTag;
-          return { ...tags, [name]: newTag };
-        },
-      );
-
-      return assoc(
-        updatedTagsCard,
-        "parameters",
-        getTemplateTagParameters(getTemplateTagsForParameters(updatedTagsCard)),
-      );
+      dispatch(updateQuestion(newQuestion));
     };
   },
 );

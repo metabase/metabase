@@ -1,4 +1,4 @@
-(ns metabase.sync.sync-metadata.tables-test
+(ns ^:mb/once metabase.sync.sync-metadata.tables-test
   "Test for the logic that syncs Table models with the metadata fetched from a DB."
   (:require
    [clojure.test :refer :all]
@@ -7,7 +7,7 @@
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (tx/defdataset db-with-some-cruft
   [["acquired_toucans"
@@ -28,7 +28,7 @@
     (mt/dataset metabase.sync.sync-metadata.tables-test/db-with-some-cruft
       (is (= #{{:name "SOUTH_MIGRATIONHISTORY", :visibility_type :cruft, :initial_sync_status "complete"}
                {:name "ACQUIRED_TOUCANS",       :visibility_type nil,    :initial_sync_status "complete"}}
-             (set (for [table (db/select [Table :name :visibility_type :initial_sync_status], :db_id (mt/id))]
+             (set (for [table (t2/select [Table :name :visibility_type :initial_sync_status], :db_id (mt/id))]
                     (into {} table))))))))
 
 (deftest retire-tables-test
@@ -38,4 +38,4 @@
                     Table    [_       {:name "Table 2", :db_id (u/the-id db)}]]
       (#'sync-tables/retire-tables! db #{{:name "Table 1", :schema (:schema table-1)}})
       (is (= {"Table 1" false, "Table 2" true}
-             (db/select-field->field :name :active Table, :db_id (u/the-id db)))))))
+             (t2/select-fn->fn :name :active Table, :db_id (u/the-id db)))))))

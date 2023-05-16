@@ -3,13 +3,40 @@
 import d3 from "d3";
 import moment from "moment-timezone";
 import { getIn } from "icepick";
+import _ from "underscore";
 
 import { formatValue } from "metabase/lib/formatting";
 import { formatNullable } from "metabase/lib/formatting/nullable";
-
+import { keyForSingleSeries } from "metabase/visualizations/lib/settings/series";
 import { isNormalized, isStacked } from "./renderer_utils";
-import { determineSeriesIndexFromElement } from "./tooltip";
+import {
+  determineSeriesIndexFromElement,
+  formatValueForTooltip,
+} from "./tooltip";
 import { getFriendlyName } from "./utils";
+
+const DIMENSION_INDEX = 0;
+const METRIC_INDEX = 1;
+
+function getColumnDisplayName(
+  col,
+  settings,
+  isBreakout,
+  colVizSettingsKey = col.name,
+) {
+  const colTitle = getIn(settings, [
+    "series_settings",
+    colVizSettingsKey,
+    "title",
+  ]);
+
+  // don't replace with series title for breakout multiseries since the series title is shown in the breakout value
+  if (!isBreakout && colTitle) {
+    return colTitle;
+  }
+
+  return getFriendlyName(col);
+}
 
 function isDashboardAddedSeries(series, seriesIndex, dashboard) {
   // the first series by definition can't be an "added" series
@@ -53,21 +80,6 @@ export function getClickHoverObject(
   const isBar = classList.includes("bar");
   const isSingleSeriesBar = isBar && !isMultiseries;
 
-  function getColumnDisplayName(col, colVizSettingsKey = col.name) {
-    const colTitle = getIn(settings, [
-      "series_settings",
-      colVizSettingsKey,
-      "title",
-    ]);
-
-    // don't replace with series title for breakout multiseries since the series title is shown in the breakout value
-    if (!isBreakoutMultiseries && colTitle) {
-      return colTitle;
-    }
-
-    return getFriendlyName(col);
-  }
-
   let data = [];
   let dimensions = [];
   let value;
@@ -78,14 +90,14 @@ export function getClickHoverObject(
       data = d.key._origin.row.map((value, index) => {
         const col = d.key._origin.cols[index];
         return {
-          key: getColumnDisplayName(col),
+          key: getColumnDisplayName(col, settings, isBreakoutMultiseries),
           value: value,
           col,
         };
       });
     } else {
       data = d.key.map((value, index) => ({
-        key: getColumnDisplayName(cols[index]),
+        key: getColumnDisplayName(cols[index], settings, isBreakoutMultiseries),
         value: value,
         col: cols[index],
       }));
@@ -166,20 +178,22 @@ export function getClickHoverObject(
       data = rawCols.map((col, i) => {
         if (isNormalized && cols[1].field_ref === col.field_ref) {
           return {
-            key: getColumnDisplayName(cols[1]),
+            key: getColumnDisplayName(cols[1], settings, isBreakoutMultiseries),
             value: formatValue(d.data.value, {
               number_style: "percent",
               column: cols[1],
-              minimum_fraction_digits:
-                cols[1].minimum_fraction_digits || cols[1].decimals,
-              maximum_fraction_digits:
-                cols[1].maximum_fraction_digits || cols[1].decimals,
+              decimals: cols[1].decimals,
             }),
             col: col,
           };
         }
         return {
-          key: getColumnDisplayName(col, colVizSettingsKeys[i]),
+          key: getColumnDisplayName(
+            col,
+            settings,
+            isBreakoutMultiseries,
+            colVizSettingsKeys[i],
+          ),
           value: formatNullable(aggregatedRow[i]),
           col: col,
         };
@@ -192,7 +206,13 @@ export function getClickHoverObject(
   } else if (isBreakoutMultiseries) {
     // an area doesn't have any data, but might have a breakout series to show
     const { _breakoutValue: value, _breakoutColumn: column } = card;
-    data = [{ key: getColumnDisplayName(column), col: column, value }];
+    data = [
+      {
+        key: getColumnDisplayName(column, settings, isBreakoutMultiseries),
+        col: column,
+        value,
+      },
+    ];
     dimensions = [{ column, value }];
   }
 
@@ -286,6 +306,127 @@ function aggregateRows(rows) {
   return aggregatedRow;
 }
 
+const shouldShowStackedTooltip = (settings, series) => {
+  const hasStackedSettings = isStacked(settings, series);
+  const isSuitableVizType = series.every(series =>
+    ["bar", "area"].includes(series.card?.display),
+  );
+
+  return hasStackedSettings && isSuitableVizType;
+};
+
+export const getStackedTooltipModel = (
+  multipleCardSeries,
+  datas,
+  settings,
+  hoveredIndex,
+  dashboard,
+  xValue,
+) => {
+  const seriesWithGroupedData = multipleCardSeries.map((series, index) => ({
+    ...series,
+    groupedData: datas[index],
+    isHovered: hoveredIndex === index,
+    seriesIndex: index,
+  }));
+
+  const hoveredSeries = seriesWithGroupedData[hoveredIndex];
+  const hoveredCardId = hoveredSeries?.card?.id;
+  const hoveredCardSeries = seriesWithGroupedData.filter(
+    series => series.card?.id === hoveredCardId,
+  );
+  const hasBreakout = hoveredCardSeries?.some(
+    series => series.card?._breakoutColumn != null,
+  );
+
+  const seriesToShow = hasBreakout
+    ? hoveredCardSeries
+    : seriesWithGroupedData.filter(
+        series => series.card?._breakoutColumn == null,
+      );
+
+  const formattedXValue = formatValueForTooltip({
+    value: xValue,
+    column: hoveredSeries?.data?.cols[DIMENSION_INDEX],
+  });
+
+  const totalFormatter = value =>
+    formatValueForTooltip({
+      value,
+      settings,
+      column: hoveredSeries?.data?.cols[METRIC_INDEX],
+    });
+
+  const tooltipRows = seriesToShow
+    .map(series => {
+      const { card, groupedData, data } = series;
+      const datum = groupedData?.find(
+        datum => datum[DIMENSION_INDEX] === xValue,
+      );
+
+      if (!datum) {
+        return null;
+      }
+
+      const value = datum[METRIC_INDEX];
+      const valueColumn = data.cols[METRIC_INDEX];
+
+      let name = null;
+      if (hasBreakout) {
+        name = settings.series(series)?.["title"] ?? card.name;
+      } else {
+        const hasMultipleMetricsInCard =
+          multipleCardSeries.filter(
+            singleSeries => series.card?.id === singleSeries.card?.id,
+          ).length > 1;
+        const isAddedSeriesOnDashcard = isDashboardAddedSeries(
+          multipleCardSeries,
+          series.seriesIndex,
+          dashboard,
+        );
+
+        let settingsKey = null;
+        if (isAddedSeriesOnDashcard) {
+          settingsKey = hasMultipleMetricsInCard
+            ? `${card.originalCardName}: ${valueColumn.display_name}`
+            : card.name;
+        } else {
+          settingsKey = valueColumn.name;
+        }
+
+        name = getColumnDisplayName(valueColumn, settings, false, settingsKey);
+      }
+
+      const colorKey = keyForSingleSeries(series);
+      const color = settings["series_settings.colors"][colorKey];
+
+      return {
+        color,
+        name,
+        value,
+        isHovered: series.isHovered,
+        formatter: value =>
+          formatValueForTooltip({
+            value,
+            settings,
+            column: valueColumn,
+          }),
+      };
+    })
+    .filter(Boolean);
+
+  const [headerRows, bodyRows] = _.partition(tooltipRows, row => row.isHovered);
+
+  return {
+    headerTitle: formattedXValue,
+    headerRows,
+    bodyRows,
+    totalFormatter: hasBreakout ? totalFormatter : undefined,
+    showTotal: hasBreakout,
+    showPercentages: hasBreakout,
+  };
+};
+
 export function setupTooltips(
   {
     settings,
@@ -317,7 +458,7 @@ export function setupTooltips(
       return null;
     }
 
-    return getClickHoverObject(d, {
+    const mouseEventData = getClickHoverObject(d, {
       classList,
       seriesTitle,
       seriesIndex,
@@ -331,6 +472,22 @@ export function setupTooltips(
       settings,
       dashboard,
     });
+
+    const shouldShowStaticTooltip =
+      d.x != null && shouldShowStackedTooltip(settings, series);
+
+    if (shouldShowStaticTooltip) {
+      mouseEventData.stackedTooltipModel = getStackedTooltipModel(
+        series,
+        datas,
+        settings,
+        seriesIndex,
+        dashboard,
+        d.x,
+      );
+    }
+
+    return mouseEventData;
   };
 
   chart.on("renderlet.tooltips", function (chart) {

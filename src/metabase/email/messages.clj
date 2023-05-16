@@ -4,11 +4,11 @@
   (:require
    [clojure.core.cache :as cache]
    [clojure.java.io :as io]
-   [clojure.tools.logging :as log]
    [hiccup.core :refer [html]]
    [java-time :as t]
    [medley.core :as m]
    [metabase.config :as config]
+   [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.email :as email]
@@ -32,14 +32,17 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :as i18n :refer [trs tru]]
+   [metabase.util.log :as log]
    [metabase.util.urls :as urls]
    [stencil.core :as stencil]
    [stencil.loader :as stencil-loader]
-   [toucan.db :as db])
+   [toucan2.core :as t2])
   (:import
    (java.io File IOException OutputStream)
    (java.time LocalTime)
    (java.time.format DateTimeFormatter)))
+
+(set! *warn-on-reflection* true)
 
 (defn- app-name-trs
   "Return the user configured application name, or Metabase translated
@@ -65,6 +68,9 @@
       ;; :else                             url
 
 (defn- icon-bundle
+  "Bundle an icon.
+
+  The available icons are defined in [[js-svg/icon-paths]]."
   [icon-name]
   (let [color     (style/primary-color)
         png-bytes (js-svg/icon icon-name color)]
@@ -131,7 +137,7 @@
   []
   (concat (when-let [admin-email (public-settings/admin-email)]
             [admin-email])
-          (db/select-field :email 'User, :is_superuser true, :is_active true, {:order-by [[:id :asc]]})))
+          (t2/select-fn-set :email 'User, :is_superuser true, :is_active true, {:order-by [[:id :asc]]})))
 
 (defn send-user-joined-admin-notification-email!
   "Send an email to the `invitor` (the Admin who invited `new-user`) letting them know `new-user` has joined."
@@ -156,17 +162,16 @@
 
 (defn send-password-reset-email!
   "Format and send an email informing the user how to reset their password."
-  [email google-auth? non-google-sso? password-reset-url is-active?]
-  {:pre [(m/boolean? google-auth?)
-         (m/boolean? non-google-sso?)
-         (u/email? email)
+  [email sso-source password-reset-url is-active?]
+  {:pre [(u/email? email)
          ((some-fn string? nil?) password-reset-url)]}
-  (let [message-body (stencil/render-file
+  (let [google-sso? (= "google" sso-source)
+        message-body (stencil/render-file
                       "metabase/email/password_reset"
                       (merge (common-context)
                              {:emailType        "password_reset"
-                              :google           google-auth?
-                              :nonGoogleSSO     non-google-sso?
+                              :google           google-sso?
+                              :nonGoogleSSO     (and (not google-sso?) (some? sso-source))
                               :passwordResetUrl password-reset-url
                               :logoHeader       true
                               :isActive         is-active?
@@ -182,7 +187,7 @@
   "Format and send an email informing the user that this is the first time we've seen a login from this device. Expects
   login history information as returned by `metabase.models.login-history/human-friendly-infos`."
   [{user-id :user_id, :keys [timestamp], :as login-history}]
-  (let [user-info    (db/select-one ['User [:first_name :first-name] :email :locale] :id user-id)
+  (let [user-info    (t2/select-one ['User [:first_name :first-name] :email :locale] :id user-id)
         user-locale  (or (:locale user-info) (i18n/site-locale))
         timestamp    (u.date/format-human-readable timestamp user-locale)
         context      (merge (common-context)
@@ -221,7 +226,7 @@
                                                       [:= :p.group_id :pg.id]
                                                       [:= :p.object db-details]]}]]
                          :group-by [:pgm.user_id]}
-                        db/query
+                        mdb.query/query
                         (mapv :user_id)))]
     (into
       []
@@ -229,9 +234,9 @@
       (concat
         (all-admin-recipients)
         (when (seq user-ids)
-          (db/select-field :email User {:where [:and
-                                                [:= :is_active true]
-                                                [:in :id user-ids]]}))))))
+          (t2/select-fn-set :email User {:where [:and
+                                                 [:= :is_active true]
+                                                 [:in :id user-ids]]}))))))
 
 (defn send-persistent-model-error-email!
   "Format and send an email informing the user about errors in the persistent model refresh task."

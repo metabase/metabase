@@ -1,14 +1,15 @@
 (ns metabase.api.common
   "Dynamic variables and utility functions/macros for writing API functions."
   (:require
+   [clojure.set :as set]
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [compojure.core :as compojure]
-   [honeysql.types :as htypes]
    [medley.core :as m]
    [metabase.api.common.internal
     :refer [add-route-param-regexes
+            add-route-param-schema
+            auto-coerce
             auto-parse
             malli-route-dox
             malli-validate-params
@@ -16,12 +17,15 @@
             route-fn-name
             validate-params
             wrap-response-if-needed]]
+   [metabase.config :as config]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [deferred-tru tru]]
+   [metabase.util.log :as log]
    [metabase.util.schema :as su]
+   [ring.middleware.multipart-params :as mp]
    [schema.core :as schema]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (declare check-403 check-404)
 
@@ -99,7 +103,7 @@
   ([entity id]
    (check-exists? entity :id id))
   ([entity k v & more]
-   (check-404 (apply db/exists? entity k v more))))
+   (check-404 (apply t2/exists? entity k v more))))
 
 (defn check-superuser
   "Check that `*current-user*` is a superuser or throw a 403. This doesn't require a DB call."
@@ -237,7 +241,9 @@
           route                                               (add-route-param-regexes route)
           ;; eval the vals in arg->schema to make sure the actual schemas are resolved so we can document
           ;; their API error messages
-          docstr                                              (route-dox method route docstr args (m/map-vals eval arg->schema) body)]
+          docstr                                              (route-dox method route docstr args
+                                                                         (m/map-vals #_{:clj-kondo/ignore [:discouraged-var]} eval arg->schema)
+                                                                         body)]
       ;; Don't i18n this, it's dev-facing only
       (when-not docstr
         (log/warn (u/format-color 'red "Warning: endpoint %s/%s does not have a docstring. Go add one."
@@ -251,31 +257,70 @@
                       (s/explain-data ::defendpoint-args args))))
     (let [{:keys [method route docstr args arg->schema body]} parsed
           fn-name                                             (route-fn-name method route)
-          route                                               (add-route-param-regexes route)
+          route                                               (add-route-param-schema arg->schema route)
           ;; eval the vals in arg->schema to make sure the actual schemas are resolved so we can document
           ;; their API error messages
-          docstr                                              (malli-route-dox method route docstr args (m/map-vals eval arg->schema) body)]
+          docstr                                              (malli-route-dox method route docstr args
+                                                                               (m/map-vals #_{:clj-kondo/ignore [:discouraged-var]} eval arg->schema)
+                                                                               body)]
       ;; Don't i18n this, it's dev-facing only
       (when-not docstr
         (log/warn (u/format-color 'red "Warning: endpoint %s/%s does not have a docstring. Go add one."
                                   (ns-name *ns*) fn-name)))
       (assoc parsed :fn-name fn-name, :route route, :docstr docstr))))
 
+(defn validate-param-values
+  "Log a warning if the request body contains any parameters not included in `expected-params` (which is presumably
+  populated by the defendpoint schema)"
+  [{route :compojure/route body :body} expected-params]
+  (when (and (not config/is-prod?)
+             (map? body))
+    (let [extraneous-params (set/difference (set (keys body))
+                                            (set expected-params))]
+      (when (seq extraneous-params)
+        (log/warnf "Unexpected parameters at %s: %s\nPlease add them to the schema or remove them from the API client"
+                   route (vec extraneous-params))))))
+
+
+(defn method-symbol->keyword
+  "Convert Compojure-style HTTP method symbols (PUT, POST, etc.) to the keywords used internally by
+  Compojure (:put, :post, ...)"
+  [method-symbol]
+  (-> method-symbol
+      name
+      u/lower-case-en
+      keyword))
+
 (defmacro defendpoint*
   "Impl macro for [[defendpoint]]; don't use this directly."
-  [{:keys [method route fn-name docstr args body]}]
+  [{:keys [method route fn-name docstr args body arg->schema]}]
   {:pre [(or (string? route) (vector? route))]}
-  `(def ~(vary-meta fn-name
-                    assoc
-                    :doc          docstr
-                    :is-endpoint? true)
-     (~(symbol "compojure.core" (name method)) ~route ~args
-      ~@body)))
+  (let [method-kw       (method-symbol->keyword method)
+        allowed-params  (keys arg->schema)
+        prep-route      #'compojure/prepare-route
+        multipart?      (get (meta method) :multipart false)
+        handler-wrapper (if multipart? mp/wrap-multipart-params identity)]
+    `(def ~(vary-meta fn-name
+                      assoc
+                      :doc          docstr
+                      :is-endpoint? true)
+       ;; The next form is a copy of `compojure/compile-route`, with the sole addition of the call to
+       ;; `validate-param-values`. This is because to validate the request body we need to intercept the request
+       ;; before the destructuring takes place. I.e., we need to validate the value of `(:body request#)`, and that's
+       ;; not available if we called `compile-route` ourselves.
+       (compojure/make-route
+        ~method-kw
+        ~(prep-route route)
+        (~handler-wrapper
+         (fn [request#]
+           (validate-param-values request# (quote ~allowed-params))
+           (compojure/let-request [~args request#]
+                                  ~@body)))))))
 
 ;; TODO - several of the things `defendpoint` does could and should just be done by custom Ring middleware instead
 ;; e.g. `auto-parse`
 (defmacro defendpoint-schema
-  "Define an API function.
+  "Define an API function with Plumatic Schema.
    This automatically does several things:
 
    -  calls `auto-parse` to automatically parse certain args. e.g. `id` is converted from `String` to `Integer` via
@@ -290,8 +335,11 @@
    -  tags function's metadata in a way that subsequent calls to `define-routes` (see below) will automatically include
       the function in the generated `defroutes` form.
 
-   -  Generates a super-sophisticated Markdown-formatted docstring"
-  {:arglists '([method route docstr? args schemas-map? & body])}
+   -  Generates a super-sophisticated Markdown-formatted docstring.
+
+  DEPRECATED: use `defendpoint` instead where we use Malli to define the schema."
+  {:arglists   '([method route docstr? args schemas-map? & body])
+   :deprecated "0.46.0"}
   [& defendpoint-args]
   (let [{:keys [args body arg->schema], :as defendpoint-args} (parse-defendpoint-args defendpoint-args)]
     `(defendpoint* ~(assoc defendpoint-args
@@ -321,10 +369,24 @@
   [& defendpoint-args]
   (let [{:keys [args body arg->schema], :as defendpoint-args} (malli-parse-defendpoint-args defendpoint-args)]
     `(defendpoint* ~(assoc defendpoint-args
-                           :body `((auto-parse ~args
-                                               ~@(malli-validate-params arg->schema)
-                                               (wrap-response-if-needed
-                                                (do ~@body))))))))
+                           :body `((auto-coerce ~args ~arg->schema
+                                                ~@(malli-validate-params arg->schema)
+                                                (wrap-response-if-needed
+                                                 (do ~@body))))))))
+
+(defmacro defendpoint-async-schema
+  "Like `defendpoint`, but generates an endpoint that accepts the usual `[request respond raise]` params.
+
+  DEPRECATED: use `defendpoint-async` instead where we use Malli to define the schema."
+  {:arglists   '([method route docstr? args schemas-map? & body])
+   :deprecated "0.46.0"}
+  [& defendpoint-args]
+  (let [{:keys [args body arg->schema], :as defendpoint-args} (parse-defendpoint-args defendpoint-args)]
+    `(defendpoint* ~(assoc defendpoint-args
+                           :args []
+                           :body `((fn ~args
+                                     ~@(validate-params arg->schema)
+                                     ~@body))))))
 
 (defmacro defendpoint-async
   "Like `defendpoint`, but generates an endpoint that accepts the usual `[request respond raise]` params."
@@ -334,7 +396,7 @@
     `(defendpoint* ~(assoc defendpoint-args
                            :args []
                            :body `((fn ~args
-                                     ~@(validate-params arg->schema)
+                                     ~@(malli-validate-params arg->schema)
                                      ~@body))))))
 
 (defn- namespace->api-route-fns
@@ -403,10 +465,10 @@
    obj)
 
   ([entity id]
-   (read-check (entity id)))
+   (read-check (t2/select-one entity :id id)))
 
   ([entity id & other-conditions]
-   (read-check (apply db/select-one entity :id id other-conditions))))
+   (read-check (apply t2/select-one entity :id id other-conditions))))
 
 (defn write-check
   "Check whether we can write an existing OBJ, or ENTITY with ID.
@@ -418,9 +480,9 @@
    (check-403 (mi/can-write? obj))
    obj)
   ([entity id]
-   (write-check (entity id)))
+   (write-check (t2/select-one entity :id id)))
   ([entity id & other-conditions]
-   (write-check (apply db/select-one entity :id id other-conditions))))
+   (write-check (apply t2/select-one entity :id id other-conditions))))
 
 (defn create-check
   "NEW! Check whether the current user has permissions to CREATE a new instance of an object with properties in map `m`.
@@ -452,13 +514,6 @@
     (check (not (:archived object))
       [404 {:message (tru "The object has been archived."), :error_code "archived"}])))
 
-(defn check-is-readonly
-  "Check that the object has `:is_write` = false, or throw a `405`. Returns `object` as-is if check passes."
-  [object]
-  (u/prog1 object
-    (check (not (:is_write object))
-      [405 {:message (tru "Write queries are only executable via the Actions API."), :error_code "is_not_readonly"}])))
-
 (defn check-valid-page-params
   "Check on paginated stuff that, if the limit exists, the offset exists, and vice versa."
   [limit offset]
@@ -470,11 +525,11 @@
   endpoint) is applied.
 
     ;; assuming we have a Collection 10, that is not currently archived...
-    (api/column-will-change? :archived (db/select-one Collection :id 10) {:archived true}) ; -> true, because value will change
+    (api/column-will-change? :archived (t2/select-one Collection :id 10) {:archived true}) ; -> true, because value will change
 
-    (api/column-will-change? :archived (db/select-one Collection :id 10) {:archived false}) ; -> false, because value did not change
+    (api/column-will-change? :archived (t2/select-one Collection :id 10) {:archived false}) ; -> false, because value did not change
 
-    (api/column-will-change? :archived (db/select-one Collection :id 10) {}) ; -> false; value not specified in updates (request body)"
+    (api/column-will-change? :archived (t2/select-one Collection :id 10) {}) ; -> false; value not specified in updates (request body)"
   [k :- schema/Keyword, object-before-updates :- su/Map, object-updates :- su/Map]
   (boolean
    (and (contains? object-updates k)
@@ -491,9 +546,9 @@
    new-position  :- (schema/maybe su/IntGreaterThanZero)]
   (let [update-fn! (fn [plus-or-minus position-update-clause]
                      (doseq [model '[Card Dashboard Pulse]]
-                       (db/update-where! model {:collection_id       collection-id
-                                                :collection_position position-update-clause}
-                         :collection_position (htypes/call plus-or-minus :collection_position 1))))]
+                       (t2/update! model {:collection_id       collection-id
+                                          :collection_position position-update-clause}
+                                   {:collection_position [plus-or-minus :collection_position 1]})))]
     (when (not= new-position old-position)
       (cond
         (and (nil? new-position)

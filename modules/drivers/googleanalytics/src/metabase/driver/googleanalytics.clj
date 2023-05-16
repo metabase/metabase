@@ -1,21 +1,25 @@
 (ns metabase.driver.googleanalytics
-  (:require [cheshire.core :as json]
-            [clojure.string :as str]
-            [medley.core :as m]
-            [metabase.driver :as driver]
-            [metabase.driver.google :as google]
-            [metabase.driver.googleanalytics.client :as ga.client]
-            [metabase.driver.googleanalytics.execute :as ga.execute]
-            [metabase.driver.googleanalytics.metadata :as ga.metadata]
-            [metabase.driver.googleanalytics.query-processor :as ga.qp]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [tru]])
-  (:import [com.google.api.services.analytics Analytics Analytics$Data$Ga$Get]
-           [com.google.api.services.analytics.model Column Profile Profiles Webproperties Webproperty]))
+  (:require
+   [cheshire.core :as json]
+   [clojure.string :as str]
+   [medley.core :as m]
+   [metabase.driver :as driver]
+   [metabase.driver.google :as google]
+   [metabase.driver.googleanalytics.client :as ga.client]
+   [metabase.driver.googleanalytics.execute :as ga.execute]
+   [metabase.driver.googleanalytics.metadata :as ga.metadata]
+   [metabase.driver.googleanalytics.query-processor :as ga.qp]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]])
+  (:import
+   (com.google.api.services.analytics Analytics Analytics$Data$Ga$Get)
+   (com.google.api.services.analytics.model Column Profile Profiles Webproperties Webproperty)))
+
+(set! *warn-on-reflection* true)
 
 (driver/register! :googleanalytics)
 
-(defmethod driver/supports? [:googleanalytics :basic-aggregations] [_ _] false)
+(defmethod driver/database-supports? [:googleanalytics :basic-aggregations] [_driver _feature _db] false)
 
 
 ;;; ----------------------------------------------- describe-database ------------------------------------------------

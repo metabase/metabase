@@ -1,51 +1,76 @@
 (ns metabase.driver.snowflake-test
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure.set :as set]
-            [clojure.string :as str]
-            [clojure.test :refer :all]
-            [metabase.driver :as driver]
-            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-            [metabase.models :refer [Table]]
-            [metabase.models.database :refer [Database]]
-            [metabase.query-processor :as qp]
-            [metabase.sync :as sync]
-            [metabase.test :as mt]
-            [metabase.test.data.dataset-definitions :as defs]
-            [metabase.test.data.interface :as tx]
-            [metabase.test.data.sql :as sql.tx]
-            [metabase.test.data.sql.ddl :as ddl]
-            [metabase.util :as u]
-            [toucan.db :as db]))
+  (:require
+   [clojure.java.jdbc :as jdbc]
+   [clojure.set :as set]
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [metabase.driver :as driver]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.models :refer [Table]]
+   [metabase.models.database :refer [Database]]
+   [metabase.query-processor :as qp]
+   [metabase.sync :as sync]
+   [metabase.sync.util :as sync-util]
+   [metabase.test :as mt]
+   [metabase.test.data.dataset-definitions :as defs]
+   [metabase.test.data.interface :as tx]
+   [metabase.test.data.snowflake :as test.data.snowflake]
+   [metabase.test.data.sql :as sql.tx]
+   [metabase.test.data.sql.ddl :as ddl]
+   [metabase.util :as u]
+   #_{:clj-kondo/ignore [:discouraged-namespace]}
+   [metabase.util.honeysql-extensions :as hx]
+   [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
+
+(use-fixtures :each (fn [thunk]
+                      ;; 1. If sync fails when loading a test dataset, don't swallow the error; throw an Exception so we
+                      ;;    can debug it. This is much less confusing when trying to fix broken tests.
+                      ;;
+                      ;; 2. Make sure we're in Honey SQL 2 mode for all the little SQL snippets we're compiling in these
+                      ;;    tests.
+                      (binding [sync-util/*log-exceptions-and-continue?* false
+                                hx/*honey-sql-version*                   2]
+                        (thunk))))
+
+(deftest sanity-check-test
+  (mt/test-driver :snowflake
+    (is (= [100]
+           (mt/first-row
+            (mt/run-mbql-query venues
+              {:aggregation [[:count]]}))))))
 
 (deftest ^:parallel ddl-statements-test
   (testing "make sure we didn't break the code that is used to generate DDL statements when we add new test datasets"
-    (testing "Create DB DDL statements"
-      (is (= "DROP DATABASE IF EXISTS \"v3_test-data\"; CREATE DATABASE \"v3_test-data\";"
-             (sql.tx/create-db-sql :snowflake (mt/get-dataset-definition defs/test-data)))))
+    (binding [test.data.snowflake/*database-prefix-fn* (constantly "v3_")]
+      (testing "Create DB DDL statements"
+        (is (= "DROP DATABASE IF EXISTS \"v3_test-data\"; CREATE DATABASE \"v3_test-data\";"
+               (sql.tx/create-db-sql :snowflake (mt/get-dataset-definition defs/test-data)))))
 
-    (testing "Create Table DDL statements"
-      (is (= (map
-              #(str/replace % #"\s+" " ")
-              ["DROP TABLE IF EXISTS \"v3_test-data\".\"PUBLIC\".\"users\";"
-               "CREATE TABLE \"v3_test-data\".\"PUBLIC\".\"users\" (\"id\" INTEGER AUTOINCREMENT, \"name\" TEXT,
+      (testing "Create Table DDL statements"
+        (is (= (map
+                #(str/replace % #"\s+" " ")
+                ["DROP TABLE IF EXISTS \"v3_test-data\".\"PUBLIC\".\"users\";"
+                 "CREATE TABLE \"v3_test-data\".\"PUBLIC\".\"users\" (\"id\" INTEGER AUTOINCREMENT, \"name\" TEXT,
                 \"last_login\" TIMESTAMP_NTZ, \"password\" TEXT, PRIMARY KEY (\"id\")) ;"
-               "DROP TABLE IF EXISTS \"v3_test-data\".\"PUBLIC\".\"categories\";"
-               "CREATE TABLE \"v3_test-data\".\"PUBLIC\".\"categories\" (\"id\" INTEGER AUTOINCREMENT, \"name\" TEXT NOT NULL,
+                 "DROP TABLE IF EXISTS \"v3_test-data\".\"PUBLIC\".\"categories\";"
+                 "CREATE TABLE \"v3_test-data\".\"PUBLIC\".\"categories\" (\"id\" INTEGER AUTOINCREMENT, \"name\" TEXT NOT NULL,
                 PRIMARY KEY (\"id\")) ;"
-               "DROP TABLE IF EXISTS \"v3_test-data\".\"PUBLIC\".\"venues\";"
-               "CREATE TABLE \"v3_test-data\".\"PUBLIC\".\"venues\" (\"id\" INTEGER AUTOINCREMENT, \"name\" TEXT,
+                 "DROP TABLE IF EXISTS \"v3_test-data\".\"PUBLIC\".\"venues\";"
+                 "CREATE TABLE \"v3_test-data\".\"PUBLIC\".\"venues\" (\"id\" INTEGER AUTOINCREMENT, \"name\" TEXT,
                 \"category_id\" INTEGER, \"latitude\" FLOAT, \"longitude\" FLOAT, \"price\" INTEGER, PRIMARY KEY (\"id\")) ;"
-               "DROP TABLE IF EXISTS \"v3_test-data\".\"PUBLIC\".\"checkins\";"
-               "CREATE TABLE \"v3_test-data\".\"PUBLIC\".\"checkins\" (\"id\" INTEGER AUTOINCREMENT, \"date\" DATE,
+                 "DROP TABLE IF EXISTS \"v3_test-data\".\"PUBLIC\".\"checkins\";"
+                 "CREATE TABLE \"v3_test-data\".\"PUBLIC\".\"checkins\" (\"id\" INTEGER AUTOINCREMENT, \"date\" DATE,
                 \"user_id\" INTEGER, \"venue_id\" INTEGER, PRIMARY KEY (\"id\")) ;"
-               "ALTER TABLE \"v3_test-data\".\"PUBLIC\".\"venues\" ADD CONSTRAINT \"egory_id_categories_-740504465\"
+                 "ALTER TABLE \"v3_test-data\".\"PUBLIC\".\"venues\" ADD CONSTRAINT \"egory_id_categories_-740504465\"
                 FOREIGN KEY (\"category_id\") REFERENCES \"v3_test-data\".\"PUBLIC\".\"categories\" (\"id\");"
-               "ALTER TABLE \"v3_test-data\".\"PUBLIC\".\"checkins\" ADD CONSTRAINT \"ckins_user_id_users_1638713823\"
+                 "ALTER TABLE \"v3_test-data\".\"PUBLIC\".\"checkins\" ADD CONSTRAINT \"ckins_user_id_users_1638713823\"
                 FOREIGN KEY (\"user_id\") REFERENCES \"v3_test-data\".\"PUBLIC\".\"users\" (\"id\");"
-               "ALTER TABLE \"v3_test-data\".\"PUBLIC\".\"checkins\" ADD CONSTRAINT \"ins_venue_id_venues_-833167948\"
+                 "ALTER TABLE \"v3_test-data\".\"PUBLIC\".\"checkins\" ADD CONSTRAINT \"ins_venue_id_venues_-833167948\"
                 FOREIGN KEY (\"venue_id\") REFERENCES \"v3_test-data\".\"PUBLIC\".\"venues\" (\"id\");"])
-             (ddl/create-db-tables-ddl-statements :snowflake (-> (mt/get-dataset-definition defs/test-data)
-                                                                 (update :database-name #(str "v3_" %)))))))))
+               (ddl/create-db-tables-ddl-statements :snowflake (-> (mt/get-dataset-definition defs/test-data)
+                                                                   (update :database-name #(str "v3_" %))))))))))
 
 ;; TODO -- disabled because these are randomly failing, will figure out when I'm back from vacation. I think it's a
 ;; bug in the JDBC driver -- Cam
@@ -92,7 +117,7 @@
             ;; now take a look at the Tables in the database, there should be an entry for the view
             (is (= [{:name "example_view"}]
                    (map (partial into {})
-                        (db/select [Table :name] :db_id (u/the-id database)))))))))))
+                        (t2/select [Table :name] :db_id (u/the-id database)))))))))))
 
 (deftest describe-table-test
   (mt/test-driver :snowflake
@@ -104,13 +129,17 @@
                          :base-type         :type/Number
                          :pk?               true
                          :database-position 0
-                         :database-required false}
+                         :database-is-auto-increment true
+                         :database-required false
+                         :json-unfolding    false}
                         {:name              "name"
                          :database-type     "VARCHAR"
                          :base-type         :type/Text
                          :database-position 1
-                         :database-required true}}}
-             (driver/describe-table :snowflake (assoc (mt/db) :name "ABC") (db/select-one Table :id (mt/id :categories))))))))
+                         :database-is-auto-increment false
+                         :database-required true
+                         :json-unfolding    false}}}
+             (driver/describe-table :snowflake (assoc (mt/db) :name "ABC") (t2/select-one Table :id (mt/id :categories))))))))
 
 (deftest describe-table-fks-test
   (mt/test-driver :snowflake
@@ -118,9 +147,9 @@
       (is (= #{{:fk-column-name   "category_id"
                 :dest-table       {:name "categories", :schema "PUBLIC"}
                 :dest-column-name "id"}}
-             (driver/describe-table-fks :snowflake (assoc (mt/db) :name "ABC") (db/select-one Table :id (mt/id :venues))))))))
+             (driver/describe-table-fks :snowflake (assoc (mt/db) :name "ABC") (t2/select-one Table :id (mt/id :venues))))))))
 
-(defn- format-env-key [env-key]
+(defn- format-env-key ^String [env-key]
   (let [[_ header body footer]
         (re-find #"(-----BEGIN (?:\p{Alnum}+ )?PRIVATE KEY-----)(.*)(-----END (?:\p{Alnum}+ )?PRIVATE KEY-----)" env-key)]
     (str header (str/replace body #"\s+|\\n" "\n") footer)))
@@ -151,7 +180,7 @@
             (testing "private key authentication"
               (spit pk-path pk-key)
               (doseq [to-merge [{:private-key-value pk-key} ;; uploaded string
-                                {:private-key-value (.getBytes pk-key)} ;; uploaded byte array
+                                {:private-key-value (.getBytes pk-key "UTF-8")} ;; uploaded byte array
                                 {:private-key-path pk-path}]] ;; local file path
                 (let [details (-> (:details (mt/db))
                                   (dissoc :password)
@@ -187,7 +216,8 @@
                   {:database   (mt/id)
                    :type       :native
                    :native     {:query         (str "SELECT {{filter_date}}, \"last_login\" "
-                                                    "FROM \"v3_test-data\".\"PUBLIC\".\"users\" "
+                                                    (format "FROM \"%stest-data\".\"PUBLIC\".\"users\" "
+                                                            (test.data.snowflake/*database-prefix-fn*))
                                                     "WHERE date_trunc('day', CAST(\"last_login\" AS timestamp))"
                                                     "    = date_trunc('day', CAST({{filter_date}} AS timestamp))")
                                 :template-tags {:filter_date {:name         "filter_date"

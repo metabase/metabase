@@ -5,5 +5,5 @@
  :clean {:ns-inner-blocks-indentation :keep}
  :linters {:clojure-lsp/unused-public-var {:level :warning
                                            :exclude-when-defined-by
-                                           #{metabase.api.common/defendpoint
-                                             metabase.api.common/malli-defendpoint}}}}
+                                           #{metabase.api.common/defendpoint-schema
+                                             metabase.api.common/defendpoint}}}}

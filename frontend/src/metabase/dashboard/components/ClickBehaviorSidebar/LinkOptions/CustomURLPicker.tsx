@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import InputBlurChange from "metabase/components/InputBlurChange";
@@ -38,18 +38,23 @@ function CustomURLPicker({
   dashcard,
   parameters,
 }: Props) {
-  const hasLinkTemplate = clickBehavior.linkTemplate != null;
-  const canSelect = clickBehaviorIsValid(clickBehavior);
+  const [url, setUrl] = useState(clickBehavior?.linkTemplate ?? "");
+  const hasLinkTemplate = !!clickBehavior.linkTemplate;
+  const canSelect = clickBehaviorIsValid({
+    ...clickBehavior,
+    linkTemplate: url,
+  });
 
-  const handleLinkTemplateChange = useCallback(
-    e => {
-      updateSettings({
-        ...clickBehavior,
-        linkTemplate: e.target.value,
-      });
-    },
-    [clickBehavior, updateSettings],
-  );
+  const handleLinkTemplateChange = useCallback(e => {
+    setUrl(e.currentTarget.value);
+  }, []);
+
+  const handleSubmit = useCallback(() => {
+    updateSettings({
+      ...clickBehavior,
+      linkTemplate: url,
+    });
+  }, [clickBehavior, updateSettings, url]);
 
   const handleReset = useCallback(() => {
     updateSettings({
@@ -79,14 +84,14 @@ function CustomURLPicker({
       {({ onClose }: { onClose: () => void }) => (
         <ModalContent
           title={t`Enter a URL to link to`}
-          onClose={hasLinkTemplate ? onClose : null}
+          onClose={hasLinkTemplate ? onClose : undefined}
         >
           <FormDescription>
             {t`You can insert the value of a column or dashboard filter using its name, like this: {{some_column}}`}
           </FormDescription>
           <InputBlurChange
             autoFocus
-            value={clickBehavior.linkTemplate}
+            value={url}
             placeholder={t`e.g. http://acme.com/id/\{\{user_id\}\}`}
             onChange={handleLinkTemplateChange}
             className="block full"
@@ -100,7 +105,11 @@ function CustomURLPicker({
           <ValuesYouCanReference dashcard={dashcard} parameters={parameters} />
           <DoneButton
             primary
-            onClick={onClose}
+            type="button"
+            onClick={() => {
+              handleSubmit();
+              onClose();
+            }}
             disabled={!canSelect}
           >{t`Done`}</DoneButton>
         </ModalContent>
@@ -109,4 +118,5 @@ function CustomURLPicker({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default CustomURLPicker;

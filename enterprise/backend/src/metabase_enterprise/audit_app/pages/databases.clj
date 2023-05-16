@@ -1,9 +1,9 @@
 (ns metabase-enterprise.audit-app.pages.databases
   (:require
-   [honeysql.core :as hsql]
    [metabase-enterprise.audit-app.interface :as audit.i]
    [metabase-enterprise.audit-app.pages.common :as common]
    [metabase.util.cron :as u.cron]
+   [metabase.util.honey-sql-2 :as h2x]
    [schema.core :as s]))
 
 ;; SELECT
@@ -30,13 +30,13 @@
               {:select   [[:db.id :database_id]
                           [:db.name :database_name]
                           [:%count.* :queries]
-                          [:%avg.qe.running_time :avg_running_time]]
+                          [[:avg :qe.running_time] :avg_running_time]]
                :from     [[:query_execution :qe]]
                :join     [[:report_card :card]     [:= :qe.card_id :card.id]
                           [:metabase_table :t]     [:= :card.table_id :t.id]
                           [:metabase_database :db] [:= :t.db_id :db.id]]
                :group-by [:db.id]
-               :order-by [[:%lower.db.name :asc]]})})
+               :order-by [[[:lower :db.name] :asc]]})})
 
 ;; Query that returns count of query executions grouped by Database and a `datetime-unit`.
 (s/defmethod audit.i/internal-query ::query-executions-by-time
@@ -64,7 +64,7 @@
                :from      [:qx]
                :left-join [[:metabase_database :db] [:= :qx.database_id :db.id]]
                :order-by  [[:qx.date :asc]
-                           [:%lower.db.name :asc]
+                           [[:lower :db.name] :asc]
                            [:qx.database_id :asc]]})})
 
 ;; DEPRECATED Use `::query-executions-by-time` instead. Query that returns count of query executions grouped by
@@ -90,7 +90,7 @@
     :results  (common/reducible-query
                (->
                 {:with      [[:counts {:select   [[:db_id :id]
-                                                  [(hsql/call :distinct-count :schema) :schemas]
+                                                  [[::h2x/distinct-count :schema] :schemas]
                                                   [:%count.* :tables]]
                                        :from     [:metabase_table]
                                        :group-by [:db_id]}]]
@@ -103,7 +103,7 @@
                              [:db.cache_ttl :cache_ttl]]
                  :from      [[:metabase_database :db]]
                  :left-join [:counts [:= :db.id :counts.id]]
-                 :order-by  [[:%lower.db.name :asc]
+                 :order-by  [[[:lower :db.name] :asc]
                              [:database_id :asc]]}
                 (common/add-search-clause query-string :db.name)))
     :xform    (map #(update (vec %) 3 u.cron/describe-cron-string))}))

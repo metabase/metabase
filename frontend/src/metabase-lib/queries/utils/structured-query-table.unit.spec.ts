@@ -1,3 +1,5 @@
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-nocheck
 import _ from "underscore";
 
 import {
@@ -137,7 +139,9 @@ describe("metabase-lib/queries/utils/structured-query-table", () => {
 
     metadata.tables[ORDERS_DATASET_TABLE.id] = ORDERS_DATASET_TABLE;
 
-    const table = getStructuredQueryTable(ORDERS_DATASET.query());
+    const table = getStructuredQueryTable(
+      ORDERS_DATASET.query() as StructuredQuery,
+    );
     it("should return a nested card table using the given query's question", () => {
       expect(table?.getPlainObject()).toEqual(
         expect.objectContaining({

@@ -34,7 +34,19 @@ This email address will be displayed in various messages throughout Metabase whe
 
 ## Approved domains for notifications
 
-Allowed email address domain(s) for new [dashboard subscriptions](../dashboards/subscriptions.md) and [alerts](../questions/sharing/alerts.md). To specify multiple domains, separate each domain with a comma, with no space in between (e.g., "domain1,domain2"). To allow all domains, leave the field empty. This setting doesn't affect existing subscriptions.
+{% include plans-blockquote.html feature="Approved domains for notifications" %}
+
+Allowed email address domain(s) for new [dashboard subscriptions](../dashboards/subscriptions.md) and [alerts](../questions/sharing/alerts.md). 
+
+Adding approved domains allows you to restrict which email addresses people can send alerts and subscriptions to.
+
+To allow all domains, leave the field empty (allowing all domains is the default).
+
+To specify multiple domains, separate each domain with a comma, with no space in between (e.g., "domain1,domain2"). 
+
+You can also set this property using the environment variable [`MB_SUBSCRIPTION_ALLOWED_DOMAINS`](../configuring-metabase/environment-variables.md#mb_subscription_allowed_domains).
+
+> This setting doesn't affect existing subscriptions and alerts.
 
 ## Anonymous tracking
 
@@ -44,7 +56,9 @@ This option turns determines whether or not you allow [anonymous data about your
 
 By default, Metabase attempts to make field and table names more readable by changing things like `somehorriblename` to `Some Horrible Name`. This does not work well for languages other than English, or for fields that have lots of abbreviations or codes in them. If you'd like to turn this setting off, you can do so from the Admin Panel under **Settings** > **Admin settings** > **General**.
 
-To manually label field or table names in Metabase, check out the [Data Model](../data-modeling/metadata-editing.md) section in your admin settings.
+If you re-enable this setting, Metabase will run a [scan](../databases/sync-scan.md#how-database-scans-work) against your database to review your table and column names again.
+
+To manually label field or table names in Metabase, check out the [Data Model](../data-modeling/metadata-editing.md) section in your admin settings. Metadata in the Data Model can be further curated in [models](../data-modeling/models.md).
 
 ## Enable nested queries
 

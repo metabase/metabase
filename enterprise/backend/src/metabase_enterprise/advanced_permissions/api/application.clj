@@ -7,6 +7,9 @@
    [metabase-enterprise.advanced-permissions.models.permissions.application-permissions :as a-perms]
    [metabase.api.common :as api]))
 
+(set! *warn-on-reflection* true)
+
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/graph"
   "Fetch a graph of Application Permissions."
   []
@@ -30,6 +33,7 @@
   [graph]
   (update graph :groups dejsonify-groups))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema PUT "/graph"
   "Do a batch update of Application Permissions by passing a modified graph."
   [:as {:keys [body]}]

@@ -2,7 +2,7 @@ import React, { useLayoutEffect, useRef, useState } from "react";
 // eslint-disable-next-line import/named
 import { Placement } from "tippy.js";
 
-import Tooltip from "metabase/components/Tooltip";
+import Tooltip from "metabase/core/components/Tooltip";
 import resizeObserver from "metabase/lib/resize-observer";
 import { EllipsifiedRoot } from "./Ellipsified.styled";
 
@@ -72,4 +72,5 @@ const Ellipsified = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Ellipsified;

@@ -35,7 +35,7 @@
    [metabase.mbql.util :as mbql.u]
    [metabase.mbql.util.match :as mbql.match]
    [metabase.shared.util.i18n :as i18n]
-   [metabase.shared.util.log :as log]))
+   [metabase.util.log :as log]))
 
 (defn- mbql-clause?
   "True if `x` is an MBQL clause (a sequence with a token as its first arg). (This is different from the implementation
@@ -78,6 +78,12 @@
 
 (defmulti ^:private normalize-mbql-clause-tokens
   (comp maybe-normalize-token first))
+
+(defmethod normalize-mbql-clause-tokens :aggregation
+  ;; nil options should be removed from aggregation references (`[:aggregation 0]`).
+  [[_ aggregation-index option]]
+  (cond-> [:aggregation aggregation-index]
+    (some? option) (conj option)))
 
 (defmethod normalize-mbql-clause-tokens :expression
   ;; For expression references (`[:expression \"my_expression\"]`) keep the arg as is but make sure it is a string.
@@ -287,12 +293,14 @@
 
 (defn normalize-query-parameter
   "Normalize a parameter in the query `:parameters` list."
-  [{:keys [type target id], :as param}]
+  [{:keys [type target id values_source_config], :as param}]
   (cond-> param
-    id     (update :id mbql.u/qualified-name)
+    id                   (update :id mbql.u/qualified-name)
     ;; some things that get ran thru here, like dashcard param targets, do not have :type
-    type   (update :type maybe-normalize-token)
-    target (update :target #(normalize-tokens % :ignore-path))))
+    type                 (update :type maybe-normalize-token)
+    target               (update :target #(normalize-tokens % :ignore-path))
+    values_source_config (update-in [:values_source_config :label_field] #(normalize-tokens % :ignore-path))
+    values_source_config (update-in [:values_source_config :value_field] #(normalize-tokens % :ignore-path))))
 
 (defn- normalize-source-query [source-query]
   (let [{native? :native, :as source-query} (m/map-keys maybe-normalize-token source-query)]
@@ -606,6 +614,15 @@
           (normalize-tokens options :ignore-path))
     [:case (vec (for [[pred expr] clauses]
                   [(canonicalize-mbql-clause pred) (canonicalize-mbql-clause expr)]))]))
+
+(defmethod canonicalize-mbql-clause :substring
+  [[_ arg start & more]]
+  (into [:substring
+         (canonicalize-mbql-clause arg)
+         ;; 0 indexes were allowed in the past but we are now enforcing this rule in MBQL.
+         ;; This allows stored queries with literal 0 in the index to work.
+         (if (= 0 start) 1 (canonicalize-mbql-clause start))]
+        (map canonicalize-mbql-clause more)))
 
 ;;; top-level key canonicalization
 

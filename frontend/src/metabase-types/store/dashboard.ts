@@ -5,39 +5,44 @@ import type {
   DashCardId,
   DashCardDataMap,
   ParameterId,
+  ParameterValueOrArray,
 } from "metabase-types/api";
-import { ParameterValueOrArray } from "metabase-types/types/Parameter";
 
 export type DashboardSidebarName =
   | "addQuestion"
+  | "action"
   | "clickBehavior"
   | "editParameter"
   | "sharing"
   | "info";
 
-type ParameterValueCacheKey = string;
+export type StoreDashboard = Omit<Dashboard, "ordered_cards"> & {
+  ordered_cards: DashCardId[];
+};
+
+export type StoreDashcard = DashboardOrderedCard & {
+  isDirty?: boolean;
+  isRemoved?: boolean;
+};
+
+export type SelectedTabId = DashboardId | null;
 
 export interface DashboardState {
   dashboardId: DashboardId | null;
-  dashboards: Record<DashboardId, Dashboard>;
+  selectedTabId: SelectedTabId;
+  dashboards: Record<DashboardId, StoreDashboard>;
 
-  dashcards: Record<DashCardId, DashboardOrderedCard>;
+  dashcards: Record<DashCardId, StoreDashcard>;
   dashcardData: DashCardDataMap;
 
   parameterValues: Record<ParameterId, ParameterValueOrArray>;
-  parameterValuesSearchCache: Record<
-    ParameterValueCacheKey,
-    {
-      has_more_values: boolean;
-      results: ParameterValueOrArray[];
-    }
-  >;
 
   loadingDashCards: {
     dashcardIds: DashCardId[];
     loadingIds: DashCardId[];
     loadingStatus: "idle" | "running" | "complete";
     startTime: number | null;
+    endTime: number | null;
   };
   loadingControls: {
     documentTitle?: string;
@@ -54,5 +59,10 @@ export interface DashboardState {
     props: Record<string, unknown>;
   };
 
-  titleTemplateChange: string | null;
+  missingActionParameters: unknown;
+
+  autoApplyFilters: {
+    toastId: number | null;
+    toastDashboardId: number | null;
+  };
 }

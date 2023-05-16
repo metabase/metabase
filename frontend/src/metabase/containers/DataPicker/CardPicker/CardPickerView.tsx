@@ -6,10 +6,13 @@ import SelectList from "metabase/components/SelectList";
 import { canonicalCollectionId } from "metabase/collections/utils";
 
 import type { ITreeNodeItem } from "metabase/components/tree/types";
-import type { Collection } from "metabase-types/api";
+import type { CollectionId, TableId } from "metabase-types/api";
 import type Table from "metabase-lib/metadata/Table";
 
-import type { DataPickerSelectedItem, VirtualTable } from "../types";
+import type { DataPickerSelectedItem } from "../types";
+
+import EmptyState from "../EmptyState";
+import LoadingState from "../LoadingState";
 import PanePicker from "../PanePicker";
 
 import { StyledSelectList } from "./CardPicker.styled";
@@ -18,11 +21,12 @@ type TargetModel = "model" | "question";
 
 interface CardPickerViewProps {
   collectionTree: ITreeNodeItem[];
-  virtualTables?: VirtualTable[];
+  virtualTables?: Table[];
   selectedItems: DataPickerSelectedItem[];
   targetModel: TargetModel;
-  onSelectCollection: (id: Collection["id"]) => void;
-  onSelectedVirtualTable: (id: Table["id"]) => void;
+  isLoading: boolean;
+  onSelectCollection: (id: CollectionId) => void;
+  onSelectedVirtualTable: (id: TableId) => void;
   onBack?: () => void;
 }
 
@@ -45,7 +49,7 @@ function TableSelectListItem({
   isSelected,
   onSelect,
 }: {
-  table: VirtualTable;
+  table: Table;
   targetModel: "model" | "question";
   isSelected: boolean;
   onSelect: (id: Table["id"]) => void;
@@ -73,6 +77,7 @@ function CardPickerView({
   virtualTables,
   selectedItems,
   targetModel,
+  isLoading,
   onSelectCollection,
   onSelectedVirtualTable,
   onBack,
@@ -99,7 +104,7 @@ function CardPickerView({
   );
 
   const renderVirtualTable = useCallback(
-    (table: VirtualTable) => (
+    (table: Table) => (
       <TableSelectListItem
         key={table.id}
         table={table}
@@ -111,6 +116,8 @@ function CardPickerView({
     [selectedVirtualTableIds, targetModel, onSelectedVirtualTable],
   );
 
+  const isEmpty = _.isEmpty(virtualTables);
+
   return (
     <PanePicker
       data={collectionTree}
@@ -118,11 +125,18 @@ function CardPickerView({
       onSelect={handlePanePickerSelect}
       onBack={onBack}
     >
-      <StyledSelectList>
-        {virtualTables?.map?.(renderVirtualTable)}
-      </StyledSelectList>
+      {isLoading ? (
+        <LoadingState />
+      ) : isEmpty ? (
+        <EmptyState />
+      ) : (
+        <StyledSelectList>
+          {virtualTables?.map?.(renderVirtualTable)}
+        </StyledSelectList>
+      )}
     </PanePicker>
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default CardPickerView;

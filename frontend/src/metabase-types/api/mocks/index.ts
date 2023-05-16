@@ -1,4 +1,6 @@
+export * from "./actions";
 export * from "./activity";
+export * from "./alert";
 export * from "./automagic-dashboards";
 export * from "./card";
 export * from "./collection";
@@ -14,5 +16,7 @@ export * from "./segment";
 export * from "./table";
 export * from "./timeline";
 export * from "./settings";
+export * from "./setup";
 export * from "./snippets";
+export * from "./store";
 export * from "./user";

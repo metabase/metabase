@@ -464,7 +464,7 @@
       "1": {
         "description": "The date and time an order was submitted.",
         "table_id": 1,
-        "semantic_type": null,
+        "semantic_type": "type/CreationTimestamp",
         "name": "CREATED_AT",
         "caveats": null,
         "fk_target_field_id": null,
@@ -484,7 +484,7 @@
         "values": []
       },
       "2": {
-        "description": "This is a unique ID for the product. It is also called the “Invoice number” or “Confirmation number” in customer facing emails and screens.",
+        "description": "This is a unique ID for an order. It is also called the “Invoice number” or “Confirmation number” in customer facing emails and screens.",
         "table_id": 1,
         "semantic_type": "type/PK",
         "name": "ID",
@@ -1392,7 +1392,7 @@
       }
     },
     "revisions": {},
-    "databasesList": [1],
+    "databases_list": [1],
     "questions": {}
   }
 }

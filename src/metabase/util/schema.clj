@@ -1,5 +1,8 @@
-(ns metabase.util.schema
-  "Various schemas that are useful throughout the app."
+(ns ^{:deprecated "0.46.0"} metabase.util.schema
+  "Various schemas that are useful throughout the app.
+
+  Schemas defined are deprecated and should be replaced with Malli schema defined in [[metabase.util.malli.schema]].
+  If you update schemas in this ns, please make sure you update the malli schema too. It'll help us makes the transition easier."
   (:refer-clojure :exclude [distinct])
   (:require
    [cheshire.core :as json]
@@ -16,6 +19,8 @@
    [schema.core :as s]
    [schema.macros :as s.macros]
    [schema.utils :as s.utils]))
+
+(set! *warn-on-reflection* true)
 
 ;; So the `:type/` hierarchy is loaded.
 (comment types/keep-me)
@@ -216,12 +221,6 @@
     (s/constrained s/Int (partial < 0) (deferred-tru "Integer greater than zero"))
     (deferred-tru "value must be an integer greater than zero.")))
 
-(def NonNegativeInt
-  "Schema representing an integer 0 or greater"
-  (with-api-error-message
-    (s/constrained s/Int (partial <= 0) (deferred-tru "Integer greater than or equal to zero"))
-    (deferred-tru "value must be an integer zero or greater.")))
-
 (def PositiveNum
   "Schema representing a numeric value greater than zero. This allows floating point numbers and integers."
   (with-api-error-message
@@ -277,11 +276,6 @@
   (with-api-error-message (s/pred #(isa? (keyword %) :Semantic/*) (deferred-tru "Valid field semantic type (keyword or string)"))
     (deferred-tru "value must be a valid field semantic type (keyword or string).")))
 
-(def FieldRelationTypeKeywordOrString
-  "Like `FieldRelationType` but accepts either a keyword or string."
-  (with-api-error-message (s/pred #(isa? (keyword %) :Relation/*) (deferred-tru "Valid field relation type (keyword or string)"))
-    (deferred-tru "value must be a valid field relation type (keyword or string).")))
-
 (def FieldSemanticOrRelationTypeKeywordOrString
   "Like `FieldSemanticOrRelationType` but accepts either a keyword or string."
   (with-api-error-message (s/pred (fn [k]
@@ -335,12 +329,6 @@
   (with-api-error-message (s/constrained s/Str #(u/ignore-exceptions (< 0 (Integer/parseInt %))))
     (deferred-tru "value must be a valid integer greater than zero.")))
 
-(def IntStringGreaterThanOrEqualToZero
-  "Schema for a string that can be parsed as an integer, and is greater than or equal to zero.
-   Something that adheres to this schema is guaranteed to to work with `Integer/parseInt`."
-  (with-api-error-message (s/constrained s/Str #(u/ignore-exceptions (<= 0 (Integer/parseInt %))))
-    (deferred-tru "value must be a valid integer greater than or equal to zero.")))
-
 (defn- boolean-string? ^Boolean [s]
   (boolean (when (string? s)
              (let [s (u/lower-case-en s)]
@@ -348,7 +336,7 @@
 
 (def BooleanString
   "Schema for a string that is a valid representation of a boolean (either `true` or `false`).
-   Something that adheres to this schema is guaranteed to to work with `Boolean/parseBoolean`."
+   Something that adheres to this schema is guaranteed to work with `Boolean/parseBoolean`."
   (with-api-error-message (s/constrained s/Str boolean-string?)
     (deferred-tru "value must be a valid boolean string (''true'' or ''false'').")))
 
@@ -420,4 +408,9 @@
 (def NanoIdString
   "Schema for a 21-character NanoID string, like \"FReCLx5hSWTBU7kjCWfuu\"."
   (with-api-error-message #"^[A-Za-z0-9_\-]{21}$"
+    (deferred-tru "String must be a valid 21-character NanoID string.")))
+
+(def UUIDString
+  "Schema for a UUID string"
+  (with-api-error-message u/uuid-regex
     (deferred-tru "String must be a valid 21-character NanoID string.")))

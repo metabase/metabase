@@ -17,6 +17,7 @@ type Props = {
   checkedColor?: string;
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default class FilterPopoverPicker extends React.Component<Props> {
   UNSAFE_componentWillMount() {
     window.addEventListener("keydown", this.handleKeyDown);
@@ -40,7 +41,6 @@ export default class FilterPopoverPicker extends React.Component<Props> {
       onCommit,
       minWidth,
       maxWidth,
-      primaryColor,
       checkedColor,
     } = this.props;
 

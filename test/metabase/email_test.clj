@@ -13,6 +13,8 @@
    (java.io File)
    (javax.activation MimeType)))
 
+(set! *warn-on-reflection* true)
+
 ;; TODO - this should be made dynamic so it's (at least theoretically) possible to use this in parallel
 (def inbox
   "Map of email addresses -> sequence of messages they've received."
@@ -68,8 +70,8 @@
   [f]
   (with-redefs [email/send-email! fake-inbox-email-fn]
     (reset-inbox!)
-    (tu/with-temporary-setting-values [email-smtp-host    "fake_smtp_host"
-                                       email-smtp-port    587]
+    (tu/with-temporary-setting-values [email-smtp-host "fake_smtp_host"
+                                       email-smtp-port 587]
       (f))))
 
 (defmacro with-fake-inbox

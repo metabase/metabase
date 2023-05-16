@@ -35,6 +35,7 @@ describe("AppBar", () => {
         isCollectionPathVisible: true,
         isSearchVisible: true,
         isNewButtonVisible: true,
+        isLogoVisible: true,
       });
 
       render(<AppBar {...props} />);
@@ -80,6 +81,7 @@ describe("AppBar", () => {
         isCollectionPathVisible: true,
         isSearchVisible: true,
         isNewButtonVisible: true,
+        isLogoVisible: true,
       });
 
       render(<AppBar {...props} />);

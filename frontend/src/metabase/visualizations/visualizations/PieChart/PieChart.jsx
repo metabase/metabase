@@ -24,10 +24,10 @@ import { formatValue } from "metabase/lib/formatting";
 import { color } from "metabase/lib/colors";
 import { getColorsForValues } from "metabase/lib/colors/charts";
 import ChartWithLegend from "../../components/ChartWithLegend";
-import ChartTooltip from "../../components/ChartTooltip";
 import styles from "./PieChart.css";
 
 import { PieArc } from "./PieArc";
+import { getTooltipModel } from "./utils";
 
 const SIDE_PADDING = 24;
 const MAX_LABEL_FONT_SIZE = 20;
@@ -39,8 +39,6 @@ const INNER_RADIUS_RATIO = 3 / 5;
 const PAD_ANGLE = (Math.PI / 180) * 1; // 1 degree in radians
 const SLICE_THRESHOLD = 0.025; // approx 1 degree in percentage
 const OTHER_SLICE_MIN_PERCENTAGE = 0.003;
-
-const PERCENT_REGEX = /percent/i;
 
 export default class PieChart extends Component {
   constructor(props) {
@@ -58,6 +56,7 @@ export default class PieChart extends Component {
   static iconName = "pie";
 
   static minSize = { width: 4, height: 4 };
+  static defaultSize = { width: 4, height: 4 };
 
   static isSensible({ cols, rows }) {
     return cols.length === 2;
@@ -120,6 +119,14 @@ export default class PieChart extends Component {
     "pie.show_legend": {
       section: t`Display`,
       title: t`Show legend`,
+      widget: "toggle",
+      default: true,
+      inline: true,
+      marginBottom: "1rem",
+    },
+    "pie.show_total": {
+      section: t`Display`,
+      title: t`Show total`,
       widget: "toggle",
       default: true,
       inline: true,
@@ -260,7 +267,16 @@ export default class PieChart extends Component {
     requestAnimationFrame(() => {
       const groupElement = this.chartGroup.current;
       const detailElement = this.chartDetail.current;
-      if (groupElement.getBoundingClientRect().width < 120) {
+      const { settings } = this.props;
+
+      if (!groupElement || !detailElement) {
+        return;
+      }
+
+      if (
+        groupElement.getBoundingClientRect().width < 120 ||
+        !settings["pie.show_total"]
+      ) {
         detailElement.classList.add("hide");
       } else {
         detailElement.classList.remove("hide");
@@ -311,10 +327,6 @@ export default class PieChart extends Component {
       });
 
     const total = rows.reduce((sum, row) => sum + row[metricIndex], 0);
-
-    const showPercentInTooltip =
-      !PERCENT_REGEX.test(cols[metricIndex].name) &&
-      !PERCENT_REGEX.test(cols[metricIndex].display_name);
 
     const sliceThreshold =
       typeof settings["pie.slice_threshold"] === "number"
@@ -371,8 +383,7 @@ export default class PieChart extends Component {
         jsx: true,
         majorWidth: 0,
         number_style: "percent",
-        minimumFractionDigits: decimals,
-        maximumFractionDigits: decimals,
+        decimals,
       });
 
     const legendTitles = slices.map(slice => [
@@ -415,37 +426,34 @@ export default class PieChart extends Component {
       const slice = slices[index];
       if (!slice || slice.noHover) {
         return null;
-      } else if (slice === otherSlice && others.length > 1) {
+      }
+
+      if (slice === otherSlice && others.length > 1) {
         return {
           index,
           event: event && event.nativeEvent,
-          data: others.map(o => ({
-            key: formatDimension(o.key, false),
-            value: formatMetric(o.displayValue, false),
-          })),
+          stackedTooltipModel: getTooltipModel(
+            others.map(o => ({
+              key: formatDimension(o.key, false),
+              value: o.displayValue,
+            })),
+            null,
+            getFriendlyName(cols[dimensionIndex]),
+            formatDimension,
+            formatMetric,
+            total,
+          ),
         };
       } else {
         return {
           index,
           event: event && event.nativeEvent,
-          data: [
-            {
-              key: getFriendlyName(cols[dimensionIndex]),
-              value: formatDimension(slice.key),
-            },
-            {
-              key: getFriendlyName(cols[metricIndex]),
-              value: formatMetric(slice.displayValue),
-            },
-          ].concat(
-            showPercentInTooltip && slice.percentage != null
-              ? [
-                  {
-                    key: t`Percentage`,
-                    value: formatPercent(slice.percentage, legendDecimals),
-                  },
-                ]
-              : [],
+          stackedTooltipModel: getTooltipModel(
+            slices,
+            index,
+            getFriendlyName(cols[dimensionIndex]),
+            formatDimension,
+            formatMetric,
           ),
         };
       }
@@ -576,6 +584,7 @@ export default class PieChart extends Component {
                               })
                           : undefined
                       }
+                      data-testid="slice"
                     />
                   );
                 })}
@@ -583,7 +592,6 @@ export default class PieChart extends Component {
             </svg>
           </div>
         </div>
-        <ChartTooltip series={series} hovered={hovered} />
       </ChartWithLegend>
     );
   }

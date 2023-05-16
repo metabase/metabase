@@ -185,13 +185,13 @@ This section covers functions and formulas that work the same way as the Metabas
 
 When you run a question using the [query builder](https://www.metabase.com/glossary/query_builder), Metabase will convert your graphical query settings (filters, summaries, etc.) into a query, and run that query against your database to get your results.
 
-If our [timestamp sample data](#creating-custom-report-dates) is a `timestamp without time zone` stored in a PostgreSQL database, the source time zone will always be the Postgres database time zone, so we can convert it directly using:
+If our [timestamp sample data](#creating-custom-report-dates) is a `timestamp without time zone` stored in a PostgreSQL database:
 
 ```sql
-SELECT source_time::TIMESTAMP AT TIME ZONE 'EST' AS team_report_time_est
+SELECT source_time::TIMESTAMP AT TIME ZONE 'UTC' AT TIME ZONE 'EST' AS team_report_time_est
 ```
 
-which is the same as the `convertTimezone` expression _with_ a `source` parameter:
+is the same as the `convertTimezone` expression with a `source` parameter set to 'UTC':
 
 ```
 convertTimezone([Source Time], "Canada/Eastern", "UTC")
@@ -244,6 +244,4 @@ convertTimezone(convertTimezone([Source Time], "UTC"), "Canada/Eastern", "UTC")
 
 - [Custom expressions documentation](../expressions.md)
 - [Custom expressions tutorial](https://www.metabase.com/learn/questions/custom-expressions)
-- [Time series comparisons](https://www.metabase.com/learn/questions/time-series-comparisons)
-- [How to compare one time period to another](https://www.metabase.com/learn/dashboards/compare-times)
-- [Working with dates in SQL](https://www.metabase.com/learn/sql-questions/dates-in-sql)
+- [Time series analysis](https://www.metabase.com/learn/time-series/start)

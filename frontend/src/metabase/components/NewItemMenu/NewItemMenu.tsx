@@ -1,17 +1,19 @@
 import React, { ReactNode, useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
+import type { LocationDescriptor } from "history";
 
 import Modal from "metabase/components/Modal";
 import EntityMenu from "metabase/components/EntityMenu";
 
 import * as Urls from "metabase/lib/urls";
 
+import ActionCreator from "metabase/actions/containers/ActionCreator";
 import CreateCollectionModal from "metabase/collections/containers/CreateCollectionModal";
 import CreateDashboardModal from "metabase/dashboard/containers/CreateDashboardModal";
 
-import type { CollectionId } from "metabase-types/api";
+import type { CollectionId, WritebackAction } from "metabase-types/api";
 
-type ModalType = "new-app" | "new-dashboard" | "new-collection";
+type ModalType = "new-action" | "new-dashboard" | "new-collection";
 
 export interface NewItemMenuProps {
   className?: string;
@@ -20,10 +22,13 @@ export interface NewItemMenuProps {
   triggerIcon?: string;
   triggerTooltip?: string;
   analyticsContext?: string;
+  hasModels: boolean;
   hasDataAccess: boolean;
   hasNativeWrite: boolean;
   hasDatabaseWithJsonEngine: boolean;
+  hasDatabaseWithActionsEnabled: boolean;
   onCloseNavbar: () => void;
+  onChangeLocation: (nextLocation: LocationDescriptor) => void;
 }
 
 const NewItemMenu = ({
@@ -33,16 +38,27 @@ const NewItemMenu = ({
   triggerIcon,
   triggerTooltip,
   analyticsContext,
+  hasModels,
   hasDataAccess,
   hasNativeWrite,
   hasDatabaseWithJsonEngine,
+  hasDatabaseWithActionsEnabled,
   onCloseNavbar,
+  onChangeLocation,
 }: NewItemMenuProps) => {
   const [modal, setModal] = useState<ModalType>();
 
   const handleModalClose = useCallback(() => {
     setModal(undefined);
   }, []);
+
+  const handleActionCreated = useCallback(
+    (action: WritebackAction) => {
+      const nextLocation = Urls.modelDetail({ id: action.model_id }, "actions");
+      onChangeLocation(nextLocation);
+    },
+    [onChangeLocation],
+  );
 
   const menuItems = useMemo(() => {
     const items = [];
@@ -98,11 +114,22 @@ const NewItemMenu = ({
       });
     }
 
+    if (hasModels && hasDatabaseWithActionsEnabled && hasNativeWrite) {
+      items.push({
+        title: t`Action`,
+        icon: "bolt",
+        action: () => setModal("new-action"),
+        event: `${analyticsContext};New Action Click;`,
+      });
+    }
+
     return items;
   }, [
+    hasModels,
     hasDataAccess,
     hasNativeWrite,
     hasDatabaseWithJsonEngine,
+    hasDatabaseWithActionsEnabled,
     analyticsContext,
     onCloseNavbar,
   ]);
@@ -132,6 +159,13 @@ const NewItemMenu = ({
                 onClose={handleModalClose}
               />
             </Modal>
+          ) : modal === "new-action" ? (
+            <Modal wide enableTransition={false} onClose={handleModalClose}>
+              <ActionCreator
+                onSubmit={handleActionCreated}
+                onClose={handleModalClose}
+              />
+            </Modal>
           ) : null}
         </>
       )}
@@ -139,4 +173,5 @@ const NewItemMenu = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default NewItemMenu;

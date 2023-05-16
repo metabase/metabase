@@ -9,7 +9,7 @@ import React, {
   Ref,
   useRef,
 } from "react";
-import Tooltip from "metabase/components/Tooltip";
+import Tooltip from "metabase/core/components/Tooltip";
 import {
   DEFAULT_CHECKED_COLOR,
   DEFAULT_ICON_PADDING,
@@ -137,6 +137,7 @@ function CheckboxTooltip({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Object.assign(CheckBox, {
   Label: CheckBoxLabel,
 });

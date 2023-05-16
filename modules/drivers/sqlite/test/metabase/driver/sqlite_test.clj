@@ -1,20 +1,23 @@
 (ns metabase.driver.sqlite-test
-  (:require [clojure.java.io :as io]
-            [clojure.java.jdbc :as jdbc]
-            [clojure.test :refer :all]
-            [metabase.driver :as driver]
-            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-            [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
-            [metabase.models.database :refer [Database]]
-            [metabase.models.table :refer [Table]]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor-test :as qp.test]
-            [metabase.sync :as sync]
-            [metabase.test :as mt]
-            [metabase.test.data :as data]
-            [metabase.util :as u]
-            [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]]))
+  (:require
+   [clojure.java.io :as io]
+   [clojure.java.jdbc :as jdbc]
+   [clojure.test :refer :all]
+   [metabase.driver :as driver]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
+   [metabase.models.database :refer [Database]]
+   [metabase.models.table :refer [Table]]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor-test :as qp.test]
+   [metabase.sync :as sync]
+   [metabase.test :as mt]
+   [metabase.test.data :as data]
+   [metabase.util :as u]
+   [toucan.hydrate :refer [hydrate]]
+   [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 (deftest timezone-id-test
   (mt/test-driver :sqlite
@@ -73,7 +76,7 @@
                              :base_type :type/Integer}
                             {:name      "time"
                              :base_type :type/Text}]}]
-                 (->> (hydrate (db/select Table :db_id db-id {:order-by [:name]}) :fields)
+                 (->> (hydrate (t2/select Table :db_id db-id {:order-by [:name]}) :fields)
                       (map table-fingerprint))))
           (doseq [statement ["drop view if exists v_groupby_test;"
                              "drop table if exists groupby_test;"
@@ -109,7 +112,7 @@
                              :base_type :type/Text}
                             {:name      "totalValue"
                              :base_type :type/Float}]}]
-                 (->> (hydrate (db/select Table :db_id db-id
+                 (->> (hydrate (t2/select Table :db_id db-id
                                           {:where    [:in :name ["groupby_test" "v_groupby_test"]]
                                            :order-by [:name]}) :fields)
                       (map table-fingerprint)))))))))
@@ -140,12 +143,14 @@
               (testing "timestamp column should exist"
                 (is (= {:name "timestamp_table"
                         :schema nil
-                        :fields #{{:name "created_at"
-                                   :database-type "TIMESTAMP"
-                                   :base-type :type/DateTime
-                                   :database-position 0
-                                   :database-required false}}}
-                       (driver/describe-table driver db (db/select-one Table :id (mt/id :timestamp_table)))))))))))))
+                        :fields #{{:name                       "created_at"
+                                   :database-type              "TIMESTAMP"
+                                   :base-type                  :type/DateTime
+                                   :database-position          0
+                                   :database-required          false
+                                   :json-unfolding             false
+                                   :database-is-auto-increment false}}}
+                       (driver/describe-table driver db (t2/select-one Table :id (mt/id :timestamp_table)))))))))))))
 
 (deftest select-query-datetime
   (mt/test-driver :sqlite
@@ -213,18 +218,11 @@
     (mt/test-driver :sqlite
       (mt/dataset sample-dataset
         (is (= '{:select   [source.CATEGORY_2 AS CATEGORY_2
-                            count (*)         AS count]
-                 :from     [{:select [products.id              AS id
-                                      products.ean             AS ean
-                                      products.title           AS title
-                                      products.category        AS category
-                                      products.vendor          AS vendor
-                                      products.price           AS price
-                                      products.rating          AS rating
-                                      products.created_at      AS created_at
-                                      (products.category || ?) AS CATEGORY_2]
+                            COUNT (*)         AS count]
+                 :from     [{:select [products.category       AS category
+                                      products.category || ?  AS CATEGORY_2]
                              :from   [products]}
-                            source]
+                            AS source]
                  :group-by [source.CATEGORY_2]
                  :order-by [source.CATEGORY_2 ASC]
                  :limit    [1]}

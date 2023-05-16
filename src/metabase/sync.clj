@@ -37,7 +37,6 @@
 
   Please note that this function is *not* what is called by the scheduled tasks; those call different steps
   independently. This function is called when a Database is first added."
-  {:style/indent 1}
   ([database]
    (sync-database! database nil))
 

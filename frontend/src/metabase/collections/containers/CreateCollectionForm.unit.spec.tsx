@@ -1,31 +1,42 @@
 import React from "react";
+import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
-import nock from "nock";
 
-import { renderWithProviders, screen } from "__support__/ui";
+import { createMockEntitiesState } from "__support__/store";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { setupEnterpriseTest } from "__support__/enterprise";
 
-import { User } from "metabase-types/api";
+import { Collection, User } from "metabase-types/api";
 import { createMockCollection, createMockUser } from "metabase-types/api/mocks";
 
 import CreateCollectionForm from "./CreateCollectionForm";
+
+const ROOT_COLLECTION = {
+  id: "root",
+  name: "Our analytics",
+  can_write: true,
+} as Collection;
 
 type SetupOpts = {
   user?: User;
   onCancel?: (() => void) | null;
 };
 
-function setup({ user, onCancel = jest.fn() }: SetupOpts = {}) {
-  nock(location.origin)
-    .post("/api/collection")
-    .reply(200, (url, body) => {
-      if (typeof body === "object") {
-        return createMockCollection(body);
-      }
-    });
+function setup({
+  user = createMockUser({ is_superuser: true }),
+  onCancel = jest.fn(),
+}: SetupOpts = {}) {
+  fetchMock.post("path:/api/collection", async url => {
+    return createMockCollection(await fetchMock.lastCall(url)?.request?.json());
+  });
 
   renderWithProviders(<CreateCollectionForm onCancel={onCancel} />, {
-    currentUser: user,
+    storeInitialState: {
+      currentUser: user,
+      entities: createMockEntitiesState({
+        collections: [ROOT_COLLECTION],
+      }),
+    },
   });
 
   return { onCancel };
@@ -33,19 +44,7 @@ function setup({ user, onCancel = jest.fn() }: SetupOpts = {}) {
 
 describe("CreateCollectionForm", () => {
   beforeEach(() => {
-    nock(location.origin)
-      .get("/api/collection")
-      .reply(200, [
-        {
-          id: "root",
-          name: "Our analytics",
-          can_write: true,
-        },
-      ]);
-  });
-
-  afterEach(() => {
-    nock.cleanAll();
+    fetchMock.get("path:/api/collection", [ROOT_COLLECTION]);
   });
 
   it("displays correct blank state", () => {
@@ -76,10 +75,12 @@ describe("CreateCollectionForm", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("calls onCancel when cancel button is clicked", () => {
+  it("calls onCancel when cancel button is clicked", async () => {
     const { onCancel } = setup();
     userEvent.click(screen.getByRole("button", { name: "Cancel" }));
-    expect(onCancel).toHaveBeenCalledTimes(1);
+    await waitFor(() => {
+      expect(onCancel).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe("Collection authority level", () => {

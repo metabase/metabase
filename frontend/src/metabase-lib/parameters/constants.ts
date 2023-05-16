@@ -32,7 +32,7 @@ export const PARAMETER_OPERATOR_TYPES = {
     {
       type: "string/=",
       operator: "=",
-      name: t`Dropdown`,
+      name: t`Is`,
       description: t`Select one or more values from a list or search box.`,
     },
     {
@@ -105,7 +105,7 @@ export const PARAMETER_OPERATOR_TYPES = {
       description: t`Contains all of the above`,
     },
   ],
-};
+} as const;
 
 export const OPTIONS_WITH_OPERATOR_SUBTYPES = [
   {
@@ -120,51 +120,26 @@ export const OPTIONS_WITH_OPERATOR_SUBTYPES = [
     type: "number",
     typeName: t`Number`,
   },
-];
+] as const;
 
 export const ID_OPTION = {
   type: "id",
   name: t`ID`,
-};
-
-export const CATEGORY_OPTION = { type: "category", name: t`Category` };
-
-export const LOCATION_OPTIONS = [
-  {
-    type: "location/city",
-    name: t`City`,
-  },
-  {
-    type: "location/state",
-    name: t`State`,
-  },
-  {
-    type: "location/zip_code",
-    name: t`ZIP or Postal Code`,
-  },
-  {
-    type: "location/country",
-    name: t`Country`,
-  },
-];
-
-export const CUSTOM_SOURCE_PARAMETER_TYPES: Record<string, string[]> = {
-  string: ["="],
-};
+} as const;
 
 export const TYPE_SUPPORTS_LINKED_FILTERS = [
   "string",
   "category",
   "id",
   "location",
-];
+] as const;
 
 export const SINGLE_OR_MULTI_SELECTABLE_TYPES: Record<
   string,
   string | string[]
 > = {
   string: ["=", "!="],
-  category: ["=", "!="],
+  category: "any",
   id: "any",
   location: ["=", "!="],
 };

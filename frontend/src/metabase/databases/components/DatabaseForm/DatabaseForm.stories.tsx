@@ -1,8 +1,8 @@
 import React from "react";
 import type { ComponentStory } from "@storybook/react";
-import { createMockEngine } from "metabase-types/api/mocks";
 import DatabaseForm from "./DatabaseForm";
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default {
   title: "Databases/DatabaseForm",
   component: DatabaseForm,

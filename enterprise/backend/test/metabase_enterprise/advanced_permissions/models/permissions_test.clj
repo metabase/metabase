@@ -11,7 +11,7 @@
    [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          Download permissions                                                  |
@@ -135,7 +135,7 @@
 
       (testing "If a group has granular download perms for a DB, native download perms are removed when a new table is
               found during sync, since the new table has no download perms"
-        (let [table-ids (db/select-ids 'Table :db_id db-id)
+        (let [table-ids (t2/select-pks-set 'Table :db_id db-id)
               limited-downloads-id  (apply min table-ids)
               graph {:schemas {"PUBLIC"
                                (-> (into {} (for [id table-ids] [id :full]))
@@ -233,6 +233,31 @@
                clojure.lang.ExceptionInfo
                #"The details permissions functionality is only enabled if you have a premium token with the advanced-permissions feature."
                (ee-perms/update-db-details-permissions! group-id (mt/id) :yes))))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                          DB execute permissions                                                |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- execute-perms-by-group-id [group-id]
+  (get-in (perms/execution-perms-graph) [:groups group-id (mt/id)]))
+
+(deftest update-db-execute-permissions-test
+  (mt/with-model-cleanup [Permissions]
+    (mt/with-temp PermissionsGroup [{group-id :id}]
+      (premium-features-test/with-premium-features #{:advanced-permissions}
+        (testing "Execute perms for a DB can be set and revoked"
+          (ee-perms/update-db-execute-permissions! group-id (mt/id) :all)
+          (is (= :all (execute-perms-by-group-id group-id)))
+
+          (ee-perms/update-db-execute-permissions! group-id (mt/id) :none)
+          (is (nil? (execute-perms-by-group-id group-id)))))
+
+      (premium-features-test/with-premium-features #{}
+        (testing "Execute permissions cannot be modified without the :advanced-permissions feature flag"
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"The execute permissions functionality is only enabled if you have a premium token with the advanced-permissions feature."
+               (ee-perms/update-db-execute-permissions! group-id (mt/id) :all))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                    Graph                                                       |

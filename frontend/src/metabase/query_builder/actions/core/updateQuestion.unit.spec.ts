@@ -1,6 +1,11 @@
+import * as questionActions from "metabase/questions/actions";
+import {
+  ConcreteFieldReference,
+  StructuredDatasetQuery,
+  TemplateTag,
+  UnsavedCard,
+} from "metabase-types/api";
 import { createMockDataset } from "metabase-types/api/mocks";
-import { Card, StructuredDatasetQuery } from "metabase-types/types/Card";
-import { ConcreteField, TemplateTag } from "metabase-types/types/Query";
 import { QueryBuilderMode } from "metabase-types/store";
 import {
   createMockState,
@@ -19,7 +24,7 @@ import Question from "metabase-lib/Question";
 import NativeQuery from "metabase-lib/queries/NativeQuery";
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import Join from "metabase-lib/queries/structured/Join";
-import Field from "metabase-lib/metadata/Field";
+
 import {
   getAdHocQuestion,
   getSavedStructuredQuestion,
@@ -29,13 +34,11 @@ import {
   getNativeModel,
   getComposedModel,
 } from "metabase-lib/mocks";
-
 import * as navigation from "../navigation";
 import * as native from "../native";
 import * as querying from "../querying";
-import * as ui from "../ui";
 
-import * as metadataActions from "./metadata";
+import * as ui from "../ui";
 import { updateQuestion, UPDATE_QUESTION } from "./updateQuestion";
 
 type SetupOpts = {
@@ -76,7 +79,7 @@ async function setup({
 
   const queryResult = createMockDataset({
     data: {
-      cols: ORDERS.fields.map((field: Field) => field.column()),
+      cols: ORDERS.fields?.map(field => field.column()),
     },
   });
 
@@ -120,25 +123,25 @@ const PRODUCTS_JOIN_CLAUSE = {
   "source-table": PRODUCTS.id,
 };
 
-const PIVOT_TABLE_ORDER_CREATED_AT_FIELD: ConcreteField = [
+const PIVOT_TABLE_ORDER_CREATED_AT_FIELD: ConcreteFieldReference = [
   "field",
   ORDERS.CREATED_AT.id,
   { "temporal-unit": "year" },
 ];
 
-const PIVOT_TABLE_PEOPLE_SOURCE_FIELD: ConcreteField = [
+const PIVOT_TABLE_PEOPLE_SOURCE_FIELD: ConcreteFieldReference = [
   "field",
   PEOPLE.SOURCE.id,
   { "source-field": ORDERS.USER_ID.id },
 ];
 
-const PIVOT_TABLE_PRODUCT_CATEGORY_FIELD: ConcreteField = [
+const PIVOT_TABLE_PRODUCT_CATEGORY_FIELD: ConcreteFieldReference = [
   "field",
   PRODUCTS.CATEGORY.id,
   { "source-field": ORDERS.PRODUCT_ID.id },
 ];
 
-const PIVOT_TABLE_QUESTION: Card<StructuredDatasetQuery> = {
+const PIVOT_TABLE_QUESTION: UnsavedCard<StructuredDatasetQuery> = {
   display: "pivot",
   dataset_query: {
     type: "query",
@@ -213,11 +216,6 @@ describe("QB Actions > updateQuestion", () => {
   const SAVED_QUESTION_TEST_CASES = [
     TEST_CASE.SAVED_STRUCTURED_QUESTION,
     TEST_CASE.SAVED_NATIVE_QUESTION,
-  ];
-
-  const UNSAVED_QUESTION_TEST_CASES = [
-    TEST_CASE.UNSAVED_STRUCTURED_QUESTION,
-    TEST_CASE.UNSAVED_NATIVE_QUESTION,
   ];
 
   const MODEL_TEST_CASES = [
@@ -457,7 +455,7 @@ describe("QB Actions > updateQuestion", () => {
       describe(questionType, () => {
         it("loads metadata for the model", async () => {
           const loadMetadataSpy = jest.spyOn(
-            metadataActions,
+            questionActions,
             "loadMetadataForCard",
           );
 
@@ -467,7 +465,7 @@ describe("QB Actions > updateQuestion", () => {
 
         it("refreshes question metadata if there's difference in dependent metadata", async () => {
           const loadMetadataSpy = jest.spyOn(
-            metadataActions,
+            questionActions,
             "loadMetadataForCard",
           );
           const join = new Join(PRODUCTS_JOIN_CLAUSE);
@@ -494,7 +492,7 @@ describe("QB Actions > updateQuestion", () => {
       describe(questionType, () => {
         it("doesn't refresh question metadata if dependent metadata doesn't change", async () => {
           const loadMetadataSpy = jest.spyOn(
-            metadataActions,
+            questionActions,
             "loadMetadataForCard",
           );
 
@@ -504,7 +502,7 @@ describe("QB Actions > updateQuestion", () => {
 
         it("refreshes question metadata if there's difference in dependent metadata", async () => {
           const loadMetadataSpy = jest.spyOn(
-            metadataActions,
+            questionActions,
             "loadMetadataForCard",
           );
           const join = new Join(PRODUCTS_JOIN_CLAUSE);

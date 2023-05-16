@@ -9,15 +9,18 @@
      CREATE TABLE ...               -- Bad"
   (:require
    [cheshire.core :as json]
-   [clojure.tools.logging :as log]
    [clojure.walk :as walk]
    [medley.core :as m]
+   [metabase.db.query :as mdb.query]
    [metabase.models.dashboard-card :refer [DashboardCard]]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.setting :as setting :refer [Setting]]
    [metabase.util :as u]
-   [toucan.db :as db]
-   [toucan.models :as models]))
+   [metabase.util.log :as log]
+   [toucan.models :as models]
+   [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 ;;; # Migration Helpers
 
@@ -36,13 +39,13 @@
     (when-not (contains? ran-migrations migration-name)
       (log/info (format "Running data migration '%s'..." migration-name))
       (try
-       (db/transaction
+       (t2/with-transaction [_conn]
         (@migration-var))
        (catch Exception e
          (if catch?
            (log/warn (format "Data migration %s failed: %s" migration-name (.getMessage e)))
            (throw e))))
-      (db/insert! DataMigrations
+      (t2/insert! DataMigrations
         :id        migration-name
         :timestamp :%now))))
 
@@ -59,7 +62,7 @@
   "Run all data migrations defined by `defmigration`."
   []
   (log/info "Running all necessary data migrations, this may take a minute.")
-  (let [ran-migrations (db/select-ids DataMigrations)]
+  (let [ran-migrations (t2/select-pks-set DataMigrations)]
     (doseq [migration @data-migrations]
       (run-migration-if-needed! ran-migrations migration)))
   (log/info "Finished running data migrations."))
@@ -152,6 +155,7 @@
             x
             ks)))
 
+;;; TODO -- this can just be done with vis settings versioning migrations from [[metabase.models.interface]] now
 (defmigration
   ^{:author "dpsutton"
     :added  "0.38.1"
@@ -161,32 +165,32 @@
                    (map fix-click-through)
                    (filter :visualization_settings))
              (completing
-               (fn [_ {:keys [id visualization_settings]}]
-                 (db/update! DashboardCard id :visualization_settings visualization_settings)))
+              (fn [_ {:keys [id visualization_settings]}]
+                (t2/update! DashboardCard id {:visualization_settings visualization_settings})))
              nil
              ;; flamber wrote a manual postgres migration that this faithfully recreates: see
              ;; https://github.com/metabase/metabase/issues/15014
-             (db/query {:select [:dashcard.id
-                                 [:card.visualization_settings :card_visualization]
-                                 [:dashcard.visualization_settings :dashcard_visualization]]
-                        :from   [[:report_dashboardcard :dashcard]]
-                        :join   [[:report_card :card] [:= :dashcard.card_id :card.id]]
-                        :where  [:or
-                                 [:like
-                                  :card.visualization_settings "%\"link_template\":%"]
-                                 [:like
-                                  :card.visualization_settings "%\"click_link_template\":%"]
-                                 [:like
-                                  :dashcard.visualization_settings "%\"link_template\":%"]
-                                 [:like
-                                  :dashcard.visualization_settings "%\"click_link_template\":%"]]})))
+             (mdb.query/query {:select [:dashcard.id
+                                        [:card.visualization_settings :card_visualization]
+                                        [:dashcard.visualization_settings :dashcard_visualization]]
+                               :from   [[:report_dashboardcard :dashcard]]
+                               :join   [[:report_card :card] [:= :dashcard.card_id :card.id]]
+                               :where  [:or
+                                        [:like
+                                         :card.visualization_settings "%\"link_template\":%"]
+                                        [:like
+                                         :card.visualization_settings "%\"click_link_template\":%"]
+                                        [:like
+                                         :dashcard.visualization_settings "%\"link_template\":%"]
+                                        [:like
+                                         :dashcard.visualization_settings "%\"click_link_template\":%"]]})))
 
 (defn- raw-setting
   "Get raw setting directly from DB.
   For some reasons during data-migration [[metabase.models.setting/get]] return the default value defined in
   [[metabase.models.setting/defsetting]] instead of value from Setting table."
   [k]
-  (db/select-one-field :value Setting :key (name k)))
+  (t2/select-one-fn :value Setting :key (name k)))
 
 (defn- remove-admin-group-from-mappings-by-setting-key!
   [mapping-setting-key]
@@ -196,12 +200,12 @@
                         (catch Exception _e
                           {}))]
     (when-not (empty? mapping)
-      (db/update! Setting (name mapping-setting-key)
-                  :value
-                  (->> mapping
-                       (map (fn [[k v]] [k (filter #(not= admin-group-id %) v)]))
-                       (into {})
-                       json/generate-string)))))
+      (t2/update! Setting (name mapping-setting-key)
+                  {:value
+                   (->> mapping
+                        (map (fn [[k v]] [k (filter #(not= admin-group-id %) v)]))
+                        (into {})
+                        json/generate-string)}))))
 
 (defmigration
   ^{:author "qnkhuat"

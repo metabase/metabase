@@ -4,6 +4,7 @@ import { action } from "@storybook/addon-actions";
 import type { ComponentStory } from "@storybook/react";
 import PinnedItemCard from "./PinnedItemCard";
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default {
   title: "Collections/PinnedItemCard",
   component: PinnedItemCard,
@@ -17,7 +18,6 @@ const collection = {
   archived: false,
 };
 
-const onToggleSelected = action("onToggleSelected");
 const onCopy = action("onCopy");
 const onMove = action("onMove");
 

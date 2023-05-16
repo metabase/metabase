@@ -45,6 +45,11 @@
   padding: 1em;
 }
 
+.ContentTable th {
+  color: var(--color-text-dark);
+  padding: 1em;
+}
+
 /* TODO: remove this and apply AdminHoverItem to content rows */
 .ContentTable tbody tr:hover {
   background-color: color-mod(var(--color-brand) alpha(-96%));

@@ -2,19 +2,17 @@
 title: "Collection"
 summary: |
   `/api/collection` endpoints. By default, these endpoints operate on Collections in the 'default' namespace, which is
-    the one that has things like Dashboards and Cards. Other namespaces of Collections exist as well, such as the
-    `:snippet` namespace, (called 'Snippet folders' in the UI). These namespaces are completely independent hierarchies.
-    To use these endpoints for other Collections namespaces, you can pass the `?namespace=` parameter (e.g.
-    `?namespace=snippet`).
+    the namespace that has things like Dashboards and Cards. Other namespaces of Collections exist as well, such as the
+    `:snippet` namespace, ('Snippet folders' in the UI). These namespaces are independent hierarchies. To use these
+    endpoints for other Collections namespaces, you can pass the `?namespace=` parameter (e.g., `?namespace=snippet`).
 ---
 
 # Collection
 
 `/api/collection` endpoints. By default, these endpoints operate on Collections in the 'default' namespace, which is
-  the one that has things like Dashboards and Cards. Other namespaces of Collections exist as well, such as the
-  `:snippet` namespace, (called 'Snippet folders' in the UI). These namespaces are completely independent hierarchies.
-  To use these endpoints for other Collections namespaces, you can pass the `?namespace=` parameter (e.g.
-  `?namespace=snippet`).
+  the namespace that has things like Dashboards and Cards. Other namespaces of Collections exist as well, such as the
+  `:snippet` namespace, ('Snippet folders' in the UI). These namespaces are independent hierarchies. To use these
+  endpoints for other Collections namespaces, you can pass the `?namespace=` parameter (e.g., `?namespace=snippet`).
 
 ## `GET /api/collection/`
 
@@ -24,9 +22,14 @@ Fetch a list of all Collections that the current user has read permissions for (
   By default, this returns non-archived Collections, but instead you can show archived ones by passing
   `?archived=true`.
 
+  By default, admin users will see all collections. To hide other user's collections pass in
+  `?exclude-other-user-collections=true`.
+
 ### PARAMS:
 
 *  **`archived`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
+
+*  **`exclude-other-user-collections`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
 
 *  **`namespace`** value may be nil, or if non-nil, value must be a non-blank string.
 
@@ -52,7 +55,7 @@ Fetch a specific Collection's items with the following options:
 
 *  **`id`** 
 
-*  **`models`** value may be nil, or if non-nil, value must satisfy one of the following requirements: 1) value must be an array. Each value must be one of: `app`, `card`, `collection`, `dashboard`, `dataset`, `no_models`, `page`, `pulse`, `snippet`, `timeline`. 2) value must be one of: `app`, `card`, `collection`, `dashboard`, `dataset`, `no_models`, `page`, `pulse`, `snippet`, `timeline`.
+*  **`models`** value may be nil, or if non-nil, value must satisfy one of the following requirements: 1) value must be an array. Each value must be one of: `card`, `collection`, `dashboard`, `dataset`, `no_models`, `pulse`, `snippet`, `timeline`. 2) value must be one of: `card`, `collection`, `dashboard`, `dataset`, `no_models`, `pulse`, `snippet`, `timeline`.
 
 *  **`archived`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
 
@@ -110,7 +113,7 @@ Fetch objects that the current user should see at their root level. As mentioned
 
 ### PARAMS:
 
-*  **`models`** value may be nil, or if non-nil, value must satisfy one of the following requirements: 1) value must be an array. Each value must be one of: `app`, `card`, `collection`, `dashboard`, `dataset`, `no_models`, `page`, `pulse`, `snippet`, `timeline`. 2) value must be one of: `app`, `card`, `collection`, `dashboard`, `dataset`, `no_models`, `page`, `pulse`, `snippet`, `timeline`.
+*  **`models`** value may be nil, or if non-nil, value must satisfy one of the following requirements: 1) value must be an array. Each value must be one of: `card`, `collection`, `dashboard`, `dataset`, `no_models`, `pulse`, `snippet`, `timeline`. 2) value must be one of: `card`, `collection`, `dashboard`, `dataset`, `no_models`, `pulse`, `snippet`, `timeline`.
 
 *  **`archived`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
 
@@ -159,6 +162,8 @@ Similar to `GET /`, but returns Collections in a tree structure, e.g.
 
 *  **`exclude-archived`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
 
+*  **`exclude-other-user-collections`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
+
 *  **`namespace`** value may be nil, or if non-nil, value must be a non-blank string.
 
 ## `POST /api/collection/`
@@ -204,6 +209,7 @@ Modify an existing Collection, including archiving or unarchiving it, or moving 
 ## `PUT /api/collection/graph`
 
 Do a batch update of Collections Permissions by passing in a modified graph.
+  Will overwrite parts of the graph that are present in the request, and leave the rest unchanged.
 
 You must be a superuser to do this.
 

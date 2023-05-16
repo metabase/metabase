@@ -1,7 +1,6 @@
 (ns metabase.events.activity-feed
   (:require
    [clojure.core.async :as a]
-   [clojure.tools.logging :as log]
    [metabase.events :as events]
    [metabase.mbql.util :as mbql.u]
    [metabase.models.activity :as activity :refer [Activity]]
@@ -11,7 +10,8 @@
    [metabase.query-processor :as qp]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
-   [toucan.db :as db]))
+   [metabase.util.log :as log]
+   [toucan2.core :as t2]))
 
 (def ^:private activity-feed-topics
   "The set of event topics which are subscribed to for use in the Metabase activity feed."
@@ -79,9 +79,9 @@
         (fn [{:keys [dashcards] :as obj}]
           ;; we expect that the object has just a dashboard :id at the top level
           ;; plus a `:dashcards` attribute which is a vector of the cards added/removed
-          (-> (db/select-one [Dashboard :description :name], :id (events/object->model-id topic obj))
+          (-> (t2/select-one [Dashboard :description :name], :id (events/object->model-id topic obj))
               (assoc :dashcards (for [{:keys [id card_id]} dashcards]
-                                  (-> (db/select-one [Card :name :description], :id card_id)
+                                  (-> (t2/select-one [Card :name :description], :id card_id)
                                       (assoc :id id)
                                       (assoc :card_id card_id))))))]
     (activity/record-activity!
@@ -148,8 +148,8 @@
 
 (defmethod process-activity! :install
   [& _]
-  (when-not (db/exists? Activity :topic "install")
-    (db/insert! Activity, :topic "install", :model "install")))
+  (when-not (t2/exists? Activity :topic "install")
+    (t2/insert! Activity, :topic "install", :model "install")))
 
 (defn process-activity-event!
   "Handle processing for a single event notification received on the activity-feed-channel"

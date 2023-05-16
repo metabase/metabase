@@ -2,7 +2,6 @@
   (:require
    [cheshire.core :as json]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [clojure.walk :as walk]
    [java-time :as t]
    [metabase.driver.common.parameters :as params]
@@ -17,11 +16,14 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.i18n :refer [tru]])
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log])
   (:import
    (java.time ZoneOffset)
    (java.time.temporal Temporal)
    (metabase.driver.common.parameters CommaSeparatedNumbers Date MultipleValues)))
+
+(set! *warn-on-reflection* true)
 
 (defn- ->utc-instant [t]
   (t/instant
@@ -89,7 +91,6 @@
                               (format "{%s: {$lt: %s}}"
                                       (field->name field)
                                       (param-value->str field (u.date/parse end ZoneOffset/UTC))))]
-    #_(dev.portal/log [start end])
     (if (and start-condition end-condition)
       (format "{$and: [%s, %s]}" start-condition end-condition)
       (or start-condition
@@ -208,7 +209,7 @@
 (defn- parse-and-substitute [param->value x]
   (if-not (string? x)
     x
-    (u/prog1 (substitute param->value (params.parse/parse x))
+    (u/prog1 (substitute param->value (params.parse/parse x false))
       (when-not (= x <>)
         (log/debug (tru "Substituted {0} -> {1}" (pr-str x) (pr-str <>)))))))
 

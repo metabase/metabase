@@ -3,9 +3,11 @@
    [cheshire.core :as json]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
-   [metabase.models :refer [Card Database PermissionsGroup
-                            PersistedInfo Table]]
+   [metabase-enterprise.sandbox.models.group-table-access-policy
+    :refer [GroupTableAccessPolicy]]
+   [metabase-enterprise.test :as met]
+   [metabase.models
+    :refer [Card Database PermissionsGroup PersistedInfo Table]]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.persisted-info :as persisted-info]
    [metabase.query-processor :as qp]
@@ -13,7 +15,7 @@
    [metabase.util :as u]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (defn- db-graph-keypath [group]
   [:groups (u/the-id group) (mt/id) :data])
@@ -61,7 +63,7 @@
                                     {:native :none, :schemas {:PUBLIC {(mt/id :venues) {:query :all}}}})
                 :expected-perms   (fn []
                                     {:schemas {:PUBLIC {(mt/id :venues) {:query "all"}}}})}}]
-        (mt/with-gtaps {:gtaps {:venues {}}}
+        (met/with-gtaps {:gtaps {:venues {}}}
           (testing message
             (testing "sanity check"
               (testing "perms graph endpoint should return segmented perms for Venues table"
@@ -76,7 +78,7 @@
                                       :attribute_remappings (s/eq nil)
                                       s/Keyword             s/Any}
                                      "GTAP")]
-                             (db/select GroupTableAccessPolicy :group_id (u/the-id &group))))))
+                             (t2/select GroupTableAccessPolicy :group_id (u/the-id &group))))))
             (let [graph    (mt/user-http-request :crowberto :get 200 "permissions/graph")
                   graph'   (assoc-in graph (db-graph-keypath &group) (updated-db-perms))
                   response (mt/user-http-request :crowberto :put 200 "permissions/graph" graph')]
@@ -97,27 +99,29 @@
                                    (db-graph-keypath &group))))))
                 (testing "GTAP should be deleted from application DB"
                   (is (= []
-                         (db/select GroupTableAccessPolicy
-                           :group_id (u/the-id &group)
-                           :table_id (mt/id :venues)))))
+                         (t2/select GroupTableAccessPolicy
+                                    :group_id (u/the-id &group)
+                                    :table_id (mt/id :venues)))))
                 (testing "GTAP for same group, other database should not be affected"
                   (is (schema= [(s/one {:id                   su/IntGreaterThanZero
                                         :group_id             (s/eq (u/the-id &group))
                                         :table_id             (s/eq (u/the-id db-2-table))
                                         :card_id              (s/eq nil)
+                                        :permission_id        (s/eq nil)
                                         :attribute_remappings (s/eq nil)}
                                        "GTAP")]
-                               (db/select GroupTableAccessPolicy
-                                 :group_id (u/the-id &group)
-                                 :table_id (u/the-id db-2-table)))))
+                               (t2/select GroupTableAccessPolicy
+                                          :group_id (u/the-id &group)
+                                          :table_id (u/the-id db-2-table)))))
                 (testing "GTAP for same table, other group should not be affected"
                   (is (schema= [(s/one {:id                   su/IntGreaterThanZero
                                         :group_id             (s/eq (u/the-id other-group))
                                         :table_id             (s/eq (mt/id :venues))
                                         :card_id              (s/eq nil)
+                                        :permission_id        (s/eq nil)
                                         :attribute_remappings (s/eq nil)}
                                        "GTAP")]
-                               (db/select GroupTableAccessPolicy :group_id (u/the-id other-group)))))))))))))
+                               (t2/select GroupTableAccessPolicy :group_id (u/the-id other-group)))))))))))))
 
 (deftest grant-sandbox-perms-dont-delete-gtaps-test
   (testing "PUT /api/permissions/graph"
@@ -133,38 +137,37 @@
                                       {:read :all, :query :segmented}}}})]
             (mt/user-http-request :crowberto :put 200 "permissions/graph" graph')
             (testing "GTAP should not have been deleted"
-              (is (db/exists? GroupTableAccessPolicy :group_id (u/the-id (perms-group/all-users)), :table_id (mt/id :venues))))))))))
+              (is (t2/exists? GroupTableAccessPolicy :group_id (u/the-id (perms-group/all-users)), :table_id (mt/id :venues))))))))))
 
 (defn- fake-persist-card! [card]
   (let [persisted-info (persisted-info/turn-on-model! (mt/user->id :rasta) card)]
-    (db/update-where! PersistedInfo {:card_id (u/the-id card)}
-                      :definition (json/encode
-                                    (persisted-info/metadata->definition
-                                      (:result_metadata card)
-                                      (:table_name persisted-info)))
-                      :active true
-                      :state "persisted"
-                      :query_hash (persisted-info/query-hash (:dataset_query card)))))
+    (t2/update! PersistedInfo {:card_id (u/the-id card)}
+                {:definition (json/encode
+                               (persisted-info/metadata->definition
+                                 (:result_metadata card)
+                                 (:table_name persisted-info)))
+                 :active true
+                 :state "persisted"
+                 :query_hash (persisted-info/query-hash (:dataset_query card))})))
 
 (deftest persistence-and-permissions
   (mt/with-model-cleanup [PersistedInfo]
     (testing "Queries from cache if not sandboxed"
-      (mt/with-current-user
-        (mt/user->id :rasta)
+      (mt/with-current-user (mt/user->id :rasta)
         (mt/with-temp*
           [Card [card {:dataset_query (mt/mbql-query venues)
                        :dataset true
                        :database_id (mt/id)}]]
           (fake-persist-card! card)
           (is (str/includes?
-                (:query (qp/compile
+               (:query (qp/compile
 
-                          {:database (mt/id)
-                           :query {:source-table (str "card__" (u/the-id card))}
-                           :type :query}))
-                "metabase_cache")))))
+                        {:database (mt/id)
+                         :query {:source-table (str "card__" (u/the-id card))}
+                         :type :query}))
+               "metabase_cache")))))
     (testing "Queries from source if sandboxed"
-      (mt/with-gtaps
+      (met/with-gtaps
         {:gtaps {:venues {:query (mt/mbql-query venues)
                           :remappings {:cat ["variable" [:field (mt/id :venues :category_id) nil]]}}}
          :attributes {"cat" 50}}
@@ -174,8 +177,8 @@
                        :database_id (mt/id)}]]
           (fake-persist-card! card)
           (is (not (str/includes?
-                     (:query (qp/compile
-                               {:database (mt/id)
-                                :query {:source-table (str "card__" (u/the-id card))}
-                                :type :query}))
-                     "metabase_cache"))))))))
+                    (:query (qp/compile
+                             {:database (mt/id)
+                              :query {:source-table (str "card__" (u/the-id card))}
+                              :type :query}))
+                    "metabase_cache"))))))))

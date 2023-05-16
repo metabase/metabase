@@ -11,6 +11,7 @@
    [metabase.util.schema :as su]
    [schema.core :as s]))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema PUT "/settings"
   "Update Slack related settings. You must be a superuser to do this. Also updates the slack-cache.
   There are 3 cases where we alter the slack channel/user cache:
@@ -39,6 +40,10 @@
       (slack/clear-channel-cache!))
     (let [processed-files-channel (slack/process-files-channel-name slack-files-channel)]
       (when (and processed-files-channel (not (slack/channel-exists? processed-files-channel)))
+        ;; Files channel could not be found; clear the token we had previously set since the integration should not be
+        ;; enabled.
+        (slack/slack-token-valid?! false)
+        (slack/slack-app-token! nil)
         (throw (ex-info (tru "Slack channel not found.")
                         {:errors {:slack-files-channel (tru "channel not found")}})))
       (slack/slack-files-channel! processed-files-channel))
@@ -49,6 +54,7 @@
 (def ^:private slack-manifest
   (delay (slurp (io/resource "slack-manifest.yaml"))))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/manifest"
   "Returns the YAML manifest file that should be used to bootstrap new Slack apps"
   []

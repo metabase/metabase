@@ -6,7 +6,7 @@ redirect_from:
 
 # Timezones
 
-Metabase does its best to ensure proper and accurate reporting in whatever timezone you desire, but timezones are a complicated beast so it's important to abide by some recommendations listed below to ensure your reports come out as intended.
+Metabase does its best to ensure proper and accurate reporting in whatever timezone you want. But timezones are mysterious creatures.
 
 ## Time zone settings
 
@@ -15,7 +15,7 @@ The following places where timezones are set can all impact the data you see:
 - `Database` - includes global database timezone settings, specific column type settings, and even individual data values.
 - `OS & JVM` - on whatever system is running Metabase the timezone settings of the Operating System as well as the Java Virtual Machine can impact your reports.
 - `Metabase` - inside Metabase the reporting timezone setting (if set) will influence how your data is reported.
-- `Metabase Cloud` - if you need to change the timezone on the server that hosts your Metabase Cloud instance, please [contact support](https://www.metabase.com/help-premium).
+- `Metabase Cloud` - the timezone on the server that hosts your Metabase Cloud instance.
 
 ## Recommended settings
 
@@ -25,6 +25,7 @@ To ensure proper reporting it's important that timezones be set consistently in 
 - Unless you have a special need it's best to set your database reporting time zone to UTC and store all of your date/time related values in UTC.
 - Configure your JVM to use the same timezone you want to use for reporting, which ideally should also match the timezone of your database.
 - Set the Metabase `Report Timezone` to match the timezone you want to see your reports in, again, this should match the rest of the timezone settings you've made.
+- If you want to change your Metabase Cloud timezone, please [contact support](https://www.metabase.com/help-premium).
 
 ## Data types
 

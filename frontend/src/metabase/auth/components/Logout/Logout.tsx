@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import { useEffect } from "react";
 
 interface LogoutProps {
   onLogout: () => void;
@@ -11,4 +11,5 @@ const Logout = ({ onLogout }: LogoutProps): JSX.Element | null => {
   return null;
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Logout;

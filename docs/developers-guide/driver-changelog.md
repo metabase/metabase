@@ -4,18 +4,214 @@ title: Driver interface changelog
 
 # Driver Interface Changelog
 
+## Metabase 0.47.0
+
+- The multimethod `metabase.driver/syncable-schemas` has been added. This method is used to list schemas to upload
+  CSVs to, and it should include all schemas that are able to be synced to. Currently it only needs to be implemented
+  if the database has schema, and the database supports the `uploads` feature.
+
+- A new driver feature has been added: `:schemas`. This feature signals whether the database organizes tables in
+  schemas (also known as namespaces) or not. Most databases have schemas so this feature is supported on by default.
+  An implemention of the multimethod `metabase.driver/database-supports?` for `:schemas` is required only if the
+  database doesn't store tables in schemas.
+
+- The multimethod `metabase.driver/supports?` has been deprecated in favor of `metabase.driver/database-supports?`. The existing default implementation of `database-supports?` currently calls `supports?`, but it will be removed in 0.55.0.
+
 ## Metabase 0.46.0
 
-- `metabase.driver/table-rows-sample` has been added. This method is used in situations where Metabase needs
-  a limited sample from a table, like when fingerprinting. The default implementation defined in the
-  `metabase.db.metadata-queries` namespace runs an MBQL query using the regular query processor to produce the
-  sample rows. This is good enough in most cases, so this multimethod should not be implemented unless really
-  necessary. Currently, the only case when a special implementation is used is for BigQuery, which does not
-  respect limit clauses.
+- The process for building a driver has changed slightly in Metabase 0.46.0. Your build command should now look
+  something like this:
 
-- `metabase.driver.sql.query-processor/datetime-diff` has been added. This method is used by implementations of 
-  `->honeysql` for the `:datetime-diff` clause. It is recommended to implement this if you want to use the default SQL
-   implementation of `->honeysql` for the `:datetime-diff`, which includes validation of argument types across all units.
+  ```sh
+  # Example for building the driver with bash or similar
+
+  # switch to the local checkout of the Metabase repo
+  cd /path/to/metabase/repo
+
+  # get absolute path to the driver project directory
+  DRIVER_PATH=`readlink -f ~/sudoku-driver`
+
+  # Build driver. See explanation in sample Sudoku driver README
+  clojure \
+    -Sdeps "{:aliases {:sudoku {:extra-deps {com.metabase/sudoku-driver {:local/root \"$DRIVER_PATH\"}}}}}"  \
+    -X:build:sudoku \
+    build-drivers.build-driver/build-driver! \
+    "{:driver :sudoku, :project-dir \"$DRIVER_PATH\", :target-dir \"$DRIVER_PATH/target\"}"
+  ```
+
+  Take a look at our [build instructions for the sample Sudoku
+  driver](https://github.com/metabase/sudoku-driver#build-it-updated-for-build-script-changes-in-metabase-0460)
+  for an explanation of the command.
+
+  Note that while this command itself is quite a lot to type, you no longer need to specify a `:build` alias in your
+  driver's `deps.edn` file.
+
+  Please upvote https://ask.clojure.org/index.php/7843/allow-specifying-aliases-coordinates-that-point-projects ,
+  which will allow us to simplify the driver build command in the future.
+
+- The multimethod `metabase.driver/table-rows-sample` has been added. This method is used in situations where Metabase
+  needs a limited sample from a table, like when fingerprinting. The default implementation defined in the
+  `metabase.db.metadata-queries` namespace runs an MBQL query using the regular query processor to produce the sample
+  rows. This is good enough in most cases, so this multimethod should not be implemented unless really
+  necessary. Currently, the only case when a special implementation is used is for BigQuery, which does not respect
+  limit clauses.
+
+- The multimethod `metabase.driver.sql.query-processor/datetime-diff` has been added. This method is used by
+  implementations of `->honeysql` for the `:datetime-diff` clause. It is recommended to implement this if you want to
+  use the default SQL implementation of `->honeysql` for the `:datetime-diff`, which includes validation of argument
+  types across all units.
+
+- The multimethod `metabase.query-processor.util.add-alias-info/field-reference` has been added. This method is used
+  to produce a reference to a field by the `add-alias-info` middleware. (Note that this middleware is optional,
+  currently it is only used by the SQL and MongoDB drivers.) The default implementation returns the name of the field
+  instance. It should be overridden if just the name is not a valid a valid reference. For example, MongoDB supports
+  nested documents and references to nested fields should contain the whole path. See the namespace
+  `metabase.driver.mongo.query-processor` for an alternative implementation.
+
+- The multimethod `metabase.driver.sql-jdbc.sync.interface/syncable-schemas` (aliased as
+  `metabase.driver.sql-jdbc.sync/syncable-schemas`), which was deprecated in 0.43.0, has been removed. Implement
+  `metabase.driver.sql-jdbc.sync.interface/filtered-syncable-schemas` instead. See 0.43.0 notes below for more
+  details.
+
+- The multimethod `metabase.driver/format-custom-field-name`, which was deprecated in 0.42.0, has been removed.
+  Implement `metabase.driver/escape-alias` instead. See 0.42.0 notes below for more information.
+
+- The multimethod `metabase.driver.sql-jdbc.execute/read-column`, which was deprecated in 0.35.0, has been removed.
+  Implement `metabase.driver.sql-jdbc.execute/read-column-thunk` instead. See 0.35.0 notes below for more information.
+
+### Honey SQL 2
+
+The following only applies to SQL drivers; you can ignore it for non-SQL drivers.
+
+Prior to Metabase 0.46.0, SQL drivers used Honey SQL 1 as an intermediate target when compiling queries. In 0.46.0 we
+have began the process of migrating to Honey SQL 2 as our new intermediate target.
+
+We plan to continue to support use of Honey SQL 1 until Metabase 0.49.0. Please be sure to migrate your drivers before
+then.
+
+In Metabase 0.46.x, 0.47.x, and 0.48.x, you can specify which version of Honey SQL you driver should use by
+implementing the `metabase.driver.sql.query-processor/honey-sql-version` multimethod:
+
+```clj
+(require '[metabase.driver.sql.query-processor :as sql.qp])
+
+;;; use Honey SQL 2 for :my-driver
+(defmethod sql.qp/honey-sql-version :my-driver
+  [_driver]
+  2)
+```
+
+This method must return either `1` or `2`. Currently, the default implementation returns `1`. Effectively this means
+you currently have to opt-in to Honey SQL 2 compilation. It's a good idea to do this sooner rather than later so your
+driver is prepared for 0.49.0 well in advance.
+
+In Metabase 0.47.x or 0.48.x we will likely change the default Honey SQL version to `2` to ensure everyone is aware of
+the upcoming breaking changes in 0.49.0 and give them one or two release cycles to update their drivers to target
+Honey SQL 2. You will still be able to opt-in to using Honey SQL 1 until 0.49.0 by implementing
+`sql.qp/honey-sql-version` and returning `1`.
+
+#### What You Need to Change
+
+Our Honey SQL utility namespace, `metabase.util.honeysql-extensions`, commonly aliased as `hx`, has been updated to
+generate forms appropriate for either Honey SQL 1 or Honey SQL 2. This is done automatically based on your driver's
+`honey-sql-version`. `metabase.driver.sql.query-processor` itself also supports both targets in the same way.
+
+The actual changes you will need to make to your driver code will probably be fairly small. The most important things
+to note when porting your driver:
+
+1. Avoid use of things from Honey SQL 1 namespaces like `honeysql.core` or `honeysql.format`. If you must, use Honey
+   SQL `honey.sql` instead; you may not need either.
+
+2. While you can continue to use `metabase.util.honeysql-extensions` in the short term, since it can target either
+   version of Honey SQL, we will probably remove this namespace at some point in the future. Update your code to use
+   `metabase.util.honey-sql-2` instead. The namespaces implement an almost identical set of helper functions, so all
+   you should need to switch is which one you `:require` in your `ns` form.
+
+3. `honeysql.core/call` no longer exists; instead of a form like `(hsql/call :my_function 1 2)`, you simply return a
+   plain vector like `[:my_function 1 2]`. `(hsql/raw "x")` is now`[:raw "x"]`. New handlers can be registered with
+   Honey SQL 2 with `honey.sql/register-fn!`. There is no equivalent of the Honey SQL 1 `honeysql.format./ToSql`
+   protocol, so you should no longer define one-off types to implement custom SQL compilation rules. Use
+   `honey.sql/register-fn!` instead.
+
+4. In Honey SQL 1 you were able to register functions to a more limited extent by implementing the multimethod
+   `honeysql.format/fn-handler`. Metabase registered the functions `:extract`, `:distinct-count`, and
+   `:percentile-cont` in this way. For Honey SQL 2, we've registered these functions as qualified keywords in the
+   `metabase.util.honey-sql-2` namespace, to prevent confusion as to where they're defined. Thus you'll need to update
+   the keyword if you're using these functions.
+
+   ```clj
+   ;;; Honey SQL 1
+   (hsql/call :distinct-count expr)
+   ```
+
+   becomes
+
+   ```clj
+   ;;; Honey SQL 2
+   (require '[metabase.util.honey-sql-2 :as h2x])
+
+   [::h2x/distinct-count expr]
+   ```
+
+5. Because custom expressions are now just plain vectors like `[:my_function 1]`, you may need to wrap expressions in
+   an additional vector if they appear inside `:select`, `:from`, or other places where a vector could be interpreted
+   as `[expression alias]`. e.g.
+
+   ```clj
+   ;; Honey SQL 1
+   (honeysql.core/format {:select [[:my_function 1]]})
+   ;; => ["SELECT my_function AS 1"]
+
+   ;; Honey SQL 2
+   ;;
+   ;; WRONG
+   (honey.sql/format {:select [[:my_function 1]]})
+   ;; => ["SELECT my_function AS ?" 1]
+
+   ;; CORRECT
+   (honey.sql/format {:select [[[:my_function 1]]]})
+   ;; => ["SELECT MY_FUNCTION(?)" 1]
+   ```
+
+   The SQL query processor does this automatically for forms it generates, so you only need to worry about this if
+   you're overriding the way it generates `:select` or other top-level clauses.
+
+6. Numbers are parameterized by default, e.g. `{:select [1]}` becomes `SELECT ?` rather than `SELECT 1`. You can use
+   `:inline` to force the SQL to be generated inline instead: `{:select [[[:inline 1]]]}` becomes `SELECT 1`. Numbers
+   generated by the SQL query processor code should automatically be inlined, but you may need to make sure any
+   numbers you generate are wrapped in `:inline` if they can end up as expressions inside a `GROUP BY` clause. Some
+   databases can recognize expressions as being the same thing only when they are *not* parameterized:
+
+   ```sql
+   -- This is okay
+   SELECT x + 1
+   FROM table
+   GROUP BY x + 1
+
+   -- Bad: DB doesn't know whether the two x + ? expressions are the same thing
+   SELECT x + ?
+   FROM table
+   GROUP BY x + ?
+   ```
+
+  Exercise caution when `:inline`ing things -- take care not to use it on untrusted strings or other avenues for SQL
+  injection. Only inlining things that are a `number?` is a safe bet.
+
+Please read [Differences between Honey SQL 1.x and
+2.x](https://github.com/seancorfield/honeysql/blob/develop/doc/differences-from-1-x.md) for more information on the
+differences between the library versions.
+
+#### Breaking Changes in 0.46.0 related to the Honey SQL 2 transition
+
+**Note: these breaking changes will hopefully be fixed before 0.46.0 ships. This will be updated if they are.**
+
+The classes `metabase.util.honeysql_extensions.Identifer` and `metabase.util.honeysql_extensions.TypedHoneySQLForm`
+have been moved to `metabase.util.honey_sql_1.Identifer` and `metabase.util.honey_sql_1.TypedHoneySQLForm`,
+respectively. On the off chance that your driver directly referencing these class names, you may need to update things
+to use the new class names.
+
+Similarly, `metabase.util.honeysql-extensions/->AtTimeZone` has been removed; use
+`metabase.util.honeysql-extensions/at-time-zone` instead.
 
 ## Metabase 0.45.0
 
@@ -29,6 +225,9 @@ title: Driver interface changelog
 
 - `metabase.driver.sql-jdbc.sync.describe-table-fields` has been added. Implement this method if you want to override
   the default behavior for fetching field metadata (such as types) for a table.
+
+- `->honeysql [<driver> :convert-timezone]` has been added. Implement this method if you want your driver to support
+  the `convertTimezone` expression. This method takes 2 or 3 arguments and returns a `timestamp without time zone` column.
 
 ## Metabase 0.43.0
 

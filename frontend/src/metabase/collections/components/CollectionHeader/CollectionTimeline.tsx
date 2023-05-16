@@ -2,7 +2,7 @@ import React from "react";
 import { t } from "ttag";
 import * as Urls from "metabase/lib/urls";
 import Link from "metabase/core/components/Link/Link";
-import Tooltip from "metabase/components/Tooltip";
+import Tooltip from "metabase/core/components/Tooltip";
 import { Collection } from "metabase-types/api";
 import { CollectionHeaderButton } from "./CollectionHeader.styled";
 
@@ -16,7 +16,7 @@ const CollectionTimeline = ({
   const url = Urls.timelinesInCollection(collection);
 
   return (
-    <Tooltip tooltip={t`Events`}>
+    <Tooltip tooltip={t`Events`} placement="bottom">
       <div>
         <CollectionHeaderButton as={Link} to={url} icon="calendar" />
       </div>
@@ -24,4 +24,5 @@ const CollectionTimeline = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default CollectionTimeline;

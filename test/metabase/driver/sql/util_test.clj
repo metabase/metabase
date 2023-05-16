@@ -4,6 +4,13 @@
    [metabase.driver.sql.util :as sql.u]
    [metabase.util.honeysql-extensions :as hx]))
 
+(deftest ^:parallel quote-name-test
+  (are [driver expected] (= expected
+                            (sql.u/quote-name driver :field "wow"))
+    :mysql    "`wow`"
+    :h2       "\"wow\""
+    :postgres "\"wow\""))
+
 (deftest select-clause-deduplicate-aliases
   (testing 'select-clause-deduplicate-aliases
     (testing "should use the last component of an identifier as the alias if it does not already have one"

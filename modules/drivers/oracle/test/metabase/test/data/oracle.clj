@@ -1,38 +1,50 @@
 (ns metabase.test.data.oracle
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure.set :as set]
-            [clojure.string :as str]
-            [honeysql.format :as hformat]
-            [medley.core :as m]
-            [metabase.db :as mdb]
-            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-            [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
-            [metabase.models :refer [Database Table]]
-            [metabase.test.data.impl :as data.impl]
-            [metabase.test.data.interface :as tx]
-            [metabase.test.data.sql :as sql.tx]
-            [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
-            [metabase.test.data.sql-jdbc.execute :as execute]
-            [metabase.test.data.sql-jdbc.load-data :as load-data]
-            [metabase.test.data.sql.ddl :as ddl]
-            [metabase.util :as u]
-            [toucan.db :as db]))
+  (:require
+   [clojure.java.jdbc :as jdbc]
+   [clojure.set :as set]
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [honey.sql :as sql]
+   [medley.core :as m]
+   [metabase.db :as mdb]
+   [metabase.db.query :as mdb.query]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.models :refer [Database Table]]
+   [metabase.test.data.impl :as data.impl]
+   [metabase.test.data.interface :as tx]
+   [metabase.test.data.sql :as sql.tx]
+   [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
+   [metabase.test.data.sql-jdbc.execute :as execute]
+   [metabase.test.data.sql-jdbc.load-data :as load-data]
+   [metabase.test.data.sql.ddl :as ddl]
+   [metabase.util :as u]
+   [metabase.util.honey-sql-2 :as h2x]
+   #_{:clj-kondo/ignore [:discouraged-namespace]}
+   [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.log :as log]
+   [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
+
+(use-fixtures :each (fn [thunk]
+                      (binding [hx/*honey-sql-version* 2]
+                        (thunk))))
 
 (sql-jdbc.tx/add-test-extensions! :oracle)
 
-;; Similar to SQL Server, Oracle on AWS doesn't let you create different databases;
-;; We'll create a unique schema (the same as a "User" in Oracle-land) for each test run and use that to keep
-;; tests from clobbering over one another; we'll also qualify the names of tables to include their DB name
+;; Similar to SQL Server, Oracle on AWS doesn't let you create different databases; we'll qualify the names of tables to
+;; include their DB name
 ;;
 ;; e.g.
 ;; H2 Tests                   | Oracle Tests
 ;; ---------------------------+------------------------------------------------
-;; PUBLIC.VENUES.ID           | CAM_195.test_data_venues.id
-;; PUBLIC.CHECKINS.USER_ID    | CAM_195.test_data_checkins.user_id
-;; PUBLIC.INCIDENTS.TIMESTAMP | CAM_195.sad_toucan_incidents.timestamp
-(defonce ^:private session-schema-number (rand-int 200))
-(defonce           session-schema        (str "CAM_" session-schema-number))
-(defonce ^:private session-password      (apply str (repeatedly 16 #(rand-nth (map char (range (int \a) (inc (int \z))))))))
+;; PUBLIC.VENUES.ID           | mb_test.test_data_venues.id
+;; PUBLIC.CHECKINS.USER_ID    | mb_test.test_data_checkins.user_id
+;; PUBLIC.INCIDENTS.TIMESTAMP | mb_test.sad_toucan_incidents.timestamp
+(defonce           session-schema   "mb_test")
+(defonce ^:private session-password "password")
 ;; Session password is only used when creating session user, not anywhere else
 
 (defn- connection-details []
@@ -124,19 +136,19 @@
     (locking oracle-test-dbs-created-by-this-instance
       (when-not (contains? @oracle-test-dbs-created-by-this-instance database-name)
         (mdb/setup-db!)                 ; if not already setup
-        (when-let [existing-db (db/select-one Database :engine "oracle", :name database-name)]
+        (when-let [existing-db (t2/select-one Database :engine "oracle", :name database-name)]
           (let [existing-db-id (u/the-id existing-db)
-                all-schemas    (db/select-field :schema Table :db_id existing-db-id)]
+                all-schemas    (t2/select-fn-set :schema Table :db_id existing-db-id)]
             (when-not (= all-schemas #{session-schema})
-              (println (u/format-color 'yellow
-                                       (str "[oracle] At least one table's schema for the existing '%s' Database"
+              (log/warn (u/format-color 'yellow
+                                        (str "[oracle] At least one table's schema for the existing '%s' Database"
                                             " (id %d), which include all of [%s], does not match current session-schema"
                                             " of %s; deleting this DB so it can be recreated")
-                                       database-name
-                                       existing-db-id
-                                       (str/join "," all-schemas)
-                                       session-schema))
-              (db/delete! Database :id existing-db-id))))
+                                        database-name
+                                        existing-db-id
+                                        (str/join "," all-schemas)
+                                        session-schema))
+              (t2/delete! Database :id existing-db-id))))
         (swap! oracle-test-dbs-created-by-this-instance conj database-name)))))
 
 (defmethod data.impl/get-or-create-database! :oracle
@@ -164,8 +176,6 @@
   [driver dbdef tabledef]
   (load-data/load-data-add-ids-chunked! driver dbdef tabledef))
 
-(defmethod tx/has-questionable-timezone-support? :oracle [_] true)
-
 ;; Oracle has weird syntax for inserting multiple rows, it looks like
 ;;
 ;; INSERT ALL
@@ -174,23 +184,81 @@
 ;; SELECT * FROM dual;
 ;;
 ;; So this custom HoneySQL type below generates the correct DDL statement
+
+(defn- format-insert-all [_fn [rows]]
+  (let [rows-sql-args (mapv sql/format rows)
+        sqls          (map first rows-sql-args)
+        args          (mapcat rest rows-sql-args)]
+    (into [(format
+            "INSERT ALL %s SELECT * FROM dual"
+            (str/join " " sqls))]
+          args)))
+
+(sql/register-fn! ::insert-all #'format-insert-all)
+
+;;; normal Honey SQL `:into` doesn't seem to work with our `identifier` type, so define a custom version here that does.
+(defn- format-into [_fn identifier]
+  {:pre [(h2x/identifier? identifier)]}
+  (let [[sql & args] (sql/format-expr identifier)]
+    (into [(str "INTO " sql)] args)))
+
+(sql/register-clause! ::into #'format-into :into)
+
+(defn- row->into [driver table-identifier row-map]
+  (let [cols (vec (keys row-map))]
+    {::into   table-identifier
+     :columns (mapv (fn [col]
+                      (h2x/identifier :field col))
+                    cols)
+     :values  [(mapv (fn [col]
+                       (let [v (get row-map col)]
+                         (sql.qp/->honeysql driver v)))
+                     cols)]}))
+
 (defmethod ddl/insert-rows-honeysql-form :oracle
   [driver table-identifier row-or-rows]
-  (reify hformat/ToSql
-    (to-sql [_]
-      (format
-       "INSERT ALL %s SELECT * FROM dual"
-       (str/join
-        " "
-        (for [row (u/one-or-many row-or-rows)]
-          (str/replace
-           (hformat/to-sql
-            ((get-method ddl/insert-rows-honeysql-form :sql/test-extensions) driver table-identifier row))
-           #"INSERT INTO"
-           "INTO")))))))
+  [::insert-all (mapv (partial row->into driver table-identifier)
+                      (u/one-or-many row-or-rows))])
+
+;;; see also [[metabase.driver.oracle-test/insert-rows-ddl-test]]
+(deftest ^:parallel insert-all-test
+  (let [rows [{:name "Plato Yeshua", :t #t "2014-04-01T08:30", :password 1, :active true}
+              {:name "Felipinho Asklepios", :t #t "2014-12-05T15:15", :password 2, :active false}]
+        hsql (ddl/insert-rows-honeysql-form :oracle (h2x/identifier :table "my_db" "my_table") rows)]
+    (is (= [::insert-all
+            [{::into   (h2x/identifier :table "my_db" "my_table")
+              :columns [(h2x/identifier :field "name")
+                        (h2x/identifier :field "t")
+                        (h2x/identifier :field "password")
+                        (h2x/identifier :field "active")]
+              :values  [["Plato Yeshua" #t "2014-04-01T08:30" [:inline 1] [:inline 1]]]}
+             {::into   (h2x/identifier :table "my_db" "my_table")
+              :columns [(h2x/identifier :field "name")
+                        (h2x/identifier :field "t")
+                        (h2x/identifier :field "password")
+                        (h2x/identifier :field "active")]
+              :values  [["Felipinho Asklepios" #t "2014-12-05T15:15" [:inline 2] [:inline 0]]]}]]
+           hsql))
+    (is (= [["INSERT"
+             "  ALL INTO \"my_db\".\"my_table\" (\"name\", \"t\", \"password\", \"active\")"
+             "VALUES"
+             "  (?, ?, 1, 1) INTO \"my_db\".\"my_table\" (\"name\", \"t\", \"password\", \"active\")"
+             "VALUES"
+             "  (?, ?, 2, 0)"
+             "SELECT"
+             "  *"
+             "FROM"
+             "  dual"]
+            "Plato Yeshua"
+            #t "2014-04-01T08:30"
+            "Felipinho Asklepios"
+            #t "2014-12-05T15:15"]
+           (-> (sql/format-expr hsql)
+               (update 0 mdb.query/format-sql :oracle)
+               (update 0 str/split-lines))))))
 
 (defn- dbspec [& _]
-  (let [conn-details  (connection-details)]
+  (let [conn-details (connection-details)]
     (sql-jdbc.conn/connection-details->spec :oracle conn-details)))
 
 (defn- non-session-schemas
@@ -215,9 +283,9 @@
 ;; TL;DR Oracle schema == Oracle user. Create new user for session-schema
 (defn- execute! [format-string & args]
   (let [sql (apply format format-string args)]
-    (println (u/format-color 'blue "[oracle] %s" sql))
+    (log/info (u/format-color 'blue "[oracle] %s" sql))
     (jdbc/execute! (dbspec) sql))
-  (println (u/format-color 'blue "[ok]")))
+  (log/info (u/format-color 'blue "[ok]")))
 
 (defn create-user!
   ;; default to using session-password for all users created this session

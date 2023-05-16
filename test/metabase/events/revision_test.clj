@@ -6,7 +6,7 @@
     :refer [Card Dashboard DashboardCard Database Metric Revision Segment Table]]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (defn- card-properties
   "Some default properties for `Cards` for use in tests in this namespace."
@@ -41,14 +41,13 @@
    :cache_ttl              nil
    :query_type             :query
    :table_id               (mt/id :categories)
-   :is_write               false
    :visualization_settings {}})
 
 (defn- dashboard->revision-object [dashboard]
-  {:description  nil
-   :cache_ttl    nil
-   :parameters   []
-   :name         (:name dashboard)})
+  {:description        nil
+   :cache_ttl          nil
+   :auto_apply_filters true
+   :name               (:name dashboard)})
 
 (deftest card-create-test
   (testing ":card-create"
@@ -62,7 +61,7 @@
               :is_reversion false
               :is_creation  true}
              (mt/derecordize
-              (db/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
+              (t2/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
                 :model       "Card"
                 :model_id    card-id)))))))
 
@@ -78,7 +77,7 @@
               :is_reversion false
               :is_creation  false}
              (mt/derecordize
-              (db/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
+              (t2/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
                 :model       "Card"
                 :model_id    card-id)))))))
 
@@ -94,7 +93,7 @@
               :is_reversion false
               :is_creation  true}
              (mt/derecordize
-              (db/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
+              (t2/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
                 :model "Dashboard"
                 :model_id dashboard-id)))))))
 
@@ -110,7 +109,7 @@
               :is_reversion false
               :is_creation  false}
              (mt/derecordize
-              (db/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
+              (t2/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
                 :model    "Dashboard"
                 :model_id dashboard-id)))))))
 
@@ -130,7 +129,7 @@
               :is_reversion false
               :is_creation  false}
              (mt/derecordize
-              (db/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
+              (t2/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
                 :model    "Dashboard"
                 :model_id dashboard-id)))))))
 
@@ -139,7 +138,7 @@
     (mt/with-temp* [Dashboard     [{dashboard-id :id, :as dashboard}]
                     Card          [{card-id :id}                     (card-properties)]
                     DashboardCard [dashcard                          {:card_id card-id, :dashboard_id dashboard-id}]]
-      (db/simple-delete! DashboardCard, :id (:id dashcard))
+      (t2/delete! (t2/table-name DashboardCard), :id (:id dashcard))
       (revision/process-revision-event! {:topic :dashboard-remove-cards
                                          :item  {:id        dashboard-id
                                                  :actor_id  (mt/user->id :rasta)
@@ -151,7 +150,7 @@
               :is_reversion false
               :is_creation  false}
              (mt/derecordize
-              (db/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
+              (t2/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
                 :model    "Dashboard"
                 :model_id dashboard-id)))))))
 
@@ -160,7 +159,7 @@
     (mt/with-temp* [Dashboard     [{dashboard-id :id, :as dashboard}]
                     Card          [{card-id :id}                     (card-properties)]
                     DashboardCard [dashcard                          {:card_id card-id, :dashboard_id dashboard-id}]]
-      (db/update! DashboardCard (:id dashcard), :size_x 4)
+      (t2/update! DashboardCard (:id dashcard) {:size_x 3})
       (revision/process-revision-event! {:topic :dashboard-reeposition-cards
                                          :item  {:id        dashboard-id
                                                  :actor_id  (mt/user->id :crowberto)
@@ -170,15 +169,15 @@
               :user_id      (mt/user->id :crowberto)
               :object       (assoc (dashboard->revision-object dashboard) :cards [{:id      (:id dashcard)
                                                                                    :card_id card-id
-                                                                                   :size_x  4
-                                                                                   :size_y  2
+                                                                                   :size_x  3
+                                                                                   :size_y  4
                                                                                    :row     0
                                                                                    :col     0
                                                                                    :series  []}])
               :is_reversion false
               :is_creation  false}
              (mt/derecordize
-              (db/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
+              (t2/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
                 :model    "Dashboard"
                 :model_id dashboard-id)))))))
 
@@ -189,7 +188,7 @@
                     Metric   [metric       {:table_id id, :definition {:a "b"}}]]
       (revision/process-revision-event! {:topic :metric-create
                                          :item  metric})
-      (let [revision (db/select-one [Revision :model :user_id :object :is_reversion :is_creation :message]
+      (let [revision (t2/select-one [Revision :model :user_id :object :is_reversion :is_creation :message]
                        :model "Metric"
                        :model_id (:id metric))]
         (is (= {:model        "Metric"
@@ -219,7 +218,7 @@
                                          :item  (assoc metric
                                                        :actor_id         (mt/user->id :crowberto)
                                                        :revision_message "updated")})
-      (let [revision (db/select-one [Revision :model :user_id :object :is_reversion :is_creation :message]
+      (let [revision (t2/select-one [Revision :model :user_id :object :is_reversion :is_creation :message]
                        :model "Metric"
                        :model_id (:id metric))]
         (is (= {:model        "Metric"
@@ -247,7 +246,7 @@
                     Metric   [metric       {:table_id id, :definition {:a "b"}, :archived true}]]
       (revision/process-revision-event! {:topic :metric-delete
                                          :item  metric})
-      (let [revision (db/select-one [Revision :model :user_id :object :is_reversion :is_creation :message]
+      (let [revision (t2/select-one [Revision :model :user_id :object :is_reversion :is_creation :message]
                        :model "Metric"
                        :model_id (:id metric))]
         (is (= {:model        "Metric"
@@ -277,7 +276,7 @@
                                             :definition {:a "b"}}]]
       (revision/process-revision-event! {:topic :segment-create
                                          :item  segment})
-      (let [revision (-> (db/select-one Revision :model "Segment", :model_id (:id segment))
+      (let [revision (-> (t2/select-one Revision :model "Segment", :model_id (:id segment))
                          (select-keys [:model :user_id :object :is_reversion :is_creation :message]))]
         (is (= {:model        "Segment"
                 :user_id      (mt/user->id :rasta)
@@ -321,7 +320,7 @@
               :is_creation  false
               :message      "updated"}
              (mt/derecordize
-              (update (db/select-one [Revision :model :user_id :object :is_reversion :is_creation :message]
+              (update (t2/select-one [Revision :model :user_id :object :is_reversion :is_creation :message]
                         :model "Segment"
                         :model_id (:id segment))
                       :object dissoc :id :table_id)))))))
@@ -350,7 +349,7 @@
               :is_creation  false
               :message      nil}
              (mt/derecordize
-              (update (db/select-one [Revision :model :user_id :object :is_reversion :is_creation :message]
+              (update (t2/select-one [Revision :model :user_id :object :is_reversion :is_creation :message]
                         :model "Segment"
                         :model_id (:id segment))
                       :object dissoc :id :table_id)))))))

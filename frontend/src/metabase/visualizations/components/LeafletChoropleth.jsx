@@ -81,22 +81,6 @@ const LeafletChoropleth = ({
         }),
       ]).addTo(map);
 
-      // // left and right duplicates so we can pan a bit
-      // L.featureGroup([
-      //   L.geoJson(geoJson, {
-      //     style,
-      //     onEachFeature,
-      //     coordsToLatLng: ([longitude, latitude]) =>
-      //       L.latLng(latitude, longitude - 360),
-      //   }),
-      //   L.geoJson(geoJson, {
-      //     style,
-      //     onEachFeature,
-      //     coordsToLatLng: ([longitude, latitude]) =>
-      //       L.latLng(latitude, longitude + 360),
-      //   }),
-      // ]).addTo(map);
-
       map.fitBounds(minimalBounds);
 
       return () => {

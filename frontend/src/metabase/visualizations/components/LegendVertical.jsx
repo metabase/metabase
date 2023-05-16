@@ -4,7 +4,7 @@ import React, { Component } from "react";
 import ReactDOM from "react-dom";
 import { t } from "ttag";
 import cx from "classnames";
-import Tooltip from "metabase/components/Tooltip";
+import Tooltip from "metabase/core/components/Tooltip";
 import styles from "./Legend.css";
 
 import LegendItem from "./LegendItem";
@@ -65,41 +65,46 @@ export default class LegendVertical extends Component {
     }
     return (
       <ol className={cx(className, styles.Legend, styles.vertical)}>
-        {items.map((title, index) => (
-          <li
-            key={index}
-            ref={"item" + index}
-            className="flex flex-no-shrink"
-            onMouseEnter={e =>
-              onHoverChange &&
-              onHoverChange({
-                index,
-                element: ReactDOM.findDOMNode(this.refs["legendItem" + index]),
-              })
-            }
-            onMouseLeave={e => onHoverChange && onHoverChange()}
-          >
-            <LegendItem
-              ref={"legendItem" + index}
-              title={Array.isArray(title) ? title[0] : title}
-              color={colors[index % colors.length]}
-              isMuted={
-                hovered && hovered.index != null && index !== hovered.index
+        {items.map((title, index) => {
+          const isMuted =
+            hovered && hovered.index != null && index !== hovered.index;
+          const legendItemTitle = Array.isArray(title) ? title[0] : title;
+          return (
+            <li
+              key={index}
+              ref={"item" + index}
+              className="flex flex-no-shrink"
+              onMouseEnter={e =>
+                onHoverChange &&
+                onHoverChange({
+                  index,
+                  element: ReactDOM.findDOMNode(
+                    this.refs["legendItem" + index],
+                  ),
+                })
               }
-              showTooltip={false}
-            />
-            {Array.isArray(title) && (
-              <span
-                className={cx("LegendItem", "flex-align-right pl1", {
-                  muted:
-                    hovered && hovered.index != null && index !== hovered.index,
-                })}
-              >
-                {title[1]}
-              </span>
-            )}
-          </li>
-        ))}
+              onMouseLeave={e => onHoverChange && onHoverChange()}
+              data-testid={`legend-item-${legendItemTitle}`}
+              {...(hovered && { "aria-current": !isMuted })}
+            >
+              <LegendItem
+                ref={"legendItem" + index}
+                title={legendItemTitle}
+                color={colors[index % colors.length]}
+                isMuted={isMuted}
+                showTooltip={false}
+              />
+              {Array.isArray(title) && (
+                <span
+                  className={cx("LegendItem", "flex-align-right pl1")}
+                  style={{ opacity: isMuted ? 0.4 : 1 }}
+                >
+                  {title[1]}
+                </span>
+              )}
+            </li>
+          );
+        })}
         {overflowCount > 0 ? (
           <li key="extra" className="flex flex-no-shrink">
             <Tooltip

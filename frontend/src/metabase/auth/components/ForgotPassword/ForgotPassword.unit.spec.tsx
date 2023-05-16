@@ -28,8 +28,8 @@ describe("ForgotPassword", () => {
     userEvent.click(screen.getByText("Send password reset email"));
     await waitFor(() => {
       expect(props.onResetPassword).toHaveBeenCalledWith(email);
-      expect(screen.getByText(/Check your email/)).toBeInTheDocument();
     });
+    expect(screen.getByText(/Check your email/)).toBeInTheDocument();
   });
 
   it("should show an error message when the user cannot reset their password", () => {

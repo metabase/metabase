@@ -1,0 +1,12 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "baseUrl": "./",
+    "types": ["cypress", "@testing-library/cypress"],
+    "paths": {
+      "*": ["../frontend/src/*"],
+      "e2e/*": ["./*"]
+    }
+  },
+  "include": ["**/*"]
+}

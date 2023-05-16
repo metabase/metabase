@@ -19,6 +19,8 @@
    (java.io ByteArrayOutputStream)
    (javax.imageio ImageIO)))
 
+(set! *warn-on-reflection* true)
+
 ;;; --------------------------------------------------- CONSTANTS ----------------------------------------------------
 
 (def ^:private ^:const tile-size             256.0)
@@ -167,6 +169,7 @@
 ;;
 ;; TODO - this should reduce results from the QP in a streaming fashion instead of requiring them all to be in memory
 ;; at the same time
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:zoom/:x/:y/:lat-field/:lon-field"
   "This endpoints provides an image with the appropriate pins rendered given a MBQL `query` (passed as a GET query
   string param). We evaluate the query and find the set of lat/lon pairs which are relevant and then render the

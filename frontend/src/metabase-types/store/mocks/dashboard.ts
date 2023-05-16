@@ -1,4 +1,3 @@
-import { createMockDashboard } from "metabase-types/api/mocks";
 import type { DashboardState } from "metabase-types/store";
 
 export const createMockDashboardState = (
@@ -9,12 +8,12 @@ export const createMockDashboardState = (
   dashcards: {},
   dashcardData: {},
   parameterValues: {},
-  parameterValuesSearchCache: {},
   loadingDashCards: {
     dashcardIds: [],
     loadingIds: [],
     loadingStatus: "idle",
     startTime: null,
+    endTime: null,
   },
   loadingControls: {},
   isEditing: null,
@@ -23,6 +22,11 @@ export const createMockDashboardState = (
   sidebar: {
     props: {},
   },
-  titleTemplateChange: null,
+  selectedTabId: null,
+  missingActionParameters: null,
+  autoApplyFilters: {
+    toastId: null,
+    toastDashboardId: null,
+  },
   ...opts,
 });

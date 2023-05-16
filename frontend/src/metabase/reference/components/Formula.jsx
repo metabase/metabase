@@ -3,7 +3,7 @@ import React, { Component } from "react";
 import cx from "classnames";
 import { connect } from "react-redux";
 import { t } from "ttag";
-import { CSSTransitionGroup } from "react-transition-group";
+import { TransitionGroup, CSSTransition } from "react-transition-group";
 
 import Icon from "metabase/components/Icon";
 
@@ -29,21 +29,25 @@ class Formula extends Component {
           <Icon name="beaker" size={24} />
           <span className={S.formulaTitle}>{t`View the ${type} formula`}</span>
         </div>
-        <CSSTransitionGroup
-          component="div"
-          transitionName="formulaDefinition"
-          transitionEnterTimeout={300}
-          transitionLeaveTimeout={300}
-        >
+        <TransitionGroup>
           {isExpanded && (
-            <div key="formulaDefinition" className="formulaDefinition">
-              <QueryDefinition
-                className={S.formulaDefinitionInner}
-                object={entity}
-              />
-            </div>
+            <CSSTransition
+              key="formulaDefinition"
+              classNames="formulaDefinition"
+              timeout={{
+                enter: 300,
+                exit: 300,
+              }}
+            >
+              <div className="formulaDefinition">
+                <QueryDefinition
+                  className={S.formulaDefinitionInner}
+                  object={entity}
+                />
+              </div>
+            </CSSTransition>
           )}
-        </CSSTransitionGroup>
+        </TransitionGroup>
       </div>
     );
   }

@@ -233,7 +233,7 @@
         (str frame n unit "-from-0" unit2)])
      (gen/tuple
       (gen/elements #{"next" "past"})
-      (gen/such-that #(not= % 0) gen/pos-int)
+      (gen/such-that #(not= % 0) gen/nat)
       (gen/elements time-units)
       (gen/elements time-units)))))
 

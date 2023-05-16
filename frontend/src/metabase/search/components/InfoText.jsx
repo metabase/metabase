@@ -29,8 +29,6 @@ const infoTextPropTypes = {
 
 export function InfoText({ result }) {
   switch (result.model) {
-    case "app":
-      return t`App`;
     case "card":
       return jt`Saved question in ${formatCollection(
         result,
@@ -42,14 +40,14 @@ export function InfoText({ result }) {
       return getCollectionInfoText(result.collection);
     case "database":
       return t`Database`;
-    case "page":
-      return t`Page`;
     case "table":
       return <TablePath result={result} />;
     case "segment":
       return jt`Segment of ${(<TableLink result={result} />)}`;
     case "metric":
       return jt`Metric for ${(<TableLink result={result} />)}`;
+    case "action":
+      return jt`for ${result.model_name}`;
     default:
       return jt`${getTranslatedEntityName(result.model)} in ${formatCollection(
         result,

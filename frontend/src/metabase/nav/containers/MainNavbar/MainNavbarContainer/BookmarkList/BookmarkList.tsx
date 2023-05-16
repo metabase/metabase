@@ -8,7 +8,7 @@ import {
 } from "metabase/components/sortable";
 import CollapseSection from "metabase/components/CollapseSection";
 import Icon from "metabase/components/Icon";
-import Tooltip from "metabase/components/Tooltip";
+import Tooltip from "metabase/core/components/Tooltip";
 
 import { Bookmark } from "metabase-types/api";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
@@ -171,4 +171,5 @@ const Item = ({ children }: { children: JSX.Element }) => <>{children}</>;
 const SortableBookmarkItem = SortableElement(Item);
 const SortableBookmarkList = SortableContainer(List);
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(null, mapDispatchToProps)(BookmarkList);

@@ -4,164 +4,232 @@ redirect_from:
   - /docs/latest/administration-guide/03-metadata-editing
 ---
 
-# Metadata editing
+# Data model admin settings
 
-Metabase allows admins to annotate the data in your database. Annotations can give Metabase a better understanding of what the data actually means, which allows Metabase to make more intelligent decisions when processing and displaying that data.
+Metabase lets you add and edit metadata to your tables and columns so that you can manage your org's business logic as it changes. Go to the **Data Model** tab in your **Admin settings** to:
 
-The **Data Model** section of the **Admin Panel** contains settings to edit metadata for:
+- [Set display names and descriptions](#table-display-name).
+- [Hide outdated data](#table-visibility).
+- [Cast a text or number column to a date column](#casting-to-a-specific-data-type).
+- [Change the style of a filter widget](#changing-the-filter-widget).
+- [Link column values to URLs](#linking-a-column-to-a-url).
 
-- **Tables**
-- **Columns**
-- **Segments**
-- **Metrics**
+> The **Data Model** admin settings only affect the way data's displayed and interpreted in Metabase. None of the settings will change the data in your database.
 
-This page focuses on editing table and column metadata; another page covers [segments and metrics](./segments-and-metrics.md).
+## Table settings
 
-Or are you instead looking for docs on [models](./models.md)?
+Click on a table name in the left sidebar to view the table's settings in Metabase.
 
-## Accessing the Data Model page
+- [Change the display name](#table-display-name).
+- [Add or edit the description](#table-description).
+- [Show or hide the table across Metabase](#table-visibility).
+- [View the original schema](#original-schema).
+- [Edit column (field) settings](#column-field-settings).
 
-At the top right of the screen, click on **gear** icon > **Admin** > **Data Model**.
+If you've got more than one database connected to Metabase, click on the database name (for example, "Sample Database") and select another database from the dropdown menu. Once you select a database, the tables in that database will appear in the sidebar.
 
-In the sidebar on the left, you can choose which database to configure. Next, select the table to view and edit its metadata.
+### Table display name
 
-## Metadata for tables
+To edit a table's display name in Metabase, click into the box that contains the current table name. Changes will be saved automatically once you click out of the box.
 
-For table metadata, you can:
+### Table description
 
-- Change [table **visibility**](#table-visibility).
-- Change [table **name** and **description**](#table-name-and-description).
-- View the [original **schema**](#original-schema).
+To add a table description, click into the box below the table name. Descriptions are displayed in Metabase's [data reference](../exploration-and-organization/data-model-reference.md) to help people find the right table for their use case.
 
 ### Table visibility
 
-You can set tables to be **Queryable** or **Hidden**. Setting table visibility can be especially useful if you have a lot of tables in your database but your users will only be interested in a subset of those tables. Table visibility can help keep your Metabase instance tidy by hiding unnecessary tables out of the user interface.
+**Queryable** tables are visible across all of Metabase.
 
-Visibility settings are distinct from **permissions**. Users can still query hidden tables using the **SQL editor**. See [**permissions**](../permissions/start.md) for controlling access to data.
+**Hidden** tables won't show up in the [query builder](../questions/query-builder/introduction.md) or [data reference](../exploration-and-organization/data-model-reference.md). But this is not a security feature: hidden tables can still be used in SQL questions if someone writes `SELECT * FROM hidden_table` from the [SQL editor](../questions/native-editor/writing-sql.md). To prevent people from writing queries against specific tables, see [data permissions](../permissions/data.md).
 
-**Queryable tables** can be selected from the **notebook editor**, and all of the data in the table can be displayed (unless certain columns are excluded — more on that below).
-
-**Hidden tables** can’t be selected from the **notebook editor**, and their data can’t be accessed anywhere in Metabase except in the **Admin Panel** and the **SQL Editor**.
-
-Here's a gif showing how to hide and unhide tables:
-
-![Hide and unhide tables](./images/hide-unhide-tables.gif)
-
-### Table name and description
-
-You can change the **name** and **description** of your tables. Note that the underlying database won’t be affected; changes will only update the name of the table in Metabase.
-
-You can add descriptions to tables to let people know the type of data a table contains. Descriptions are displayed when browsing data (click on the book icon), as well as in the Data Model Reference Panel in the SQL Editor, which you can open by clicking on the book icon to the right of the editing panel.
-
-![Learn about your data in the SQL editor](./images/learn-about-your-data-sql-editor.png)
+Tip: To hide all of the tables in a database (say, if you've migrated to a new database), click on the **hidden eye** icon beside "# queryable tables" in the left sidebar.
 
 ### Original schema
 
-If you ever want to see the original underlying schema for a given table, just click the **Show original schema** toggle in the top-right of the screen.
+To remind yourself of column names and data types as they're stored in your database, click **Original schema** (below **Visibility**).
 
-## Metadata for columns
+## Column (field) settings
 
-Metabase automatically attempts to classify your columns and assign them a type, but you can also edit the metadata yourself. If Metabase misclassified any columns, you can correct those inaccurate classifications here.
+Select a database and click on a table's name in the sidebar to bring up basic column display settings:
 
-For each column, you can edit its:
+- [Change the display name](#column-name)
+- [Add or edit the description](#column-description)
+- [Show or hide the column across Metabase](#column-visibility)
+- [Set a default column order](#column-order)
+- [Change the column's field type](#field-type)
 
-- Name
-- Description
-- Visibility
-- Type
+For extra column settings, click on the **gear** icon at the right of a column's settings box:
+
+- [Cast text or numbers to dates](#casting-to-a-specific-data-type)
+- [Change the filter widget](#changing-the-filter-widget) (for example, to a dropdown menu)
+- [Remap column values](#remapping-column-values) (for example, from "5" to "Great")
+- [Link a column to a URL](#linking-a-column-to-a-url)
 
 ### Column name
 
-To change how the column name is displayed, click on the name of the column. For example, if your ORM produces table names like "auth.user", you can replace this with "User" to make the column more readable. This name change only affects how Metabase displays the column; the change does not affect the database itself.
+To change the _global_ display name of a column in Metabase, click on the name of the column. For example, you could display "auth.user" as "User" to make the column more readable. People can use [models](./models.md) to give columns a display name that's local to the model.
 
 ### Column description
 
-You can include a human-readable summary of a column, its source, and use cases. Any caveats about interpretation can go here as well. Descriptions are particularly useful when columns have values that are abbreviated or coded in a particular format.
+To add a description, click into the box below the column name. Descriptions are displayed in the [data reference](../exploration-and-organization/data-model-reference.md) to help people interpret the column's values. You should consider adding a description if your column contains:
+
+- abbreviations or codes
+- zeroes, nulls, or blank values
+- placeholder values, like `9999-99-99`
 
 ### Column visibility
 
-By default, users can see every column in a table, but you can select other visibility options:
+**Everywhere**: by default, users can see all of the columns in a table.
 
-- **Only in Detail Views**. Sets the visibility to display only when viewing a single **column** record. Useful if you have really long data in certain **columns**, like descriptions or biographies. By default, any column with an average length of longer than 50 characters is assigned this setting.
+**Only in detail views** will hide lengthy text from question results. This setting is applied by default if a column's values have an average length of more than 50 characters. For example, you could use this setting on a column like "Customer Comments" if you already have a column for "Customer Rating".
 
-- **Do Not Include**. This column won't be visible or selectable in questions created with the **notebook editor** (the GUI editor). Useful if you have sensitive or irrelevant columns.
+**Do not include** columns won't show up in the query builder or data reference. You can set "do not include" on sensitive columns (such as PII) or irrelevant columns. But this visibility option is a simple omit/hide option; it's not a security feature. These columns are still accessible for people with native query privileges; they can write `SELECT hidden_column FROM table` or `SELECT * from table` in the [SQL editor](../questions/native-editor/writing-sql.md) and they'll be able to view these fields and their values. To prevent people from viewing certain columns, see [data sandboxing](../permissions/data-sandboxes.md).
 
-For the **SQL editor**, **Do Not Include** settings only affect visibility in the **data reference** section. Though columns will not be visible in the **data reference** section, users will still be able to query these columns.
+
+### Column order
+
+Metabase defaults to the column order defined in your database schema. To reorder the column display order in question results and menus **manually**, click on the grab bar to the right of each column, and drag the column to a new position.
+
+To sort the columns **automatically**, click on the **sort** icon at the top right of the first column's settings box. The sorting options are:
+
+- **Database.** (Default) The order of columns as they appear in the database.
+- **Alphabetical.** A, B, C... however the alphabet works.
+- **Custom.** You choose the order. Metabase will automatically switch the sort order to "Custom" if you rearrange any of the columns.
+- **Smart.** Metabase chooses for you.
 
 ### Field type
 
-You can use the Data Model page to edit field types for fields in your database. Use the **Type** dropdown menu to select from this [list of options](./field-types.md).
-
-In this same menu, you can also designate a column as the table's **primary key** or **foreign key**.
-
-See [Field types](./field-types.md) for more on types and how they function in Metabase.
+To change the [field type](../data-modeling/field-types.md) of a column, click on the **Type** dropdown menu in a column's setting box. You can also use the **Type** dropdown to label a column as an [entity key](https://www.metabase.com/glossary/entity_key) (primary key) or [foreign key](https://www.metabase.com/glossary/foreign_key) in Metabase (with no consequence to your database).
 
 ### Casting to a specific data type
 
-You can manually cast text and number columns to date fields. Casting is useful if your date/timestamps are stored as text or number fields in your database, but you want Metabase to treat them like date values (so it'll do things like present calendar pickers for filters). Casting is different from changing the field type in Metabase, which only modifies semantic information to give people more context about that field, like setting a date field as a "Cancellation date." By contrast, casting changes the underlying type so that, for example, Metabase will interpret a string field as if it were a date.
+If you want Metabase to treat a text or number column as a datetime column:
 
-You can cast text in ISO8601 format and numbers representing Unix epoch to date, datetime, or time types. The exact casting options will differ depending on which kind of database you're connected to, but here are some types you can cast:
+1. Go to **Admin settings** > **Data Model**.
+2. Find your database and table.
+3. Click on the **gear** icon at the right of a column's settings box.
+4. Scroll to **Cast to a specific data type**
+5. Select a casting option.
+
+**Text to datetime casting options**:
 
 - ISO8601->Date
 - ISO8601->Datetime
 - ISO8601->Time
+
+**Numeric to datetime casting options**:
+
 - UNIXMicroSeconds->DateTime
 - UNIXMilliSeconds->DateTime
 - UNIXSeconds->DateTime
 
-To cast a field to a different type, click on the gears icon next to the field you want to cast. If the field is a number or text field, you may see an option to **Cast to a specific data type**, with a default option set to "Don't cast." Select the type you want to cast to, and you're good to go. Casting doesn't affect the original data type; just how Metabase interprets that field.
+Casting is different from setting the [field type](./field-types.md). For example, say you have a "Created At" column with a string [data type](https://www.metabase.com/learn/databases/data-types-overview) in your database. You'll need to cast "Created At" to one of the datetime types above if you want to do things like:
 
-## Remapping column values
+- Create relative date filters, such as "Created At = Last week".
+- Use "Created At" with formulas like [datetimeAdd](../questions/query-builder/expressions/datetimeadd.md).
 
-One thing that happens commonly in tables is that you'll have a **foreign key column**, like `Product ID`, with a bunch of ID values in it, when what you actually want to see most of the time is the **entity name**, like the `Product Title`. You might also have fields which contain coded values that you'd prefer to show up as translated or readable values in your tables and charts — like changing `0`, `1`, and `2` to `Female`, `Male`, and `Other`.
+> Casting data types from the **Data Model** admin settings won't affect the original data types in your database.
 
-To remap column values, click on the gear icon to the right of a field's Type dropdown in the Data Model section of the Admin Panel. You'll see a form with these options:
+### Changing the filter widget
 
-![Remapping form](./images/form.png)
+To change a column's [filter widget](../dashboards/filters.md):
 
-`Visibility` and `Type` are the same as on the main Data Model page, but `Display values` lets you choose to swap out a field's values with something else.
+1. Go to **Admin settings** > **Data Model**.
+2. Find your database and table.
+3. Click on the **gear** icon at the right of a column's settings box.
+4. Scroll to **Filtering on this field**.
+5. Select a filter widget option.
 
-**Foreign key remapping** lets you swap out a foreign key's values with the values of any other field in the connected table. In this example, we're swapping out the `Product ID` field's values with the values in the `Title` field in the Product table:
+#### Filter widget options
+- **Search box**: Enter a search term and Metabase will display checkboxes for column values that match the search.
+- **A list of all values**: dropdown menu with checkboxes for all column values.
+- **Plain input box**: Enter a search term and Metabase will make autocomplete suggestions for the search (no checkboxes).
 
-![Remapping form](./images/fk-mapping.png)
+#### Default filters
+- Columns with more than 100 unique values will default to a plain input box filter.
+- Columns with fewer values will display a search box filter.
 
-Another option is **custom remapping**, which is currently only possible for numeric fields. This lets you map every number that occurs in this field to either a different numeric value or even to a text value, like in this example:
+### Changing a search box filter to a dropdown filter
 
-![Remapping form](./images/custom-mapping.png)
+The dropdown filter widget can be finicky, because Metabase needs to run a [scan](../databases/sync-scan.md#how-database-scans-work) to get the list of values for the dropdown menu.
 
-## Picking the filter user interface for a column
-
-Metabase will automatically try to pick the best kind of filter interface for each column based on that column's type, and the number of different values in it. Columns with only a few possible choices, like a `Gender` column, will display a dropdown list by default when filtering on them. Columns with more than 100 possible selections will show a search box with autocomplete.
-
-You can manually change the user interface for the filter to:
-
-- Search box
-- A list of all values
-- Plain input box
-
-![Filter options](./images/filter-options.png)
-
-## Changing a search box filter to a dropdown filter
-
-1. Go to **Settings** > **Admin settings** > **Data Model**.
-2. Select the database, schema, table, and field in question.
-3. Click the **gear** icon to view all the field’s settings.
-4. Set **Field Type** to “Category”.
+1. Go to **Admin settings** > **Data Model**.
+2. Find your database and table.
+3. Scroll to your column.
+4. In the column's settings box, set **Type** to “Category”.
 5. Set **Filtering on this field** to “A list of all values".
 
-This setting will run a query against your database to get the first 1,000 distinct values (ordered ascending) for that field and cache the first 100kB of text to display in the dropdown menu. If you have columns with more than 1,000 distinct values, or columns with text-heavy data, we recommend setting **Filtering on this field** to "Search box" instead. For more info, see [How database scans work](../databases/connecting.md#how-database-scans-work).
+When you change a default filter to a dropdown filter, you'll trigger a database query that gets the first 1,000 distinct values (ordered ascending) for that column. Metabase will cache the first 100kB of text to display in the dropdown menu. If you have columns with more than 1,000 distinct values, or columns with text-heavy data, we recommend setting **Filtering on this field** to "Search box" instead.
 
-## Column order
+### Remapping column values
 
-Metabase will default to the column order native to the database.
+Say you have a column with the values 1, 2, and 3, and you want to map each number to the values "low", "medium" and "high". This kind of mapping can be done on columns that have numeric or foreign key [field types](#field-type).
 
-You can re-order the way Metabase presents columns in menus and other interfaces (without affecting the database) by clicking on the grab bar to the right of each column, and dragging the column to a new position in the order.
+#### Remapping numbers
 
-![Reordering columns](./images/column-reorder.gif)
+1. Go to **Admin settings** > **Data Model**.
+2. Find your database and table.
+3. Click **gear** icon at the right of a column's settings box.
+4. Scroll to **Display values**.
+5. Select "Custom mapping" from the dropdown menu.
+6. Enter the display values under **Mapped values**.
 
-You can also select from several options:
+#### Remapping foreign keys
 
-- **Database.** (Default) The order of columns as they appear in the database.
-- **Alphabetical.** A, B, C... however the alphabet works.
-- **Custom.** You choose the order. Metabase will automatically switch to custom if you rearrange any of the columns.
-- **Smart.** Metabase chooses for you.
+1. Go to **Admin settings** > **Data Model**.
+2. Find your database and table.
+3. Click **gear** icon at the right of a column's settings box.
+4. Scroll to **Display values**.
+5. Select "Use foreign key" from the dropdown menu.
+6. Select a column name from the second dropdown menu.
+
+### Linking a column to a URL
+
+1. Go to **Admin settings** > **Data Model**.
+2. Find your database and table.
+3. Click on the **gear** icon at the right of a column's settings box.
+4. Select **Formatting** from the sidebar.
+5. From **Display as**, select **Link**.
+6. Optional: set display text under **Link text**.
+7. Enter the URL in the **Link URL** field.
+8. Optional: create a dynamic URL by adding the column name as a `{% raw %}{{parameter}}{% endraw %}`.
+
+For example, if you set the **Link URL** for an "Adjective" column to:
+
+```
+https://www.google.com/search?q={% raw %}{{adjective}}{% endraw %}
+```
+
+When someone clicks on the value "askew" in the "Adjective" column, they'll be taken to the Google search URL:
+
+```
+https://www.google.com/search?q=askew
+```
+
+## Refresh or discard cached values
+
+To update the values in your filter dropdown menus, refresh or reset the cached values. **Cache actions** include:
+
+- **Re-scan this table or field** to run a manual scan for new or updated column values. If possible, re-scan the table during off-peak hours, as [scans](../databases/sync-scan.md#how-database-scans-work) can slow down your database.
+- **Discard cached field values** to clear cached values and stop them from showing up in your [filter widgets](#changing-the-filter-widget).
+
+### Table cache actions
+
+1. Go to **Admin settings** > **Data Model**.
+2. Find your database and table.
+3. Click the **gear** icon at the top right (below **Exit admin**).
+4. Select a cache action.
+
+### Column cache actions
+
+1. Go to **Admin settings** > **Data Model**.
+2. Find your database and table.
+3. Click the **gear** icon at the right of a column's settings box.
+4. Scroll to **Cached field values**.
+5. Select a cache action.
+
+## Further reading
+
+- [Segments and metrics](./segments-and-metrics.md)
+- [Keeping your analytics organized](https://www.metabase.com/learn/administration/same-page)
+- [Data modeling tutorials](https://www.metabase.com/learn/data-modeling/models)

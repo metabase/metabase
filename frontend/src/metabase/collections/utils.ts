@@ -1,4 +1,5 @@
 import { t } from "ttag";
+import { isNotNull } from "metabase/core/utils/types";
 import { Collection, CollectionId, CollectionItem } from "metabase-types/api";
 
 export function nonPersonalOrArchivedCollection(
@@ -55,7 +56,7 @@ export function isPersonalCollectionChild(
 }
 
 export function isRootCollection(collection: Pick<Collection, "id">): boolean {
-  return canonicalCollectionId(collection.id) === null;
+  return canonicalCollectionId(collection?.id) === null;
 }
 
 export function isItemPinned(item: CollectionItem) {
@@ -64,6 +65,37 @@ export function isItemPinned(item: CollectionItem) {
 
 export function isItemQuestion(item: CollectionItem) {
   return item.model === "card";
+}
+
+export function isItemModel(item: CollectionItem) {
+  return item.model === "dataset";
+}
+
+export function isItemCollection(item: CollectionItem) {
+  return item.model === "collection";
+}
+
+export function canPinItem(item: CollectionItem, collection: Collection) {
+  return collection.can_write && item.setPinned != null;
+}
+
+export function canPreviewItem(item: CollectionItem, collection: Collection) {
+  return collection.can_write && isItemPinned(item) && isItemQuestion(item);
+}
+
+export function canMoveItem(item: CollectionItem, collection: Collection) {
+  return (
+    collection.can_write &&
+    item.setCollection != null &&
+    !(isItemCollection(item) && isPersonalCollection(item))
+  );
+}
+
+export function canArchiveItem(item: CollectionItem, collection: Collection) {
+  return (
+    collection.can_write &&
+    !(isItemCollection(item) && isPersonalCollection(item))
+  );
 }
 
 export function isPreviewShown(item: CollectionItem) {
@@ -89,7 +121,11 @@ export function coerceCollectionId(
 export function canonicalCollectionId(
   collectionId: string | number | null | undefined,
 ): number | null {
-  if (collectionId === "root" || collectionId == null) {
+  if (
+    collectionId === "root" ||
+    collectionId === null ||
+    collectionId === undefined
+  ) {
     return null;
   } else if (typeof collectionId === "number") {
     return collectionId;
@@ -120,14 +156,14 @@ function isPersonalOrPersonalChild(
 
 export function canManageCollectionAuthorityLevel(
   collection: Partial<Collection>,
-  collectionMap: Record<CollectionId, Collection>,
+  collectionMap: Partial<Record<CollectionId, Collection>>,
 ) {
   if (isPersonalCollection(collection)) {
     return false;
   }
   const parentId = coerceCollectionId(collection.parent_id);
   const parentCollection = collectionMap[parentId];
-  const collections = Object.values(collectionMap);
+  const collections = Object.values(collectionMap).filter(isNotNull);
   return (
     parentCollection &&
     !isPersonalOrPersonalChild(parentCollection, collections)

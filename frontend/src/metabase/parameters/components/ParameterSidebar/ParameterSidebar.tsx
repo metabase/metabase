@@ -3,24 +3,29 @@ import { t } from "ttag";
 import Radio from "metabase/core/components/Radio";
 import Sidebar from "metabase/dashboard/components/Sidebar";
 import {
+  Parameter,
   ParameterId,
+  ValuesQueryType,
   ValuesSourceConfig,
   ValuesSourceType,
 } from "metabase-types/api";
-import { UiParameter } from "metabase-lib/parameters/types";
 import { canUseLinkedFilters } from "../../utils/linked-filters";
 import ParameterSettings from "../ParameterSettings";
 import ParameterLinkedFilters from "../ParameterLinkedFilters";
 import { SidebarBody, SidebarHeader } from "./ParameterSidebar.styled";
 
 export interface ParameterSidebarProps {
-  parameter: UiParameter;
-  otherParameters: UiParameter[];
+  parameter: Parameter;
+  otherParameters: Parameter[];
   onChangeName: (parameterId: ParameterId, name: string) => void;
   onChangeDefaultValue: (parameterId: ParameterId, value: unknown) => void;
   onChangeIsMultiSelect: (
     parameterId: ParameterId,
     isMultiSelect: boolean,
+  ) => void;
+  onChangeQueryType: (
+    parameterId: ParameterId,
+    sourceType: ValuesQueryType,
   ) => void;
   onChangeSourceType: (
     parameterId: ParameterId,
@@ -45,6 +50,7 @@ const ParameterSidebar = ({
   onChangeName,
   onChangeDefaultValue,
   onChangeIsMultiSelect,
+  onChangeQueryType,
   onChangeSourceType,
   onChangeSourceConfig,
   onChangeFilteringParameters,
@@ -75,6 +81,13 @@ const ParameterSidebar = ({
       onChangeIsMultiSelect(parameterId, isMultiSelect);
     },
     [parameterId, onChangeIsMultiSelect],
+  );
+
+  const handleQueryTypeChange = useCallback(
+    (queryType: ValuesQueryType) => {
+      onChangeQueryType(parameterId, queryType);
+    },
+    [parameterId, onChangeQueryType],
   );
 
   const handleSourceTypeChange = useCallback(
@@ -120,6 +133,7 @@ const ParameterSidebar = ({
             onChangeName={handleNameChange}
             onChangeDefaultValue={handleDefaultValueChange}
             onChangeIsMultiSelect={handleIsMultiSelectChange}
+            onChangeQueryType={handleQueryTypeChange}
             onChangeSourceType={handleSourceTypeChange}
             onChangeSourceConfig={handleSourceConfigChange}
             onRemoveParameter={handleRemove}
@@ -137,7 +151,7 @@ const ParameterSidebar = ({
   );
 };
 
-const getTabs = (parameter: UiParameter) => {
+const getTabs = (parameter: Parameter) => {
   const tabs = [{ value: "settings", name: t`Settings`, icon: "gear" }];
 
   if (canUseLinkedFilters(parameter)) {
@@ -147,4 +161,5 @@ const getTabs = (parameter: UiParameter) => {
   return tabs;
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ParameterSidebar;

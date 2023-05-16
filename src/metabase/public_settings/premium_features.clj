@@ -7,16 +7,19 @@
    #_:clj-kondo/ignore
    [clojure.spec.alpha :as spec]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [environ.core :refer [env]]
    [metabase.config :as config]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
+   [metabase.util.log :as log]
    [metabase.util.schema :as su]
    [schema.core :as schema]
-   [toucan.db :as db]))
+   [toucan2.connection :as t2.conn]
+   [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 (def ^:private ValidToken
   "Schema for a valid premium token. Must be 64 lower-case hex characters."
@@ -37,23 +40,49 @@
   "Store URL, used as a fallback for token checks and for fetching the list of cloud gateway IPs."
   "https://store.metabase.com")
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                TOKEN VALIDATION                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (declare premium-embedding-token)
 
-(defn- active-user-count []
-  ;; NOTE: models.user imports public settings, which imports this namespace,
-  ;; so we can't import the User model here.
-  (db/count 'User :is_active true))
+;; let's prevent the DB from getting slammed with calls to get the active user count, we only really need one in flight
+;; at a time.
+(let [f        (fn []
+                 {:post [(integer? %)]}
+                 (log/info (u/colorize :yellow "GETTING ACTIVE USER COUNT!"))
+                 (assert ((requiring-resolve 'metabase.db/db-is-set-up?)) "Metabase DB is not yet set up")
+                 ;; force this to use a new Connection, it seems to be getting called in situations where the Connection
+                 ;; is from a different thread and is invalid by the time we get to use it
+                 (let [result (binding [t2.conn/*current-connectable* nil]
+                                (t2/count :core_user :is_active true))]
+                   (log/info (u/colorize :green "=>") result)
+                   result))
+      memoized (memoize/ttl
+                f
+                :ttl/threshold (u/minutes->ms 5))
+      lock     (Object.)]
+  (defn- cached-active-users-count
+    "Primarily used for the settings because we don't wish it to be 100%. (HUH?)"
+    []
+    (locking lock
+      (memoized))))
+
+(defsetting active-users-count
+  (deferred-tru "Cached number of active users. Refresh every 5 minutes.")
+  :visibility :admin
+  :type       :integer
+  :default    0
+  :getter     (fn []
+                (if-not ((requiring-resolve 'metabase.db/db-is-set-up?))
+                 0
+                 (cached-active-users-count))))
 
 (defn- token-status-url [token base-url]
   (when (seq token)
     (format "%s/api/%s/v2/status" base-url token)))
 
-(def ^:private ^:const fetch-token-status-timeout-ms 10000) ; 10 seconds
+(def ^:private ^:const fetch-token-status-timeout-ms (u/seconds->ms 10))
 
 (def ^:private TokenStatus
   {:valid                               schema/Bool
@@ -68,7 +97,7 @@
 (defn- fetch-token-and-parse-body
   [token base-url]
   (some-> (token-status-url token base-url)
-          (http/get {:query-params {:users     (active-user-count)
+          (http/get {:query-params {:users     (cached-active-users-count)
                                     :site-uuid (setting/get :site-uuid-for-premium-features-token-checks)}})
           :body
           (json/parse-string keyword)))
@@ -81,37 +110,56 @@
   (log/info (trs "Checking with the MetaStore to see whether {0} is valid..."
                  ;; ValidToken will ensure the length of token is 64 chars long
                  (str (subs token 0 4) "..." (subs token 60 64))))
-  (deref
-   (future
-     (try (fetch-token-and-parse-body token token-check-url)
-       (catch Exception e1
-         (log/error e1 (trs "Error fetching token status from {0}:" token-check-url))
-         ;; Try the fallback URL, which was the default URL prior to 45.2
-         (try (fetch-token-and-parse-body token store-url)
-           ;; if there was an error fetching the token from both the normal and fallback URLs, log the first error and
-           ;; return a generic message about the token being invalid. This message will get displayed in the Settings
-           ;; page in the admin panel so we do not want something complicated
-           (catch Exception e2
-             (log/error e2 (trs "Error fetching token status from {0}:" store-url))
-             (let [body (u/ignore-exceptions (some-> (ex-data e1) :body (json/parse-string keyword)))]
-               (or
-                body
-                {:valid         false
-                 :status        (tru "Unable to validate token")
-                 :error-details (.getMessage e1)})))))))
-   fetch-token-status-timeout-ms
-   {:valid         false
-    :status        (tru "Unable to validate token")
-    :error-details (tru "Token validation timed out.")}))
+  (let [fut    (future
+                 (try (fetch-token-and-parse-body token token-check-url)
+                      (catch Exception e1
+                        (log/error e1 (trs "Error fetching token status from {0}:" token-check-url))
+                        ;; Try the fallback URL, which was the default URL prior to 45.2
+                        (try (fetch-token-and-parse-body token store-url)
+                             ;; if there was an error fetching the token from both the normal and fallback URLs, log the
+                             ;; first error and return a generic message about the token being invalid. This message
+                             ;; will get displayed in the Settings page in the admin panel so we do not want something
+                             ;; complicated
+                             (catch Exception e2
+                               (log/error e2 (trs "Error fetching token status from {0}:" store-url))
+                               (let [body (u/ignore-exceptions (some-> (ex-data e1) :body (json/parse-string keyword)))]
+                                 (or
+                                  body
+                                  {:valid         false
+                                   :status        (tru "Unable to validate token")
+                                   :error-details (.getMessage e1)})))))))
+        result (deref fut fetch-token-status-timeout-ms ::timed-out)]
+    (if (= result ::timed-out)
+      (do
+        (future-cancel fut)
+        {:valid         false
+         :status        (tru "Unable to validate token")
+         :error-details (tru "Token validation timed out.")})
+      result)))
 
 (def ^{:arglists '([token])} fetch-token-status
   "TTL-memoized version of `fetch-token-status*`. Caches API responses for 5 minutes. This is important to avoid making
   too many API calls to the Store, which will throttle us if we make too many requests; putting in a bad token could
   otherwise put us in a state where `valid-token->features*` made API calls over and over, never itself getting cached
-  because checks failed. "
-  (memoize/ttl
-   fetch-token-status*
-   :ttl/threshold (* 1000 60 5)))
+  because checks failed."
+  ;; don't blast the token status check API with requests if this gets called a bunch of times all at once -- wait for
+  ;; the first request to finish
+  (let [lock (Object.)
+        f    (memoize/ttl
+              (fn [token]
+                ;; this is a sanity check to make sure we can actually get the active user count BEFORE we try to call
+                ;; [[fetch-token-status*]], because `fetch-token-status*` catches Exceptions and therefore caches failed
+                ;; results. We were running into issues in the e2e tests where `active-users-count` was timing out
+                ;; because of to weird timeouts after restoring the app DB from a snapshot, which would cause other
+                ;; tests to fail because a timed-out token check would get cached as a result.
+                (assert ((requiring-resolve 'metabase.db/db-is-set-up?)) "Metabase DB is not yet set up")
+                (u/with-timeout (u/seconds->ms 5)
+                  (cached-active-users-count))
+                (fetch-token-status* token))
+              :ttl/threshold (u/minutes->ms 5))]
+    (fn [token]
+      (locking lock
+        (f token)))))
 
 (schema/defn ^:private valid-token->features* :- #{su/NonBlankString}
   [token :- ValidToken]
@@ -125,13 +173,15 @@
 
 (def ^:private ^:const valid-token-recheck-interval-ms
   "Amount of time to cache the status of a valid embedding token before forcing a re-check"
-  (* 1000 60 60 24)) ; once a day
+  (u/hours->ms 24)) ; once a day
 
 (def ^:private ^{:arglists '([token])} valid-token->features
   "Check whether `token` is valid. Throws an Exception if not. Returns a set of supported features if it is."
   ;; this is just `valid-token->features*` with some light caching
-  (memoize/ttl valid-token->features*
-               :ttl/threshold valid-token-recheck-interval-ms))
+  (let [f (memoize/ttl valid-token->features* :ttl/threshold valid-token-recheck-interval-ms)]
+    (fn [token]
+      (assert ((requiring-resolve 'metabase.db/db-is-set-up?)) "Metabase DB is not yet set up")
+      (f token))))
 
 (defsetting token-status
   (deferred-tru "Cached token status for premium features. This is to avoid an API request on the the first page load.")

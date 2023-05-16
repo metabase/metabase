@@ -1,4 +1,4 @@
-(ns metabase.public-settings-test
+(ns ^:mb/once metabase.public-settings-test
   (:require
    [clj-http.fake :as http-fake]
    [clojure.core.memoize :as memoize]
@@ -9,6 +9,8 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.i18n :as i18n :refer [tru]]))
+
+(set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -62,21 +64,19 @@
 (deftest site-url-settings-normalize
   (testing "We should normalize `site-url` when set via env var we should still normalize it (#9764)"
     (mt/with-temp-env-var-value [mb-site-url "localhost:3000/"]
-      (mt/with-temporary-setting-values [site-url nil]
-        (is (= "localhost:3000/"
-               (setting/get-value-of-type :string :site-url)))
-        (is (= "http://localhost:3000"
-               (public-settings/site-url)))))))
+      (is (= "localhost:3000/"
+             (setting/get-value-of-type :string :site-url)))
+      (is (= "http://localhost:3000"
+             (public-settings/site-url))))))
 
 (deftest invalid-site-url-env-var-test
   (testing (str "If `site-url` is set via an env var, and it's invalid, we should return `nil` rather than having the"
                 " whole instance break")
     (mt/with-temp-env-var-value [mb-site-url "asd_12w31%$;"]
-      (mt/with-temporary-setting-values [site-url nil]
-        (is (= "asd_12w31%$;"
-               (setting/get-value-of-type :string :site-url)))
-        (is (= nil
-               (public-settings/site-url)))))))
+      (is (= "asd_12w31%$;"
+             (setting/get-value-of-type :string :site-url)))
+      (is (= nil
+             (public-settings/site-url))))))
 
 (deftest site-url-should-update-https-redirect-test
   (testing "Changing `site-url` to non-HTTPS should disable forced HTTPS redirection"
@@ -101,7 +101,7 @@
   (mt/with-mock-i18n-bundles {"zz" {:messages {"Host" "HOST"}}}
     (mt/with-user-locale "zz"
       (is (= "HOST"
-             (str (get-in (setting/user-readable-values-map :public)
+             (str (get-in (setting/user-readable-values-map #{:public})
                           [:engines :postgres :details-fields 0 :display-name])))))))
 
 (deftest tru-translates
@@ -212,3 +212,23 @@
         {{:address (public-settings/cloud-gateway-ips-url)}
          (constantly {:status 200 :body "{\"ip_addresses\": [\"127.0.0.1\"]}"})}
         (is (= nil (public-settings/cloud-gateway-ips)))))))
+
+(deftest start-of-week-test
+  (mt/discard-setting-changes [start-of-week]
+    (testing "Error on invalid value"
+      (is (thrown-with-msg?
+           Throwable
+           #"Invalid day of week: :fraturday"
+           (public-settings/start-of-week! :fraturday))))
+    (mt/with-temp-env-var-value [start-of-week nil]
+      (testing "Should default to Sunday"
+        (is (= :sunday
+               (public-settings/start-of-week))))
+      (testing "Sanity check: make sure we're setting the env var value correctly for the assertion after this"
+        (mt/with-temp-env-var-value [:mb-start-of-week "monday"]
+          (is (= :monday
+                 (public-settings/start-of-week)))))
+      (testing "Fall back to default if value is invalid"
+        (mt/with-temp-env-var-value [:mb-start-of-week "fraturday"]
+          (is (= :sunday
+                 (public-settings/start-of-week))))))))

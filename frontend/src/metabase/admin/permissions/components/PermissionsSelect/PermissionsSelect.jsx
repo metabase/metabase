@@ -5,7 +5,7 @@ import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import { lighten } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
 import Toggle from "metabase/core/components/Toggle";
-import Tooltip from "metabase/components/Tooltip";
+import Tooltip from "metabase/core/components/Tooltip";
 
 import {
   PermissionsSelectOption,
@@ -29,6 +29,7 @@ const propTypes = {
   actions: PropTypes.object,
   value: PropTypes.string.isRequired,
   toggleLabel: PropTypes.string,
+  hasChildren: PropTypes.bool,
   onChange: PropTypes.func.isRequired,
   onAction: PropTypes.func,
   isDisabled: PropTypes.bool,
@@ -42,6 +43,7 @@ export const PermissionsSelect = memo(function PermissionsSelect({
   actions,
   value,
   toggleLabel,
+  hasChildren,
   onChange,
   onAction,
   isDisabled,
@@ -51,7 +53,9 @@ export const PermissionsSelect = memo(function PermissionsSelect({
 }) {
   const [toggleState, setToggleState] = useState(false);
   const selectedOption = options.find(option => option.value === value);
-  const selectableOptions = options.filter(option => option !== selectedOption);
+  const selectableOptions = hasChildren
+    ? options
+    : options.filter(option => option !== selectedOption);
 
   const selectedOptionValue = (
     <PermissionsSelectRoot
@@ -92,6 +96,7 @@ export const PermissionsSelect = memo(function PermissionsSelect({
     <PopoverWithTrigger
       disabled={isDisabled}
       triggerElement={selectedOptionValue}
+      onClose={() => setToggleState(false)}
       targetOffsetX={16}
       targetOffsetY={8}
     >
@@ -128,7 +133,7 @@ export const PermissionsSelect = memo(function PermissionsSelect({
             </ActionsList>
           )}
 
-          {toggleLabel && (
+          {hasChildren && (
             <ToggleContainer>
               <ToggleLabel>{toggleLabel}</ToggleLabel>
               <Toggle small value={toggleState} onChange={setToggleState} />

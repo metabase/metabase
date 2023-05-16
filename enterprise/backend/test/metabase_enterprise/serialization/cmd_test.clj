@@ -1,8 +1,7 @@
-(ns metabase-enterprise.serialization.cmd-test
+(ns ^:mb/once metabase-enterprise.serialization.cmd-test
   (:require
    [clojure.java.io :as io]
    [clojure.test :refer :all]
-   [clojure.tools.logging :as log]
    [metabase-enterprise.serialization.load :as load]
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase.cmd :as cmd]
@@ -10,10 +9,13 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
-   [toucan.db :as db]
-   [yaml.core :as yaml])
+   [metabase.util.log :as log]
+   [metabase.util.yaml :as yaml]
+   [toucan2.core :as t2])
   (:import
    (java.util UUID)))
+
+(set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db :test-users))
 
@@ -25,9 +27,9 @@
     ;;
     ;; making use of the functionality in the [[metabase.db.schema-migrations-test.impl]] namespace for this (since it
     ;; already does what we need)
-    (ts/with-empty-h2-app-db
+    (mt/with-empty-h2-app-db
       ;; create a single dummy User to own a Card and a Database for it to reference
-      (let [user (db/simple-insert! User
+      (let [user (t2/insert! (t2/table-name User)
                    :email        "nobody@nowhere.com"
                    :first_name   (mt/random-name)
                    :last_name    (mt/random-name)
@@ -35,14 +37,14 @@
                    :date_joined  :%now
                    :is_active    true
                    :is_superuser true)
-            db   (db/simple-insert! Database
+            db   (t2/insert! (t2/table-name Database)
                    :name       "Test Database"
                    :engine     "h2"
                    :details    "{}"
                    :created_at :%now
                    :updated_at :%now)]
         ;; then the card itself
-        (db/simple-insert! Card
+        (t2/insert! (t2/table-name Card)
           :name                   "Single Card"
           :display                "Single Card"
           :database_id            (u/the-id db)
@@ -62,12 +64,12 @@
           user-pre-insert-called?  (atom false)]
       (log/infof "Dumping to %s" dump-dir)
       (cmd/dump dump-dir "--user" "crowberto@metabase.com")
-      (ts/with-empty-h2-app-db
+      (mt/with-empty-h2-app-db
         (with-redefs [load/pre-insert-user  (fn [user]
                                               (reset! user-pre-insert-called? true)
                                               (assoc user :password "test-password"))]
-          (cmd/load dump-dir "--mode"     :update
-                             "--on-error" :abort)
+          (cmd/load dump-dir "--mode"     "update"
+                             "--on-error" "abort")
           (is (true? @user-pre-insert-called?)))))))
 
 (deftest mode-update-remove-cards-test
@@ -105,17 +107,17 @@
             (ts/with-dest-db
               (testing "Create admin user"
                 (is (some? (ts/create! User, :is_superuser true)))
-                (is (db/exists? User :is_superuser true)))
-              (is (nil? (cmd/load dump-dir "--on-error" :abort)))
+                (is (t2/exists? User :is_superuser true)))
+              (is (nil? (cmd/load dump-dir "--on-error" "abort")))
               (testing "verify that things were loaded as expected"
-                (is (= 1 (db/count Dashboard)) "# Dashboards")
-                (is (= 2 (db/count Card)) "# Cards")
-                (is (= 2 (db/count DashboardCard)) "# DashboardCards")>)))
+                (is (= 1 (t2/count Dashboard)) "# Dashboards")
+                (is (= 2 (t2/count Card)) "# Cards")
+                (is (= 2 (t2/count DashboardCard)) "# DashboardCards")>)))
           (testing "remove one of the questions in the source's dashboard"
             (ts/with-source-db
-              (db/delete! Card :name "Card_2")
-              (is (= 1 (db/count Card)) "# Cards")
-              (is (= 1 (db/count DashboardCard)) "# DashboardCards")))
+              (t2/delete! Card :name "Card_2")
+              (is (= 1 (t2/count Card)) "# Cards")
+              (is (= 1 (t2/count DashboardCard)) "# DashboardCards")))
           (testing "dump again"
             (ts/with-source-db
               (cmd/dump dump-dir))
@@ -126,8 +128,8 @@
                               yaml)))))
           (testing "load again, with --mode update, destination Dashboard should now only have one question."
             (ts/with-dest-db
-              (is (nil? (cmd/load dump-dir "--mode" :update, "--on-error" :abort)))
-              (is (= 1 (db/count Dashboard)) "# Dashboards")
+              (is (nil? (cmd/load dump-dir "--mode" "update", "--on-error" "abort")))
+              (is (= 1 (t2/count Dashboard)) "# Dashboards")
               (testing "Don't delete the Card even tho it was deleted. Just delete the DashboardCard"
-                (is (= 2 (db/count Card)) "# Cards"))
-              (is (= 1 (db/count DashboardCard)) "# DashboardCards"))))))))
+                (is (= 2 (t2/count Card)) "# Cards"))
+              (is (= 1 (t2/count DashboardCard)) "# DashboardCards"))))))))

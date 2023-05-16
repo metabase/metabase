@@ -65,7 +65,9 @@ const PreferencesStep = ({
       <StepDescription>
         {t`In order to help us improve Metabase, we'd like to collect certain data about product usage.`}{" "}
         <ExternalLink
-          href={Settings.docsUrl("information-collection")}
+          href={Settings.docsUrl(
+            "installation-and-operation/information-collection",
+          )}
         >{t`Here's a full list of what we track and why.`}</ExternalLink>
       </StepDescription>
       <StepToggleContainer>
@@ -128,4 +130,5 @@ const getSubmitError = (error: unknown): string => {
   }
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default PreferencesStep;

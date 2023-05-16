@@ -37,6 +37,7 @@ export default class Text extends Component {
   static uiName = "Text";
   static identifier = "text";
   static iconName = "text";
+  static canSavePng = false;
 
   static disableSettingsConfig = false;
   static noHeader = true;
@@ -44,7 +45,8 @@ export default class Text extends Component {
   static hidden = true;
   static supportPreviewing = true;
 
-  static minSize = { width: 4, height: 1 };
+  static minSize = { width: 1, height: 1 };
+  static defaultSize = { width: 4, height: 4 };
 
   static checkRenderable() {
     // text can always be rendered, nothing needed here

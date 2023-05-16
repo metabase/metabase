@@ -1,5 +1,10 @@
 import { t } from "ttag";
-import { RowValue, RowValues, SeriesOrderSetting } from "metabase-types/api";
+import {
+  RowValue,
+  RowValues,
+  SeriesOrderSetting,
+  DatasetData,
+} from "metabase-types/api";
 
 import {
   ChartColumns,
@@ -262,4 +267,11 @@ export const getOrderedSeries = (
       }
       return foundSeries;
     });
+};
+
+export const sanatizeResultData = (data: DatasetData) => {
+  return {
+    ...data,
+    cols: data.cols.filter(col => col.expression_name !== "pivot-grouping"),
+  };
 };

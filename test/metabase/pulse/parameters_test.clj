@@ -7,7 +7,7 @@
 
 (deftest value-string-test
   (testing "If a filter has multiple values, they are concatenated into a comma-separated string"
-    (is (= "CA, NY and NJ"
+    (is (= "CA, NY, and NJ"
            (params/value-string (-> test-dashboard :parameters first)))))
 
   (testing "If a filter has a single default value, it is formatted appropriately"

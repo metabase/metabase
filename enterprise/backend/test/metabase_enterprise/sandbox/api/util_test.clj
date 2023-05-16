@@ -2,10 +2,10 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.sandbox.api.util :as mt.api.u]
-   [metabase.test :as mt]))
+   [metabase-enterprise.test :as met]))
 
 (defn- has-segmented-perms-when-segmented-db-exists? [user-kw]
-  (mt/with-gtaps-for-user user-kw {:gtaps {:venues {}}}
+  (met/with-gtaps-for-user user-kw {:gtaps {:venues {}}}
     (mt.api.u/segmented-user?)))
 
 (deftest never-segment-admins-test

@@ -3,27 +3,30 @@
   (:require
    [clojure.core.async :as a]
    [clojure.core.memoize :as memoize]
-   [clojure.java.jdbc :as jdbc]
-   [clojure.string :as str]
    [clojure.walk :as walk]
-   [honeysql.core :as hsql]
-   [honeysql.format :as hformat]
-   [honeysql.helpers :as hh]
+   [honey.sql :as sql]
+   [honey.sql.helpers :as sql.helpers]
    [java-time :as t]
    [medley.core :as m]
-   [metabase-enterprise.audit-app.query-processor.middleware.handle-audit-queries :as qp.middleware.audit]
+   [metabase-enterprise.audit-app.query-processor.middleware.handle-audit-queries
+    :as qp.middleware.audit]
    [metabase.db :as mdb]
+   [metabase.db.connection :as mdb.connection]
+   [metabase.db.query :as mdb.query]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.query-processor.context :as qp.context]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util :as u]
+   [metabase.util.honey-sql-2 :as h2x]
+   #_{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.util.honeysql-extensions :as hx]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.urls :as urls]
-   [schema.core :as s]
-   [toucan.db :as db]))
+   [schema.core :as s]))
+
+(set! *warn-on-reflection* true)
 
 (def ^:private ^:const default-limit Integer/MAX_VALUE)
 
@@ -33,9 +36,9 @@
       honeysql-query
       (-> honeysql-query
           (update :limit (fn [query-limit]
-                           (or limit query-limit default-limit)))
+                           [:inline (or limit query-limit default-limit)]))
           (update :offset (fn [query-offset]
-                            (or offset query-offset 0)))))))
+                            [:inline (or offset query-offset 0)]))))))
 
 (defn- inject-cte-body-into-from
   [from ctes]
@@ -93,14 +96,14 @@
   ;; another
   (let [timezone (memoize/ttl sql-jdbc.sync/db-default-timezone :ttl/threshold (u/hours->ms 1))]
     (fn []
-      (timezone (mdb/db-type) (db/connection)))))
+      (timezone (mdb/db-type) {:datasource mdb.connection/*application-db*}))))
 
 (defn- compile-honeysql [driver honeysql-query]
   (try
     (let [honeysql-query (cond-> honeysql-query
                            ;; MySQL 5.x does not support CTEs, so convert them to subselects instead
                            (= driver :mysql) CTEs->subselects)]
-      (db/honeysql->sql (add-default-params honeysql-query)))
+      (mdb.query/compile (add-default-params honeysql-query)))
     (catch Throwable e
       (throw (ex-info (tru "Error compiling audit query: {0}" (ex-message e))
                       {:driver driver, :honeysql-query honeysql-query}
@@ -114,7 +117,7 @@
     ;; instead of mocking up a chunk of regular QP pipeline.
     (binding [qp.timezone/*results-timezone-id-override* (application-db-default-timezone)]
       (try
-        (with-open [conn (jdbc/get-connection (db/connection))
+        (with-open [conn (.getConnection mdb.connection/*application-db*)
                     stmt (sql-jdbc.execute/prepared-statement driver conn sql params)
                     rs   (sql-jdbc.execute/execute-prepared-statement! driver stmt)]
           (let [rsmeta   (.getMetaData rs)
@@ -170,16 +173,16 @@
 
      (user-full-name :u) ;; -> 'Cam Saul'"
   [user-table]
-  (let [first-name (hsql/qualify user-table :first_name)
-        last-name  (hsql/qualify user-table :last_name)
-        email      (hsql/qualify user-table :email)]
-    (hsql/call :case
-      [:and [:= nil first-name] [:= nil last-name]]
-      email
-      [:or [:= nil first-name] [:= nil last-name]]
-      (hx/concat (hsql/call :coalesce first-name "") (hsql/call :coalesce last-name ""))
-      :else
-      (hx/concat (hsql/call :coalesce first-name "") (hx/literal " ") (hsql/call :coalesce last-name "")))))
+  (let [first-name (keyword (name user-table) "first_name")
+        last-name  (keyword (name user-table) "last_name")
+        email      (keyword (name user-table) "email")]
+    [:case
+     [:and [:= nil first-name] [:= nil last-name]]
+     email
+     [:or [:= nil first-name] [:= nil last-name]]
+     (h2x/concat [:coalesce first-name ""] [:coalesce last-name ""])
+     :else
+     (h2x/concat [:coalesce first-name ""] (h2x/literal " ") [:coalesce last-name ""])]))
 
 (def datetime-unit-str->base-type
   "Map of datetime unit strings (possible params for queries that accept a datetime `unit` param) to the `:base_type` we
@@ -212,80 +215,92 @@
 
     (grouped-datetime :day :timestamp) ;; -> `cast(timestamp AS date)` [honeysql equivalent]"
   [unit expr]
-  (sql.qp/date (mdb/db-type) (keyword unit) expr))
+  (binding [#_{:clj-kondo/ignore [:deprecated-var]} hx/*honey-sql-version* 2]
+    (sql.qp/date (mdb/db-type) (keyword unit) expr)))
 
 (defn first-non-null
   "Build a `CASE` statement that returns the first non-`NULL` of `exprs`."
   [& exprs]
-  (apply hsql/call :case (mapcat (fn [expr]
-                                   [[:not= expr nil] expr])
-                                 exprs)))
+  (into [:case]
+        (mapcat (fn [expr] [[:not= expr nil] expr]))
+        exprs))
 
 (defn zero-if-null
   "Build a `CASE` statement that will replace results of `expr` with `0` when it's `NULL`, perfect for things like
   counts."
   [expr]
-  (hsql/call :case [:not= expr nil] expr :else 0))
+  [:case [:not= expr nil] expr :else 0])
 
 (defn lowercase-field
   "Lowercase a SQL field, to enter into honeysql query"
   [field]
-  (hsql/call :lower field))
+  [:lower field])
 
 (defn add-45-days-clause
   "Add an appropriate `WHERE` clause to limit query to 45 days"
   [query date_column]
-  (hh/merge-where query [:>
-                         (hx/cast :date date_column)
-                         (hx/cast :date (hx/literal (t/format "yyyy-MM-dd" (t/minus (t/local-date) (t/days 45)))))]))
+  (sql.helpers/where query [:>
+                            (h2x/cast :date date_column)
+                            (h2x/cast :date (h2x/literal (t/format "yyyy-MM-dd" (t/minus (t/local-date) (t/days 45)))))]))
 
 (defn add-search-clause
   "Add an appropriate `WHERE` clause to `query` to see if any of the `fields-to-search` match `query-string`.
 
   (add-search-clause {} \"birds\" :t.name :db.name)"
   [query query-string & fields-to-search]
-  (hh/merge-where query (when (seq query-string)
-                          (let [query-string (str \% (str/lower-case query-string) \%)]
-                            (cons
-                              :or
-                              (for [field fields-to-search]
-                                [:like (lowercase-field field) query-string]))))))
+  (sql.helpers/where query (when (seq query-string)
+                             (let [query-string (str \% (u/lower-case-en query-string) \%)]
+                               (cons
+                                :or
+                                (for [field fields-to-search]
+                                  [:like (lowercase-field field) query-string]))))))
 
 (defn add-sort-clause
   "Add an `ORDER BY` clause to `query` on `sort-column` and `sort-direction`.
 
   Most queries will just have explicit default `ORDER BY` clauses"
   [query sort-column sort-direction]
-  (hh/merge-order-by query [(keyword sort-column) (keyword sort-direction)]))
+  (sql.helpers/order-by query [(keyword sort-column) (keyword sort-direction)]))
 
 (defn card-public-url
   "Return HoneySQL for a `CASE` statement to return a Card's public URL if the `public_uuid` `field` is non-NULL."
   [field]
-  (hsql/call :case
-    [:not= field nil]
-    (hx/concat (urls/public-card-prefix) field)))
+  [:case
+   [:not= field nil]
+   (h2x/concat (urls/public-card-prefix) field)])
 
 (defn native-or-gui
   "Return HoneySQL for a `CASE` statement to format the QueryExecution `:native` column as either `Native` or `GUI`."
   [query-execution-table]
-  (hsql/call :case [:= (hsql/qualify query-execution-table :native) true] (hx/literal "Native") :else (hx/literal "GUI")))
+  [:case [:= (keyword (name query-execution-table) "native") true] (h2x/literal "Native") :else (h2x/literal "GUI")])
 
 (defn card-name-or-ad-hoc
   "HoneySQL for a `CASE` statement to return the name of a Card, or `Ad-hoc` if Card name is `NULL`."
   [card-table]
-  (first-non-null (hsql/qualify card-table :name) (hx/literal "Ad-hoc")))
+  (first-non-null (keyword (name card-table) "name") (h2x/literal "Ad-hoc")))
 
 (defn query-execution-is-download
   "HoneySQL for a `WHERE` clause to restrict QueryExecution rows to downloads (i.e. executions returned in CSV/JSON/XLS
   format)."
   [query-execution-table]
-  [:in (hsql/qualify query-execution-table :context) #{"csv-download" "xlsx-download" "json-download"}])
+  [:in (keyword (name query-execution-table) "context") #{"csv-download" "xlsx-download" "json-download"}])
+
+(defn- format-separator
+  [_separator [x y]]
+  (let [[x-sql & x-args] (sql/format-expr x {:nested true})
+        [y-sql & y-args] (sql/format-expr y {:nested true})]
+    (into [(format "%s SEPARATOR %s" x-sql y-sql)]
+          cat
+          [x-args
+           y-args])))
+
+(sql/register-fn!
+ ::separator
+ format-separator)
 
 (defn group-concat
   "Portable MySQL `group_concat`/Postgres `string_agg`"
   [expr separator]
   (if (= (mdb/db-type) :mysql)
-    (hsql/call :group_concat (hsql/raw (format "%s SEPARATOR %s"
-                                               (hformat/to-sql expr)
-                                               (hformat/to-sql (hx/literal separator)))))
-    (hsql/call :string_agg expr (hx/literal separator))))
+    [:group_concat [::separator expr (h2x/literal separator)]]
+    [:string_agg expr (h2x/literal separator)]))

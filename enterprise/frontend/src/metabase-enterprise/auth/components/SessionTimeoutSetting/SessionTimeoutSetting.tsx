@@ -30,13 +30,21 @@ interface SessionTimeoutSettingProps {
   onChange: (value: TimeoutValue | null) => void;
 }
 
-const validate = (
-  setting: SessionTimeoutSettingProps["setting"],
-  value: TimeoutValue,
-) =>
-  setting.value == null || value.amount > 0
-    ? null
-    : t`Timeout must be greater than 0`;
+// This should mirror the BE validation of the session-timeout setting.
+const validate = (value: TimeoutValue) => {
+  if (value.amount <= 0) {
+    return t`Timeout must be greater than 0`;
+  }
+  // We need to limit the duration from being too large because
+  // the year of the expires date must be 4 digits (#25253)
+  const unitsPerDay = { hours: 24, minutes: 24 * 60 }[value.unit] as number;
+  const days = value.amount / unitsPerDay;
+  const daysIn100Years = 365.25 * 100;
+  if (days >= daysIn100Years) {
+    return t`Timeout must be less than 100 years`;
+  }
+  return null;
+};
 
 const SessionTimeoutSetting = ({
   setting,
@@ -48,7 +56,7 @@ const SessionTimeoutSetting = ({
     setValue(prev => ({ ...prev, ...newValue }));
   };
 
-  const error = validate(setting, value);
+  const error = validate(value);
 
   const handleCommitSettings = (value: TimeoutValue | null) => {
     !error && onChange(value);
@@ -80,6 +88,7 @@ const SessionTimeoutSetting = ({
           <SessionTimeoutInputContainer>
             <SessionTimeoutInput
               type="number"
+              data-testid="session-timeout-input"
               placeholder=""
               value={value?.amount.toString()}
               onChange={e =>
@@ -100,4 +109,5 @@ const SessionTimeoutSetting = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default SessionTimeoutSetting;

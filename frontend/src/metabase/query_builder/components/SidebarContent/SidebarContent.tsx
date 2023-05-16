@@ -55,4 +55,9 @@ function SidebarContent({
   );
 }
 
-export default SidebarContent;
+// eslint-disable-next-line import/no-default-export -- deprecated usage
+export default Object.assign(SidebarContent, {
+  Root: SidebarContentRoot,
+  Header: SidebarHeader,
+  Content: SidebarContentMain,
+});

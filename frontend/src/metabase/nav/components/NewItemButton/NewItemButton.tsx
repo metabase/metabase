@@ -22,9 +22,10 @@ const NewItemButton = ({ collectionId }: NewItemButtonProps) => {
         </NewButton>
       }
       collectionId={collectionId}
-      analyticsContext={"NavBar"}
+      analyticsContext="NavBar"
     />
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default NewItemButton;

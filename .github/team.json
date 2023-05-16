@@ -1,0 +1,46 @@
+{
+  "teams": [
+    {
+      "name": "Question Masters",
+      "label": ".Team/QuestionMasters",
+      "members": [
+        "ranquild",
+        "WiNloSt",
+        "deniskaber",
+        "oisincoveney",
+        "uladzimirdev",
+        "tsmacdonald",
+        "qnkhuat",
+        "calherries",
+        "kamilmielnik"
+      ]
+    },
+    {
+      "name": "Query Processor",
+      "label": ".Team/QueryProcessor :hammer_and_wrench:",
+      "members": [
+        "camsaul",
+        "kulyk",
+        "snoe",
+        "bshepherdson",
+        "john-metabase",
+        "metamben"
+      ]
+    },
+    {
+      "name": "Pixel Police",
+      "label": ".Team/PixelPolice :police_officer:",
+      "members": [
+        "noahmoss",
+        "escherize",
+        "adam-james-v",
+        "qwef",
+        "alxnddr",
+        "iethree",
+        "npfitz",
+        "EmmadUsmani",
+        "JesseSDevaney"
+      ]
+    }
+  ]
+}

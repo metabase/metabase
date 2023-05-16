@@ -2,13 +2,13 @@
   "Common test extension functionality for all SQL drivers."
   (:require
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql.util :as sql.u]
    [metabase.query-processor :as qp]
    [metabase.test.data :as data]
-   [metabase.test.data.interface :as tx]))
+   [metabase.test.data.interface :as tx]
+   [metabase.util.log :as log]))
 
 (driver/register! :sql/test-extensions, :abstract? true)
 
@@ -109,7 +109,6 @@
       (qualify-and-quote driver database-name table-name field-name)
       field-comment)))
 
-
 (defmulti inline-table-comment-sql
   "Return an inline `COMMENT` statement for a table."
   {:arglists '([driver comment])}
@@ -117,13 +116,6 @@
   :hierarchy #'driver/hierarchy)
 
 (defmethod inline-table-comment-sql :sql/test-extensions [_ _] nil)
-
-(defn standard-inline-table-comment-sql
-  "Implementation of `inline-table-comment-sql` for driver test extenstions that wish to use it."
-  [_ table-comment]
-  (when (seq table-comment)
-    (format "COMMENT '%s'" table-comment)))
-
 
 (defmulti standalone-table-comment-sql
   "Return standalone `COMMENT` statement for a table."

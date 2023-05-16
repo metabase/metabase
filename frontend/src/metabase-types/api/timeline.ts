@@ -1,6 +1,6 @@
 import { CardId } from "./card";
 import { Collection, RegularCollectionId } from "./collection";
-import { User } from "./user";
+import { UserInfo } from "./user";
 
 export type TimelineId = number;
 export type TimelineEventId = number;
@@ -25,7 +25,7 @@ export interface TimelineData {
 export interface TimelineEvent extends TimelineEventData {
   id: TimelineEventId;
   timeline_id: TimelineId;
-  creator: User;
+  creator: UserInfo;
   created_at: string;
 }
 

@@ -2,11 +2,12 @@
   "Utility functions for checking passwords against hashes and for making sure passwords match complexity requirements."
   (:require
    [clojure.java.io :as io]
-   [clojure.string :as str]
    [metabase.config :as config]
    [metabase.util :as u])
   (:import
    (org.mindrot.jbcrypt BCrypt)))
+
+(set! *warn-on-reflection* true)
 
 (defn- count-occurrences
   "Return a map of the counts of each class of character for `password`.
@@ -76,7 +77,7 @@
   (with-open [is (.openStream common-passwords-url)
               reader (java.io.BufferedReader. (java.io.InputStreamReader. is))]
     (not-any?
-      (partial = (str/lower-case password))
+      (partial = (u/lower-case-en password))
       (iterator-seq (.. reader lines iterator)))))
 
 (defn is-valid?

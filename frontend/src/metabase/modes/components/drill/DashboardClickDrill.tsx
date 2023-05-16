@@ -1,10 +1,8 @@
-import { push } from "react-router-redux";
 import {
   setOrUnsetParameterValues,
   setParameterValue,
 } from "metabase/dashboard/actions";
 
-import type { ReduxAction } from "metabase-types/store";
 import type Question from "metabase-lib/Question";
 
 import {
@@ -75,4 +73,5 @@ const DashboardClickDrill: Drill = ({ question, clicked = {} }) => {
   ];
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default DashboardClickDrill;

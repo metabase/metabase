@@ -1,4 +1,4 @@
-(ns metabase.sync.field-values-test
+(ns ^:mb/once metabase.sync.field-values-test
   "Tests around the way Metabase syncs FieldValues, and sets the values of `field.has_field_values`."
   (:require
    [clojure.string :as str]
@@ -12,10 +12,10 @@
    [metabase.test :as mt]
    [metabase.test.data :as data]
    [metabase.test.data.one-off-dbs :as one-off-dbs]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (defn- venues-price-field-values []
-  (db/select-one-field :values FieldValues, :field_id (mt/id :venues :price), :type :full))
+  (t2/select-one-fn :values FieldValues, :field_id (mt/id :venues :price), :type :full))
 
 (defn- sync-database!' [step database]
   (let [{:keys [step-info task-history]} (sync.util-test/sync-database! step database)]
@@ -30,14 +30,14 @@
       (is (= [1 2 3 4]
              (venues-price-field-values))))
     (testing "Delete the Field values, make sure they're gone"
-      (db/delete! FieldValues :field_id (mt/id :venues :price))
+      (t2/delete! FieldValues :field_id (mt/id :venues :price))
       (is (= nil
              (venues-price-field-values))))
     (testing "After the delete, a field values should be created, the rest updated"
       (is (= (repeat 2 {:errors 0, :created 1, :updated 0, :deleted 0})
              (sync-database!' "update-field-values" (data/db)))))
     (testing "Now re-sync the table and make sure they're back"
-      (sync/sync-table! (db/select-one Table :id (mt/id :venues)))
+      (sync/sync-table! (t2/select-one Table :id (mt/id :venues)))
       (is (= [1 2 3 4]
              (venues-price-field-values))))))
 
@@ -49,7 +49,7 @@
       (is (= [1 2 3 4]
              (venues-price-field-values))))
     (testing "Update the FieldValues, remove one of the values that should be there"
-      (db/update! FieldValues (db/select-one-id FieldValues :field_id (mt/id :venues :price) :type :full) :values [1 2 3])
+      (t2/update! FieldValues (t2/select-one-pk FieldValues :field_id (mt/id :venues :price) :type :full) {:values [1 2 3]})
       (is (= [1 2 3]
              (venues-price-field-values))))
     (testing "Now re-sync the table and validate the field values updated"
@@ -61,22 +61,22 @@
 
 (deftest sync-should-properly-handle-last-used-at
   (testing "Test that syncing will skip updating inactive FieldValues"
-    (db/update! FieldValues
-                (db/select-one-id FieldValues :field_id (mt/id :venues :price) :type :full)
-                :last_used_at (t/minus (t/offset-date-time) (t/days 20))
-                :values [1 2 3])
+    (t2/update! FieldValues
+                (t2/select-one-pk FieldValues :field_id (mt/id :venues :price) :type :full)
+                {:last_used_at (t/minus (t/offset-date-time) (t/days 20))
+                 :values [1 2 3]})
     (is (= (repeat 2 {:errors 0, :created 0, :updated 0, :deleted 0})
            (sync-database!' "update-field-values" (data/db))))
     (is (= [1 2 3] (venues-price-field-values)))
     (testing "Fetching field values causes an on-demand update and marks Field Values as active"
       (is (partial= {:values [[1] [2] [3] [4]]}
                     (mt/user-http-request :rasta :get 200 (format "field/%d/values" (mt/id :venues :price)))))
-      (is (t/after? (db/select-one-field :last_used_at FieldValues :field_id (mt/id :venues :price) :type :full)
+      (is (t/after? (t2/select-one-fn :last_used_at FieldValues :field_id (mt/id :venues :price) :type :full)
                     (t/minus (t/offset-date-time) (t/hours 2))))
       (testing "Field is syncing after usage"
-        (db/update! FieldValues
-                    (db/select-one-id FieldValues :field_id (mt/id :venues :price) :type :full)
-                    :values [1 2 3])
+        (t2/update! FieldValues
+                    (t2/select-one-pk FieldValues :field_id (mt/id :venues :price) :type :full)
+                    {:values [1 2 3]})
         (is (= (repeat 2 {:errors 0, :created 0, :updated 1, :deleted 0})
                (sync-database!' "update-field-values" (data/db))))
         (is (partial= {:values [[1] [2] [3] [4]]}
@@ -92,8 +92,8 @@
            valid-sandbox-id
            valid-linked-filter-id
            old-full-id
-           new-full-id]             (db/simple-insert-many!
-                                      FieldValues
+           new-full-id]             (t2/insert-returning-pks!
+                                      (t2/table-name FieldValues)
                                       [;; expired sandbox fieldvalues
                                        {:field_id   field-id
                                         :type       "sandbox"
@@ -131,9 +131,9 @@
       (is (= (repeat 2 {:deleted 2})
              (sync-database!' "delete-expired-advanced-field-values" (data/db))))
       (testing "The expired Advanced FieldValues should be deleted"
-        (is (not (db/exists? FieldValues :id [:in [expired-sandbox-id expired-linked-filter-id]]))))
+        (is (not (t2/exists? FieldValues :id [:in [expired-sandbox-id expired-linked-filter-id]]))))
       (testing "The valid Advanced FieldValues and full Fieldvalues(both old and new) should not be deleted"
-        (is (db/exists? FieldValues :id [:in [valid-sandbox-id valid-linked-filter-id new-full-id old-full-id]]))))))
+        (is (t2/exists? FieldValues :id [:in [valid-sandbox-id valid-linked-filter-id new-full-id old-full-id]]))))))
 
 (deftest auto-list-with-cardinality-threshold-test
   ;; A Field with 50 values should get marked as `auto-list` on initial sync, because it should be 'list', but was
@@ -143,17 +143,17 @@
     (one-off-dbs/insert-rows-and-sync! (one-off-dbs/range-str 50))
     (testing "has_field_values should be auto-list"
       (is (= :auto-list
-             (db/select-one-field :has_field_values Field :id (mt/id :blueberries_consumed :str)))))
+             (t2/select-one-fn :has_field_values Field :id (mt/id :blueberries_consumed :str)))))
 
     (testing "... and it should also have some FieldValues"
       (is (= {:values                (one-off-dbs/range-str 50)
               :human_readable_values []
               :has_more_values       false}
-             (into {} (db/select-one [FieldValues :values :human_readable_values :has_more_values]
+             (into {} (t2/select-one [FieldValues :values :human_readable_values :has_more_values]
                                      :field_id (mt/id :blueberries_consumed :str))))))
 
     ;; Manually add an advanced field values to test whether or not it got deleted later
-    (db/insert! FieldValues {:field_id (mt/id :blueberries_consumed :str)
+    (t2/insert! FieldValues {:field_id (mt/id :blueberries_consumed :str)
                              :type :sandbox
                              :hash_key "random-key"})
 
@@ -163,11 +163,11 @@
       (one-off-dbs/insert-rows-and-sync! (one-off-dbs/range-str 50 (+ 100 field-values/auto-list-cardinality-threshold)))
       (testing "has_field_values should have been set to nil."
         (is (= nil
-               (db/select-one-field :has_field_values Field :id (mt/id :blueberries_consumed :str)))))
+               (t2/select-one-fn :has_field_values Field :id (mt/id :blueberries_consumed :str)))))
 
       (testing "its FieldValues should also get deleted."
         (is (= nil
-               (db/select-one FieldValues
+               (t2/select-one FieldValues
                               :field_id (mt/id :blueberries_consumed :str))))))))
 
 (deftest auto-list-with-max-length-threshold-test
@@ -176,12 +176,12 @@
     (one-off-dbs/insert-rows-and-sync! [(str/join (repeat 50 "A"))])
     (testing "has_field_values should be auto-list"
       (is (= :auto-list
-             (db/select-one-field :has_field_values Field :id (mt/id :blueberries_consumed :str)))))
+             (t2/select-one-fn :has_field_values Field :id (mt/id :blueberries_consumed :str)))))
 
     (testing "... and it should also have some FieldValues"
       (is (= {:values                [(str/join (repeat 50 "A"))]
               :human_readable_values []}
-             (into {} (db/select-one [FieldValues :values :human_readable_values]
+             (into {} (t2/select-one [FieldValues :values :human_readable_values]
                                      :field_id (mt/id :blueberries_consumed :str))))))
 
     (testing (str "If the total length of all values exceeded the length threshold, it should get unmarked as auto list "
@@ -189,11 +189,11 @@
       (one-off-dbs/insert-rows-and-sync! [(str/join (repeat (+ 100 field-values/*total-max-length*) "A"))])
       (testing "has_field_values should have been set to nil."
         (is (= nil
-               (db/select-one-field :has_field_values Field :id (mt/id :blueberries_consumed :str)))))
+               (t2/select-one-fn :has_field_values Field :id (mt/id :blueberries_consumed :str)))))
 
       (testing "All of its FieldValues should also get deleted."
         (is (= nil
-               (db/select-one FieldValues
+               (t2/select-one FieldValues
                               :field_id (mt/id :blueberries_consumed :str))))))))
 
 (deftest list-with-cardinality-threshold-test
@@ -202,29 +202,29 @@
       ;; insert 50 bloobs & sync
       (one-off-dbs/insert-rows-and-sync! (one-off-dbs/range-str 50))
       ;; change has_field_values to list
-      (db/update! Field (mt/id :blueberries_consumed :str) :has_field_values "list")
+      (t2/update! Field (mt/id :blueberries_consumed :str) {:has_field_values "list"})
       (testing "has_more_values should initially be false"
         (is (= false
-               (db/select-one-field :has_more_values FieldValues :field_id (mt/id :blueberries_consumed :str)))))
+               (t2/select-one-fn :has_more_values FieldValues :field_id (mt/id :blueberries_consumed :str)))))
       ;; Manually add an advanced field values to test whether or not it got deleted later
-      (db/insert! FieldValues {:field_id (mt/id :blueberries_consumed :str)
+      (t2/insert! FieldValues {:field_id (mt/id :blueberries_consumed :str)
                                :type :sandbox
                                :hash_key "random-key"})
       (testing "adding more values even if it's exceed our cardinality limit, "
         (one-off-dbs/insert-rows-and-sync! (one-off-dbs/range-str 50 (+ 100 metadata-queries/absolute-max-distinct-values-limit)))
         (testing "has_field_values shouldn't change and has_more_values should be true"
           (is (= :list
-                 (db/select-one-field :has_field_values Field
+                 (t2/select-one-fn :has_field_values Field
                                       :id (mt/id :blueberries_consumed :str)))))
         (testing "it should still have FieldValues, but the stored list has at most [metadata-queries/absolute-max-distinct-values-limit] elements"
           (is (= {:values                (take metadata-queries/absolute-max-distinct-values-limit
                                                (one-off-dbs/range-str (+ 100 metadata-queries/absolute-max-distinct-values-limit)))
                   :human_readable_values []
                   :has_more_values       true}
-                 (into {} (db/select-one [FieldValues :values :human_readable_values :has_more_values]
+                 (into {} (t2/select-one [FieldValues :values :human_readable_values :has_more_values]
                                          :field_id (mt/id :blueberries_consumed :str))))))
         (testing "The advanced field values of this field should be deleted"
-          (is (= 0 (db/count FieldValues :field_id (mt/id :blueberries_consumed :str)
+          (is (= 0 (t2/count FieldValues :field_id (mt/id :blueberries_consumed :str)
                              :type [:not= :full]))))))))
 
 (deftest list-with-max-length-threshold-test
@@ -233,20 +233,20 @@
       ;; insert a row with values contain 50 chars
       (one-off-dbs/insert-rows-and-sync! [(str/join (repeat 50 "A"))])
       ;; change has_field_values to list
-      (db/update! Field (mt/id :blueberries_consumed :str) :has_field_values "list")
+      (t2/update! Field (mt/id :blueberries_consumed :str) {:has_field_values "list"})
       (testing "has_more_values should initially be false"
         (is (= false
-               (db/select-one-field :has_more_values FieldValues :field_id (mt/id :blueberries_consumed :str)))))
+               (t2/select-one-fn :has_more_values FieldValues :field_id (mt/id :blueberries_consumed :str)))))
 
       (testing "insert a row with the value length exceeds our length limit\n"
         (one-off-dbs/insert-rows-and-sync! [(str/join (repeat (+ 100 field-values/*total-max-length*) "A"))])
         (testing "has_field_values shouldn't change and has_more_values should be true"
           (is (= :list
-                 (db/select-one-field :has_field_values Field
+                 (t2/select-one-fn :has_field_values Field
                                       :id (mt/id :blueberries_consumed :str)))))
         (testing "it should still have FieldValues, but the stored list is just a sub-list of all distinct values and `has_more_values` = true"
           (is (= {:values                [(str/join (repeat 50 "A"))]
                   :human_readable_values []
                   :has_more_values       true}
-                 (into {} (db/select-one [FieldValues :values :human_readable_values :has_more_values]
+                 (into {} (t2/select-one [FieldValues :values :human_readable_values :has_more_values]
                                         :field_id (mt/id :blueberries_consumed :str))))))))))

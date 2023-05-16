@@ -6,7 +6,7 @@
    [metabase.models :refer [Card Collection Dashboard Database Field Metric NativeQuerySnippet Segment Table]]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (deftest safe-name-test
   (are [s expected] (= (names/safe-name {:name s}) expected)
@@ -25,18 +25,18 @@
 
 (deftest roundtrip-test
   (ts/with-world
-    (doseq [object [(db/select-one Card :id card-id-root)
-                    (db/select-one Card :id card-id)
-                    (db/select-one Card :id card-id-nested)
-                    (db/select-one Table :id table-id)
-                    (db/select-one Field :id category-field-id)
-                    (db/select-one Metric :id metric-id)
-                    (db/select-one Segment :id segment-id)
-                    (db/select-one Collection :id collection-id)
-                    (db/select-one Collection :id collection-id-nested)
-                    (db/select-one Dashboard :id dashboard-id)
-                    (db/select-one Database :id db-id)
-                    (db/select-one NativeQuerySnippet :id snippet-id)]]
+    (doseq [object [(t2/select-one Card :id card-id-root)
+                    (t2/select-one Card :id card-id)
+                    (t2/select-one Card :id card-id-nested)
+                    (t2/select-one Table :id table-id)
+                    (t2/select-one Field :id category-field-id)
+                    (t2/select-one Metric :id metric-id)
+                    (t2/select-one Segment :id segment-id)
+                    (t2/select-one Collection :id collection-id)
+                    (t2/select-one Collection :id collection-id-nested)
+                    (t2/select-one Dashboard :id dashboard-id)
+                    (t2/select-one Database :id db-id)
+                    (t2/select-one NativeQuerySnippet :id snippet-id)]]
       (testing (class object)
         (let [context (names/fully-qualified-name->context (names/fully-qualified-name object))
               id-fn   (some-fn :snippet :field :metric :segment :card :dashboard :collection :table :database)]
@@ -88,7 +88,7 @@
       ; these drivers keep table names lowercased, causing "users" table to clash with our entity name "users"
       (mt/test-drivers #{:postgres :mysql}
         (ts/with-world
-          (let [users-pk-field (db/select-one Field :id users-pk-field-id)
+          (let [users-pk-field (t2/select-one Field :id users-pk-field-id)
                 fq-name        (names/fully-qualified-name users-pk-field)
                 ctx            (names/fully-qualified-name->context fq-name)]
             ;; MySQL doesn't have schemas, so either one of these could be acceptable
@@ -96,3 +96,12 @@
                              "/databases/Fingerprint test-data copy/schemas/public/tables/users/fields/id"} fq-name))
             (is (map? ctx))
             (is (some? (:table ctx)))))))))
+
+(deftest name-for-logging-test
+  (testing "serialization logging name generation from Toucan 2 records (#29322)"
+    (mt/with-temp* [Collection [{collection-id :id} {:name         "A Collection"}]
+                    Card       [{card-id :id}       {:name         "A Card"
+                                                     :collection_id collection-id}]]
+      (are [model s id] (= (format s id) (names/name-for-logging (t2/select-one model :id id)))
+        'Collection ":metabase.models.collection/Collection \"A Collection\" (ID %d)" collection-id
+        'Card       ":model/Card \"A Card\" (ID %d)" card-id))))

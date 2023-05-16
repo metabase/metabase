@@ -104,7 +104,7 @@ const AutocompleteInput = ({
                 id={item}
                 name={item}
                 onSelect={item => {
-                  handleOptionSelect(item);
+                  handleOptionSelect(String(item));
                   closePopover();
                 }}
               >
@@ -118,4 +118,5 @@ const AutocompleteInput = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default AutocompleteInput;

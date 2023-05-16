@@ -3,7 +3,12 @@ import { t } from "ttag";
 import { getIn } from "icepick";
 import { GoogleOAuthProvider, GoogleLogin } from "@react-oauth/google";
 import * as Urls from "metabase/lib/urls";
-import { AuthError, AuthErrorContainer, TextLink } from "./GoogleButton.styled";
+import {
+  GoogleButtonRoot,
+  AuthError,
+  AuthErrorRoot,
+  TextLink,
+} from "./GoogleButton.styled";
 
 export interface GoogleButtonProps {
   clientId: string | null;
@@ -45,7 +50,7 @@ const GoogleButton = ({
   }, []);
 
   return (
-    <div>
+    <GoogleButtonRoot>
       {isCard && clientId ? (
         <GoogleOAuthProvider clientId={clientId}>
           <GoogleLogin
@@ -53,7 +58,7 @@ const GoogleButton = ({
             onSuccess={handleLogin}
             onError={handleError}
             locale={locale}
-            width="366"
+            width="300"
           />
         </GoogleOAuthProvider>
       ) : (
@@ -63,13 +68,13 @@ const GoogleButton = ({
       )}
 
       {errors.length > 0 && (
-        <AuthErrorContainer>
+        <AuthErrorRoot>
           {errors.map((error, index) => (
             <AuthError key={index}>{error}</AuthError>
           ))}
-        </AuthErrorContainer>
+        </AuthErrorRoot>
       )}
-    </div>
+    </GoogleButtonRoot>
   );
 };
 
@@ -78,4 +83,5 @@ const getErrors = (error: unknown): string[] => {
   return errors ? Object.values(errors) : [];
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default GoogleButton;

@@ -7,53 +7,20 @@
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.schema :as mbql.s]
    [metabase.mbql.util :as mbql.u]
-   [metabase.models.action :as action]
-   [metabase.models.database :refer [Database]]
+   [metabase.models :refer [Database]]
    [metabase.models.setting :as setting]
+   [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [schema.core :as schema]
-   [toucan.db :as db]))
-
-(setting/defsetting experimental-enable-actions
-  (i18n/deferred-tru "Whether to enable using the new experimental Actions features globally. (Actions must also be enabled for each Database.)")
-  :default false
-  :type :boolean
-  :visibility :public)
+   [toucan2.core :as t2]))
 
 (setting/defsetting database-enable-actions
-  (i18n/deferred-tru "Whether to enable using the new experimental Actions for a specific Database.")
+  (i18n/deferred-tru "Whether to enable Actions for a specific Database.")
   :default false
   :type :boolean
   :visibility :public
   :database-local :only)
-
-(defn check-actions-enabled
-  "Function that checks that the [[metabase.actions/experimental-enable-actions]] feature flag is enabled, and
-  throws a 400 response if not"
-  []
-  (api/check (experimental-enable-actions) 400 (i18n/tru "Actions are not enabled.")))
-
-(defn +check-actions-enabled
-  "Ring middleware that checks that the [[metabase.actions/experimental-enable-actions]] feature flag is enabled, and
-  returns a 400 response if not"
-  [handler]
-  (fn [request respond raise]
-    (if (experimental-enable-actions)
-      (handler request respond raise)
-      (raise (ex-info (i18n/tru "Actions are not enabled.")
-                      {:status-code 400})))))
-
-(defn +check-data-apps-enabled
-  "Ring middleware that checks that the [[metabase.model.action/check-data-apps-enabled]], and
-  returns a 400 response if not"
-  [handler]
-  (fn [request respond raise]
-    (try
-      (action/check-data-apps-enabled)
-      (catch Exception e
-        (raise e)))
-    (handler request respond raise)))
 
 (defmulti normalize-action-arg-map
   "Normalize the `arg-map` passed to [[perform-action!]] for a specific `action`."
@@ -147,46 +114,53 @@
           (swap! *misc-value-cache* assoc unique-key value))
         value)))
 
+(defn check-actions-enabled-for-database!
+  "Throws an appropriate error if actions are unsupported or disabled for a database, otherwise returns nil."
+  [{db-settings :settings db-id :id driver :engine db-name :name :as db}]
+  (when-not (driver/database-supports? driver :actions db)
+    (throw (ex-info (i18n/tru "{0} Database {1} does not support actions."
+                              (u/qualified-name driver)
+                              (format "%d %s" db-id (pr-str db-name)))
+                    {:status-code 400, :database-id db-id})))
+
+  (binding [setting/*database-local-values* db-settings]
+    (when-not (database-enable-actions)
+      (throw (ex-info (i18n/tru "Actions are not enabled.")
+                      {:status-code 400, :database-id db-id}))))
+
+  nil)
+
+(defn- database-for-action [action-or-id]
+  (t2/select-one Database {:select [:db.*]
+                           :from   :action
+                           :join   [[:report_card :card] [:= :card.id :action.model_id]
+                                    [:metabase_database :db] [:= :db.id :card.database_id]]
+                           :where  [:= :action.id (u/the-id action-or-id)]}))
+
+(defn check-actions-enabled!
+  "Throws an appropriate error if actions are unsupported or disabled for the database of the action's model,
+   otherwise returns nil."
+  [action-or-id]
+  (check-actions-enabled-for-database! (database-for-action action-or-id)))
+
 (defn perform-action!
   "Perform an `action`. Invoke this function for performing actions, e.g. in API endpoints;
   implement [[perform-action!*]] to add support for a new driver/action combo. The shape of `arg-map` depends on the
   `action` being performed. [[action-arg-map-spec]] returns the specific spec used to validate `arg-map` for a given
   `action`."
   [action arg-map]
-  ;; Validate the arg map.
   (let [action  (keyword action)
         spec    (action-arg-map-spec action)
         arg-map (normalize-action-arg-map action arg-map)]
     (when (s/invalid? (s/conform spec arg-map))
       (throw (ex-info (format "Invalid Action arg map for %s: %s" action (s/explain-str spec arg-map))
                       (s/explain-data spec arg-map))))
-    ;; Check that Actions are enabled globally.
-    (when-not (experimental-enable-actions)
-      (throw (ex-info (i18n/tru "Actions are not enabled.")
-                      {:status-code 400})))
-    ;; Check that Actions are enabled for this specific Database.
-    (let [{database-id :database}                         arg-map
-          {db-settings :settings, driver :engine, :as db} (api/check-404 (db/select-one Database :id database-id))]
-      ;; make sure the Driver supports Actions.
-      (when-not (driver/database-supports? driver :actions db)
-        (throw (ex-info (i18n/tru "{0} Database {1} does not support actions."
-                                  (u/qualified-name driver)
-                                  (format "%d %s" (:id db) (pr-str (:name db))))
-                        {:status-code 400, :database-id (:id db)})))
-      ;; bind Database-local Settings for this Database and the misc value cache
-      (binding [setting/*database-local-values* db-settings
-                *misc-value-cache*              (atom {})]
-        ;; make sure Actions are enabled for this Database
-        (when-not (database-enable-actions)
-          (throw (ex-info (i18n/tru "Actions are not enabled for Database {0}." database-id)
-                          {:status-code 400})))
-        ;; TODO -- need to check permissions once we have Actions-specific perms in place. For now just make sure the
-        ;; current User is an admin. This check is only done if [[api/*current-user*]] is bound (which will always be
-        ;; the case when invoked from an API endpoint) to make Actions testable separately from the API endpoints.
-        (when @api/*current-user*
-          (api/check-superuser))
-        ;; Ok, now we can hand off to [[perform-action!*]]
-        (perform-action!* driver action db arg-map)))))
+    (let [{driver :engine :as db} (api/check-404 (t2/select-one Database :id (:database arg-map)))]
+      (check-actions-enabled-for-database! db)
+      (binding [*misc-value-cache* (atom {})]
+        (qp.perms/check-query-action-permissions* arg-map)
+        (driver/with-driver driver
+          (perform-action!* driver action db arg-map))))))
 
 ;;;; Action definitions.
 
@@ -359,7 +333,8 @@
 
 (defn- normalize-bulk-crud-action-arg-map
   [{:keys [database table-id], rows :arg, :as _arg-map}]
-  {:database database, :table-id table-id, :rows (map #(update-keys % u/qualified-name) rows)})
+  {:type :query, :query {:source-table table-id}
+   :database database, :table-id table-id, :rows (map #(update-keys % u/qualified-name) rows)})
 
 (defmethod normalize-action-arg-map :bulk/create
   [_action arg-map]

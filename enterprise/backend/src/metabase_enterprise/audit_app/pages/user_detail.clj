@@ -1,11 +1,10 @@
 (ns metabase-enterprise.audit-app.pages.user-detail
   (:require
-   [honeysql.core :as hsql]
    [metabase-enterprise.audit-app.interface :as audit.i]
    [metabase-enterprise.audit-app.pages.common :as common]
    [metabase-enterprise.audit-app.pages.common.cards :as cards]
    [metabase-enterprise.audit-app.pages.common.dashboards :as dashboards]
-   [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.schema :as su]
    [metabase.util.urls :as urls]
    [ring.util.codec :as codec]
@@ -44,19 +43,19 @@
                                         :from   [:pulse]
                                         :where  [:= :creator_id user-id]}]
                         [:users {:select [[(common/user-full-name :u) :name]
-                                          [(hsql/call :case
-                                             [:= :u.is_superuser true]
-                                             (hx/literal "Admin")
-                                             :else
-                                             (hx/literal "User"))
+                                          [[:case
+                                            [:= :u.is_superuser true]
+                                            (h2x/literal "Admin")
+                                            :else
+                                            (h2x/literal "User")]
                                            :role]
                                           :id
                                           :date_joined
-                                          [(hsql/call :case
-                                             [:= nil :u.sso_source]
-                                             (hx/literal "Email")
-                                             :else
-                                             :u.sso_source)
+                                          [[:case
+                                            [:= nil :u.sso_source]
+                                            (h2x/literal "Email")
+                                            :else
+                                            :u.sso_source]
                                            :signup_method]
                                           :last_name]
                                  :from   [[:core_user :u]]
@@ -91,7 +90,7 @@
                :left-join [[:report_dashboard :d] [:= :vl.model_id :d.id]]
                :where     [:and
                            [:= :vl.user_id user-id]
-                           [:= :vl.model (hx/literal "dashboard")]]
+                           [:= :vl.model (h2x/literal "dashboard")]]
                :group-by  [:d.id]
                :order-by  [[:%count.* :desc]]
                :limit     10})})
@@ -110,7 +109,7 @@
                :left-join [[:report_card :d] [:= :vl.model_id :d.id]]
                :where     [:and
                            [:= :vl.user_id user-id]
-                           [:= :vl.model (hx/literal "card")]]
+                           [:= :vl.model (h2x/literal "card")]]
                :group-by  [:d.id]
                :order-by  [[:%count.* :desc]]
                :limit     10})})
@@ -171,7 +170,7 @@
                           [:coll.name :collection_name]]
               :from      [[:view_log :vl]]
               :where     [:and
-                          [:= :vl.model (hx/literal "dashboard")]
+                          [:= :vl.model (h2x/literal "dashboard")]
                           [:= :vl.user_id user-id]]
               :join      [[:report_dashboard :dash] [:= :vl.model_id :dash.id]]
               :left-join [[:collection :coll] [:= :dash.collection_id :coll.id]]
@@ -232,9 +231,9 @@
                            [:t.name :table_name]
                            :avg_exec_time.avg_running_time_ms
                            :card.cache_ttl
-                           [(hsql/call :case
-                              [:not= :card.public_uuid nil]
-                              (hx/concat (urls/public-card-prefix) :card.public_uuid))
+                           [[:case
+                             [:not= :card.public_uuid nil]
+                             (h2x/concat (urls/public-card-prefix) :card.public_uuid)]
                             :public_link]
                            [:card_views.count :total_views]]
                :from      [[:report_card :card]]
@@ -244,7 +243,7 @@
                            [:collection :coll]      [:= :card.collection_id :coll.id]
                            :card_views              [:= :card.id :card_views.card_id]]
                :where     [:= :card.creator_id user-id]
-               :order-by  [[:%lower.card.name :asc]]})})
+               :order-by  [[[:lower :card.name] :asc]]})})
 
 ;; Table of query downloads (i.e., queries whose results are returned as CSV/JSON/XLS) done by this user, ordered by
 ;; most recent.

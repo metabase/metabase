@@ -1,14 +1,19 @@
 import React, { useState } from "react";
 import { t } from "ttag";
 
-import Tooltip from "metabase/components/Tooltip";
-import { Bookmark, Collection, CollectionItem } from "metabase-types/api";
+import Tooltip from "metabase/core/components/Tooltip";
+
+import ActionMenu from "metabase/collections/components/ActionMenu";
+import ModelDetailLink from "metabase/models/components/ModelDetailLink";
+
+import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
+import Database from "metabase-lib/metadata/Database";
 
 import {
   Body,
   Description,
   Header,
-  HoverMenu,
+  ActionsContainer,
   ItemCard,
   ItemIcon,
   ItemLink,
@@ -16,6 +21,7 @@ import {
 } from "./PinnedItemCard.styled";
 
 type Props = {
+  databases?: Database[];
   bookmarks?: Bookmark[];
   createBookmark: (id: string, collection: string) => void;
   deleteBookmark: (id: string, collection: string) => void;
@@ -37,6 +43,7 @@ function getDefaultDescription(model: string) {
 }
 
 function PinnedItemCard({
+  databases,
   bookmarks,
   createBookmark,
   deleteBookmark,
@@ -65,20 +72,24 @@ function PinnedItemCard({
   };
 
   return (
-    <ItemLink className={className} to={item.getUrl({ isModelDetail: true })}>
+    <ItemLink className={className} to={item.getUrl()}>
       <ItemCard flat>
         <Body>
           <Header>
             <ItemIcon name={icon} />
-            <HoverMenu
-              bookmarks={bookmarks}
-              createBookmark={createBookmark}
-              deleteBookmark={deleteBookmark}
-              item={item}
-              collection={collection}
-              onCopy={onCopy}
-              onMove={onMove}
-            />
+            <ActionsContainer>
+              {item.model === "dataset" && <ModelDetailLink model={item} />}
+              <ActionMenu
+                databases={databases}
+                bookmarks={bookmarks}
+                createBookmark={createBookmark}
+                deleteBookmark={deleteBookmark}
+                item={item}
+                collection={collection}
+                onCopy={onCopy}
+                onMove={onMove}
+              />
+            </ActionsContainer>
           </Header>
           <Tooltip
             tooltip={name}
@@ -114,4 +125,5 @@ function PinnedItemCard({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default PinnedItemCard;

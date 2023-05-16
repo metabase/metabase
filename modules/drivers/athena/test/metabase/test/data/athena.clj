@@ -2,9 +2,9 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [metabase.config :as config]
    [metabase.driver :as driver]
+   [metabase.driver.athena :as athena]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
@@ -14,22 +14,23 @@
    [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
    [metabase.test.data.sql-jdbc.execute :as execute]
    [metabase.test.data.sql-jdbc.load-data :as load-data]
-   [metabase.test.data.sql.ddl :as ddl]))
+   [metabase.test.data.sql.ddl :as ddl]
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
 (sql-jdbc.tx/add-test-extensions! :athena)
 
 ;; during unit tests don't treat athena as having FK support
-(defmethod driver/supports? [:athena :foreign-keys] [_ _] (not config/is-test?))
+(defmethod driver/database-supports? [:athena :foreign-keys] [_driver _feature _db] (not config/is-test?))
 
 ;;; ----------------------------------------------- Connection Details -----------------------------------------------
 
 ;; Athena doesn't support dashes in Table names... we'll just go ahead and convert them all to underscores, even for DB
 ;; names.
 (defmethod ddl.i/format-name :athena
-  [driver table-or-field-name]
-  ((get-method ddl.i/format-name :sql-jdbc) driver (str/replace table-or-field-name #"-" "_")))
+  [driver database-or-table-or-field-name]
+  ((get-method ddl.i/format-name :sql-jdbc) driver (str/replace database-or-table-or-field-name #"-" "_")))
 
 (defmethod tx/dbdef->connection-details :athena
   [driver _context {:keys [database-name], :as _dbdef}]
@@ -58,11 +59,46 @@
   ([_ db-name table-name]            [db-name table-name])
   ([_ db-name table-name field-name] [db-name table-name field-name]))
 
+;;; INSTRUCTIONS FOR MANUALLY DROPPING AND RECREATING A DATABASE
+;;;
+;;; 1. Install the AWS CLI if you haven't done so already
+;;;
+;;; 2. Create a profile using the `MB_ATHENA_TEST_ACCESS_KEY`, `MB_ATHENA_TEST_SECRET_KEY`, and `MB_ATHENA_TEST_REGION`
+;;;    you're using to run tests
+;;;
+;;;    ````
+;;;    aws configure --profile athena-ci
+;;;
+;;; 3. Delete the data from the `MB_ATHENA_TEST_S3_STAGING_DIR` S3 bucket. The data directory is the same as the dataset
+;;;    name you want to delete with hyphens replaced with underscores e.g. `sample-dataset` becomes `sample_dataset`
+;;;
+;;;    ```
+;;;    aws s3 --profile athena-ci rm s3://metabase-ci-athena-results/sample_dataset --recursive
+;;;    ```
+;;;
+;;; 4. Delete the database from the Glue Console.
+;;;
+;;;    ```
+;;;    aws glue --profile athena-ci delete-database --name sample_dataset
+;;;   ```
+;;;
+;;; 5. After this you can recreate the database normally using the test loading code. Note that you must
+;;;    enable [[*allow-database-creation*]] for this to work:
+;;;
+;;;    ```
+;;;    (t2/delete! 'Database :engine "athena", :name "sample-dataset")
+;;;    (binding [metabase.test.data.athena/*allow-database-creation* true]
+;;;      (metabase.driver/with-driver :athena
+;;;        (metabase.test/dataset sample-dataset
+;;;          (metabase.test/db))))
+;;;    ```
+
 ;;; Athena requires backtick-escaped database name for some queries
 (defmethod sql.tx/drop-db-if-exists-sql :athena
-  [driver {:keys [database-name]}]
-  (log/warn "Dropping an Athena database does not delete existing data. You may have to delete in manually from S3 and Glue Console.")
-  (format "DROP DATABASE IF EXISTS `%s` CASCADE;" (ddl.i/format-name driver database-name)))
+  [_driver _dbdef]
+  (log/warn (str "You cannot delete a [non-Iceberg] Athena database using DDL statements. It has to be deleted "
+                 "manually from S3 and the Glue Console. See documentation in [[metabase.test.data.athena]] for "
+                 "instructions for doing this.")))
 
 (defmethod sql.tx/drop-table-if-exists-sql :athena
   [driver {:keys [database-name]} {:keys [table-name]}]
@@ -160,7 +196,10 @@
   ;;; 200 is super slow, and the query ends up being too large around 500 rows... for some reason the same dataset
   ;;; orders table (about 17k rows) stalls out at row 10,000 when loading them 200 at a time. It works when you do 400
   ;;; at a time tho. This is just going to have to be ok for now.
-  (binding [load-data/*chunk-size* 400]
+  (binding [load-data/*chunk-size* 400
+            ;; This tells Athena to convert `timestamp with time zone` literals to `timestamp` because otherwise it gets
+            ;; very fussy! See [[athena/*loading-data*]] for more info.
+            athena/*loading-data*  true]
     (apply load-data/load-data-add-ids-chunked! args)))
 
 (defn- server-connection-details []
@@ -177,11 +216,26 @@
       (log/infof "The following Athena databases have already been created: %s" (pr-str (sort dbs)))
       dbs)))
 
+(def ^:private ^:dynamic *allow-database-creation*
+  "Whether to allow database creation. This is normally disabled to prevent people from accidentally loading duplicate
+  data into Athena or somehow stomping over existing databases and breaking CI. If you want to create a new dataset,
+  change this flag to true and run your code again so the data will be loaded normally. Set it back to false when
+  you're done."
+  false)
+
 (defmethod tx/create-db! :athena
   [driver {:keys [database-name], :as db-def} & options]
   (let [database-name (ddl.i/format-name driver database-name)]
-    (if (contains? (existing-databases) database-name)
+    (cond
+      (contains? (existing-databases) database-name)
       (log/infof "Athena database %s already exists, skipping creation" (pr-str database-name))
+
+      (not *allow-database-creation*)
+      (log/fatalf (str "Athena database creation is disabled: not creating database %s. Tests will likely fail.\n"
+                       "See metabase.test.data.athena/*allow-database-creation* for more info.")
+                  (pr-str database-name))
+
+      :else
       (do
         (log/infof "Creating Athena database %s" (pr-str database-name))
         ;; call the default impl for SQL JDBC drivers

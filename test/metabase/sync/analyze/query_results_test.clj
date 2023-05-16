@@ -1,6 +1,5 @@
 (ns metabase.sync.analyze.query-results-test
   (:require
-   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.mbql.schema :as mbql.s]
    [metabase.models.card :refer [Card]]
@@ -14,12 +13,12 @@
    [metabase.test.sync :as test.sync]
    [metabase.test.util :as tu]
    [metabase.util :as u]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (defn- column->name-keyword [field-or-column-metadata]
   (-> field-or-column-metadata
       :name
-      str/lower-case
+      u/lower-case-en
       keyword))
 
 (defn- name->fingerprints [field-or-metadata]
@@ -65,8 +64,8 @@
 (defn- app-db-venue-fingerprints
   "Get a map of keyword field name (as lowercased keyword) => fingerprint from the app DB."
   []
-  (update-keys (db/select-field->field :name :fingerprint Field :table_id (mt/id :venues))
-               (comp keyword str/lower-case)))
+  (update-keys (t2/select-fn->fn :name :fingerprint Field :table_id (mt/id :venues))
+               (comp keyword u/lower-case-en)))
 
 (deftest mbql-result-metadata-test
   (testing "Getting the result metadata for a card backed by an MBQL query should use the fingerprints from the related fields"

@@ -4,8 +4,9 @@ import Toggle from "metabase/core/components/Toggle";
 import Fields from "metabase/entities/fields";
 import Tables from "metabase/entities/tables";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import { Field, FieldId, ParameterId, Table } from "metabase-types/api";
-import { UiParameter } from "metabase-lib/parameters/types";
+import { FieldId, Parameter, ParameterId } from "metabase-types/api";
+import Table from "metabase-lib/metadata/Table";
+import Field from "metabase-lib/metadata/Field";
 import { usableAsLinkedFilter } from "../../utils/linked-filters";
 import useFilterFields from "./use-filter-fields";
 import {
@@ -25,8 +26,8 @@ import {
 } from "./ParameterLinkedFilters.styled";
 
 export interface ParameterLinkedFiltersProps {
-  parameter: UiParameter;
-  otherParameters: UiParameter[];
+  parameter: Parameter;
+  otherParameters: Parameter[];
   onChangeFilteringParameters: (filteringParameters: ParameterId[]) => void;
   onShowAddParameterPopover: () => void;
 }
@@ -50,7 +51,7 @@ const ParameterLinkedFilters = ({
   );
 
   const handleFilterChange = useCallback(
-    (otherParameter: UiParameter, isFiltered: boolean) => {
+    (otherParameter: Parameter, isFiltered: boolean) => {
       const newParameters = isFiltered
         ? filteringParameters.concat(otherParameter.id)
         : filteringParameters.filter(id => id !== otherParameter.id);
@@ -61,7 +62,7 @@ const ParameterLinkedFilters = ({
   );
 
   const handleExpandedChange = useCallback(
-    (otherParameter: UiParameter, isExpanded: boolean) => {
+    (otherParameter: Parameter, isExpanded: boolean) => {
       setExpandedParameterId(isExpanded ? otherParameter.id : undefined);
     },
     [],
@@ -98,7 +99,7 @@ const ParameterLinkedFilters = ({
               key={otherParameter.id}
               parameter={parameter}
               otherParameter={otherParameter}
-              isFiltered={filteringParameters.includes(parameter.id)}
+              isFiltered={filteringParameters.includes(otherParameter.id)}
               isExpanded={otherParameter.id === expandedParameterId}
               onFilterChange={handleFilterChange}
               onExpandedChange={handleExpandedChange}
@@ -111,12 +112,12 @@ const ParameterLinkedFilters = ({
 };
 
 interface LinkedParameterProps {
-  parameter: UiParameter;
-  otherParameter: UiParameter;
+  parameter: Parameter;
+  otherParameter: Parameter;
   isFiltered: boolean;
   isExpanded: boolean;
-  onFilterChange: (otherParameter: UiParameter, isFiltered: boolean) => void;
-  onExpandedChange: (otherParameter: UiParameter, isExpanded: boolean) => void;
+  onFilterChange: (otherParameter: Parameter, isFiltered: boolean) => void;
+  onExpandedChange: (otherParameter: Parameter, isExpanded: boolean) => void;
 }
 
 const LinkedParameter = ({
@@ -157,8 +158,8 @@ const LinkedParameter = ({
 };
 
 interface LinkedFieldListProps {
-  parameter: UiParameter;
-  otherParameter: UiParameter;
+  parameter: Parameter;
+  otherParameter: Parameter;
 }
 
 const LinkedFieldList = ({
@@ -210,4 +211,5 @@ const LinkedField = ({ fieldId }: LinkedFieldProps) => {
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ParameterLinkedFilters;

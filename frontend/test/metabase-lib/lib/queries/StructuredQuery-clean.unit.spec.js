@@ -66,12 +66,6 @@ describe("StructuredQuery", () => {
         expect(q.clean().query()).toEqual({ "source-table": ORDERS.id });
       });
 
-      it.skip("should remove join referencing invalid source-table", () => {
-        const q = ORDERS.query().setTableId(12345).join([getJoin()]);
-        expect(q.query()).toEqual({ "source-table": 12345, join: [getJoin()] });
-        expect(q.clean().query()).toEqual({ "source-table": 12345 });
-      });
-
       it("should remove join referencing invalid source field", () => {
         const q = ORDERS.query().join(
           getJoin({ condition: ["=", null, PRODUCT_ID_FIELD_REF] }),
@@ -137,16 +131,6 @@ describe("StructuredQuery", () => {
           expect(q.clean().query()).toEqual(q.query());
           expect(q.clean() === q).toBe(true);
         });
-        it.skip("should remove invalid named aggregations", () => {
-          const q = ORDERS.query().aggregate([
-            "aggregation-option",
-            ["invalid"],
-            { "display-name": "foo" },
-          ]);
-          expect(q.clean().query()).toEqual({
-            "source-table": ORDERS.id,
-          });
-        });
       });
 
       describe("metric aggregations", () => {
@@ -169,6 +153,7 @@ describe("StructuredQuery", () => {
           expect(q.clean().query()).toEqual(q.query());
           expect(q.clean() === q).toBe(true);
         });
+
         it("should not remove custom aggregation referencing valid field ID", () => {
           const q = ORDERS.query().aggregate([
             "+",
@@ -177,14 +162,6 @@ describe("StructuredQuery", () => {
           ]);
           expect(q.clean().query()).toEqual(q.query());
           expect(q.clean() === q).toBe(true);
-        });
-        it.skip("should remove aggregations referencing invalid field ID", () => {
-          const q = ORDERS.query().aggregate([
-            ["+", ["avg", ["field", 12345, null]], 1],
-          ]);
-          expect(q.clean().query()).toEqual({
-            "source-table": ORDERS.id,
-          });
         });
       });
     });
@@ -224,22 +201,6 @@ describe("StructuredQuery", () => {
       });
     });
 
-    describe("sorts", () => {
-      it("should not remove sort referencing valid field ID", () => {
-        const q = ORDERS.query().sort([
-          "asc",
-          ["field", ORDERS.TOTAL.id, null],
-        ]);
-        expect(q.clean().query()).toEqual(q.query());
-        expect(q.clean() === q).toBe(true);
-      });
-
-      it.skip("should remove sort referencing invalid field ID", () => {
-        const q = ORDERS.query().sort(["asc", ["field", 12345, null]]);
-        expect(q.clean().query()).toEqual({ "source-table": ORDERS.id });
-      });
-    });
-
     describe("nested", () => {
       it("shouldn't modify valid nested queries", () => {
         const q = ORDERS.query()
@@ -255,12 +216,12 @@ describe("StructuredQuery", () => {
         expect(q.clean() === q).toBe(true);
       });
 
-      it("should remove unecessary layers of nesting via query()", () => {
+      it("should remove unnecessary layers of nesting via query()", () => {
         const q = ORDERS.query().nest();
         expect(q.clean().query()).toEqual({ "source-table": ORDERS.id });
       });
 
-      it("should remove unecessary layers of nesting via question()", () => {
+      it("should remove unnecessary layers of nesting via question()", () => {
         const q = ORDERS.query().nest();
         expect(q.clean().query()).toEqual({ "source-table": ORDERS.id });
       });
@@ -289,7 +250,7 @@ describe("StructuredQuery", () => {
       ).toEqual({
         type: "query",
         database: SAMPLE_DATABASE.id,
-        query: { "source-table": null },
+        query: { "source-table": undefined },
       });
     });
     it("should remove outer empty queries", () => {

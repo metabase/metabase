@@ -4,7 +4,6 @@
    [clojure.data :as data]
    [clojure.set :as set]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [compojure.core :refer [DELETE POST PUT]]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
@@ -12,7 +11,10 @@
    [metabase.models.setting :as setting]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [metabase.util.schema :as su]))
+
+(set! *warn-on-reflection* true)
 
 (def ^:private mb-to-smtp-settings
   {:email-smtp-host     :host
@@ -76,7 +78,7 @@
    (for [[k v] corrections]
      [k (tru "{0} was autocorrected to {1}"
              (name (mb-to-smtp-settings k))
-             (str/upper-case v))])))
+             (u/upper-case-en v))])))
 
 (defn- env-var-values-by-email-setting
   "Returns a map of setting names (keywords) and env var values.
@@ -88,6 +90,7 @@
               :when        (some? value)]
           [setting-name value])))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema PUT "/"
   "Update multiple email Settings. You must be a superuser or have `setting` permission to do this."
   [:as {settings :body}]
@@ -123,6 +126,7 @@
       {:status 400
        :body   (humanize-error-messages response)})))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema DELETE "/"
   "Clear all email related settings. You must be a superuser or have `setting` permission to do this."
   []
@@ -130,6 +134,7 @@
   (setting/set-many! (zipmap (keys mb-to-smtp-settings) (repeat nil)))
   api/generic-204-no-content)
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/test"
   "Send a test email using the SMTP Settings. You must be a superuser or have `setting` permission to do this.
   Returns `{:ok true}` if we were able to send the message successfully, otherwise a standard 400 error response."

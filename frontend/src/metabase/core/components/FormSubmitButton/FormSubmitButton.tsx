@@ -12,7 +12,7 @@ export interface FormSubmitButtonProps extends Omit<ButtonProps, "children"> {
 }
 
 const FormSubmitButton = forwardRef(function FormSubmitButton(
-  { primary, disabled, ...props }: FormSubmitButtonProps,
+  { primary, success, danger, disabled, ...props }: FormSubmitButtonProps,
   ref: Ref<HTMLButtonElement>,
 ) {
   const { status, isDisabled } = useFormSubmitButton({ isDisabled: disabled });
@@ -24,8 +24,8 @@ const FormSubmitButton = forwardRef(function FormSubmitButton(
       ref={ref}
       type="submit"
       primary={primary && !isDisabled}
-      success={status === "fulfilled"}
-      danger={status === "rejected"}
+      success={success || status === "fulfilled"}
+      danger={danger || status === "rejected"}
       disabled={isDisabled}
     >
       {submitTitle}
@@ -54,4 +54,7 @@ const getSubmitButtonTitle = (
   }
 };
 
-export default FormSubmitButton;
+// eslint-disable-next-line import/no-default-export -- deprecated usage
+export default Object.assign(FormSubmitButton, {
+  Button: Button.Root,
+});

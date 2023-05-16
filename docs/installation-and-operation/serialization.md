@@ -14,29 +14,18 @@ To help you out in situations like this, Metabase has a serialization feature wh
 
 If you're looking to do a one-time migration from H2 to MySQL/Postgres, then use the [migration guide instead](./migrating-from-h2.md).
 
-### What gets dumped and loaded
+## What gets dumped and loaded
 
-**Currently, dumps consist of the following Metabase artifacts:**
+Only some artifacts are included in dumps and loads:
 
-- Collections
+- Collections (except for personal collections)
 - Dashboards
 - Saved questions
 - Segments and Metrics defined in the Data Model
 - Public sharing settings for questions and dashboards
-
-**They also contain a number of system settings:**
-
 - Admin Panel settings, except for permissions
 - Database connection settings
 - Data Model settings
-
-**Dumps do _not_ contain:**
-
-- Permission settings
-- User accounts or settings
-- Alerts on saved questions
-- Personal Collections or their contents (except for the user specified with the `--user` flag; see below)
-- Archived items
 
 ### Before creating or loading a dump
 

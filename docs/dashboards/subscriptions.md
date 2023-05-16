@@ -7,7 +7,9 @@ redirect_from:
 
 # Dashboard subscriptions
 
-Dashboard subscriptions are a great way to keep you and your team up to date on the data that matters most. They allow you to send all of the questions on a dashboard via email or Slack. If your Metabase has email or Slack set up, all you need to do is create a dashboard, add subscribers to it, and tell Metabase how often you'd like the send out an update. You can set up as many subscriptions to a dashboard as you like, and if you make any changes to the dashboard, Metabase will update the subscriptions the next time they're delivered.
+Dashboard subscriptions allow you to send the results of questions on a dashboard to people via email or Slack - even to people who lack an account in your Metabase. 
+
+If your Metabase has email or Slack set up, all you need to do is create a dashboard, add subscribers to it, and tell Metabase how often you'd like the send out an update. You can set up as many subscriptions to a dashboard as you like, and if you make any changes to the dashboard, Metabase will update the subscriptions the next time they're delivered.
 
 ## Enabling dashboard subscriptions
 
@@ -39,17 +41,13 @@ For emails, we can:
 
 If you've added filters to your dashboard and set default values for those filters, Metabase will apply those default values to your subscriptions, filtering the results of all questions that are connected to those filters when the subscriptions are sent. To learn more, check out [dashboard filters](./filters.md).
 
-## Email example
-
-![Example dashboard subscription email](./images/example-email.png)
-
-You'll notice in the email that Metabase excludes any text cards on the dashboard, and that the charts look different - Metabase reformats the charts to make them more legible in email. Additionally, tables that exceed either 10 columns or 20 rows get the rest of their results, up to 2000 rows, included as an attachment.
-
 ## Slack subscription options
 
 For Slack subscriptions, you can set up a subscription for a channel (like #general), or for a single person via their Slack username.
 
 ![slack subscription options](./images/slack-subscription-options.png)
+
+> If you rename the subscribed channel in Slack, you'll need to update the subscription to point to the new Slack channel name.
 
 You can specify how often Metabase sends a Slack message (hourly, daily, weekly, or monthly), and whether to send a message if the dashboard fails to return results.
 
@@ -83,7 +81,13 @@ Here's the sidebar where you can set the filter values:
 
 The section to call out here is the **Set filter values for when this gets sent**. Here we've set "VT" as the value for the dashboard's State filter to scope results to records from Vermont. We didn't set a value for the Created_At filter, so the subscription will send the results without a filter applied. If you've set a default value for the filter, the subscription will list the value here.
 
-## Related reading
+## How permissions work with dashboard subscriptions
 
+See [Notification permissions](../permissions/notifications.md).
+
+## Further reading
+
+- [Alerts](../questions/sharing/alerts.md)
 - [Setting up email](../configuring-metabase/email.md)
 - [Setting up Slack](../configuring-metabase/slack.md)
+- [Auditing Metabase](../usage-and-performance-tools/audit.md)

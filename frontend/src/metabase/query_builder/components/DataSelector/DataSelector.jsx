@@ -4,6 +4,7 @@ import { connect } from "react-redux";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import _ from "underscore";
+import cx from "classnames";
 
 import EmptyState from "metabase/components/EmptyState";
 import ListSearchField from "metabase/components/ListSearchField";
@@ -182,6 +183,10 @@ class DataSelectorInner extends Component {
 }
 
 const DataSelector = _.compose(
+  Databases.loadList({
+    loadingAndErrorWrapper: false,
+    listName: "allDatabases",
+  }),
   Search.loadList({
     // If there is at least one dataset,
     // we want to display a slightly different data picker view
@@ -210,7 +215,7 @@ const DataSelector = _.compose(
       hasLoadedDatabasesWithTables: Databases.selectors.getLoaded(state, {
         entityQuery: { include: "tables" },
       }),
-      hasDataAccess: getHasDataAccess(state),
+      hasDataAccess: getHasDataAccess(ownProps.allDatabases ?? []),
     }),
     {
       fetchDatabases: databaseQuery =>
@@ -248,7 +253,7 @@ export class UnconnectedDataSelector extends Component {
   }
 
   static propTypes = {
-    selectedDataBucketId: PropTypes.number,
+    selectedDataBucketId: PropTypes.string,
     selectedDatabaseId: PropTypes.number,
     selectedSchemaId: PropTypes.string,
     selectedTableId: PropTypes.number,
@@ -267,7 +272,6 @@ export class UnconnectedDataSelector extends Component {
     hasTableSearch: PropTypes.bool,
     canChangeDatabase: PropTypes.bool,
     containerClassName: PropTypes.string,
-    requireWriteback: PropTypes.bool,
 
     // from search entity list loader
     allError: PropTypes.bool,
@@ -284,6 +288,7 @@ export class UnconnectedDataSelector extends Component {
     reload: PropTypes.func,
     list: PropTypes.arrayOf(PropTypes.object),
     search: PropTypes.arrayOf(PropTypes.object),
+    allDatabases: PropTypes.arrayOf(PropTypes.object),
   };
 
   static defaultProps = {
@@ -436,6 +441,10 @@ export class UnconnectedDataSelector extends Component {
       await this.hydrateActiveStep();
     }
 
+    if (this.props.selectedDataBucketId === DATA_BUCKET.DATASETS) {
+      this.showSavedQuestionPicker();
+    }
+
     if (this.props.selectedTableId) {
       await this.props.fetchFields(this.props.selectedTableId);
       if (this.isSavedQuestionSelected()) {
@@ -445,8 +454,8 @@ export class UnconnectedDataSelector extends Component {
   }
 
   async componentDidUpdate(prevProps) {
-    const { loading } = this.props;
-    const loadedDatasets = prevProps.loading && !loading;
+    const { allLoading } = this.props;
+    const loadedDatasets = prevProps.allLoading && !allLoading;
 
     // Once datasets are queried with the search endpoint,
     // this would hide the initial loading and view.
@@ -534,7 +543,11 @@ export class UnconnectedDataSelector extends Component {
 
   async hydrateActiveStep() {
     const { steps } = this.props;
-    if (this.isSavedQuestionSelected()) {
+    if (
+      this.isSavedQuestionSelected() ||
+      this.state.selectedDataBucketId === DATA_BUCKET.DATASETS ||
+      this.state.selectedDataBucketId === DATA_BUCKET.SAVED_QUESTIONS
+    ) {
       await this.switchToStep(DATABASE_STEP);
     } else if (this.state.selectedTableId && steps.includes(FIELD_STEP)) {
       await this.switchToStep(FIELD_STEP);
@@ -552,7 +565,13 @@ export class UnconnectedDataSelector extends Component {
   // for steps where there's a single option sometimes we want to automatically select it
   // if `useOnlyAvailable*` prop is provided
   skipSteps() {
+    const { readOnly } = this.props;
     const { activeStep } = this.state;
+
+    if (readOnly) {
+      return;
+    }
+
     if (
       activeStep === DATABASE_STEP &&
       this.props.useOnlyAvailableDatabase &&
@@ -675,7 +694,10 @@ export class UnconnectedDataSelector extends Component {
     const loadersForSteps = {
       // NOTE: make sure to return the action's resulting promise
       [DATABASE_STEP]: () => {
-        return this.props.fetchDatabases(this.props.databaseQuery);
+        return Promise.all([
+          this.props.fetchDatabases(this.props.databaseQuery),
+          this.props.fetchDatabases({ saved: true }),
+        ]);
       },
       [SCHEMA_STEP]: () => {
         return Promise.all([
@@ -750,20 +772,19 @@ export class UnconnectedDataSelector extends Component {
   showSavedQuestionPicker = () =>
     this.setState({ isSavedQuestionPickerShown: true });
 
-  onChangeDataBucket = selectedDataBucketId => {
-    const { databases } = this.props;
+  onChangeDataBucket = async selectedDataBucketId => {
     if (selectedDataBucketId === DATA_BUCKET.RAW_DATA) {
-      this.switchToStep(DATABASE_STEP, { selectedDataBucketId });
+      await this.switchToStep(DATABASE_STEP, { selectedDataBucketId });
       return;
     }
-    this.switchToStep(
+    await this.switchToStep(
       DATABASE_STEP,
       {
         selectedDataBucketId,
       },
       false,
     );
-    const database = databases.find(db => db.is_saved_questions);
+    const database = this.props.databases.find(db => db.is_saved_questions);
     if (database) {
       this.onChangeDatabase(database);
     }
@@ -845,12 +866,13 @@ export class UnconnectedDataSelector extends Component {
   };
 
   getTriggerClasses() {
-    if (this.props.triggerClasses) {
-      return this.props.triggerClasses;
+    const { readOnly, triggerClasses, renderAsSelect } = this.props;
+    if (triggerClasses) {
+      return cx(triggerClasses, { disabled: readOnly });
     }
-    return this.props.renderAsSelect
-      ? "border-medium bg-white block no-decoration"
-      : "flex align-center";
+    return renderAsSelect
+      ? cx("border-medium bg-white block no-decoration", { disabled: readOnly })
+      : cx("flex align-center", { disabled: readOnly });
   }
 
   handleSavedQuestionPickerClose = () => {
@@ -878,7 +900,6 @@ export class UnconnectedDataSelector extends Component {
       onChangeField: this.onChangeField,
 
       // misc
-      requireWriteback: this.props.requireWriteback,
       isLoading: this.state.isLoading,
       hasNextStep: !!this.getNextStep(),
       onBack: this.getPreviousStep() ? this.previousStep : null,
@@ -927,9 +948,10 @@ export class UnconnectedDataSelector extends Component {
 
   isSavedQuestionSelected = () => isVirtualCardId(this.props.selectedTableId);
 
-  handleSavedQuestionSelect = async table => {
+  handleSavedQuestionSelect = async tableOrModelId => {
+    await this.props.fetchFields(tableOrModelId);
     if (this.props.setSourceTableFn) {
-      this.props.setSourceTableFn(table.id);
+      this.props.setSourceTableFn(tableOrModelId);
     }
     this.popover.current.toggle();
     this.handleClose();
@@ -1108,7 +1130,7 @@ export class UnconnectedDataSelector extends Component {
           id="DataPopover"
           autoWidth
           ref={this.popover}
-          isInitiallyOpen={this.props.isInitiallyOpen}
+          isInitiallyOpen={this.props.isInitiallyOpen && !this.props.readOnly}
           containerClassName={this.props.containerClassName}
           triggerElement={this.getTriggerElement}
           triggerClasses={this.getTriggerClasses()}

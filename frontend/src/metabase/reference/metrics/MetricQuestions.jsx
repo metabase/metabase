@@ -7,7 +7,7 @@ import { t } from "ttag";
 import visualizations from "metabase/visualizations";
 import * as Urls from "metabase/lib/urls";
 
-import S from "metabase/components/List.css";
+import S from "metabase/components/List/List.css";
 
 import List from "metabase/components/List";
 import ListItem from "metabase/components/ListItem";
@@ -82,22 +82,19 @@ class MetricQuestions extends Component {
               <div className="wrapper wrapper--trim">
                 <List>
                   {Object.values(entities).map(
-                    (entity, index) =>
+                    entity =>
                       entity &&
                       entity.id &&
                       entity.name && (
-                        <li className="relative" key={entity.id}>
-                          <ListItem
-                            id={entity.id}
-                            index={index}
-                            name={entity.display_name || entity.name}
-                            description={t`Created ${moment(
-                              entity.created_at,
-                            ).fromNow()} by ${entity.creator.common_name}`}
-                            url={Urls.question(entity)}
-                            icon={visualizations.get(entity.display).iconName}
-                          />
-                        </li>
+                        <ListItem
+                          key={entity.id}
+                          name={entity.display_name || entity.name}
+                          description={t`Created ${moment(
+                            entity.created_at,
+                          ).fromNow()} by ${entity.creator.common_name}`}
+                          url={Urls.question(entity)}
+                          icon={visualizations.get(entity.display).iconName}
+                        />
                       ),
                   )}
                 </List>

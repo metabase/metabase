@@ -1,25 +1,29 @@
 (ns metabase.driver.presto-jdbc-test
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure.test :refer :all]
-            [honeysql.core :as hsql]
-            [honeysql.format :as hformat]
-            [java-time :as t]
-            [metabase.api.database :as api.database]
-            [metabase.db.metadata-queries :as metadata-queries]
-            [metabase.driver :as driver]
-            [metabase.driver.presto-jdbc :as presto-jdbc]
-            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-            [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.models.database :refer [Database]]
-            [metabase.models.field :refer [Field]]
-            [metabase.models.table :as table :refer [Table]]
-            [metabase.query-processor :as qp]
-            [metabase.sync :as sync]
-            [metabase.test :as mt]
-            [metabase.test.data.presto-jdbc :as data.presto-jdbc]
-            [metabase.test.fixtures :as fixtures]
-            [toucan.db :as db])
-  (:import java.io.File))
+  (:require
+   [clojure.java.jdbc :as jdbc]
+   [clojure.test :refer :all]
+   [honeysql.format :as hformat]
+   [java-time :as t]
+   [metabase.api.database :as api.database]
+   [metabase.db.metadata-queries :as metadata-queries]
+   [metabase.driver :as driver]
+   [metabase.driver.presto-jdbc :as presto-jdbc]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.models.database :refer [Database]]
+   [metabase.models.field :refer [Field]]
+   [metabase.models.table :as table :refer [Table]]
+   [metabase.query-processor :as qp]
+   [metabase.sync :as sync]
+   [metabase.test :as mt]
+   [metabase.test.data.presto-jdbc :as data.presto-jdbc]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.util.honeysql-extensions :as hx]
+   [toucan2.core :as t2])
+  (:import
+   (java.io File)))
+
+(set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -66,7 +70,7 @@
                        :database-type "integer"
                        :base-type     :type/Integer
                        :database-position 0}}}
-           (driver/describe-table :presto-jdbc (mt/db) (db/select-one 'Table :id (mt/id :venues)))))))
+           (driver/describe-table :presto-jdbc (mt/db) (t2/select-one 'Table :id (mt/id :venues)))))))
 
 (deftest table-rows-sample-test
   (mt/test-driver :presto-jdbc
@@ -75,9 +79,9 @@
             [3 "The Apple Pan"]
             [4 "Wurstküche"]
             [5 "Brite Spot Family Restaurant"]]
-           (->> (metadata-queries/table-rows-sample (db/select-one Table :id (mt/id :venues))
-                  [(db/select-one Field :id (mt/id :venues :id))
-                   (db/select-one Field :id (mt/id :venues :name))]
+           (->> (metadata-queries/table-rows-sample (t2/select-one Table :id (mt/id :venues))
+                  [(t2/select-one Field :id (mt/id :venues :id))
+                   (t2/select-one Field :id (mt/id :venues :name))]
                   (constantly conj))
                 (sort-by first)
                 (take 5))))))
@@ -87,7 +91,7 @@
     (is (= {:select ["name" "id"]
             :from   [{:select   [[:default.categories.name "name"]
                                  [:default.categories.id "id"]
-                                 [(hsql/raw "row_number() OVER (ORDER BY \"default\".\"categories\".\"id\" ASC)")
+                                 [(hx/raw "row_number() OVER (ORDER BY \"default\".\"categories\".\"id\" ASC)")
                                   :__rownum__]]
                       :from     [:default.categories]
                       :order-by [[:default.categories.id :asc]]}]
@@ -158,12 +162,14 @@
                                      :additional-options "Option1=Value1&Option2=Value2"})))))
 
 (deftest honeysql-tests
-  (testing "Complex HoneySQL conversions work as expected"
-    (testing "unix-timestamp with microsecond precision"
-      (is (= [(str "date_add('millisecond', mod((1623963256123456 / 1000), 1000),"
-                   " from_unixtime(((1623963256123456 / 1000) / 1000), 'UTC'))")]
-             (-> (sql.qp/unix-timestamp->honeysql :presto-jdbc :microseconds (hsql/raw 1623963256123456))
-               (hformat/format)))))))
+  (mt/test-driver :presto-jdbc
+    (mt/with-everything-store
+      (testing "Complex HoneySQL conversions work as expected"
+        (testing "unix-timestamp with microsecond precision"
+          (is (= [(str "date_add('millisecond', mod((1623963256123456 / 1000), 1000),"
+                       " from_unixtime(((1623963256123456 / 1000) / 1000), 'UTC'))")]
+                 (-> (sql.qp/unix-timestamp->honeysql :presto-jdbc :microseconds (hx/raw 1623963256123456))
+                     (hformat/format)))))))))
 
 (defn- clone-db-details
   "Clones the details of the current DB ensuring fresh copies for the secrets
@@ -200,7 +206,7 @@
             ;; same as test_data, but with schema, so should NOT pick up venues, users, etc.
             (sync/sync-database! db)
             (is (= [{:name t, :schema s, :db_id (mt/id)}]
-                   (map #(select-keys % [:name :schema :db_id]) (db/select Table :db_id (mt/id)))))))
+                   (map #(select-keys % [:name :schema :db_id]) (t2/select Table :db_id (mt/id)))))))
         (execute-ddl! [(format "DROP TABLE %s.%s" s t)
                        (format "DROP SCHEMA %s" s)])))))
 

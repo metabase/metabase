@@ -17,6 +17,7 @@ import Collections, {
   ROOT_COLLECTION,
   CollectionTreeItem,
 } from "metabase/entities/collections";
+import Databases from "metabase/entities/databases";
 import { logout } from "metabase/auth/actions";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import { getHasDataAccess, getHasOwnDatabase } from "metabase/selectors/data";
@@ -26,6 +27,7 @@ import {
   currentUserPersonalCollections,
   nonPersonalOrArchivedCollection,
 } from "metabase/collections/utils";
+import Database from "metabase-lib/metadata/Database";
 
 import { MainNavbarProps, SelectedItem } from "../types";
 import NavbarLoadingView from "../NavbarLoadingView";
@@ -34,12 +36,12 @@ import MainNavbarView from "./MainNavbarView";
 
 type NavbarModal = "MODAL_NEW_COLLECTION" | null;
 
-function mapStateToProps(state: State) {
+function mapStateToProps(state: State, { databases = [] }: DatabaseProps) {
   return {
     currentUser: getUser(state),
     isAdmin: getUserIsAdmin(state),
-    hasDataAccess: getHasDataAccess(state),
-    hasOwnDatabase: getHasOwnDatabase(state),
+    hasDataAccess: getHasDataAccess(databases),
+    hasOwnDatabase: getHasOwnDatabase(databases),
     bookmarks: getOrderedBookmarks(state),
   };
 }
@@ -62,6 +64,10 @@ interface Props extends MainNavbarProps {
   logout: () => void;
   onReorderBookmarks: (bookmarks: Bookmark[]) => void;
   onChangeLocation: (location: LocationDescriptor) => void;
+}
+
+interface DatabaseProps {
+  databases?: Database[];
 }
 
 function MainNavbarContainer({
@@ -174,6 +180,7 @@ function MainNavbarContainer({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   Bookmarks.loadList({
     loadingAndErrorWrapper: false,
@@ -184,7 +191,14 @@ export default _.compose(
     loadingAndErrorWrapper: false,
   }),
   Collections.loadList({
-    query: () => ({ tree: true, "exclude-archived": true }),
+    query: () => ({
+      tree: true,
+      "exclude-other-user-collections": true,
+      "exclude-archived": true,
+    }),
+    loadingAndErrorWrapper: false,
+  }),
+  Databases.loadList({
     loadingAndErrorWrapper: false,
   }),
   connect(mapStateToProps, mapDispatchToProps),

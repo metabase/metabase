@@ -1,14 +1,30 @@
 import React from "react";
-import { renderWithProviders, screen } from "__support__/ui";
+import fetchMock from "fetch-mock";
+
+import userEvent from "@testing-library/user-event";
+import {
+  renderWithProviders,
+  screen,
+  waitForElementToBeRemoved,
+} from "__support__/ui";
 import {
   SAMPLE_DATABASE,
   ORDERS,
   metadata,
 } from "__support__/sample_database_fixture";
 import { setupEnterpriseTest } from "__support__/enterprise";
-import MetabaseSettings from "metabase/lib/settings";
+import { mockSettings } from "__support__/settings";
+
+import { createMockUser } from "metabase-types/api/mocks";
+
 import Question from "metabase-lib/Question";
+
 import { QuestionInfoSidebar } from "./QuestionInfoSidebar";
+
+// eslint-disable-next-line react/display-name, react/prop-types
+jest.mock("metabase/core/components/Link", () => ({ to, ...props }) => (
+  <a {...props} href={to} />
+));
 
 const BASE_QUESTION = {
   id: 1,
@@ -36,22 +52,6 @@ const BASE_QUESTION = {
   ],
 };
 
-function mockCachingSettings({ enabled = true } = {}) {
-  const original = MetabaseSettings.get.bind(MetabaseSettings);
-  const spy = jest.spyOn(MetabaseSettings, "get");
-  spy.mockImplementation(key => {
-    const settings = {
-      "enable-query-caching": enabled,
-      "query-caching-min-ttl": 10000,
-      "application-name": "Metabase Test",
-      version: { tag: "" },
-      "is-hosted?": false,
-      "enable-enhancements?": false,
-    };
-    return settings[key] ?? original(key);
-  });
-}
-
 function getQuestion(card) {
   return new Question(
     {
@@ -73,22 +73,38 @@ function getDataset(card) {
   );
 }
 
-function setup({ question, cachingEnabled = true } = {}) {
-  mockCachingSettings({
-    enabled: cachingEnabled,
+async function setup({ question, cachingEnabled = true } = {}) {
+  const user = createMockUser();
+
+  const settings = mockSettings({
+    "enable-query-caching": cachingEnabled,
+    "query-caching-min-ttl": 10000,
   });
+
+  const id = question.id();
+  fetchMock
+    .get(`path:/api/card/${id}`, question.card())
+    .get({ url: `path:/api/revision`, query: { entity: "card", id } }, [])
+    .get("path:/api/user", [user])
+    .get(`path:/api/user/${user.id}`, user);
 
   const onSave = jest.fn();
 
-  return renderWithProviders(
+  renderWithProviders(
     <QuestionInfoSidebar question={question} onSave={onSave} />,
     {
       withSampleDatabase: true,
+      storeInitialState: {
+        settings: settings,
+        currentUser: user,
+      },
     },
   );
+
+  await waitForElementToBeRemoved(() => screen.queryByText(/Loading/i));
 }
 
-describe("QuestionDetailsSidebarPanel", () => {
+describe("QuestionInfoSidebar", () => {
   describe("common features", () => {
     [
       { type: "Saved Question", getObject: getQuestion },
@@ -97,9 +113,9 @@ describe("QuestionDetailsSidebarPanel", () => {
       const { type, getObject } = testCase;
 
       describe(type, () => {
-        it("displays description", () => {
-          setup({ question: getObject({ description: "Foo bar" }) });
-          expect(screen.queryByText("Foo bar")).toBeInTheDocument();
+        it("displays description", async () => {
+          await setup({ question: getObject({ description: "Foo bar" }) });
+          expect(screen.getByText("Foo bar")).toBeInTheDocument();
         });
       });
     });
@@ -107,8 +123,8 @@ describe("QuestionDetailsSidebarPanel", () => {
 
   describe("cache ttl field", () => {
     describe("oss", () => {
-      it("is not shown", () => {
-        setup({ question: getQuestion() });
+      it("is not shown", async () => {
+        await setup({ question: getQuestion() });
         expect(
           screen.queryByText("Cache Configuration"),
         ).not.toBeInTheDocument();
@@ -120,13 +136,13 @@ describe("QuestionDetailsSidebarPanel", () => {
         setupEnterpriseTest();
       });
 
-      it("is shown if caching is enabled", () => {
-        setup({ question: getQuestion({ cache_ttl: 2 }) });
-        expect(screen.queryByText("Cache Configuration")).toBeInTheDocument();
+      it("is shown if caching is enabled", async () => {
+        await setup({ question: getQuestion({ cache_ttl: 2 }) });
+        expect(screen.getByText("Cache Configuration")).toBeInTheDocument();
       });
 
-      it("is hidden if caching is disabled", () => {
-        setup({ question: getQuestion(), cachingEnabled: false });
+      it("is hidden if caching is disabled", async () => {
+        await setup({ question: getQuestion(), cachingEnabled: false });
         expect(
           screen.queryByText("Cache Configuration"),
         ).not.toBeInTheDocument();
@@ -139,35 +155,53 @@ describe("QuestionDetailsSidebarPanel", () => {
       setupEnterpriseTest();
     });
 
-    it("should not show verification badge if unverified", () => {
-      setup({ question: getQuestion({ moderation_reviews: [] }) });
+    it("should not show verification badge if unverified", async () => {
+      await setup({ question: getQuestion({ moderation_reviews: [] }) });
       expect(screen.queryByText(/verified this/)).not.toBeInTheDocument();
     });
 
-    it("should show verification badge if verified", () => {
-      setup({ question: getQuestion() });
-      expect(screen.queryByText(/verified this/)).toBeInTheDocument();
+    it("should show verification badge if verified", async () => {
+      await setup({ question: getQuestion() });
+      expect(screen.getByText(/verified this/)).toBeInTheDocument();
+    });
+  });
+
+  describe("model detail link", () => {
+    it("is shown for models", async () => {
+      const model = getDataset();
+      await setup({ question: model });
+
+      const link = screen.getByText("Model details");
+
+      expect(link).toBeInTheDocument();
+      expect(link).toHaveAttribute("href", `${model.getUrl()}/detail`);
+    });
+
+    it("isn't shown for questions", async () => {
+      await setup({ question: getQuestion() });
+      expect(screen.queryByText("Model details")).not.toBeInTheDocument();
     });
   });
 
   describe("read-only permissions", () => {
-    it("should disable input field for description", () => {
-      setup({
+    it("should disable input field for description", async () => {
+      await setup({
         question: getQuestion({ description: "Foo bar", can_write: false }),
       });
+      // show input
+      userEvent.click(screen.getByTestId("editable-text"));
+
       expect(screen.queryByPlaceholderText("Add description")).toHaveValue(
         "Foo bar",
       );
       expect(screen.queryByPlaceholderText("Add description")).toBeDisabled();
     });
 
-    it("should display 'No description' if description is null and user does not have write permissions", () => {
-      setup({
+    it("should display 'No description' if description is null and user does not have write permissions", async () => {
+      await setup({
         question: getQuestion({ description: null, can_write: false }),
       });
-      expect(
-        screen.queryByPlaceholderText("No description"),
-      ).toBeInTheDocument();
+      expect(screen.getByPlaceholderText("No description")).toBeInTheDocument();
       expect(screen.queryByPlaceholderText("No description")).toBeDisabled();
     });
   });

@@ -14,7 +14,7 @@ import "./TableInteractive.css";
 import Icon from "metabase/components/Icon";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import Button from "metabase/core/components/Button";
-import Tooltip from "metabase/components/Tooltip";
+import Tooltip from "metabase/core/components/Tooltip";
 
 import { formatValue } from "metabase/lib/formatting";
 import {
@@ -988,6 +988,7 @@ class TableInteractive extends Component {
               })}
               onMouseEnter={this.handleOnMouseEnter}
               onMouseLeave={this.handleOnMouseLeave}
+              data-testid="TableInteractive-root"
             >
               <canvas
                 className="spread"
@@ -1108,6 +1109,7 @@ class TableInteractive extends Component {
 
       setTimeout(() => {
         const end = Date.now();
+        // eslint-disable-next-line no-console
         console.log(end - start);
         start = end;
 

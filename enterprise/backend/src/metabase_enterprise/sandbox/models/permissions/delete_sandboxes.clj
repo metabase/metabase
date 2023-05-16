@@ -1,30 +1,31 @@
 (ns metabase-enterprise.sandbox.models.permissions.delete-sandboxes
   (:require
-   [clojure.tools.logging :as log]
-   [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
-   [metabase.models.table :refer [Table]]
+   [metabase-enterprise.sandbox.models.group-table-access-policy
+    :refer [GroupTableAccessPolicy]]
+   [metabase.db.query :as mdb.query]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [toucan.db :as db]))
+   [metabase.util.log :as log]
+   [toucan2.core :as t2]))
 
 (defn- delete-gtaps-with-condition! [group-or-id condition]
   (when (seq condition)
     (let [conditions (into
                       [:and
-                       [:= :gtap.group_id (u/the-id group-or-id)]]
+                       [:= :sandboxes.group_id (u/the-id group-or-id)]]
                       [condition])]
       (log/debugf "Deleting GTAPs for Group %d with conditions %s" (u/the-id group-or-id) (pr-str conditions))
       (try
-        (if-let [gtap-ids (not-empty (set (map :id (db/query
-                                                      {:select    [[:gtap.id :id]]
-                                                       :from      [[GroupTableAccessPolicy :gtap]]
-                                                       :left-join [[Table :table]
-                                                                   [:= :gtap.table_id :table.id]]
-                                                       :where     conditions}))))]
+        (if-let [gtap-ids (not-empty (set (map :id (mdb.query/query
+                                                    {:select    [[:sandboxes.id :id]]
+                                                     :from      [[:sandboxes]]
+                                                     :left-join [[:metabase_table :table]
+                                                                 [:= :sandboxes.table_id :table.id]]
+                                                     :where     conditions}))))]
           (do
             (log/debugf "Deleting %d matching GTAPs: %s" (count gtap-ids) (pr-str gtap-ids))
-            (db/delete! GroupTableAccessPolicy :id [:in gtap-ids]))
+            (t2/delete! GroupTableAccessPolicy :id [:in gtap-ids]))
           (log/debug "No matching GTAPs need to be deleted."))
         (catch Throwable e
           (throw (ex-info (tru "Error deleting Sandboxes: {0}" (ex-message e))

@@ -1,17 +1,20 @@
 (ns metabase.query-processor.middleware.cache-backend.db
   (:require
-   [clojure.java.jdbc :as jdbc]
-   [clojure.tools.logging :as log]
-   [honeysql.core :as hsql]
+   [honey.sql :as sql]
    [java-time :as t]
    [metabase.db :as mdb]
    [metabase.models.query-cache :refer [QueryCache]]
    [metabase.query-processor.middleware.cache-backend.interface :as i]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [trs]]
-   [toucan.db :as db])
+   [metabase.util.log :as log]
+   [toucan.db :as db]
+   [toucan2.connection :as t2.connection]
+   [toucan2.core :as t2])
   (:import
    (java.sql Connection PreparedStatement ResultSet Types)))
+
+(set! *warn-on-reflection* true)
 
 (defn- seconds-ago [n]
   (let [[unit n] (if-not (integer? n)
@@ -25,14 +28,15 @@
   ;;
   ;; Since application DB can change at run time (during tests) it's not just a plain delay
   (let [f (memoize (fn [_db-type quoting-style]
-                     (first (hsql/format {:select   [:results]
-                                          :from     [QueryCache]
-                                          :where    [:and
-                                                     [:= :query_hash (hsql/raw "?")]
-                                                     [:>= :updated_at (hsql/raw "?")]]
-                                          :order-by [[:updated_at :desc]]
-                                          :limit    1}
-                                         :quoting quoting-style))))]
+                     (first (sql/format {:select   [:results]
+                                         :from     [:query_cache]
+                                         :where    [:and
+                                                    [:= :query_hash [:raw "?"]]
+                                                    [:>= :updated_at [:raw "?"]]]
+                                         :order-by [[:updated_at :desc]]
+                                         :limit    [:inline 1]}
+                                        {:quoted  true
+                                         :dialect quoting-style}))))]
     (fn []
       (f (mdb/db-type) (db/quoting-style)))))
 
@@ -54,13 +58,13 @@
         (throw e)))))
 
 (defn- cached-results [query-hash max-age-seconds respond]
-  (with-open [conn (jdbc/get-connection (db/connection))
-              stmt (prepare-statement conn query-hash max-age-seconds)
-              rs   (.executeQuery stmt)]
-    ;; VERY IMPORTANT! Bind [[db/*db-connection*]] so it will get reused elsewhere for the duration of results
-    ;; reduction, otherwise we can potentially end up deadlocking if we need to acquire another connection for one
-    ;; reason or another, such as recording QueryExecutions
-    (binding [db/*db-connection* {:connection conn}]
+  ;; VERY IMPORTANT! Open up a connection (which internally binds [[toucan2.connection/*current-connectable*]] so it
+  ;; will get reused elsewhere for the duration of results reduction, otherwise we can potentially end up deadlocking if
+  ;; we need to acquire another connection for one reason or another, such as recording QueryExecutions
+  (t2/with-connection [conn]
+    (with-open [stmt (prepare-statement conn query-hash max-age-seconds)
+                rs   (.executeQuery stmt)]
+      (assert (= t2.connection/*current-connectable* conn))
       (if-not (.next rs)
         (respond nil)
         (with-open [is (.getBinaryStream rs 1)]
@@ -72,8 +76,8 @@
   {:pre [(number? max-age-seconds)]}
   (log/tracef "Purging old cache entries.")
   (try
-    (db/simple-delete! QueryCache
-                       :updated_at [:<= (seconds-ago max-age-seconds)])
+    (t2/delete! (t2/table-name QueryCache)
+                :updated_at [:<= (seconds-ago max-age-seconds)])
     (catch Throwable e
       (log/error e (trs "Error purging old cache entries"))))
   nil)
@@ -84,13 +88,13 @@
   [^bytes query-hash ^bytes results]
   (log/debug (trs "Caching results for query with hash {0}." (pr-str (i/short-hex-hash query-hash))))
   (try
-    (or (db/update-where! QueryCache {:query_hash query-hash}
-          :updated_at (t/offset-date-time)
-          :results    results)
-        (db/insert! QueryCache
-          :updated_at (t/offset-date-time)
-          :query_hash query-hash
-          :results    results))
+    (or (pos? (t2/update! QueryCache {:query_hash query-hash}
+                          {:updated_at (t/offset-date-time)
+                           :results    results}))
+        (first (t2/insert-returning-instances! QueryCache
+                                               :updated_at (t/offset-date-time)
+                                               :query_hash query-hash
+                                               :results    results)))
     (catch Throwable e
       (log/error e (trs "Error saving query results to cache."))))
   nil)

@@ -1,24 +1,33 @@
 import React, { useMemo } from "react";
-import _ from "underscore";
+import { connect } from "react-redux";
 import { t } from "ttag";
-import Tooltip from "metabase/components/Tooltip";
+import _ from "underscore";
+import Tooltip from "metabase/core/components/Tooltip";
+import { getUser } from "metabase/selectors/user";
+import { getSetting } from "metabase/selectors/settings";
 import { User } from "metabase-types/api";
+import { State } from "metabase-types/store";
 import {
   GreetingLogo,
   GreetingMessage,
   GreetingRoot,
 } from "./HomeGreeting.styled";
 
-export interface HomeGreetingProps {
-  user: User;
+interface StateProps {
+  user: User | null;
   showLogo?: boolean;
 }
 
-const HomeGreeting = ({
-  user: { first_name },
-  showLogo,
-}: HomeGreetingProps): JSX.Element => {
-  const message = useMemo(() => getMessage(first_name), [first_name]);
+type HomeGreetingProps = StateProps;
+
+const mapStateToProps = (state: State): StateProps => ({
+  user: getUser(state),
+  showLogo: getSetting(state, "show-metabot"),
+});
+
+const HomeGreeting = ({ user, showLogo }: HomeGreetingProps): JSX.Element => {
+  const name = user?.first_name;
+  const message = useMemo(() => getMessage(name), [name]);
 
   return (
     <GreetingRoot>
@@ -35,7 +44,7 @@ const HomeGreeting = ({
   );
 };
 
-const getMessage = (name: string | null): string => {
+const getMessage = (name: string | null | undefined): string => {
   const namePart = name ? `, ${name}` : "";
   const options = [
     t`Hey there${namePart}`,
@@ -48,4 +57,5 @@ const getMessage = (name: string | null): string => {
   return _.sample(options) ?? "";
 };
 
-export default HomeGreeting;
+// eslint-disable-next-line import/no-default-export -- deprecated usage
+export default connect(mapStateToProps)(HomeGreeting);

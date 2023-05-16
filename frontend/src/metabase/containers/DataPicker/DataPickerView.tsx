@@ -1,8 +1,6 @@
 import React, { useMemo } from "react";
 import { t } from "ttag";
 
-import EmptyState from "metabase/components/EmptyState";
-
 import { MIN_SEARCH_LENGTH } from "./constants";
 
 import type { DataPickerProps, DataPickerDataType } from "./types";
@@ -13,7 +11,8 @@ import DataTypePicker from "./DataTypePicker";
 import DataSearch from "./DataSearch";
 import RawDataPicker from "./RawDataPicker";
 
-import { Root, EmptyStateContainer } from "./DataPickerView.styled";
+import EmptyState from "./EmptyState";
+import { Root } from "./DataPickerView.styled";
 
 interface DataPickerViewProps extends DataPickerProps {
   dataTypes: DataTypeInfoItem[];
@@ -39,19 +38,16 @@ function DataPickerViewContent({
 
   if (!hasDataAccess) {
     return (
-      <EmptyStateContainer>
-        <EmptyState
-          message={t`To pick some data, you'll need to add some first`}
-          icon="database"
-        />
-      </EmptyStateContainer>
+      <EmptyState
+        message={t`To pick some data, you'll need to add some first`}
+        icon="database"
+      />
     );
   }
 
   if (searchQuery.trim().length > MIN_SEARCH_LENGTH) {
     return (
       <DataSearch
-        value={value}
         searchQuery={searchQuery}
         availableDataTypes={availableDataTypes}
         onChange={onChange}
@@ -86,4 +82,5 @@ function DataPickerView(props: DataPickerViewProps) {
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default DataPickerView;

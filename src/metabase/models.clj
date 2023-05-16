@@ -2,7 +2,6 @@
   (:require
    [metabase.models.action :as action]
    [metabase.models.activity :as activity]
-   [metabase.models.app :as app]
    [metabase.models.application-permissions-revision :as a-perm-revision]
    [metabase.models.bookmark :as bookmark]
    [metabase.models.card :as card]
@@ -12,6 +11,7 @@
    [metabase.models.dashboard :as dashboard]
    [metabase.models.dashboard-card :as dashboard-card]
    [metabase.models.dashboard-card-series :as dashboard-card-series]
+   [metabase.models.dashboard-tab :as dashboard-tab]
    [metabase.models.database :as database]
    [metabase.models.dimension :as dimension]
    [metabase.models.field :as field]
@@ -50,7 +50,6 @@
 ;; Fool the linter
 (comment action/keep-me
          activity/keep-me
-         app/keep-me
          card/keep-me
          bookmark/keep-me
          collection/keep-me
@@ -58,6 +57,7 @@
          dashboard/keep-me
          dashboard-card/keep-me
          dashboard-card-series/keep-me
+         dashboard-tab/keep-me
          database/keep-me
          dimension/keep-me
          field/keep-me
@@ -93,9 +93,8 @@
          view-log/keep-me)
 
 (p/import-vars
- [action Action HTTPAction ModelAction QueryAction]
+ [action Action HTTPAction ImplicitAction QueryAction]
  [activity Activity]
- [app App]
  [bookmark CardBookmark]
  [bookmark DashboardBookmark]
  [bookmark CollectionBookmark]

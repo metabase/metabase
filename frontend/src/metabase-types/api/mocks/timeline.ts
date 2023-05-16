@@ -4,7 +4,7 @@ import {
   TimelineData,
   TimelineEventData,
 } from "../timeline";
-import { createMockUser } from "./user";
+import { createMockUserInfo } from "./user";
 
 export const createMockTimeline = (opts?: Partial<Timeline>): Timeline => ({
   ...createMockTimelineData(opts),
@@ -31,7 +31,7 @@ export const createMockTimelineEvent = (
   ...createMockTimelineEventData(opts),
   id: 1,
   timeline_id: 1,
-  creator: createMockUser(),
+  creator: createMockUserInfo(),
   created_at: "2021-12-01",
   ...opts,
 });

@@ -10,7 +10,7 @@
 
 (defn re-or
   "Combine regex `patterns` into a single pattern by joining with or (i.e., a logical disjunction)."
-  [& patterns]
+  [patterns]
   (non-capturing-group (str/join "|" (map non-capturing-group patterns))))
 
 (defn re-optional
@@ -18,50 +18,52 @@
   [pattern]
   (str (non-capturing-group pattern) "?"))
 
+(defn re-negate
+  "Make regex `pattern` negated."
+  [pattern]
+  (str "(?!" pattern ")"))
+
 (defmulti ^:private rx-dispatch
   {:arglists '([listt])}
   first)
 
 (declare rx*)
 
-(defmethod rx-dispatch :default
+(defmethod rx-dispatch :default [x] x)
+
+(defmethod rx-dispatch :?
+  [[_ & args]]
+  (re-optional (rx* (into [:and] args))))
+
+(defmethod rx-dispatch :or
+  [[_ & args]]
+  (re-or (map rx* args)))
+
+(defmethod rx-dispatch :and
+  [[_ & args]]
+  (apply str (map rx* args)))
+
+(defmethod rx-dispatch :not
+  [[_ arg]]
+  (re-negate (rx* arg)))
+
+(defn- rx*
   [x]
-  x)
+  (if (seqable? x) (rx-dispatch x) x))
 
-(defmethod rx-dispatch 'opt
-  [[_ & args]]
-  `(re-optional (rx* (~'and ~@args))))
+;;; TODO -- instead of memoizing this, why not just do this as a macro and do it at macroexpansion time? Weird.
+(def ^{:doc
+       "A quick-and-dirty port of the Emacs Lisp `rx` macro (`C-h f rx`) implemented as a function but not currently as fully-featured.
+       Convenient for building mega-huge regular expressions from a hiccup-like representation.
+       Feel free to add support for more stuff as needed.
 
-(defmethod rx-dispatch 'or
-  [[_ & args]]
-  `(re-or ~@(for [arg args]
-              `(rx* ~arg))))
+       This is memoized because arguments to rx are less optimal than they should be, in favor of better clarity -- hence skipping recompilation makes sense."
+       :arglists '([x] [x & more])
+       } rx
+  (memoize (fn  rx
+             ;; (rx [:and [:or "Cam" "can"] [:? #"\s+"] #"\d+"])
+             ;; -> #\"(?:(?:Cam)|(?:can))(?:\s+)?\d+\"
 
-(defmethod rx-dispatch 'and
-  [[_ & args]]
-  `(str ~@(for [arg args]
-            `(rx* ~arg))))
+             ([x] (re-pattern (rx* x)))
 
-(defmacro rx*
-  "Impl of `rx` macro."
-  [x]
-  (if (seqable? x)
-    (rx-dispatch x)
-    x))
-
-(defmacro rx
-  "Cam's quick-and-dirty port of the Emacs Lisp `rx` macro (`C-h f rx`) but not currently as fully-featured. Convenient
-  macro for building mega-huge regular expressions from a sexpr representation.
-
-    (rx (and (or \"Cam\" \"can\") (opt #\"\\s+\") #\"\\d+\"))
-    ;; -> #\"(?:(?:Cam)|(?:can))\\s+?\\d+\"
-
-  Feel free to add support for more stuff as needed.
-  ([x]
-   `(re-pattern (str (rx* ~x))))"
-
-  ([x]
-   `(re-pattern (rx* ~x)))
-
-  ([x & more]
-   `(rx (~'and ~x ~@more))))
+             ([x & more] (rx (into [:and x] more))))))

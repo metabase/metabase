@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
    [metabase.models :refer [Card]]
    [metabase.query-processor :as qp]
@@ -25,7 +26,7 @@
                              VENUES.LONGITUDE   AS LONGITUDE
                              VENUES.PRICE       AS PRICE]
                  :from      [VENUES]
-                 :left-join [CATEGORIES __join
+                 :left-join [CATEGORIES AS __join
                              ON VENUES.CATEGORY_ID = 1]
                  :limit     [1048575]}
                (sql.qp-test-util/query->sql-map query)))))))
@@ -260,7 +261,9 @@
                rows))))))
 
 (deftest select-*-source-query-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
+  (mt/test-drivers (disj (mt/normal-drivers-with-feature :left-join)
+                         ;; mongodb doesn't support foreign keys required by this test
+                         :mongo)
     (testing "We should be able to run a query that for whatever reason ends up with a `SELECT *` for the source query"
       (let [{:keys [rows columns]} (mt/format-rows-by [int int]
                                      (mt/rows+column-names
@@ -397,7 +400,7 @@
                       :limit        3})))))))))
 
 (deftest joined-field-in-time-interval-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
+  (mt/test-drivers (mt/normal-drivers-with-feature :right-join)
     (testing "Should be able to use a joined field in a `:time-interval` clause"
       (is (= {:rows    []
               :columns (mapv mt/format-name ["id" "name" "category_id" "latitude" "longitude" "price"])}
@@ -444,8 +447,8 @@
                                           :limit        2})))]
         (is (= (mapv
                 mt/format-name
-                ["id"     "date"   "user_id"     "venue_id"                       ; checkins
-                 "id_2"   "name"   "last_login"                                   ; users
+                ["id"   "date"   "user_id"     "venue_id"                       ; checkins
+                 "id_2" "name"   "last_login"                                   ; users
                  "id_3" "name_2" "category_id" "latitude" "longitude" "price"]) ; venues
                columns))
         (is (= [[1 "2014-04-07T00:00:00Z" 5 12
@@ -653,6 +656,10 @@
                                                       :aggregation  [[:distinct &Products.products.id]]
                                                       :filter       [:= &Products.products.category "Gizmo"]}
                                        :alias        "Q2"
+                                       ;; yes, `!month.products.created_at` is a so-called 'bad reference' (should
+                                       ;; include the `:join-alias`) but this test is also testing that we detect this
+                                       ;; situation and handle it appropriately.
+                                       ;; See [[metabase.query-processor.middleware.fix-bad-references]]
                                        :condition    [:= !month.products.created_at !month.&Q2.products.created_at]
                                        :fields       :all}]
                        :order-by     [[:asc !month.&Products.products.created_at]]
@@ -775,7 +782,7 @@
                                          int str str str str 2.0 2.0 str]
                        results))))))))))
 
-(deftest double-quotes-in-join-alias-test
+(deftest ^:parallel double-quotes-in-join-alias-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (testing "Make sure our we handle (escape) double quotes in join aliases. Make sure we prevent SQL injection (#20307)"
       (let [expected-rows (mt/rows
@@ -815,7 +822,7 @@
   (str/join (for [i (range length)]
               (nth charset (mod i (count charset))))))
 
-(deftest very-long-join-name-test
+(deftest ^:parallel very-long-join-name-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (testing "Drivers should work correctly even if joins have REALLLLLLY long names (#15978)"
       (doseq [[charset-name charset] charsets
@@ -848,7 +855,9 @@
 
 (deftest join-against-implicit-join-test
   (testing "Should be able to explicitly join against an implicit join (#20519)"
-    (mt/test-drivers (mt/normal-drivers-with-feature :left-join :expressions :basic-aggregations)
+    (mt/test-drivers (disj (mt/normal-drivers-with-feature :left-join :expressions :basic-aggregations)
+                           ;; mongodb doesn't support foreign keys required by this test
+                           :mongo)
       (mt/with-bigquery-fks #{:bigquery-cloud-sdk}
         (mt/dataset sample-dataset
           (let [query (mt/mbql-query orders
@@ -868,3 +877,55 @@
                       ["Doohickey" 3976 2 2 "Small Marble Shoes"]]
                      (mt/formatted-rows [str int int int str]
                        (qp/process-query query)))))))))))
+
+(deftest ^:parallel join-order-test
+  (testing "Joins should be emitted in the same order as they were specified in MBQL (#15342)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :left-join :inner-join)
+      ;; For SQL drivers, this is only fixed for drivers using Honey SQL 2. So skip the test for ones still using Honey
+      ;; SQL 1. Honey SQL 1 support is slated for removal in Metabase 0.49.0.
+      (when (or (not (isa? driver/hierarchy driver/*driver* :sql))
+                (= (sql.qp/honey-sql-version driver/*driver*) 2))
+        (mt/dataset sample-dataset
+          (doseq [[first-join-strategy second-join-strategy] [[:inner-join :left-join]
+                                                              [:left-join :inner-join]]
+                  :let [query (mt/mbql-query people
+                                {:joins    [{:source-table $$orders
+                                             :alias        "Orders"
+                                             :condition    [:= $id &Orders.orders.user_id]
+                                             :strategy     first-join-strategy}
+                                            {:source-table $$products
+                                             :alias        "Products"
+                                             :condition    [:= &Orders.orders.product_id &Products.products.id]
+                                             :strategy     second-join-strategy}]
+                                 :fields   [$id &Orders.orders.id &Products.products.id]
+                                 :order-by [[:asc $id]
+                                            [:asc &Orders.orders.id]
+                                            [:asc &Products.products.id]]
+                                 :limit    1})]]
+            (testing (format "%s before %s" first-join-strategy second-join-strategy)
+              (mt/with-native-query-testing-context query
+                (is (= [[1 1 14]]
+                       (mt/formatted-rows [int int int]
+                         (qp/process-query query))))))))))))
+
+(deftest join-with-brakout-and-aggregation-expression
+  (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
+    (mt/dataset sample-dataset
+      (let [query (mt/mbql-query orders
+                                 {:source-query {:source-table $$orders
+                                                 :joins    [{:source-table $$products
+                                                             :alias        "Products"
+                                                             :condition    [:= $product_id &Products.products.id]}]
+                                                 :filter   [:> $subtotal 100]
+                                                 :breakout [&Products.products.category
+                                                            &Products.products.vendor
+                                                            !month.created_at]
+                                                 :aggregation [[:sum $subtotal]]}
+                                  :expressions {:strange [:/ [:field "sum" {:base-type "type/Float"}] 100]}
+                                  :limit 3})]
+        (mt/with-native-query-testing-context query
+          (is (= [["Doohickey" "Balistreri-Ankunding" "2018-01-01T00:00:00Z" 210.24 2.1024]
+                  ["Doohickey" "Balistreri-Ankunding" "2018-02-01T00:00:00Z" 315.36 3.1536]
+                  ["Doohickey" "Balistreri-Ankunding" "2018-03-01T00:00:00Z" 315.36 3.1536]]
+                 (mt/formatted-rows [str str str 2.0 4.0]
+                   (qp/process-query query)))))))))

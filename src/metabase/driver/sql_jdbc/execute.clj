@@ -6,10 +6,9 @@
   `metabase.driver.sql-jdbc.execute.legacy-impl`. "
   (:require
    [clojure.core.async :as a]
-   [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [java-time :as t]
+   [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute.diagnostic
@@ -26,11 +25,14 @@
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.log :as log]
    [potemkin :as p])
   (:import
    (java.sql Connection JDBCType PreparedStatement ResultSet ResultSetMetaData Statement Types)
    (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
    (javax.sql DataSource)))
+
+(set! *warn-on-reflection* true)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        SQL JDBC Reducible QP Interface                                         |
@@ -123,8 +125,8 @@
     ;; default method for Postgres not covered by any [driver jdbc-type] methods
     (defmethod read-column-thunk :postgres
       ...)"
-  {:added "0.35.0", :arglists '([driver rs rsmeta i])}
-  (fn [driver _ ^ResultSetMetaData rsmeta ^long col-idx]
+  {:added "0.35.0", :arglists '([driver ^java.sql.ResultSet rs ^java.sql.ResultSetMetaData rsmeta i])}
+  (fn [driver _rs ^ResultSetMetaData rsmeta ^Long col-idx]
     [(driver/dispatch-on-initialized-driver driver) (.getColumnType rsmeta col-idx)])
   :hierarchy #'driver/hierarchy)
 
@@ -196,6 +198,9 @@
       (set-best-transaction-level! driver conn)
       (set-time-zone-if-supported! driver conn timezone-id)
       (try
+        ;; Setting the connection to read-only does not prevent writes on some databases, and is meant
+        ;; to be a hint to the driver to enable database optimizations
+        ;; See https://docs.oracle.com/javase/8/docs/api/java/sql/Connection.html#setReadOnly-boolean-
         (.setReadOnly conn true)
         (catch Throwable e
           (log/debug e (trs "Error setting connection to read-only"))))
@@ -216,7 +221,6 @@
 
 ;; TODO - would a more general method to convert a parameter to the desired class (and maybe JDBC type) be more
 ;; useful? Then we can actually do things like log what transformations are taking place
-
 
 (defn- set-object
   ([^PreparedStatement prepared-statement, ^Integer index, object]
@@ -345,7 +349,16 @@
 
 (defn- prepared-statement*
   ^PreparedStatement [driver conn sql params canceled-chan]
-  (doto (prepared-statement driver conn sql params)
+  ;; sometimes preparing the statement fails, usually if the SQL syntax is invalid.
+  (doto (try
+          (prepared-statement driver conn sql params)
+          (catch Throwable e
+            (throw (ex-info (tru "Error preparing statement: {0}" (ex-message e))
+                            {:driver driver
+                             :type   qp.error-type/driver
+                             :sql    (str/split-lines (mdb.query/format-sql sql driver))
+                             :params params}
+                            e))))
     (wire-up-canceled-chan-to-cancel-Statement! canceled-chan)))
 
 (defn- use-statement? [driver params]
@@ -355,7 +368,9 @@
   (doto (statement driver conn)
     (wire-up-canceled-chan-to-cancel-Statement! canceled-chan)))
 
-(defn- statement-or-prepared-statement ^Statement [driver conn sql params canceled-chan]
+(defn statement-or-prepared-statement
+  "Create a statement or a prepared statement. Should be called from [[with-open]]."
+  ^Statement [driver conn sql params canceled-chan]
   (if (use-statement? driver params)
     (statement* driver conn canceled-chan)
     (prepared-statement* driver conn sql params canceled-chan)))
@@ -430,28 +445,12 @@
                 (or (:name (meta f))
                     f)))))))
 
-(defn- old-read-column-thunk
-  "Implementation of deprecated method `old/read-column` if a non-default one is available."
-  [driver rs ^ResultSetMetaData rsmeta ^Integer i]
-  (let [col-type (.getColumnType rsmeta i)
-        method   (get-method sql-jdbc.execute.old/read-column [driver col-type])
-        default? (some (fn [dispatch-val]
-                         (= method (get-method sql-jdbc.execute.old/read-column dispatch-val)))
-                       [:default
-                        [::driver/driver col-type]
-                        [:sql-jdbc col-type]])]
-    (when-not default?
-      ^{:name (format "old-impl/read-column %s %d" driver i)}
-      (fn []
-        (method driver nil rs rsmeta i)))))
-
 (defn row-thunk
   "Returns a thunk that can be called repeatedly to get the next row in the result set, using appropriate methods to
   fetch each value in the row. Returns `nil` when the result set has no more rows."
   [driver ^ResultSet rs ^ResultSetMetaData rsmeta]
   (let [fns (for [i (column-range rsmeta)]
-              (or (old-read-column-thunk driver rs rsmeta i)
-                  (read-column-thunk driver rs rsmeta (long i))))]
+              (read-column-thunk driver rs rsmeta (long i)))]
     (log-readers driver rsmeta fns)
     (let [thunk (if (seq fns)
                   (apply juxt fns)
@@ -504,33 +503,15 @@
                                (execute-statement-or-prepared-statement! driver stmt max-rows params sql)
                                (catch Throwable e
                                  (throw (ex-info (tru "Error executing query: {0}" (ex-message e))
-                                                 {:sql sql, :params params, :type qp.error-type/invalid-query}
+                                                 {:driver driver
+                                                  :sql    (str/split-lines (mdb.query/format-sql sql driver))
+                                                  :params params
+                                                  :type   qp.error-type/invalid-query}
                                                  e))))]
      (let [rsmeta           (.getMetaData rs)
            results-metadata {:cols (column-metadata driver rsmeta)}]
        (respond results-metadata (reducible-rows driver rs rsmeta (qp.context/canceled-chan context)))))))
 
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                                 Actions Stuff                                                  |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defmethod driver/execute-write-query! :sql-jdbc
-  [driver {{sql :query, :keys [params]} :native}]
-  {:pre [(string? sql)]}
-  (try
-    (let [{:keys [details]} (qp.store/database)
-          jdbc-spec         (sql-jdbc.conn/connection-details->spec driver details)]
-      ;; TODO -- should this be done in a transaction? Should we set the isolation level?
-      (with-open [conn (jdbc/get-connection jdbc-spec)
-                  stmt (statement-or-prepared-statement driver conn sql params nil)]
-        {:rows-affected (if (instance? PreparedStatement stmt)
-                          (.executeUpdate ^PreparedStatement stmt)
-                          (.executeUpdate stmt sql))}))
-    (catch Throwable e
-      (throw (ex-info (tru "Error executing write query: {0}" (ex-message e))
-                      {:sql sql, :params params, :type qp.error-type/invalid-query}
-                      e)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       Convenience Imports from Old Impl                                        |
@@ -539,5 +520,4 @@
 (p/import-vars
  [sql-jdbc.execute.old
   ;; interface (set-parameter is imported as well at the top of the namespace)
-  set-timezone-sql
-  read-column])
+  set-timezone-sql])

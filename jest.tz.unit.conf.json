@@ -9,7 +9,7 @@
   "transformIgnorePatterns": [
     "<rootDir>/node_modules/(?!rehype-external-links/)"
   ],
-  "testMatch": ["<rootDir>/frontend/test/**/*.tz.unit.spec.{js,ts,jsx,tsx}"],
+  "testMatch": ["<rootDir>/frontend/**/*.tz.unit.spec.{js,ts,jsx,tsx}"],
   "modulePaths": ["<rootDir>/frontend/test", "<rootDir>/frontend/src"],
   "setupFiles": [
     "<rootDir>/frontend/test/jest-setup.js",

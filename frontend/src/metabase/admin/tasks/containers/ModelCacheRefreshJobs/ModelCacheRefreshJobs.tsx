@@ -7,7 +7,7 @@ import Link from "metabase/core/components/Link";
 import DateTime from "metabase/components/DateTime";
 import EmptyState from "metabase/components/EmptyState";
 import Icon from "metabase/components/Icon";
-import Tooltip from "metabase/components/Tooltip";
+import Tooltip from "metabase/core/components/Tooltip";
 import PaginationControls from "metabase/components/PaginationControls";
 
 import PersistedModels from "metabase/entities/persisted-models";
@@ -25,7 +25,6 @@ import {
   ErrorBox,
   IconButtonContainer,
   PaginationControlsContainer,
-  StyledLink,
 } from "./ModelCacheRefreshJobs.styled";
 
 type JobTableItemProps = {
@@ -34,7 +33,7 @@ type JobTableItemProps = {
 };
 
 function JobTableItem({ job, onRefresh }: JobTableItemProps) {
-  const modelUrl = Urls.dataset({ id: job.card_id, name: job.card_name });
+  const modelUrl = Urls.model({ id: job.card_id, name: job.card_name });
   const collectionUrl = Urls.collection({
     id: job.collection_id,
     name: job.collection_name,
@@ -69,10 +68,13 @@ function JobTableItem({ job, onRefresh }: JobTableItemProps) {
     <tr key={job.id}>
       <th>
         <span>
-          <StyledLink to={modelUrl}>{job.card_name}</StyledLink> {t`in`}{" "}
-          <StyledLink to={collectionUrl}>
+          <Link variant="brand" to={modelUrl}>
+            {job.card_name}
+          </Link>{" "}
+          {t`in`}{" "}
+          <Link variant="brand" to={collectionUrl}>
             {job.collection_name || t`Our analytics`}
-          </StyledLink>
+          </Link>
         </span>
       </th>
       <th>{renderStatus()}</th>
@@ -196,4 +198,5 @@ function ModelCacheRefreshJobs({ children, onRefresh }: Props) {
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(null, mapDispatchToProps)(ModelCacheRefreshJobs);

@@ -50,9 +50,36 @@ Models you create are automatically [pinned to the current collection](../explor
 
 ![Turn a saved question into a model](./images/turn-into-a-model.png)
 
+## Model detail page
+
+To view a model's detail page:
+
+- From a collection: click on the **book** icon next to a model.
+- From a model: click on the **info** button in the upper right, then click **Model details**.
+
+![Model detail page](./images/model-detail.png)
+
+Here you'll see several tabs:
+
+- **Used by**: lists the items based on the model.
+- **Schema**: lists the fields in the model.
+- **Actions**: lists the actions in the model, and allows you to create new [actions](../actions/start.md).
+
+The model detail page also shows some basic info about the model:
+
+- Description
+- Contact (who wrote the model)
+- Backing table(s)
+
+To start a new question based on the model, click **Explore**.
+
+To edit the model's underlying query, click **Edit definition**.
+
+You can also edit the model's metadata.
+
 ## Add metadata to columns in a model
 
-Metadata is the secret sauce of models. When you write a SQL query, Metabase can display the results, but it can't "know" what kind of data it's returning (like it can with questions built using the query builder). What this means in practice is that people won't be able to drill-through the results, because Metabase doesn't understand what the results are. With models, however, you can tell Metabase what kind of data is in each returned column so that Metabase can still do its drill-through magic. Metadata will also make filtering nicer by showing the correct filter widget, and it will help Metabase to pick the right visualization for the results.
+Metadata is the secret sauce of models. When you write a SQL query, Metabase can display the results, but it can't "know" what kind of data it's returning (like it can with questions built using the query builder). What this means in practice is that people won't be able to drill-through the results, because Metabase doesn't understand what the results are. With models, however, you can tell Metabase what kind of data is in each returned column so that Metabase can still do its drill-through magic. Metadata will also make filtering nicer by showing the correct filter widget, and it will help Metabase to pick the right visulization for the results.
 
 If you only set one kind of metadata, set the **Column type** to let Metabase know what kind of data it's working with.
 

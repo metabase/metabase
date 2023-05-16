@@ -1,7 +1,10 @@
 import React from "react";
-import { screen, waitFor } from "@testing-library/react";
-import _ from "underscore";
+import { screen, waitFor, within } from "@testing-library/react";
+
 import { renderWithProviders } from "__support__/ui";
+import { createMockUser } from "metabase-types/api/mocks";
+import { createMockSettingsState } from "metabase-types/store/mocks";
+
 import EmbedModalContent from "./EmbedModalContent";
 
 describe("EmbedModalContent", () => {
@@ -75,8 +78,13 @@ describe("EmbedModalContent", () => {
     );
 
     openEmbedModal();
-    expect(screen.getByText("My param")).toBeInTheDocument();
-    expect(screen.getByLabelText("My param")).toHaveTextContent("Locked");
+    const parametersSection = screen.getByRole("region", {
+      name: "Parameters",
+    });
+    expect(within(parametersSection).getByText("My param")).toBeInTheDocument();
+    expect(
+      within(parametersSection).getByLabelText("My param"),
+    ).toHaveTextContent("Locked");
   });
 
   it("should only render valid parameters", () => {
@@ -137,25 +145,14 @@ describe("EmbedModalContent", () => {
   });
 });
 
-const storeInitialState = {
-  currentUser: {
-    is_superuser: true,
-  },
-  settings: {
-    values: {
-      "enable-embedding": true,
-      "embedding-secret-key": "my_super_secret_key",
-    },
-  },
-};
-
 function renderWithConfiguredProviders(element: JSX.Element) {
   renderWithProviders(element, {
-    storeInitialState,
-    reducers: {
-      settings: (state: Record<string, any> = storeInitialState.settings) => {
-        return state;
-      },
+    storeInitialState: {
+      currentUser: createMockUser({ is_superuser: true }),
+      settings: createMockSettingsState({
+        "enable-embedding": true,
+        "embedding-secret-key": "my_super_secret_key",
+      }),
     },
   });
 }

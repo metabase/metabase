@@ -7,8 +7,25 @@ on:
 
 jobs:
 
+  trigger-docs-update:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.DOCS_UPDATE_TOKEN }}
+          script: |
+            github.rest.repos.createDispatchEvent({
+              owner: '${{ github.repository_owner }}',
+              repo: '${{ secrets.DOCS_REPO }}',
+              event_type: 'trigger-docs-update',
+              client_payload: {
+                version: '${{ github.ref_name }}'
+              }
+            });
+
   download-uberjar:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 10
     steps:
     - name: Download Uberjar for ${{ github.ref_name }}
@@ -39,7 +56,7 @@ jobs:
           ./SHA256.sum
 
   check-uberjar:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     needs: download-uberjar
     timeout-minutes: 10
     strategy:
@@ -73,7 +90,7 @@ jobs:
       run: curl -s localhost:3000/api/health
 
   containerize:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     needs: check-uberjar
     timeout-minutes: 15
     services:
@@ -83,6 +100,8 @@ jobs:
           - 5000:5000
     steps:
     - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0  # IMPORTANT! to get all the tags
     - uses: actions/download-artifact@v3
       name: Retrieve previously downloaded Uberjar
       with:
@@ -133,8 +152,94 @@ jobs:
         docker push ${{ env.DOCKERHUB_REPO }}:${{ github.ref_name }}
         echo "Finished!"
 
+    - name: Check if the container image should be tagged as latest
+      uses: actions/github-script@v6
+      id: latest_version_check
+      with:
+        result-encoding: string
+        script: |
+          const currentTag = context.payload.ref.replace("refs/tags/", "");
+
+          const { execSync } = require("child_process");
+
+          const isNumber = s => s.match(/\d+/) && s.match(/\d+/).shift() == s;
+
+          const parseVersion = version => {
+            const parts = version.split(".");
+            const prefix = parts[0];
+            const isOSS = prefix === "v0";
+            const isEE = prefix === "v1";
+            const feature = parseInt(parts[1], 10);
+            const maintenance = parseInt(parts[2], 10);
+            const build = parseInt(parts[3], 10);
+            const prerelease = parts[2] ? !isNumber(parts[2]) : false;
+            return { prefix, feature, maintenance, build, isOSS, isEE, prerelease };
+          }
+
+          const byVersions = (tag1, tag2) => {
+            const v1 = parseVersion(tag1);
+            const v2 = parseVersion(tag2);
+            const order1 = v1.feature * 1e6 + v1.maintenance * 1e3 + (v1.build || 0);
+            const order2 = v2.feature * 1e6 + v2.maintenance * 1e3 + (v2.build || 0);
+            return order2 - order1;
+          }
+
+          const currentVersion = parseVersion(currentTag);
+          console.log("Current version for", currentTag, "is", currentVersion);
+          if (currentVersion.prerelease) {
+            console.log("This is a pre-release!");
+            console.log("There is no need to tag the container image as latest.");
+            return "not-latest";
+          }
+
+          console.log();
+          console.log("Enumerating all git tag...");
+          const allTags = execSync("git tag -l").toString("utf-8").split("\n");
+          console.log("Found total", allTags.length, "tags");
+
+          console.log();
+          console.log("Filtering for", currentVersion.isOSS ? "OSS" : "EE");
+          const relevantTags = allTags.filter(tag => {
+            const { prefix } = parseVersion(tag);
+            return prefix === currentVersion.prefix;
+          });
+          console.log("Found total", relevantTags.length, "filtered tags");
+          if (relevantTags.length < 10) {
+            console.error("Something is NOT RIGHT! Please check all git tags!!!");
+            return "not-latest";
+          }
+
+          console.log();
+          console.log("Sorting tags to find the highest version numbers...");
+          const sortedTags = relevantTags.sort(byVersions)
+          console.log("Showing 20 tags with the highest versions...");
+          const topTags = sortedTags.slice(0, 20);
+          topTags.map(tag => {
+            const marker = tag === currentTag ? "--->" : "    ";
+            console.log(marker, tag);
+          });
+
+          const latestTag = topTags[0];
+          const isLatest = latestTag === currentTag;
+          console.log();
+          if (isLatest) {
+            console.log("Thus, the container image for ", currentTag, "must be marked as latest.");
+          } else {
+            console.log("The latest container image stays as", latestTag);
+            console.log("There is no need to tag the", currentTag, "container image as latest.");
+          }
+          return isLatest ? "latest" : "not-latest";
+
+    - name: Tag the container image as latest
+      if: ${{ steps.latest_version_check.outputs.result == 'latest' }}
+      run: |
+        echo "Pushing ${{ env.DOCKERHUB_REPO }}:latest ..."
+        docker tag localhost:5000/local-metabase:${{ github.ref_name }} ${{ env.DOCKERHUB_REPO }}:latest
+        docker push ${{ env.DOCKERHUB_REPO }}:latest
+        echo "Finished!"
+
   verify-docker-pull:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     needs: containerize
     timeout-minutes: 15
     steps:
@@ -161,3 +266,22 @@ jobs:
     - name: Wait for Metabase to start
       run: while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
       timeout-minutes: 3
+
+  publish-elastic-beanstalk-artifacts:
+    runs-on: ubuntu-22.04
+    needs: containerize
+    timeout-minutes: 15
+    env:
+      NO_SLACK: 1
+    steps:
+    - uses: actions/checkout@v3
+    - name: Prepare back-end environment
+      uses: ./.github/actions/prepare-backend
+    - name: Configure AWS credentials for S3
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_S3_RELEASE_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_S3_RELEASE_SECRET_ACCESS_KEY }}
+        aws-region: us-east-1
+    - name: Publish Elastic Beanstalk artifacts
+      run: ./bin/ebs.sh :version ${{ github.ref_name }}

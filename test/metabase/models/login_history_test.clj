@@ -13,6 +13,8 @@
    [metabase.util.schema :as su]
    [schema.core :as s]))
 
+(set! *warn-on-reflection* true)
+
 (deftest first-login-on-this-device?-test
   (let [device-1 (str (java.util.UUID/randomUUID))
         device-2 (str (java.util.UUID/randomUUID))]
@@ -34,7 +36,7 @@
               (is (= false
                      (#'login-history/first-login-on-this-device? history-1)))
               (is (= false
-                   (#'login-history/first-login-ever? history-1))))))))))
+                     (#'login-history/first-login-ever? history-1))))))))))
 
 (deftest send-email-on-first-login-from-new-device-test
   (testing "User should get an email the first time they log in from a new device (#14313, #15603, #17495)"
@@ -71,13 +73,13 @@
                              @mt/inbox))
                 (let [message (-> @mt/inbox (get email) first :body first :content)
                       site-url (public-settings/site-url)]
-                  (testing (format "\nMessage = %s" (pr-str message))
+                  (testing (format "\nMessage = %s\nsite-url = %s" (pr-str message) (pr-str site-url))
                     (is (string? message))
                     (when (string? message)
                       (doseq [expected-str [(format "We've noticed a new login on your <a href=\"%s\">Metabase</a> account."
-                                                    site-url)
+                                                    (or site-url ""))
                                             (format "We noticed a login on your <a href=\"%s\">Metabase</a> account from a new device."
-                                                    site-url)
+                                                    (or site-url ""))
                                             "Browser (Chrome/Windows) - San Francisco, California, United States"
                                             ;; `format-human-readable` has slightly different output on different JVMs
                                             (u.date/format-human-readable #t "2021-04-02T15:52:00-07:00[US/Pacific]")]]

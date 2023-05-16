@@ -3,8 +3,8 @@ import _ from "underscore";
 import Databases from "metabase/entities/databases";
 import DatabaseCandidates from "metabase/entities/database-candidates";
 import { isSyncCompleted } from "metabase/lib/syncing";
-import { Database } from "metabase-types/api";
 import { State } from "metabase-types/store";
+import Database from "metabase-lib/metadata/Database";
 import HomeXraySection from "../../components/HomeXraySection";
 
 interface XraySectionProps {
@@ -26,6 +26,7 @@ const mapStateToProps = (state: State, props: XraySectionProps) => ({
   database: getXrayDatabase(props),
 });
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   Databases.loadList(),
   connect(mapStateToProps),

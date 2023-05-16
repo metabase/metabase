@@ -1,8 +1,9 @@
 import React, { MouseEvent, useMemo } from "react";
 import _ from "underscore";
 import { getEventTarget } from "metabase/lib/dom";
-import Tooltip from "metabase/components/Tooltip";
-import DataPointTooltip from "./DataPointTooltip";
+import Tooltip from "metabase/core/components/Tooltip";
+import StackedDataTooltip from "./StackedDataTooltip";
+import KeyValuePairChartTooltip from "./KeyValuePairChartTooltip";
 import TimelineEventTooltip from "./TimelineEventTooltip";
 import {
   HoveredObject,
@@ -23,7 +24,12 @@ const ChartTooltip = ({ hovered, settings }: ChartTooltipProps) => {
     if (!_.isEmpty(hovered.timelineEvents)) {
       return <TimelineEventTooltip hovered={hovered as HoveredTimelineEvent} />;
     }
-    return <DataPointTooltip hovered={hovered} settings={settings} />;
+
+    if (hovered.stackedTooltipModel) {
+      return <StackedDataTooltip {...hovered.stackedTooltipModel} />;
+    }
+
+    return <KeyValuePairChartTooltip hovered={hovered} settings={settings} />;
   }, [hovered, settings]);
 
   const isNotEmpty = useMemo(() => {
@@ -33,6 +39,7 @@ const ChartTooltip = ({ hovered, settings }: ChartTooltipProps) => {
     return (
       hovered.value !== undefined ||
       !_.isEmpty(hovered.timelineEvents) ||
+      !_.isEmpty(hovered.stackedTooltipModel) ||
       !_.isEmpty(hovered.data) ||
       !_.isEmpty(hovered.dimensions)
     );
@@ -42,6 +49,7 @@ const ChartTooltip = ({ hovered, settings }: ChartTooltipProps) => {
   const hasTargetElement =
     hovered?.element != null && document.body.contains(hovered.element);
   const isOpen = isNotEmpty && (hasTargetElement || hasTargetEvent);
+  const isPadded = hovered?.stackedTooltipModel == null;
 
   const target = hasTargetElement
     ? hovered?.element
@@ -54,10 +62,12 @@ const ChartTooltip = ({ hovered, settings }: ChartTooltipProps) => {
       preventOverflow
       reference={target}
       isOpen={isOpen}
+      isPadded={isPadded}
       tooltip={tooltip}
       maxWidth="unset"
     />
   ) : null;
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ChartTooltip;

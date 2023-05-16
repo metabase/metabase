@@ -6,7 +6,7 @@
    [metabase.sync.interface :as i]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (def DBMSVersion
   "Schema for the expected output of `describe-table-fks`."
@@ -19,5 +19,5 @@
   (let [driver  (driver.u/database->driver database)
         version (driver/dbms-version driver database)]
     (when (not= version (:dbms_version database))
-      (db/update! Database (:id database) {:dbms_version version}))
+      (t2/update! Database (:id database) {:dbms_version version}))
     version))

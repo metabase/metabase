@@ -4,11 +4,13 @@
    [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
    [metabase.http-client :as client]
    [metabase.models :refer [Card Field PermissionsGroup Table]]
+   [metabase.models.permissions :as perms]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.server.middleware.util :as mw.util]
    [metabase.test :as mt]
-   [schema.core :as s]))
+   [schema.core :as s]
+   [toucan2.core :as t2]))
 
 (deftest require-auth-test
   (testing "Must be authenticated to query for GTAPs"
@@ -24,6 +26,7 @@
    :card_id              true
    :table_id             true
    :group_id             true
+   :permission_id        false
    :attribute_remappings {:foo 1}})
 
 (defmacro ^:private with-gtap-cleanup
@@ -43,15 +46,45 @@
   (testing "POST /api/mt/gtap"
     (testing "Must have a valid token to use GTAPs"
       (with-redefs [premium-features/enable-sandboxes? (constantly false)]
-        (mt/with-temp* [Table            [{table-id :id}]
-                        PermissionsGroup [{group-id :id}]
-                        Card             [{card-id :id}]]
-          (is (= "This API endpoint is only enabled if you have a premium token with the :sandboxes feature."
-                 (mt/user-http-request :crowberto :post 402 "mt/gtap"
-                                       {:table_id             table-id
-                                        :group_id             group-id
-                                        :card_id              card-id
-                                        :attribute_remappings {"foo" 1}}))))))))
+        (mt/with-temporary-setting-values [premium-embedding-token nil]
+          (mt/with-temp* [Table            [{table-id :id}]
+                          PermissionsGroup [{group-id :id}]
+                          Card             [{card-id :id}]]
+            (is (= "This API endpoint is only enabled if you have a premium token with the :sandboxes feature."
+                   (mt/user-http-request :crowberto :post 402 "mt/gtap"
+                                         {:table_id             table-id
+                                          :group_id             group-id
+                                          :card_id              card-id
+                                          :attribute_remappings {"foo" 1}})))))))))
+
+(deftest fetch-gtap-test
+  (testing "GET /api/mt/gtap/"
+    (with-gtap-cleanup
+      (mt/with-temp* [Table                  [{table-id-1 :id}]
+                      Table                  [{table-id-2 :id}]
+                      PermissionsGroup       [{group-id-1 :id}]
+                      PermissionsGroup       [{group-id-2 :id}]
+                      Card                   [{card-id :id}]
+                      GroupTableAccessPolicy [{gtap-id-1 :id} {:table_id table-id-1
+                                                               :group_id group-id-1
+                                                               :card_id  card-id}]
+                      GroupTableAccessPolicy [{gtap-id-2 :id} {:table_id table-id-2
+                                                               :group_id group-id-2
+                                                               :card_id  card-id}]]
+        (testing "Test that we can fetch the list of all GTAPs"
+          (is (partial=
+               [{:id gtap-id-1 :table_id table-id-1 :group_id group-id-1}
+                {:id gtap-id-2 :table_id table-id-2 :group_id group-id-2}]
+               (filter
+                #(#{gtap-id-1 gtap-id-2} (:id %))
+                (mt/user-http-request :crowberto :get 200 "mt/gtap/")))))
+
+        (testing "Test that we can fetch the list of GTAPs for a specific table and group"
+          (is (partial=
+               {:id gtap-id-1 :table_id table-id-1 :group_id group-id-1}
+               (mt/user-http-request :crowberto :get 200 "mt/gtap/"
+                                     :group_id group-id-1 :table_id table-id-1))))))))
+
 (deftest create-gtap-test
   (testing "POST /api/mt/gtap"
     (mt/with-temp* [Table            [{table-id :id}]
@@ -95,6 +128,42 @@
                                                 :card_id              card-id
                                                 :attribute_remappings {"foo" 1}})))))))))
 
+(deftest validate-sandbox-test
+  (testing "POST /api/mt/gtap/validate"
+    (mt/with-temp* [Table            [{table-id :id}]
+                    PermissionsGroup [{group-id :id}]]
+      (testing "A valid sandbox passes validation and returns no error"
+        (mt/with-temp Card [{card-id :id}]
+          (with-gtap-cleanup
+            (mt/user-http-request :crowberto :post 204 "mt/gtap/validate"
+                                  {:table_id             table-id
+                                   :group_id             group-id
+                                   :card_id              card-id}))))
+
+      (testing "A sandbox without a card-id passes validation, because the validation is not applicable in this case"
+        (with-gtap-cleanup
+          (mt/user-http-request :crowberto :post 204 "mt/gtap/validate"
+                                {:table_id             table-id
+                                 :group_id             group-id
+                                 :card_id              nil
+                                 :attribute_remappings {"foo" 1}})))
+
+      (testing "An invalid sandbox results in a 400 error being returned"
+        (mt/with-temp* [Field [_ {:name "My field", :table_id table-id, :base_type :type/Integer}]
+                        Card  [{card-id :id} {:dataset_query (mt/mbql-query venues
+                                                               {:fields      [[:expression "My field"]]
+                                                                :expressions {"My field" [:ltrim "wow"]}})}]]
+          (with-gtap-cleanup
+            (is (schema= {:message  (s/eq "Sandbox Questions can't return columns that have different types than the Table they are sandboxing.")
+                          :expected (s/eq "type/Integer")
+                          :actual   (s/eq "type/Text")
+                          s/Keyword s/Any}
+                         (mt/user-http-request :crowberto :post 400 "mt/gtap/validate"
+                                               {:table_id             table-id
+                                                :group_id             group-id
+                                                :card_id              card-id
+                                                :attribute_remappings {"foo" 1}})))))))))
+
 (deftest delete-gtap-test
   (testing "DELETE /api/mt/gtap/:id"
     (testing "Test that we can delete a GTAP"
@@ -115,9 +184,9 @@
 
 (deftest update-gtap-test
   (testing "PUT /api/mt/gtap"
-    (mt/with-temp* [Table                  [{table-id :id}]
-                    PermissionsGroup       [{group-id :id}]
-                    Card                   [{card-id :id}]]
+    (mt/with-temp* [Table            [{table-id :id}]
+                    PermissionsGroup [{group-id :id}]
+                    Card             [{card-id :id}]]
       (premium-features-test/with-premium-features #{:sandboxes}
         (testing "Test that we can update only the attribute remappings for a GTAP"
           (mt/with-temp GroupTableAccessPolicy [{gtap-id :id} {:table_id             table-id
@@ -159,3 +228,86 @@
                     (mt/user-http-request :crowberto :put 200 (format "mt/gtap/%s" gtap-id)
                                           {:card_id              nil
                                            :attribute_remappings {:bar 2}}))))))))))
+
+(deftest bulk-upsert-sandboxes-test
+  (testing "PUT /api/permissions/graph"
+    (mt/with-temp* [Table                  [{table-id-1 :id} {:db_id (mt/id), :schema "PUBLIC"}]
+                    Table                  [{table-id-2 :id} {:db_id (mt/id), :schema "PUBLIC"}]
+                    PermissionsGroup       [{group-id :id}]
+                    Card                   [{card-id-1 :id}]
+                    Card                   [{card-id-2 :id}]]
+      (premium-features-test/with-premium-features #{:sandboxes}
+        (with-gtap-cleanup
+          (testing "Test that we can create a new sandbox using the permission graph API"
+            (let [graph  (-> (perms/data-perms-graph)
+                             (assoc-in [:groups group-id (mt/id) :data :schemas "PUBLIC" table-id-1 :query] :segmented)
+                             (assoc :sandboxes [{:table_id             table-id-1
+                                                 :group_id             group-id
+                                                 :card_id              card-id-1
+                                                 :attribute_remappings {"foo" 1}}]))
+                  result (mt/user-http-request :crowberto :put 200 "permissions/graph" graph)]
+              (is (=? [{:id                   #hawk/schema s/Int
+                        :table_id             table-id-1
+                        :group_id             group-id
+                        :card_id              card-id-1
+                        :attribute_remappings {:foo 1}
+                        :permission_id        #hawk/schema s/Int}]
+                      (:sandboxes result)))
+              (is (t2/exists? GroupTableAccessPolicy :table_id table-id-1 :group_id group-id))))
+
+          (testing "Test that we can update a sandbox using the permission graph API"
+            (let [sandbox-id (t2/select-one-fn :id GroupTableAccessPolicy
+                                                  :table_id table-id-1
+                                                  :group_id group-id)
+                  graph      (-> (perms/data-perms-graph)
+                                 (assoc :sandboxes [{:id                   sandbox-id
+                                                     :card_id              card-id-2
+                                                     :attribute_remappings {"foo" 2}}]))
+                  result     (mt/user-http-request :crowberto :put 200 "permissions/graph" graph)]
+              (is (partial= [{:table_id table-id-1 :group_id group-id}]
+                            (:sandboxes result)))
+              (is (partial= {:card_id              card-id-2
+                             :attribute_remappings {"foo" 2}}
+                            (t2/select-one GroupTableAccessPolicy
+                                           :table_id table-id-1
+                                           :group_id group-id)))))
+
+          (testing "Test that we can create and update multiple sandboxes at once using the permission graph API"
+            (let [sandbox-id (t2/select-one-fn :id GroupTableAccessPolicy
+                                                  :table_id table-id-1
+                                                  :group_id group-id)
+                  graph       (-> (perms/data-perms-graph)
+                                  (assoc-in [:groups group-id (mt/id) :data :schemas "PUBLIC" table-id-2 :query] :segmented)
+                                  (assoc :sandboxes [{:id                   sandbox-id
+                                                      :card_id              card-id-1
+                                                      :attribute_remappings {"foo" 3}}
+                                                     {:table_id             table-id-2
+                                                      :group_id             group-id
+                                                      :card_id              card-id-2
+                                                      :attribute_remappings {"foo" 10}}]))
+                  result     (mt/user-http-request :crowberto :put 200 "permissions/graph" graph)]
+              (is (partial= [{:table_id table-id-1 :group_id group-id}
+                             {:table_id table-id-2 :group_id group-id}]
+                            (:sandboxes result)))
+              ;; Updated sandbox
+              (is (partial= {:card_id              card-id-1
+                             :attribute_remappings {"foo" 3}}
+                            (t2/select-one GroupTableAccessPolicy
+                                           :table_id table-id-1
+                                           :group_id group-id)))
+              ;; Created sandbox
+              (is (partial= {:card_id              card-id-2
+                             :attribute_remappings {"foo" 10}}
+                            (t2/select-one GroupTableAccessPolicy
+                                           :table_id table-id-2
+                                           :group_id group-id))))))))))
+
+(deftest bulk-upsert-sandboxes-error-test
+  (testing "PUT /api/permissions/graph"
+    (testing "make sure an error is thrown if the :sandboxes key is included in the request, but the :sandboxes feature
+             is not enabled"
+      (with-redefs [premium-features/enable-sandboxes? (constantly false)]
+        (mt/with-temporary-setting-values [premium-embedding-token nil]
+          (is (= "Sandboxes are an Enterprise feature. Please upgrade to a paid plan to use this feature."
+                 (mt/user-http-request :crowberto :put 402 "permissions/graph"
+                                       (assoc (perms/data-perms-graph) :sandboxes [{:card_id 1}])))))))))

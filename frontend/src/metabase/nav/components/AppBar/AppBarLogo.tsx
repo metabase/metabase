@@ -4,6 +4,8 @@ import AppBarToggle from "./AppBarToggle";
 import { LogoLink, LogoRoot, ToggleContainer } from "./AppBarLogo.styled";
 
 export interface AppBarLogoProps {
+  isSmallAppBar?: boolean;
+  isLogoVisible?: boolean;
   isNavBarOpen?: boolean;
   isNavBarEnabled?: boolean;
   onLogoClick?: () => void;
@@ -11,6 +13,8 @@ export interface AppBarLogoProps {
 }
 
 const AppBarLogo = ({
+  isSmallAppBar,
+  isLogoVisible,
   isNavBarOpen,
   isNavBarEnabled,
   onLogoClick,
@@ -18,12 +22,22 @@ const AppBarLogo = ({
 }: AppBarLogoProps): JSX.Element => {
   return (
     <LogoRoot>
-      <LogoLink to="/" onClick={onLogoClick} data-metabase-event="Navbar;Logo">
-        <LogoIcon height={32} />
-      </LogoLink>
+      {isLogoVisible && (
+        <LogoLink
+          isNavBarEnabled={isNavBarEnabled}
+          to="/"
+          onClick={onLogoClick}
+          data-metabase-event="Navbar;Logo"
+        >
+          <LogoIcon height={32} />
+        </LogoLink>
+      )}
       {isNavBarEnabled && (
-        <ToggleContainer>
+        <ToggleContainer isLogoVisible={isLogoVisible}>
           <AppBarToggle
+            isSmallAppBar={isSmallAppBar}
+            isNavBarEnabled={isNavBarEnabled}
+            isLogoVisible={isLogoVisible}
             isNavBarOpen={isNavBarOpen}
             onToggleClick={onToggleClick}
           />
@@ -33,4 +47,5 @@ const AppBarLogo = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default AppBarLogo;

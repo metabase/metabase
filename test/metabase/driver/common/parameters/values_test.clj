@@ -18,11 +18,13 @@
    [metabase.util :as u]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db])
+   [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)
    (java.util UUID)
    (metabase.driver.common.parameters ReferencedCardQuery)))
+
+(set! *warn-on-reflection* true)
 
 (def ^:private test-uuid (str (UUID/randomUUID)))
 
@@ -288,131 +290,132 @@
 
 
 (deftest card-query-test
-  (testing "Card query template tag gets card's native query"
-    (let [test-query "SELECT 1"]
-      (mt/with-temp Card [card {:dataset_query {:database (mt/id)
-                                                :type     "native"
-                                                :native   {:query test-query}}}]
-        (is (= {:card-id (u/the-id card), :query test-query, :params nil}
-               (value-for-tag
-                {:name         "card-template-tag-test"
-                 :display-name "Card template tag test"
-                 :type         :card
-                 :card-id      (:id card)}
-                []))))))
+  (mt/with-test-user :rasta
+    (testing "Card query template tag gets card's native query"
+      (let [test-query "SELECT 1"]
+        (mt/with-temp Card [card {:dataset_query {:database (mt/id)
+                                                  :type     "native"
+                                                  :native   {:query test-query}}}]
+          (is (= {:card-id (u/the-id card), :query test-query, :params nil}
+                 (value-for-tag
+                  {:name         "card-template-tag-test"
+                   :display-name "Card template tag test"
+                   :type         :card
+                   :card-id      (:id card)}
+                  []))))))
 
-  (testing "Card query template tag generates native query for MBQL query"
-    (mt/with-everything-store
-      (driver/with-driver :h2
-        (let [mbql-query   (mt/mbql-query venues
-                             {:database (mt/id)
-                              :filter   [:< [:field $price nil] 3]})
-              expected-sql (str "SELECT "
-                                "\"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\", "
-                                "\"PUBLIC\".\"VENUES\".\"NAME\" AS \"NAME\", "
-                                "\"PUBLIC\".\"VENUES\".\"CATEGORY_ID\" AS \"CATEGORY_ID\", "
-                                "\"PUBLIC\".\"VENUES\".\"LATITUDE\" AS \"LATITUDE\", "
-                                "\"PUBLIC\".\"VENUES\".\"LONGITUDE\" AS \"LONGITUDE\", "
-                                "\"PUBLIC\".\"VENUES\".\"PRICE\" AS \"PRICE\" "
-                                "FROM \"PUBLIC\".\"VENUES\" "
-                                "WHERE \"PUBLIC\".\"VENUES\".\"PRICE\" < 3 "
-                                "LIMIT 1048575")]
-          (mt/with-temp Card [card {:dataset_query mbql-query}]
-            (is (= {:card-id (u/the-id card), :query expected-sql, :params nil}
-                   (value-for-tag
-                    {:name         "card-template-tag-test"
-                     :display-name "Card template tag test"
-                     :type         :card
-                     :card-id      (:id card)}
-                    []))))))))
+    (testing "Card query template tag generates native query for MBQL query"
+      (mt/with-everything-store
+        (driver/with-driver :h2
+          (let [mbql-query   (mt/mbql-query venues
+                               {:database (mt/id)
+                                :filter   [:< [:field $price nil] 3]})
+                expected-sql (str "SELECT "
+                                  "\"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\", "
+                                  "\"PUBLIC\".\"VENUES\".\"NAME\" AS \"NAME\", "
+                                  "\"PUBLIC\".\"VENUES\".\"CATEGORY_ID\" AS \"CATEGORY_ID\", "
+                                  "\"PUBLIC\".\"VENUES\".\"LATITUDE\" AS \"LATITUDE\", "
+                                  "\"PUBLIC\".\"VENUES\".\"LONGITUDE\" AS \"LONGITUDE\", "
+                                  "\"PUBLIC\".\"VENUES\".\"PRICE\" AS \"PRICE\" "
+                                  "FROM \"PUBLIC\".\"VENUES\" "
+                                  "WHERE \"PUBLIC\".\"VENUES\".\"PRICE\" < 3 "
+                                  "LIMIT 1048575")]
+            (mt/with-temp Card [card {:dataset_query mbql-query}]
+              (is (= {:card-id (u/the-id card), :query expected-sql, :params nil}
+                     (value-for-tag
+                      {:name         "card-template-tag-test"
+                       :display-name "Card template tag test"
+                       :type         :card
+                       :card-id      (:id card)}
+                      []))))))))
 
-  (testing "Persisted Models are substituted"
-    (mt/test-driver :postgres
-      (mt/dataset test-data
-        (mt/with-persistence-enabled [persist-models!]
-          (let [mbql-query (mt/mbql-query categories)]
-            (mt/with-temp* [Card [model {:name "model"
-                                         :dataset true
-                                         :dataset_query mbql-query
-                                         :database_id (mt/id)}]]
-              (persist-models!)
-              (testing "tag uses persisted table"
-                (let [pi (db/select-one 'PersistedInfo :card_id (u/the-id model))]
-                  (is (= "persisted" (:state pi)))
-                  (is (re-matches #"select \"id\", \"name\" from \"metabase_cache_[a-z0-9]+_[0-9]+\".\"model_[0-9]+_model\""
-                                  (:query
-                                   (value-for-tag
-                                    {:name         "card-template-tag-test"
-                                     :display-name "Card template tag test"
-                                     :type         :card
-                                     :card-id      (:id model)}
-                                    []))))
-                  (testing "query hits persisted table"
-                    (let [persisted-schema (ddl.i/schema-name {:id (mt/id)}
-                                                              (public-settings/site-uuid))
-                          update-query     (format "update %s.%s set name = name || ' from cached table'"
-                                                   persisted-schema (:table_name pi))
-                          model-query (format "select c_orig.name, c_cached.name
+    (testing "Persisted Models are substituted"
+      (mt/test-driver :postgres
+        (mt/dataset test-data
+          (mt/with-persistence-enabled [persist-models!]
+            (let [mbql-query (mt/mbql-query categories)]
+              (mt/with-temp* [Card [model {:name "model"
+                                           :dataset true
+                                           :dataset_query mbql-query
+                                           :database_id (mt/id)}]]
+                (persist-models!)
+                (testing "tag uses persisted table"
+                  (let [pi (t2/select-one 'PersistedInfo :card_id (u/the-id model))]
+                    (is (= "persisted" (:state pi)))
+                    (is (re-matches #"select \* from \"metabase_cache_[a-z0-9]+_[0-9]+\".\"model_[0-9]+_model\""
+                                    (:query
+                                     (value-for-tag
+                                      {:name         "card-template-tag-test"
+                                       :display-name "Card template tag test"
+                                       :type         :card
+                                       :card-id      (:id model)}
+                                      []))))
+                    (testing "query hits persisted table"
+                      (let [persisted-schema (ddl.i/schema-name {:id (mt/id)}
+                                                                (public-settings/site-uuid))
+                            update-query     (format "update %s.%s set name = name || ' from cached table'"
+                                                     persisted-schema (:table_name pi))
+                            model-query (format "select c_orig.name, c_cached.name
                                                from categories c_orig
                                                left join {{#%d}} c_cached
                                                on c_orig.id = c_cached.id
                                                order by c_orig.id desc limit 3"
-                                              (u/the-id model))
-                          tag-name    (format "#%d" (u/the-id model))]
-                      (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
-                                     [update-query])
-                      (is (= [["Winery" "Winery from cached table"]
-                              ["Wine Bar" "Wine Bar from cached table"]
-                              ["Vegetarian / Vegan" "Vegetarian / Vegan from cached table"]]
-                             (mt/rows (qp/process-query
-                                       {:database (mt/id)
-                                        :type :native
-                                        :native {:query model-query
-                                                 :template-tags
-                                                 {(keyword tag-name)
-                                                  {:id "c6558da4-95b0-d829-edb6-45be1ee10d3c"
-                                                   :name tag-name
-                                                   :display-name tag-name
-                                                   :type "card"
-                                                   :card-id (u/the-id model)}}}}))))))))))))))
+                                                (u/the-id model))
+                            tag-name    (format "#%d" (u/the-id model))]
+                        (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+                                       [update-query])
+                        (is (= [["Winery" "Winery from cached table"]
+                                ["Wine Bar" "Wine Bar from cached table"]
+                                ["Vegetarian / Vegan" "Vegetarian / Vegan from cached table"]]
+                               (mt/rows (qp/process-query
+                                         {:database (mt/id)
+                                          :type :native
+                                          :native {:query model-query
+                                                   :template-tags
+                                                   {(keyword tag-name)
+                                                    {:id "c6558da4-95b0-d829-edb6-45be1ee10d3c"
+                                                     :name tag-name
+                                                     :display-name tag-name
+                                                     :type "card"
+                                                     :card-id (u/the-id model)}}}}))))))))))))))
 
-  (testing "Card query template tag wraps error in tag details"
-    (mt/with-temp Card [param-card {:dataset_query
+    (testing "Card query template tag wraps error in tag details"
+      (mt/with-temp Card [param-card {:dataset_query
+                                      (mt/native-query
+                                        {:query "SELECT {{x}}"
+                                         :template-tags
+                                         {"x"
+                                          {:id   "x-tag", :name     "x", :display-name "Number x",
+                                           :type :number, :required false}}})}]
+        (let [param-card-id  (:id param-card)
+              param-card-tag (str "#" param-card-id)]
+          (mt/with-temp Card [card {:dataset_query
                                     (mt/native-query
-                                      {:query "SELECT {{x}}"
+                                      {:query (str "SELECT * FROM {{#" param-card-id "}} AS y")
                                        :template-tags
-                                       {"x"
-                                        {:id   "x-tag", :name     "x", :display-name "Number x",
-                                         :type :number, :required false}}})}]
-      (let [param-card-id  (:id param-card)
-            param-card-tag (str "#" param-card-id)]
-        (mt/with-temp Card [card {:dataset_query
-                                  (mt/native-query
-                                    {:query (str "SELECT * FROM {{#" param-card-id "}} AS y")
-                                     :template-tags
-                                     {param-card-tag
-                                      {:id   param-card-tag, :name    param-card-tag, :display-name param-card-tag
-                                       :type "card",         :card-id param-card-id}}})}]
-          (let [card-id  (:id card)
-                tag      {:name "card-template-tag-test", :display-name "Card template tag test",
-                          :type :card,                    :card-id      card-id}
-                e        (try
-                           (value-for-tag tag [])
-                           (catch ExceptionInfo e
-                             e))
-                exc-data (some (fn [e]
-                                 (when (:card-query-error? (ex-data e))
-                                   (ex-data e)))
-                               (take-while some? (iterate ex-cause e)))]
-            (testing "should be a card Query error"
-              (is (= true
-                     (boolean (:card-query-error? exc-data)))))
-            (testing "card-id"
-              (is (= card-id
-                     (:card-id exc-data))))
-            (testing "tag"
-              (is (= tag
-                     (:tag exc-data))))))))))
+                                       {param-card-tag
+                                        {:id   param-card-tag, :name    param-card-tag, :display-name param-card-tag
+                                         :type "card",         :card-id param-card-id}}})}]
+            (let [card-id  (:id card)
+                  tag      {:name "card-template-tag-test", :display-name "Card template tag test",
+                            :type :card,                    :card-id      card-id}
+                  e        (try
+                             (value-for-tag tag [])
+                             (catch ExceptionInfo e
+                               e))
+                  exc-data (some (fn [e]
+                                   (when (:card-query-error? (ex-data e))
+                                     (ex-data e)))
+                                 (take-while some? (iterate ex-cause e)))]
+              (testing "should be a card Query error"
+                (is (= true
+                       (boolean (:card-query-error? exc-data)))))
+              (testing "card-id"
+                (is (= card-id
+                       (:card-id exc-data))))
+              (testing "tag"
+                (is (= tag
+                       (:tag exc-data)))))))))))
 
 (deftest card-query-permissions-test
   (testing "We should be able to run a query referenced via a template tag if we have perms for the Card in question (#12354)"

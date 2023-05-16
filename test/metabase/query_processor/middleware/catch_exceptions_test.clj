@@ -160,7 +160,7 @@
     (testing "They should see it if they have ad-hoc native query perms"
       (perms/grant-native-readwrite-permissions! (perms-group/all-users) (data/id))
       ;; this is not actually a valid query
-      (is (schema= {:native       (s/eq {:query  (str "SELECT date_trunc('month', \"PUBLIC\".\"VENUES\".\"ID\") AS \"ID\""
+      (is (schema= {:native       (s/eq {:query  (str "SELECT DATE_TRUNC('month', \"PUBLIC\".\"VENUES\".\"ID\") AS \"ID\""
                                                       " FROM \"PUBLIC\".\"VENUES\" LIMIT 1048575")
                                          :params nil})
                     :preprocessed (s/pred map?)

@@ -19,6 +19,7 @@ export interface AppBarLargeProps {
   collectionId?: CollectionId;
   isNavBarOpen?: boolean;
   isNavBarEnabled?: boolean;
+  isLogoVisible?: boolean;
   isSearchVisible?: boolean;
   isNewButtonVisible?: boolean;
   isProfileLinkVisible?: boolean;
@@ -33,6 +34,7 @@ const AppBarLarge = ({
   collectionId,
   isNavBarOpen,
   isNavBarEnabled,
+  isLogoVisible,
   isSearchVisible,
   isNewButtonVisible,
   isProfileLinkVisible,
@@ -45,8 +47,12 @@ const AppBarLarge = ({
 
   return (
     <AppBarRoot isNavBarOpen={isNavBarVisible}>
-      <AppBarLeftContainer isNavBarEnabled={isNavBarEnabled}>
+      <AppBarLeftContainer
+        isNavBarEnabled={isNavBarEnabled}
+        isLogoVisible={isLogoVisible}
+      >
         <AppBarLogo
+          isLogoVisible={isLogoVisible}
           isNavBarOpen={isNavBarVisible}
           isNavBarEnabled={isNavBarEnabled}
           onToggleClick={onToggleNavbar}
@@ -76,4 +82,5 @@ const AppBarLarge = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default AppBarLarge;

@@ -5,7 +5,9 @@
    [clojure.test :refer :all]
    [clojure.walk :as walk]
    [metabase.models.field :refer [Field]]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 (defn- token->sigil [token]
   (when-let [[_ sigil] (re-matches #"^([$%*!&]{1,2}).*[\w/]$" (str token))]
@@ -67,10 +69,10 @@
                    :dest-token-str    dest-token-str})))
 
 (defn field-name [field-id]
-  (db/select-one-field :name Field :id field-id))
+  (t2/select-one-fn :name Field :id field-id))
 
 (defn field-base-type [field-id]
-  (db/select-one-field :base_type Field :id field-id))
+  (t2/select-one-fn :base_type Field :id field-id))
 
 (defn- field-literal [source-table-symb token-str]
   (if (str/includes? token-str "/")

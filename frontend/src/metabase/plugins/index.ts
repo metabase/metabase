@@ -24,7 +24,6 @@ import type Question from "metabase-lib/Question";
 import { PluginGroupManagersType } from "./types";
 
 // Plugin integration points. All exports must be objects or arrays so they can be mutated by plugins.
-const object = () => ({});
 const array = () => [];
 
 // functions called when the application is started
@@ -66,6 +65,11 @@ export const PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_POST_ACTION = {
 };
 export const PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_PERMISSION_VALUE = {
   controlled: null,
+};
+
+export const PLUGIN_DATA_PERMISSIONS = {
+  getPermissionsPayloadExtraData: (_state: State) => ({}),
+  hasChanges: (_state: State) => false,
 };
 
 // user form fields, e.x. login attributes
@@ -147,7 +151,8 @@ export const PLUGIN_MODERATION = {
   QuestionModerationButton: PluginPlaceholder,
   ModerationReviewBanner: PluginPlaceholder,
   ModerationStatusIcon: PluginPlaceholder,
-  getStatusIcon: object,
+  getStatusIcon: (moderated_status?: string): string | IconProps | undefined =>
+    undefined,
   getModerationTimelineEvents: array,
   getMenuItems: (
     question?: Question,
@@ -167,8 +172,12 @@ export const PLUGIN_CACHING = {
   isEnabled: () => false,
 };
 
-export const PLUGIN_REDUCERS: { applicationPermissionsPlugin: any } = {
+export const PLUGIN_REDUCERS: {
+  applicationPermissionsPlugin: any;
+  sandboxingPlugin: any;
+} = {
   applicationPermissionsPlugin: () => null,
+  sandboxingPlugin: () => null,
 };
 
 export const PLUGIN_ADVANCED_PERMISSIONS = {

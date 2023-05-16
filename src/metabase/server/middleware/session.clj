@@ -1,10 +1,7 @@
 (ns metabase.server.middleware.session
   "Ring middleware related to session (binding current user and permissions)."
   (:require
-   [clojure.java.jdbc :as jdbc]
-   [clojure.tools.logging :as log]
-   [honeysql.core :as hsql]
-   [honeysql.helpers :as hh]
+   [honey.sql.helpers :as sql.helpers]
    [java-time :as t]
    [metabase.api.common
     :as api
@@ -17,9 +14,6 @@
    [metabase.core.initialization-status :as init-status]
    [metabase.db :as mdb]
    [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.models.permissions-group-membership
-    :refer [PermissionsGroupMembership]]
-   [metabase.models.session :refer [Session]]
    [metabase.models.setting
     :as setting
     :refer [*user-local-values* defsetting]]
@@ -28,10 +22,12 @@
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.server.request.util :as request.u]
    [metabase.util :as u]
-   [metabase.util.i18n :as i18n :refer [deferred-trs deferred-tru tru]]
+   [metabase.util.i18n :as i18n :refer [deferred-trs deferred-tru trs tru]]
+   [metabase.util.log :as log]
    [ring.util.response :as response]
    [schema.core :as s]
-   [toucan.db :as db])
+   [toucan.db :as db]
+   [toucan2.core :as t2])
   (:import
    (java.util UUID)))
 
@@ -232,30 +228,31 @@
    (fn [db-type max-age-minutes session-type enable-advanced-permissions?]
      (first
       (db/honeysql->sql
-       (cond->
-         {:select    [[:session.user_id :metabase-user-id]
-                      [:user.is_superuser :is-superuser?]
-                      [:user.locale :user-locale]]
-          :from      [[Session :session]]
-          :left-join [[User :user] [:= :session.user_id :user.id]]
-          :where     [:and
-                      [:= :user.is_active true]
-                      [:= :session.id (hsql/raw "?")]
-                      (let [oldest-allowed (sql.qp/add-interval-honeysql-form db-type :%now (- max-age-minutes) :minute)]
-                        [:> :session.created_at oldest-allowed])
-                      [:= :session.anti_csrf_token (case session-type
-                                                     :normal         nil
-                                                     :full-app-embed "?")]]
-          :limit     1}
-
+       (cond-> {:select    [[:session.user_id :metabase-user-id]
+                            [:user.is_superuser :is-superuser?]
+                            [:user.locale :user-locale]]
+                :from      [[:core_session :session]]
+                :left-join [[:core_user :user] [:= :session.user_id :user.id]]
+                :where     [:and
+                            [:= :user.is_active true]
+                            [:= :session.id [:raw "?"]]
+                            (let [oldest-allowed [:inline (sql.qp/add-interval-honeysql-form db-type
+                                                                                             :%now
+                                                                                             (- max-age-minutes)
+                                                                                             :minute)]]
+                              [:> :session.created_at oldest-allowed])
+                            [:= :session.anti_csrf_token (case session-type
+                                                           :normal         nil
+                                                           :full-app-embed [:raw "?"])]]
+                :limit     [:inline 1]}
          enable-advanced-permissions?
          (->
-          (hh/merge-select
+          (sql.helpers/select
            [:pgm.is_group_manager :is-group-manager?])
-          (hh/merge-left-join
-           [PermissionsGroupMembership :pgm] [:and
-                                              [:= :pgm.user_id :user.id]
-                                              [:is :pgm.is_group_manager true]]))))))))
+          (sql.helpers/left-join
+           [:permissions_group_membership :pgm] [:and
+                                                 [:= :pgm.user_id :user.id]
+                                                 [:is :pgm.is_group_manager true]]))))))))
 
 (defn- current-user-info-for-session
   "Return User ID and superuser status for Session with `session-id` if it is valid and not expired."
@@ -268,7 +265,7 @@
           params (concat [session-id]
                          (when (seq anti-csrf-token)
                            [anti-csrf-token]))]
-      (some-> (first (jdbc/query (db/connection) (cons sql params)))
+      (some-> (t2/query-one (cons sql params))
               ;; is-group-manager? could return `nil, convert it to boolean so it's guaranteed to be only true/false
               (update :is-group-manager? boolean)))))
 
@@ -297,22 +294,22 @@
 
 (defn- find-user [user-id]
   (when user-id
-    (db/select-one current-user-fields, :id user-id)))
+    (t2/select-one current-user-fields, :id user-id)))
 
 (defn- user-local-settings [user-id]
   (when user-id
-    (or (:settings (db/select-one [User :settings] :id user-id))
+    (or (:settings (t2/select-one [User :settings] :id user-id))
         {})))
 
 (defn do-with-current-user
   "Impl for `with-current-user`."
-  [{:keys [metabase-user-id is-superuser? user-locale settings is-group-manager?]} thunk]
+  [{:keys [metabase-user-id is-superuser? permissions-set user-locale settings is-group-manager?]} thunk]
   (binding [*current-user-id*              metabase-user-id
             i18n/*user-locale*             user-locale
             *is-group-manager?*            (boolean is-group-manager?)
             *is-superuser?*                (boolean is-superuser?)
             *current-user*                 (delay (find-user metabase-user-id))
-            *current-user-permissions-set* (delay (some-> metabase-user-id user/permissions-set))
+            *current-user-permissions-set* (delay (or permissions-set (some-> metabase-user-id user/permissions-set)))
             *user-local-values*            (delay (atom (or settings
                                                             (user-local-settings metabase-user-id))))]
     (thunk)))
@@ -331,7 +328,7 @@
                                         Overrides `site-locale` if set.
   *  `*is-superuser?*`                  Boolean stating whether current user is a superuser.
   *  `*is-group-manager?*`              Boolean stating whether current user is a group manager of at least one group.
-  *  `current-user-permissions-set*`    delay that returns the set of permissions granted to the current user from DB
+  *  `*current-user-permissions-set*`   delay that returns the set of permissions granted to the current user from DB
   *  `*user-local-values*`              atom containing a map of user-local settings and values for the current user"
   [handler]
   (fn [request respond raise]
@@ -342,13 +339,24 @@
   "Part of the impl for `with-current-user` -- don't use this directly."
   [current-user-id]
   (when current-user-id
-    (db/select-one [User [:id :metabase-user-id] [:is_superuser :is-superuser?] [:locale :user-locale] :settings]
+    (t2/select-one [User [:id :metabase-user-id] [:is_superuser :is-superuser?] [:locale :user-locale] :settings]
       :id current-user-id)))
 
+(defmacro as-admin
+  "Execude code in body as an admin user."
+  {:style/indent :defn}
+  [& body]
+  `(do-with-current-user
+    (merge
+      (with-current-user-fetch-user-for-id ~'api/*current-user-id*)
+      {:is-superuser? true
+       :permissions-set #{"/"}})
+    (fn [] ~@body)))
+
 (defmacro with-current-user
-  "Execute code in body with User with `current-user-id` bound as the current user. (This is not used in the middleware
+  "Execute code in body with `current-user-id` bound as the current user. (This is not used in the middleware
   itself but elsewhere where we want to simulate a User context, such as when rendering Pulses or in tests.) "
-  {:style/indent 1}
+  {:style/indent :defn}
   [current-user-id & body]
   `(do-with-current-user
     (with-current-user-fetch-user-for-id ~current-user-id)
@@ -359,21 +367,52 @@
 ;;; |                                              reset-cookie-timeout                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defn- check-session-timeout
+  "Returns nil if the [[session-timeout]] value is valid. Otherwise returns an error key."
+  [timeout]
+  (when (some? timeout)
+    (let [{:keys [unit amount]} timeout
+          units-in-24-hours (case unit
+                              "seconds" (* 60 60 24)
+                              "minutes" (* 60 24)
+                              "hours"   24)
+          units-in-100-years (* units-in-24-hours 365.25 100)]
+      (cond
+        (not (pos? amount))
+        :amount-must-be-positive
+        (>= amount units-in-100-years)
+        :amount-must-be-less-than-100-years))))
+
 (defsetting session-timeout
-  ;; Should be in the form {:amount 60 :unit "minutes"} where the unit is one of "seconds", "minutes" or "hours".
+  ;; Should be in the form "{\"amount\":60,\"unit\":\"minutes\"}" where the unit is one of "seconds", "minutes" or "hours".
   ;; The amount is nillable.
   (deferred-tru "Time before inactive users are logged out. By default, sessions last indefinitely.")
-  :type       :json
-  :default    nil)
+  :type    :json
+  :default nil
+  :getter  (fn []
+             (let [value (setting/get-value-of-type :json :session-timeout)]
+               (if-let [error-key (check-session-timeout value)]
+                 (do (log/warn (case error-key
+                                 :amount-must-be-positive            (trs "Session timeout amount must be positive.")
+                                 :amount-must-be-less-than-100-years (trs "Session timeout must be less than 100 years.")))
+                     nil)
+                 value)))
+  :setter  (fn [new-value]
+             (when-let [error-key (check-session-timeout new-value)]
+               (throw (ex-info (case error-key
+                                 :amount-must-be-positive            (tru "Session timeout amount must be positive.")
+                                 :amount-must-be-less-than-100-years (tru "Session timeout must be less than 100 years."))
+                               {:status-code 400})))
+             (setting/set-value-of-type! :json :session-timeout new-value)))
 
 (defn session-timeout->seconds
-  "Convert a session timeout setting to seconds."
+  "Convert the session-timeout setting value to seconds."
   [{:keys [unit amount]}]
   (when amount
     (-> (case unit
           "seconds" amount
           "minutes" (* amount 60)
-          "hours"  (* amount 3600))
+          "hours"   (* amount 3600))
         (max 60)))) ; Ensure a minimum of 60 seconds so a user can't lock themselves out
 
 (defn session-timeout-seconds

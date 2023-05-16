@@ -1,5 +1,5 @@
 import React from "react";
-import { render } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import ChartSettingLinkUrlInput from "./ChartSettingLinkUrlInput";
@@ -16,7 +16,7 @@ const OPTIONS = [
 ];
 
 const setup = ({ onChange = jest.fn(), value = "", ...props } = {}) => {
-  const { getByRole, rerender, findAllByRole } = render(
+  const { rerender } = render(
     <ChartSettingLinkUrlInput
       {...props}
       value={value}
@@ -25,8 +25,8 @@ const setup = ({ onChange = jest.fn(), value = "", ...props } = {}) => {
     />,
   );
 
-  const input = getByRole("combobox");
-  const getOptions = async () => findAllByRole("menuitem");
+  const input = screen.getByRole("combobox");
+  const getOptions = () => screen.findAllByRole("menuitem");
 
   return { input, getOptions, rerender };
 };

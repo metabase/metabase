@@ -13,7 +13,6 @@ const WebpackNotifierPlugin = require("webpack-notifier");
 const ReactRefreshPlugin = require("@pmmmwh/react-refresh-webpack-plugin");
 
 const fs = require("fs");
-const os = require("os");
 
 const ASSETS_PATH = __dirname + "/resources/frontend_client/app/assets";
 const FONTS_PATH = __dirname + "/resources/frontend_client/app/fonts";
@@ -22,9 +21,11 @@ const LIB_SRC_PATH = __dirname + "/frontend/src/metabase-lib";
 const ENTERPRISE_SRC_PATH =
   __dirname + "/enterprise/frontend/src/metabase-enterprise";
 const TYPES_SRC_PATH = __dirname + "/frontend/src/metabase-types";
-const CLJS_SRC_PATH = __dirname + "/frontend/src/cljs";
+const CLJS_SRC_PATH = __dirname + "/frontend/src/cljs_release";
+const CLJS_SRC_PATH_DEV = __dirname + "/frontend/src/cljs";
 const TEST_SUPPORT_PATH = __dirname + "/frontend/test/__support__";
 const BUILD_PATH = __dirname + "/resources/frontend_client";
+const E2E_PATH = __dirname + "/e2e";
 
 // default WEBPACK_BUNDLE to development
 const WEBPACK_BUNDLE = process.env.WEBPACK_BUNDLE || "development";
@@ -57,6 +58,11 @@ const config = (module.exports = {
     "app-public": "./app-public.js",
     "app-embed": "./app-embed.js",
     styles: "./css/index.css",
+  },
+
+  externals: {
+    canvg: "canvg",
+    dompurify: "dompurify"
   },
 
   // output to "dist"
@@ -109,6 +115,12 @@ const config = (module.exports = {
           { loader: "postcss-loader" },
         ],
       },
+      {
+        test: /\.js$/,
+        exclude: /node_modules/,
+        enforce: "pre",
+        use: ["source-map-loader"],
+      },
     ],
   },
   resolve: {
@@ -130,8 +142,9 @@ const config = (module.exports = {
       "metabase-enterprise": ENTERPRISE_SRC_PATH,
       "metabase-types": TYPES_SRC_PATH,
       "metabase-dev": `${SRC_PATH}/dev${devMode ? "" : "-noop"}.js`,
-      cljs: CLJS_SRC_PATH,
+      cljs: devMode ? CLJS_SRC_PATH_DEV : CLJS_SRC_PATH,
       __support__: TEST_SUPPORT_PATH,
+      e2e: E2E_PATH,
       style: SRC_PATH + "/css/core/index",
       ace: __dirname + "/node_modules/ace-builds/src-min-noconflict",
       // NOTE @kdoh - 7/24/18
@@ -142,6 +155,10 @@ const config = (module.exports = {
       "ee-plugins":
         process.env.MB_EDITION === "ee"
           ? ENTERPRISE_SRC_PATH + "/plugins"
+          : SRC_PATH + "/lib/noop",
+      "ee-overrides":
+        process.env.MB_EDITION === "ee"
+          ? ENTERPRISE_SRC_PATH + "/overrides"
           : SRC_PATH + "/lib/noop",
     },
   },
@@ -219,17 +236,12 @@ const config = (module.exports = {
 });
 
 if (WEBPACK_BUNDLE === "hot") {
-  const localIpAddress =
-    getLocalIpAddress("IPv4") || getLocalIpAddress("IPv6") || "0.0.0.0";
-
-  const webpackPort = 8080;
-  const webpackHost = `http://${localIpAddress}:${webpackPort}`;
   config.target = "web";
   // suffixing with ".hot" allows us to run both `yarn run build-hot` and `yarn run test` or `yarn run test-watch` simultaneously
   config.output.filename = "[name].hot.bundle.js?[contenthash]";
 
   // point the publicPath (inlined in index.html by HtmlWebpackPlugin) to the hot-reloading server
-  config.output.publicPath = webpackHost + "/" + config.output.publicPath;
+  config.output.publicPath = "http://localhost:8080/" + config.output.publicPath;
 
   config.module.rules.unshift({
     test: /\.(tsx?|jsx?)$/,
@@ -246,9 +258,6 @@ if (WEBPACK_BUNDLE === "hot") {
   });
 
   config.devServer = {
-    host: "local-ip",
-    port: webpackPort,
-    allowedHosts: "auto",
     hot: true,
     client: {
       progress: false,
@@ -305,7 +314,7 @@ if (WEBPACK_BUNDLE !== "production") {
   // by default enable "cheap" source maps for fast re-build speed
   // with BETTER_SOURCE_MAPS we switch to sourcemaps that work with breakpoints and makes stacktraces readable
   config.devtool = process.env.BETTER_SOURCE_MAPS
-    ? "inline-source-map"
+    ? "eval-source-map"
     : "cheap-module-source-map";
 
   // helps with source maps
@@ -324,18 +333,4 @@ if (WEBPACK_BUNDLE !== "production") {
   );
 
   config.devtool = "source-map";
-}
-
-function getLocalIpAddress(ipFamily) {
-  const networkInterfaces = os.networkInterfaces();
-  const interfaces = Object.keys(networkInterfaces)
-    .map(iface => networkInterfaces[iface])
-    .reduce((interfaces, iface) => interfaces.concat(iface));
-
-  const externalInterfaces = interfaces.filter(iface => !iface.internal);
-
-  const { address } = externalInterfaces
-    .filter(({ family }) => family === ipFamily)
-    .shift();
-  return address;
 }

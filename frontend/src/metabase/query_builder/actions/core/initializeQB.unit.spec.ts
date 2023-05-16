@@ -1,18 +1,24 @@
-import nock from "nock";
+import fetchMock from "fetch-mock";
 import { LocationDescriptorObject } from "history";
 
 import * as CardLib from "metabase/lib/card";
 import * as Urls from "metabase/lib/urls";
 
 import * as alert from "metabase/alert/alert";
+import * as questionActions from "metabase/questions/actions";
 import Databases from "metabase/entities/databases";
 import Snippets from "metabase/entities/snippets";
 import { setErrorPage } from "metabase/redux/app";
 
-import { User } from "metabase-types/api";
+import {
+  Card,
+  DatabaseId,
+  NativeDatasetQuery,
+  TableId,
+  TemplateTag,
+  User,
+} from "metabase-types/api";
 import { createMockUser } from "metabase-types/api/mocks";
-import { Card, NativeDatasetQuery } from "metabase-types/types/Card";
-import { TemplateTag } from "metabase-types/types/Query";
 import { createMockState } from "metabase-types/store/mocks";
 
 import {
@@ -36,7 +42,6 @@ import Question from "metabase-lib/Question";
 import * as querying from "../querying";
 
 import * as core from "./core";
-import * as metadataActions from "./metadata";
 import { initializeQB } from "./initializeQB";
 
 type BaseSetupOpts = {
@@ -113,7 +118,7 @@ async function setup({
   const card = question.card();
 
   if ("id" in card) {
-    nock(global.location.origin).get(`/api/card/${card.id}`).reply(200, card);
+    fetchMock.get(`path:/api/card/${card.id}`, card);
   }
 
   jest.spyOn(CardLib, "loadCard").mockReturnValue(Promise.resolve({ ...card }));
@@ -147,7 +152,6 @@ describe("QB Actions > initializeQB", () => {
   });
 
   afterEach(() => {
-    nock.cleanAll();
     jest.restoreAllMocks();
   });
 
@@ -228,7 +232,7 @@ describe("QB Actions > initializeQB", () => {
 
         it("fetches question metadata", async () => {
           const loadMetadataForCardSpy = jest.spyOn(
-            metadataActions,
+            questionActions,
             "loadMetadataForCard",
           );
 
@@ -425,9 +429,10 @@ describe("QB Actions > initializeQB", () => {
           original_card_id: ORIGINAL_CARD_ID,
         });
 
-        nock(location.origin)
-          .get(`/api/card/${originalQuestion.id()}`)
-          .reply(200, originalQuestion.card());
+        fetchMock.get(
+          `path:/api/card/${originalQuestion.id()}`,
+          originalQuestion.card(),
+        );
 
         jest
           .spyOn(CardLib, "loadCard")
@@ -648,8 +653,8 @@ describe("QB Actions > initializeQB", () => {
 
   describe("blank question", () => {
     type BlankSetupOpts = Omit<BaseSetupOpts, "location" | "params"> & {
-      db?: number;
-      table?: number;
+      db?: DatabaseId;
+      table?: TableId;
       segment?: number;
       metric?: number;
     };
@@ -740,12 +745,6 @@ describe("QB Actions > initializeQB", () => {
       expect(filter.raw()).toEqual(["segment", SEGMENT_ID]);
     });
 
-    it("opens summarization sidebar if metric is applied", async () => {
-      const METRIC_ID = 777;
-      const { result } = await setupOrdersTable({ metric: METRIC_ID });
-      expect(result.uiControls.isShowingSummarySidebar).toBe(true);
-    });
-
     it("applies 'metric' param correctly", async () => {
       const METRIC_ID = 777;
 
@@ -778,7 +777,7 @@ describe("QB Actions > initializeQB", () => {
 
     it("fetches question metadata", async () => {
       const loadMetadataForCardSpy = jest.spyOn(
-        metadataActions,
+        questionActions,
         "loadMetadataForCard",
       );
 

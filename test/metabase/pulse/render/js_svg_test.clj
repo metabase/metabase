@@ -1,4 +1,4 @@
-(ns metabase.pulse.render.js-svg-test
+(ns ^:mb/once metabase.pulse.render.js-svg-test
   "Testing of the svgs produced by the graal js engine and the static-viz bundle. The model is
 
   query-results -> js engine with bundle -> svg-string -> svg png renderer
@@ -16,6 +16,8 @@
    (org.apache.batik.anim.dom SVGOMDocument)
    (org.graalvm.polyglot Context Value)
    (org.w3c.dom Element Node)))
+
+(set! *warn-on-reflection* true)
 
 (def parse-svg #'js-svg/parse-svg-string)
 
@@ -81,7 +83,7 @@
   (letfn [(tree [^Node node]
             (into [(.getNodeName node)]
                   (if (instance? org.apache.batik.dom.GenericText node)
-                    [(.getWholeText node)]
+                    [(.getWholeText ^org.apache.batik.dom.GenericText node)]
                     (map tree
                          (when (instance? Element node)
                            (let [children (.getChildNodes node)]

@@ -1,11 +1,12 @@
-import React, { memo, SyntheticEvent, useCallback } from "react";
+import React, { memo, ChangeEvent, SyntheticEvent, useCallback } from "react";
 import { t } from "ttag";
+import { Timeline, TimelineEvent } from "metabase-types/api";
 import Settings from "metabase/lib/settings";
 import { parseTimestamp } from "metabase/lib/time";
 import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 import EntityMenu from "metabase/components/EntityMenu";
+import Checkbox from "metabase/core/components/CheckBox/CheckBox";
 import { useScrollOnMount } from "metabase/hooks/use-scroll-on-mount";
-import { Timeline, TimelineEvent } from "metabase-types/api";
 import {
   CardAside,
   CardBody,
@@ -13,7 +14,8 @@ import {
   CardDateInfo,
   CardDescription,
   CardIcon,
-  CardIconContainer,
+  CardIconAndDateContainer,
+  CardCheckboxContainer,
   CardRoot,
   CardTitle,
 } from "./EventCard.styled";
@@ -22,29 +24,48 @@ export interface EventCardProps {
   event: TimelineEvent;
   timeline: Timeline;
   isSelected?: boolean;
+  isVisible: boolean;
   onEdit?: (event: TimelineEvent) => void;
   onMove?: (event: TimelineEvent) => void;
   onArchive?: (event: TimelineEvent) => void;
   onToggleSelected?: (event: TimelineEvent, isSelected: boolean) => void;
+  onShowTimelineEvents: (timelineEvent: TimelineEvent[]) => void;
+  onHideTimelineEvents: (timelineEvent: TimelineEvent[]) => void;
 }
 
 const EventCard = ({
   event,
   timeline,
   isSelected,
+  isVisible,
   onEdit,
   onMove,
   onArchive,
   onToggleSelected,
+  onShowTimelineEvents,
+  onHideTimelineEvents,
 }: EventCardProps): JSX.Element => {
   const selectedRef = useScrollOnMount();
   const menuItems = getMenuItems(event, timeline, onEdit, onMove, onArchive);
   const dateMessage = getDateMessage(event);
   const creatorMessage = getCreatorMessage(event);
 
-  const handleEventClick = useCallback(() => {
-    onToggleSelected?.(event, !isSelected);
-  }, [event, isSelected, onToggleSelected]);
+  const handleToggleSelected = useCallback(() => {
+    if (isVisible) {
+      onToggleSelected?.(event, !isSelected);
+    }
+  }, [event, isVisible, isSelected, onToggleSelected]);
+
+  const handleChangeVisibility = useCallback(
+    (e: ChangeEvent<HTMLInputElement>) => {
+      if (e.target.checked) {
+        onShowTimelineEvents([event]);
+      } else {
+        onHideTimelineEvents([event]);
+      }
+    },
+    [event, onShowTimelineEvents, onHideTimelineEvents],
+  );
 
   const handleAsideClick = useCallback((event: SyntheticEvent) => {
     event.stopPropagation();
@@ -52,15 +73,23 @@ const EventCard = ({
 
   return (
     <CardRoot
+      aria-label={t`Timeline event card`}
       ref={isSelected ? selectedRef : null}
-      isSelected={isSelected}
-      onClick={handleEventClick}
+      isSelected={isVisible && isSelected}
+      onClick={handleToggleSelected}
     >
-      <CardIconContainer>
-        <CardIcon name={event.icon} />
-      </CardIconContainer>
+      <CardCheckboxContainer>
+        <Checkbox
+          checked={isVisible}
+          onChange={handleChangeVisibility}
+          onClick={handleAsideClick}
+        />
+      </CardCheckboxContainer>
       <CardBody>
-        <CardDateInfo>{dateMessage}</CardDateInfo>
+        <CardIconAndDateContainer>
+          <CardIcon name={event.icon} />
+          <CardDateInfo>{dateMessage}</CardDateInfo>
+        </CardIconAndDateContainer>
         <CardTitle>{event.name}</CardTitle>
         {event.description && (
           <CardDescription>{event.description}</CardDescription>
@@ -125,4 +154,5 @@ const getCreatorMessage = (event: TimelineEvent) => {
   }
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default memo(EventCard);

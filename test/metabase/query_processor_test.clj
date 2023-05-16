@@ -6,21 +6,24 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [medley.core :as m]
+   [hawk.init]
    [metabase.db.connection :as mdb.connection]
    [metabase.driver :as driver]
    [metabase.models.field :refer [Field]]
    [metabase.models.table :refer [Table]]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.middleware.add-implicit-joins :as qp.add-implicit-joins]
-   [metabase.test-runner.init :as test-runner.init]
+   [metabase.query-processor.middleware.add-implicit-joins
+    :as qp.add-implicit-joins]
    [metabase.test.data :as data]
    [metabase.test.data.env :as tx.env]
    [metabase.test.data.interface :as tx]
    [metabase.test.util :as tu]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 ;;; ---------------------------------------------- Helper Fns + Macros -----------------------------------------------
 
@@ -41,7 +44,7 @@
   {:pre [(every? keyword? (cons feature more-features))]}
   ;; Can't use [[normal-drivers-with-feature]] during test initialization, because it means we end up having to load
   ;; plugins and a bunch of other nonsense.
-  (test-runner.init/assert-tests-are-not-initializing (pr-str (list* 'normal-drivers-with-feature feature more-features)))
+  (hawk.init/assert-tests-are-not-initializing (pr-str (list* 'normal-drivers-with-feature feature more-features)))
   (let [features (set (cons feature more-features))]
     (set (for [driver (normal-drivers)
                :let   [driver (tx/the-driver-with-test-extensions driver)]
@@ -83,7 +86,7 @@
   [table-kw field-kw]
   (merge
    (col-defaults)
-   (db/select-one [Field :id :table_id :semantic_type :base_type :effective_type
+   (t2/select-one [Field :id :table_id :semantic_type :base_type :effective_type
                    :coercion_strategy :name :display_name :fingerprint]
      :id (data/id table-kw field-kw))
    {:field_ref [:field (data/id table-kw field-kw) nil]}
@@ -165,23 +168,6 @@
   ([table-kw field-kw]
    (field-literal-col (col table-kw field-kw))))
 
-(defn field-literal-col-keep-extra-cols
-  "Return expected `:cols` info for a Field that was referred to as a `:field-literal`. This differs from
-  `field-literal-col` in that it doesn't remove columns like `:description` -- in some cases metadata will come back
-  with these cols, and in some it won't -- I think it has to do with whether the Card had `:source_metadata` saved for
-  it.
-
-    (field-literal-col-keep-extra-cols :venues :price)
-    (field-literal-col-keep-extra-cols (aggregate-col :count))"
-  {:arglists '([col] [table-kw field-kw])}
-  ([{field-name :name, base-type :base_type, :as col}]
-   (assoc col
-          :field_ref [:field field-name {:base-type base-type}]
-          :source    :fields))
-
-  ([table-kw field-kw]
-   (field-literal-col-keep-extra-cols (col table-kw field-kw))))
-
 (defn fk-col
   "Return expected `:cols` info for a Field that came in via an implicit join (i.e, via an `fk->` clause)."
   [source-table-kw source-field-kw, dest-table-kw dest-field-kw]
@@ -191,10 +177,8 @@
         (update :display_name (partial format "%s → %s" (str/replace (:display_name source-col) #"(?i)\sid$" "")))
         (assoc :field_ref    [:field (:id dest-col) {:source-field (:id source-col)}]
                :fk_field_id  (:id source-col)
-               :source_alias (driver/escape-alias
-                              driver/*driver*
-                              (#'qp.add-implicit-joins/join-alias (db/select-one-field :name Table :id (data/id dest-table-kw))
-                                                                  (:name source-col)))))))
+               :source_alias (#'qp.add-implicit-joins/join-alias (t2/select-one-fn :name Table :id (data/id dest-table-kw))
+                                                                 (:name source-col))))))
 
 (declare cols)
 
@@ -217,18 +201,6 @@
   "Return expected `:cols` info for a Field from a native query or native source query."
   [table-kw field-kw]
   (native-query-col* (data/id) (data/id table-kw) (data/id table-kw field-kw)))
-
-(defn ^:deprecated booleanize-native-form
-  "Convert `:native_form` attribute to a boolean to make test results comparisons easier. Remove `data.results_metadata`
-  as well since it just takes a lot of space and the checksum can vary based on whether encryption is enabled.
-
-  DEPRECATED: Just use `qp.test/rows`, `qp.test/row-and-cols`, or `qp.test/rows+column-names` instead, combined with
-  functions like `col` as needed."
-  [m]
-  (-> m
-      (update-in [:data :native_form] boolean)
-      (m/dissoc-in [:data :results_metadata])
-      (m/dissoc-in [:data :insights])))
 
 (defmulti format-rows-fns
   "Return vector of functions (or floating-point numbers, for rounding; see `format-rows-by`) to use to format result
@@ -300,7 +272,7 @@
 
   ([format-fns format-nil-values? response]
    (when (= (:status response) :failed)
-     (println "Error running query:" (u/pprint-to-str 'red response))
+     (log/warnf "Error running query: %s" (u/pprint-to-str 'red response))
      (throw (ex-info (:error response) response)))
 
    (let [format-fns (map format-rows-fn (format-rows-fns format-fns))]
@@ -365,7 +337,7 @@
 (defn supports-report-timezone?
   "Returns truthy if `driver` supports setting a timezone"
   [driver]
-  (driver/supports? driver :set-timezone))
+  (driver/database-supports? driver :set-timezone (data/db)))
 
 (defn cols
   "Return the result `:cols` from query `results`, or throw an Exception if they're missing."
@@ -437,12 +409,12 @@
               (= driver driver-or-drivers)))]
     (if-not (add-fks? driver/*driver*)
       (thunk)
-      (let [supports? driver/supports?]
-        (with-redefs [driver/supports? (fn [driver feature]
-                                         (if (and (add-fks? driver)
-                                                  (= feature :foreign-keys))
-                                           true
-                                           (supports? driver feature)))]
+      (let [database-supports? driver/database-supports?]
+        (with-redefs [driver/database-supports? (fn [driver feature db]
+                                                  (if (and (add-fks? driver)
+                                                           (= feature :foreign-keys))
+                                                    true
+                                                    (database-supports? driver feature db)))]
           (let [thunk (reduce
                        (fn [thunk [source dest]]
                          (fn []

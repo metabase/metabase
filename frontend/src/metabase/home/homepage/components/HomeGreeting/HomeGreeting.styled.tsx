@@ -9,10 +9,11 @@ export const GreetingRoot = styled.div`
 `;
 
 export const GreetingLogo = styled(MetabotLogo)`
-  height: 2rem;
+  padding-right: 0.5rem;
+  height: 2.5rem;
 
   ${breakpointMinExtraLarge} {
-    height: 2.5rem;
+    height: 3rem;
   }
 `;
 

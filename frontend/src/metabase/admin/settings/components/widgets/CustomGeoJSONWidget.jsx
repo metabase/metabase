@@ -317,7 +317,7 @@ const EditMap = ({
   onCancel,
   onSave,
 }) => (
-  <div>
+  <div data-testid="edit-map-modal">
     <div className="flex">
       <div className="flex-no-shrink">
         <h2>{!originalMap ? t`Add a new map` : t`Edit map`}</h2>

@@ -1,14 +1,17 @@
 (ns metabase.query-processor.middleware.cache.impl
   (:require
-   [clojure.tools.logging :as log]
+   [flatland.ordered.map :as ordered-map]
    [metabase.public-settings :as public-settings]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
    [taoensso.nippy :as nippy])
   (:import
    (java.io BufferedInputStream BufferedOutputStream ByteArrayOutputStream DataInputStream DataOutputStream
             EOFException FilterOutputStream InputStream OutputStream)
    (java.util.zip GZIPInputStream GZIPOutputStream)))
+
+(set! *warn-on-reflection* true)
 
 (defn- max-bytes-output-stream ^OutputStream
   [max-bytes ^OutputStream os]
@@ -31,6 +34,16 @@
         ([^bytes ba ^Integer off ^Integer len]
          (check-total (swap! byte-count + len))
          (.write os ba off len))))))
+
+;; flatland.ordered.map.OrderedMap gets encoded and decoded incorrectly, for some reason. See #25915
+
+(nippy/extend-freeze flatland.ordered.map.OrderedMap :flatland/ordered-map
+                     [x data-output]
+                     (nippy/freeze-to-out! data-output (vec x)))
+
+(nippy/extend-thaw :flatland/ordered-map
+                   [data-input]
+                   (ordered-map/ordered-map-reader (nippy/thaw-from-in! data-input)))
 
 (defn- freeze!
   [^OutputStream os obj]

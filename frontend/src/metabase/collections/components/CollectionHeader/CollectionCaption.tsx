@@ -66,6 +66,7 @@ const CollectionCaption = ({
           isDisabled={!isEditable}
           isOptional
           isMultiline
+          isMarkdown
           onChange={handleChangeDescription}
         />
       )}
@@ -73,4 +74,5 @@ const CollectionCaption = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default CollectionCaption;

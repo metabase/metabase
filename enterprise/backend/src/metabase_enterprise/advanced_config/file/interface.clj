@@ -1,8 +1,8 @@
 (ns metabase-enterprise.advanced-config.file.interface
   (:require
-   [clojure.tools.logging :as log]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs]]))
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]))
 
 (defmulti section-spec
   "Spec that should be used to validate the config section with `section-name`, e.g. `:users`. Default spec

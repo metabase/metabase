@@ -1,10 +1,9 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 import { connect } from "react-redux";
-import { createSelector } from "reselect";
+import { createSelector } from "@reduxjs/toolkit";
 import _ from "underscore";
 
-import { createMemoizedSelector } from "metabase/lib/redux";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import entityType from "./EntityType";
 
@@ -21,17 +20,20 @@ const CONSUMED_PROPS = [
   "LoadingAndErrorWrapper",
   "selectorName",
   "requestType",
+  "fetchType",
 ];
 
-// NOTE: Memoize entityQuery so we don't re-render even if a new but identical
-// object is created. This works because entityQuery must be JSON serializable
-const getMemoizedEntityQuery = createMemoizedSelector(
+const getMemoizedEntityQuery = createSelector(
   (state, entityQuery) => entityQuery,
   entityQuery => entityQuery,
+  {
+    equalityFn: _.isEqual,
+  },
 );
 
 class EntityObjectLoaderInner extends React.Component {
   static defaultProps = {
+    fetchType: "fetch",
     requestType: "fetch",
     loadingAndErrorWrapper: true,
     LoadingAndErrorWrapper: LoadingAndErrorWrapper,
@@ -57,8 +59,9 @@ class EntityObjectLoaderInner extends React.Component {
   }
 
   fetch = (query, options) => {
-    const fetch = this.props[this.props.requestType];
-    return fetch(query, options);
+    const fetch = this.props[this.props.fetchType];
+    // errors are handled in redux actions
+    return fetch(query, options).catch(() => {});
   };
 
   UNSAFE_componentWillMount() {

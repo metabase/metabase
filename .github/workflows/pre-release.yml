@@ -15,7 +15,7 @@ jobs:
   build:
     if: ${{ github.repository }} != 'metabase/metabase'
     name: Build Metabase ${{ matrix.edition }} @${{ github.event.inputs.commit }}
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 40
     strategy:
       matrix:
@@ -35,13 +35,15 @@ jobs:
       uses: ./.github/actions/prepare-frontend
     - name: Prepare back-end environment
       uses: ./.github/actions/prepare-backend
+      with:
+        m2-cache-key: pre-release-build
     - name: Build
-      run: ./bin/build
+      run: ./bin/build.sh
     - name: Prepare uberjar artifact
       uses: ./.github/actions/prepare-uberjar-artifact
 
   check-uberjar-health:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     name: Is ${{ matrix.edition }} (java ${{ matrix.java-version }}) healthy?
     needs: build
     timeout-minutes: 10
@@ -67,7 +69,7 @@ jobs:
       run: while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
 
   containerize:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     needs: check-uberjar-health
     timeout-minutes: 15
     strategy:
@@ -135,7 +137,7 @@ jobs:
         echo "Finished!"
 
   verify-docker-pull:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     needs: containerize
     timeout-minutes: 15
     strategy:

@@ -1,21 +1,22 @@
 (ns metabase.driver.googleanalytics-test
   "Tests for the Google Analytics driver and query processor."
-  (:require [clojure.test :refer :all]
-            [java-time :as t]
-            [medley.core :as m]
-            [metabase.driver :as driver]
-            metabase.driver.googleanalytics
-            [metabase.driver.googleanalytics.execute :as ga.execute]
-            [metabase.driver.googleanalytics.query-processor :as ga.qp]
-            [metabase.models :refer [Card Database Field Table]]
-            [metabase.query-processor :as qp]
-            [metabase.query-processor.context :as qp.context]
-            [metabase.query-processor.store :as qp.store]
-            [metabase.test :as mt]
-            [metabase.test.fixtures :as fixtures]
-            [metabase.test.util :as tu]
-            [metabase.util :as u]
-            [toucan.db :as db]))
+  (:require
+   [clojure.test :refer :all]
+   [java-time :as t]
+   [medley.core :as m]
+   [metabase.driver :as driver]
+   [metabase.driver.googleanalytics]
+   [metabase.driver.googleanalytics.execute :as ga.execute]
+   [metabase.driver.googleanalytics.query-processor :as ga.qp]
+   [metabase.models :refer [Card Database Field Table]]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.context :as qp.context]
+   [metabase.query-processor.store :as qp.store]
+   [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
+   [metabase.test.util :as tu]
+   [metabase.util :as u]
+   [toucan2.core :as t2]))
 
 (comment metabase.driver.googleanalytics/keep-me)
 
@@ -36,9 +37,9 @@
    :mbql? true})
 
 (defn- mbql->native [query]
-  (binding [qp.store/*store* (atom {:tables {1 #metabase.models.table.TableInstance{:name   "0123456"
-                                                                                    :schema nil
-                                                                                    :id     1}}})]
+  (binding [qp.store/*store* (atom {:tables {1 (t2/instance :model/Table {:name   "0123456"
+                                                                          :schema nil
+                                                                          :id     1})}})]
     (driver/mbql->native :googleanalytics (update query :query (partial merge {:source-table 1})))))
 
 (deftest basic-compilation-test
@@ -385,6 +386,6 @@
                    ;; just make sure the API call actually worked by checking that the created Card is actually
                    ;; successfully saved in the DB
                    u/the-id
-                   (db/count Card :id))]
+                   (t2/count Card :id))]
       (is (= 1
              cnt)))))

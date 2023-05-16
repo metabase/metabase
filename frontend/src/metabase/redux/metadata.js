@@ -90,10 +90,10 @@ export const fetchField = createThunkAction(
     return async dispatch => {
       const action = await dispatch(Fields.actions.fetch({ id }, { reload }));
       const field = Fields.HACK_getObjectFromAction(action);
-      if (field?.dimensions?.human_readable_field_id != null) {
+      if (field?.dimensions?.[0]?.human_readable_field_id != null) {
         await dispatch(
           Fields.actions.fetch(
-            { id: field.dimensions.human_readable_field_id },
+            { id: field.dimensions?.[0]?.human_readable_field_id },
             { reload },
           ),
         );

@@ -11,14 +11,15 @@ import { getUser } from "metabase/selectors/user";
 
 import Snippets from "metabase/entities/snippets";
 import Questions from "metabase/entities/questions";
+import { loadMetadataForCard } from "metabase/questions/actions";
 import { fetchAlertsForQuestion } from "metabase/alert/alert";
 
+import { Card } from "metabase-types/api";
 import {
   Dispatch,
   GetState,
   QueryBuilderUIControls,
 } from "metabase-types/store";
-import type { Card } from "metabase-types/types/Card";
 import { isSavedCard } from "metabase-types/guards";
 import { isNotNull } from "metabase/core/utils/types";
 import { cardIsEquivalent } from "metabase-lib/queries/utils/card";
@@ -34,7 +35,6 @@ import { updateUrl } from "../navigation";
 import { cancelQuery, runQuestionQuery } from "../querying";
 
 import { resetQB } from "./core";
-import { loadMetadataForCard } from "./metadata";
 import {
   propagateDashboardParameters,
   getParameterValuesForQuestion,
@@ -350,7 +350,7 @@ async function handleQBInit(
       );
     }
     dispatch(
-      updateUrl(finalCard, {
+      updateUrl(question, {
         replaceState: true,
         preserveParameters: hasCard,
         objectId,

@@ -1,5 +1,5 @@
 import React, { HTMLAttributes } from "react";
-import Tooltip from "metabase/components/Tooltip";
+import Tooltip from "metabase/core/components/Tooltip";
 import {
   SkeletonRoot,
   SkeletonTitle,
@@ -36,6 +36,7 @@ const SkeletonCaption = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Object.assign(SkeletonCaption, {
   Title: SkeletonTitle,
   Description: SkeletonDescription,

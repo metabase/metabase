@@ -6,13 +6,10 @@ redirect_from:
 
 # Overview of premium features
 
-Metabase's [Enterprise and Pro](https://www.metabase.com/pricing) plans provide additional features that help organizations scale Metabase and deliver self-service, embedded analytics.
+Metabase's [Enterprise and Pro](https://www.metabase.com/pricing) plans provide additional features that help organizations scale Metabase and deliver self-service internal or embedded analytics.
 
-## Setting up
-
-Metabase Pro is hosted, so you should already be setup with all the paid features, but you may have to activate a Metabase Enterprise edition to access all the features.
-
-- [Getting and activating the Enterprise edition](activating-the-enterprise-edition.md)
+- **If you're on Metabase Cloud**, your paid features will activate automatically.
+- **If you're self-hosting,** you'll need to [activate your license](./activating-the-enterprise-edition.md).
 
 ## Authentication
 
@@ -34,6 +31,13 @@ Paid plans include more ways to manage permissions, including data sandboxing, w
 - [Block permissions](../permissions/data.md#block-access)
 - [SQL snippet folder permissions](../permissions/snippets.md)
 - [Application permissions](../permissions/application.md)
+- [Download permissions](../permissions/data.md#download-results)
+- [Database management permissions](../permissions/data.md#manage-database)
+- [Data model management permissions](../permissions/data.md#manage-data-model)
+
+## People and group management
+
+- [Group managers](../people-and-groups/managing.md#group-managers)
 
 ## Embedding
 
@@ -48,21 +52,25 @@ Send different groups of people the contents of the dashboard with different fil
 
 - [Customizing filter values for each dashboard subscription](../dashboards/subscriptions.md)
 
-## Official collections
+## Restrict which domains people can send alerts and subscriptions to
 
-You can mark certain collections as [official](../exploration-and-organization/collections.md#official-collections), which helps people find your most important questions, dashboards, and models.
+As an additional security layer, you can whitelist domains, which restricts people from sending alerts and subscriptions to email addresses that don't use an approved domain.
 
-## Question moderation
+- [Approved domains for notifications](../configuring-metabase/settings.md#approved-domains-for-notifications)
 
-People can ask administrators to verify their questions and models.
+## Content moderation tools
 
+Tools for keeping your Metabase organized, so people can find your most important, verified items.
+
+- [Official collections](../exploration-and-organization/collections.md#official-collections)
 - [Verified items](../exploration-and-organization/exploration.md#verified-items)
 
 ## Advanced caching controls
 
 All Metabase editions include global caching controls. Paid plans includes additional caching options that let you control caching for individual questions.
 
-- [Caching controls for individual questions](../questions/sharing/answers.md#caching-results)
+- [Caching controls for individual questions](../configuring-metabase/caching.md#caching-per-question)
+- [Caching control per database](../configuring-metabase/caching.md#caching-per-database)
 
 ## Auditing
 

@@ -1,10 +1,13 @@
 import { metadata, PRODUCTS } from "__support__/sample_database_fixture";
+
+import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import Field from "metabase-lib/metadata/Field";
 import Table from "metabase-lib/metadata/Table";
+
 import { createVirtualField, createVirtualTable } from "./virtual-table";
 
 describe("metabase-lib/queries/utils/virtual-table", () => {
-  const query = PRODUCTS.newQuestion().query();
+  const query = PRODUCTS.newQuestion().query() as StructuredQuery;
   const field = createVirtualField({
     id: 123,
     metadata,
@@ -28,7 +31,7 @@ describe("metabase-lib/queries/utils/virtual-table", () => {
   });
 
   describe("createVirtualTable", () => {
-    const query = PRODUCTS.newQuestion().query();
+    const query = PRODUCTS.newQuestion().query() as StructuredQuery;
     const field1 = createVirtualField({
       id: 1,
       metadata,
@@ -59,8 +62,8 @@ describe("metabase-lib/queries/utils/virtual-table", () => {
     });
 
     it("should add a table reference to its fields", () => {
-      expect(table.fields.every(field => field.table === table)).toBe(true);
-      expect(table.fields.every(field => field.table_id === table.id)).toBe(
+      expect(table.fields?.every(field => field.table === table)).toBe(true);
+      expect(table.fields?.every(field => field.table_id === table.id)).toBe(
         true,
       );
     });

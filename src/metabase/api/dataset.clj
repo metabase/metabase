@@ -3,14 +3,17 @@
   (:require
    [cheshire.core :as json]
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [compojure.core :refer [POST]]
    [metabase.api.common :as api]
+   [metabase.api.field :as api.field]
+   [metabase.db.query :as mdb.query]
+   [metabase.driver.util :as driver.u]
    [metabase.events :as events]
    [metabase.mbql.normalize :as mbql.normalize]
    [metabase.mbql.schema :as mbql.s]
    [metabase.models.card :refer [Card]]
    [metabase.models.database :as database :refer [Database]]
+   [metabase.models.params.custom-values :as custom-values]
    [metabase.models.persisted-info :as persisted-info]
    [metabase.models.query :as query]
    [metabase.models.table :refer [Table]]
@@ -23,9 +26,11 @@
    [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.log :as log]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 ;;; -------------------------------------------- Running a Query Normally --------------------------------------------
 
@@ -55,11 +60,11 @@
   ;; store table id trivially iff we get a query with simple source-table
   (let [table-id (get-in query [:query :source-table])]
     (when (int? table-id)
-      (events/publish-event! :table-read (assoc (db/select-one Table :id table-id) :actor_id api/*current-user-id*))))
+      (events/publish-event! :table-read (assoc (t2/select-one Table :id table-id) :actor_id api/*current-user-id*))))
   ;; add sensible constraints for results limits on our query
   (let [source-card-id (query->source-card-id query)
         source-card    (when source-card-id
-                         (db/select-one [Card :result_metadata :dataset] :id source-card-id))
+                         (t2/select-one [Card :result_metadata :dataset] :id source-card-id))
         info           (cond-> {:executed-by api/*current-user-id*
                                 :context     context
                                 :card-id     source-card-id}
@@ -69,7 +74,8 @@
       (qp.streaming/streaming-response [context export-format]
         (qp-runner query info context)))))
 
-(api/defendpoint-schema ^:streaming POST "/"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema POST "/"
   "Execute a query and retrieve the results in the usual format. The query will not use the cache."
   [:as {{:keys [database] :as query} :body}]
   {database (s/maybe s/Int)}
@@ -107,7 +113,8 @@
      json-key
      (keyword json-key)))
 
-(api/defendpoint-schema ^:streaming POST ["/:export-format", :export-format export-format-regex]
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema POST ["/:export-format", :export-format export-format-regex]
   "Execute a query and download the result data as a file in the specified format."
   [export-format :as {{:keys [query visualization_settings] :or {visualization_settings "{}"}} :params}]
   {query                  su/JSONString
@@ -136,6 +143,7 @@
 ;;; ------------------------------------------------ Other Endpoints -------------------------------------------------
 
 ;; TODO - this is no longer used. Should we remove it?
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema POST "/duration"
   "Get historical query execution duration."
   [:as {{:keys [database], :as query} :body}]
@@ -148,14 +156,23 @@
                     (assoc query :constraints (qp.constraints/default-query-constraints))])
              0)})
 
-(api/defendpoint-schema POST "/native"
+(api/defendpoint POST "/native"
   "Fetch a native version of an MBQL query."
-  [:as {query :body}]
+  [:as {{:keys [database pretty] :as query} :body}]
+  {database ms/PositiveInt
+   pretty  [:maybe :boolean]}
   (binding [persisted-info/*allow-persisted-substitution* false]
     (qp.perms/check-current-user-has-adhoc-native-query-perms query)
-    (qp/compile-and-splice-parameters query)))
+    (let [{q :query :as compiled} (qp/compile-and-splice-parameters query)
+          driver          (driver.u/database->driver database)
+          ;; Format the query unless we explicitly do not want to
+          formatted-query (if (false? pretty)
+                            q
+                            (or (u/ignore-exceptions (mdb.query/format-sql q driver)) q))]
+      (assoc compiled :query formatted-query))))
 
-(api/defendpoint-schema ^:streaming POST "/pivot"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema POST "/pivot"
   "Generate a pivoted dataset for an ad-hoc query"
   [:as {{:keys [database] :as query} :body}]
   {database (s/maybe s/Int)}
@@ -166,5 +183,45 @@
               :context     :ad-hoc}]
     (qp.streaming/streaming-response [context :api]
       (qp.pivot/run-pivot-query (assoc query :async? true) info context))))
+
+
+(defn- parameter-field-values
+  [field-ids query]
+  (when-not (seq field-ids)
+    (throw (ex-info (tru "Missing field-ids for parameter")
+                    {:status-code 400})))
+  (-> (reduce (fn [resp id]
+                (let [{values :values more? :has_more_values} (api.field/field-id->values id query)]
+                  (-> resp
+                      (update :values concat values)
+                      (update :has_more_values #(or % more?)))))
+              {:has_more_values false
+               :values          []}
+              field-ids)
+      ;; deduplicate the values returned from multiple fields
+      (update :values set)))
+
+(defn parameter-values
+  "Fetch parameter values. Parameter should be a full parameter, field-ids is an optional vector of field ids, only
+  consulted if `:values_source_type` is nil. Query is an optional string return matching field values not all."
+  [parameter field-ids query]
+  (custom-values/parameter->values
+    parameter query
+    (fn [] (parameter-field-values field-ids query))))
+
+(api/defendpoint POST "/parameter/values"
+  "Return parameter values for cards or dashboards that are being edited."
+  [:as {{:keys [parameter field_ids]} :body}]
+  {parameter ms/Parameter
+   field_ids [:maybe [:sequential ms/PositiveInt]]}
+  (parameter-values parameter field_ids nil))
+
+(api/defendpoint POST "/parameter/search/:query"
+  "Return parameter values for cards or dashboards that are being edited. Expects a query string at `?query=foo`."
+  [query :as {{:keys [parameter field_ids]} :body}]
+  {parameter ms/Parameter
+   field_ids [:maybe [:sequential ms/PositiveInt]]
+   query     :string}
+  (parameter-values parameter field_ids query))
 
 (api/define-routes)

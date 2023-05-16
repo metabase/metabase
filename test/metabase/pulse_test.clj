@@ -8,6 +8,8 @@
    [metabase.integrations.slack :as slack]
    [metabase.models
     :refer [Card Collection Pulse PulseCard PulseChannel PulseChannelRecipient]]
+   [metabase.models.dashboard :refer [Dashboard]]
+   [metabase.models.dashboard-card :refer [DashboardCard]]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.pulse :as pulse]
@@ -21,7 +23,9 @@
    [metabase.test.util :as tu]
    [metabase.util :as u]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               Util Fns & Macros                                                |
@@ -369,7 +373,7 @@
       :fixture
       (fn [{:keys [pulse-id]} thunk]
         (mt/with-temp PulseChannelRecipient [_ {:user_id          (mt/user->id :crowberto)
-                                                :pulse_channel_id (db/select-one-id PulseChannel :pulse_id pulse-id)}]
+                                                :pulse_channel_id (t2/select-one-pk PulseChannel :pulse_id pulse-id)}]
           (thunk)))
 
       :assert
@@ -516,7 +520,7 @@
                (mt/summarize-multipart-email test-card-regex))) ;#"stop sending you alerts")))
         (testing "Pulse should be deleted"
           (is (= false
-                 (db/exists? Pulse :id pulse-id)))))}}
+                 (t2/exists? Pulse :id pulse-id)))))}}
 
     "first run alert with no data"
     {:card
@@ -530,7 +534,7 @@
                @mt/inbox))
         (testing "Pulse should still exist"
           (is (= true
-                 (db/exists? Pulse :id pulse-id)))))}}))
+                 (t2/exists? Pulse :id pulse-id)))))}}))
 
 (deftest above-goal-alert-test
   (testing "above goal alert"
@@ -678,6 +682,26 @@
                                    [test-card-result pulse.test-util/png-attachment pulse.test-util/png-attachment])
                 (mt/summarize-multipart-email test-card-regex))))))))
 
+(deftest dashboard-description-markdown-test
+  (testing "Dashboard description renders markdown"
+    (mt/with-temp* [Card                  [{card-id :id} {:name "Test card"}]
+                    Dashboard             [{dashboard-id :id} {:description "# dashboard description"}]
+                    DashboardCard         [{dashboard-card-id :id} {:dashboard_id dashboard-id
+                                                                    :card_id card-id}]
+                    Pulse                 [{pulse-id :id} {:name "Pulse Name"
+                                                           :dashboard_id dashboard-id}]
+                    PulseCard             [_ {:pulse_id pulse-id
+                                              :card_id  card-id
+                                              :dashboard_card_id dashboard-card-id}]
+                    PulseChannel          [{pc-id :id} {:pulse_id pulse-id}]
+                    PulseChannelRecipient [_ {:user_id (pulse.test-util/rasta-id)
+                                              :pulse_channel_id pc-id}]]
+        (pulse.test-util/email-test-setup
+         (metabase.pulse/send-pulse! (pulse/retrieve-notification pulse-id))
+         (is (= (mt/email-to :rasta {:subject "Pulse Name"
+                                     :body    {"<h1>dashboard description</h1>" true}})
+                (mt/regex-email-bodies #"<h1>dashboard description</h1>")))))))
+
 (deftest basic-slack-test-2
   (testing "Basic slack test, 2 cards, 1 recipient channel"
     (mt/with-temp* [Card         [{card-id-1 :id} (pulse.test-util/checkins-query-card {:breakout [!day.date]})]
@@ -824,7 +848,8 @@
              (send-pulse-created-by-user!* :rasta)))))))
 
 (defn- get-retry-metrics []
-  (-> @@#'metabase.pulse/retry-state :retry .getMetrics bean))
+  (let [^io.github.resilience4j.retry.Retry retry (:retry @@#'metabase.pulse/retry-state)]
+    (bean (.getMetrics retry))))
 
 (defn- pos-metrics [m]
   (into {}

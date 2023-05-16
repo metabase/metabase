@@ -6,6 +6,8 @@
    (liquibase.database.core H2Database)
    (liquibase.database.jvm JdbcConnection)))
 
+(set! *warn-on-reflection* true)
+
 (defn- upcase ^String [s]
   (some-> s u/upper-case-en))
 

@@ -12,24 +12,32 @@ on:
 jobs:
 
   fe-fuzz-tokenizer:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 15
     steps:
     - uses: actions/checkout@v3
     - name: Prepare front-end environment
       uses: ./.github/actions/prepare-frontend
+    - name: Prepare back-end environment
+      uses: ./.github/actions/prepare-backend
+      with:
+        m2-cache-key: 'cljs'
     - run: yarn test-unit frontend/test/metabase/lib/expressions/fuzz.tokenizer.unit.spec.js
       env:
         MB_FUZZ: 1
       name: Run fuzz testing on the tokenizer
 
   fe-fuzz-recursive-parser:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 15
     steps:
     - uses: actions/checkout@v3
     - name: Prepare front-end environment
       uses: ./.github/actions/prepare-frontend
+    - name: Prepare back-end environment
+      uses: ./.github/actions/prepare-backend
+      with:
+        m2-cache-key: 'cljs'
     - run: yarn test-unit frontend/test/metabase/lib/expressions/fuzz.recursive-parser.unit.spec.js
       env:
         MB_FUZZ: 1

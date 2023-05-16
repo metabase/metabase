@@ -9,6 +9,8 @@
    (java.text DecimalFormat NumberFormat)
    (java.util Currency Locale)))
 
+(set! *warn-on-reflection* true)
+
 ;; Clojure helpers ================================================================================================
 (defn- sig-figs [number figures]
   (BigDecimal. (double number) (MathContext. figures RoundingMode/HALF_UP)))
@@ -27,14 +29,15 @@
         (Currency/getInstance)
         (.getSymbol locale))))
 
-(defn- apply-currency-style [text ^Currency currency ^Locale locale style currency-key]
+(defn- apply-currency-style [text ^Currency _currency ^Locale locale style currency-key]
   (let [sym   (symbol-for currency-key locale)
-        label (if (= currency-key :BTC) "Bitcoin" (.getDisplayName currency locale))
-        code  (if (= currency-key :BTC) "BTC" (.getCurrencyCode currency))]
+        ;; TODO Our currency table has plurals but no translation; Java's `Currency.getDisplayName` is singular but
+        ;; translated. We should get the names in currency/currency keyed by locale.
+        currency (get currency/currency currency-key)]
     (case (or style "symbol")
-      "symbol" text ; The default, already handled.
-      "name"   (str (str/replace text sym "") " " label)
-      "code"   (str/replace text sym (str code core/non-breaking-space)))))
+      "symbol" (str/replace text sym (:symbol currency)) ; Java's symbols are not identical to ours
+      "name"   (str (str/replace text sym "") " " (:name_plural currency))
+      "code"   (str/replace text sym (str (:code currency) core/non-breaking-space)))))
 
 ;; Core internals =================================================================================================
 (def ^:private bad-currencies
@@ -47,18 +50,22 @@
     (Locale. (:locale options))
     (Locale/getDefault)))
 
-(defn- number-formatter-for-options-baseline ^NumberFormat [options locale]
-  (case (:number-style options)
-    ;; For scientific, assemble the 0.###E0 DecimalFormat pattern.
-    "scientific" (DecimalFormat. (str "0."
-                                      (str-run (:minimum-fraction-digits options 0) "0")
-                                      (str-run (- (:maximum-fraction-digits options 2)
-                                                  (:minimum-fraction-digits options 0))
-                                               "#")
-                                      "E0"))
-    "currency"   (NumberFormat/getCurrencyInstance locale)
-    (doto (NumberFormat/getInstance locale)
-      (.setMaximumFractionDigits (:maximum-fraction-digits options 300)))))
+(defn- number-formatter-for-options-baseline
+  ^NumberFormat [{:keys [maximum-fraction-digits minimum-fraction-digits number-style]} locale]
+  (let [^NumberFormat nf (case number-style
+                           ;; For scientific, assemble the 0.###E0 DecimalFormat pattern.
+                           "scientific" (DecimalFormat. (str "0."
+                                                             (str-run (or minimum-fraction-digits 0) "0")
+                                                             (str-run (- (or maximum-fraction-digits 2)
+                                                                         (or minimum-fraction-digits 0))
+                                                                      "#")
+                                                             "E0"))
+                           "currency"   (NumberFormat/getCurrencyInstance locale)
+                           "percent"    (NumberFormat/getPercentInstance locale)
+                           (NumberFormat/getInstance locale))]
+    (when (not (= number-style #"scientific"))
+      (.setMaximumFractionDigits nf (or maximum-fraction-digits 300)))
+    nf))
 
 (defn- set-rounding! [^NumberFormat nf]
   ;; JavaScript does not support picking the rounding mode; it's always HALF_UP.
@@ -78,11 +85,12 @@
                        (Currency/getInstance (name currency))))))
 
 (defn- set-separators! [^NumberFormat nf options]
-  (when (:number-separators options)
+  (when-let [[decimal grouping] (:number-separators options)]
     (let [^DecimalFormat df nf
-          syms              (doto (.getDecimalFormatSymbols df)
-                              (.setDecimalSeparator  (first  (:number-separators options))))]
-      (if-let [grouping (second (:number-separators options))]
+          syms              (.getDecimalFormatSymbols df)]
+      (when decimal
+        (.setDecimalSeparator syms decimal))
+      (if grouping
         (.setGroupingSeparator syms grouping)
         (.setGroupingUsed df false))
       (.setDecimalFormatSymbols df syms))))
@@ -120,7 +128,7 @@
           (and currency (bad-currencies currency))
           (attach-currency-symbol nf locale currency)
           ;; Handle the :currency-style option, which isn't supported natively on Java.
-          (and currency (not= (:currency-style options) "symbol"))
+          currency
           (apply-currency-style (.getCurrency nf) locale (:currency-style options) currency)))
 
       (wrap-currency [_ text]

@@ -7,6 +7,7 @@
    [metabase.transforms.core :as tf]
    [metabase.transforms.specs :as tf.specs]))
 
+#_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:db-id/:schema/:transform-name"
   "Look up a database schema transform"
   [db-id schema transform-name]

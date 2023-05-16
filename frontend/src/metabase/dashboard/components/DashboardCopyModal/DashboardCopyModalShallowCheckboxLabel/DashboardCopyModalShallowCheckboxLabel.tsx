@@ -2,7 +2,7 @@ import React from "react";
 import { t } from "ttag";
 
 import Icon from "metabase/components/Icon";
-import Tooltip from "metabase/components/Tooltip";
+import Tooltip from "metabase/core/components/Tooltip";
 
 import { CheckboxLabelRoot } from "./DashboardCopyModalShallowCheckboxLabel.styled";
 
@@ -17,4 +17,5 @@ const DashboardCopyModalShallowCheckboxLabel = () => (
   </CheckboxLabelRoot>
 );
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default DashboardCopyModalShallowCheckboxLabel;

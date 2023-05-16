@@ -4,12 +4,12 @@
   (:refer-clojure :exclude [format range])
   (:require
    [clojure.string :as str]
-   [clojure.tools.logging :as log]
    [java-time :as t]
    [java-time.core :as t.core]
    [metabase.util.date-2.common :as u.date.common]
    [metabase.util.date-2.parse :as u.date.parse]
    [metabase.util.i18n :as i18n :refer [tru]]
+   [metabase.util.log :as log]
    [potemkin.types :as p.types]
    [schema.core :as s])
   (:import
@@ -17,6 +17,8 @@
    (java.time.format DateTimeFormatter DateTimeFormatterBuilder FormatStyle TextStyle)
    (java.time.temporal Temporal TemporalAdjuster WeekFields)
    (org.threeten.extra PeriodDuration)))
+
+(set! *warn-on-reflection* true)
 
 (defn- add-zone-to-local
   "Converts a temporal type without timezone info to one with zone info (i.e., a `ZonedDateTime`)."
@@ -208,7 +210,11 @@
   (keyword ((requiring-resolve 'metabase.public-settings/start-of-week))))
 
 (def ^:private ^{:arglists '(^java.time.DayOfWeek [k])} day-of-week*
-  (u.date.common/static-instances DayOfWeek))
+  (let [m (u.date.common/static-instances DayOfWeek)]
+    (fn [k]
+      (or (get m k)
+          (throw (ex-info (tru "Invalid day of week: {0}" (pr-str k))
+                          {:k k, :allowed (keys m)}))))))
 
 (defn- week-fields
   "Create a new instance of a `WeekFields`, which is used for localized day-of-week, week-of-month, and week-of-year.
@@ -234,7 +240,7 @@
   ([unit]
    (extract (t/zoned-date-time) unit))
 
-  ([t :- Temporal, unit :- (apply s/enum extract-units)]
+  ([t :- Temporal unit :- (apply s/enum extract-units)]
    (t/as t (case unit
              :second-of-minute :second-of-minute
              :minute-of-hour   :minute-of-hour
@@ -453,11 +459,6 @@
     (let [t (t/offset-date-time "1970-01-01T00:00Z")]
       (compare (.addTo (period-duration d1) t)
                (.addTo (period-duration d2) t)))))
-
-(defn less-than-period-duration?
-  "True if period/duration `d1` is shorter than period/duration `d2`."
-  [d1 d2]
-  (neg? (compare-period-durations d1 d2)))
 
 (defn greater-than-period-duration?
   "True if period/duration `d1` is longer than period/duration `d2`."

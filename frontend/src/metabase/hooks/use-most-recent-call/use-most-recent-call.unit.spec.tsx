@@ -1,7 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { render } from "@testing-library/react";
-
-import { AsyncFn } from "metabase-types/types";
+import { render, screen } from "@testing-library/react";
 
 import { useMostRecentCall } from "./use-most-recent-call";
 
@@ -31,13 +29,11 @@ function TestComponent({
 }
 
 describe("useMostRecentCall", () => {
-  it("should resolve with data once triggered", () => {
+  it("should resolve with data once triggered", async () => {
     const asyncFn = jest.fn(() => Promise.resolve(1));
-    const { findByText } = render(
-      <TestComponent asyncFn={asyncFn} trigger={1} />,
-    );
+    render(<TestComponent asyncFn={asyncFn} trigger={1} />);
 
-    return findByText("1");
+    expect(await screen.findByText("1")).toBeInTheDocument();
   });
 
   it("should only ever resolve last call's promise", async () => {
@@ -47,14 +43,14 @@ describe("useMostRecentCall", () => {
         resolveFnMap[num] = resolve.bind(null, num);
       });
 
-    const { rerender, findByText } = render(
+    const { rerender } = render(
       <TestComponent asyncFn={asyncFn} trigger={1} />,
     );
 
     rerender(<TestComponent asyncFn={asyncFn} trigger={2} />);
     rerender(<TestComponent asyncFn={asyncFn} trigger={3} />);
 
-    await findByText("0");
+    expect(await screen.findByText("0")).toBeInTheDocument();
 
     // before most recent call resolves
     resolveFnMap[1]();
@@ -63,7 +59,7 @@ describe("useMostRecentCall", () => {
     // after most recent call resolves
     resolveFnMap[2]();
 
-    await findByText("3");
+    expect(await screen.findByText("3")).toBeInTheDocument();
   });
 
   it("should only reject last call's promise", async () => {
@@ -73,14 +69,14 @@ describe("useMostRecentCall", () => {
         rejectFnMap[num] = reject.bind(null, num);
       });
 
-    const { rerender, findByText } = render(
+    const { rerender } = render(
       <TestComponent asyncFn={asyncFn} trigger={1} />,
     );
 
     rerender(<TestComponent asyncFn={asyncFn} trigger={2} />);
     rerender(<TestComponent asyncFn={asyncFn} trigger={3} />);
 
-    await findByText("0");
+    expect(await screen.findByText("0")).toBeInTheDocument();
 
     // before most recent call resolves
     rejectFnMap[1]();
@@ -89,6 +85,6 @@ describe("useMostRecentCall", () => {
     // after most recent call resolves
     rejectFnMap[2]();
 
-    await findByText("3");
+    expect(await screen.findByText("3")).toBeInTheDocument();
   });
 });

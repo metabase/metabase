@@ -9,27 +9,29 @@ import { PanelRoot, PanelToolbar } from "./TimelinePanel.styled";
 export interface TimelinePanelProps {
   timelines: Timeline[];
   collection: Collection;
-  visibleTimelineIds?: number[];
+  visibleEventIds: number[];
   selectedEventIds?: number[];
   onNewEvent?: () => void;
   onEditEvent?: (event: TimelineEvent) => void;
   onMoveEvent?: (event: TimelineEvent) => void;
   onArchiveEvent?: (event: TimelineEvent) => void;
   onToggleEventSelected?: (event: TimelineEvent, isSelected: boolean) => void;
-  onToggleTimeline?: (timeline: Timeline, isVisible: boolean) => void;
+  onShowTimelineEvents: (timelineEvent: TimelineEvent[]) => void;
+  onHideTimelineEvents: (timelineEvent: TimelineEvent[]) => void;
 }
 
 const TimelinePanel = ({
   timelines,
   collection,
-  visibleTimelineIds,
+  visibleEventIds,
   selectedEventIds,
   onNewEvent,
   onEditEvent,
   onMoveEvent,
   onArchiveEvent,
   onToggleEventSelected,
-  onToggleTimeline,
+  onShowTimelineEvents,
+  onHideTimelineEvents,
 }: TimelinePanelProps): JSX.Element => {
   const isEmpty = timelines.length === 0;
   const canWrite = collection.can_write;
@@ -44,13 +46,14 @@ const TimelinePanel = ({
       {!isEmpty ? (
         <TimelineList
           timelines={timelines}
-          visibleTimelineIds={visibleTimelineIds}
+          visibleEventIds={visibleEventIds}
           selectedEventIds={selectedEventIds}
-          onToggleTimeline={onToggleTimeline}
           onEditEvent={onEditEvent}
           onMoveEvent={onMoveEvent}
           onToggleEventSelected={onToggleEventSelected}
           onArchiveEvent={onArchiveEvent}
+          onShowTimelineEvents={onShowTimelineEvents}
+          onHideTimelineEvents={onHideTimelineEvents}
         />
       ) : (
         <TimelineEmptyState
@@ -63,4 +66,5 @@ const TimelinePanel = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default TimelinePanel;
