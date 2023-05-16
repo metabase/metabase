@@ -95,7 +95,7 @@ class Metadata {
 
   field(
     fieldId: FieldId | FieldReference | undefined | null,
-    tableId?: Table["id"] | undefined | null,
+    tableId?: TableId | undefined | null,
   ): Field | null {
     if (fieldId == null) {
       return null;
