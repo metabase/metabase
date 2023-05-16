@@ -1,5 +1,5 @@
 import type { Database, DatabaseId, InitialSyncStatus } from "./database";
-import type { Field, FieldDimensionOption } from "./field";
+import type { Field, FieldDimensionOption, FieldId } from "./field";
 import type { Metric } from "./metric";
 import type { Segment } from "./segment";
 
@@ -79,8 +79,8 @@ export interface TableListQuery {
 
 export interface ForeignKey {
   origin: Field;
-  origin_id: number;
+  origin_id: FieldId;
   destination: Field;
-  destination_id: number;
+  destination_id: FieldId;
   relationship: string; // enum?
 }

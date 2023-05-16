@@ -1,10 +1,10 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
-import { PRODUCTS } from "__support__/sample_database_fixture";
+import { metadata, PRODUCTS } from "__support__/sample_database_fixture";
 import Table from "./Table";
 
 describe("Table", () => {
-  const productsTable = new Table(PRODUCTS);
+  const productsTable = metadata.table(PRODUCTS.id);
 
   describe("numFields", () => {
     it("should return the number of fields", () => {
@@ -22,10 +22,11 @@ describe("Table", () => {
       const table = new Table({
         fks: [
           {
-            origin: { table: PRODUCTS },
+            origin_id: PRODUCTS.ID.id,
           },
         ],
       });
+      table.metadata = metadata;
 
       expect(table.connectedTables()).toEqual([productsTable]);
     });
