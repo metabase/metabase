@@ -69,8 +69,8 @@
   By default, admin users will see all collections. To hide other user's collections pass in
   `?exclude-other-user-collections=true`."
   [archived exclude-other-user-collections namespace]
-  {archived                       [:maybe ms/BooleanString]
-   exclude-other-user-collections [:maybe ms/BooleanString]
+  {archived                       [:maybe ms/BooleanValue]
+   exclude-other-user-collections [:maybe ms/BooleanValue]
    namespace                      [:maybe ms/NonBlankString]}
   (as-> (t2/select Collection
                    {:where    [:and
