@@ -10,7 +10,7 @@ export function MaybeOnClickOutsideWrapper({
   noOnClickOutsideWrapper?: boolean;
 } & React.ComponentProps<typeof OnClickOutsideWrapper>) {
   return noOnClickOutsideWrapper ? (
-    <div>{children}</div>
+    <>{children}</>
   ) : (
     <OnClickOutsideWrapper {...props}>{children}</OnClickOutsideWrapper>
   );
