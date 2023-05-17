@@ -97,7 +97,7 @@ const setup = async ({
 }: SetupOpts = {}) => {
   setupSearchEndpoints([]);
   setupCollectionsEndpoints(collections);
-  setupCollectionItemsEndpoint({ dashboards: [dashboard], collections });
+  setupCollectionItemsEndpoint([dashboard]);
   setupCollectionByIdEndpoint({ collections, error });
   setupMostRecentlyViewedDashboard(noRecentDashboard ? undefined : dashboard);
 
