@@ -31,6 +31,8 @@ import {
   TabButtonInputResizer,
 } from "./TabButton.styled";
 
+export const INPUT_WRAPPER_TEST_ID = "tab-button-input-wrapper";
+
 export type TabButtonMenuAction<T> = (
   context: TabContextType,
   value: T,
@@ -116,7 +118,10 @@ const _TabButton = forwardRef(function TabButton<T>(
       aria-label={label}
       id={getTabId(idPrefix, value)}
     >
-      <TabButtonInputWrapper onDoubleClick={onInputDoubleClick}>
+      <TabButtonInputWrapper
+        onDoubleClick={onInputDoubleClick}
+        data-testid={INPUT_WRAPPER_TEST_ID}
+      >
         <TabButtonInputResizer aria-hidden="true">
           {label}
         </TabButtonInputResizer>
