@@ -16,8 +16,6 @@
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.util.honeysql-extensions :as hx]
-   [metabase.util.schema :as su]
-   [schema.core :as s]
    [toucan2.core :as t2]))
 
 (defn- optional [& args] (params/->Optional args))
@@ -638,9 +636,10 @@
 
 ;;; -------------------------------------------- "REAL" END-TO-END-TESTS ---------------------------------------------
 
-(defmacro ^:private table-identifier [table-name]
+(defmacro ^:private table-identifier
   "Get the identifier used for `table` for the current driver by looking at what the driver uses when converting MBQL
    to SQL. Different drivers qualify to different degrees (i.e. `table` vs `schema.table` vs `database.schema.table`)."
+  [table-name]
   `(let [sql# (:query (qp/compile (mt/mbql-query ~table-name)))]
      (second (re-find #"(?m)FROM\s+([^\s()]+)" sql#))))
 
