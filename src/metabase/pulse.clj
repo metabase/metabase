@@ -241,7 +241,7 @@
                      :text {:type "mrkdwn"
                             :text (truncate-mrkdwn mrkdwn block-text-length-limit)}}]}))
 
-      ;; for content that are platform-specific
+      ;; for content that is platform-specific
       (:slack card-result)
       (recur (:slack card-result) channel-id))))
 

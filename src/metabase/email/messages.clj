@@ -307,7 +307,7 @@
            :title                     (:name pulse)
            :titleUrl                  (params/dashboard-url dashboard-id (params/parameters pulse dashboard))
            :dashboardDescription      (:description dashboard)
-           ;; There are legacy pulse that exists without being tied to a dashboard
+           ;; There are legacy pulses that exist without being tied to a dashboard
            :dashboardHasTabs          (when dashboard-id (dashboard/has-tabs? dashboard-id))
            :creator                   (-> pulse :creator :common_name)
            :sectionStyle              (style/style (style/section-style))}
@@ -422,7 +422,7 @@
     (:text result)
     {:content (markdown/process-markdown (:text result) :html)}
 
-    ;; for content that are platform-specific
+    ;; for content that is platform-specific
     (:email result)
     (recur timezone (:email result))))
 
