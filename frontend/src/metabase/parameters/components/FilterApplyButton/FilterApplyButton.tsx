@@ -8,6 +8,7 @@ import {
 import { applyDraftParameterValues } from "metabase/dashboard/actions";
 import { ApplyButton } from "./FilterApplyButton.styled";
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default function FilterApplyButton() {
   const isAutoApplyFilters = useSelector(getIsAutoApplyFilters);
   const hasUnappliedParameterValues = useSelector(
@@ -19,16 +20,12 @@ export default function FilterApplyButton() {
     dispatch(applyDraftParameterValues());
   }, [dispatch]);
 
-  if (isAutoApplyFilters) {
+  if (isAutoApplyFilters || !hasUnappliedParameterValues) {
     return null;
   }
 
   return (
-    <ApplyButton
-      primary
-      isVisible={hasUnappliedParameterValues}
-      onClick={handleApplyFilters}
-    >
+    <ApplyButton primary onClick={handleApplyFilters}>
       Apply
     </ApplyButton>
   );

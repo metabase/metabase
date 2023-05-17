@@ -80,7 +80,7 @@ class FieldInner extends Base {
   table_id?: Table["id"];
   target?: Field;
   fk_target_field_id?: Field["id"] | null;
-  name_field?: Field["id"];
+  name_field?: Field;
   remapping?: unknown;
   has_field_values?: FieldValuesType;
   has_more_values?: boolean;
@@ -145,7 +145,9 @@ class FieldInner extends Base {
   } = {}) {
     let displayName = "";
 
-    if (includeTable && this.table) {
+    // It is possible that the table doesn't exist or
+    // that it does, but its `displayName` resolves to an empty string.
+    if (includeTable && this.table?.displayName?.()) {
       displayName +=
         this.table.displayName({
           includeSchema,
@@ -589,6 +591,7 @@ class FieldInner extends Base {
   }
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default class Field extends memoizeClass<FieldInner>(
   "filterOperators",
   "filterOperatorsLookup",

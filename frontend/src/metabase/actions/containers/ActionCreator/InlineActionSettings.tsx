@@ -172,6 +172,7 @@ const InlineActionSettings = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect<StateProps, DispatchProps, OwnProps, State>(
   mapStateToProps,
   mapDispatchToProps,

@@ -3,13 +3,11 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 import { getIn } from "icepick";
 import { connect } from "react-redux";
-import _ from "underscore";
 
 import Visualization from "metabase/visualizations/components/Visualization";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { color } from "metabase/lib/colors";
-
 import { loadMetadataForQueries } from "metabase/redux/metadata";
 
 import { QuestionList } from "./QuestionList";
@@ -170,6 +168,4 @@ class AddSeriesModal extends Component {
   }
 }
 
-export default _.compose(connect(null, { loadMetadataForQueries }))(
-  AddSeriesModal,
-);
+export default connect(null, { loadMetadataForQueries })(AddSeriesModal);

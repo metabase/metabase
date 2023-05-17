@@ -530,6 +530,7 @@
    metabase.api.common/defendpoint-async-schema                                                                              hooks.metabase.api.common/defendpoint
    metabase.api.common/defendpoint-schema                                                                                    hooks.metabase.api.common/defendpoint
    metabase.api.dashboard-test/with-chain-filter-fixtures                                                                    hooks.common/let-one-with-optional-value
+   metabase.api.dashboard-test/with-simple-dashboard-with-tabs                                                               hooks.common/with-one-binding
    metabase.api.card-test/with-card-param-values-fixtures                                                                    hooks.common/let-one-with-optional-value
    metabase.api.embed-test/do-response-formats                                                                               hooks.common/with-two-bindings
    metabase.api.embed-test/with-chain-filter-fixtures                                                                        hooks.common/let-one-with-optional-value
@@ -551,6 +552,7 @@
    metabase.models.collection-test/with-collection-hierarchy                                                                 hooks.common/let-one-with-optional-value
    metabase.models.collection-test/with-personal-and-impersonal-collections                                                  hooks.common/with-two-bindings
    metabase.models.dashboard-test/with-dash-in-collection                                                                    hooks.common/with-three-bindings
+   metabase.models.dashboard-tab-test/with-dashtab-in-personal-collection                                                    hooks.common/with-one-top-level-binding
    metabase.models.interface/define-simple-hydration-method                                                                  hooks.metabase.models.interface/define-hydration-method
    metabase.models.interface/define-batched-hydration-method                                                                 hooks.metabase.models.interface/define-hydration-method
    metabase.models.pulse-test/with-dashboard-subscription-in-collection                                                      hooks.common/with-four-bindings

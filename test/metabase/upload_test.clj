@@ -423,7 +423,7 @@
          driver/*driver*
          (mt/id)
          "upload_test"
-         (csv-file-with ["true,false,group"
+         (csv-file-with ["id,ship,captain"
                          "1,Serenity,Malcolm Reynolds"
                          "2,Millennium Falcon, Han Solo"]))
         (testing "Table and Fields exist after sync"
@@ -431,7 +431,7 @@
           (let [table (t2/select-one Table :db_id (mt/id))]
             (is (=? {:name #"(?i)upload_test"} table))
             (testing "Check the data was uploaded into the table correctly"
-              (is (= ["true", "false", "group"]
+              (is (= ["id", "ship", "captain"]
                      (column-names-for-table table))))))))))
 
 (deftest load-from-csv-failed-test
@@ -439,7 +439,9 @@
     (mt/with-empty-db
       (testing "Can't upload a CSV with missing values"
         (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo #"Error executing write query: "
+             clojure.lang.ExceptionInfo (if (= driver/*driver* :postgres)
+                                          #"ERROR: missing data for column \"column_that_doesnt_have_a_value\""
+                                          #"Error executing write query: ")
              (upload/load-from-csv
               driver/*driver*
               (mt/id)
@@ -448,6 +450,50 @@
       (testing "Check that the table isn't created if the upload fails"
         (sync/sync-database! (mt/db))
         (is (nil? (t2/select-one Table :db_id (mt/id))))))))
+
+(deftest load-from-csv-tab-test
+  (testing "Upload a CSV file with tabs in the values"
+    (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+      (mt/with-empty-db
+        (upload/load-from-csv
+         driver/*driver*
+         (mt/id)
+         "upload_test"
+         (csv-file-with ["id,ship,captain"
+                         "1,Serenity,Malcolm\tReynolds"
+                         "2,Millennium\tFalcon,Han\tSolo"]))
+        (testing "Table and Fields exist after sync"
+          (sync/sync-database! (mt/db))
+          (let [table (t2/select-one Table :db_id (mt/id))]
+            (is (=? {:name #"(?i)upload_test"} table))
+            (testing "Check the data was uploaded into the table correctly"
+              (is (= ["id", "ship", "captain"]
+                     (column-names-for-table table)))
+              (is (= [[1 "Serenity" "Malcolm\tReynolds"]
+                      [2 "Millennium\tFalcon" "Han\tSolo"]]
+                     (rows-for-table table))))))))))
+
+(deftest load-from-csv-carriage-return-test
+  (testing "Upload a CSV file with carriage returns in the values"
+    (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+      (mt/with-empty-db
+        (upload/load-from-csv
+         driver/*driver*
+         (mt/id)
+         "upload_test"
+         (csv-file-with ["id,ship,captain"
+                         "1,Serenity,\"Malcolm\rReynolds\""
+                         "2,\"Millennium\rFalcon\",\"Han\rSolo\""]))
+        (testing "Table and Fields exist after sync"
+          (sync/sync-database! (mt/db))
+          (let [table (t2/select-one Table :db_id (mt/id))]
+            (is (=? {:name #"(?i)upload_test"} table))
+            (testing "Check the data was uploaded into the table correctly"
+              (is (= ["id", "ship", "captain"]
+                     (column-names-for-table table)))
+              (is (= [[1 "Serenity" "Malcolm\rReynolds"]
+                      [2 "Millennium\rFalcon" "Han\rSolo"]]
+                     (rows-for-table table))))))))))
 
 (deftest load-from-csv-BOM-test
   (testing "Upload a CSV file with a byte-order mark (BOM)"
@@ -469,3 +515,46 @@
             (testing "Check the data was uploaded into the table correctly"
               (is (= ["id", "ship", "captain"]
                      (column-names-for-table table))))))))))
+
+(deftest load-from-csv-injection-test
+  (testing "Upload a CSV file with very rude values"
+    (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+      (mt/with-empty-db
+        (upload/load-from-csv
+         driver/*driver*
+         (mt/id)
+         "upload_test"
+         (csv-file-with ["id integer); --,ship,captain"
+                         "1,Serenity,--Malcolm Reynolds"
+                         "2,;Millennium Falcon,Han Solo\""]
+                        "\"; -- Very rude filename"))
+        (testing "Table and Fields exist after sync"
+          (sync/sync-database! (mt/db))
+          (let [table (t2/select-one Table :db_id (mt/id))]
+            (is (=? {:name #"(?i)upload_test"} table))
+            (testing "Check the data was uploaded into the table correctly"
+              (is (= ["id_integer_____", "ship", "captain"]
+                     (column-names-for-table table)))
+              (is (= [[1   "Serenity"           "--Malcolm Reynolds"]
+                      [2   ";Millennium Falcon" "Han Solo\""]]
+                     (rows-for-table table))))))))))
+
+(deftest load-from-csv-eof-marker-test
+  (testing "Upload a CSV file with Postgres's 'end of input' marker"
+    (mt/test-drivers [:postgres]
+      (mt/with-empty-db
+        (upload/load-from-csv
+         driver/*driver*
+         (mt/id)
+         "upload_test"
+         (csv-file-with ["name"
+                         "Malcolm"
+                         "\\."
+                         "Han"]))
+        (testing "Table and Fields exist after sync"
+          (sync/sync-database! (mt/db))
+          (let [table (t2/select-one Table :db_id (mt/id))]
+            (is (=? {:name #"(?i)upload_test"} table))
+            (testing "Check the data was uploaded into the table correctly"
+              (is (= [["Malcolm"] ["\\."] ["Han"]]
+                     (rows-for-table table))))))))))

@@ -1,4 +1,10 @@
-import { popover, restore } from "e2e/support/helpers";
+import {
+  popover,
+  restore,
+  getPinnedSection,
+  openPinnedItemMenu,
+  openUnpinnedItemMenu,
+} from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -128,6 +134,7 @@ describe("scenarios > collection pinned items overview", () => {
     openPinnedItemMenu(DASHBOARD_NAME);
     popover().findByText("Move").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(`Move "${DASHBOARD_NAME}"?`).should("be.visible");
   });
 
@@ -138,6 +145,7 @@ describe("scenarios > collection pinned items overview", () => {
     openPinnedItemMenu(DASHBOARD_NAME);
     popover().findByText("Duplicate").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(`Duplicate "${DASHBOARD_NAME}" and its questions`).should(
       "be.visible",
     );
@@ -152,6 +160,7 @@ describe("scenarios > collection pinned items overview", () => {
     cy.wait("@getPinnedItems");
 
     getPinnedSection().should("not.exist");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(DASHBOARD_NAME).should("not.exist");
   });
 
@@ -201,31 +210,7 @@ describe("scenarios > collection pinned items overview", () => {
   });
 });
 
-const getPinnedSection = () => {
-  return cy.findByTestId("pinned-items");
-};
-
-const getUnpinnedSection = () => {
-  return cy.findByRole("table");
-};
-
 const openRootCollection = () => {
   cy.visit("/collection/root");
   cy.wait("@getPinnedItems");
-};
-
-const openPinnedItemMenu = name => {
-  getPinnedSection().within(() => {
-    cy.findByText(name)
-      .closest("a")
-      .within(() => cy.icon("ellipsis").click({ force: true }));
-  });
-};
-
-const openUnpinnedItemMenu = name => {
-  getUnpinnedSection().within(() => {
-    cy.findByText(name)
-      .closest("tr")
-      .within(() => cy.icon("ellipsis").click());
-  });
 };

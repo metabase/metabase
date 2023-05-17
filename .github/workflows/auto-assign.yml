@@ -43,6 +43,17 @@ jobs:
               return false;
             }
 
+            try {
+              const label = await github.rest.issues.getLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                name: team.label
+              });
+            } catch (e) {
+              console.log(`The label ${team.label} does not exist, create it first`);
+              return false;
+            }
+
             // Add team label
             await github.rest.issues.addLabels({
               owner: context.repo.owner,

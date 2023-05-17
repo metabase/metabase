@@ -18,6 +18,7 @@ export interface Dashboard {
   description: string | null;
   model?: string;
   ordered_cards: (DashboardOrderedCard | ActionDashboardCard)[];
+  ordered_tabs?: DashboardOrderedTab[];
   parameters?: Parameter[] | null;
   can_write: boolean;
   cache_ttl: number | null;
@@ -36,6 +37,7 @@ export type DashCardId = number;
 export type BaseDashboardOrderedCard = {
   id: DashCardId;
   dashboard_id: DashboardId;
+  dashboard_tab_id?: DashboardTabId;
   size_x: number;
   size_y: number;
   col: number;
@@ -62,6 +64,18 @@ export type DashboardOrderedCard = BaseDashboardOrderedCard & {
   card: Card;
   parameter_mappings?: DashboardParameterMapping[] | null;
   series?: Card[];
+};
+
+export type DashboardTabId = number;
+
+export type DashboardOrderedTab = {
+  id: DashboardTabId;
+  dashboard_id: DashboardId;
+  entity_id: string;
+  name: string;
+  position?: number;
+  created_at: string;
+  updated_at: string;
 };
 
 export type DashboardParameterMapping = {

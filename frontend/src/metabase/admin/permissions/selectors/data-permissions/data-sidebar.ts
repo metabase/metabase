@@ -129,7 +129,7 @@ export const getDataFocusSidebar: Selector<State, DataSidebarProps | null> =
         return getDatabasesSidebar(metadata);
       }
 
-      const database = getDatabase(metadata, databaseId);
+      const database = getDatabase(metadata, parseInt(databaseId));
 
       return getTablesSidebar(database, schemaName, tableId);
     },

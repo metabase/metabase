@@ -5,19 +5,11 @@ import Database from "./Database";
 import Schema from "./Schema";
 import Metadata from "./Metadata";
 import Table from "./Table";
-import Base from "./Base";
+
 describe("Database", () => {
   describe("instantiation", () => {
     it("should create an instance of Schema", () => {
       expect(new Database()).toBeInstanceOf(Database);
-    });
-    it("should add `object` props to the instance (because it extends Base)", () => {
-      expect(new Database()).toBeInstanceOf(Base);
-      expect(
-        new Database({
-          foo: "bar",
-        }),
-      ).toHaveProperty("foo", "bar");
     });
   });
   describe("displayName", () => {
@@ -167,7 +159,7 @@ describe("Database", () => {
       expect(database.question().datasetQuery()).toEqual({
         database: 123,
         query: {
-          "source-table": null,
+          "source-table": undefined,
         },
         type: "query",
       });

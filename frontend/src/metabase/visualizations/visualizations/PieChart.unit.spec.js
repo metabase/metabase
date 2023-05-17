@@ -1,16 +1,21 @@
 import React, { useState } from "react";
 import { thaw } from "icepick";
 import userEvent from "@testing-library/user-event";
+import { createMockMetadata } from "__support__/metadata";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 
-import {
-  SAMPLE_DATABASE,
-  ORDERS,
-  metadata,
-} from "__support__/sample_database_fixture";
 import ChartSettings from "metabase/visualizations/components/ChartSettings";
-
+import {
+  createSampleDatabase,
+  ORDERS,
+  ORDERS_ID,
+  SAMPLE_DB_ID,
+} from "metabase-types/api/mocks/presets";
 import Question from "metabase-lib/Question";
+
+const metadata = createMockMetadata({
+  databases: [createSampleDatabase()],
+});
 
 const setup = () => {
   const Container = () => {
@@ -21,14 +26,14 @@ const setup = () => {
           dataset_query: {
             type: "query",
             query: {
-              "source-table": ORDERS.id,
+              "source-table": ORDERS_ID,
               aggregation: [["count"]],
               breakout: [
-                ["field", ORDERS.CREATED_AT.id, { "temporal-unit": "year" }],
+                ["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }],
               ],
             },
           },
-          database: SAMPLE_DATABASE.id,
+          database: SAMPLE_DB_ID,
           visualization_settings: {},
         },
         metadata,

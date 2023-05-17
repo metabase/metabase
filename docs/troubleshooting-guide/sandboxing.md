@@ -176,6 +176,6 @@ The administrator can [create a new group][groups] to capture precisely who's al
 [row-permissions]: https://www.metabase.com/learn/permissions/data-sandboxing-row-permissions
 [sandboxing-your-data]: ../permissions/data-sandboxes.md
 [signed-embedding]: https://www.metabase.com/learn/customer-facing-analytics/embedding-charts-and-dashboards#enable-embedding-in-other-applications
-[sandbox-limitations]: ../enterprise-guide/data-sandboxes.html#current-limitations
+[sandbox-limitations]: ../permissions/data-sandboxes.md#limitations
 [troubleshooting-permissions]: ./permissions.md
-[unsupported-databases]: ../permissions/data-sandboxes.md#data-sandboxes-do-not-support-non-sql-databases
+[unsupported-databases]: ../permissions/data-sandboxes.md#limitations

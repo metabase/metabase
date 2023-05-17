@@ -10,5 +10,6 @@ export interface Segment {
   table_id: TableId;
   archived: boolean;
   definition: StructuredQuery;
+  definition_description: string;
   revision_message?: string;
 }

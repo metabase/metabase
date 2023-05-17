@@ -3,7 +3,8 @@ import _ from "underscore";
 import { t } from "ttag";
 import * as Urls from "metabase/lib/urls";
 import Select from "metabase/core/components/Select";
-import { Database, DatabaseCandidate } from "metabase-types/api";
+import { DatabaseCandidate } from "metabase-types/api";
+import Database from "metabase-lib/metadata/Database";
 import HomeCaption from "../HomeCaption";
 import HomeHelpCard from "../HomeHelpCard";
 import HomeXrayCard from "../HomeXrayCard";
@@ -137,4 +138,5 @@ const getSchemaOption = (schema: string) => {
   return schema;
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default HomeXraySection;

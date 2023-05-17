@@ -26,6 +26,7 @@ describeEE("audit > ad-hoc", () => {
     it("should appear in audit log (metabase#16845 metabase-enterprise#486)", () => {
       cy.visit("/admin/audit/members/log");
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Native")
         .parent()
         .parent()
@@ -37,6 +38,7 @@ describeEE("audit > ad-hoc", () => {
       cy.url().should("include", "/admin/audit/query/");
 
       cy.get(".PageTitle").contains("Query");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Open in Metabase");
       cy.get(".ace_content").contains("SELECT 123");
     });
@@ -62,6 +64,7 @@ describeEE("audit > ad-hoc", () => {
     it("should appear in audit log #29456", () => {
       cy.visit("/admin/audit/members/log");
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("GUI")
         .parent()
         .parent()
@@ -73,6 +76,7 @@ describeEE("audit > ad-hoc", () => {
       cy.url().should("include", "/admin/audit/query/");
 
       cy.get(".PageTitle").contains("Query");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Open in Metabase").should("be.visible");
 
       cy.findByTestId("read-only-notebook").within(() => {

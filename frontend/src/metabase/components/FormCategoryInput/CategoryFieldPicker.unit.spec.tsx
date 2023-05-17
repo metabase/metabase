@@ -1,82 +1,86 @@
 import React from "react";
-import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui";
-import { PRODUCTS } from "__support__/sample_database_fixture";
+import { createMockEntitiesState } from "__support__/store";
+import {
+  setupDatabasesEndpoints,
+  setupFieldsValuesEndpoints,
+} from "__support__/server-mocks";
 
+import { checkNotNull } from "metabase/core/utils/types";
+import { getMetadata } from "metabase/selectors/metadata";
+
+import {
+  createSampleDatabase,
+  PRODUCTS,
+  PRODUCT_CATEGORY_VALUES,
+  PRODUCT_VENDOR_VALUES,
+} from "metabase-types/api/mocks/presets";
+import { createMockState } from "metabase-types/store/mocks";
 import Field from "metabase-lib/metadata/Field";
 
 import CategoryFieldPicker from "./CategoryFieldPicker";
 
+const db = createSampleDatabase();
+const storeInitialState = createMockState({
+  entities: createMockEntitiesState({
+    databases: [db],
+  }),
+});
+const metadata = getMetadata(storeInitialState);
+
+const productCategoryField = checkNotNull(metadata.field(PRODUCTS.CATEGORY));
+const productVendorField = checkNotNull(metadata.field(PRODUCTS.VENDOR));
+
+const productCategories = PRODUCT_CATEGORY_VALUES.values.flat() as string[];
+
 function setup({ value = "", field }: { value?: string; field: Field }) {
   const onChange = jest.fn();
+  const db = createSampleDatabase();
+
+  setupDatabasesEndpoints([db]);
+  setupFieldsValuesEndpoints([PRODUCT_CATEGORY_VALUES, PRODUCT_VENDOR_VALUES]);
+
   renderWithProviders(
     <CategoryFieldPicker value={value} field={field} onChange={onChange} />,
     {
-      withSampleDatabase: true,
+      storeInitialState,
     },
   );
+
   return { onChange };
 }
 
-const productCategoryField = new Field({
-  ...PRODUCTS.CATEGORY.getPlainObject(),
-  fingerprint: {
-    global: {
-      "distinct-count": 4,
-    },
-  },
-});
-
-const productVendorField = new Field({
-  ...PRODUCTS.VENDOR.getPlainObject(),
-  fingerprint: {
-    global: {
-      "distinct-count": 80,
-    },
-  },
-});
-
 describe("CategoryFieldPicker", () => {
   describe("given a few distinct values", () => {
-    beforeEach(() => {
-      fetchMock.get(
-        `/api/field/${productCategoryField.id}/values`,
-        productCategoryField.fieldValues(),
-      );
-    });
-
     it("should render a radio picker", () => {
       setup({ field: productCategoryField });
       expect(screen.getByRole("radiogroup")).toBeInTheDocument();
       expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
     });
 
-    it("should list the distinct values", () => {
+    it("should list the distinct values", async () => {
       setup({ field: productCategoryField });
 
-      productCategoryField
-        .fieldValues()
-        .flat()
-        .forEach((value: string) => {
-          expect(screen.getByText(value)).toBeInTheDocument();
-        });
+      for (const categoryName of productCategories) {
+        expect(await screen.findByText(categoryName)).toBeInTheDocument();
+      }
     });
 
-    it("should highlight provided value", () => {
-      const [value, anotherValue] = productCategoryField.fieldValues().flat();
+    it("should highlight provided value", async () => {
+      const [value, anotherValue] = productCategories;
       setup({ value, field: productCategoryField });
 
-      expect(screen.getByLabelText(value)).toBeChecked();
+      expect(await screen.findByLabelText(value)).toBeChecked();
       expect(screen.getByLabelText(anotherValue)).not.toBeChecked();
     });
 
-    it("should trigger onChange when clicking a value", () => {
-      const [value] = productCategoryField.fieldValues().flat();
+    it("should trigger onChange when clicking a value", async () => {
+      const [value] = productCategories;
       const { onChange } = setup({ field: productCategoryField });
 
-      screen.getByText(value).click();
+      userEvent.click(await screen.findByText(value));
 
       expect(onChange).toHaveBeenCalledWith(value);
     });
