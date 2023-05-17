@@ -318,7 +318,7 @@
              (mt/user-http-request :rasta :post 200 "dataset/native"
                                    (assoc
                                     (mt/mbql-query venues {:fields [$id $name]})
-                                     :pretty true)))))
+                                    :pretty true)))))
     (testing "The default behavior is to format the SQL"
       (is (= {:query  (str "SELECT\n"
                            "  \"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\",\n"

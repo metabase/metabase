@@ -3,10 +3,7 @@
    [metabase.models.interface :as mi]
    [metabase.util.i18n :refer [tru]]
    [methodical.core :as methodical]
-   [toucan.models :as models]
    [toucan2.core :as t2]))
-
-(models/defmodel ApplicationPermissionsRevision :application_permissions_revision)
 
 (def ApplicationPermissionsRevision
   "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], now it's a reference to the toucan2 model name.
