@@ -109,7 +109,7 @@ export function addModelDashboard({ name, alias, modelDetails }) {
   return cy
     .createQuestionAndDashboard({
       questionDetails: modelDetails,
-      dashboardDetails: { name },
+      dashboardDetails: name,
     })
     .then(({ body: { dashboard_id } }) => {
       cy.wrap(dashboard_id).as(alias);
