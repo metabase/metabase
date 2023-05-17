@@ -650,7 +650,7 @@
        (map sanitize-value)
        (str/join "\t")))
 
-(defn- get-config
+(defn- get-global-variable
   [db-id var-name]
   (:value
    (first
@@ -661,18 +661,20 @@
   [driver db-id ^String table-name column-names values]
   ;; `local_infile` must be turned on per
   ;; https://dev.mysql.com/doc/refman/8.0/en/load-data.html#load-data-local
-  (if (not= (get-config db-id "local_infile") "ON")
+  (if (not= (get-global-variable db-id "local_infile") "ON")
     ;; If it isn't turned on, fall back to the generic "INSERT INTO ..." way
     (driver/insert-into :sql-jdbc db-id table-name column-names values)
     (let [temp-file (File/createTempFile table-name ".tsv")
-          file-path (.getAbsolutePath temp-file)
-          tsv       (->> values
-                         (map row->tsv)
-                         (str/join "\n"))
-          sql       (sql/format {::load   [file-path (keyword table-name)]
-                                 :columns (map keyword column-names)}
-                                :quoted true
-                                :dialect (sql.qp/quote-style driver))]
-      (spit file-path tsv)
-      (qp.writeback/execute-write-sql! db-id sql)
-      (.delete temp-file))))
+          file-path (.getAbsolutePath temp-file)]
+      (try
+        (let [tsv (->> values
+                       (map row->tsv)
+                       (str/join "\n"))
+              sql (sql/format {::load   [file-path (keyword table-name)]
+                               :columns (map keyword column-names)}
+                              :quoted true
+                              :dialect (sql.qp/quote-style driver))]
+          (spit file-path tsv)
+          (qp.writeback/execute-write-sql! db-id sql))
+        (finally
+          (.delete temp-file))))))
