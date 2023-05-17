@@ -28,13 +28,12 @@ jobs:
         with:
           script: |
             const MAX_ATTEMPTS = 2;
-            const ATTEMPT = ${{ github.event.workflow_run.run_attempt }};
-            const BRANCH = ${{ github.event.workflow_run.head_branch }};
-            const BRANCH_REF = context.ref;
-            const FAILED_RUN = ${{ github.event.workflow_run.html_url }};
-            const FAILED_WORKFLOW = ${{ github.event.workflow_run.name }};
-            const AUTHOR = ${{ github.event.workflow_run.head_commit.author.name }}
-            const BREAKING_COMMIT = ${{ github.event.workflow_run.head_sha }};
+            const ATTEMPT = "${{ github.event.workflow_run.run_attempt }}";
+            const BRANCH = "${{ github.event.workflow_run.head_branch }}";
+            const FAILED_RUN_URL = "${{ github.event.workflow_run.html_url }}";
+            const FAILED_RUN_NAME = "${{ github.event.workflow_run.name }}";
+            const AUTHOR = "${{ github.event.workflow_run.head_commit.author.name }}";
+            const BREAKING_COMMIT = "${{ github.event.workflow_run.head_sha }}";
 
             if (ATTEMPT <= MAX_ATTEMPTS) {
               github.rest.actions.reRunWorkflowFailedJobs({
@@ -54,7 +53,7 @@ jobs:
                     "type": "header",
                     "text": {
                       "type": "plain_text",
-                      "text": `:alert: CI is failing for ${FAILED_WORKFLOW} on ${BRANCH} :alert:`,
+                      "text": `:alert: CI is failing on ${BRANCH} :alert:`,
                       "emoji": true,
                     }
                   },
@@ -66,7 +65,7 @@ jobs:
                       "type": "section",
                       "text": {
                         "type": "mrkdwn",
-                        "text": `Commit <https://github.com/metabase/metabase/commit/${BREAKING_COMMIT}|${BREAKING_COMMIT.slice(0,7)}> by ${AUTHOR} has failing tests on the \`${BRANCH}\` branch . :sad-panda:\nPlease fix ASAP. Emoji this message when it's fixed.`
+                        "text": `Commit <https://github.com/metabase/metabase/commit/${BREAKING_COMMIT}|${BREAKING_COMMIT.slice(0,7)}> by ${AUTHOR} has failing <${FAILED_RUN_URL}|${FAILED_RUN_NAME}> tests on the \`${BRANCH}\` branch . :sad-panda:\nPlease fix ASAP. \n\nEmoji this message when it's fixed.`
                       }
                     },
                     {
@@ -88,8 +87,8 @@ jobs:
                             "text": `Recent commits to ${BRANCH}`,
                             "emoji": true
                           },
-                          "url": `https://github.com/metabase/metabase/commits/${BRANCH_REF}`
-                        }
+                          "url": `https://github.com/metabase/metabase/commits/${BRANCH}`
+                        },
                         {
                           "type": "button",
                           "text": {
@@ -97,7 +96,7 @@ jobs:
                             "text": "Failed CI Run",
                             "emoji": true
                           },
-                          "url": `${FAILED_RUN}`
+                          "url": `${FAILED_RUN_URL}`
                         }
                       ]
                     }
