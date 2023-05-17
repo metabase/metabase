@@ -53,8 +53,8 @@
            (finally (task/stop-scheduler!))))))
 
 (deftest migrate-legacy-column-settings-field-refs-test
-  (testing "Migrations v47.00-017: update visualization_settings.column_settings legacy field refs"
-    (impl/test-migrations ["v47.00-017"] [migrate!]
+  (testing "Migrations v47.00-016: update visualization_settings.column_settings legacy field refs"
+    (impl/test-migrations ["v47.00-016"] [migrate!]
       (let [visualization-settings
             {"column_settings" (-> {["name" "column_name"]                              {"column_title" "ID6"},
                                     ["ref" ["field-literal" "column_name" "type/Text"]] {"column_title" "ID5"},
