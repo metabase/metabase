@@ -235,6 +235,18 @@
 (deftest ^:parallel expression-ref-inside-aggregation-type-of-test
   (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
                   (lib/expression "double-price" (lib/* (lib/field (meta/id :venues :price)) 2))
+                  (lib/aggregate (lib/sum [:expression {:lib/uuid (str (random-uuid))} "double-price"])))]
+    (is (=? [{:lib/type     :metadata/field
+              :base-type    :type/Integer
+              :name         "sum_double-price"
+              :display-name "Sum of double-price"}]
+            (lib/aggregations query)))
+    (is (= :type/Integer
+           (lib/type-of query (first (lib/aggregations query)))))))
+
+(deftest ^:parallel aggregation-operator-test
+  (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
+                  (lib/expression "double-price" (lib/* (lib/field (meta/id :venues :price)) 2))
                   (lib/expression "budget?" (lib/< (lib/field (meta/id :venues :price)) 2))
                   (lib/aggregate (lib/sum [:expression {:lib/uuid (str (random-uuid))} "double-price"])))
         summable-cols [{:display-name "Latitude",
@@ -290,7 +302,8 @@
                    :effective-type :type/Text,
                    :semantic-type :type/Name,
                    :lib/source :source/implicitly-joinable}]
-        scope-cols all-cols]
+        scope-cols all-cols
+        aggregation-operators (lib/available-aggregation-operators query)]
     (is (=? [{:lib/type     :metadata/field
               :base-type    :type/Integer
               :name         "sum_double-price"
@@ -298,32 +311,83 @@
             (lib/aggregations query)))
     (is (= :type/Integer
            (lib/type-of query (first (lib/aggregations query)))))
-    (is (=? [{:short :count,
-              :requires-field? false}
-             {:short :sum,
-              :requires-field? true,
-              :columns summable-cols}
-             {:short :avg,
-              :requires-field? true,
-              :columns summable-cols}
-             {:short :distinct,
-              :requires-field? true,
-              :columns all-cols}
-             {:short :cum-sum,
-              :requires-field? true,
-              :columns summable-cols}
-             {:short :cum-count,
-              :requires-field? false}
-             {:short :stddev,
-              :requires-field? true,
-              :columns summable-cols}
-             {:short :min,
-              :requires-field? true,
-              :columns scope-cols}
-             {:short :max,
-              :requires-field? true,
-              :columns scope-cols}]
-            (lib/available-aggregation-operators query)))))
+    (testing "available aggregation operators"
+      (is (=? [{:short :count,
+                :requires-field? false}
+               {:short :sum,
+                :requires-field? true,
+                :columns summable-cols}
+               {:short :avg,
+                :requires-field? true,
+                :columns summable-cols}
+               {:short :distinct,
+                :requires-field? true,
+                :columns all-cols}
+               {:short :cum-sum,
+                :requires-field? true,
+                :columns summable-cols}
+               {:short :cum-count,
+                :requires-field? false}
+               {:short :stddev,
+                :requires-field? true,
+                :columns summable-cols}
+               {:short :min,
+                :requires-field? true,
+                :columns scope-cols}
+               {:short :max,
+                :requires-field? true,
+                :columns scope-cols}]
+              aggregation-operators)))
+    (testing "aggregation operator display info"
+      (is (=? [{:display-name "Count of rows",
+                :column-name "Count",
+                :description "Total number of rows in the answer.",
+                :short :count,
+                :requires-field false}
+               {:display-name "Sum of ...",
+                :column-name "Sum",
+                :description "Sum of all the values of a column.",
+                :short :sum,
+                :requires-field true}
+               {:display-name "Average of ...",
+                :column-name "Average",
+                :description "Average of all the values of a column",
+                :short :avg,
+                :requires-field true}
+               {:display-name "Number of distinct values of ...",
+                :column-name "Distinct values",
+                :description "Number of unique values of a column among all the rows in the answer.",
+                :short :distinct,
+                :requires-field true}
+               {:display-name "Cumulative sum of ...",
+                :column-name "Sum",
+                :description "Additive sum of all the values of a column.\ne.x. total revenue over time.",
+                :short :cum-sum,
+                :requires-field true}
+               {:display-name "Cumulative count of rows",
+                :column-name "Count",
+                :description "Additive count of the number of rows.\ne.x. total number of sales over time.",
+                :short :cum-count,
+                :requires-field false}
+               {:display-name "Standard deviation of ...",
+                :column-name "SD",
+                :description "Number which expresses how much the values of a column vary among all rows in the answer.",
+                :short :stddev,
+                :requires-field true}
+               {:display-name "Minimum of ...",
+                :column-name "Min",
+                :description "Minimum value of a column",
+                :short :min,
+                :requires-field true}
+               {:display-name "Maximum of ...",
+                :column-name "Max",
+                :description "Maximum value of a column",
+                :short :max,
+                :requires-field true}]
+              (map #(lib/display-info query %) aggregation-operators))))
+    (testing "testing getting the available columns for an aggregation operator"
+      (is (nil? (lib/aggregation-operator-columns (first aggregation-operators))))
+      (is (=? summable-cols (lib/aggregation-operator-columns (second aggregation-operators)))))))
 
 (deftest ^:parallel preserve-field-settings-metadata-test
   (testing "Aggregation metadata should return the `:settings` for the field being aggregated, for some reason."

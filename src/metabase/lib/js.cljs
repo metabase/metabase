@@ -294,3 +294,13 @@
   (let [n    (if (string? n) (keyword n) n)
         unit (if (string? unit) (keyword unit) unit)]
       (lib.core/describe-relative-datetime n unit)))
+
+(defn ^:export available-aggregation-operators
+  ([a-query]
+   (available-aggregation-operators a-query -1))
+  ([a-query stage-number]
+   (to-array (lib.core/available-aggregation-operators a-query stage-number))))
+
+(defn ^:export aggregation-operator-columns
+  [aggregation-operator]
+  (to-array (lib.core/aggregation-operators-columns aggregation-operator)))

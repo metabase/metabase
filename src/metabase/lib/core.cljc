@@ -54,8 +54,9 @@
 
 (shared.ns/import-fns
   [lib.aggregation
-   aggregations
    aggregate
+   aggregation-operator-columns
+   aggregations
    available-aggregation-operators
    count
    avg

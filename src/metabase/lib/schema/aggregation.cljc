@@ -105,80 +105,80 @@
     :requires-field? false
     :driver-feature  :basic-aggregations
     :display-info    (fn []
-                       {:name        (i18n/tru "Count of rows")
-                        :column-name (i18n/tru "Count")
-                        :description (i18n/tru "Total number of rows in the answer.")})}
+                       {:display-name (i18n/tru "Count of rows")
+                        :column-name  (i18n/tru "Count")
+                        :description  (i18n/tru "Total number of rows in the answer.")})}
    {:short           :sum
     :supported-field :metabase.lib.types.constants/summable
     :requires-field? true
     :driver-feature  :basic-aggregations
     :display-info    (fn []
-                       {:name        (i18n/tru "Sum of ...")
-                        :column-name (i18n/tru "Sum")
-                        :description (i18n/tru "Sum of all the values of a column.")})}
+                       {:display-name (i18n/tru "Sum of ...")
+                        :column-name  (i18n/tru "Sum")
+                        :description  (i18n/tru "Sum of all the values of a column.")})}
    {:short           :avg
     :supported-field :metabase.lib.types.constants/summable
     :requires-field? true
     :driver-feature  :basic-aggregations
     :display-info    (fn []
-                       {:name        (i18n/tru "Average of ...")
-                        :column-name (i18n/tru "Average")
-                        :description (i18n/tru "Average of all the values of a column")})}
+                       {:display-name (i18n/tru "Average of ...")
+                        :column-name  (i18n/tru "Average")
+                        :description  (i18n/tru "Average of all the values of a column")})}
    {:short           :median
     :supported-field :metabase.lib.types.constants/summable
     :requires-field? true
     :driver-feature  :percentile-aggregations
     :display-info    (fn []
-                       {:name        (i18n/tru "Median of ...")
-                        :column-name (i18n/tru "Median")
-                        :description (i18n/tru "Median of all the values of a column")})}
+                       {:display-name (i18n/tru "Median of ...")
+                        :column-name  (i18n/tru "Median")
+                        :description  (i18n/tru "Median of all the values of a column")})}
    {:short           :distinct
     :supported-field :any
     :requires-field? true
     :driver-feature  :basic-aggregations
     :display-info    (fn []
-                       {:name        (i18n/tru "Number of distinct values of ...")
-                        :column-name (i18n/tru "Distinct values")
-                        :description (i18n/tru "Number of unique values of a column among all the rows in the answer.")})}
+                       {:display-name (i18n/tru "Number of distinct values of ...")
+                        :column-name  (i18n/tru "Distinct values")
+                        :description  (i18n/tru "Number of unique values of a column among all the rows in the answer.")})}
    {:short           :cum-sum
     :supported-field :metabase.lib.types.constants/summable
     :requires-field? true
     :driver-feature  :basic-aggregations
     :display-info    (fn []
-                       {:name        (i18n/tru "Cumulative sum of ...")
-                        :column-name (i18n/tru "Sum")
-                        :description (i18n/tru "Additive sum of all the values of a column.\ne.x. total revenue over time.")})}
+                       {:display-name (i18n/tru "Cumulative sum of ...")
+                        :column-name  (i18n/tru "Sum")
+                        :description  (i18n/tru "Additive sum of all the values of a column.\ne.x. total revenue over time.")})}
    {:short           :cum-count
     :requires-field? false
     :driver-feature  :basic-aggregations
     :display-info    (fn []
-                       {:name        (i18n/tru "Cumulative count of rows")
-                        :column-name (i18n/tru "Count")
-                        :description (i18n/tru "Additive count of the number of rows.\ne.x. total number of sales over time.")})}
+                       {:display-name (i18n/tru "Cumulative count of rows")
+                        :column-name  (i18n/tru "Count")
+                        :description  (i18n/tru "Additive count of the number of rows.\ne.x. total number of sales over time.")})}
    {:short           :stddev
     :supported-field :metabase.lib.types.constants/summable
     :requires-field? true
     :driver-feature  :standard-deviation-aggregations
     :display-info    (fn []
-                       {:name        (i18n/tru "Standard deviation of ...")
-                        :column-name (i18n/tru "SD")
-                        :description (i18n/tru "Number which expresses how much the values of a column vary among all rows in the answer.")})}
+                       {:display-name (i18n/tru "Standard deviation of ...")
+                        :column-name  (i18n/tru "SD")
+                        :description  (i18n/tru "Number which expresses how much the values of a column vary among all rows in the answer.")})}
    {:short           :min
     :supported-field :metabase.lib.types.constants/scope
     :requires-field? true
     :driver-feature  :basic-aggregations
     :display-info    (fn []
-                       {:name        (i18n/tru "Minimum of ...")
-                        :column-name (i18n/tru "Min")
-                        :description (i18n/tru "Minimum value of a column")})}
+                       {:display-name (i18n/tru "Minimum of ...")
+                        :column-name  (i18n/tru "Min")
+                        :description  (i18n/tru "Minimum value of a column")})}
    {:short           :max
     :supported-field :metabase.lib.types.constants/scope
     :requires-field? true
     :driver-feature  :basic-aggregations
     :display-info    (fn []
-                       {:name        (i18n/tru "Maximum of ...")
-                        :column-name (i18n/tru "Max")
-                        :description (i18n/tru "Maximum value of a column")})}])
+                       {:display-name (i18n/tru "Maximum of ...")
+                        :column-name  (i18n/tru "Max")
+                        :description  (i18n/tru "Maximum value of a column")})}])
 
 (mr/def ::operator
   [:map

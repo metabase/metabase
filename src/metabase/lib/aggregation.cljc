@@ -246,12 +246,14 @@
          :short short-name
          :requires-field requires-field?))
 
-(mu/defn aggregation-columns :- [:maybe [:sequential lib.metadata/ColumnMetadata]]
-  "Return the columns for which `aggregation-operator` is applicable."
+(mu/defn aggregation-operator-columns :- [:maybe [:sequential lib.metadata/ColumnMetadata]]
+  "Returns the columns for which `aggregation-operator` is applicable."
   [aggregation-operator :- OperatorWithColumns]
   (:columns aggregation-operator))
 
 (mu/defn available-aggregation-operators :- [:maybe [:sequential OperatorWithColumns]]
+  "Returns the available aggegation operators for the stage with `stage-number` of `query`.
+  If `stage-number` is omitted, uses the last stage."
   ([query]
    (available-aggregation-operators query -1))
 
