@@ -23,6 +23,7 @@
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.util :as qp.util]
    [metabase.query-processor.util.add-alias-info :as add]
+   [metabase.server.middleware.session :as mw.session]
    [metabase.test :as mt]
    [metabase.test.data.env :as tx.env]
    [metabase.util :as u]
@@ -339,6 +340,14 @@
                                            :attributes {"cat" 50}}
         (is (= [[100]]
                (run-venues-count-query)))))
+
+    (testing "A non-admin impersonating an admin (i.e. when running a public or embedded question) should always bypass sandboxes (#30535)"
+      (met/with-gtaps-for-user :rasta {:gtaps      {:venues (venues-category-mbql-gtap-def)}
+                                       :attributes {"cat" 50}}
+        (mt/with-test-user :rasta
+         (mw.session/as-admin
+          (is (= [[100]]
+               (run-venues-count-query)))))))
 
     (testing "Users with view access to the related collection should bypass segmented permissions"
       (mt/with-temp-copy-of-db

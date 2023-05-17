@@ -7,7 +7,7 @@ import type { LocationDescriptor } from "history";
 import { IconProps } from "metabase/components/Icon";
 
 import Visualization from "metabase/visualizations/components/Visualization";
-import WithVizSettingsData from "metabase/visualizations/hoc/WithVizSettingsData";
+import WithVizSettingsData from "metabase/dashboard/hoc/WithVizSettingsData";
 import { getVisualizationRaw } from "metabase/visualizations";
 
 import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";

@@ -282,7 +282,7 @@ function QueryBuilder(props) {
   );
 
   const handleSave = useCallback(
-    async (card, { rerunQuery = false } = {}) => {
+    async (card, { rerunQuery } = {}) => {
       const questionWithUpdatedCard = question.setCard(card);
       await apiUpdateQuestion(questionWithUpdatedCard, { rerunQuery });
       if (!rerunQuery) {

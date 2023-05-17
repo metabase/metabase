@@ -9,7 +9,7 @@ redirect_from:
 Metabase's [Enterprise and Pro](https://www.metabase.com/pricing) plans provide additional features that help organizations scale Metabase and deliver self-service internal or embedded analytics.
 
 - **If you're on Metabase Cloud**, your paid features will activate automatically.
-- **If you're self-hosting,** you'll nee to [activate your license](./activating-the-enterprise-edition.md).
+- **If you're self-hosting,** you'll need to [activate your license](./activating-the-enterprise-edition.md).
 
 ## Authentication
 

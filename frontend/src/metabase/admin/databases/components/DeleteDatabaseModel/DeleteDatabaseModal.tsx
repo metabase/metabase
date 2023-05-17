@@ -67,8 +67,7 @@ const DeleteDatabaseModal = ({
     e.preventDefault();
 
     try {
-      onDelete(database);
-      // immediately call on close because database deletion should be non blocking
+      await onDelete(database);
       onClose();
     } catch (error) {
       setError(error);

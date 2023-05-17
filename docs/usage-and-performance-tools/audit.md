@@ -106,7 +106,7 @@ Admins can add and remove people from a subscription or alert by clicking on the
 
 Everyone can view all of their subscriptions and alerts by clicking on the **gear** icon in the upper right and navigating to **Account settings** > **Notifications**.
 
-For more, see [how permissions work with dashboard subscriptions and alerts](../dashboards/subscriptions.md#how-permissions-work-with-dashboard-subscriptions).
+For more, see [how permissions work with alerts and subscriptions](../permissions/notifications.md).
 
 [alerts]: ../questions/sharing/alerts.md
 [dashboard-subscriptions]: ../dashboards/subscriptions.md

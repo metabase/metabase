@@ -536,19 +536,19 @@
                      first))]
         (testing "timestamp with out timezone columns"
           (mt/with-report-timezone-id "UTC"
-            (testing "convert from Asia/Shanghai(+08:00) to Asia/Tokyo(+09:00)"
+            (testing "convert from Asia/Shanghai(+08:00) to Asia/Seoul(+09:00)"
               (is (= ["2004-03-19T09:19:09Z"
                       "2004-03-19T10:19:09+09:00"]
                      (mt/$ids (test-convert-tz
                                 $times.dt
-                                [:convert-timezone $times.dt "Asia/Tokyo" "Asia/Shanghai"])))))
+                                [:convert-timezone $times.dt "Asia/Seoul" "Asia/Shanghai"])))))
             (testing "source-timezone is required"
               (is (thrown-with-msg?
                     clojure.lang.ExceptionInfo
                     #"input column doesnt have a set timezone. Please set the source parameter in convertTimezone to convert it."
                     (mt/$ids (test-convert-tz
                                $times.dt
-                               [:convert-timezone [:field (mt/id :times :dt) nil] "Asia/Tokyo"]))))))
+                               [:convert-timezone [:field (mt/id :times :dt) nil] "Asia/Seoul"]))))))
 
           (when (driver/supports? driver/*driver* :set-timezone)
             (mt/with-report-timezone-id "Europe/Rome"
@@ -556,7 +556,7 @@
                 (is (= ["2004-03-19T09:19:09+01:00" "2004-03-19T17:19:09+09:00"]
                        (mt/$ids (test-convert-tz
                                   $times.dt
-                                  [:convert-timezone [:field (mt/id :times :dt) nil] "Asia/Tokyo" "Europe/Rome"]))))))))
+                                  [:convert-timezone [:field (mt/id :times :dt) nil] "Asia/Seoul" "Europe/Rome"]))))))))
 
         (testing "timestamp with time zone columns"
           (mt/with-report-timezone-id "UTC"
@@ -564,7 +564,7 @@
               (is (= ["2004-03-19T02:19:09Z" "2004-03-19T11:19:09+09:00"]
                      (mt/$ids (test-convert-tz
                                 $times.dt_tz
-                                [:convert-timezone [:field (mt/id :times :dt_tz) nil] "Asia/Tokyo"])))))
+                                [:convert-timezone [:field (mt/id :times :dt_tz) nil] "Asia/Seoul"])))))
 
             (testing "timestamp with time zone columns shouldn't have `source-timezone`"
               (is (thrown-with-msg?
@@ -573,7 +573,7 @@
                     (mt/$ids (test-convert-tz
                                $times.dt_tz
                                [:convert-timezone [:field (mt/id :times :dt_tz) nil]
-                                "Asia/Tokyo"
+                                "Asia/Seoul"
                                 "UTC"]))))))
 
           (when (driver/supports? driver/*driver* :set-timezone)
@@ -582,7 +582,7 @@
                 (is (= ["2004-03-19T03:19:09+01:00" "2004-03-19T11:19:09+09:00"]
                        (mt/$ids (test-convert-tz
                                   $times.dt_tz
-                                  [:convert-timezone [:field (mt/id :times :dt_tz) nil] "Asia/Tokyo"]))))))))
+                                  [:convert-timezone [:field (mt/id :times :dt_tz) nil] "Asia/Seoul"]))))))))
 
         (testing "with literal datetime"
           (mt/with-report-timezone-id "UTC"
@@ -603,7 +603,7 @@
                   10]                         ;; hour
                  (->> (mt/run-mbql-query
                         times
-                        {:expressions {"converted" [:convert-timezone $times.dt "Asia/Tokyo" "Asia/Shanghai"]
+                        {:expressions {"converted" [:convert-timezone $times.dt "Asia/Seoul" "Asia/Shanghai"]
                                        "hour"      [:get-hour [:expression "converted"]]}
                          :filter      [:= $times.index 1]
                          :fields      [$times.dt
@@ -619,8 +619,8 @@
                   20]                          ;; hour
                  (->> (mt/run-mbql-query
                         times
-                        {:expressions {"converted"  [:convert-timezone $times.dt "Asia/Tokyo" "UTC"]
-                                       "date-added" [:datetime-add [:convert-timezone $times.dt "Asia/Tokyo" "UTC"] 2 :hour]
+                        {:expressions {"converted"  [:convert-timezone $times.dt "Asia/Seoul" "UTC"]
+                                       "date-added" [:datetime-add [:convert-timezone $times.dt "Asia/Seoul" "UTC"] 2 :hour]
                                        "hour"       [:get-hour [:expression "date-added"]]}
                          :filter      [:= $times.index 1]
                          :fields      [$times.dt
@@ -650,7 +650,7 @@
                  (->> (mt/run-mbql-query
                         times
                         {:expressions {"to-07"       [:convert-timezone $times.dt "Asia/Saigon" "UTC"]
-                                       "to-07-to-09" [:convert-timezone [:expression "to-07"] "Asia/Tokyo"
+                                       "to-07-to-09" [:convert-timezone [:expression "to-07"] "Asia/Seoul"
                                                       "Asia/Saigon"]}
                          :filter      [:= $times.index 1]
                          :fields      [$times.dt
@@ -663,7 +663,7 @@
           (is (= ["2004-03-19T18:19:09+09:00"]
                  (->> (mt/run-mbql-query
                         times
-                        {:expressions {"converted" [:convert-timezone $times.dt "Asia/Tokyo" "UTC"]
+                        {:expressions {"converted" [:convert-timezone $times.dt "Asia/Seoul" "UTC"]
                                        "hour"       [:get-hour [:expression "converted"]]}
                          :filter      [:between [:expression "hour"] 17 18]
                          :fields      [[:expression "converted"]]})
@@ -673,7 +673,7 @@
           (is (= ["2004-03-19T18:19:09+09:00"]
                  (->> (mt/run-mbql-query
                         times
-                        {:expressions {"converted" [:convert-timezone $times.dt "Asia/Tokyo" "UTC"]
+                        {:expressions {"converted" [:convert-timezone $times.dt "Asia/Seoul" "UTC"]
                                        "hour"      [:get-hour [:expression "converted"]]}
                          :filter      [:= [:expression "hour"] 18]
                          :fields      [[:expression "converted"]]})
@@ -686,7 +686,7 @@
                                (mt/mbql-query
                                  times
                                  {:expressions {"to-07"       [:convert-timezone $times.dt "Asia/Saigon" "UTC"]
-                                                "to-07-to-09" [:convert-timezone [:expression "to-07"] "Asia/Tokyo"
+                                                "to-07-to-09" [:convert-timezone [:expression "to-07"] "Asia/Seoul"
                                                                "Asia/Saigon"]}
                                   :filter      [:= $times.index 1]
                                   :fields      [$times.dt

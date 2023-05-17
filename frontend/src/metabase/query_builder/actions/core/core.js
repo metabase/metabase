@@ -224,7 +224,7 @@ export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
     const originalQuestion = getOriginalQuestion(getState());
     question = question || getQuestion(getState());
 
-    rerunQuery = rerunQuery || getIsResultDirty(getState());
+    rerunQuery = rerunQuery ?? getIsResultDirty(getState());
 
     // Needed for persisting visualization columns for pulses/alerts, see #6749
     const series = getTransformedSeries(getState());
@@ -263,9 +263,10 @@ export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
 
     dispatch.action(API_UPDATE_QUESTION, updatedQuestion.card());
 
+    const metadataOptions = { reload: question.isDataset() };
+    await dispatch(loadMetadataForCard(question.card(), metadataOptions));
+
     if (rerunQuery) {
-      const metadataOptions = { reload: question.isDataset() };
-      await dispatch(loadMetadataForCard(question.card(), metadataOptions));
       dispatch(runQuestionQuery());
     }
   };

@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import type {
@@ -74,7 +74,7 @@ describe("actions > containers > ActionCreator > FormCreator", () => {
     expect(screen.getByRole("textbox")).toBeInTheDocument();
   });
 
-  it("can change a string field to a numeric field", async () => {
+  it("can change a string field to a numeric field", () => {
     const formSettings: ActionFormSettings = {
       type: "form",
       fields: {
@@ -86,20 +86,20 @@ describe("actions > containers > ActionCreator > FormCreator", () => {
       formSettings,
     });
 
-    // click the settings cog then the number input type
-    userEvent.click(await screen.findByLabelText("Field settings"));
-    userEvent.click(await screen.findByText("Number"));
+    userEvent.click(
+      screen.getByRole("radio", {
+        name: /number/i,
+      }),
+    );
 
-    await waitFor(() => {
-      expect(onChange).toHaveBeenCalledWith({
-        ...formSettings,
-        fields: {
-          "abc-123": makeFieldSettings({
-            fieldType: "number",
-            inputType: "number",
-          }),
-        },
-      });
+    expect(onChange).toHaveBeenCalledWith({
+      ...formSettings,
+      fields: {
+        "abc-123": makeFieldSettings({
+          fieldType: "number",
+          inputType: "number",
+        }),
+      },
     });
   });
 
@@ -117,23 +117,21 @@ describe("actions > containers > ActionCreator > FormCreator", () => {
     });
 
     // click the settings cog then the number input type
-    userEvent.click(await screen.findByLabelText("Field settings"));
+    userEvent.click(screen.getByLabelText("Field settings"));
     userEvent.click(await screen.findByText("Long text"));
 
-    await waitFor(() => {
-      expect(onChange).toHaveBeenCalledWith({
-        ...formSettings,
-        fields: {
-          "abc-123": makeFieldSettings({
-            fieldType: "string",
-            inputType: "text",
-          }),
-        },
-      });
+    expect(onChange).toHaveBeenCalledWith({
+      ...formSettings,
+      fields: {
+        "abc-123": makeFieldSettings({
+          fieldType: "string",
+          inputType: "text",
+        }),
+      },
     });
   });
 
-  it("can change a numeric field to a date field", async () => {
+  it("can change a numeric field to a date field", () => {
     const formSettings: ActionFormSettings = {
       type: "form",
       fields: {
@@ -146,19 +144,20 @@ describe("actions > containers > ActionCreator > FormCreator", () => {
       formSettings,
     });
 
-    userEvent.click(await screen.findByLabelText("Field settings"));
-    userEvent.click(await screen.findByText("Date"));
+    userEvent.click(
+      screen.getByRole("radio", {
+        name: /date/i,
+      }),
+    );
 
-    await waitFor(() => {
-      expect(onChange).toHaveBeenCalledWith({
-        ...formSettings,
-        fields: {
-          "abc-123": makeFieldSettings({
-            fieldType: "date",
-            inputType: "date",
-          }),
-        },
-      });
+    expect(onChange).toHaveBeenCalledWith({
+      ...formSettings,
+      fields: {
+        "abc-123": makeFieldSettings({
+          fieldType: "date",
+          inputType: "date",
+        }),
+      },
     });
   });
 
@@ -174,19 +173,20 @@ describe("actions > containers > ActionCreator > FormCreator", () => {
       formSettings,
     });
 
-    userEvent.click(await screen.findByLabelText("Field settings"));
-    userEvent.click(await screen.findByText("Number"));
+    userEvent.click(
+      screen.getByRole("radio", {
+        name: /number/i,
+      }),
+    );
 
-    await waitFor(() => {
-      expect(onChange).toHaveBeenCalledWith({
-        ...formSettings,
-        fields: {
-          "abc-123": makeFieldSettings({
-            fieldType: "number",
-            inputType: "number",
-          }),
-        },
-      });
+    expect(onChange).toHaveBeenCalledWith({
+      ...formSettings,
+      fields: {
+        "abc-123": makeFieldSettings({
+          fieldType: "number",
+          inputType: "number",
+        }),
+      },
     });
   });
 
@@ -202,23 +202,21 @@ describe("actions > containers > ActionCreator > FormCreator", () => {
       formSettings,
     });
 
-    userEvent.click(await screen.findByLabelText("Field settings"));
+    userEvent.click(screen.getByLabelText("Field settings"));
     userEvent.click(await screen.findByRole("switch"));
 
-    await waitFor(() => {
-      expect(onChange).toHaveBeenCalledWith({
-        ...formSettings,
-        fields: {
-          "abc-123": makeFieldSettings({
-            required: true,
-            inputType: "string",
-          }),
-        },
-      });
+    expect(onChange).toHaveBeenCalledWith({
+      ...formSettings,
+      fields: {
+        "abc-123": makeFieldSettings({
+          required: true,
+          inputType: "string",
+        }),
+      },
     });
   });
 
-  it("displays default values", async () => {
+  it("displays default values", () => {
     const defaultValue = "foo bar";
     const parameter = makeParameter();
     const fieldSettings = makeFieldSettings({
@@ -236,7 +234,7 @@ describe("actions > containers > ActionCreator > FormCreator", () => {
       },
     });
 
-    expect(await screen.findByLabelText(fieldSettings.title)).toHaveValue(
+    expect(screen.getByLabelText(fieldSettings.title)).toHaveValue(
       defaultValue,
     );
   });

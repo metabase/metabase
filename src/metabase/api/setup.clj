@@ -7,6 +7,7 @@
    [metabase.api.common.validation :as validation]
    [metabase.api.database :as api.database :refer [DBEngineString]]
    [metabase.config :as config]
+   [metabase.db :as mdb]
    [metabase.driver :as driver]
    [metabase.email :as email]
    [metabase.events :as events]
@@ -24,15 +25,18 @@
    [metabase.models.table :refer [Table]]
    [metabase.models.user :as user :refer [User]]
    [metabase.public-settings :as public-settings]
+   [metabase.public-settings.premium-features :as premium-features]
    [metabase.server.middleware.session :as mw.session]
    [metabase.setup :as setup]
    [metabase.sync.schedules :as sync.schedules]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [trs tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.util.schema :as su]
    [schema.core :as s]
-   [toucan.db :as db])
+   [toucan.db :as db]
+   [toucan2.core :as t2])
   (:import
    (java.util UUID)))
 
@@ -188,117 +192,141 @@
 
 ;;; Admin Checklist
 
-(defmulti ^:private admin-checklist-entry
-  {:arglists '([entry-name])}
-  identity)
+(def ChecklistState
+  "Malli schema for the state to annotate the checklist."
+  [:map {:closed true}
+   [:db-type [:enum :h2 :mysql :postgres]]
+   [:hosted? :boolean]
+   [:configured [:map
+                 [:email :boolean]
+                 [:slack :boolean]]]
+   [:counts [:map
+             [:user :int]
+             [:card :int]
+             [:table :int]]]
+   [:exists [:map
+             [:non-sample-db :boolean]
+             [:dashboard :boolean]
+             [:pulse :boolean]
+             [:hidden-table :boolean]
+             [:collection :boolean]
+             [:metric :boolean]
+             [:segment :boolean]]]])
 
-(defmethod admin-checklist-entry :add-a-database
-  [_]
-  {:title       (tru "Add a database")
-   :group       (tru "Get connected")
-   :description (tru "Connect to your data so your whole team can start to explore.")
-   :link        "/admin/databases/create"
-   :completed   (db/exists? Database, :is_sample false)
-   :triggered   :always})
+(mu/defn ^:private state-for-checklist :- ChecklistState
+  []
+  {:db-type    (mdb/db-type)
+   :hosted?    (premium-features/is-hosted?)
+   :configured {:email (email/email-configured?)
+                :slack (slack/slack-configured?)}
+   :counts     {:user  (t2/count User)
+                :card  (t2/count Card)
+                :table (t2/count Table)}
+   :exists     {:non-sample-db (t2/exists? Database, :is_sample false)
+                :dashboard     (t2/exists? Dashboard)
+                :pulse         (t2/exists? Pulse)
+                :hidden-table  (t2/exists? Table, :visibility_type [:not= nil])
+                :collection    (t2/exists? Collection)
+                :metric        (t2/exists? Metric)
+                :segment       (t2/exists? Segment)}})
 
-(defmethod admin-checklist-entry :set-up-email
-  [_]
-  {:title       (tru "Set up email")
-   :group       (tru "Get connected")
-   :description (tru "Add email credentials so you can more easily invite team members and get updates via Pulses.")
-   :link        "/admin/settings/email"
-   :completed   (email/email-configured?)
-   :triggered   :always})
+(defn- get-connected-tasks
+  [{:keys [configured counts exists] :as _info}]
+  [{:title       (tru "Add a database")
+    :group       (tru "Get connected")
+    :description (tru "Connect to your data so your whole team can start to explore.")
+    :link        "/admin/databases/create"
+    :completed   (exists :non-sample-db)
+    :triggered   :always}
+   {:title       (tru "Set up email")
+    :group       (tru "Get connected")
+    :description (tru "Add email credentials so you can more easily invite team members and get updates via Pulses.")
+    :link        "/admin/settings/email"
+    :completed   (configured :email)
+    :triggered   :always}
+   {:title       (tru "Set Slack credentials")
+    :group       (tru "Get connected")
+    :description (tru "Does your team use Slack? If so, you can send automated updates via dashboard subscriptions.")
+    :link        "/admin/settings/slack"
+    :completed   (configured :slack)
+    :triggered   :always}
+   {:title       (tru "Invite team members")
+    :group       (tru "Get connected")
+    :description (tru "Share answers and data with the rest of your team.")
+    :link        "/admin/people/"
+    :completed   (> (counts :user) 1)
+    :triggered   (or (exists :dashboard)
+                     (exists :pulse)
+                     (>= (counts :card) 5))}])
 
-(defmethod admin-checklist-entry :set-slack-credentials
-  [_]
-  {:title       (tru "Set Slack credentials")
-   :group       (tru "Get connected")
-   :description (tru "Does your team use Slack? If so, you can send automated updates via dashboard subscriptions.")
-   :link        "/admin/settings/slack"
-   :completed   (slack/slack-configured?)
-   :triggered   :always})
+(defn- productionize-tasks
+  [info]
+  [{:title       (tru "Switch to a production-ready app database")
+    :group       (tru "Productionize")
+    :description (tru "Migrate off of the default H2 application database to PostgreSQL or MySQL")
+    :link        "https://www.metabase.com/docs/latest/installation-and-operation/migrating-from-h2"
+    :completed   (not= (:db-type info) :h2)
+    :triggered   (and (= (:db-type info) :h2) (not (:hosted? info)))}])
 
-(defmethod admin-checklist-entry :invite-team-members
-  [_]
-  {:title       (tru "Invite team members")
-   :group       (tru "Get connected")
-   :description (tru "Share answers and data with the rest of your team.")
-   :link        "/admin/people/"
-   :completed   (> (db/count User) 1)
-   :triggered   (or (db/exists? Dashboard)
-                    (db/exists? Pulse)
-                    (>= (db/count Card) 5))})
+(defn- curate-tasks
+  [{:keys [counts exists] :as _info}]
+  [{:title       (tru "Hide irrelevant tables")
+    :group       (tru "Curate your data")
+    :description (tru "If your data contains technical or irrelevant info you can hide it.")
+    :link        "/admin/datamodel/database"
+    :completed   (exists :hidden-table)
+    :triggered   (>= (counts :table) 20)}
+   {:title       (tru "Organize questions")
+    :group       (tru "Curate your data")
+    :description (tru "Have a lot of saved questions in {0}? Create collections to help manage them and add context." (tru "Metabase"))
+    :link        "/collection/root"
+    :completed   (exists :collection)
+    :triggered   (>= (counts :card) 30)}
+   {:title       (tru "Create metrics")
+    :group       (tru "Curate your data")
+    :description (tru "Define canonical metrics to make it easier for the rest of your team to get the right answers.")
+    :link        "/admin/datamodel/metrics"
+    :completed   (exists :metric)
+    :triggered   (>= (counts :card) 30)}
+   {:title       (tru "Create segments")
+    :group       (tru "Curate your data")
+    :description (tru "Keep everyone on the same page by creating canonical sets of filters anyone can use while asking questions.")
+    :link        "/admin/datamodel/segments"
+    :completed   (exists :segment)
+    :triggered   (>= (counts :card) 30)}])
 
-(defmethod admin-checklist-entry :hide-irrelevant-tables
-  [_]
-  {:title       (tru "Hide irrelevant tables")
-   :group       (tru "Curate your data")
-   :description (tru "If your data contains technical or irrelevant info you can hide it.")
-   :link        "/admin/datamodel/database"
-   :completed   (db/exists? Table, :visibility_type [:not= nil])
-   :triggered   (>= (db/count Table) 20)})
+(mu/defn ^:private checklist-items
+  [info :- ChecklistState]
+  (remove nil?
+          [{:name  (tru "Get connected")
+            :tasks (get-connected-tasks info)}
+           (when-not (:hosted? info)
+             {:name  (tru "Productionize")
+              :tasks (productionize-tasks info)})
+           {:name  (tru "Curate your data")
+            :tasks (curate-tasks info)}]))
 
-(defmethod admin-checklist-entry :organize-questions
-  [_]
-  {:title       (tru "Organize questions")
-   :group       (tru "Curate your data")
-   :description (tru "Have a lot of saved questions in {0}? Create collections to help manage them and add context." (tru "Metabase"))
-   :link        "/collection/root"
-   :completed   (db/exists? Collection)
-   :triggered   (>= (db/count Card) 30)})
-
-
-(defmethod admin-checklist-entry :create-metrics
-  [_]
-  {:title       (tru "Create metrics")
-   :group       (tru "Curate your data")
-   :description (tru "Define canonical metrics to make it easier for the rest of your team to get the right answers.")
-   :link        "/admin/datamodel/metrics"
-   :completed   (db/exists? Metric)
-   :triggered   (>= (db/count Card) 30)})
-
-(defmethod admin-checklist-entry :create-segments
-  [_]
-  {:title       (tru "Create segments")
-   :group       (tru "Curate your data")
-   :description (tru "Keep everyone on the same page by creating canonical sets of filters anyone can use while asking questions.")
-   :link        "/admin/datamodel/segments"
-   :completed   (db/exists? Segment)
-   :triggered   (>= (db/count Card) 30)})
-
-(defn- admin-checklist-values []
-  (map
-   admin-checklist-entry
-   [:add-a-database :set-up-email :set-slack-credentials :invite-team-members :hide-irrelevant-tables
-    :organize-questions :create-metrics :create-segments]))
-
-(defn- add-next-step-info
-  "Add `is_next_step` key to all the `steps` from `admin-checklist`.
+(defn- annotate
+  "Add `is_next_step` key to all the `steps` from `admin-checklist`, and ensure `triggered` is a boolean.
   The next step is the *first* step where `:triggered` is `true` and `:completed` is `false`."
-  [steps]
-  (first
-   (reduce
-    (fn [[acc already-found-next-step?] {:keys [triggered completed], :as step}]
-      (let [is-next-step? (and (not already-found-next-step?)
-                               triggered
-                               (not completed))
-            step          (-> (assoc step :is_next_step (boolean is-next-step?))
-                              (update :triggered boolean))]
-        [(conj (vec acc) step)
-         (or is-next-step? already-found-next-step?)]))
-    [[] false]
-    steps)))
+  [checklist]
+  (let [next-step        (->> checklist
+                              (mapcat :tasks)
+                              (filter (every-pred :triggered (complement :completed)))
+                              first
+                              :title)
+        mark-next-step   (fn identity-task-by-name [task]
+                           (assoc task :is_next_step (= (:title task) next-step)))
+        update-triggered (fn [task]
+                           (update task :triggered boolean))]
+    (for [group checklist]
+      (update group :tasks
+              (partial map (comp update-triggered mark-next-step))))))
 
-(defn- partition-steps-into-groups
-  "Partition the admin checklist steps into a sequence of groups."
-  [steps]
-  (for [[{group-name :group}, :as tasks] (partition-by :group steps)]
-    {:name  group-name
-     :tasks tasks}))
-
-(defn- admin-checklist []
-  (partition-steps-into-groups (add-next-step-info (admin-checklist-values))))
+(defn- admin-checklist
+  ([] (admin-checklist (state-for-checklist)))
+  ([checklist-info]
+   (annotate (checklist-items checklist-info))))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/admin_checklist"

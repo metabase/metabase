@@ -15,7 +15,7 @@ export default class Schema extends Base {
   tables: Table[];
 
   displayName() {
-    return titleize(humanize(this.name));
+    return this.name ? titleize(humanize(this.name)) : null;
   }
 
   getTables() {

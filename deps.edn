@@ -556,6 +556,13 @@
   :build/release
   {:exec-fn release/release}
 
+  ;; Only in the CI for now: publish EBS artifact
+  ;; FIXME: remove after full release automation on CI
+  ;;
+  ;;    clojure -X:build:build/publish-ebs
+  :build/publish-ebs
+  {:exec-fn release/publish-ebs}
+
   ;; extra paths and deps for working on build scripts, or running the tests.
   :build-dev
   {:extra-paths ["bin/build/test"]

@@ -37,7 +37,7 @@ If you’ve just set up a new database in Metabase, the initial sync query needs
 
 **Explanation**
 
-A sync query should show up like this in your database's query execution table (using the privileges for the database user in the database connection details):
+A sync query should show up like this in your database's query execution table (using the [privileges](../databases/users-roles-privileges.md) for the database user in the database connection details):
 
 ```sql
 SELECT

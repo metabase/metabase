@@ -247,7 +247,7 @@
                                               :display_name  "ID"
                                               :fingerprint   nil
                                               :base_type     :type/Integer}))
-      (binding [hx/*honey-sql-version* (sql.qp/honey-sql-version driver)]
+      (sql.qp/with-driver-honey-sql-version driver
         (let [join (sql.qp/join->honeysql
                     driver
                     {:source-query {:native "SELECT * FROM VENUES;", :params []}
@@ -1052,7 +1052,7 @@
                    :friday
                    :saturday]]
         (metabase.test/with-temporary-setting-values [start-of-week day]
-          (binding [hx/*honey-sql-version* (sql.qp/honey-sql-version driver/*driver*)]
+          (sql.qp/with-driver-honey-sql-version driver/*driver*
             (let [sql-args (-> (sql.qp/format-honeysql driver/*driver* (sql.qp/date driver/*driver* :day-of-week :x))
                                vec
                                (update 0 #(str/split-lines (mdb.query/format-sql % driver/*driver*))))]

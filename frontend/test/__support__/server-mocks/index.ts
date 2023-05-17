@@ -9,5 +9,6 @@ export * from "./field";
 export * from "./search";
 export * from "./session";
 export * from "./settings";
+export * from "./setup";
 export * from "./store";
 export * from "./table";

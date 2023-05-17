@@ -84,6 +84,14 @@
                        :parameters [{:id "id" :type :number}]}
                       (hydrate (action/select-action :id action-id) :creator)))))))
 
+(deftest hydrate-model-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
+    (mt/with-actions-test-data-and-actions-enabled
+      (mt/with-actions [{:keys [model-id action-id] :as _context} {}]
+        (let [action (hydrate (action/select-action :id action-id) :model)]
+          (is (some? (:model action)))
+          (is (= (:id (:model action)) model-id)))))))
+
 (deftest dashcard-deletion-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
     (mt/with-actions-enabled

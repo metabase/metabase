@@ -1,7 +1,19 @@
 import {
   fetchDataOrError,
+  hasDatabaseActionsEnabled,
   syncParametersAndEmbeddingParams,
 } from "metabase/dashboard/utils";
+import { createMockDatabase } from "metabase-types/api/mocks";
+
+const ENABLED_ACTIONS_DATABASE = createMockDatabase({
+  id: 1,
+  settings: { "database-enable-actions": true },
+});
+const DISABLED_ACTIONS_DATABASE = createMockDatabase({
+  id: 2,
+  settings: { "database-enable-actions": false },
+});
+const NO_ACTIONS_DATABASE = createMockDatabase({ id: 3 });
 
 describe("Dashboard utils", () => {
   describe("fetchDataOrError()", () => {
@@ -13,6 +25,7 @@ describe("Dashboard utils", () => {
       const successfulFetch = Promise.resolve(data);
 
       const result = await fetchDataOrError(successfulFetch);
+
       expect(result.error).toBeUndefined();
       expect(result).toEqual(data);
     });
@@ -31,6 +44,33 @@ describe("Dashboard utils", () => {
 
       const result = await fetchDataOrError(failedFetch);
       expect(result.error).toEqual(error);
+    });
+
+    it("should return true if a database has model actions enabled", () => {
+      expect(hasDatabaseActionsEnabled(ENABLED_ACTIONS_DATABASE)).toBe(true);
+    });
+
+    it("should return false if a database does not have model actions enabled or is undefined", () => {
+      expect(hasDatabaseActionsEnabled(DISABLED_ACTIONS_DATABASE)).toBe(false);
+      expect(hasDatabaseActionsEnabled(NO_ACTIONS_DATABASE)).toBe(false);
+    });
+
+    it("should return true if any database has actions enabled", () => {
+      const databases = [
+        ENABLED_ACTIONS_DATABASE,
+        DISABLED_ACTIONS_DATABASE,
+        NO_ACTIONS_DATABASE,
+      ];
+
+      const result = databases.some(hasDatabaseActionsEnabled);
+      expect(result).toBe(true);
+    });
+
+    it("should return false if all databases have actions disabled", () => {
+      const databases = [DISABLED_ACTIONS_DATABASE, NO_ACTIONS_DATABASE];
+
+      const result = databases.some(hasDatabaseActionsEnabled);
+      expect(result).toBe(false);
     });
   });
 

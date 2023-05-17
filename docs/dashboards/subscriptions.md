@@ -86,7 +86,6 @@ See [Notification permissions](../permissions/notifications.md).
 ## Further reading
 
 - [Alerts](../questions/sharing/alerts.md)
-- [Notification permissions](../permissions/notifications.md)
 - [Setting up email](../configuring-metabase/email.md)
 - [Setting up Slack](../configuring-metabase/slack.md)
 - [Auditing Metabase](../usage-and-performance-tools/audit.md)

@@ -1049,7 +1049,16 @@
          (extract-aggregations (first args) parent-name aggregations-seen)
 
          (aggregation-op op)
-         (let [aggr-name (str parent-name "~" (annotate/aggregation-name aggr-expr))]
+         (let [aliases-taken (set (vals aggregations-seen))
+               aggr-name (annotate/aggregation-name aggr-expr)
+               desired-alias (str parent-name "~" aggr-name)
+               ;; find a free alias by appending increasing integers
+               ;; to the desired alias
+               aggr-name (some (fn [suffix]
+                                 (let [alias (str desired-alias suffix)]
+                                   (when-not (aliases-taken alias)
+                                     alias)))
+                               (cons "" (iterate inc 1)))]
            [(str \$ aggr-name) (assoc aggregations-seen aggr-expr aggr-name)])
 
          :else
@@ -1061,7 +1070,7 @@
      [aggr-expr aggregations-seen])))
 
 (defn- simplify-extracted-aggregations
-  "Simplifies the extracted aggregation ()for `aggr-name` if the expression
+  "Simplifies the extracted aggregation for `aggr-name` if the expression
   contains only a single top-level aggregation. In this case there is no
   need for namespacing and `aggr-name` can be used as the name of the group
   introduced for the aggregation.

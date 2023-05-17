@@ -26,7 +26,7 @@
                (sql.qp/format-honeysql driver honeysql-form)))
 
   ([driver database table honeysql-form]
-   (let [table-identifier (binding [hx/*honey-sql-version* (sql.qp/honey-sql-version driver)]
+   (let [table-identifier (sql.qp/with-driver-honey-sql-version driver
                             (->> (hx/identifier :table (:schema table) (:name table))
                                  (sql.qp/->honeysql driver)
                                  sql.qp/maybe-wrap-unaliased-expr))]
