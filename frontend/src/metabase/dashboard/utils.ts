@@ -145,7 +145,7 @@ export function getDashboardType(id: unknown) {
   }
 }
 
-export async function fetchDataOrError(dataPromise: Promise<unknown>) {
+export async function fetchDataOrError<T>(dataPromise: Promise<T>) {
   try {
     return await dataPromise;
   } catch (error) {
