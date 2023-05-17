@@ -15,7 +15,9 @@ import {
   DashboardOrderedCard,
   Database,
   Dataset,
+  NativeDatasetQuery,
   Parameter,
+  StructuredDatasetQuery,
 } from "metabase-types/api";
 import Question from "metabase-lib/Question";
 import {
@@ -56,7 +58,7 @@ export function expandInlineDashboard(dashboard: Partial<Dashboard>) {
       ...dashcard,
       id: _.uniqueId("dashcard"),
       card: expandInlineCard(dashcard?.card),
-      series: ((dashcard as any).series || []).map(card =>
+      series: ((dashcard as any).series || []).map((card: Card) =>
         expandInlineCard(card),
       ),
     })),
@@ -128,7 +130,7 @@ export function hasDatabaseActionsEnabled(database: Database) {
   return database.settings?.["database-enable-actions"] ?? false;
 }
 
-export function getDashboardType(id: any) {
+export function getDashboardType(id: unknown) {
   if (id == null || typeof id === "object") {
     // HACK: support inline dashboards
     return "inline";
@@ -136,7 +138,7 @@ export function getDashboardType(id: any) {
     return "public";
   } else if (Utils.isJWT(id)) {
     return "embed";
-  } else if (/\/auto\/dashboard/.test(id)) {
+  } else if (typeof id === "string" && /\/auto\/dashboard/.test(id)) {
     return "transient";
   } else {
     return "normal";
@@ -151,7 +153,9 @@ export async function fetchDataOrError(dataPromise: Promise<unknown>) {
   }
 }
 
-export function getDatasetQueryParams(datasetQuery: any = {}) {
+export function getDatasetQueryParams(
+  datasetQuery: Partial<StructuredDatasetQuery & NativeDatasetQuery>,
+) {
   const { type, query, native, parameters = [] } = datasetQuery;
   return { type, query, native, parameters };
 }

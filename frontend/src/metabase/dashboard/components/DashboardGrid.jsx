@@ -310,7 +310,6 @@ class DashboardGrid extends Component {
         isNightMode={this.props.isNightMode}
         isMobile={isMobile}
         isPublic={this.props.isPublic}
-        // onVisibilityChange={this.handleCardVisibilityChange}
         onRemove={this.onDashCardRemove.bind(this, dc)}
         onAddSeries={this.onDashCardAddSeries.bind(this, dc)}
         onUpdateVisualizationSettings={this.props.onUpdateDashCardVisualizationSettings.bind(

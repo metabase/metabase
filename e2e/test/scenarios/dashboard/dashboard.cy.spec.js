@@ -668,9 +668,7 @@ describe("scenarios > dashboard", () => {
       cy.icon("close").click();
     });
 
-    cy.findByTestId("dashcard").within(() => {
-      cy.findByText("Orders");
-    });
+    cy.findByTestId("dashcard").findByText("Orders");
 
     // Verify the card is visible when it returned an error
     filterWidget().click();
