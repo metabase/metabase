@@ -47,7 +47,7 @@ export function Heading({
           <TextInput
             className={cx("full flex-full flex flex-column bg-light bordered")}
             name="heading"
-            placeholder={t`Heading`}
+            placeholder={placeholder}
             value={content}
             autoFocus={justAdded}
             onChange={e => handleTextChange(e.target.value)}

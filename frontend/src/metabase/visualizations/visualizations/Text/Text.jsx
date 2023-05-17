@@ -81,7 +81,7 @@ export function Text({
     );
   }
 
-  const placeholder = t`You can add text here...`;
+  const placeholder = t`You can use Markdown here, and include variables {{like_this}}`;
 
   // ! REMOVE ANY CLASSNAME STYLING IF POSSIBLE
   if (isEditing) {
@@ -110,7 +110,7 @@ export function Text({
         ) : (
           <TextInput
             name="text"
-            placeholder={t`You can use Markdown here, and include variables {{like_this}}`}
+            placeholder={placeholder}
             value={content}
             autoFocus={justAdded}
             onChange={e => handleTextChange(e.target.value)}
