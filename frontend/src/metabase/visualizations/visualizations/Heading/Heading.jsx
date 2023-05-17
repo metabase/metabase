@@ -29,6 +29,7 @@ export function Heading({
   const preventDragging = e => e.stopPropagation();
 
   const content = settings.text;
+  const placeholder = t`Heading`;
 
   // ! REMOVE ANY CLASSNAME STYLING IF POSSIBLE
   if (isEditing) {
@@ -39,7 +40,9 @@ export function Heading({
         onMouseLeave={() => setIsHovering(false)}
       >
         {isPreviewing ? (
-          <HeadingContent>{content}</HeadingContent>
+          <HeadingContent hasNoContent={!content}>
+            {content || placeholder}
+          </HeadingContent>
         ) : (
           <TextInput
             className={cx("full flex-full flex flex-column bg-light bordered")}

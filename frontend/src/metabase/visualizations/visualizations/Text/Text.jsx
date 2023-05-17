@@ -81,6 +81,8 @@ export function Text({
     );
   }
 
+  const placeholder = t`You can add text here...`;
+
   // ! REMOVE ANY CLASSNAME STYLING IF POSSIBLE
   if (isEditing) {
     return (
@@ -98,9 +100,12 @@ export function Text({
               "full flex-full flex flex-column text-card-markdown",
               styles["text-card-markdown"],
               getSettingsStyle(settings),
+              {
+                "text-light": !content,
+              },
             )}
           >
-            {content}
+            {content || placeholder}
           </ReactMarkdown>
         ) : (
           <TextInput

@@ -53,4 +53,10 @@ export const HeadingContent = styled.h2`
   padding: 0.75em;
   margin: 0;
   pointer-events: all;
+
+  ${({ hasNoContent }) =>
+    hasNoContent &&
+    `
+    color: ${color("text-light")}
+  `}
 `;
