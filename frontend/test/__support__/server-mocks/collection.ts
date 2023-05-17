@@ -85,7 +85,7 @@ export function setupCollectionByIdEndpoint({
     return;
   }
 
-  fetchMock.get(/api\/collection\/\d+|root/, url => {
+  fetchMock.get(/api\/collection\/\d+/, url => {
     const collectionIdParam = url.split("/")[5];
     const collectionId = Number(collectionIdParam);
 
@@ -104,11 +104,9 @@ function setupCollectionWithErrorById({
   error: string;
   status?: number;
 }) {
-  fetchMock.get(/api\/collection\/\d+|root/, () => {
-    return {
-      body: error,
-      status,
-    };
+  fetchMock.get(/api\/collection\/\d+|root/, {
+    body: error,
+    status,
   });
 }
 
