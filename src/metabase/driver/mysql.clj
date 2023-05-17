@@ -637,11 +637,15 @@
   ;; you must specify two backslashes for the value to be interpreted as a single backslash. The escape sequences
   ;; '\t' and '\n' specify tab and newline characters, respectively.
   [v]
-  (if (string? v)
+  (cond
+    (string? v)
     (str/replace v #"\\|\n|\r|\t" {"\\" "\\\\"
                                    "\n" "\\n"
                                    "\r" "\\r"
                                    "\t" "\\t"})
+    (boolean? v)
+    (if v 1 0)
+    :else
     v))
 
 (defn- row->tsv
