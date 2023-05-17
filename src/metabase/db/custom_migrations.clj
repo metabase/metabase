@@ -230,7 +230,6 @@
           (do
             (t2/query {:update :report_dashboardcard
                        :set    {:row [:+ :row next-tab-row]}
-
                        :where  [:= :dashboard_tab_id (:dashboard_tab_id (first cards))]})
             (recur (rest position+cards) (long (+ next-tab-row (cards->max-height cards))))))))))
 

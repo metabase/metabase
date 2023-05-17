@@ -139,8 +139,12 @@
            tab2-id      (first (t2/insert-returning-pks! :model/DashboardTab {:name         "Tab 2"
                                                                               :position     1
                                                                               :dashboard_id dashboard-id}))
-           tab3-id      (first (t2/insert-returning-pks! :model/DashboardTab {:name         "Tab 3"
+           ;; adds a dummy tab without cards to make sure our migration doesn't fail on such case
+           _            (first (t2/insert-returning-pks! :model/DashboardTab {:name         "Tab 3"
                                                                               :position     2
+                                                                              :dashboard_id dashboard-id}))
+           tab4-id      (first (t2/insert-returning-pks! :model/DashboardTab {:name         "Tab 4"
+                                                                              :position     3
                                                                               :dashboard_id dashboard-id}))
            default-card {:dashboard_id           dashboard-id
                          :visualization_settings {:virtual_card {:display "text"}
@@ -176,17 +180,17 @@
                                                                                   :col              0
                                                                                   :size_x           4
                                                                                   :size_y           2})))
-           tab3-card1-id (first (t2/insert-returning-pks! :model/DashboardCard (merge
+           tab4-card1-id (first (t2/insert-returning-pks! :model/DashboardCard (merge
                                                                                  default-card
-                                                                                 {:dashboard_tab_id tab3-id
+                                                                                 {:dashboard_tab_id tab4-id
                                                                                   :row              0
                                                                                   :col              0
                                                                                   :size_x           4
                                                                                   :size_y           4})))
 
-           tab3-card2-id (first (t2/insert-returning-pks! :model/DashboardCard (merge
+           tab4-card2-id (first (t2/insert-returning-pks! :model/DashboardCard (merge
                                                                                  default-card
-                                                                                 {:dashboard_tab_id tab3-id
+                                                                                 {:dashboard_tab_id tab4-id
                                                                                   :row              4
                                                                                   :col              0
                                                                                   :size_x           4
@@ -205,8 +209,8 @@
                :row 12}
 
               ;; tab 3
-              {:id  tab3-card1-id
+              {:id  tab4-card1-id
                :row 14}
-              {:id  tab3-card2-id
+              {:id  tab4-card2-id
                :row 18}]
              (t2/select-fn-vec #(select-keys % [:id :row]) :model/DashboardCard :dashboard_id dashboard-id)))))))
