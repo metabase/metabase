@@ -234,8 +234,8 @@
                        :where  [:= :dashboard_tab_id (:dashboard_tab_id (first cards))]})
             (recur (rest position+cards) (long (+ next-tab-row (cards->max-height cards))))))))))
 
-(define-reversible-migration DownGradeDashboardTab
-  (log/info "No forward migration for DownGradeDashboardTab")
+(define-reversible-migration DowngradeDashboardTab
+  (log/info "No forward migration for DowngradeDashboardTab")
   (run! update-card-row-on-downgrade-for-dashboard-tab
         (eduction (map :dashboard_id) (t2/reducible-query {:select-distinct [:dashboard_id]
                                                            :from            [:dashboard_tab]}))))

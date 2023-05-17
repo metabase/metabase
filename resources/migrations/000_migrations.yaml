@@ -14621,7 +14621,7 @@ databaseChangeLog:
       comment: Added 0.47.0 - Migrate to update dashboard with tabs to stack cards vertically on downgrade
       changes:
         - customChange:
-            class: "metabase.db.custom_migrations.DownGradeDashboardTab"
+            class: "metabase.db.custom_migrations.DowngradeDashboardTab"
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
