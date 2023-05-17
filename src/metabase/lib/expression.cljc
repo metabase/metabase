@@ -239,10 +239,10 @@
 (lib.common/defop upper [s])
 (lib.common/defop lower [s])
 
-(mu/defn expressions-meta :- [:maybe [:sequential lib.metadata/ColumnMetadata]]
+(mu/defn expressions-metadata :- [:maybe [:sequential lib.metadata/ColumnMetadata]]
   "Get metadata about the expressions in a given stage of a `query`."
   ([query]
-   (expressions-meta query -1))
+   (expressions-metadata query -1))
 
   ([query        :- ::lib.schema/query
     stage-number :- :int]

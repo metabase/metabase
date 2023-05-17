@@ -34,7 +34,9 @@
    :cljs
    (def format "Exactly like [[clojure.core/format]] but ClojureScript-friendly." gstring/format))
 
-(defn- clause? [clause]
+(defn clause?
+  "Returns true if this is a clause."
+  [clause]
   (and (vector? clause)
        (> (count clause) 1)
        (keyword? (first clause))

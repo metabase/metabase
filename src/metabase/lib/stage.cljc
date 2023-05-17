@@ -82,7 +82,7 @@
    stage-number   :- :int
    unique-name-fn :- fn?]
   (not-empty
-   (for [ag (lib.aggregation/aggregations-meta query stage-number)]
+   (for [ag (lib.aggregation/aggregations-metadata query stage-number)]
      (assoc ag
             :lib/source               :source/aggregations
             :lib/source-column-alias  (:name ag)
@@ -153,7 +153,7 @@
    stage-number    :- :int
    unique-name-fn  :- fn?]
   (not-empty
-   (for [expression (lib.expression/expressions-meta query stage-number)]
+   (for [expression (lib.expression/expressions-metadata query stage-number)]
      (assoc expression
             :lib/source               :source/expressions
             :lib/source-column-alias  (:name expression)

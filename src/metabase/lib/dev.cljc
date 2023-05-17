@@ -61,8 +61,9 @@
     (lib.metadata/table query id)))
 
 (mu/defn ref-lookup
-  "Returns a function that can be resolved into an expression reference for the expression with name `expr-name`.
-  Throws an exception if there is no expression with that name can be found."
+  "Returns a function that can be resolved into an expression or aggregation reference for the arguments.
+   Useful for tests so you don't have to split up queries to get references from metadata.
+   Throws an exception if no expression with that name can be found."
   ([expression-or-aggregation :- [:enum :aggregation :expression]
     index-or-name :- [:or :string ::lib.schema.common/int-greater-than-or-equal-to-zero]]
    (fn [query stage-number]

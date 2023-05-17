@@ -223,10 +223,10 @@
     stage-number :- :int]
    (not-empty (:aggregation (lib.util/query-stage query stage-number)))))
 
-(mu/defn aggregations-meta :- [:maybe [:sequential lib.metadata/ColumnMetadata]]
+(mu/defn aggregations-metadata :- [:maybe [:sequential lib.metadata/ColumnMetadata]]
   "Get metadata about the aggregations in a given stage of a query."
   ([query]
-   (aggregations-meta query -1))
+   (aggregations-metadata query -1))
 
   ([query        :- ::lib.schema/query
     stage-number :- :int]

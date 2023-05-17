@@ -247,4 +247,4 @@
               :display-name "expr"}]
             (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
                 (lib/expression "expr" (lib/absolute-datetime "2020" :month))
-                lib/expressions-meta)))))
+                lib/expressions-metadata)))))

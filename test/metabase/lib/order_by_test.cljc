@@ -651,7 +651,7 @@
   (testing "Should be able to order by an aggregation (#30089)"
     (let [query             (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
                                 (lib/aggregate (lib/avg (lib/+ (lib/field "VENUES" "PRICE") 1))))
-          {ag-uuid :lib/source-uuid} (first (lib/aggregations-meta query))
+          {ag-uuid :lib/source-uuid} (first (lib/aggregations-metadata query))
           orderable-columns (lib/orderable-columns query)]
       (is (=? [{:lib/type         :metadata/field
                 :base-type        :type/Float

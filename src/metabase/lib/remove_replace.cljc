@@ -101,7 +101,7 @@
           location (m/find-first
                      (fn [possible-location]
                        (when-let [sub-loc (get-in stage possible-location)]
-                         (let [clauses (if (lib.util/clause-uuid sub-loc)
+                         (let [clauses (if (lib.util/clause? sub-loc)
                                          [sub-loc]
                                          sub-loc)
                                target-uuid (lib.util/clause-uuid target-clause)]
