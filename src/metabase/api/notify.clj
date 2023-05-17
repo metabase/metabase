@@ -25,7 +25,8 @@
   This endpoint is secured by an API key that needs to be passed as a `X-METABASE-APIKEY` header which needs to be defined in
   the `MB_API_KEY` [environment variable](https://www.metabase.com/docs/latest/configuring-metabase/environment-variables.html#mb_api_key)"
   [id :as {{:keys [table_id table_name scan synchronous?]} :body}]
-  {table_id   [:maybe ms/PositiveInt]
+  {id         ms/PositiveInt
+   table_id   [:maybe ms/PositiveInt]
    table_name [:maybe ms/NonBlankString]
    scan       [:maybe [:enum "full" "schema"]]}
   (let [schema?       (when scan (#{"schema" :schema} scan))
@@ -49,7 +50,8 @@
   "Sync a new table without running a full database sync. Requires `schema_name` and `table_name`. Will throw an error
   if the table already exists in Metabase or cannot be found."
   [id :as {{:keys [schema_name table_name]} :body}]
-  {schema_name ms/NonBlankString
+  {id          ms/PositiveInt
+   schema_name ms/NonBlankString
    table_name  ms/NonBlankString}
   (api/let-404 [database (t2/select-one Database :id id)]
     (if-not (t2/select-one Table :db_id id :name table_name :schema schema_name)
