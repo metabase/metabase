@@ -224,6 +224,7 @@ function QueryBuilder(props) {
     isDirty: isModelQueryDirty,
     isMetadataDirty,
     closeQB,
+    isNew,
   } = props;
 
   const forceUpdate = useForceUpdate();
@@ -315,7 +316,7 @@ function QueryBuilder(props) {
     [isModelQueryDirty, isNativeEditorOpen],
   );
 
-  useBeforeUnload(isExistingModelDirty || isExistingSqlQueryDirty);
+  useBeforeUnload(!isNew && (isExistingModelDirty || isExistingSqlQueryDirty));
 
   useUnmount(() => {
     cancelQuery();
