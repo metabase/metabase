@@ -55,6 +55,7 @@
 (shared.ns/import-fns
   [lib.aggregation
    aggregate
+   aggregation-clause
    aggregation-operator-columns
    aggregations
    available-aggregation-operators

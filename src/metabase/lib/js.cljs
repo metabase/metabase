@@ -303,4 +303,4 @@
 
 (defn ^:export aggregation-operator-columns
   [aggregation-operator]
-  (to-array (lib.core/aggregation-operators-columns aggregation-operator)))
+  (to-array (lib.core/aggregation-operator-columns aggregation-operator)))

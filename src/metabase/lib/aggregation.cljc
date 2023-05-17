@@ -283,3 +283,21 @@
                   (keep with-columns)
                   (map #(assoc % :lib/type :mbql.aggregation/operator)))
             lib.schema.aggregation/aggregation-operators)))))
+
+(mu/defn aggregation-clause
+  "Returns a standalone aggregation clause for an `aggregation-operator` and
+  a `column`.
+  For aggregations requiring an argument `column` is mandatory, otherwise
+  it is optional."
+  ([aggregation-operator]
+   (if-not (:requires-field? aggregation-operator)
+     {:lib/type :lib/external-op
+      :operator (:short aggregation-operator)}
+     (throw (ex-info (lib.util/format "aggregation operator %s requires an argument"
+                                      (:short aggregation-operator))
+                     {:aggregation-operator aggregation-operator}))))
+
+  ([aggregation-operator column]
+   {:lib/type :lib/external-op
+    :operator (:short aggregation-operator)
+    :args [column]}))

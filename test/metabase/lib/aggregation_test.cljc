@@ -303,7 +303,9 @@
                    :semantic-type :type/Name,
                    :lib/source :source/implicitly-joinable}]
         scope-cols all-cols
-        aggregation-operators (lib/available-aggregation-operators query)]
+        aggregation-operators (lib/available-aggregation-operators query)
+        count-op (first aggregation-operators)
+        sum-op (second aggregation-operators)]
     (is (=? [{:lib/type     :metadata/field
               :base-type    :type/Integer
               :name         "sum_double-price"
@@ -386,8 +388,30 @@
                 :requires-field true}]
               (map #(lib/display-info query %) aggregation-operators))))
     (testing "testing getting the available columns for an aggregation operator"
-      (is (nil? (lib/aggregation-operator-columns (first aggregation-operators))))
-      (is (=? summable-cols (lib/aggregation-operator-columns (second aggregation-operators)))))))
+      (is (nil? (lib/aggregation-operator-columns count-op)))
+      (is (=? summable-cols (lib/aggregation-operator-columns sum-op))))
+    (testing "aggregation operators can be added as aggregates"
+      (let [price-col (-> sum-op lib/aggregation-operator-columns pop peek)]
+        (is (=? [{:lib/type     :metadata/field,
+                  :base-type    :type/Integer,
+                  :name         "sum_double-price",
+                  :display-name "Sum of double-price",
+                  :lib/source   :source/aggregations}
+                 {:lib/type     :metadata/field,
+                  :base-type    :type/Integer,
+                  :name         "count",
+                  :display-name "Count",
+                  :lib/source   :source/aggregations}
+                 {:settings     {:is_priceless true},
+                  :lib/type     :metadata/field,
+                  :base-type    :type/Integer,
+                  :name         "sum_PRICE",
+                  :display-name "Sum of Price",
+                  :lib/source   :source/aggregations}]
+               (-> query
+                   (lib/aggregate (lib/aggregation-clause count-op))
+                   (lib/aggregate (lib/aggregation-clause sum-op price-col))
+                   lib/aggregations)))))))
 
 (deftest ^:parallel preserve-field-settings-metadata-test
   (testing "Aggregation metadata should return the `:settings` for the field being aggregated, for some reason."
