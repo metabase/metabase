@@ -167,7 +167,8 @@
   border: 1px solid var(--color-brand);
 }
 
-.TextCard:hover {
+.TextCard:hover,
+.TextCard:focus-within {
   border-radius: 8px;
   border: 1px solid var(--color-brand);
 }

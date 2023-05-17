@@ -87,7 +87,6 @@ export function Text({
       <EditModeContainer
         className={cx(className)}
         isPreviewing={isPreviewing}
-        isFocused={isFocused}
         onMouseEnter={() => setIsHovering(true)}
         onMouseLeave={() => setIsHovering(false)}
       >

@@ -2,8 +2,6 @@ import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 
 export const InputContainer = styled.div`
-  border: none;
-  border-radius: 6px;
   display: flex;
   flex-direction: column;
   width: 100%;
@@ -17,11 +15,6 @@ export const InputContainer = styled.div`
     !isPreviewing &&
     `
     padding: 0 0.75em;
-  `}
-  ${({ isFocused }) =>
-    isFocused &&
-    `
-    border: 1px solid ${color("brand")};
   `}
 `;
 
@@ -43,8 +36,6 @@ export const TextInput = styled.input`
 `;
 
 export const HeadingContainer = styled.div`
-  border: none;
-  border-radius: 8px;
   display: flex;
   flex-direction: column;
   height: 100%;

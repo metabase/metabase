@@ -2,8 +2,6 @@ import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 
 export const EditModeContainer = styled.div`
-  border: none;
-  border-radius: 6px;
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -13,11 +11,6 @@ export const EditModeContainer = styled.div`
   width: 100%;
 
   ${({ isPreviewing }) => !isPreviewing && "padding: 0.5em 0.75em;"}
-  ${({ isFocused }) =>
-    isFocused &&
-    `
-    border: 1px solid ${color("brand")};
-    `}
 `;
 
 export const TextInput = styled.textarea`
@@ -40,8 +33,6 @@ export const TextInput = styled.textarea`
 `;
 
 export const DisplayContainer = styled.div`
-  border: none;
-  border-radius: 8px;
   display: flex;
   flex-direction: column;
   height: 100%;

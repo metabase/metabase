@@ -35,7 +35,6 @@ export function Heading({
     return (
       <InputContainer
         isPreviewing={isPreviewing}
-        isFocused={isFocused}
         onMouseEnter={() => setIsHovering(true)}
         onMouseLeave={() => setIsHovering(false)}
       >
