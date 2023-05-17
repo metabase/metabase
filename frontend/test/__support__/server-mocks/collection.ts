@@ -2,6 +2,7 @@ import fetchMock from "fetch-mock";
 import _ from "underscore";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import { Card, Collection, Dashboard } from "metabase-types/api";
+import { isPersonalCollection } from "metabase/collections/utils";
 import {
   convertSavedQuestionToVirtualTable,
   getCollectionVirtualSchemaName,
@@ -119,7 +120,7 @@ export function setupCollectionItemsEndpoint({
   dashboards: Dashboard[];
   collections: Collection[];
 }) {
-  fetchMock.get(/api\/collection\/(\d+|root)\/items/, url => {
+  fetchMock.get(/api\/collection\/(\d+|root|personal)\/items/, url => {
     const collectionIdParam = url.split("/")[5];
 
     const collectionId = Number(collectionIdParam);
@@ -131,14 +132,22 @@ export function setupCollectionItemsEndpoint({
         const rootDashboards = dashboards.filter(
           dashboard => dashboard.collection_id === null,
         );
-        const rootCollections = collections.filter(
-          collection => collection.location !== "/",
-        );
-        const data = [...rootDashboards, ...rootCollections];
 
         return {
-          total: data.length,
-          data,
+          total: rootDashboards.length,
+          data: rootDashboards,
+        };
+      }
+
+      if (collectionIdParam === "personal") {
+        const personalCollection = collections.find(isPersonalCollection);
+        const personalDashboards = dashboards.filter(
+          dashboard => dashboard.collection_id === personalCollection?.id,
+        );
+
+        return {
+          total: personalDashboards.length,
+          data: personalDashboards,
         };
       }
     }
@@ -151,16 +160,5 @@ export function setupCollectionItemsEndpoint({
       total: dashboardsOfCollection.length,
       data: dashboardsOfCollection,
     };
-  });
-}
-
-export function setupPersonalCollectionItemsEndpont({
-  collections,
-}: {
-  collections: Collection[];
-}) {
-  fetchMock.get("path:/api/collection/personal/items", {
-    total: collections.length,
-    data: collections,
   });
 }
