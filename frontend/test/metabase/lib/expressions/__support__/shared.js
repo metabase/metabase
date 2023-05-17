@@ -1,16 +1,52 @@
-import { ORDERS, PEOPLE } from "__support__/sample_database_fixture";
+import {
+  createSampleDatabase,
+  ORDERS,
+  ORDERS_ID,
+  PEOPLE,
+  PRODUCTS,
+} from "metabase-types/api/mocks/presets";
+import { createMockMetadata } from "__support__/metadata";
+import { createMockMetric, createMockSegment } from "metabase-types/api/mocks";
 
-const created = ORDERS.CREATED_AT.dimension().mbql();
-const total = ORDERS.TOTAL.dimension().mbql();
-const subtotal = ORDERS.SUBTOTAL.dimension().mbql();
-const tax = ORDERS.TAX.dimension().mbql();
-const userId = ORDERS.USER_ID.dimension().mbql();
-const userName = ORDERS.USER_ID.foreign(PEOPLE.NAME).mbql();
+const METRIC_ID = 1;
+const SEGMENT_ID = 1;
 
-const metric = ORDERS.metrics[0].aggregationClause();
-const segment = ORDERS.segments[0].filterClause();
+const metadata = createMockMetadata({
+  databases: [createSampleDatabase()],
+  metrics: [
+    createMockMetric({
+      id: METRIC_ID,
+      definition: {
+        aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
+        "source-table": ORDERS_ID,
+      },
+    }),
+  ],
+  segments: [
+    createMockSegment({
+      id: SEGMENT_ID,
+      definition: {
+        filter: [">", ["field", ORDERS.TOTAL, null], 30],
+        "source-table": ORDERS_ID,
+      },
+    }),
+  ],
+});
 
-const query = ORDERS.query().addExpression("foo", 42);
+const created = metadata.field(ORDERS.CREATED_AT).dimension().mbql();
+const total = metadata.field(ORDERS.TOTAL).dimension().mbql();
+const subtotal = metadata.field(ORDERS.SUBTOTAL).dimension().mbql();
+const tax = metadata.field(ORDERS.TAX).dimension().mbql();
+const userId = metadata.field(ORDERS.USER_ID).dimension().mbql();
+const userName = metadata
+  .field(ORDERS.USER_ID)
+  .foreign(metadata.field(PEOPLE.NAME))
+  .mbql();
+
+const metric = metadata.metric(METRIC_ID).aggregationClause();
+const segment = metadata.segment(SEGMENT_ID).filterClause();
+
+const query = metadata.table(ORDERS_ID).query().addExpression("foo", 42);
 
 // shared test cases used in compile, formatter, and syntax tests:
 //
@@ -78,10 +114,13 @@ const expression = [
       "*",
       [
         "/",
-        ["sum", ["field", 6, null]],
-        ["sum", ["field", 25, { "source-field": 3 }]],
+        ["sum", ["field", ORDERS.TOTAL, null]],
+        [
+          "sum",
+          ["field", PRODUCTS.PRICE, { "source-field": ORDERS.PRODUCT_ID }],
+        ],
       ],
-      ["avg", ["field", 5, null]],
+      ["avg", ["field", ORDERS.TAX, null]],
     ],
     "should handle priority for multiply and division without parenthesis",
   ],
@@ -90,11 +129,14 @@ const expression = [
     "Sum([Total]) / (Sum([Product → Price]) * Average([Tax]))",
     [
       "/",
-      ["sum", ["field", 6, null]],
+      ["sum", ["field", ORDERS.TOTAL, null]],
       [
         "*",
-        ["sum", ["field", 25, { "source-field": 3 }]],
-        ["avg", ["field", 5, null]],
+        [
+          "sum",
+          ["field", PRODUCTS.PRICE, { "source-field": ORDERS.PRODUCT_ID }],
+        ],
+        ["avg", ["field", ORDERS.TAX, null]],
       ],
     ],
     "should handle priority for multiply and division with parenthesis",
@@ -106,10 +148,13 @@ const expression = [
       "+",
       [
         "-",
-        ["sum", ["field", 6, null]],
-        ["sum", ["field", 25, { "source-field": 3 }]],
+        ["sum", ["field", ORDERS.TOTAL, null]],
+        [
+          "sum",
+          ["field", PRODUCTS.PRICE, { "source-field": ORDERS.PRODUCT_ID }],
+        ],
       ],
-      ["avg", ["field", 5, null]],
+      ["avg", ["field", ORDERS.TAX, null]],
     ],
     "should handle priority for addition and subtraction without parenthesis",
   ],
@@ -118,11 +163,14 @@ const expression = [
     "Sum([Total]) - (Sum([Product → Price]) + Average([Tax]))",
     [
       "-",
-      ["sum", ["field", 6, null]],
+      ["sum", ["field", ORDERS.TOTAL, null]],
       [
         "+",
-        ["sum", ["field", 25, { "source-field": 3 }]],
-        ["avg", ["field", 5, null]],
+        [
+          "sum",
+          ["field", PRODUCTS.PRICE, { "source-field": ORDERS.PRODUCT_ID }],
+        ],
+        ["avg", ["field", ORDERS.TAX, null]],
       ],
     ],
     "should handle priority for addition and subtraction with parenthesis",

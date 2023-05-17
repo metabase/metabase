@@ -93,6 +93,3 @@ export const query = metadata.table(1).query();
 export const expressionOpts = { query, startRule: "expression" };
 export const aggregationOpts = { query, startRule: "aggregation" };
 export const filterOpts = { query, startRule: "boolean" };
-
-import SHARED from "./shared";
-export const shared = SHARED;
