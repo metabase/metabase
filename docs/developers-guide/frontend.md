@@ -510,7 +510,7 @@ Key points:
 
 ### Request mocking
 
-We use `fetchMock` to mock requests:
+We use [`fetch-mock`](https://www.npmjs.com/package/fetch-mock) to mock requests:
 
 ```tsx
 import fetchMock from "fetch-mock";
@@ -527,7 +527,7 @@ const setup = ({ collections }: SetupOpts) => {
 };
 
 describe("Component", () => {
-  it("renders correclty", async () => {
+  it("renders correctly", async () => {
     setup();
     expect(await screen.findByText("Collection")).toBeInTheDocument();
   });
@@ -535,6 +535,5 @@ describe("Component", () => {
 ```
 
 Key points:
-- Create `scope` in `setup`
+- `setup` function
 - Call helpers from `__support__/server-mocks` to setup endpoints for your data
-- Call `nock.clearAll` to remove all mocks
