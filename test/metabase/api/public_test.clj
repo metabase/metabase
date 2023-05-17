@@ -382,22 +382,28 @@
 
 (defn- fetch-public-dashboard [{uuid :public_uuid}]
   (-> (client/client :get 200 (str "public/dashboard/" uuid))
-      (select-keys [:name :ordered_cards])
+      (select-keys [:name :ordered_cards :ordered_tabs])
       (update :name boolean)
-      (update :ordered_cards count)))
+      (update :ordered_cards count)
+      (update :ordered_tabs count)))
 
 (deftest get-public-dashboard-test
   (testing "GET /api/public/dashboard/:uuid"
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (with-temp-public-dashboard-and-card [dash card]
-        (is (= {:name true, :ordered_cards 1}
+        (is (= {:name true, :ordered_cards 1, :ordered_tabs 0}
                (fetch-public-dashboard dash)))
 
         (testing "We shouldn't see Cards that have been archived"
           (t2/update! Card (u/the-id card) {:archived true})
-          (is (= {:name true, :ordered_cards 0}
-                 (fetch-public-dashboard dash))))))))
+          (is (= {:name true, :ordered_cards 0, :ordered_tabs 0}
+                 (fetch-public-dashboard dash)))))
 
+      (testing "dashboard with tabs should return ordered_tabs"
+        (api.dashboard-test/with-simple-dashboard-with-tabs [{:keys [dashboard-id]}]
+          (t2/update! :model/Dashboard :id dashboard-id (shared-obj))
+          (is (= {:name true, :ordered_cards 2, :ordered_tabs 2}
+                 (fetch-public-dashboard (t2/select-one :model/Dashboard :id dashboard-id)))))))))
 
 ;;; --------------------------------- GET /api/public/dashboard/:uuid/card/:card-id ----------------------------------
 
