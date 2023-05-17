@@ -254,7 +254,7 @@ describe("QueryBuilder", () => {
       jest.restoreAllMocks();
     });
 
-    it("triggers beforeunload event when user tries to leave edited native query", async () => {
+    it("should not trigger beforeunload event when user tries to leave an ad-hoc native query", async () => {
       const { mockEventListener } = await setup({
         card: TEST_NATIVE_CARD,
         initialRoute: `/question/${TEST_NATIVE_CARD.id}`,
@@ -265,11 +265,11 @@ describe("QueryBuilder", () => {
       ).getByRole("textbox");
 
       userEvent.click(inputArea);
-      userEvent.type(inputArea, " ");
+      userEvent.type(inputArea, "0");
 
       const mockEvent = callMockEvent(mockEventListener, "beforeunload");
-      expect(mockEvent.preventDefault).toHaveBeenCalled();
-      expect(mockEvent.returnValue).toEqual(BEFORE_UNLOAD_UNSAVED_MESSAGE);
+      expect(mockEvent.preventDefault).not.toHaveBeenCalled();
+      expect(mockEvent.returnValue).not.toEqual(BEFORE_UNLOAD_UNSAVED_MESSAGE);
     });
 
     it("should not trigger beforeunload event when query is unedited", async () => {
