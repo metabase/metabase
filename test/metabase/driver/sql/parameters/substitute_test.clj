@@ -638,12 +638,11 @@
 
 ;;; -------------------------------------------- "REAL" END-TO-END-TESTS ---------------------------------------------
 
-(s/defn ^:private checkins-identifier :- su/NonBlankString
-  "Get the identifier used for `checkins` for the current driver by looking at what the driver uses when converting MBQL
-  to SQL. Different drivers qualify to different degrees (i.e. `table` vs `schema.table` vs `database.schema.table`)."
-  []
-  (let [sql (:query (qp/compile (mt/mbql-query checkins)))]
-    (second (re-find #"(?m)FROM\s+([^\s()]+)" sql))))
+(defmacro ^:private table-identifier [table-name]
+  "Get the identifier used for `table` for the current driver by looking at what the driver uses when converting MBQL
+   to SQL. Different drivers qualify to different degrees (i.e. `table` vs `schema.table` vs `database.schema.table`)."
+  `(let [sql# (:query (qp/compile (mt/mbql-query ~table-name)))]
+     (second (re-find #"(?m)FROM\s+([^\s()]+)" sql#))))
 
 ;; as with the MBQL parameters tests Redshift fail for unknown reasons; disable their tests for now
 ;; TIMEZONE FIXME
@@ -663,7 +662,7 @@
            (mt/first-row
              (mt/format-rows-by [int]
                (process-native
-                 :native     {:query         (format "SELECT COUNT(*) FROM %s WHERE {{checkin_date}}" (checkins-identifier))
+                 :native     {:query         (format "SELECT COUNT(*) FROM %s WHERE {{checkin_date}}" (table-identifier :checkins))
                               :template-tags {"checkin_date" {:name         "checkin_date"
                                                               :display-name "Checkin Date"
                                                               :type         :dimension
@@ -680,7 +679,7 @@
              (mt/first-row
                (mt/format-rows-by [int]
                  (process-native
-                   :native     {:query         (format "SELECT COUNT(*) FROM %s WHERE {{checkin_date}}" (checkins-identifier))
+                   :native     {:query         (format "SELECT COUNT(*) FROM %s WHERE {{checkin_date}}" (table-identifier :checkins))
                                 :template-tags {"checkin_date" {:name         "checkin_date"
                                                                 :display-name "Checkin Date"
                                                                 :type         :dimension
@@ -698,7 +697,7 @@
               (mt/format-rows-by [int]
                                  (process-native
                                   :native     {:query         (format "SELECT COUNT(*) FROM %s WHERE {{checkin_date}}"
-                                                                      (checkins-identifier))
+                                                                      (table-identifier :checkins))
                                                :template-tags {"checkin_date" {:name         "checkin_date"
                                                                                :display-name "Checkin Date"
                                                                                :type         :dimension
@@ -714,22 +713,22 @@
     (testing (str "test that excluding date parts work correctly. It should be enough to try just one type of exclusion "
                   "here, since handling them gets delegated to the functions in `metabase.driver.common.parameters.dates`, "
                   "which is fully-tested :D")
-      (doseq [[exclusion-string expected] {"exclude-months-Jan"     962
-                                           "exclude-months-Jan-Feb" 892}]
+      (doseq [[exclusion-string expected] {"exclude-months-Jan"     14
+                                           "exclude-months-Jan-Feb" 13}]
         (testing (format "test that excluding dates with %s works correctly" exclusion-string)
           (is (= [expected]
                  (mt/first-row
                   (mt/format-rows-by [int]
                                      (process-native
-                                      :native     {:query         (format "SELECT COUNT(*) FROM %s WHERE {{checkin_date}}"
-                                                                          (checkins-identifier))
-                                                   :template-tags {"checkin_date" {:name         "checkin_date"
-                                                                                   :display-name "Checkin Date"
-                                                                                   :type         :dimension
-                                                                                   :widget-type  :date/all-options
-                                                                                   :dimension    [:field (mt/id :checkins :date) nil]}}}
+                                      :native     {:query         (format "SELECT COUNT(*) FROM %s WHERE {{last_login_date}}"
+                                                                          (table-identifier :users))
+                                                   :template-tags {"last_login_date" {:name         "last_login_date"
+                                                                                      :display-name "Last Login Date"
+                                                                                      :type         :dimension
+                                                                                      :widget-type  :date/all-options
+                                                                                      :dimension    [:field (mt/id :users :last_login) nil]}}}
                                       :parameters [{:type   :date/all-options
-                                                    :target [:dimension [:template-tag "checkin_date"]]
+                                                    :target [:dimension [:template-tag "last_login_date"]]
                                                     :value  exclusion-string}]))))))))))
 
 (deftest ^:parallel e2e-combine-multiple-filters-test
@@ -740,7 +739,7 @@
                (mt/format-rows-by [int]
                  (process-native
                    :native     {:query         (format "SELECT COUNT(*) FROM %s WHERE {{checkin_date}}"
-                                                       (checkins-identifier))
+                                                       (table-identifier :checkins))
                                 :template-tags {"checkin_date" {:name         "checkin_date"
                                                                 :display-name "Checkin Date"
                                                                 :type         :dimension
