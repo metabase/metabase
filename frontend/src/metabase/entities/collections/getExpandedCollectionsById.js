@@ -10,9 +10,14 @@ import {
 // given list of collections with { id, name, location } returns a map of ids to
 // expanded collection objects like { id, name, location, path, children }
 // including a root collection
-function getExpandedCollectionsById(collections, userPersonalCollectionId) {
+function getExpandedCollectionsById(
+  collections,
+  userPersonalCollectionId,
+  collectionFilter,
+) {
   const collectionsById = {};
-  for (const c of collections) {
+  const filteredCollections = collections.filter(collectionFilter);
+  for (const c of filteredCollections) {
     collectionsById[c.id] = {
       ...c,
       path:
@@ -39,7 +44,10 @@ function getExpandedCollectionsById(collections, userPersonalCollectionId) {
   };
 
   // "My personal collection"
-  if (userPersonalCollectionId != null) {
+  if (
+    userPersonalCollectionId != null &&
+    !!collectionsById[userPersonalCollectionId]
+  ) {
     const personalCollection = collectionsById[userPersonalCollectionId];
     collectionsById[ROOT_COLLECTION.id].children.push({
       ...PERSONAL_COLLECTION,
@@ -63,7 +71,7 @@ function getExpandedCollectionsById(collections, userPersonalCollectionId) {
 
   // iterate over original collections so we don't include ROOT_COLLECTION as
   // a child of itself
-  for (const { id } of collections) {
+  for (const { id } of filteredCollections) {
     const c = collectionsById[id];
     // don't add root as parent of itself
     if (c.path && c.id !== ROOT_COLLECTION.id) {

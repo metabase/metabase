@@ -1,6 +1,5 @@
 import React from "react";
-import { CollectionId } from "metabase-types/api";
-
+import { Collection, CollectionId } from "metabase-types/api";
 import ItemPicker, { PickerValue, PickerItemId } from "./ItemPicker";
 
 export interface DashboardPickerProps {
@@ -23,6 +22,7 @@ const DashboardPicker = ({
       onChange(dashboard ? dashboard.id : undefined)
     }
     models={["dashboard"]}
+    collectionFilter={(c: Collection) => c.personal_owner_id === null}
   />
 );
 

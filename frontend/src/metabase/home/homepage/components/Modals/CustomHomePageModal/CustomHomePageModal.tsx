@@ -57,8 +57,7 @@ const CustomHomePageModal = ({ isOpen, onClose }: CustomHomePageModalProps) => {
           </Button>,
         ]}
       >
-        <p>{t`Pick one of your dashboards to serve as a homepage. to reset, go to
-          Admin Settings / Settings / General to disable it.`}</p>
+        <p>{t`Pick one of your dashboards to serve as homepage. Users wihtout dashboard access will be directed to the default homepage. You can update or reset this anytime in Admin Settings > Settings > General`}</p>
         <DashboardSelector value={dashboard} onChange={handleChange} />
       </ModalContent>
     </Modal>

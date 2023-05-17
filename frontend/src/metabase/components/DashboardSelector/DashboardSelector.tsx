@@ -26,7 +26,7 @@ const DashboardSelector = ({ onChange, value }: DashboardSelectorProps) => {
         maxWidth={600}
         renderTrigger={({ onClick }) => (
           <DashboardPickerButton onClick={onClick}>
-            {dashboard?.name || t`Select a Dashboard`}
+            {dashboard?.name || t`Select a dashboard`}
           </DashboardPickerButton>
         )}
         popoverContent={({ closePopover }) => (
