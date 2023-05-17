@@ -66,6 +66,8 @@
 
 (lib.hierarchy/derive :sum :lib.type-of/type-is-type-of-first-arg)
 
+(lib.hierarchy/derive :cum-sum :lib.type-of/type-is-type-of-first-arg)
+
 (mbql-clause/define-tuple-mbql-clause :sum-where
   [:schema [:ref ::expression/number]]
   [:schema [:ref ::expression/boolean]])
