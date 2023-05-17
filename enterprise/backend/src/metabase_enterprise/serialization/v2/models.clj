@@ -15,14 +15,14 @@
    "Collection"
    "Dashboard"
    "NativeQuerySnippet"
-   "Setting"
    "Timeline"])
 
 (def exported-models
   "The list of all models exported by serialization by default. Used for production code and by tests."
   (concat data-model
           content
-          ["FieldValues"]))
+          ["FieldValues"
+           "Setting"]))
 
 (def inlined-models
   "An additional list of models which are inlined into parent entities for serialization.
