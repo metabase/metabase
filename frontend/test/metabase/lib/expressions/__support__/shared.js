@@ -1,7 +1,9 @@
+import { checkNotNull } from "metabase/core/utils/types";
 import {
   createOrdersTable,
   createPeopleTable,
   createProductsTable,
+  createReviewsTable,
   createSampleDatabase,
   ORDERS,
   ORDERS_ID,
@@ -20,6 +22,7 @@ const metadata = createMockMetadata({
       tables: [
         createPeopleTable(),
         createProductsTable(),
+        createReviewsTable(),
         createOrdersTable({
           segments: [
             createMockSegment({
@@ -289,3 +292,6 @@ export default [
   ["aggregation", aggregation, { startRule: "aggregation", query }],
   ["filter", filter, { startRule: "boolean", query }],
 ];
+
+export const ordersTable = checkNotNull(metadata.table(ORDERS_ID));
+export const ordersTotalField = checkNotNull(metadata.field(ORDERS.TOTAL));
