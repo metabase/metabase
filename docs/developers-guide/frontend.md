@@ -404,7 +404,7 @@ const Foo = () => <div className={style.primary} />;
 ```javascript
 import styled from "@emotion/styled";
 
-const FooWrapper = styled.div`
+const Foo = styled.div`
   color: ${props => props.color};
 `;
 
