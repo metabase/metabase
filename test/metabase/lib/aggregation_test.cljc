@@ -380,6 +380,8 @@
                 :short :max,
                 :requires-field true}]
               (map #(lib/display-info query %) aggregation-operators))))
+    (testing "display name"
+      (is (= "Count of rows" (lib/display-name query (first aggregation-operators)))))
     (testing "testing getting the available columns for an aggregation operator"
       (is (nil? (lib/aggregation-operator-columns count-op)))
       (is (=? summable-cols (lib/aggregation-operator-columns sum-op))))

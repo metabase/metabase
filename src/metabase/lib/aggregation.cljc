@@ -237,8 +237,8 @@
     [:columns {:optional true} [:sequential lib.metadata/ColumnMetadata]]]])
 
 (defmethod lib.metadata.calculation/display-name-method :mbql.aggregation/operator
-  [_query _stage-number {:keys [display-info]}]
-  (:name (display-info)))
+  [_query _stage-number {:keys [display-info]} _display-name-style]
+  (:display-name (display-info)))
 
 (defmethod lib.metadata.calculation/display-info-method :mbql.aggregation/operator
   [_query _stage-number {:keys [display-info requires-field?] short-name :short}]
