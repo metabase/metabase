@@ -7,6 +7,7 @@
    [hiccup.core :refer [html]]
    [java-time :as t]
    [medley.core :as m]
+   [metabase.api.session :as api.session]
    [metabase.config :as config]
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
@@ -102,7 +103,6 @@
    :colorTextLight            style/color-text-light
    :colorTextMedium           style/color-text-medium
    :colorTextDark             style/color-text-dark
-   :notificationManagementUrl (urls/notification-management-url)
    :siteUrl                   (public-settings/site-url)})
 
 ;;; ### Public Interface
@@ -299,14 +299,18 @@
                               (some :dashboard_id cards))]
     {:pulseLink (urls/dashboard-url dashboard-id)}))
 
-(defn- pulse-context [pulse dashboard]
+(defn- pulse-context [pulse dashboard non-user-email]
   (merge (common-context)
          {:emailType                 "pulse"
           :title                     (:name pulse)
           :titleUrl                  (params/dashboard-url (:id dashboard) (params/parameters pulse dashboard))
           :dashboardDescription      (:description dashboard)
           :creator                   (-> pulse :creator :common_name)
-          :sectionStyle              (style/style (style/section-style))}
+          :sectionStyle              (style/style (style/section-style))
+          :notificationManagementUrl (if (nil? non-user-email)
+                                       (urls/notification-management-url)
+                                       ;; TODO: change this to whatever FE URL we chooseg
+                                       (str (urls/notification-management-url) "?hashdata=" (api.session/generate-hash (:id pulse) non-user-email)))}
          (pulse-link-context pulse)))
 
 (defn- create-temp-file
@@ -485,10 +489,10 @@
 
 (defn render-pulse-email
   "Take a pulse object and list of results, returns an array of attachment objects for an email"
-  [timezone pulse dashboard results]
+  [timezone pulse dashboard results non-user-email]
   (render-message-body pulse
                        :pulse
-                       (pulse-context pulse dashboard)
+                       (pulse-context pulse dashboard non-user-email)
                        timezone
                        dashboard
                        (assoc-attachment-booleans pulse results)))
