@@ -247,7 +247,7 @@ export type JoinStrategy =
   | "inner-join"
   | "full-join";
 export type JoinAlias = string;
-export type JoinCondition = Filter;
+export type JoinCondition = ["=", FieldReference, FieldReference];
 export type JoinFields = "all" | "none" | JoinedFieldReference[];
 
 type JoinClause = Array<Join>;
