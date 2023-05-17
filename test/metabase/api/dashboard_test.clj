@@ -1303,7 +1303,8 @@
                                                              {:cards        [new-dashcard-info]
                                                               :ordered_tabs []}))}))))))
 
-(defn- do-with-simple-dashboard-with-tabs
+(defn do-with-simple-dashboard-with-tabs
+  "Impl for `with-simple-dashboard-with-tabs`."
   [f]
   (t2.with-temp/with-temp
     [Dashboard           {dashboard-id :id} {}
@@ -1331,7 +1332,7 @@
         :dashcard-id-1 dashcard-id-1
         :dashcard-id-2 dashcard-id-2})))
 
-(defmacro ^:private with-simple-dashboard-with-tabs
+(defmacro with-simple-dashboard-with-tabs
   "Create a simple dashboard with 2 tabs and 2 cards in each tab and run `body` with the dashboard and cards ids bound to"
   [[bindings] & body]
   `(do-with-simple-dashboard-with-tabs (fn [~bindings] ~@body)))
