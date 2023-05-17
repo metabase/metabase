@@ -2,7 +2,6 @@ import fetchMock from "fetch-mock";
 import _ from "underscore";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import { Card, Collection, Dashboard } from "metabase-types/api";
-import { isPersonalCollection } from "metabase/collections/utils";
 import {
   convertSavedQuestionToVirtualTable,
   getCollectionVirtualSchemaName,
@@ -86,7 +85,7 @@ export function setupCollectionByIdEndpoint({
     return;
   }
 
-  fetchMock.get(/api\/collection\/\d+|root|personal/, url => {
+  fetchMock.get(/api\/collection\/\d+|root/, url => {
     const collectionIdParam = url.split("/")[5];
     const collectionId = Number(collectionIdParam);
 
@@ -105,7 +104,7 @@ function setupCollectionWithErrorById({
   error: string;
   status?: number;
 }) {
-  fetchMock.get(/api\/collection\/\d+|personal|root/, () => {
+  fetchMock.get(/api\/collection\/\d+|root/, () => {
     return {
       body: error,
       status,
@@ -113,44 +112,11 @@ function setupCollectionWithErrorById({
   });
 }
 
-export function setupCollectionItemsEndpoint({
-  collections = [],
-  dashboards = [],
-}: {
-  dashboards: Dashboard[];
-  collections: Collection[];
-}) {
-  fetchMock.get(/api\/collection\/(\d+|root|personal)\/items/, url => {
+export function setupCollectionItemsEndpoint(dashboards: Dashboard[]) {
+  fetchMock.get(/api\/collection\/(\d+|root)\/items/, url => {
     const collectionIdParam = url.split("/")[5];
-
-    const collectionId = Number(collectionIdParam);
-    const isRootOrPersonal = Number.isNaN(collectionId);
-
-    // root or personal
-    if (isRootOrPersonal) {
-      if (collectionIdParam === "root") {
-        const rootDashboards = dashboards.filter(
-          dashboard => dashboard.collection_id === null,
-        );
-
-        return {
-          total: rootDashboards.length,
-          data: rootDashboards,
-        };
-      }
-
-      if (collectionIdParam === "personal") {
-        const personalCollection = collections.find(isPersonalCollection);
-        const personalDashboards = dashboards.filter(
-          dashboard => dashboard.collection_id === personalCollection?.id,
-        );
-
-        return {
-          total: personalDashboards.length,
-          data: personalDashboards,
-        };
-      }
-    }
+    const collectionId =
+      collectionIdParam !== "root" ? Number(collectionIdParam) : null;
 
     const dashboardsOfCollection = dashboards.filter(
       dashboard => dashboard.collection_id === collectionId,
