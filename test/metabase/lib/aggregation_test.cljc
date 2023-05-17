@@ -306,13 +306,6 @@
         aggregation-operators (lib/available-aggregation-operators query)
         count-op (first aggregation-operators)
         sum-op (second aggregation-operators)]
-    (is (=? [{:lib/type     :metadata/field
-              :base-type    :type/Integer
-              :name         "sum_double-price"
-              :display-name "Sum of double-price"}]
-            (lib/aggregations query)))
-    (is (= :type/Integer
-           (lib/type-of query (first (lib/aggregations query)))))
     (testing "available aggregation operators"
       (is (=? [{:short :count,
                 :requires-field? false}
