@@ -1,9 +1,23 @@
-import { ORDERS, PRODUCTS } from "__support__/sample_database_fixture";
+import { createMockMetadata } from "__support__/metadata";
+import {
+  createSampleDatabase,
+  ORDERS,
+  ORDERS_ID,
+  PRODUCTS,
+  PRODUCTS_ID,
+} from "metabase-types/api/mocks/presets";
 import {
   fieldRefForColumn,
   syncTableColumnsToQuery,
   findColumnForColumnSetting,
 } from "metabase-lib/queries/utils/dataset";
+
+const metadata = createMockMetadata({
+  databases: [createSampleDatabase()],
+});
+
+const ordersTable = metadata.table(ORDERS_ID);
+const productsTable = metadata.table(PRODUCTS_ID);
 
 describe("metabase/util/dataset", () => {
   describe("fieldRefForColumn", () => {
@@ -18,10 +32,11 @@ describe("metabase/util/dataset", () => {
 
   describe("syncColumnsAndSettings", () => {
     it("should automatically add new metrics when a new aggregrate column is added", () => {
-      const prevQuestion = PRODUCTS.query({
-        aggregation: [["count"]],
-        breakout: [PRODUCTS.CATEGORY.dimension().mbql()],
-      })
+      const prevQuestion = productsTable
+        .query({
+          aggregation: [["count"]],
+          breakout: [["field", PRODUCTS.CATEGORY, null]],
+        })
         .question()
         .setSettings({
           "graph.metrics": ["count"],
@@ -29,7 +44,7 @@ describe("metabase/util/dataset", () => {
 
       const newQuestion = prevQuestion
         .query()
-        .aggregate(["sum", PRODUCTS.PRICE.dimension().mbql()])
+        .aggregate(["sum", ["field", PRODUCTS.PRICE, null]])
         .question()
         .syncColumnsAndSettings(prevQuestion);
 
@@ -40,10 +55,11 @@ describe("metabase/util/dataset", () => {
     });
 
     it("should automatically remove metrics from settings when an aggregrate column is removed", () => {
-      const prevQuestion = PRODUCTS.query({
-        aggregation: [["sum", PRODUCTS.PRICE.dimension().mbql()], ["count"]],
-        breakout: [PRODUCTS.CATEGORY.dimension().mbql()],
-      })
+      const prevQuestion = productsTable
+        .query({
+          aggregation: [["sum", ["field", PRODUCTS.PRICE, null]], ["count"]],
+          breakout: [["field", PRODUCTS.CATEGORY, null]],
+        })
         .question()
         .setSettings({
           "graph.metrics": ["count", "sum"],
@@ -59,10 +75,11 @@ describe("metabase/util/dataset", () => {
     });
 
     it("Adding a breakout should not affect graph.metrics", () => {
-      const prevQuestion = PRODUCTS.query({
-        aggregation: [["sum", PRODUCTS.PRICE.dimension().mbql()], ["count"]],
-        breakout: [PRODUCTS.CATEGORY.dimension().mbql()],
-      })
+      const prevQuestion = productsTable
+        .query({
+          aggregation: [["sum", ["field", PRODUCTS.PRICE, null]], ["count"]],
+          breakout: [["field", PRODUCTS.CATEGORY, null]],
+        })
         .question()
         .setSettings({
           "graph.metrics": ["count", "sum"],
@@ -70,7 +87,7 @@ describe("metabase/util/dataset", () => {
 
       const newQuestion = prevQuestion
         .query()
-        .breakout(PRODUCTS.VENDOR.dimension().mbql())
+        .breakout(["field", PRODUCTS.VENDOR, null])
         .question()
         .syncColumnsAndSettings(prevQuestion);
 
@@ -85,18 +102,21 @@ describe("metabase/util/dataset", () => {
   describe("syncTableColumnsToQuery", () => {
     it("should not modify `fields` if no `table.columns` setting preset", () => {
       const question = syncTableColumnsToQuery(
-        ORDERS.query({
-          fields: [["field", ORDERS.TOTAL.id, null]],
-        }).question(),
+        ordersTable
+          .query({
+            fields: [["field", ["field", ORDERS.TOTAL, null], null]],
+          })
+          .question(),
       );
       expect(question.query().query()).toEqual({
-        "source-table": ORDERS.id,
-        fields: [["field", ORDERS.TOTAL.id, null]],
+        "source-table": ORDERS_ID,
+        fields: [["field", ["field", ORDERS.TOTAL, null], null]],
       });
     });
     it("should sync included `table.columns` by name", () => {
       const question = syncTableColumnsToQuery(
-        ORDERS.query()
+        ordersTable
+          .query()
           .question()
           .setSettings({
             "table.columns": [
@@ -108,30 +128,31 @@ describe("metabase/util/dataset", () => {
           }),
       );
       expect(question.query().query()).toEqual({
-        "source-table": ORDERS.id,
-        fields: [["field", ORDERS.TOTAL.id, null]],
+        "source-table": ORDERS_ID,
+        fields: [["field", ORDERS.TOTAL, null]],
       });
     });
     it("should sync included `table.columns` by fieldRef", () => {
       const question = syncTableColumnsToQuery(
-        ORDERS.query()
+        ordersTable
+          .query()
           .question()
           .setSettings({
             "table.columns": [
               {
-                fieldRef: ["field", ORDERS.TOTAL.id, null],
+                fieldRef: ["field", ORDERS.TOTAL, null],
                 enabled: true,
               },
             ],
           }),
       );
       expect(question.query().query()).toEqual({
-        "source-table": ORDERS.id,
-        fields: [["field", ORDERS.TOTAL.id, null]],
+        "source-table": ORDERS_ID,
+        fields: [["field", ORDERS.TOTAL, null]],
       });
     });
     it("should not modify columns if all default columns are enabled", () => {
-      const query = ORDERS.query();
+      const query = ordersTable.query();
       const question = syncTableColumnsToQuery(
         query.question().setSettings({
           "table.columns": query.columnNames().map(name => ({
@@ -141,18 +162,19 @@ describe("metabase/util/dataset", () => {
         }),
       );
       expect(question.query().query()).toEqual({
-        "source-table": ORDERS.id,
+        "source-table": ORDERS_ID,
       });
     });
 
     describe("with joins", () => {
       it("should sync included `table.columns` by name to join clauses", () => {
         const question = syncTableColumnsToQuery(
-          ORDERS.query()
+          ordersTable
+            .query()
             .join({
               alias: "products",
               fields: "all",
-              "source-table": PRODUCTS.id,
+              "source-table": PRODUCTS_ID,
             })
             .question()
             .setSettings({
@@ -169,38 +191,37 @@ describe("metabase/util/dataset", () => {
             }),
         );
         expect(question.query().query()).toEqual({
-          "source-table": ORDERS.id,
+          "source-table": ORDERS_ID,
           joins: [
             {
               alias: "products",
-              "source-table": PRODUCTS.id,
-              fields: [
-                ["field", PRODUCTS.PRICE.id, { "join-alias": "products" }],
-              ],
+              "source-table": PRODUCTS_ID,
+              fields: [["field", PRODUCTS.PRICE, { "join-alias": "products" }]],
             },
           ],
-          fields: [["field", ORDERS.TOTAL.id, null]],
+          fields: [["field", ORDERS.TOTAL, null]],
         });
       });
       it("should sync included `table.columns` by fieldRef to join clauses", () => {
         const question = syncTableColumnsToQuery(
-          ORDERS.query()
+          ordersTable
+            .query()
             .join({
               alias: "products",
               fields: "all",
-              "source-table": PRODUCTS.id,
+              "source-table": PRODUCTS_ID,
             })
             .question()
             .setSettings({
               "table.columns": [
                 {
-                  fieldRef: ["field", ORDERS.TOTAL.id, null],
+                  fieldRef: ["field", ORDERS.TOTAL, null],
                   enabled: true,
                 },
                 {
                   fieldRef: [
                     "field",
-                    PRODUCTS.PRICE.id,
+                    PRODUCTS.PRICE,
                     { "join-alias": "products" },
                   ],
                   enabled: true,
@@ -209,17 +230,15 @@ describe("metabase/util/dataset", () => {
             }),
         );
         expect(question.query().query()).toEqual({
-          "source-table": ORDERS.id,
+          "source-table": ORDERS_ID,
           joins: [
             {
               alias: "products",
-              "source-table": PRODUCTS.id,
-              fields: [
-                ["field", PRODUCTS.PRICE.id, { "join-alias": "products" }],
-              ],
+              "source-table": PRODUCTS_ID,
+              fields: [["field", PRODUCTS.PRICE, { "join-alias": "products" }]],
             },
           ],
-          fields: [["field", ORDERS.TOTAL.id, null]],
+          fields: [["field", ORDERS.TOTAL, null]],
         });
       });
     });

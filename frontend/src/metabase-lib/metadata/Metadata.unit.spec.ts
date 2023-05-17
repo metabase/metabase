@@ -1,7 +1,6 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
 import Metadata from "./Metadata";
-import Base from "./Base";
 import Database from "./Database";
 import Table from "./Table";
 import Schema from "./Schema";
@@ -14,8 +13,7 @@ describe("Metadata", () => {
     it("should create an instance of Metadata", () => {
       expect(new Metadata()).toBeInstanceOf(Metadata);
     });
-    it("should add `object` props to the instance (because it extends Base)", () => {
-      expect(new Metadata()).toBeInstanceOf(Base);
+    it("should add `object` props to the instance", () => {
       expect(
         new Metadata({
           foo: "bar",

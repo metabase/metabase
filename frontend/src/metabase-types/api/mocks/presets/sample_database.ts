@@ -178,6 +178,7 @@ export const createProductsTable = (opts?: Partial<Table>): Table =>
     db_id: SAMPLE_DB_ID,
     name: "PRODUCTS",
     display_name: "Products",
+    description: "All of our products",
     schema: "PUBLIC",
     fields: [
       createProductsIdField(),
@@ -820,6 +821,7 @@ export const createProductsCategoryField = (opts?: Partial<Field>): Field =>
     table_id: PRODUCTS_ID,
     name: "CATEGORY",
     display_name: "Category",
+    description: "The type of product.",
     base_type: "type/Text",
     effective_type: "type/Text",
     semantic_type: "type/Category",

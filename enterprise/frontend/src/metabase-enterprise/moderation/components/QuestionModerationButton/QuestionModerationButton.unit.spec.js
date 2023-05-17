@@ -1,22 +1,26 @@
 import React from "react";
 
 import { renderWithProviders, screen } from "__support__/ui";
-import {
-  SAMPLE_DATABASE,
-  ORDERS,
-  metadata,
-} from "__support__/sample_database_fixture";
+import { createMockEntitiesState } from "__support__/store";
+import { getMetadata } from "metabase/selectors/metadata";
 
 import { createMockUser } from "metabase-types/api/mocks";
-import { createMockQueryBuilderState } from "metabase-types/store/mocks";
+import {
+  createSampleDatabase,
+  ORDERS_ID,
+  SAMPLE_DB_ID,
+} from "metabase-types/api/mocks/presets";
+import {
+  createMockState,
+  createMockQueryBuilderState,
+} from "metabase-types/store/mocks";
 
-import Question from "metabase-lib/Question";
 import QuestionModerationButton from "./QuestionModerationButton";
 
 const VERIFIED_ICON_LABEL = "verified icon";
 const CLOSE_ICON_LABEL = "close icon";
 
-const BASE_QUESTION = {
+const BASE_MODEL = {
   id: 1,
   name: "Q1",
   description: null,
@@ -27,57 +31,56 @@ const BASE_QUESTION = {
   visualization_settings: {},
   dataset_query: {
     type: "query",
-    database: SAMPLE_DATABASE.id,
+    database: SAMPLE_DB_ID,
     query: {
-      "source-table": ORDERS.id,
+      "source-table": ORDERS_ID,
     },
   },
   moderation_reviews: [],
 };
 
-function getVerifiedDataset() {
-  return new Question(
-    {
-      ...BASE_QUESTION,
-      moderation_reviews: [
-        {
-          status: "verified",
-          moderator_id: 1,
-          created_at: Date.now(),
-          most_recent: true,
-        },
-      ],
-    },
-    metadata,
-  );
+const VERIFIED_REVIEW = {
+  status: "verified",
+  moderator_id: 1,
+  created_at: Date.now(),
+  most_recent: true,
+};
+
+const UNVERIFIED_REVIEW = {
+  status: null,
+  moderator_id: 1,
+  created_at: Date.now(),
+  most_recent: true,
+};
+
+function getVerifiedModel() {
+  return {
+    ...BASE_MODEL,
+    moderation_reviews: [VERIFIED_REVIEW],
+  };
 }
 
-function getUnverifiedDataset() {
-  return new Question(
-    {
-      ...BASE_QUESTION,
-      moderation_reviews: [
-        {
-          status: null,
-          moderator_id: 1,
-          created_at: Date.now(),
-          most_recent: true,
-        },
-      ],
-    },
-    metadata,
-  );
+function getUnverifiedModel() {
+  return {
+    ...BASE_MODEL,
+    moderation_reviews: [UNVERIFIED_REVIEW],
+  };
 }
 
-function setup({ question } = {}) {
-  const card = getVerifiedDataset();
-  const state = {
+function setup({ card } = {}) {
+  const state = createMockState({
     currentUser: createMockUser({ is_superuser: true }),
     qb: createMockQueryBuilderState({ card }),
-  };
+    entities: createMockEntitiesState({
+      databases: [createSampleDatabase()],
+      questions: [card],
+    }),
+  });
+
+  const metadata = getMetadata(state);
+  const question = metadata.question(card.id);
 
   return renderWithProviders(<QuestionModerationButton question={question} />, {
-    withSampleDatabase: true,
     storeInitialState: state,
   });
 }
@@ -85,13 +88,13 @@ function setup({ question } = {}) {
 describe("ModerationReviewButton", () => {
   describe("It should render correct text based on review status", () => {
     it("verified", () => {
-      setup({ question: getVerifiedDataset() });
+      setup({ card: getVerifiedModel() });
       expect(screen.getByText("Remove verification")).toBeInTheDocument();
       expect(screen.getByLabelText(CLOSE_ICON_LABEL)).toBeInTheDocument();
     });
 
     it("not verified", () => {
-      setup({ question: getUnverifiedDataset() });
+      setup({ card: getUnverifiedModel() });
       expect(screen.getByText("Verify this model")).toBeInTheDocument();
       expect(screen.getByLabelText(VERIFIED_ICON_LABEL)).toBeInTheDocument();
     });

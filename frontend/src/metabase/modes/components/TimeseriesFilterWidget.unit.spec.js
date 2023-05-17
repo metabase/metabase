@@ -1,13 +1,18 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
+import { createMockMetadata } from "__support__/metadata";
 import TimeseriesFilterWidget from "metabase/modes/components/TimeseriesFilterWidget";
-
 import {
-  SAMPLE_DATABASE,
+  createSampleDatabase,
   ORDERS,
-  metadata,
-} from "__support__/sample_database_fixture";
+  ORDERS_ID,
+  SAMPLE_DB_ID,
+} from "metabase-types/api/mocks/presets";
 import Question from "metabase-lib/Question";
+
+const metadata = createMockMetadata({
+  databases: [createSampleDatabase()],
+});
 
 const getTimeseriesFilterWidget = question => (
   <TimeseriesFilterWidget
@@ -20,13 +25,13 @@ const getTimeseriesFilterWidget = question => (
 
 describe("TimeseriesFilterWidget", () => {
   const questionWithoutFilter = Question.create({
-    databaseId: SAMPLE_DATABASE.id,
-    tableId: ORDERS.id,
+    databaseId: SAMPLE_DB_ID,
+    tableId: ORDERS_ID,
     metadata,
   })
     .query()
     .aggregate(["count"])
-    .breakout(["field", 1, { "temporal-unit": "day" }])
+    .breakout(["field", ORDERS.CREATED_AT, { "temporal-unit": "day" }])
     .question();
 
   it("should display 'All Time' text if no filter is selected", () => {
@@ -37,7 +42,7 @@ describe("TimeseriesFilterWidget", () => {
   it("should display 'Previous 30 Days' text if that filter is selected", () => {
     const questionWithFilter = questionWithoutFilter
       .query()
-      .filter(["time-interval", ["field", 1, null], -30, "day"])
+      .filter(["time-interval", ["field", ORDERS.CREATED_AT, null], -30, "day"])
       .question();
 
     render(getTimeseriesFilterWidget(questionWithFilter));
@@ -47,7 +52,7 @@ describe("TimeseriesFilterWidget", () => {
   it("should display 'Is Empty' text if that filter is selected", () => {
     const questionWithFilter = questionWithoutFilter
       .query()
-      .filter(["is-null", ["field", 1, null]])
+      .filter(["is-null", ["field", ORDERS.CREATED_AT, null]])
       .question();
 
     render(getTimeseriesFilterWidget(questionWithFilter));
@@ -57,7 +62,7 @@ describe("TimeseriesFilterWidget", () => {
   it("should display 'Not Empty' text if that filter is selected", () => {
     const questionWithFilter = questionWithoutFilter
       .query()
-      .filter(["not-null", ["field", 1, null]])
+      .filter(["not-null", ["field", ORDERS.CREATED_AT, null]])
       .question();
 
     render(getTimeseriesFilterWidget(questionWithFilter));

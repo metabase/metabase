@@ -40,7 +40,7 @@
     (is (= '(metabase-enterprise.serialization.cmd/v1-dump "/path/" {:state :active})
            (cmd/dump "/path/" "--state" "active")))))
 
-(deftest export-command-test
+(deftest export-command-arg-parsing-test
   (are [cmd-args v2-dump-args] (= '(metabase-enterprise.serialization.cmd/v2-dump "/path/" v2-dump-args)
                                   (apply cmd/export "/path/" cmd-args))
     nil
@@ -56,7 +56,10 @@
     {:include-field-values true}
 
     ["--no-collections"]
-    {:collections []}
+    {:no-collections true}
+
+    ["--no-settings"]
+    {:no-settings true}
 
     ["--no-data-model"]
     {:no-data-model true}))

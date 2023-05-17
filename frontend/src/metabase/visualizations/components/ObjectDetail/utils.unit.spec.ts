@@ -1,15 +1,15 @@
-import {
-  metadata,
-  SAMPLE_DATABASE,
-  ORDERS,
-  PRODUCTS,
-} from "__support__/sample_database_fixture";
+import { createMockMetadata } from "__support__/metadata";
 
-import { Card } from "metabase-types/api";
 import {
   createMockColumn,
   createMockDatasetData,
 } from "metabase-types/api/mocks";
+import {
+  ORDERS_ID,
+  PRODUCTS_ID,
+  createSampleDatabase,
+  createSavedStructuredCard,
+} from "metabase-types/api/mocks/presets";
 import Question from "metabase-lib/Question";
 
 import {
@@ -19,20 +19,14 @@ import {
   getSinglePKIndex,
 } from "./utils";
 
-const card = {
-  id: 1,
-  name: "Special Orders",
-  display: "table",
-  visualization_settings: {},
-  can_write: true,
-  dataset_query: {
-    type: "query",
-    database: SAMPLE_DATABASE?.id,
-    query: {
-      "source-table": ORDERS.id,
-    },
-  },
-} as Card;
+const card = createSavedStructuredCard({
+  name: "Special Order",
+});
+
+const metadata = createMockMetadata({
+  databases: [createSampleDatabase()],
+  questions: [card],
+});
 
 describe("ObjectDetail utils", () => {
   const productIdCol = createMockColumn({
@@ -41,7 +35,7 @@ describe("ObjectDetail utils", () => {
     base_type: "int",
     effective_type: "int",
     semantic_type: "type/PK",
-    table_id: PRODUCTS.id,
+    table_id: PRODUCTS_ID,
   });
 
   const idCol = createMockColumn({
@@ -50,7 +44,7 @@ describe("ObjectDetail utils", () => {
     base_type: "int",
     effective_type: "int",
     semantic_type: "type/PK",
-    table_id: ORDERS.id,
+    table_id: ORDERS_ID,
   });
 
   const qtyCol = createMockColumn({
@@ -59,7 +53,7 @@ describe("ObjectDetail utils", () => {
     base_type: "int",
     effective_type: "int",
     semantic_type: "type/int",
-    table_id: ORDERS.id,
+    table_id: ORDERS_ID,
   });
 
   const nameCol = createMockColumn({
@@ -68,7 +62,7 @@ describe("ObjectDetail utils", () => {
     base_type: "string",
     effective_type: "string",
     semantic_type: "type/Name",
-    table_id: ORDERS.id,
+    table_id: ORDERS_ID,
   });
 
   const dateCol = createMockColumn({
@@ -77,7 +71,7 @@ describe("ObjectDetail utils", () => {
     base_type: "type/DateTime",
     effective_type: "type/DateTime",
     semantic_type: "type/DateTime",
-    table_id: ORDERS.id,
+    table_id: ORDERS_ID,
     unit: "default",
   });
 
@@ -141,7 +135,7 @@ describe("ObjectDetail utils", () => {
       const id = getDisplayId({
         cols: [productIdCol, idCol, qtyCol, nameCol],
         zoomedRow: [11, 22, 33, "Giant Sprocket"],
-        tableId: ORDERS.id,
+        tableId: ORDERS_ID,
         settings: {},
       });
 
@@ -172,7 +166,7 @@ describe("ObjectDetail utils", () => {
       const id = getDisplayId({
         cols: [dateCol, qtyCol],
         zoomedRow: ["2002-02-14 12:33:33", 33],
-        tableId: ORDERS.id,
+        tableId: ORDERS_ID,
         settings: {
           column: () => ({
             column: dateCol,
@@ -200,7 +194,7 @@ describe("ObjectDetail utils", () => {
             [33, 44, 55, "Tiny Sprocket"],
           ],
         }),
-        tableId: ORDERS.id,
+        tableId: ORDERS_ID,
       });
 
       expect(id).toBe(22);

@@ -79,7 +79,7 @@ async function setup({
 
   const queryResult = createMockDataset({
     data: {
-      cols: ORDERS.fields.map(field => field.column()),
+      cols: ORDERS.fields?.map(field => field.column()),
     },
   });
 
