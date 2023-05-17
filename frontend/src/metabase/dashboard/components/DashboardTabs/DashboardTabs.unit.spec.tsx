@@ -99,7 +99,6 @@ function setup({
   const { store } = renderWithProviders(
     <DashboardTabs isEditing={isEditing} />,
     {
-      withSampleDatabase: true,
       storeInitialState: { dashboard },
     },
   );

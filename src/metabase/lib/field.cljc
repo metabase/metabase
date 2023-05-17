@@ -180,7 +180,7 @@
   [query stage-number {field-display-name :display-name
                        field-name         :name
                        temporal-unit      :unit
-                       binning            :binning
+                       binning            ::binning
                        join-alias         :source_alias
                        fk-field-id        :fk-field-id
                        table-id           :table-id
@@ -213,7 +213,7 @@
   (if-let [field-metadata (cond-> (resolve-field-metadata query stage-number field-clause)
                             join-alias    (assoc :source_alias join-alias)
                             temporal-unit (assoc :unit temporal-unit)
-                            binning       (assoc :binning binning)
+                            binning       (assoc ::binning binning)
                             source-field  (assoc :fk-field-id source-field))]
     (lib.metadata.calculation/display-name query stage-number field-metadata style)
     ;; mostly for the benefit of JS, which does not enforce the Malli schemas.
@@ -320,11 +320,19 @@
 ;;; ---------------------------------------- Binning ---------------------------------------------
 (defmethod lib.binning/binning-method :field
   [field-clause]
-  (-> field-clause lib.options/options :binning))
+  (some-> field-clause
+          lib.options/options
+          :binning
+          (assoc :lib/type    ::lib.binning/binning
+                 :metadata-fn (fn [query stage-number]
+                                (resolve-field-metadata query stage-number field-clause)))))
 
 (defmethod lib.binning/binning-method :metadata/field
   [metadata]
-  (::binning metadata))
+  (some-> metadata
+          ::binning
+          (assoc :lib/type    ::lib.binning/binning
+                 :metadata-fn (constantly metadata))))
 
 (defmethod lib.binning/with-binning-method :field
   [field-clause binning]
