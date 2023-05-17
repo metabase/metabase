@@ -2,8 +2,7 @@ import React, { useMemo } from "react";
 import cx from "classnames";
 import { t } from "ttag";
 
-import type { ColumnSettings, DatasetData } from "metabase-types/types/Dataset";
-import type { VisualizationSettings } from "metabase-types/api";
+import type { DatasetData, VisualizationSettings } from "metabase-types/api";
 
 import ExpandableString from "metabase/query_builder/components/ExpandableString";
 import EmptyState from "metabase/components/EmptyState";
@@ -129,8 +128,8 @@ export function DetailsTable({
       return { cols: columns, row: zoomedRow };
     }
     const columnIndexes = columnSettings
-      .filter((columnSetting: ColumnSettings) => columnSetting.enabled)
-      .map((columnSetting: ColumnSettings) =>
+      .filter(columnSetting => columnSetting?.enabled)
+      .map(columnSetting =>
         findColumnIndexForColumnSetting(columns, columnSetting),
       )
       .filter(

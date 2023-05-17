@@ -8,10 +8,11 @@ import Tables from "metabase/entities/tables";
 import Schemas from "metabase/entities/schemas";
 import ActionButton from "metabase/components/ActionButton";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
-import { Schema, TableId } from "metabase-types/api";
+import { TableId } from "metabase-types/api";
 import { State } from "metabase-types/store";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import Database from "metabase-lib/metadata/Database";
+import Schema from "metabase-lib/metadata/Schema";
 import Table from "metabase-lib/metadata/Table";
 import { discardTableFieldValues, rescanTableFieldValues } from "../../actions";
 import MetadataSection from "../MetadataSection";
@@ -126,6 +127,7 @@ const MetadataTableSettings = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   Databases.load({
     id: (_: State, { params }: RouterProps) =>

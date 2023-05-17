@@ -1,27 +1,58 @@
 import { assoc, dissoc, assocIn } from "icepick";
 import { parse } from "url";
-import {
-  metadata,
-  SAMPLE_DATABASE,
-  ORDERS,
-  PRODUCTS,
-  createMetadata,
-} from "__support__/sample_database_fixture";
-
+import { createMockMetadata } from "__support__/metadata";
 import { deserializeCardFromUrl } from "metabase/lib/card";
+import { createMockMetric } from "metabase-types/api/mocks";
+import {
+  createOrdersTable,
+  createPeopleTable,
+  createProductsTable,
+  createReviewsTable,
+  createSampleDatabase,
+  createOrdersIdField,
+  createOrdersUserIdField,
+  createOrdersProductIdField,
+  createOrdersSubtotalField,
+  createOrdersTaxField,
+  createOrdersTotalField,
+  createOrdersDiscountField,
+  createOrdersCreatedAtField,
+  createOrdersQuantityField,
+  ORDERS,
+  ORDERS_ID,
+  PRODUCTS,
+  PRODUCTS_ID,
+  SAMPLE_DB_ID,
+} from "metabase-types/api/mocks/presets";
 import { TYPE as SEMANTIC_TYPE } from "cljs/metabase.types";
 import Question from "metabase-lib/Question";
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import NativeQuery from "metabase-lib/queries/NativeQuery";
+
+const metadata = createMockMetadata({
+  databases: [createSampleDatabase()],
+  metrics: [
+    createMockMetric({
+      id: 2,
+      table_id: ORDERS_ID,
+      name: "Total Order Value",
+      definition: {
+        filter: [">", ORDERS.TOTAL, 20],
+        aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
+        "source-table": ORDERS_ID,
+      },
+    }),
+  ],
+});
 
 const card = {
   display: "table",
   visualization_settings: {},
   dataset_query: {
     type: "query",
-    database: SAMPLE_DATABASE.id,
+    database: SAMPLE_DB_ID,
     query: {
-      "source-table": ORDERS.id,
+      "source-table": ORDERS_ID,
     },
   },
 };
@@ -35,9 +66,9 @@ const orders_raw_card = {
   can_write: true,
   dataset_query: {
     type: "query",
-    database: SAMPLE_DATABASE.id,
+    database: SAMPLE_DB_ID,
     query: {
-      "source-table": ORDERS.id,
+      "source-table": ORDERS_ID,
     },
   },
 };
@@ -50,9 +81,9 @@ const orders_count_card = {
   visualization_settings: {},
   dataset_query: {
     type: "query",
-    database: SAMPLE_DATABASE.id,
+    database: SAMPLE_DB_ID,
     query: {
-      "source-table": ORDERS.id,
+      "source-table": ORDERS_ID,
       aggregation: [["count"]],
     },
   },
@@ -66,10 +97,10 @@ const orders_count_where_card = {
   visualization_settings: {},
   dataset_query: {
     type: "query",
-    database: SAMPLE_DATABASE.id,
+    database: SAMPLE_DB_ID,
     query: {
-      "source-table": ORDERS.id,
-      aggregation: [["count-where", [">", ORDERS.TOTAL.id, 50]]],
+      "source-table": ORDERS_ID,
+      aggregation: [["count-where", [">", ORDERS.TOTAL, 50]]],
     },
   },
 };
@@ -85,9 +116,9 @@ const orders_metric_filter_card = {
   visualization_settings: {},
   dataset_query: {
     type: "query",
-    database: SAMPLE_DATABASE.id,
+    database: SAMPLE_DB_ID,
     query: {
-      "source-table": ORDERS.id,
+      "source-table": ORDERS_ID,
       aggregation: [["metric", 2]],
     },
   },
@@ -103,10 +134,10 @@ const orders_filter_card = {
   display: "line",
   dataset_query: {
     type: "query",
-    database: SAMPLE_DATABASE.id,
+    database: SAMPLE_DB_ID,
     query: {
-      "source-table": ORDERS.id,
-      filter: [">", ["field", ORDERS.TOTAL.id, null], 10],
+      "source-table": ORDERS_ID,
+      filter: [">", ["field", ORDERS.TOTAL, null], 10],
     },
   },
 };
@@ -117,17 +148,17 @@ const orders_join_card = {
   display: "line",
   dataset_query: {
     type: "query",
-    database: SAMPLE_DATABASE.id,
+    database: SAMPLE_DB_ID,
     query: {
-      "source-table": ORDERS.id,
+      "source-table": ORDERS_ID,
       joins: [
         {
           fields: "all",
-          "source-table": PRODUCTS.id,
+          "source-table": PRODUCTS_ID,
           condition: [
             "=",
-            ["field-id", ORDERS.PRODUCT_ID.id],
-            ["joined-field", "Products", ["field-id", PRODUCTS.ID.id]],
+            ["field-id", ORDERS.PRODUCT_ID],
+            ["joined-field", "Products", ["field-id", PRODUCTS.ID]],
           ],
           alias: "Products",
         },
@@ -142,9 +173,9 @@ const orders_expression_card = {
   display: "line",
   dataset_query: {
     type: "query",
-    database: SAMPLE_DATABASE.id,
+    database: SAMPLE_DB_ID,
     query: {
-      "source-table": ORDERS.id,
+      "source-table": ORDERS_ID,
       expressions: { double_total: ["+", 1, 1] },
     },
   },
@@ -156,15 +187,13 @@ const orders_multi_stage_card = {
   display: "line",
   dataset_query: {
     type: "query",
-    database: SAMPLE_DATABASE.id,
+    database: SAMPLE_DB_ID,
     query: {
       "source-query": {
-        "source-table": ORDERS.id,
-        filter: [">", ["field", ORDERS.TOTAL.id, null], 10],
+        "source-table": ORDERS_ID,
+        filter: [">", ["field", ORDERS.TOTAL, null], 10],
         aggregation: [["count"]],
-        breakout: [
-          ["field", ORDERS.CREATED_AT.id, { "temporal-unit": "month" }],
-        ],
+        breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }]],
       },
       filter: [">", ["field", "count", { "base-type": "type/Integer" }], 20],
     },
@@ -182,7 +211,7 @@ const native_orders_count_card = {
   visualization_settings: {},
   dataset_query: {
     type: "native",
-    database: SAMPLE_DATABASE.id,
+    database: SAMPLE_DB_ID,
     native: {
       query: "SELECT count(*) FROM orders",
     },
@@ -200,7 +229,7 @@ const invalid_orders_count_card = {
   visualization_settings: {},
   dataset_query: {
     type: "nosuchqueryprocessor",
-    database: SAMPLE_DATABASE.id,
+    database: SAMPLE_DB_ID,
     query: {
       query: "SELECT count(*) FROM orders",
     },
@@ -219,11 +248,11 @@ const orders_count_by_id_card = {
   visualization_settings: {},
   dataset_query: {
     type: "query",
-    database: SAMPLE_DATABASE.id,
+    database: SAMPLE_DB_ID,
     query: {
-      "source-table": ORDERS.id,
+      "source-table": ORDERS_ID,
       aggregation: [["count"]],
-      breakout: [["field", ORDERS.ID.id, null]],
+      breakout: [["field", ORDERS.ID, null]],
     },
   },
 };
@@ -255,8 +284,8 @@ describe("Question", () => {
     describe("Question.create(...)", () => {
       const question = Question.create({
         metadata,
-        databaseId: SAMPLE_DATABASE.id,
-        tableId: ORDERS.id,
+        databaseId: SAMPLE_DB_ID,
+        tableId: ORDERS_ID,
       });
 
       it("contains an empty structured query", () => {
@@ -430,48 +459,48 @@ describe("Question", () => {
       it("works with a datetime field reference", () => {
         const brokenOutCard = orders_count_question.breakout([
           "field",
-          ORDERS.CREATED_AT.id,
+          ORDERS.CREATED_AT,
           null,
         ]);
         expect(brokenOutCard.canRun()).toBe(true);
 
         expect(brokenOutCard.datasetQuery()).toEqual({
           type: "query",
-          database: SAMPLE_DATABASE.id,
+          database: SAMPLE_DB_ID,
           query: {
-            "source-table": ORDERS.id,
+            "source-table": ORDERS_ID,
             aggregation: [["count"]],
-            breakout: [["field", ORDERS.CREATED_AT.id, null]],
+            breakout: [["field", ORDERS.CREATED_AT, null]],
           },
         });
 
         // Make sure we haven't mutated the underlying query
         expect(orders_count_question.datasetQuery().query).toEqual({
-          "source-table": ORDERS.id,
+          "source-table": ORDERS_ID,
           aggregation: [["count"]],
         });
       });
       it("works with a primary key field reference", () => {
         const brokenOutQuestion = orders_count_question.breakout([
           "field",
-          ORDERS.ID.id,
+          ORDERS.ID,
           null,
         ]);
         expect(brokenOutQuestion.canRun()).toBe(true);
         // This breaks because we're apparently modifying OrdersCountDataCard
         expect(brokenOutQuestion.datasetQuery()).toEqual({
           type: "query",
-          database: SAMPLE_DATABASE.id,
+          database: SAMPLE_DB_ID,
           query: {
-            "source-table": ORDERS.id,
+            "source-table": ORDERS_ID,
             aggregation: [["count"]],
-            breakout: [["field", ORDERS.ID.id, null]],
+            breakout: [["field", ORDERS.ID, null]],
           },
         });
 
         // Make sure we haven't mutated the underlying query
         expect(orders_count_card.dataset_query.query).toEqual({
-          "source-table": ORDERS.id,
+          "source-table": ORDERS_ID,
           aggregation: [["count"]],
         });
       });
@@ -480,44 +509,44 @@ describe("Question", () => {
     describe("pivot(...)", () => {
       it("works with a datetime dimension", () => {
         const pivoted = orders_count_question.pivot([
-          ["field", ORDERS.CREATED_AT.id, null],
+          ["field", ORDERS.CREATED_AT, null],
         ]);
         expect(pivoted.canRun()).toBe(true);
 
         expect(pivoted.datasetQuery()).toEqual({
           type: "query",
-          database: SAMPLE_DATABASE.id,
+          database: SAMPLE_DB_ID,
           query: {
-            "source-table": ORDERS.id,
+            "source-table": ORDERS_ID,
             aggregation: [["count"]],
-            breakout: [["field", ORDERS.CREATED_AT.id, null]],
+            breakout: [["field", ORDERS.CREATED_AT, null]],
           },
         });
         // Make sure we haven't mutated the underlying query
         expect(orders_count_card.dataset_query.query).toEqual({
-          "source-table": ORDERS.id,
+          "source-table": ORDERS_ID,
           aggregation: [["count"]],
         });
       });
       it("works with PK dimension", () => {
         const pivoted = orders_count_question.pivot([
-          ["field", ORDERS.ID.id, null],
+          ["field", ORDERS.ID, null],
         ]);
         expect(pivoted.canRun()).toBe(true);
 
         // if I actually call the .query() method below, this blows up garbage collection =/
         expect(pivoted.datasetQuery()).toEqual({
           type: "query",
-          database: SAMPLE_DATABASE.id,
+          database: SAMPLE_DB_ID,
           query: {
-            "source-table": ORDERS.id,
+            "source-table": ORDERS_ID,
             aggregation: [["count"]],
-            breakout: [["field", ORDERS.ID.id, null]],
+            breakout: [["field", ORDERS.ID, null]],
           },
         });
         // Make sure we haven't mutated the underlying query
         expect(orders_count_card.dataset_query.query).toEqual({
-          "source-table": ORDERS.id,
+          "source-table": ORDERS_ID,
           aggregation: [["count"]],
         });
       });
@@ -527,39 +556,42 @@ describe("Question", () => {
       const questionForFiltering = orders_raw_question;
 
       it("works with an id filter", () => {
+        const ordersId = metadata.field(ORDERS.ID);
         const filteringQuestion = questionForFiltering.filter(
           "=",
-          ORDERS.ID.column(),
+          ordersId.column(),
           1,
         );
 
         expect(filteringQuestion.datasetQuery()).toEqual({
           type: "query",
-          database: SAMPLE_DATABASE.id,
+          database: SAMPLE_DB_ID,
           query: {
-            "source-table": ORDERS.id,
-            filter: ["=", ["field", ORDERS.ID.id, null], 1],
+            "source-table": ORDERS_ID,
+            filter: ["=", ["field", ORDERS.ID, null], 1],
           },
         });
       });
       it("works with a categorical value filter", () => {
+        const ordersProductId = metadata.field(ORDERS.PRODUCT_ID);
+        const productsCategory = metadata.field(PRODUCTS.CATEGORY);
         const filteringQuestion = questionForFiltering.filter(
           "=",
-          ORDERS.PRODUCT_ID.foreign(PRODUCTS.CATEGORY).column(),
+          ordersProductId.foreign(productsCategory).column(),
           "Doohickey",
         );
 
         expect(filteringQuestion.datasetQuery()).toEqual({
           type: "query",
-          database: SAMPLE_DATABASE.id,
+          database: SAMPLE_DB_ID,
           query: {
-            "source-table": ORDERS.id,
+            "source-table": ORDERS_ID,
             filter: [
               "=",
               [
                 "field",
-                PRODUCTS.CATEGORY.id,
-                { "source-field": ORDERS.PRODUCT_ID.id },
+                PRODUCTS.CATEGORY,
+                { "source-field": ORDERS.PRODUCT_ID },
               ],
               "Doohickey",
             ],
@@ -568,18 +600,19 @@ describe("Question", () => {
       });
 
       it("works with a time filter", () => {
+        const ordersCreatedAt = metadata.field(ORDERS.CREATED_AT);
         const filteringQuestion = questionForFiltering.filter(
           "=",
-          ORDERS.CREATED_AT.column(),
+          ordersCreatedAt.column(),
           "12/12/2012",
         );
 
         expect(filteringQuestion.datasetQuery()).toEqual({
           type: "query",
-          database: SAMPLE_DATABASE.id,
+          database: SAMPLE_DB_ID,
           query: {
-            "source-table": ORDERS.id,
-            filter: ["=", ["field", ORDERS.CREATED_AT.id, null], "12/12/2012"],
+            "source-table": ORDERS_ID,
+            filter: ["=", ["field", ORDERS.CREATED_AT, null], "12/12/2012"],
           },
         });
       });
@@ -587,23 +620,25 @@ describe("Question", () => {
 
     describe("drillUnderlyingRecords(...)", () => {
       it("applies a filter to a given query", () => {
-        const dimensions = [{ value: 1, column: ORDERS.ID.column() }];
+        const ordersId = metadata.field(ORDERS.ID);
+        const dimensions = [{ value: 1, column: ordersId.column() }];
 
         const newQuestion =
           orders_count_by_id_question.drillUnderlyingRecords(dimensions);
 
         expect(newQuestion.datasetQuery()).toEqual({
           type: "query",
-          database: SAMPLE_DATABASE.id,
+          database: SAMPLE_DB_ID,
           query: {
-            "source-table": ORDERS.id,
-            filter: ["=", ["field", ORDERS.ID.id, null], 1],
+            "source-table": ORDERS_ID,
+            filter: ["=", ["field", ORDERS.ID, null], 1],
           },
         });
       });
 
       it("applies a filter from an aggregation to a given query", () => {
-        const dimensions = [{ value: 1, column: ORDERS.ID.column() }];
+        const ordersId = metadata.field(ORDERS.ID);
+        const dimensions = [{ value: 1, column: ordersId.column() }];
         const column = { field_ref: ["aggregation", 0] };
 
         const newQuestion = orders_count_where_question.drillUnderlyingRecords(
@@ -614,20 +649,21 @@ describe("Question", () => {
         expect(newQuestion.canRun()).toBe(true);
         expect(newQuestion.datasetQuery()).toEqual({
           type: "query",
-          database: SAMPLE_DATABASE.id,
+          database: SAMPLE_DB_ID,
           query: {
-            "source-table": ORDERS.id,
+            "source-table": ORDERS_ID,
             filter: [
               "and",
-              ["=", ["field", ORDERS.ID.id, null], 1],
-              [">", ["field", ORDERS.TOTAL.id, null], 50],
+              ["=", ["field", ORDERS.ID, null], 1],
+              [">", ["field", ORDERS.TOTAL, null], 50],
             ],
           },
         });
       });
 
       it("applies a filter from a metric to a given query", () => {
-        const dimensions = [{ value: 1, column: ORDERS.ID.column() }];
+        const ordersId = metadata.field(ORDERS.ID);
+        const dimensions = [{ value: 1, column: ordersId.column() }];
         const column = { field_ref: ["aggregation", 0] };
 
         const newQuestion =
@@ -639,20 +675,21 @@ describe("Question", () => {
         expect(newQuestion.canRun()).toBe(true);
         expect(newQuestion.datasetQuery()).toEqual({
           type: "query",
-          database: SAMPLE_DATABASE.id,
+          database: SAMPLE_DB_ID,
           query: {
-            "source-table": ORDERS.id,
+            "source-table": ORDERS_ID,
             filter: [
               "and",
-              ["=", ["field", ORDERS.ID.id, null], 1],
-              [">", ["field", ORDERS.TOTAL.id, null], 20],
+              ["=", ["field", ORDERS.ID, null], 1],
+              [">", ["field", ORDERS.TOTAL, null], 20],
             ],
           },
         });
       });
 
       it("removes post-aggregation filters from a given query", () => {
-        const dimensions = [{ value: 1, column: ORDERS.ID.column() }];
+        const ordersId = metadata.field(ORDERS.ID);
+        const dimensions = [{ value: 1, column: ordersId.column() }];
 
         const newQuestion = orders_multi_stage_question
           .topLevelQuestion()
@@ -660,13 +697,13 @@ describe("Question", () => {
 
         expect(newQuestion.datasetQuery()).toEqual({
           type: "query",
-          database: SAMPLE_DATABASE.id,
+          database: SAMPLE_DB_ID,
           query: {
-            "source-table": ORDERS.id,
+            "source-table": ORDERS_ID,
             filter: [
               "and",
-              [">", ["field", ORDERS.TOTAL.id, null], 10],
-              ["=", ["field", ORDERS.ID.id, null], 1],
+              [">", ["field", ORDERS.TOTAL, null], 10],
+              ["=", ["field", ORDERS.ID, null], 1],
             ],
           },
         });
@@ -686,7 +723,7 @@ describe("Question", () => {
 
         // Make sure we haven't mutated the underlying query
         expect(orders_raw_card.dataset_query.query).toEqual({
-          "source-table": ORDERS.id,
+          "source-table": ORDERS_ID,
         });
       });
       it("returns underlying records correctly for a broken out query", () => {
@@ -701,7 +738,7 @@ describe("Question", () => {
 
         // Make sure we haven't mutated the underlying query
         expect(orders_raw_card.dataset_query.query).toEqual({
-          "source-table": ORDERS.id,
+          "source-table": ORDERS_ID,
         });
       });
     });
@@ -725,78 +762,105 @@ describe("Question", () => {
 
     describe("drillPK(...)", () => {
       it("returns the correct query for a PK detail drill-through", () => {
-        const drilledQuestion = orders_raw_question.drillPK(ORDERS.ID, 1);
+        const ordersId = metadata.field(ORDERS.ID);
+        const drilledQuestion = orders_raw_question.drillPK(ordersId, 1);
 
         expect(drilledQuestion.canRun()).toBe(true);
 
         // if I actually call the .query() method below, this blows up garbage collection =/
         expect(drilledQuestion.datasetQuery()).toEqual({
           type: "query",
-          database: SAMPLE_DATABASE.id,
+          database: SAMPLE_DB_ID,
           query: {
-            "source-table": ORDERS.id,
-            filter: ["=", ["field", ORDERS.ID.id, null], 1],
+            "source-table": ORDERS_ID,
+            filter: ["=", ["field", ORDERS.ID, null], 1],
           },
         });
       });
 
       describe("with composite PK", () => {
         // Making TOTAL a PK column in addition to ID
-        const metadata = createMetadata(state =>
-          state.assocIn(
-            ["entities", "fields", ORDERS.TOTAL.id, "semantic_type"],
-            "type/PK",
-          ),
-        );
+        const metadata = createMockMetadata({
+          databases: [
+            createSampleDatabase({
+              tables: [
+                createProductsTable(),
+                createPeopleTable(),
+                createReviewsTable(),
+                createOrdersTable({
+                  fields: [
+                    createOrdersIdField(),
+                    createOrdersUserIdField(),
+                    createOrdersProductIdField(),
+                    createOrdersSubtotalField(),
+                    createOrdersTaxField(),
+                    createOrdersTotalField({ semantic_type: "type/PK" }),
+                    createOrdersDiscountField(),
+                    createOrdersCreatedAtField(),
+                    createOrdersQuantityField(),
+                  ],
+                }),
+              ],
+            }),
+          ],
+        });
+
         // Note: This is not orders_raw_question because we want the different metadata.
         const question = new Question(orders_raw_card, metadata);
 
         it("when drills to one column of a composite key returns equals filter by the column", () => {
-          const drilledQuestion = question.drillPK(ORDERS.ID, 1);
+          const ordersId = metadata.field(ORDERS.ID);
+          const drilledQuestion = question.drillPK(ordersId, 1);
 
           expect(drilledQuestion.canRun()).toBe(true);
           expect(drilledQuestion.datasetQuery()).toEqual({
             type: "query",
-            database: SAMPLE_DATABASE.id,
+            database: SAMPLE_DB_ID,
             query: {
-              "source-table": ORDERS.id,
-              filter: ["=", ["field", ORDERS.ID.id, null], 1],
+              "source-table": ORDERS_ID,
+              filter: ["=", ["field", ORDERS.ID, null], 1],
             },
           });
         });
 
         it("when drills to both columns of a composite key returns query with equality filter by both PKs", () => {
+          const ordersId = metadata.field(ORDERS.ID);
+          const ordersTotal = metadata.field(ORDERS.TOTAL);
+
           const drilledQuestion = question
-            .drillPK(ORDERS.ID, 1)
-            .drillPK(ORDERS.TOTAL, 1);
+            .drillPK(ordersId, 1)
+            .drillPK(ordersTotal, 1);
 
           expect(drilledQuestion.canRun()).toBe(true);
           expect(drilledQuestion.datasetQuery()).toEqual({
             type: "query",
-            database: SAMPLE_DATABASE.id,
+            database: SAMPLE_DB_ID,
             query: {
-              "source-table": ORDERS.id,
+              "source-table": ORDERS_ID,
               filter: [
                 "and",
-                ["=", ["field", ORDERS.TOTAL.id, null], 1],
-                ["=", ["field", ORDERS.ID.id, null], 1],
+                ["=", ["field", ORDERS.TOTAL, null], 1],
+                ["=", ["field", ORDERS.ID, null], 1],
               ],
             },
           });
         });
 
         it("when drills to other table PK removes the previous table PK filters", () => {
+          const ordersId = metadata.field(ORDERS.ID);
+          const productsId = metadata.field(PRODUCTS.ID);
+
           const drilledQuestion = question
-            .drillPK(ORDERS.ID, 1)
-            .drillPK(PRODUCTS.ID, 1);
+            .drillPK(ordersId, 1)
+            .drillPK(productsId, 1);
 
           expect(drilledQuestion.canRun()).toBe(true);
           expect(drilledQuestion.datasetQuery()).toEqual({
             type: "query",
-            database: SAMPLE_DATABASE.id,
+            database: SAMPLE_DB_ID,
             query: {
-              "source-table": PRODUCTS.id,
-              filter: ["=", ["field", PRODUCTS.ID.id, null], 1],
+              "source-table": PRODUCTS_ID,
+              filter: ["=", ["field", PRODUCTS.ID, null], 1],
             },
           });
         });
@@ -822,7 +886,7 @@ describe("Question", () => {
 
   describe("URLs", () => {
     const adhocUrl =
-      "/question#eyJkYXRhc2V0X3F1ZXJ5Ijp7ImRhdGFiYXNlIjoxLCJxdWVyeSI6eyJzb3VyY2UtdGFibGUiOjF9LCJ0eXBlIjoicXVlcnkifSwiZGlzcGxheSI6InRhYmxlIiwibmFtZSI6IlJhdyBvcmRlcnMgZGF0YSIsInZpc3VhbGl6YXRpb25fc2V0dGluZ3MiOnt9fQ==";
+      "/question#eyJkYXRhc2V0X3F1ZXJ5Ijp7ImRhdGFiYXNlIjoxLCJxdWVyeSI6eyJzb3VyY2UtdGFibGUiOjJ9LCJ0eXBlIjoicXVlcnkifSwiZGlzcGxheSI6InRhYmxlIiwibmFtZSI6IlJhdyBvcmRlcnMgZGF0YSIsInZpc3VhbGl6YXRpb25fc2V0dGluZ3MiOnt9fQ==";
 
     // Covered a lot in query_builder/actions.spec.js, just very basic cases here
     // (currently getUrl has logic that is strongly tied to the logic query builder Redux actions)
@@ -1117,7 +1181,7 @@ describe("Question", () => {
                 id: "bbb",
                 type: "dimension",
                 "widget-type": "category",
-                dimension: ["field", PRODUCTS.CATEGORY.id, null],
+                dimension: ["field", PRODUCTS.CATEGORY, null],
               },
               bar: {
                 name: "bar",
@@ -1136,7 +1200,7 @@ describe("Question", () => {
           default: undefined,
           fields: [
             expect.objectContaining({
-              id: PRODUCTS.CATEGORY.id,
+              id: PRODUCTS.CATEGORY,
             }),
           ],
           hasVariableTemplateTagTarget: false,
@@ -1165,7 +1229,7 @@ describe("Question", () => {
             type: "category",
             name: "foo",
             id: "foo_id",
-            target: ["dimension", ["field", PRODUCTS.CATEGORY.id, null]],
+            target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
           },
           {
             type: "category",
@@ -1182,11 +1246,11 @@ describe("Question", () => {
           type: "category",
           name: "foo",
           id: "foo_id",
-          target: ["dimension", ["field", PRODUCTS.CATEGORY.id, null]],
+          target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
           value: "abc",
           fields: [
             expect.objectContaining({
-              id: PRODUCTS.CATEGORY.id,
+              id: PRODUCTS.CATEGORY,
             }),
           ],
           hasVariableTemplateTagTarget: false,
@@ -1214,13 +1278,13 @@ describe("Question", () => {
           type: "string/starts-with",
           name: "foo",
           id: "foo_id",
-          target: ["dimension", ["field", PRODUCTS.CATEGORY.id, null]],
+          target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
         },
         {
           type: "string/=",
           name: "bar",
           id: "bar_id",
-          target: ["dimension", ["field", PRODUCTS.CATEGORY.id, null]],
+          target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
         },
       ];
 
@@ -1234,7 +1298,7 @@ describe("Question", () => {
 
       expect(questionWithFilters.datasetQuery().query.filter).toEqual([
         "starts-with",
-        ["field", PRODUCTS.CATEGORY.id, null],
+        ["field", PRODUCTS.CATEGORY, null],
         "abc",
         { "case-sensitive": false },
       ]);
@@ -1573,8 +1637,8 @@ describe("Question", () => {
     it("should work with multiple aggregations", () => {
       const question = base_question.setDatasetQuery({
         query: {
-          "source-table": ORDERS.id,
-          aggregation: [["count"], ["sum", ["field", 6, null]]],
+          "source-table": ORDERS_ID,
+          aggregation: [["count"], ["sum", ["field", ORDERS.TOTAL, null]]],
         },
       });
       expect(question.generateQueryDescription()).toEqual(
@@ -1585,7 +1649,7 @@ describe("Question", () => {
     it("should work with named aggregations", () => {
       const question = base_question.setDatasetQuery({
         query: {
-          "source-table": ORDERS.id,
+          "source-table": ORDERS_ID,
           aggregation: [
             [
               "aggregation-options",

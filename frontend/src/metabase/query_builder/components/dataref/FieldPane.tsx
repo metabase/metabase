@@ -26,4 +26,5 @@ const FieldPane = ({ onBack, onClose, field }: FieldPaneProps) => {
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default FieldPane;

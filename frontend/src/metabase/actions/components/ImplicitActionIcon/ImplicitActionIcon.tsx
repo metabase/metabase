@@ -17,4 +17,5 @@ function ImplicitActionIcon({ size = 14 }: ImplicitActionIconProps) {
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ImplicitActionIcon;

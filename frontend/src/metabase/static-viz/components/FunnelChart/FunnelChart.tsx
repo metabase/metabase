@@ -169,4 +169,5 @@ const Funnel = ({ data, settings }: FunnelProps) => {
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Funnel;

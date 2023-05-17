@@ -17,8 +17,10 @@ const WithVizSettingsData = ComposedComponent => {
             .groupBy(target => target.entity.name)
             .mapObject(targets =>
               _.chain(targets)
-                .map(({ entity, entityId }) =>
-                  entity.selectors.getObject(state, { entityId }),
+                .map(({ entity, entityType, entityId }) =>
+                  entityType === "question"
+                    ? entity.selectors.getObject(state, { entityId })?.card()
+                    : entity.selectors.getObject(state, { entityId }),
                 )
                 .filter(object => object != null)
                 .indexBy(object => object.id)

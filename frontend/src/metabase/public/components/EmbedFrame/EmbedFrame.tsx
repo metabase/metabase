@@ -15,8 +15,12 @@ import { parseHashOptions } from "metabase/lib/browser";
 import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
 import FilterApplyButton from "metabase/parameters/components/FilterApplyButton";
 
-import type { Dashboard, Parameter, ParameterId } from "metabase-types/api";
-import type { ParameterValueOrArray } from "metabase-types/types/Parameter";
+import type {
+  Dashboard,
+  Parameter,
+  ParameterId,
+  ParameterValueOrArray,
+} from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 import Question from "metabase-lib/Question";
@@ -169,4 +173,5 @@ function EmbedFrame({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(connect(mapStateToProps), withRouter)(EmbedFrame);

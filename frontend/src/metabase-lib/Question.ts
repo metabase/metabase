@@ -21,10 +21,20 @@ import Field from "metabase-lib/metadata/Field";
 import { AggregationDimension, FieldDimension } from "metabase-lib/Dimension";
 import { isFK } from "metabase-lib/types/utils/isa";
 import { memoizeClass, sortObject } from "metabase-lib/utils";
-import {
+
+import type {
+  Card as CardObject,
   CollectionId,
+  DatabaseId,
+  DatasetColumn,
+  DatasetQuery,
+  DependentMetadataItem,
+  TableId,
+  RowValue,
   Parameter as ParameterObject,
+  ParameterValues,
   ParameterId,
+  VisualizationSettings,
 } from "metabase-types/api";
 
 import * as AGGREGATION from "metabase-lib/queries/utils/aggregation";
@@ -34,17 +44,6 @@ import * as QUERY from "metabase-lib/queries/utils/query";
 // TODO: remove these dependencies
 import * as Urls from "metabase/lib/urls";
 import { getCardUiParameters } from "metabase-lib/parameters/utils/cards";
-import { ParameterValues } from "metabase-types/types/Parameter";
-import { Card as CardObject, DatasetQuery } from "metabase-types/types/Card";
-import { VisualizationSettings } from "metabase-types/api/card";
-import { Column, Value } from "metabase-types/types/Dataset";
-import { TableId } from "metabase-types/types/Table";
-import { DatabaseId } from "metabase-types/types/Database";
-import {
-  ClickObject,
-  DimensionValue,
-} from "metabase-types/types/Visualization";
-import { DependentMetadataItem } from "metabase-types/types/Query";
 import { utf8_to_b64url } from "metabase/lib/encoding";
 
 import { getParameterValuesBySlug } from "metabase-lib/parameters/utils/parameter-values";
@@ -74,6 +73,10 @@ import {
   ALERT_TYPE_TIMESERIES_GOAL,
 } from "metabase-lib/Alert";
 import { getBaseDimensionReference } from "metabase-lib/references";
+import type {
+  ClickObject,
+  ClickObjectDimension,
+} from "metabase-lib/queries/drills/types";
 
 import type { Query } from "./types";
 import * as ML from "./v2";
@@ -565,8 +568,8 @@ class QuestionInner {
   }
 
   drillUnderlyingRecords(
-    dimensions: DimensionValue[],
-    column?: Column,
+    dimensions: ClickObjectDimension[],
+    column?: DatasetColumn,
   ): Question {
     let query = this.query();
     if (!(query instanceof StructuredQuery)) {
@@ -662,7 +665,7 @@ class QuestionInner {
     });
   }
 
-  drillPK(field: Field, value: Value): Question | null | undefined {
+  drillPK(field: Field, value: RowValue): Question | null | undefined {
     const query = this.query();
 
     if (!(query instanceof StructuredQuery)) {
@@ -1344,6 +1347,7 @@ class QuestionInner {
   }
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default class Question extends memoizeClass<QuestionInner>("query")(
   QuestionInner,
 ) {

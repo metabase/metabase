@@ -493,6 +493,10 @@
     ;; Does the driver support uploading files
     :uploads
 
+    ;; Does the driver support schemas (aka namespaces) for tables
+    ;; DEFAULTS TO TRUE
+    :schemas
+
     ;; Does the driver support custom writeback actions. Drivers that support this must
     ;; implement [[execute-write-query!]]
     :actions/custom
@@ -515,6 +519,8 @@
   :hierarchy #'hierarchy)
 
 (defmethod supports? :default [_ _] false)
+
+(defmethod supports? [::driver :schemas] [_ _] true)
 
 (defmulti database-supports?
   "Does this driver and specific instance of a database support a certain `feature`?
@@ -842,6 +848,14 @@
   {:added "0.47.0", :arglists '([driver db-id table-name column-names values])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
+
+(defmulti syncable-schemas
+  "Returns the set of syncable schemas in the database (as strings)."
+  {:added "0.47.0", :arglists '([driver database])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod syncable-schemas ::driver [_ _] #{})
 
 (defmulti upload-type->database-type
   "Returns the database type for a given `metabase.upload` type."

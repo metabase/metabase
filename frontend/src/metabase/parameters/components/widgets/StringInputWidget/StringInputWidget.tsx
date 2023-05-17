@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { t } from "ttag";
-import { isEqual, isString, isEmpty } from "lodash";
+import { isEqual, isString, isEmpty } from "underscore";
 
 import TokenField, { parseStringValue } from "metabase/components/TokenField";
 import {
@@ -71,6 +71,7 @@ function StringInputWidget({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default StringInputWidget;
 
 function normalize(value: string[] | undefined): string[] {

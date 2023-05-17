@@ -34,6 +34,7 @@ describe("issue 17547", () => {
       cy.findByText("Edit").click();
     });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("AM").click();
     cy.button("Save changes").click();
 

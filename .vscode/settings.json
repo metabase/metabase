@@ -3,5 +3,8 @@
     "grunt.autoDetect": "off",
     "jake.autoDetect": "off",
     "gulp.autoDetect": "off",
-    "npm.autoDetect": "off"
+    "npm.autoDetect": "off",
+    "eslint.options": {
+      "rulePaths": ["frontend/lint/eslint-rules/"]
+    }
 }

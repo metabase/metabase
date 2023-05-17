@@ -1,5 +1,6 @@
-import { RowValue } from "./dataset";
 import { CardId } from "./card";
+import { RowValue } from "./dataset";
+import { LocalFieldReference } from "./query";
 
 export type StringParameterType =
   | "string/="
@@ -63,9 +64,36 @@ export interface ValuesSourceConfig {
   value_field?: unknown[];
 }
 
+export type VariableTarget = ["template-tag", string];
+export type ParameterVariableTarget = ["variable", VariableTarget];
+
+export type ParameterTarget =
+  | ParameterVariableTarget
+  | ParameterDimensionTarget;
+
+type DimensionTarget = LocalFieldReference;
+export type ParameterDimensionTarget = [
+  "dimension",
+  DimensionTarget | VariableTarget,
+];
+
+export type ParameterValueOrArray = string | number | Array<any>;
 export type ParameterValue = [RowValue];
 
 export interface ParameterValues {
   values: ParameterValue[];
   has_more_values: boolean;
 }
+
+export type ParameterMappingOptions = {
+  name: string;
+  sectionId: string;
+  combinedName?: string;
+  type: string;
+};
+
+export type ParameterQueryObject = {
+  type: string;
+  target: ParameterTarget;
+  value: ParameterValueOrArray;
+};

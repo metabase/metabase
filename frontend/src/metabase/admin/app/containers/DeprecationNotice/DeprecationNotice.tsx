@@ -1,8 +1,8 @@
 import { connect } from "react-redux";
 import _ from "underscore";
 import Databases from "metabase/entities/databases";
-import { Database } from "metabase-types/api";
 import { State } from "metabase-types/store";
+import Database from "metabase-lib/metadata/Database";
 import DeprecationNotice from "../../components/DeprecationNotice";
 import { disableNotice } from "../../actions";
 import {
@@ -25,6 +25,7 @@ const mapDispatchToProps = {
   onClose: disableNotice,
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   Databases.loadList({
     loadingAndErrorWrapper: false,

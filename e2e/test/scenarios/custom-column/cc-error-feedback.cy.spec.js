@@ -10,6 +10,7 @@ describe("scenarios > question > custom column > error feedback", () => {
     cy.signInAsAdmin();
 
     openProductsTable({ mode: "notebook" });
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Custom column").click();
   });
 
@@ -19,6 +20,7 @@ describe("scenarios > question > custom column > error feedback", () => {
       name: "Non-existent",
     });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains(/^Unknown Field: abcdef/i);
   });
 
@@ -28,6 +30,7 @@ describe("scenarios > question > custom column > error feedback", () => {
       name: "BadSubstring",
     });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains(/positive integer/i);
   });
 });

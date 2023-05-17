@@ -6,11 +6,11 @@ import { t } from "ttag";
 import { useMount, usePrevious } from "react-use";
 import { State } from "metabase-types/store";
 import type {
-  ForeignKey,
   ConcreteTableId,
+  DatasetData,
+  ForeignKey,
   VisualizationSettings,
 } from "metabase-types/api";
-import { DatasetData } from "metabase-types/types/Dataset";
 
 import Button from "metabase/core/components/Button";
 import { NotFound } from "metabase/containers/ErrorPages";
@@ -533,6 +533,7 @@ export function ObjectDetailBody({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(
   mapStateToProps,
   mapDispatchToProps,
