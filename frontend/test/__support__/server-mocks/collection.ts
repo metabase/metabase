@@ -104,46 +104,17 @@ function setupCollectionWithErrorById({
   error: string;
   status?: number;
 }) {
-  fetchMock.get(/api\/collection\/\d+/, () => {
-    return {
-      body: error,
-      status,
-    };
+  fetchMock.get(/api\/collection\/\d+|root/, {
+    body: error,
+    status,
   });
 }
 
-export function setupRootCollectionItemsEndpoint({
-  collections = [],
-  dashboards = [],
-}: {
-  collections: Collection[];
-  dashboards: Dashboard[];
-}) {
-  fetchMock.get("path:/api/collection/root/items", () => {
-    const rootDashboards = dashboards.filter(
-      dashboard => dashboard.collection_id === null,
-    );
-    const rootCollections = collections.filter(
-      collection => collection.location !== "/",
-    );
-    const data = [...rootDashboards, ...rootCollections];
-
-    return {
-      total: data.length,
-      data,
-    };
-  });
-}
-
-export function setupCollectionItemsEndpoint({
-  dashboards = [],
-}: {
-  dashboards: Dashboard[];
-}) {
-  fetchMock.get(/api\/collection\/\d+\/items/, url => {
+export function setupCollectionItemsEndpoint(dashboards: Dashboard[]) {
+  fetchMock.get(/api\/collection\/(\d+|root)\/items/, url => {
     const collectionIdParam = url.split("/")[5];
-
-    const collectionId = Number(collectionIdParam);
+    const collectionId =
+      collectionIdParam !== "root" ? Number(collectionIdParam) : null;
 
     const dashboardsOfCollection = dashboards.filter(
       dashboard => dashboard.collection_id === collectionId,
@@ -153,16 +124,5 @@ export function setupCollectionItemsEndpoint({
       total: dashboardsOfCollection.length,
       data: dashboardsOfCollection,
     };
-  });
-}
-
-export function setupPersonalCollectionItemsEndpont({
-  collections,
-}: {
-  collections: Collection[];
-}) {
-  fetchMock.get("path:/api/collection/personal/items", {
-    total: collections.length,
-    data: collections,
   });
 }

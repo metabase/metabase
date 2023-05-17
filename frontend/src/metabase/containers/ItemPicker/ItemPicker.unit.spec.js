@@ -3,8 +3,6 @@ import userEvent from "@testing-library/user-event";
 import {
   setupCollectionsEndpoints,
   setupCollectionItemsEndpoint,
-  setupRootCollectionItemsEndpoint,
-  setupPersonalCollectionItemsEndpont,
 } from "__support__/server-mocks";
 import {
   renderWithProviders,
@@ -95,12 +93,7 @@ async function setup({
   extraCollections = [],
   ...props
 } = {}) {
-  setupCollectionItemsEndpoint({ dashboards: Object.values(DASHBOARD) });
-  setupRootCollectionItemsEndpoint({
-    collections: Object.values(COLLECTION).concat(extraCollections),
-    dashboards: Object.values(DASHBOARD),
-  });
-  setupPersonalCollectionItemsEndpont({ collections: [COLLECTION.PERSONAL] });
+  setupCollectionItemsEndpoint(Object.values(DASHBOARD));
   setupCollectionsEndpoints(Object.values(COLLECTION).concat(extraCollections));
 
   const onChange = jest.fn();

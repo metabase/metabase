@@ -228,6 +228,8 @@ function ItemPicker({
         checkHasWritePermissionForItem={checkHasWritePermissionForItem}
         getCollectionIcon={getCollectionIcon}
         style={style}
+        // personal is a fake collection for admins that contains all other user's collections
+        allowFetch={openCollectionId !== "personal"}
       />
     </ScrollAwareLoadingAndErrorWrapper>
   );
