@@ -277,18 +277,17 @@ function hydrateSchemaDatabase(
 
 function hydrateSchemaTables(schema: Schema, metadata: Metadata): Table[] {
   const tableIds = schema.getPlainObject().tables;
-  return tableIds
-    ? // use the schema tables if they exist
-      tableIds.map(table => metadata.table(table)).filter(isNotNull)
-    : schema.database && schema.database.getTables().length > 0
-    ? // if the schema has a database with tables, use those
-      schema.database
-        .getTables()
-        .filter(table => table.schema_name === schema.name)
-    : // otherwise use any loaded tables that match the schema id
-      Object.values(metadata.tables).filter(
-        table => table.schema && table.schema.id === schema.id,
-      );
+  if (tableIds) {
+    return tableIds.map(table => metadata.table(table)).filter(isNotNull);
+  } else if (schema.database && schema.database.getTables().length > 0) {
+    return schema.database
+      .getTables()
+      .filter(table => table.schema_name === schema.name);
+  } else {
+    return Object.values(metadata.tables).filter(
+      table => table.schema && table.schema.id === schema.id,
+    );
+  }
 }
 
 function hydrateTableDatabase(
