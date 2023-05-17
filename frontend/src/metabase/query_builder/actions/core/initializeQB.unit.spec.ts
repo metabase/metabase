@@ -9,6 +9,7 @@ import * as questionActions from "metabase/questions/actions";
 import Databases from "metabase/entities/databases";
 import Snippets from "metabase/entities/snippets";
 import { setErrorPage } from "metabase/redux/app";
+import { getMetadata } from "metabase/selectors/metadata";
 
 import {
   Card,
@@ -19,14 +20,14 @@ import {
   User,
 } from "metabase-types/api";
 import { createMockUser } from "metabase-types/api/mocks";
+import {
+  ORDERS_ID,
+  SAMPLE_DB_ID,
+  createSampleDatabase,
+} from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
 
-import {
-  SAMPLE_DATABASE,
-  ORDERS,
-  state as entitiesState,
-  metadata,
-} from "__support__/sample_database_fixture";
+import { createMockEntitiesState } from "__support__/store";
 import {
   getAdHocQuestion,
   getSavedStructuredQuestion,
@@ -55,13 +56,17 @@ async function baseSetup({ user, location, params }: BaseSetupOpts) {
 
   const dispatch = jest.fn().mockReturnValue({ mock: "mock" });
 
-  const state = {
-    ...createMockState(),
-    ...entitiesState,
-  };
+  const state = createMockState({
+    entities: createMockEntitiesState({
+      databases: [createSampleDatabase()],
+    }),
+  });
+
   if (user) {
     state.currentUser = user;
   }
+
+  const metadata = getMetadata(state);
   const getState = () => state;
 
   await initializeQB(location, params)(dispatch, getState);
@@ -73,7 +78,7 @@ async function baseSetup({ user, location, params }: BaseSetupOpts) {
   const hasDispatchedInitAction = Array.isArray(actions);
   const result = hasDispatchedInitAction ? actions[0].payload : null;
 
-  return { dispatch, state, result };
+  return { dispatch, state, result, metadata };
 }
 
 function getLocationForQuestion(
@@ -634,7 +639,7 @@ describe("QB Actions > initializeQB", () => {
         });
 
         it("replaces snippet names with fresh ones from the backend", async () => {
-          const { result } = await setupSnippets({
+          const { result, metadata } = await setupSnippets({
             snippet: {
               id: SNIPPET["snippet-id"],
               name: "bar",
@@ -696,9 +701,9 @@ describe("QB Actions > initializeQB", () => {
     async function setupOrdersTable(
       opts: Omit<BlankSetupOpts, "db" | "table"> = {},
     ) {
-      const { result, ...rest } = await setupBlank({
-        db: SAMPLE_DATABASE?.id,
-        table: ORDERS.id,
+      const { result, metadata, ...rest } = await setupBlank({
+        db: SAMPLE_DB_ID,
+        table: ORDERS_ID,
         ...opts,
       });
 
@@ -709,16 +714,17 @@ describe("QB Actions > initializeQB", () => {
         question,
         query,
         result,
+        metadata,
         ...rest,
       };
     }
 
     it("constructs a card based on provided 'db' param", async () => {
       const expectedCard = Question.create({
-        databaseId: SAMPLE_DATABASE?.id,
+        databaseId: SAMPLE_DB_ID,
       }).card();
 
-      const { result } = await setupBlank({ db: SAMPLE_DATABASE?.id });
+      const { result, metadata } = await setupBlank({ db: SAMPLE_DB_ID });
       const question = new Question(result.card, metadata);
       const query = question.query() as StructuredQuery;
 
@@ -728,9 +734,8 @@ describe("QB Actions > initializeQB", () => {
     });
 
     it("constructs a card based on provided 'db' and 'table' params", async () => {
-      const expectedCard = ORDERS.question().card();
-
-      const { result } = await setupOrdersTable();
+      const { result, metadata } = await setupOrdersTable();
+      const expectedCard = metadata.table(ORDERS_ID)?.question().card();
 
       expect(result.card).toEqual(expectedCard);
       expect(result.originalCard).toBeUndefined();

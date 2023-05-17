@@ -1,10 +1,18 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
-import { PRODUCTS } from "__support__/sample_database_fixture";
+import { createMockMetadata } from "__support__/metadata";
+import {
+  createSampleDatabase,
+  PRODUCTS_ID,
+} from "metabase-types/api/mocks/presets";
 import Table from "./Table";
 
 describe("Table", () => {
-  const productsTable = new Table(PRODUCTS);
+  const metadata = createMockMetadata({
+    databases: [createSampleDatabase()],
+  });
+
+  const productsTable = metadata.table(PRODUCTS_ID) as Table;
 
   describe("numFields", () => {
     it("should return the number of fields", () => {
@@ -22,7 +30,7 @@ describe("Table", () => {
       const table = new Table({
         fks: [
           {
-            origin: { table: PRODUCTS },
+            origin: { table: productsTable },
           },
         ],
       });
