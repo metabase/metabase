@@ -62,7 +62,7 @@ const getFieldProps = (field: EngineField, override?: EngineFieldOverride) => {
     title: override?.title ?? field["display-name"],
     description: override?.description ?? field.description,
     placeholder: placeholder != null ? String(placeholder) : undefined,
-    encoding: override ? null : field["treat-before-posting"],
+    encoding: field["treat-before-posting"],
   };
 };
 
