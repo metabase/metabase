@@ -73,10 +73,11 @@
       (qp.streaming/streaming-response [context export-format]
         (qp-runner query info context)))))
 
-(api/defendpoint POST "/"
+#_{:clj-kondo/ignore [:deprecated-var]}
+(api/defendpoint-schema POST "/"
   "Execute a query and retrieve the results in the usual format. The query will not use the cache."
   [:as {{:keys [database] :as query} :body}]
-  {database [:maybe ms/PositiveInt]}
+  {database (s/maybe s/Int)}
   (run-query-async (update-in query [:middleware :js-int-to-string?] (fnil identity true))))
 
 
