@@ -253,7 +253,7 @@
                  "-Dmb.db.in.memory=true"
                  "-Dmb.jetty.join=false"
                  "-Dmb.field.filter.operators.enabled=true"
-                 "-Xss2K"
+                 "-Xss136K"
                  "-Dmb.api.key=test-api-key"
                  ;; Different port from normal `:dev` so you can run tests on a different server.
                  ;; TODO -- figure out how to do a random port like in the old project.clj?
