@@ -30,6 +30,7 @@
                               :where    [:and
                                          (date-part :year year)
                                          (date-part :month month)]})]
+    (println "RESULT COUNT " (count results))
     results))
 
 (api/defendpoint GET "/query_execution/:yyyy-mm"

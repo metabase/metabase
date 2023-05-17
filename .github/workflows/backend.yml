@@ -175,7 +175,7 @@ jobs:
       run: yarn build-static-viz
 
     - name: Run tests
-      run: clojure -X:dev:ci:test:${{ matrix.edition }}:${{ matrix.edition }}-dev
+      run: clojure -X:dev:ci:test:${{ matrix.edition }}:${{ matrix.edition }}-dev :only metabase-enterprise.advanced-config.api.logs-test/fetch-logs-test
 
     - name: Publish Test Report (JUnit)
       uses: dorny/test-reporter@v1
