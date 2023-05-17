@@ -1,4 +1,7 @@
 import {
+  createOrdersTable,
+  createPeopleTable,
+  createProductsTable,
   createSampleDatabase,
   ORDERS,
   ORDERS_ID,
@@ -8,27 +11,38 @@ import {
 import { createMockMetadata } from "__support__/metadata";
 import { createMockMetric, createMockSegment } from "metabase-types/api/mocks";
 
-const METRIC_ID = 1;
 const SEGMENT_ID = 1;
+const METRIC_ID = 1;
 
 const metadata = createMockMetadata({
-  databases: [createSampleDatabase()],
-  metrics: [
-    createMockMetric({
-      id: METRIC_ID,
-      definition: {
-        aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
-        "source-table": ORDERS_ID,
-      },
-    }),
-  ],
-  segments: [
-    createMockSegment({
-      id: SEGMENT_ID,
-      definition: {
-        filter: [">", ["field", ORDERS.TOTAL, null], 30],
-        "source-table": ORDERS_ID,
-      },
+  databases: [
+    createSampleDatabase({
+      tables: [
+        createPeopleTable(),
+        createProductsTable(),
+        createOrdersTable({
+          segments: [
+            createMockSegment({
+              id: SEGMENT_ID,
+              name: "Expensive Things",
+              definition: {
+                filter: [">", ["field", ORDERS.TOTAL, null], 30],
+                "source-table": ORDERS_ID,
+              },
+            }),
+          ],
+          metrics: [
+            createMockMetric({
+              id: METRIC_ID,
+              name: "Total Order Value",
+              definition: {
+                aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
+                "source-table": ORDERS_ID,
+              },
+            }),
+          ],
+        }),
+      ],
     }),
   ],
 });
@@ -43,8 +57,8 @@ const userName = metadata
   .foreign(metadata.field(PEOPLE.NAME))
   .mbql();
 
-const metric = metadata.metric(METRIC_ID).aggregationClause();
 const segment = metadata.segment(SEGMENT_ID).filterClause();
+const metric = metadata.metric(METRIC_ID).aggregationClause();
 
 const query = metadata.table(ORDERS_ID).query().addExpression("foo", 42);
 
@@ -224,14 +238,6 @@ const aggregation = [
   ["SumIf([Total] > 50, [Total])", undefined, "invalid sum-where arguments"],
   ["Count + Share((", undefined, "invalid share"],
 ];
-
-// Skipped for now: temporary, known regression
-/* eslint-disable no-unused-vars */
-const nested_aggregation = [
-  // should not compile:
-  ["Sum(Count)", undefined, "aggregation nested inside another aggregation"],
-];
-/* eslint-enable no-unused-vars */
 
 const filter = [
   ["[Total] < 10", ["<", total, 10], "filter operator"],
