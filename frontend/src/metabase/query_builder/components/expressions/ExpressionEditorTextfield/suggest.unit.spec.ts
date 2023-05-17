@@ -11,7 +11,6 @@ import {
 import { suggest as suggest_, Suggestion } from "./suggest";
 
 type Config = { text: string; type: string };
-// custom metadata defined in __support__/sample_database_fixture
 const SEGMENTS_ORDERS: Config[] = [
   { text: "[Expensive Things]", type: "segments" },
 ];
