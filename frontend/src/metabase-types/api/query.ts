@@ -15,14 +15,18 @@ export interface NativeQuery {
 
 export interface StructuredDatasetQuery {
   type: "query";
-  database: DatabaseId;
   query: StructuredQuery;
+
+  // Database is null when missing data permissions to the database
+  database: DatabaseId | null;
 }
 
 export interface NativeDatasetQuery {
   type: "native";
-  database: DatabaseId;
   native: NativeQuery;
+
+  // Database is null when missing data permissions to the database
+  database: DatabaseId | null;
 }
 
 export type DatasetQuery = StructuredDatasetQuery | NativeDatasetQuery;
