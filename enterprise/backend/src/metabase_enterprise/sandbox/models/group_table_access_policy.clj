@@ -32,7 +32,7 @@
 
 (methodical/defmethod t2/table-name :model/GroupTableAccessPolicy [_model] :sandboxes)
 
-(doto :model/PermissionsRevision
+(doto :model/GroupTableAccessPolicy
   (derive :metabase/model)
   ;;; only admins can work with GTAPs
   (derive ::mi/read-policy.superuser)
