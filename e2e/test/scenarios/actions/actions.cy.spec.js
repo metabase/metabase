@@ -13,10 +13,10 @@ describe("scenarios > actions", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    setActionsEnabledForDB(SAMPLE_DB_ID);
   });
 
   it("should not close Action Creator modal on outside click when editing dashboard", () => {
-    setActionsEnabledForDB(SAMPLE_DB_ID);
     addModelDashboard({
       name: "GUI Dashboard",
       alias: "dashboardId",
@@ -44,8 +44,11 @@ describe("scenarios > actions", () => {
   });
 
   it("should not close Action Creator modal on outside click when creating new action", () => {
-    setActionsEnabledForDB(SAMPLE_DB_ID);
-    addModelDashboard("GUI Dashboard", "dashboardId");
+    addModelDashboard({
+      name: "GUI Dashboard",
+      alias: "dashboardId",
+      modelDetails,
+    });
     cy.visit("/");
     cy.findByTestId("new-item-button").click();
     cy.findAllByTestId("action-menu-item").contains("Action").click();
@@ -54,8 +57,6 @@ describe("scenarios > actions", () => {
   });
 
   it("should not close SQL Snippet editor when clicking outside modal", () => {
-    setActionsEnabledForDB(SAMPLE_DB_ID);
-
     startNewNativeQuestion();
 
     cy.findByLabelText("snippet icon").click();
@@ -68,9 +69,7 @@ describe("scenarios > actions", () => {
     cy.get(".Modal").contains("Create your new snippet").should("exist");
   });
 
-  it("should only close SQL Snippet editor modal when clicking `cancel` or `X` ", () => {
-    setActionsEnabledForDB(SAMPLE_DB_ID);
-
+  it("should only close SQL Snippet editor modal when clicking `Cancel`", () => {
     startNewNativeQuestion();
 
     cy.findByLabelText("snippet icon").click();
@@ -87,6 +86,52 @@ describe("scenarios > actions", () => {
       });
 
     cy.get(".Modal").should("not.exist");
+  });
+
+  describe("editing model actions", () => {
+    it("should not close Action Editor when editing model actions", () => {
+      cy.request("PUT", "/api/card/1", {
+        name: "Orders Model",
+        dataset: true,
+      });
+
+      cy.visit("/model/1");
+      cy.findByTestId("qb-header-info-button").click();
+      cy.findByTestId("sidebar-right").within(() => {
+        cy.findByText("Model details").click();
+      });
+      cy.findByRole("tablist").within(() => {
+        cy.findByText("Actions").click();
+      });
+      cy.findByTestId("model-actions-header").within(() => {
+        cy.findByText("New action").click();
+      });
+      clickOutsideModal();
+      cy.get(".Modal").should("exist");
+    });
+
+    it("should only close Action Editor when editing model actions when 'Cancel' is clicked", () => {
+      cy.request("PUT", "/api/card/1", {
+        name: "Orders Model",
+        dataset: true,
+      });
+
+      cy.visit("/model/1");
+      cy.findByTestId("qb-header-info-button").click();
+      cy.findByTestId("sidebar-right").within(() => {
+        cy.findByText("Model details").click();
+      });
+      cy.findByRole("tablist").within(() => {
+        cy.findByText("Actions").click();
+      });
+      cy.findByTestId("model-actions-header").within(() => {
+        cy.findByText("New action").click();
+      });
+      cy.findByTestId("action-creator-body-container").within(() => {
+        cy.findByText("Cancel").click();
+      });
+      cy.get(".Modal").should("not.exist");
+    });
   });
 });
 
