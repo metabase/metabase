@@ -2,9 +2,11 @@
   (:require
    [clj-bom.core :as bom]
    [clojure.java.io :as io]
+   [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.models :refer [Field Table]]
    [metabase.query-processor :as qp]
    [metabase.sync :as sync]
@@ -558,3 +560,12 @@
             (testing "Check the data was uploaded into the table correctly"
               (is (= [["Malcolm"] ["\\."] ["Han"]]
                      (rows-for-table table))))))))))
+
+(deftest mysql-settings-test
+  (testing "Ensure that local_infile is set to true for better MySQL testing"
+    (mt/test-drivers [:mysql]
+      (is (= "ON" (-> (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+                      (jdbc/query
+                       ["show global variables like 'local_infile'"])
+                      first
+                      :value))))))
