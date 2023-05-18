@@ -39,10 +39,10 @@
     :model/QueryAction
     :metabase.models.activity/Activity
     :metabase.models.application-permissions-revision/ApplicationPermissionsRevision
-    :metabase.models.bookmark/BookmarkOrdering
-    :metabase.models.bookmark/CardBookmark
-    :metabase.models.bookmark/CollectionBookmark
-    :metabase.models.bookmark/DashboardBookmark
+    :model/BookmarkOrdering
+    :model/CardBookmark
+    :model/CollectionBookmark
+    :model/DashboardBookmark
     :metabase.models.collection.root/RootCollection
     :metabase.models.collection-permission-graph-revision/CollectionPermissionGraphRevision
     :model/DashboardCardSeries
@@ -67,7 +67,7 @@
     :metabase.models.secret/Secret
     :metabase.models.session/Session
     :metabase.models.task-history/TaskHistory
-    :metabase.models.timeline-event/TimelineEvent
+    :model/TimelineEvent
     :metabase.models.user/User
     :metabase.models.view-log/ViewLog
     :metabase-enterprise.sandbox.models.group-table-access-policy/GroupTableAccessPolicy})
