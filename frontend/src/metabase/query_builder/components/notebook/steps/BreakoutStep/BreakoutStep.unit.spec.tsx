@@ -1,5 +1,5 @@
 import userEvent from "@testing-library/user-event";
-import { render, screen, getIcon, within } from "__support__/ui";
+import { fireEvent, render, screen, getIcon, within } from "__support__/ui";
 import * as Lib from "metabase-lib";
 import {
   columnFinder,
@@ -211,7 +211,10 @@ describe("BreakoutStep", () => {
       userEvent.click(screen.getByText("Pick a column to group by"));
       const option = screen.getByRole("option", { name: "Created At" });
       userEvent.click(within(option).getByLabelText("Temporal bucket"));
-      userEvent.click(await screen.findByRole("menuitem", { name: "Quarter" }));
+
+      // For some reason, a click won't happen with `userEvent.click`
+      // if the test is running together with other tests.
+      fireEvent.click(await screen.findByRole("menuitem", { name: "Quarter" }));
 
       const breakout = getRecentBreakoutClause();
       expect(breakout.displayName).toBe("Created At: Quarter");
