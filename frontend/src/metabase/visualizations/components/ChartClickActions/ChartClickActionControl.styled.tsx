@@ -7,6 +7,8 @@ export const IconWrapper = styled.span`
   color: ${color("brand")};
 
   transition: all 200ms linear;
+
+  display: flex;
 `;
 
 export const ClickActionButtonIcon = styled(Icon)`

@@ -9,9 +9,7 @@ export const TextIcon = styled.span`
   color: currentColor;
 
   text-align: center;
-  vertical-align: middle;
 
   font-weight: 700;
   font-size: 1.25rem;
-  line-height: 1rem;
 `;
