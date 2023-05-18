@@ -9,6 +9,7 @@ import ModalContent from "metabase/components/ModalContent";
 
 import DashboardSelector from "metabase/components/DashboardSelector/DashboardSelector";
 import Button from "metabase/core/components/Button/Button";
+import { Collection } from "metabase-types/api";
 
 const CUSTOM_HOMEPAGE_SETTING_KEY = "custom-homepage";
 const CUSTOM_HOMEPAGE_DASHBOARD_SETTING_KEY = "custom-homepage-dashboard";
@@ -58,7 +59,13 @@ const CustomHomePageModal = ({ isOpen, onClose }: CustomHomePageModalProps) => {
         ]}
       >
         <p>{t`Pick one of your dashboards to serve as homepage. Users wihtout dashboard access will be directed to the default homepage. You can update or reset this anytime in Admin Settings > Settings > General`}</p>
-        <DashboardSelector value={dashboard} onChange={handleChange} />
+        <DashboardSelector
+          value={dashboard}
+          onChange={handleChange}
+          collectionFilter={(collection: Collection) =>
+            collection.personal_owner_id === null || collection.id === "root"
+          }
+        />
       </ModalContent>
     </Modal>
   );

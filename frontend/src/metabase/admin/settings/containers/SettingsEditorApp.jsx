@@ -2,6 +2,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { Link } from "react-router";
+import { bindActionCreators } from "@reduxjs/toolkit";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
@@ -12,8 +13,6 @@ import * as MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
 import AdminLayout from "metabase/components/AdminLayout";
 import { NotFound } from "metabase/containers/ErrorPages";
-
-import { refreshCurrentUser } from "metabase/redux/user";
 
 import { prepareAnalyticsValue } from "metabase/admin/settings/utils";
 import ErrorBoundary from "metabase/ErrorBoundary";
@@ -42,12 +41,17 @@ const mapStateToProps = (state, props) => {
   };
 };
 
-const mapDispatchToProps = {
-  initializeSettings,
-  updateSetting,
-  reloadSettings,
-  refreshCurrentUser,
-};
+const mapDispatchToProps = dispatch => ({
+  ...bindActionCreators(
+    {
+      initializeSettings,
+      updateSetting,
+      reloadSettings,
+    },
+    dispatch,
+  ),
+  dispatch,
+});
 
 class SettingsEditorApp extends Component {
   layout = null; // the reference to AdminLayout
@@ -69,7 +73,7 @@ class SettingsEditorApp extends Component {
   }
 
   updateSetting = async (setting, newValue) => {
-    const { settingValues, updateSetting, reloadSettings, refreshCurrentUser } =
+    const { settingValues, updateSetting, reloadSettings, dispatch } =
       this.props;
 
     this.saveStatusRef.current.setSaving();
@@ -105,8 +109,8 @@ class SettingsEditorApp extends Component {
         await reloadSettings();
       }
 
-      if (setting.requireUserUpdate) {
-        await refreshCurrentUser();
+      if (setting.postUpdateAction) {
+        await dispatch(setting.postUpdateAction());
       }
 
       this.saveStatusRef.current.setSaved();

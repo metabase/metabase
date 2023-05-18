@@ -4,6 +4,7 @@ import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/Tipp
 import DashboardPicker from "metabase/containers/DashboardPicker";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { useDashboardQuery } from "metabase/common/hooks";
+import { Collection } from "metabase-types/api";
 import {
   DashboardPickerContainer,
   DashboardPickerButton,
@@ -12,9 +13,14 @@ import {
 interface DashboardSelectorProps {
   onChange: (value?: number | null) => void;
   value?: number;
+  collectionFilter?: (collection: Collection) => boolean;
 }
 
-const DashboardSelector = ({ onChange, value }: DashboardSelectorProps) => {
+const DashboardSelector = ({
+  onChange,
+  value,
+  ...rest
+}: DashboardSelectorProps) => {
   const {
     data: dashboard,
     error,
@@ -23,6 +29,7 @@ const DashboardSelector = ({ onChange, value }: DashboardSelectorProps) => {
   return (
     <LoadingAndErrorWrapper loading={isLoading}>
       <TippyPopoverWithTrigger
+        sizeToFit
         maxWidth={600}
         renderTrigger={({ onClick }) => (
           <DashboardPickerButton onClick={onClick}>
@@ -37,6 +44,7 @@ const DashboardSelector = ({ onChange, value }: DashboardSelectorProps) => {
                 closePopover();
                 onChange(value);
               }}
+              {...rest}
             />
           </DashboardPickerContainer>
         )}

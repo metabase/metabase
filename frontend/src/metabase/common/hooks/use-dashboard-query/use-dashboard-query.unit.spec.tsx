@@ -1,5 +1,4 @@
 import React from "react";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { createMockDashboard } from "metabase-types/api/mocks";
 import { setupDashboardEndpoints } from "__support__/server-mocks";
 import {
@@ -16,11 +15,13 @@ const TestComponent = () => {
     id: TEST_DASHBOARD.id,
   });
 
-  if (isLoading || error || !data) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+  if (isLoading) {
+    return <div>Loading...</div>;
+  } else if (error) {
+    return <div>Error</div>;
+  } else {
+    return <div>{data?.name}</div>;
   }
-
-  return <div>{data.name}</div>;
 };
 
 const setup = () => {
@@ -38,5 +39,10 @@ describe("useDatabaseQuery", () => {
     setup();
     await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
     expect(screen.getByText(TEST_DASHBOARD.name)).toBeInTheDocument();
+  });
+  it("should return an error when it can't find a dashboard", async () => {
+    renderWithProviders(<TestComponent />);
+    await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
+    expect(screen.getByText("Error")).toBeInTheDocument();
   });
 });
