@@ -245,8 +245,8 @@
         (create-dashboard-revision! dashboard-id false :crowberto)
 
         ;; 5. arrange cards
-        (t2/update! DashboardCard :id (second dashcard-ids) {:col     2
-                                                             :row     2})
+        (t2/update! DashboardCard :id (second dashcard-ids) {:col 2
+                                                             :row 2})
         (create-dashboard-revision! dashboard-id false :crowberto))
 
       ;; 6. Move to a new collection

@@ -288,13 +288,13 @@
                   (map #(dissoc % :timestamp :id :model_id)))))))))
 
 (deftest generic-models-revision-title+description-test
-  (doseq [model [nil "Card" "Dashboard"]]
+  (doseq [model ["NonExistModel" "Card" "Dashboard"]]
    (testing (format "revision for %s models" (if (nil? model) "generic" model))
      (testing "creation"
        (is (= {:has_multiple_changes false
                :title                "created this."
                :description          "created this."}
-              (#'revision/revision-title+description :default
+              (#'revision/revision-title+description model
                                                      nil
                                                      {:object       {:name "New Object"}
                                                       :is_reversion false
@@ -304,7 +304,7 @@
        (is (= {:has_multiple_changes false
                :title                "reverted to an earlier version."
                :description          "reverted to an earlier version."}
-              (#'revision/revision-title+description :default
+              (#'revision/revision-title+description model
                                                      {:object       {:name "New Object"}
                                                       :is_reversion false
                                                       :is_creation  false}
@@ -316,7 +316,7 @@
        (is (= {:title                (deferred-tru "edited this.")
                :description          "changed the display from :table to :bar and turned this into a model."
                :has_multiple_changes true}
-              (#'revision/revision-title+description :default
+              (#'revision/revision-title+description model
                                                      {:object       {:dataset false
                                                                      :display :table}
                                                       :is_reversion false
@@ -330,7 +330,7 @@
        (is (= {:description          "turned this into a model."
                :title                "turned this into a model."
                :has_multiple_changes false}
-              (#'revision/revision-title+description :default
+              (#'revision/revision-title+description model
                                                      {:object       {:dataset     false
                                                                      :unknown_key false}
                                                       :is_reversion false

@@ -66,11 +66,17 @@
       (= (count parts) 2) (str (first parts) " " (deferred-tru "and")  " " (second parts) \.)
       :else               (str (first parts) ", " (build-sentence (rest parts))))))
 
-(def ^:private model-str->i18n-str
-  {"Dashboard" (deferred-tru "Dashboard")
-   "Card"      (deferred-tru "Card")
-   "Segment"   (deferred-tru "Segment")
-   "Metric"    (deferred-tru "Metric")})
+(defn ^:private model-str->i18n-str
+  [model-str]
+  (case model-str
+    "Dashboard" (deferred-tru "Dashboard")
+    "Card"      (deferred-tru "Card")
+    "Segment"   (deferred-tru "Segment")
+    "Metric"    (deferred-tru "Metric")
+
+    ;; for testing
+    "NonExistModel" (deferred-tru "NonExistModel")
+    "FakeCard"      (deferred-tru "FakeCard")))
 
 (defn diff-strings*
   "Create a seq of string describing how `o1` is different from `o2`.
@@ -78,7 +84,7 @@
   [model o1 o2]
   (when-let [[before after] (data/diff o1 o2)]
     (let [ks         (keys (or after before))
-          model-name (or (model-str->i18n-str model) model)]
+          model-name (model-str->i18n-str model)]
       (filter identity
               (map-indexed (fn [i k]
                              (diff-string k (k before) (k after)
