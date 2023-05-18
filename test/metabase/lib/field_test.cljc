@@ -136,13 +136,10 @@
     (let [field (f query -1)]
       (is (=? [:field {:temporal-unit :day-of-month} (meta/id :checkins :date)]
               field))
-      (testing "(lib/temporal-bucket <column-metadata>)"
-        (is (= :day-of-month
-               (lib/temporal-bucket (lib.metadata.calculation/metadata query -1 field)))))
       (testing "(lib/temporal-bucket <field-ref>)"
         (is (= {:lib/type :type/temporal-bucketing-option
                 :unit :day-of-month}
-               (lib/temporal-bucket-option field))))
+               (lib/temporal-bucket field))))
       (is (= "Date: Day of month"
              (lib.metadata.calculation/display-name query -1 field))))))
 
@@ -183,8 +180,9 @@
       (testing "should calculate correct effective type"
         (is (= effective-type
                (lib.metadata.calculation/type-of (:query temporal-bucketing-mock-metadata) x'))))
-      (testing "lib/temporal-bucket should return the unit"
-        (is (= unit
+      (testing "lib/temporal-bucket should return the option"
+        (is (= {:lib/type :type/temporal-bucketing-option
+                :unit     unit}
                (lib/temporal-bucket x')))
         (testing "should generate a :field ref with correct :temporal-unit"
           (is (=? [:field
@@ -197,7 +195,6 @@
       (testing "remove the temporal unit"
         (let [x'' (lib/with-temporal-bucket x' nil)]
           (is (nil? (lib/temporal-bucket x'')))
-          (is (nil? (lib/temporal-bucket-option x'')))
           (is (= x
                  x''))))
       (testing "change the temporal unit, THEN remove it"
@@ -226,7 +223,8 @@
                  (lib/available-temporal-buckets (:query temporal-bucketing-mock-metadata) x)))
           (testing "Bucketing with any of the options should work"
             (doseq [expected-option expected-options]
-              (is (= (:unit expected-option)
+              (is (= {:lib/type :type/temporal-bucketing-option
+                     :unit      (:unit expected-option)}
                      (lib/temporal-bucket (lib/with-temporal-bucket x expected-option))))))
           (testing "Bucket it, should still return the same available units"
             (is (= expected-options

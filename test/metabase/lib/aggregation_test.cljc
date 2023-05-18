@@ -240,9 +240,9 @@
               :base-type    :type/Integer
               :name         "sum_double-price"
               :display-name "Sum of double-price"}]
-            (lib/aggregations query)))
+            (lib/aggregations-metadata query)))
     (is (= :type/Integer
-           (lib/type-of query (first (lib/aggregations query)))))))
+           (lib/type-of query (first (lib/aggregations-metadata query)))))))
 
 (deftest ^:parallel aggregation-operator-test
   (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
@@ -418,7 +418,7 @@
                :name         "sum_PRICE"
                :display-name "Sum of Price"
                :lib/source   :source/aggregations}
-              (lib.metadata.calculation/metadata query (first (lib/aggregations query -1))))))))
+              (lib.metadata.calculation/metadata query (first (lib/aggregations-metadata query -1))))))))
 
 (deftest ^:parallel var-test
   (let [query (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
@@ -431,17 +431,17 @@
 (deftest ^:parallel aggregation-ref-display-info-test
   (let [query  (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
                    (lib/aggregate (lib/avg (lib/+ (lib/field "VENUES" "PRICE") 1))))
-        ag-uuid (:metabase.lib.aggregation/aggregation-uuid (first (lib/aggregations query)))
+        ag-uuid (:lib/source-uuid (first (lib/aggregations-metadata query)))
         ag-ref [:aggregation {:lib/uuid "8e76cd35-465d-4a2b-a03a-55857f07c4e0", :effective-type :type/Float} ag-uuid]]
     (is (= :type/Float
            (lib.metadata.calculation/type-of query ag-ref)))
     (is (= "Average of Price + 1"
            (lib.metadata.calculation/display-name query ag-ref)))
-    (is (=? {:lib/type                                   :metadata/field
-             :lib/source                                 :source/aggregations
-             :display-name                               "Average of Price + 1"
-             :effective-type                             :type/Float
-             :metabase.lib.aggregation/aggregation-uuid ag-uuid}
+    (is (=? {:lib/type        :metadata/field
+             :lib/source      :source/aggregations
+             :display-name    "Average of Price + 1"
+             :effective-type  :type/Float
+             :lib/source-uuid ag-uuid}
             (lib.metadata.calculation/metadata query ag-ref)))
     (is (=? {:display-name   "Average of Price + 1"
              :effective-type :type/Float}

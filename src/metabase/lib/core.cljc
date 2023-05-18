@@ -58,6 +58,7 @@
    aggregation-clause
    aggregation-operator-columns
    aggregations
+   aggregations-metadata
    available-aggregation-operators
    count
    avg
@@ -91,6 +92,7 @@
   [lib.expression
    expression
    expressions
+   expressions-metadata
    +
    -
    *
@@ -201,5 +203,4 @@
    describe-relative-datetime
    available-temporal-buckets
    temporal-bucket
-   temporal-bucket-option
    with-temporal-bucket])
