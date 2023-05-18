@@ -242,6 +242,6 @@
                                          :result_metadata updated}))))
                             (t2/reducible-query {:select [:id :result_metadata]
                                                  :from   [:report_card]
-                                                 :where  [:or
+                                                 :where  [:and
                                                           [:<> :result_metadata nil]
                                                           [:<> :result_metadata "[]"]]})))))
