@@ -57,13 +57,15 @@ export const QuestionList = React.memo(function QuestionList({
         return;
       }
 
+      const hasSearch = searchText.length > 0;
+
       const payload: GetCompatibleCardsPayload = {
         last_cursor,
         limit: PAGE_SIZE,
-        exclude_ids: Array.from(enabledCardIds.values()),
+        exclude_ids: hasSearch ? [] : Array.from(enabledCardIds.values()),
       };
 
-      if (searchText.length > 0) {
+      if (hasSearch) {
         payload.query = searchText;
       }
 

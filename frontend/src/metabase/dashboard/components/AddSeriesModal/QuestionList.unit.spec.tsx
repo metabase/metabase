@@ -83,10 +83,13 @@ describe("QuestionList", () => {
 
     const onSelect = jest.fn();
     const dashcard = createMockDashboardOrderedCard({ card_id: 1 });
-
+    const selectedCard = createMockCard({
+      id: 500,
+      name: "search text selected card",
+    });
     render(
       <QuestionList
-        enabledCards={[]}
+        enabledCards={[selectedCard]}
         dashcard={dashcard}
         onSelect={onSelect}
       />,
@@ -97,7 +100,7 @@ describe("QuestionList", () => {
     ).toBeInTheDocument();
 
     mockCompatibleCardsPage(
-      [createMockCard({ id: 1000, name: "search text card" })],
+      [selectedCard, createMockCard({ id: 1000, name: "search text card" })],
       {
         query: "search text",
       },
@@ -109,6 +112,9 @@ describe("QuestionList", () => {
     );
 
     expect(await screen.findByText("search text card")).toBeInTheDocument();
+    expect(
+      await screen.findByText("search text selected card"),
+    ).toBeInTheDocument();
   });
 
   it("should show added cards checked and allow selecting new ones", async () => {
