@@ -81,14 +81,16 @@ export function Text({
     );
   }
 
+  const hasNoContent = !content;
   const placeholder = t`You can use Markdown here, and include variables {{like_this}}`;
 
   // ! REMOVE ANY CLASSNAME STYLING IF POSSIBLE
   if (isEditing) {
     return (
       <EditModeContainer
-        className={cx(className)}
+        className={cx(className, "textEditContainer")}
         isPreviewing={isPreviewing}
+        hasNoContent={hasNoContent}
         onMouseEnter={() => setIsHovering(true)}
         onMouseLeave={() => setIsHovering(false)}
       >
@@ -101,7 +103,7 @@ export function Text({
               styles["text-card-markdown"],
               getSettingsStyle(settings),
               {
-                "text-light": !content,
+                "text-light": hasNoContent,
               },
             )}
           >

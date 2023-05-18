@@ -162,13 +162,13 @@
   box-shadow: 3px 3px 8px var(--color-shadow);
 }
 
-.TextCard.resizing {
+.TextCard.resizing .textEditContainer {
   border-radius: 8px;
   border: 1px solid var(--color-brand);
 }
 
-.TextCard:hover,
-.TextCard:focus-within {
+.TextCard:hover .textEditContainer,
+.TextCard:focus-within .textEditContainer {
   border-radius: 8px;
   border: 1px solid var(--color-brand);
 }

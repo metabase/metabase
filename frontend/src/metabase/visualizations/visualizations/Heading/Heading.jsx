@@ -29,18 +29,21 @@ export function Heading({
   const preventDragging = e => e.stopPropagation();
 
   const content = settings.text;
+  const hasNoContent = !content;
   const placeholder = t`Heading`;
 
   // ! REMOVE ANY CLASSNAME STYLING IF POSSIBLE
   if (isEditing) {
     return (
       <InputContainer
+        className="textEditContainer"
         isPreviewing={isPreviewing}
+        hasNoContent={hasNoContent}
         onMouseEnter={() => setIsHovering(true)}
         onMouseLeave={() => setIsHovering(false)}
       >
         {isPreviewing ? (
-          <HeadingContent hasNoContent={!content}>
+          <HeadingContent hasNoContent={hasNoContent}>
             {content || placeholder}
           </HeadingContent>
         ) : (

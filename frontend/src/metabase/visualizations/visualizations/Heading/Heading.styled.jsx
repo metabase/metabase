@@ -17,6 +17,12 @@ export const InputContainer = styled.div`
     `
     padding: 0 0.75em;
   `}
+  ${({ hasNoContent }) =>
+    hasNoContent &&
+    `
+      border: 1px solid ${color("brand")};
+      border-radius: 8px;
+   `}
 `;
 
 export const TextInput = styled.input`
