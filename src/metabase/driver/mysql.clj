@@ -623,7 +623,7 @@
 
 (defn- sanitize-file-name
   [name]
-  (str/replace name #"[^\w/\\.]" ""))
+  (str/replace name #"[^\w/\\.\s\-]" ""))
 
 (defn- format-load
   [_clause [file-path table-name]]
@@ -649,12 +649,18 @@
     v))
 
 (defn- row->tsv
-  [row]
+  [column-count row]
+  (when (not= column-count (count row))
+    (throw (Exception. (format "ERROR: missing data in row \"%s\"" (str/join "," row)))))
   (->> row
        (map sanitize-value)
        (str/join "\t")))
 
 (defn- get-global-variable
+  "The value of the given global variable in the DB. Does not do any type coercion, so, e.g., booleans come back as
+  \"ON\" and \"OFF\".
+
+  Only public for testing purposes."
   [db-id var-name]
   (:value
    (first
@@ -667,12 +673,12 @@
   ;; https://dev.mysql.com/doc/refman/8.0/en/load-data.html#load-data-local
   (if (not= (get-global-variable db-id "local_infile") "ON")
     ;; If it isn't turned on, fall back to the generic "INSERT INTO ..." way
-    (driver/insert-into :sql-jdbc db-id table-name column-names values)
+    ((get-method driver/insert-into :sql-jdbc) driver db-id table-name column-names values)
     (let [temp-file (File/createTempFile table-name ".tsv")
           file-path (.getAbsolutePath temp-file)]
       (try
         (let [tsv (->> values
-                       (map row->tsv)
+                       (map (partial row->tsv (count column-names)))
                        (str/join "\n"))
               sql (sql/format {::load   [file-path (keyword table-name)]
                                :columns (map keyword column-names)}

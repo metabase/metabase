@@ -6,6 +6,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.driver.mysql :as mysql]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.models :refer [Field Table]]
    [metabase.query-processor :as qp]
@@ -441,8 +442,9 @@
     (mt/with-empty-db
       (testing "Can't upload a CSV with missing values"
         (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo (if (= driver/*driver* :postgres)
-                                          #"ERROR: missing data for column \"column_that_doesnt_have_a_value\""
+             clojure.lang.ExceptionInfo (condp = driver/*driver*
+                                          :postgres #"ERROR: missing data for column \"column_that_doesnt_have_a_value\""
+                                          :mysql #"ERROR: missing data in row \".*\""
                                           #"Error executing write query: ")
              (upload/load-from-csv
               driver/*driver*
@@ -569,3 +571,26 @@
                        ["show global variables like 'local_infile'"])
                       first
                       :value))))))
+
+(deftest load-from-csv-mysql-slow-way-test
+  (testing "MySQL upload should work fine with local_infile disabled"
+    (mt/test-drivers [:mysql]
+      (mt/with-empty-db
+        (with-redefs [mysql/get-global-variable (constantly "OFF")]
+          (upload/load-from-csv
+           driver/*driver*
+           (mt/id)
+           "upload_test"
+           (csv-file-with ["id,ship,captain"
+                           "1,Serenity,Malcolm Reynolds"
+                           "2,Millennium Falcon,Han Solo"])))
+        (testing "Table and Fields exist after sync"
+          (sync/sync-database! (mt/db))
+          (let [table (t2/select-one Table :db_id (mt/id))]
+            (is (=? {:name #"(?i)upload_test"} table))
+            (testing "Check the data was uploaded into the table correctly"
+              (is (= ["id", "ship", "captain"]
+                     (column-names-for-table table)))
+              (is (= [[1 "Serenity" "Malcolm Reynolds"]
+                      [2 "Millennium Falcon" "Han Solo"]]
+                     (rows-for-table table))))))))))
