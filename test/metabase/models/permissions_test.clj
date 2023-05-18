@@ -602,6 +602,29 @@
              (perms/set-has-partial-permissions-for-set? perms paths))))))
 
 
+;;; -------------------------------------- set-has-any-native-query-permissions? ---------------------------------------
+
+(deftest set-has-any-native-query-permissions?-test
+  (doseq [[expected inputs]
+          {true
+           [#{"/"}
+            #{"/db/1/"}
+            #{"/db/1/native/"}
+            #{"/db/1/" "/db/2/schema/PUBLIC/table/1/"}
+            #{"/db/1/native/" "/db/2/schema/PUBLIC/table/1/"}]
+
+           false
+           [#{}
+            #{"/db/1"}
+            #{"/db/1/native"}
+            #{"/db/1/schema/"}
+            #{"/db/1/schema/PUBLIC/table/1/"}]}
+          input inputs]
+    (testing (pr-str (list 'set-has-any-native-query-permissions?-test input))
+      (is (= expected
+             (perms/set-has-any-native-query-permissions? input))))))
+
+
 ;;; ------------------------------------ perms-objects-set-for-parent-collection -------------------------------------
 
 (deftest perms-objects-set-for-parent-collection-test
