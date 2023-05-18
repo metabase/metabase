@@ -5,7 +5,6 @@ import {
   PopoverBody,
   StyledList,
   StyledListItem,
-  StyledDiv,
 } from "./TextChoicesPopover.styled";
 
 interface TextChoicesPopoverProps {
@@ -49,7 +48,5 @@ interface TextOptionItemProps {
 }
 
 const TextOptionItem = ({ option, onClick }: TextOptionItemProps) => (
-  <StyledListItem onClick={onClick}>
-    <StyledDiv>{option}</StyledDiv>
-  </StyledListItem>
+  <StyledListItem onClick={onClick}>{option}</StyledListItem>
 );

@@ -17,17 +17,10 @@ export const StyledListItem = styled.li`
   padding: 0.7rem 1.5rem 0.7rem 0.75rem;
   border-radius: 6px;
   cursor: pointer;
+  font-weight: 700;
 
   :hover {
     color: ${color("brand")};
     background-color: ${alpha("brand", 0.09)};
-
-    * {
-      color: ${color("brand")};
-    }
   }
-`;
-
-export const StyledDiv = styled.div`
-  font-weight: 700;
 `;
