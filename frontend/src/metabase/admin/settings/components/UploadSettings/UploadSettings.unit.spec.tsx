@@ -1,13 +1,18 @@
 import React from "react";
 import userEvent from "@testing-library/user-event";
 
+import { checkNotNull } from "metabase/core/utils/types";
+import { getMetadata } from "metabase/selectors/metadata";
+import { Database } from "metabase-types/api";
 import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
+import { createMockState } from "metabase-types/store/mocks";
+import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { setupSchemaEndpoints } from "__support__/server-mocks";
 
-import { UploadSettingsView, UploadSettingProps } from "./UploadSettings";
+import { UploadSettingsView, UploadSettings } from "./UploadSettings";
 
-const dbs = [
+const TEST_DATABASES = [
   createMockDatabase({
     id: 1,
     name: "Db Uno",
@@ -19,6 +24,7 @@ const dbs = [
       createMockTable({ schema: "uploads" }),
       createMockTable({ schema: "top_secret" }),
     ],
+    features: ["schemas"],
   }),
   createMockDatabase({
     id: 2,
@@ -32,6 +38,7 @@ const dbs = [
     engine: "h2",
     settings: { "database-enable-actions": true },
     tables: [createMockTable({ schema: "public" })],
+    features: ["schemas"],
   }),
   createMockDatabase({
     id: 4,
@@ -45,11 +52,30 @@ const dbs = [
     engine: "h2",
     settings: { "database-enable-actions": true },
     tables: [],
+    features: ["schemas"],
   }),
 ];
 
-function setup(options?: Partial<UploadSettingProps>) {
-  dbs.forEach(db => {
+interface SetupOpts {
+  databases?: Database[];
+  settings?: UploadSettings;
+}
+
+function setup({
+  databases = TEST_DATABASES,
+  settings = {
+    uploads_enabled: false,
+    uploads_database_id: null,
+    uploads_schema_name: null,
+    uploads_table_prefix: null,
+  },
+}: SetupOpts = {}) {
+  const state = createMockState({
+    entities: createMockEntitiesState({ databases }),
+  });
+  const metadata = getMetadata(state);
+
+  databases.forEach(db => {
     setupSchemaEndpoints(db);
   });
 
@@ -60,13 +86,8 @@ function setup(options?: Partial<UploadSettingProps>) {
 
   renderWithProviders(
     <UploadSettingsView
-      databases={dbs}
-      settings={{
-        uploads_enabled: false,
-        uploads_database_id: null,
-        uploads_schema_name: null,
-        uploads_table_prefix: null,
-      }}
+      databases={databases.map(({ id }) => checkNotNull(metadata.database(id)))}
+      settings={settings}
       updateSettings={updateSpy}
       saveStatusRef={{
         current: {
@@ -75,7 +96,6 @@ function setup(options?: Partial<UploadSettingProps>) {
           clear: clearSpy,
         } as any,
       }}
-      {...options}
     />,
     { storeInitialState: {} },
   );
@@ -91,7 +111,7 @@ describe("Admin > Settings > UploadSetting", () => {
   });
 
   it("should show an empty state if there are no actions-enabled databases", async () => {
-    setup({ databases: [dbs[3]] });
+    setup({ databases: [TEST_DATABASES[3]] });
     expect(
       screen.getByText("No actions-enabled databases available."),
     ).toBeInTheDocument();
@@ -191,10 +211,8 @@ describe("Admin > Settings > UploadSetting", () => {
   });
 
   it("should show an error if enabling fails", async () => {
-    const updateSpy = jest.fn(() => Promise.reject(new Error("Oh no!")));
-    setup({
-      updateSettings: updateSpy,
-    });
+    const { updateSpy } = setup();
+    updateSpy.mockImplementation(() => Promise.reject(new Error("Oh no!")));
     userEvent.click(await screen.findByText("Select a database"));
 
     const dbItem = await screen.findByText("Db Dos");
@@ -236,16 +254,15 @@ describe("Admin > Settings > UploadSetting", () => {
   });
 
   it("should show an error if disabling fails", async () => {
-    const updateSpy = jest.fn(() => Promise.reject(new Error("Oh no!")));
-    const { savingSpy, clearSpy, savedSpy } = setup({
+    const { updateSpy, savingSpy, clearSpy, savedSpy } = setup({
       settings: {
         uploads_enabled: true,
         uploads_database_id: 2,
         uploads_schema_name: null,
         uploads_table_prefix: null,
       },
-      updateSettings: updateSpy,
     });
+    updateSpy.mockImplementation(() => Promise.reject(new Error("Oh no!")));
     userEvent.click(
       await screen.findByRole("button", { name: "Disable uploads" }),
     );
@@ -451,15 +468,17 @@ describe("Admin > Settings > UploadSetting", () => {
     });
 
     it("should show a loading spinner on submit", async () => {
-      setup({
+      const { updateSpy } = setup({
         settings: {
           uploads_enabled: true,
           uploads_database_id: 2,
           uploads_schema_name: null,
           uploads_table_prefix: "up_",
         },
-        updateSettings: () => new Promise(resolve => setTimeout(resolve, 500)),
       });
+      updateSpy.mockImplementation(
+        () => new Promise(resolve => setTimeout(resolve, 500)),
+      );
 
       const prefixInput = await screen.findByPlaceholderText("uploaded_");
       userEvent.clear(prefixInput);
@@ -476,15 +495,17 @@ describe("Admin > Settings > UploadSetting", () => {
     });
 
     it("should reset button loading state on input change", async () => {
-      setup({
+      const { updateSpy } = setup({
         settings: {
           uploads_enabled: true,
           uploads_database_id: 2,
           uploads_schema_name: null,
           uploads_table_prefix: "up_",
         },
-        updateSettings: () => new Promise(resolve => setTimeout(resolve, 500)),
       });
+      updateSpy.mockImplementation(
+        () => new Promise(resolve => setTimeout(resolve, 500)),
+      );
 
       const prefixInput = await screen.findByPlaceholderText("uploaded_");
       userEvent.clear(prefixInput);

@@ -69,8 +69,10 @@ describe("issue 17211", () => {
     filterWidget().click();
 
     cy.findByPlaceholderText("Search by City").type("abb");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Abbeville").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("No matching City found").should("not.exist");
   });
 });

@@ -1,6 +1,9 @@
 import moment from "moment-timezone";
-
-import { metadata, PRODUCTS } from "__support__/sample_database_fixture";
+import { createMockMetadata } from "__support__/metadata";
+import {
+  createSampleDatabase,
+  PRODUCTS,
+} from "metabase-types/api/mocks/presets";
 import {
   dateParameterValueToMBQL,
   stringParameterValueToMBQL,
@@ -9,6 +12,10 @@ import {
 } from "metabase-lib/parameters/utils/mbql";
 
 describe("parameters/utils/mbql", () => {
+  const metadata = createMockMetadata({
+    databases: [createSampleDatabase()],
+  });
+
   describe("dateParameterValueToMBQL", () => {
     it("should parse past30days", () => {
       expect(dateParameterValueToMBQL("past30days", null)).toEqual([
@@ -271,20 +278,20 @@ describe("parameters/utils/mbql", () => {
       expect(
         fieldFilterParameterToMBQLFilter(
           {
-            target: ["dimension", ["field", PRODUCTS.CREATED_AT.id, null]],
+            target: ["dimension", ["field", PRODUCTS.CREATED_AT, null]],
             type: "date/single",
             value: "01-01-2020",
           },
           metadata,
         ),
-      ).toEqual(["=", ["field", PRODUCTS.CREATED_AT.id, null], "01-01-2020"]);
+      ).toEqual(["=", ["field", PRODUCTS.CREATED_AT, null], "01-01-2020"]);
     });
 
     it("should return mbql filter for string parameter", () => {
       expect(
         fieldFilterParameterToMBQLFilter(
           {
-            target: ["dimension", ["field", PRODUCTS.CATEGORY.id, null]],
+            target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
             type: "string/contains",
             value: "foo",
           },
@@ -292,7 +299,7 @@ describe("parameters/utils/mbql", () => {
         ),
       ).toEqual([
         "contains",
-        ["field", PRODUCTS.CATEGORY.id, null],
+        ["field", PRODUCTS.CATEGORY, null],
         "foo",
         {
           "case-sensitive": false,
@@ -302,7 +309,7 @@ describe("parameters/utils/mbql", () => {
       expect(
         fieldFilterParameterToMBQLFilter(
           {
-            target: ["dimension", ["field", PRODUCTS.CATEGORY.id, null]],
+            target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
             type: "string/starts-with",
             value: ["foo"],
           },
@@ -310,7 +317,7 @@ describe("parameters/utils/mbql", () => {
         ),
       ).toEqual([
         "starts-with",
-        ["field", PRODUCTS.CATEGORY.id, null],
+        ["field", PRODUCTS.CATEGORY, null],
         "foo",
         { "case-sensitive": false },
       ]);
@@ -320,48 +327,48 @@ describe("parameters/utils/mbql", () => {
       expect(
         fieldFilterParameterToMBQLFilter(
           {
-            target: ["dimension", ["field", PRODUCTS.CATEGORY.id, null]],
+            target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
             type: "category",
             value: ["foo", "bar"],
           },
           metadata,
         ),
-      ).toEqual(["=", ["field", PRODUCTS.CATEGORY.id, null], "foo", "bar"]);
+      ).toEqual(["=", ["field", PRODUCTS.CATEGORY, null], "foo", "bar"]);
     });
 
     it("should return mbql filter for number parameter", () => {
       expect(
         fieldFilterParameterToMBQLFilter(
           {
-            target: ["dimension", ["field", PRODUCTS.RATING.id, null]],
+            target: ["dimension", ["field", PRODUCTS.RATING, null]],
             type: "number/=",
             value: [111],
           },
           metadata,
         ),
-      ).toEqual(["=", ["field", PRODUCTS.RATING.id, null], 111]);
+      ).toEqual(["=", ["field", PRODUCTS.RATING, null], 111]);
 
       expect(
         fieldFilterParameterToMBQLFilter(
           {
-            target: ["dimension", ["field", PRODUCTS.RATING.id, null]],
+            target: ["dimension", ["field", PRODUCTS.RATING, null]],
             type: "number/=",
             value: 111,
           },
           metadata,
         ),
-      ).toEqual(["=", ["field", PRODUCTS.RATING.id, null], 111]);
+      ).toEqual(["=", ["field", PRODUCTS.RATING, null], 111]);
 
       expect(
         fieldFilterParameterToMBQLFilter(
           {
-            target: ["dimension", ["field", PRODUCTS.RATING.id, null]],
+            target: ["dimension", ["field", PRODUCTS.RATING, null]],
             type: "number/between",
             value: [1, 100],
           },
           metadata,
         ),
-      ).toEqual(["between", ["field", PRODUCTS.RATING.id, null], 1, 100]);
+      ).toEqual(["between", ["field", PRODUCTS.RATING, null], 1, 100]);
     });
   });
 });

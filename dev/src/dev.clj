@@ -61,7 +61,7 @@
   []
   (server/start-web-server! #'handler/app)
   (when config/is-dev?
-    (malli-dev/start!))
+    (with-out-str (malli-dev/start!)))
   (when-not @initialized?
     (init!)))
 
@@ -164,7 +164,7 @@
    (mdb.setup/migrate! (mdb.connection/db-type) (mdb.connection/data-source)
                        direction version)))
 
-(methodical/defmethod t2.connection/do-with-connection :metabase.models.database/Database
+(methodical/defmethod t2.connection/do-with-connection :model/Database
   "Support running arbitrary queries against data warehouse DBs for easy REPL debugging. Only works for SQL+JDBC drivers
   right now!
 

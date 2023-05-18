@@ -17,7 +17,7 @@ import EditBar from "metabase/components/EditBar";
 import HeaderModal from "metabase/components/HeaderModal";
 import {
   EditWarning,
-  HeaderRoot,
+  HeaderRow,
   HeaderBadges,
   HeaderContent,
   HeaderButtonsContainer,
@@ -25,9 +25,10 @@ import {
   HeaderLastEditInfoLabel,
   HeaderCaption,
   HeaderCaptionContainer,
-} from "./DashboardHeader.styled";
+} from "./DashboardHeaderView.styled";
+import { DashboardTabs } from "./DashboardTabs/DashboardTabs";
 
-interface DashboardHeaderProps {
+interface DashboardHeaderViewProps {
   editingTitle: string;
   editingSubtitle: string;
   editingButtons: JSX.Element[];
@@ -41,7 +42,6 @@ interface DashboardHeaderProps {
   dashboard: Dashboard;
   isBadgeVisible: boolean;
   isLastEditInfoVisible: boolean;
-  children: React.ReactNode;
   onHeaderModalDone: () => null;
   onHeaderModalCancel: () => null;
   onLastEditInfoClick: () => null;
@@ -49,7 +49,7 @@ interface DashboardHeaderProps {
   setDashboardAttribute: (prop: string, value: string) => null;
 }
 
-const DashboardHeader = ({
+function DashboardHeaderView({
   editingTitle = "",
   editingSubtitle = "",
   editingButtons = [],
@@ -61,13 +61,12 @@ const DashboardHeader = ({
   isNavBarOpen,
   dashboard,
   isLastEditInfoVisible,
-  children,
   onHeaderModalDone,
   onHeaderModalCancel,
   onLastEditInfoClick,
   onSave,
   setDashboardAttribute,
-}: DashboardHeaderProps) => {
+}: DashboardHeaderViewProps) {
   const [headerHeight, setHeaderHeight] = useState(0);
   const [showSubHeader, setShowSubHeader] = useState(true);
   const header = useRef<HTMLDivElement>(null);
@@ -134,40 +133,46 @@ const DashboardHeader = ({
         onDone={onHeaderModalDone}
         onCancel={onHeaderModalCancel}
       />
-      <HeaderRoot
-        isNavBarOpen={isNavBarOpen}
-        className={cx("QueryBuilder-section", headerClassName)}
-        ref={header}
-      >
-        <HeaderContent hasSubHeader showSubHeader={showSubHeader}>
-          <HeaderCaptionContainer>
-            <HeaderCaption
-              key={dashboard.name}
-              initialValue={dashboard.name}
-              placeholder={t`Add title`}
-              isDisabled={!dashboard.can_write}
-              data-testid="dashboard-name-heading"
-              onChange={handleUpdateCaption}
-            />
-          </HeaderCaptionContainer>
-          <HeaderBadges>
-            {isLastEditInfoVisible && (
-              <HeaderLastEditInfoLabel
-                item={dashboard}
-                onClick={onLastEditInfoClick}
-                className=""
+      <div>
+        <HeaderRow
+          isNavBarOpen={isNavBarOpen}
+          className={cx("QueryBuilder-section", headerClassName)}
+          data-testid="dashboard-header"
+          ref={header}
+        >
+          <HeaderContent hasSubHeader showSubHeader={showSubHeader}>
+            <HeaderCaptionContainer>
+              <HeaderCaption
+                key={dashboard.name}
+                initialValue={dashboard.name}
+                placeholder={t`Add title`}
+                isDisabled={!dashboard.can_write}
+                data-testid="dashboard-name-heading"
+                onChange={handleUpdateCaption}
               />
-            )}
-          </HeaderBadges>
-        </HeaderContent>
+            </HeaderCaptionContainer>
+            <HeaderBadges>
+              {isLastEditInfoVisible && (
+                <HeaderLastEditInfoLabel
+                  item={dashboard}
+                  onClick={onLastEditInfoClick}
+                  className=""
+                />
+              )}
+            </HeaderBadges>
+          </HeaderContent>
 
-        <HeaderButtonsContainer isNavBarOpen={isNavBarOpen}>
-          {_headerButtons}
-        </HeaderButtonsContainer>
-      </HeaderRoot>
-      {children}
+          <HeaderButtonsContainer isNavBarOpen={isNavBarOpen}>
+            {_headerButtons}
+          </HeaderButtonsContainer>
+        </HeaderRow>
+        <HeaderRow isNavBarOpen={isNavBarOpen}>
+          <DashboardTabs isEditing={isEditing} />
+        </HeaderRow>
+      </div>
     </div>
   );
-};
+}
 
-export default DashboardHeader;
+// eslint-disable-next-line import/no-default-export -- deprecated usage
+export default DashboardHeaderView;

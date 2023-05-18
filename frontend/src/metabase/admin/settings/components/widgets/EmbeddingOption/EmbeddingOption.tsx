@@ -18,6 +18,7 @@ interface EmbeddingOptionProps {
   };
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default function EmbeddingOption({ setting }: EmbeddingOptionProps) {
   return (
     <Link

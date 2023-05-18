@@ -117,6 +117,7 @@ function App({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect<AppStateProps, unknown, AppRouterOwnProps, State>(
   mapStateToProps,
   mapDispatchToProps,

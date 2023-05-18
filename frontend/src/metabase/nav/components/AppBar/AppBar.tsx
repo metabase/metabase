@@ -32,4 +32,5 @@ const AppBar = (props: AppBarProps): JSX.Element => {
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default AppBar;

@@ -38,4 +38,5 @@ const NotFoundFallbackPage = ({
   return <NotFound />;
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(null, mapDispatchToProps)(NotFoundFallbackPage);
