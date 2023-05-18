@@ -24,8 +24,7 @@ const rootTransparentBackgroundStyle = css`
   box-shadow: none !important;
 `;
 
-// ! Do I need to account for night modes theme colors?
-const editingTransparentBackgroundStyle = css`
+const editingAutoPreviewStyle = css`
   background: ${color("bg-light")};
   box-shadow: none !important;
 `;
@@ -39,7 +38,7 @@ export const DashCardRoot = styled.div<DashCardRootProps>`
     hasHiddenBackground && rootTransparentBackgroundStyle}
 
   ${({ shouldAutoPreviewInEditing }) =>
-    shouldAutoPreviewInEditing && editingTransparentBackgroundStyle}
+    shouldAutoPreviewInEditing && editingAutoPreviewStyle}
 `;
 
 export const DashboardCardActionsPanel = styled.div`
