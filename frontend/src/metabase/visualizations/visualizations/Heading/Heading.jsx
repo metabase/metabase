@@ -36,9 +36,10 @@ export function Heading({
   if (isEditing) {
     return (
       <InputContainer
-        className="textEditContainer"
+        className={cx("textEditContainer", {
+          hasNoContent: hasNoContent,
+        })}
         isPreviewing={isPreviewing}
-        hasNoContent={hasNoContent}
         onMouseEnter={() => setIsHovering(true)}
         onMouseLeave={() => setIsHovering(false)}
       >

@@ -12,12 +12,6 @@ export const EditModeContainer = styled.div`
   pointer-events: auto;
 
   ${({ isPreviewing }) => !isPreviewing && "padding: 0.5em 0.75em;"}
-  ${({ hasNoContent }) =>
-    hasNoContent &&
-    `
-      border: 1px solid ${color("brand")};
-      border-radius: 8px;
-   `}
 `;
 
 export const TextInput = styled.textarea`

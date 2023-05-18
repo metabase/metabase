@@ -88,9 +88,10 @@ export function Text({
   if (isEditing) {
     return (
       <EditModeContainer
-        className={cx(className, "textEditContainer")}
+        className={cx(className, "textEditContainer", {
+          hasNoContent: hasNoContent,
+        })}
         isPreviewing={isPreviewing}
-        hasNoContent={hasNoContent}
         onMouseEnter={() => setIsHovering(true)}
         onMouseLeave={() => setIsHovering(false)}
       >
