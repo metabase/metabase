@@ -9,6 +9,7 @@ import { ORDERS_ID, SAMPLE_DB_ID } from "metabase-types/api/mocks/presets";
 import { INITIAL_DASHBOARD_STATE } from "metabase/dashboard/constants";
 import { getDefaultTab } from "metabase/dashboard/actions";
 
+import { INPUT_WRAPPER_TEST_ID } from "metabase/core/components/TabButton";
 import { DashboardTabs } from "./DashboardTabs";
 
 const TEST_CARD = createMockCard({
@@ -282,6 +283,19 @@ describe("DashboardTabs", () => {
         setup();
         const newName = "A cool new name";
         await renameTab(1, newName);
+
+        expect(queryTab(newName)).toBeInTheDocument();
+      });
+
+      it("should allow renaming via double click", async () => {
+        setup();
+        const newName = "Another cool new name";
+        const inputWrapperEl = screen.getAllByTestId(INPUT_WRAPPER_TEST_ID)[0];
+        userEvent.dblClick(inputWrapperEl);
+
+        const inputEl = screen.getByRole("textbox", { name: "Page 1" });
+        userEvent.type(inputEl, newName);
+        fireEvent.keyPress(inputEl, { key: "Enter", charCode: 13 });
 
         expect(queryTab(newName)).toBeInTheDocument();
       });
