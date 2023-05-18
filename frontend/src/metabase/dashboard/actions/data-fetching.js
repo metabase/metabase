@@ -24,12 +24,14 @@ import {
 } from "metabase/services";
 
 import { getMetadata } from "metabase/selectors/metadata";
+import { showAutoApplyFiltersToast } from "metabase/dashboard/actions/parameters";
 import { getParameterValuesBySlug } from "metabase-lib/parameters/utils/parameter-values";
 import { applyParameters } from "metabase-lib/queries/utils/card";
 import {
   getDashboardComplete,
   getParameterValues,
   getLoadingDashCards,
+  getCanShowAutoApplyFiltersToast,
 } from "../selectors";
 
 import {
@@ -40,9 +42,8 @@ import {
   fetchDataOrError,
   getDatasetQueryParams,
 } from "../utils";
+import { DASHBOARD_SLOW_TIMEOUT } from "../constants";
 import { loadMetadataForDashboard } from "./metadata";
-
-const DATASET_SLOW_TIMEOUT = 15 * 1000;
 
 // normalizr schemas
 const dashcard = new schema.Entity("dashcard");
@@ -102,6 +103,7 @@ const loadingComplete = createThunkAction(
   SET_LOADING_DASHCARDS_COMPLETE,
   () => (dispatch, getState) => {
     dispatch(setShowLoadingCompleteFavicon(true));
+
     if (!document.hidden) {
       dispatch(setDocumentTitle(""));
       setTimeout(() => {
@@ -119,6 +121,10 @@ const loadingComplete = createThunkAction(
         },
         { once: true },
       );
+    }
+
+    if (getCanShowAutoApplyFiltersToast(getState())) {
+      dispatch(showAutoApplyFiltersToast());
     }
   },
 );
@@ -210,6 +216,7 @@ export const fetchDashboard = createThunkAction(
         dashboard: result,
         dashboardId: dashId,
         parameterValues: parameterValuesById,
+        preserveParameters,
       };
     };
   },
@@ -275,7 +282,7 @@ export const fetchCardData = createThunkAction(
         if (result === null) {
           dispatch(markCardAsSlow(card, datasetQuery));
         }
-      }, DATASET_SLOW_TIMEOUT);
+      }, DASHBOARD_SLOW_TIMEOUT);
 
       const deferred = defer();
       setFetchCardDataCancel(card.id, dashcard.id, deferred);
@@ -367,6 +374,7 @@ export const fetchCardData = createThunkAction(
         dashcard_id: dashcard.id,
         card_id: card.id,
         result: cancelled ? null : result,
+        currentTime: performance.now(),
       };
     };
   },
@@ -389,9 +397,13 @@ export const fetchDashboardCardData = createThunkAction(
 
     dispatch(setDocumentTitle(t`0/${promises.length} loaded`));
 
+    // XXX: There is a race condition here, when refreshing a dashboard before
+    // the previous API calls finished.
     Promise.all(promises).then(() => {
       dispatch(loadingComplete());
     });
+
+    return { currentTime: performance.now() };
   },
 );
 

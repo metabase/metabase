@@ -98,4 +98,5 @@ const DateSelector = forwardRef(function DateSelector(
   );
 });
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default DateSelector;

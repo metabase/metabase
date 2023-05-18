@@ -40,6 +40,7 @@ describe("issue 16756", () => {
   });
 
   it("should allow switching between date filter types (metabase#16756)", () => {
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Open editor/i).click();
     cy.icon("variable").click();
 
@@ -61,6 +62,7 @@ describe("issue 16756", () => {
     runQuery();
 
     // We expect "No results"
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("No results!");
   });
 });

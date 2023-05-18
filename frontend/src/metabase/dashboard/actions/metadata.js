@@ -47,7 +47,7 @@ const loadMetadataForLinkedTargets =
     const cards = linkTargets
       .filter(({ entityType }) => entityType === "question")
       .map(({ entityId }) =>
-        Questions.selectors.getObject(getState(), { entityId }),
+        Questions.selectors.getObject(getState(), { entityId })?.card(),
       )
       .filter(card => card != null);
 

@@ -449,16 +449,19 @@ describe("getRevisionEvents", () => {
             message="reverted to an earlier revision"
           />
         ),
+        titleText: "Bar reverted to an earlier revision",
         isRevertable: false,
         revision: latestRevisionEvent,
       }),
       getExpectedEvent({
         title: <RevisionTitle username="Foo" message="added a description" />,
+        titleText: "Foo added a description",
         isRevertable: false,
         revision: changeEvent,
       }),
       getExpectedEvent({
         title: <RevisionTitle username="Foo" message="created this" />,
+        titleText: "Foo created this",
         isRevertable: false,
         revision: creationEvent,
       }),
@@ -496,6 +499,7 @@ describe("getRevisionEvents", () => {
     expect(timelineEvents).toEqual([
       getExpectedEvent({
         title: <RevisionTitle username="Foo" message="added a description" />,
+        titleText: "Foo added a description",
         isRevertable: false,
         revision: changeEvent,
       }),
@@ -518,6 +522,7 @@ describe("getRevisionEvents", () => {
     expect(timelineEvents).toEqual([
       getExpectedEvent({
         title: <RevisionTitle username="Foo" message="added a description" />,
+        titleText: "Foo added a description",
         isRevertable: false,
         revision: changeEvent,
       }),
@@ -537,6 +542,7 @@ describe("getRevisionEvents", () => {
     expect(timelineEvents).toEqual([
       getExpectedEvent({
         title: <RevisionTitle username="You" message="created this" />,
+        titleText: "You created this",
         isRevertable: false,
         revision: event,
       }),

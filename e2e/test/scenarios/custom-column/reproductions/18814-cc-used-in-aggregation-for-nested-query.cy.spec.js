@@ -31,8 +31,10 @@ describe("issue 18814", () => {
     cy.icon("notebook").click();
 
     cy.icon("sum").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Count of rows").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Pick a column to group by").click();
     popover().contains(ccName).click();
 

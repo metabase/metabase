@@ -17,14 +17,17 @@ export type DatabaseFeature =
   | "basic-aggregations"
   | "binning"
   | "case-sensitivity-string-filter-options"
+  | "dynamic-schema"
   | "expression-aggregations"
   | "expressions"
   | "foreign-keys"
   | "native-parameters"
   | "nested-queries"
   | "standard-deviation-aggregations"
+  | "percentile-aggregations"
   | "persist-models"
   | "persist-models-enabled"
+  | "schemas"
   | "set-timezone"
   | "left-join"
   | "right-join"
@@ -39,9 +42,6 @@ export interface Database extends DatabaseData {
   timezone?: string;
   native_permissions: NativePermissions;
   initial_sync_status: InitialSyncStatus;
-
-  settings?: DatabaseSettings | null;
-
   caveats?: string;
   points_of_interest?: string;
   created_at: ISO8601Time;
@@ -64,6 +64,7 @@ export interface DatabaseData {
   is_sample: boolean;
   is_full_sync: boolean;
   is_on_demand: boolean;
+  settings?: DatabaseSettings | null;
 }
 
 export interface DatabaseSchedules {
@@ -95,4 +96,10 @@ export interface DatabaseListQuery {
 
 export interface DatabaseIdFieldListQuery {
   include_editable_data_model?: boolean;
+}
+
+export interface SavedQuestionDatabase {
+  id: -1337;
+  name: "Saved Questions";
+  is_saved_questions: true;
 }

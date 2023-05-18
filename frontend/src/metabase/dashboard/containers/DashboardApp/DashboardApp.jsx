@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import _ from "underscore";
@@ -12,7 +12,6 @@ import favicon from "metabase/hoc/Favicon";
 import titleWithLoadingTime from "metabase/hoc/TitleWithLoadingTime";
 
 import Dashboard from "metabase/dashboard/components/Dashboard/Dashboard";
-import Toaster from "metabase/components/Toaster";
 
 import { useLoadingTimer } from "metabase/hooks/use-loading-timer";
 import { useWebNotification } from "metabase/hooks/use-web-notification";
@@ -33,7 +32,10 @@ import * as Urls from "metabase/lib/urls";
 
 import Dashboards from "metabase/entities/dashboards";
 
-import * as dashboardActions from "../actions";
+import { useDispatch } from "metabase/lib/redux";
+import { addUndo, dismissUndo } from "metabase/redux/undo";
+import { useUniqueId } from "metabase/hooks/use-unique-id";
+import * as dashboardActions from "../../actions";
 import {
   getIsEditing,
   getIsSharing,
@@ -57,7 +59,10 @@ import {
   getIsLoadingComplete,
   getIsHeaderVisible,
   getIsAdditionalInfoVisible,
-} from "../selectors";
+  getIsAutoApplyFilters,
+  getSelectedTabId,
+} from "../../selectors";
+import { DASHBOARD_SLOW_TIMEOUT } from "../../constants";
 
 function getDashboardId({ dashboardId, params }) {
   if (dashboardId) {
@@ -98,6 +103,8 @@ const mapStateToProps = (state, props) => {
     isHeaderVisible: getIsHeaderVisible(state),
     isAdditionalInfoVisible: getIsAdditionalInfoVisible(state),
     embedOptions: getEmbedOptions(state),
+    selectedTabId: getSelectedTabId(state),
+    isAutoApplyFilters: getIsAutoApplyFilters(state),
   };
 };
 
@@ -112,32 +119,21 @@ const mapDispatchToProps = {
 
 // NOTE: should use DashboardControls and DashboardData HoCs here?
 const DashboardApp = props => {
-  const { isRunning, isLoadingComplete, dashboard } = props;
+  const { isRunning, isLoadingComplete, dashboard, closeDashboard } = props;
 
   const options = parseHashOptions(window.location.hash);
   const editingOnLoad = options.edit;
   const addCardOnLoad = options.add && parseInt(options.add);
 
-  const [isShowingToaster, setIsShowingToaster] = useState(false);
-
-  const onTimeout = useCallback(() => {
-    if ("Notification" in window && Notification.permission === "default") {
-      setIsShowingToaster(true);
-    }
-  }, []);
-
-  useLoadingTimer(isRunning, {
-    timer: 15000,
-    onTimeout,
-  });
+  const dispatch = useDispatch();
 
   const [requestPermission, showNotification] = useWebNotification();
 
   useUnmount(props.reset);
 
+  const slowToastId = useUniqueId();
   useEffect(() => {
     if (isLoadingComplete) {
-      setIsShowingToaster(false);
       if (
         "Notification" in window &&
         Notification.permission === "granted" &&
@@ -149,16 +145,45 @@ const DashboardApp = props => {
         );
       }
     }
-  }, [isLoadingComplete, showNotification, dashboard?.name]);
+
+    return () => {
+      dispatch(dismissUndo(slowToastId));
+    };
+  }, [
+    dashboard?.name,
+    dispatch,
+    isLoadingComplete,
+    showNotification,
+    slowToastId,
+  ]);
 
   const onConfirmToast = useCallback(async () => {
     await requestPermission();
-    setIsShowingToaster(false);
-  }, [requestPermission]);
+    dispatch(dismissUndo(slowToastId));
+  }, [dispatch, requestPermission, slowToastId]);
 
-  const onDismissToast = useCallback(() => {
-    setIsShowingToaster(false);
-  }, []);
+  const onTimeout = useCallback(() => {
+    if ("Notification" in window && Notification.permission === "default") {
+      dispatch(
+        addUndo({
+          id: slowToastId,
+          timeout: false,
+          message: t`Would you like to be notified when this dashboard is done loading?`,
+          action: onConfirmToast,
+          actionLabel: t`Turn on`,
+        }),
+      );
+    }
+  }, [dispatch, onConfirmToast, slowToastId]);
+
+  useLoadingTimer(isRunning, {
+    timer: DASHBOARD_SLOW_TIMEOUT,
+    onTimeout,
+  });
+
+  useUnmount(() => {
+    closeDashboard();
+  });
 
   return (
     <div className="shrink-below-content-size full-height">
@@ -169,13 +194,6 @@ const DashboardApp = props => {
       />
       {/* For rendering modal urls */}
       {props.children}
-      <Toaster
-        message={t`Would you like to be notified when this dashboard is done loading?`}
-        isShown={isShowingToaster}
-        onDismiss={onDismissToast}
-        onConfirm={onConfirmToast}
-        fixed
-      />
     </div>
   );
 };

@@ -4,9 +4,9 @@ import userEvent from "@testing-library/user-event";
 import { getIcon } from "__support__/ui";
 
 import TabRow from "../TabRow";
-import TabButton, { TabButtonProps } from "./TabButton";
+import TabButton, { RenameableTabButtonProps } from "./TabButton";
 
-function setup(props?: Omit<TabButtonProps, "label">) {
+function setup(props?: Partial<RenameableTabButtonProps<string>>) {
   const action = jest.fn();
   const onRename = jest.fn();
   const value = "some_value";

@@ -36,6 +36,7 @@ const mapDispatchToProps = {
   onOpenNavbar: openNavbar,
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   Databases.loadList(),
   Search.loadList({

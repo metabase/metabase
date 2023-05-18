@@ -1,21 +1,12 @@
 import { format } from "metabase-lib/expressions/format";
 
-import { shared } from "./__support__/expressions";
+import shared from "./__support__/shared";
 
 describe("metabase-lib/expressions/format", () => {
-  describe("format()", () => {
-    for (const [name, cases, opts] of shared) {
-      describe(name, () => {
-        for (const [source, mbql, description] of cases) {
-          if (mbql) {
-            it(`should format ${description}`, () => {
-              expect(format(mbql, opts)).toEqual(source);
-            });
-          }
-        }
-      });
-    }
-
-    // NOTE: only add tests below for things that don't fit the shared test cases above
+  describe.each(shared)("%s", (name, cases, opts) => {
+    const tests = cases.filter(([, mbql]) => mbql != null);
+    it.each(tests)(`should format %s`, (source, mbql, description) => {
+      expect(format(mbql, opts)).toEqual(source);
+    });
   });
 });

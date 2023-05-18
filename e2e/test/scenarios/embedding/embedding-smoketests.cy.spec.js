@@ -40,11 +40,14 @@ describe("scenarios > embedding > smoke tests", () => {
       cy.location("pathname").should("eq", embeddingPage);
 
       // Some info we provide to users before they enable embedding
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("More details");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("By enabling embedding you're agreeing to");
 
       assertLinkMatchesUrl("our embedding license.", licenseUrl);
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("More details").click();
       licenseExplanations.forEach(licenseExplanation => {
         cy.findByText(licenseExplanation);
@@ -55,12 +58,15 @@ describe("scenarios > embedding > smoke tests", () => {
       // Let's examine the contents of the enabled embedding page (the url stays the same)
       cy.location("pathname").should("eq", embeddingPage);
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains(
         "Allow questions, dashboards, and more to be embedded. Learn more.",
       );
       assertLinkMatchesUrl("Learn more.", learnEmbeddingUrl);
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Enabled");
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Standalone embeds").click();
       if (isOSS) {
         cy.contains(
@@ -70,7 +76,9 @@ describe("scenarios > embedding > smoke tests", () => {
         assertLinkMatchesUrl("one of our paid plans.", upgradeUrl);
       }
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(/Embedding secret key/i);
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(
         "Standalone Embed Secret Key used to sign JSON Web Tokens for requests to /api/embed endpoints. This lets you create a secure environment limited to specific users or organizations.",
       );
@@ -80,10 +88,14 @@ describe("scenarios > embedding > smoke tests", () => {
       cy.button("Regenerate key");
 
       // List of all embedded dashboards and questions
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(/Embedded dashboards/i);
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("No dashboards have been embedded yet.");
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(/Embedded questions/i);
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("No questions have been embedded yet.");
 
       // Full app embedding section (available only for EE version and in PRO hosted plans)
@@ -141,11 +153,14 @@ describe("scenarios > embedding > smoke tests", () => {
           cy.findByText("Font").should("not.exist");
         }
 
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Parameters");
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText(
           /This (question|dashboard) doesn't have any parameters to configure yet./,
         );
 
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText(
           /You will need to publish this (question|dashboard) before you can embed it in another application./,
         );
@@ -155,7 +170,9 @@ describe("scenarios > embedding > smoke tests", () => {
 
         visitIframe();
 
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.contains(objectName);
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.contains("37.65");
 
         if (isOSS) {
@@ -170,11 +187,13 @@ describe("scenarios > embedding > smoke tests", () => {
         cy.signInAsAdmin();
 
         cy.visit(embeddingPage);
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Standalone embeds").click();
         cy.wait("@currentlyEmbeddedObject");
 
         const sectionName = new RegExp(`Embedded ${object}s`, "i");
 
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.contains(sectionName)
           .closest("li")
           .find("tbody tr")
@@ -183,7 +202,9 @@ describe("scenarios > embedding > smoke tests", () => {
 
         visitAndEnableSharing(object);
 
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Danger zone");
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText(
           /This will disable embedding for this (question|dashboard)./,
         );
@@ -192,14 +213,17 @@ describe("scenarios > embedding > smoke tests", () => {
         cy.wait("@embedObject");
 
         visitIframe();
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Embedding is not enabled for this object.");
 
         cy.signInAsAdmin();
 
         cy.visit(embeddingPage);
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Standalone embeds").click();
         cy.wait("@currentlyEmbeddedObject");
 
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.contains(/No (questions|dashboards) have been embedded yet./);
       });
     });
