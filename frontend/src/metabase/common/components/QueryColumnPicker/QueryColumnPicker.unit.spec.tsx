@@ -2,7 +2,7 @@ import React from "react";
 import userEvent from "@testing-library/user-event";
 import { render, screen, within } from "__support__/ui";
 import * as Lib from "metabase-lib";
-import { createQuery } from "metabase-lib/test-helpers";
+import { createQuery, columnFinder } from "metabase-lib/test-helpers";
 import QueryColumnPicker, { QueryColumnPickerProps } from "./QueryColumnPicker";
 
 type SetupOpts = Partial<
@@ -29,7 +29,9 @@ function setup({
   const onSelect = jest.fn();
   const onClose = jest.fn();
 
-  const [sampleColumn] = columns;
+  const findColumn = columnFinder(query, columns);
+
+  const sampleColumn = findColumn("ORDERS", "ID");
   const sampleColumnInfo = Lib.displayInfo(query, sampleColumn);
 
   render(
