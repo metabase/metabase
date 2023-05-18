@@ -386,7 +386,24 @@
       (is (nil? (lib/aggregation-operator-columns count-op)))
       (is (=? summable-cols (lib/aggregation-operator-columns sum-op))))
     (testing "aggregation operators can be added as aggregates"
-      (let [price-col (-> sum-op lib/aggregation-operator-columns pop peek)]
+      (let [price-col (-> sum-op lib/aggregation-operator-columns pop peek)
+            agg-query (-> query
+                          (lib/aggregate (lib/aggregation-clause count-op))
+                          (lib/aggregate (lib/aggregation-clause sum-op price-col)))]
+        (is (=? {:lib/type :mbql/query
+                 :stages
+                 [{:lib/type :mbql.stage/mbql,
+                   :source-table int?,
+                   :expressions
+                   {"double-price"
+                    [:* {} [:field {:base-type :type/Integer, :effective-type :type/Integer} int?] 2]
+                    "budget?"
+                    [:< {} [:field {:base-type :type/Integer, :effective-type :type/Integer} int?] 2]}
+                   :aggregation
+                   [[:sum {} [:expression {} "double-price"]]
+                    [:count {}]
+                    [:sum {} [:field {:base-type :type/Integer, :effective-type :type/Integer} int?]]]}]}
+                agg-query))
         (is (=? [{:lib/type     :metadata/field,
                   :base-type    :type/Integer,
                   :name         "sum_double-price",
@@ -403,10 +420,7 @@
                   :name         "sum_PRICE",
                   :display-name "Sum of Price",
                   :lib/source   :source/aggregations}]
-               (-> query
-                   (lib/aggregate (lib/aggregation-clause count-op))
-                   (lib/aggregate (lib/aggregation-clause sum-op price-col))
-                   lib/aggregations-metadata)))))))
+                (lib/aggregations-metadata agg-query)))))))
 
 (deftest ^:parallel preserve-field-settings-metadata-test
   (testing "Aggregation metadata should return the `:settings` for the field being aggregated, for some reason."
