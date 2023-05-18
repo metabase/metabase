@@ -422,8 +422,8 @@
     (:text result)
     {:content (markdown/process-markdown (:text result) :html)}
 
-    (get-in result [:tab :title])
-    {:content (markdown/process-markdown (format "# %s\n---" (get-in result [:tab :title])) :html)}))
+    (:tab-title result)
+    {:content (markdown/process-markdown (format "# %s\n---" (:tab-title result)) :html)}))
 
 (defn- render-filters
   [notification dashboard]

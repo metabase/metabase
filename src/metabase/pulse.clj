@@ -173,7 +173,7 @@
 
 (defn- tab->content
   [{:keys [name]}]
-  {:tab {:title name}})
+  {:tab-title name})
 
 (defn- execute-dashboard
   "Fetch all the dashcards in a dashboard for a Pulse, and execute non-text cards.
@@ -230,7 +230,10 @@
 
 (defn- content->attachment-data
   [content channel-id]
-  (let [{{card-id :id, card-name :name, :as card} :card, dashcard :dashcard, result :result, tab :tab} content]
+  (let [{{card-id :id card-name :name :as card} :card
+         dashcard                               :dashcard
+         result                                 :result
+         tab-title                              :tab-title} content]
     (cond
       (and card result)
       {:title           (or (-> dashcard :visualization_settings :card.title)
@@ -244,8 +247,8 @@
       (:text content)
       (text->markdown-block (:text content))
 
-      (:title tab)
-      (text->markdown-block (format "# %s" (:title tab))))))
+      (not (str/blank? tab-title))
+      (text->markdown-block (format "# %s" tab-title)))))
 
 (defn- create-slack-attachment-data
   "Returns a seq of slack attachment data structures, used in `create-and-upload-slack-attachments!`"
