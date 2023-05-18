@@ -9,6 +9,7 @@ export const EditModeContainer = styled.div`
   overflow: hidden;
   padding: 0.65em;
   width: 100%;
+  pointer-events: auto;
 
   ${({ isPreviewing }) => !isPreviewing && "padding: 0.5em 0.75em;"}
 `;

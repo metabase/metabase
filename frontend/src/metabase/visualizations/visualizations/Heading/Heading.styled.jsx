@@ -10,6 +10,7 @@ export const InputContainer = styled.div`
   overflow: hidden;
   padding: 0 0.65em;
   padding-left: 0;
+  pointer-events: auto;
 
   ${({ isPreviewing }) =>
     !isPreviewing &&
