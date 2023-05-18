@@ -124,7 +124,7 @@ class DashboardGrid extends Component {
     // We allow moving and resizing cards only on the desktop
     // Ensures onLayoutChange triggered by window resize,
     // won't break the main layout
-    if (!isEditing && breakpoint !== "desktop") {
+    if (!isEditing || breakpoint !== "desktop") {
       return;
     }
 

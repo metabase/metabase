@@ -31,6 +31,7 @@ const COMMON_SETTINGS = {
     dashboard: true,
     getHidden: ([{ card }]) => isVirtualDashCard(card),
   },
+  click_behavior: {},
 };
 
 function getSettingDefintionsForSeries(series) {
