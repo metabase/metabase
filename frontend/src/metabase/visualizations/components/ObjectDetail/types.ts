@@ -53,3 +53,7 @@ export interface ObjectDetailProps {
   closeObjectDetail: () => void;
   className?: string;
 }
+
+export type ForeignKeyReferences = {
+  [key: number]: { status: number; value: number };
+};

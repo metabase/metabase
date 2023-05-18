@@ -9,6 +9,7 @@ import Icon from "metabase/components/Icon";
 import { foreignKeyCountsByOriginTable } from "metabase/lib/schema_metadata";
 import type ForeignKey from "metabase-lib/metadata/ForeignKey";
 
+import { ForeignKeyReferences } from "./types";
 import {
   ObjectRelationContent,
   ObjectRelationships,
@@ -17,9 +18,7 @@ import {
 export interface RelationshipsProps {
   objectName: string;
   tableForeignKeys: ForeignKey[];
-  tableForeignKeyReferences: {
-    [key: number]: { status: number; value: number };
-  };
+  tableForeignKeyReferences: ForeignKeyReferences;
   foreignKeyClicked: (fk: ForeignKey) => void;
 }
 
