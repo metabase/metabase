@@ -302,8 +302,8 @@
 
      (testing "reversion"
        (is (= {:has_multiple_changes false
-               :title                "reverted to an earlier revision."
-               :description          "reverted to an earlier revision."}
+               :title                "reverted to an earlier version."
+               :description          "reverted to an earlier version."}
               (#'revision/revision-title+description :default
                                                      {:object       {:name "New Object"}
                                                       :is_reversion false

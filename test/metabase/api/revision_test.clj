@@ -81,8 +81,8 @@
                :user                 @rasta-revision-info
                :diff                 {:before {:name "something else"}
                                       :after  {:name name}}
-               :description          "reverted to an earlier revision."
-               :title                "reverted to an earlier revision."
+               :description          "reverted to an earlier version."
+               :title                "reverted to an earlier version."
                :has_multiple_changes false}
               {:is_reversion         false
                :is_creation          false
@@ -142,7 +142,7 @@
       (testing "Revert to the previous revision, allowed because rasta has permissions on parent collection"
         (let [[_ {previous-revision-id :id}] (revision/revisions Dashboard id)]
           (is (=? {:id          int?
-                   :description "reverted to an earlier revision."}
+                   :description "reverted to an earlier version."}
                   (mt/user-http-request :rasta :post 200 "revision/revert" {:entity      :dashboard
                                                                             :id          id
                                                                             :revision_id previous-revision-id})))))
@@ -153,8 +153,8 @@
                :diff                 {:before {:cards nil}
                                       :after  {:cards [{:size_x 4, :size_y 4, :row 0, :col 0, :card_id card-id, :series []}]}}
                :has_multiple_changes false
-               :title                "reverted to an earlier revision."
-               :description          "reverted to an earlier revision."}
+               :title                "reverted to an earlier version."
+               :description          "reverted to an earlier version."}
               {:is_reversion         false
                :is_creation          false
                :message              nil
@@ -257,8 +257,8 @@
       (let [earlier-revision-id (t2/select-one-pk Revision :model "Dashboard" :model_id dashboard-id {:order-by [[:timestamp :desc]]})]
         (revision/revert! :entity Dashboard :id dashboard-id :user-id (mt/user->id :crowberto) :revision-id earlier-revision-id))
 
-      (is (= [{:description          "reverted to an earlier revision."
-               :title                "reverted to an earlier revision."
+      (is (= [{:description          "reverted to an earlier version."
+               :title                "reverted to an earlier version."
                :has_multiple_changes false}
               {:description          "moved this Dashboard to New Collection.",
                :title                "moved this Dashboard to New Collection.",
@@ -322,8 +322,8 @@
       (let [earlier-revision-id (t2/select-one-pk Revision :model "Card" :model_id card-id {:order-by [[:timestamp :desc]]})]
         (revision/revert! :entity Card :id card-id :user-id (mt/user->id :crowberto) :revision-id earlier-revision-id))
 
-      (is (= [{:description          "reverted to an earlier revision.",
-               :title                "reverted to an earlier revision.",
+      (is (= [{:description          "reverted to an earlier version.",
+               :title                "reverted to an earlier version.",
                :has_multiple_changes false}
               {:description          "moved this Card to New Collection.",
                :title                "moved this Card to New Collection.",
@@ -353,7 +353,7 @@
                                                "this {0}" "ce {0}"
                                                "edited this." "édité ceci."
                                                "and" "et"
-                                               "reverted to an earlier revision" "est revenu à une révision antérieure"}}}
+                                               "reverted to an earlier version" "est revenu à une révision antérieure"}}}
     (mt/with-temporary-setting-values [site-locale "fr"]
       (testing "revisions description are translated"
         (t2.with-temp/with-temp

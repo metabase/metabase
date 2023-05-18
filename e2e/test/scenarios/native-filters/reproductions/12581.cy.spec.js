@@ -68,7 +68,7 @@ describe("issue 12581", () => {
     cy.wait("@dataset");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("You reverted to an earlier revision");
+    cy.findByText("You reverted to an earlier version");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Open Editor/i).click();
 

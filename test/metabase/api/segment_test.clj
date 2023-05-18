@@ -372,7 +372,7 @@
                                    (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
                  :diff         {:name {:before "Changed Segment Name"
                                        :after  "One Segment to rule them all, one segment to define them"}}
-                 :description  "reverted to an earlier revision."}
+                 :description  "reverted to an earlier version."}
                (-> (mt/user-http-request :crowberto :post 200 (format "segment/%d/revert" id) {:revision_id revision-id})
                    (dissoc :id :timestamp)))))
 
@@ -384,7 +384,7 @@
                                     (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
                   :diff         {:name {:before "Changed Segment Name"
                                         :after  "One Segment to rule them all, one segment to define them"}}
-                  :description  "reverted to an earlier revision."}
+                  :description  "reverted to an earlier version."}
                  {:is_reversion false
                   :is_creation  false
                   :message      "updated"

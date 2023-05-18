@@ -73,4 +73,5 @@
     (filter identity
             (map-indexed (fn [i k]
                            (diff-strings* k (k before) (k after)
-                                          (if (zero? i) (deferred-tru "this {0}" model) (deferred-tru "it")))) ks))))
+                                          (if (zero? i) (deferred-tru "this {0}" model) (deferred-tru "it"))))
+                         ks))))

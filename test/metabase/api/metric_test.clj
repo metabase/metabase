@@ -357,7 +357,7 @@
                :user         (dissoc (user-details (mt/fetch-user :crowberto)) :email :date_joined :last_login :is_superuser :is_qbnewb)
                :diff         {:name {:before "Changed Metric Name"
                                      :after  "One Metric to rule them all, one metric to define them"}}
-               :description  "reverted to an earlier revision."}
+               :description  "reverted to an earlier version."}
              (dissoc (mt/user-http-request
                       :crowberto :post 200 (format "metric/%d/revert" id) {:revision_id revision-id}) :id :timestamp))))
     (testing "full list of final revisions, first one should be same as the revision returned by the endpoint"
@@ -367,7 +367,7 @@
                 :user         (dissoc (user-details (mt/fetch-user :crowberto)) :email :date_joined :last_login :is_superuser :is_qbnewb)
                 :diff         {:name {:before "Changed Metric Name"
                                       :after  "One Metric to rule them all, one metric to define them"}}
-                :description  "reverted to an earlier revision."}
+                :description  "reverted to an earlier version."}
                {:is_reversion false
                 :is_creation  false
                 :message      "updated"

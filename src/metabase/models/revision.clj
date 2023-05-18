@@ -89,7 +89,7 @@
   [model prev-revision revision]
   (cond
     (:is_creation revision)  [(deferred-tru "created this")]
-    (:is_reversion revision) [(deferred-tru "reverted to an earlier revision")]
+    (:is_reversion revision) [(deferred-tru "reverted to an earlier version")]
     :else                    (diff-strs model (:object prev-revision) (:object revision))))
 
 (defn- revision-title+description

@@ -2067,8 +2067,8 @@
               :diff                 {:before {:name "b"}
                                      :after  {:name "a"}}
               :has_multiple_changes false
-              :title                "reverted to an earlier revision."
-              :description          "reverted to an earlier revision."}
+              :title                "reverted to an earlier version."
+              :description          "reverted to an earlier version."}
              (dissoc (mt/user-http-request :crowberto :post 200 (format "dashboard/%d/revert" dashboard-id)
                                            {:revision_id revision-id})
                      :id :timestamp)))
@@ -2081,8 +2081,8 @@
                :diff                 {:before {:name "b"}
                                       :after  {:name "a"}}
                :has_multiple_changes false
-               :title                "reverted to an earlier revision."
-               :description          "reverted to an earlier revision."}
+               :title                "reverted to an earlier version."
+               :description          "reverted to an earlier version."}
               {:is_reversion         false
                :is_creation          false
                :message              "updated"
