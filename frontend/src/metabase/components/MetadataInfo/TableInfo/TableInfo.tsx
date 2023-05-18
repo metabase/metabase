@@ -59,7 +59,7 @@ function useDependentTableMetadata({
   fetchMetadata,
 }: Pick<AllProps, "tableId" | "table" | "fetchForeignKeys" | "fetchMetadata">) {
   const isMissingFields = !table?.numFields();
-  const isMissingFks = table?.fks == null;
+  const isMissingFks = table?.getPlainObject().fks == null;
   const shouldFetchMetadata = isMissingFields || isMissingFks;
   const [hasFetchedMetadata, setHasFetchedMetadata] = useState(
     !shouldFetchMetadata,
