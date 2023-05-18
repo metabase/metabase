@@ -18,12 +18,12 @@
 (use-fixtures :each (fn [thunk]
                       (with-redefs [metabase.models.revision.diff/model-str->i18n-str (fn [model-str]
                                                                                         (case model-str
-                                                                                          "Dashboard" (deferred-tru "Dashboard")
-                                                                                          "Card"      (deferred-tru "Card")
-                                                                                          "Segment"   (deferred-tru "Segment")
-                                                                                          "Metric"    (deferred-tru "Metric")
-                                                                                          "NonExistModel" (deferred-tru "NonExistModel")
-                                                                                          "FakeCard"      (deferred-tru "FakeCard")))]
+                                                                                          "Dashboard"     (deferred-tru "Dashboard")
+                                                                                          "Card"          (deferred-tru "Card")
+                                                                                          "Segment"       (deferred-tru "Segment")
+                                                                                          "Metric"        (deferred-tru "Metric")
+                                                                                          "NonExistModel" "NonExistModel"
+                                                                                          "FakeCard"      "FakeCard"))]
                         (thunk))))
 
 (defmethod revision/serialize-instance FakedCard
