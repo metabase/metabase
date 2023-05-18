@@ -31,7 +31,7 @@ export function createVirtualTable({
 }: VirtualTableProps): Table {
   const table = new Table({
     id,
-    db_id: db?.id ?? NaN,
+    db_id: Number(db?.id),
     name,
     display_name,
     schema: "",
