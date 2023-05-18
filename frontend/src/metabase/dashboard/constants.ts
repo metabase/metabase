@@ -27,7 +27,6 @@ export const INITIAL_DASHBOARD_STATE: DashboardState = {
   },
   loadingControls: {},
   isAddParameterPopoverOpen: false,
-  isAddTextPopoverOpen: false,
   slowCards: {},
   sidebar: { props: {} },
   missingActionParameters: null,

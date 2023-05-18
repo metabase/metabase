@@ -18,7 +18,6 @@ export const createMockDashboardState = (
   loadingControls: {},
   isEditing: null,
   isAddParameterPopoverOpen: false,
-  isAddTextPopoverOpen: false,
   slowCards: {},
   sidebar: {
     props: {},

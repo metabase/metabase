@@ -61,9 +61,6 @@ export const getIsSlowDashboard = createSelector(
 export const getIsAddParameterPopoverOpen = state =>
   state.dashboard.isAddParameterPopoverOpen;
 
-export const getIsAddTextPopoverOpen = state =>
-  state.dashboard.isAddTextPopoverOpen;
-
 export const getSidebar = state => state.dashboard.sidebar;
 export const getIsSharing = createSelector(
   [getSidebar],

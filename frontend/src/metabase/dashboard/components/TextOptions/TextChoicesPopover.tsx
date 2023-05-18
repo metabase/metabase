@@ -14,7 +14,7 @@ interface TextChoicesPopoverProps {
   onClose: () => void;
 }
 
-export default function TextChoicesPopover({
+export function TextChoicesPopover({
   onAddMarkdown,
   onAddHeading,
   onClose,
@@ -48,7 +48,7 @@ interface TextOptionItemProps {
   onClick: () => void;
 }
 
-export const TextOptionItem = ({ option, onClick }: TextOptionItemProps) => (
+const TextOptionItem = ({ option, onClick }: TextOptionItemProps) => (
   <StyledListItem onClick={onClick}>
     <StyledDiv>{option}</StyledDiv>
   </StyledListItem>

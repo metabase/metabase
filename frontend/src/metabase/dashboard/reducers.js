@@ -30,8 +30,6 @@ import {
   CANCEL_FETCH_CARD_DATA,
   SHOW_ADD_PARAMETER_POPOVER,
   HIDE_ADD_PARAMETER_POPOVER,
-  SHOW_ADD_TEXT_POPOVER,
-  HIDE_ADD_TEXT_POPOVER,
   SET_SIDEBAR,
   CLOSE_SIDEBAR,
   SET_DOCUMENT_TITLE,
@@ -244,16 +242,6 @@ const isAddParameterPopoverOpen = handleActions(
   INITIAL_DASHBOARD_STATE.isAddParameterPopoverOpen,
 );
 
-const isAddTextPopoverOpen = handleActions(
-  {
-    [SHOW_ADD_TEXT_POPOVER]: () => true,
-    [HIDE_ADD_TEXT_POPOVER]: () => false,
-    [INITIALIZE]: () => false,
-    [RESET]: () => false,
-  },
-  INITIAL_DASHBOARD_STATE.isAddTextPopoverOpen,
-);
-
 const dashcardData = handleActions(
   {
     // clear existing dashboard data when loading a dashboard
@@ -463,7 +451,6 @@ export default reduceReducers(
     draftParameterValues,
     loadingDashCards,
     isAddParameterPopoverOpen,
-    isAddTextPopoverOpen,
     sidebar,
     missingActionParameters,
     autoApplyFilters,

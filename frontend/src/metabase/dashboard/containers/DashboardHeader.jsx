@@ -18,7 +18,7 @@ import Bookmark from "metabase/entities/bookmarks";
 
 import { getDashboardActions } from "metabase/dashboard/components/DashboardActions";
 
-import TextChoicesPopover from "metabase/dashboard/components/TextChoicesPopover";
+import { TextOptionsButton } from "metabase/dashboard/components/TextOptions/TextOptionsButton";
 import ParametersPopover from "metabase/dashboard/components/ParametersPopover";
 import DashboardBookmark from "metabase/dashboard/components/DashboardBookmark";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
@@ -98,7 +98,6 @@ class DashboardHeader extends Component {
     onFullscreenChange: PropTypes.func.isRequired,
 
     onSharingClick: PropTypes.func.isRequired,
-
     onChangeLocation: PropTypes.func.isRequired,
 
     toggleSidebar: PropTypes.func.isRequired,
@@ -268,41 +267,12 @@ class DashboardHeader extends Component {
         </Tooltip>,
       );
 
-      const { isAddTextPopoverOpen, showAddTextPopover, hideAddTextPopover } =
-        this.props;
-
       // Text/Headers
-      // TODO: replace the hacky spacer <span style={{ "margin-left": "0.25em" }} />
-      // * with something less hacky
       buttons.push(
-        <span key="add-a-text-box">
-          <TippyPopover
-            placement="bottom-start"
-            onClose={hideAddTextPopover}
-            visible={isAddTextPopoverOpen}
-            content={
-              <TextChoicesPopover
-                onAddMarkdown={() => this.onAddMarkdownBox()}
-                onAddHeading={() => this.onAddHeading()}
-                onClose={hideAddTextPopover}
-              />
-            }
-          >
-            <div>
-              <Tooltip tooltip={t`Add a heading or text`}>
-                <DashboardHeaderButton
-                  key="add-text"
-                  onClick={showAddTextPopover}
-                  data-metabase-event="Dashboard;Add Text Box"
-                >
-                  <Icon name="string" size={18} />
-                  <span style={{ "margin-left": "0.25em" }} />
-                  <Icon name="chevrondown" size={10} />
-                </DashboardHeaderButton>
-              </Tooltip>
-            </div>
-          </TippyPopover>
-        </span>,
+        <TextOptionsButton
+          onAddMarkdown={() => this.onAddMarkdownBox()}
+          onAddHeading={() => this.onAddHeading()}
+        />,
       );
 
       // Add link card button
