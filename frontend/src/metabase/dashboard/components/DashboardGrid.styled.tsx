@@ -11,5 +11,5 @@ export const DashboardCard = styled.div<DashboardCardProps>`
       ? css`
           transition: none;
         `
-      : null}
+      : null};
 `;
