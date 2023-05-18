@@ -25,8 +25,10 @@
 (methodical/defmethod t2/table-name :model/CollectionBookmark [_model] :collection_bookmark)
 (methodical/defmethod t2/table-name :model/BookmarkOrdering   [_model] :bookmark_ordering)
 
-(doseq [m [:model/CardBookmark :model/DashboardBookmark :model/CollectionBookmark :model/BookmarkOrdering]]
-  (derive m :metabase/model))
+(derive :model/CardBookmark :metabase/model)
+(derive :model/DashboardBookmark :metabase/model)
+(derive :model/CollectionBookmark :metabase/model)
+(derive :model/BookmarkOrdering :metabase/model)
 
 (defn- unqualify-key
   [k]
