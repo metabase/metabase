@@ -308,29 +308,29 @@
         sum-op (second aggregation-operators)]
     (testing "available aggregation operators"
       (is (=? [{:short :count,
-                :requires-field? false}
+                :requires-column? false}
                {:short :sum,
-                :requires-field? true,
+                :requires-column? true,
                 :columns summable-cols}
                {:short :avg,
-                :requires-field? true,
+                :requires-column? true,
                 :columns summable-cols}
                {:short :distinct,
-                :requires-field? true,
+                :requires-column? true,
                 :columns all-cols}
                {:short :cum-sum,
-                :requires-field? true,
+                :requires-column? true,
                 :columns summable-cols}
                {:short :cum-count,
-                :requires-field? false}
+                :requires-column? false}
                {:short :stddev,
-                :requires-field? true,
+                :requires-column? true,
                 :columns summable-cols}
                {:short :min,
-                :requires-field? true,
+                :requires-column? true,
                 :columns scope-cols}
                {:short :max,
-                :requires-field? true,
+                :requires-column? true,
                 :columns scope-cols}]
               aggregation-operators)))
     (testing "aggregation operator display info"
@@ -338,47 +338,47 @@
                 :column-name "Count",
                 :description "Total number of rows in the answer.",
                 :short :count,
-                :requires-field false}
+                :requires-column false}
                {:display-name "Sum of ...",
                 :column-name "Sum",
                 :description "Sum of all the values of a column.",
                 :short :sum,
-                :requires-field true}
+                :requires-column true}
                {:display-name "Average of ...",
                 :column-name "Average",
                 :description "Average of all the values of a column",
                 :short :avg,
-                :requires-field true}
+                :requires-column true}
                {:display-name "Number of distinct values of ...",
                 :column-name "Distinct values",
                 :description "Number of unique values of a column among all the rows in the answer.",
                 :short :distinct,
-                :requires-field true}
+                :requires-column true}
                {:display-name "Cumulative sum of ...",
                 :column-name "Sum",
                 :description "Additive sum of all the values of a column.\ne.x. total revenue over time.",
                 :short :cum-sum,
-                :requires-field true}
+                :requires-column true}
                {:display-name "Cumulative count of rows",
                 :column-name "Count",
                 :description "Additive count of the number of rows.\ne.x. total number of sales over time.",
                 :short :cum-count,
-                :requires-field false}
+                :requires-column false}
                {:display-name "Standard deviation of ...",
                 :column-name "SD",
                 :description "Number which expresses how much the values of a column vary among all rows in the answer.",
                 :short :stddev,
-                :requires-field true}
+                :requires-column true}
                {:display-name "Minimum of ...",
                 :column-name "Min",
                 :description "Minimum value of a column",
                 :short :min,
-                :requires-field true}
+                :requires-column true}
                {:display-name "Maximum of ...",
                 :column-name "Max",
                 :description "Maximum value of a column",
                 :short :max,
-                :requires-field true}]
+                :requires-column true}]
               (map #(lib/display-info query %) aggregation-operators))))
     (testing "display name"
       (is (= "Count of rows" (lib/display-name query (first aggregation-operators)))))
@@ -406,7 +406,7 @@
                (-> query
                    (lib/aggregate (lib/aggregation-clause count-op))
                    (lib/aggregate (lib/aggregation-clause sum-op price-col))
-                   lib/aggregations)))))))
+                   lib/aggregations-metadata)))))))
 
 (deftest ^:parallel preserve-field-settings-metadata-test
   (testing "Aggregation metadata should return the `:settings` for the field being aggregated, for some reason."

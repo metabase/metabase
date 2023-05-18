@@ -237,7 +237,7 @@
             (into [] (map (fn [aggregation]
                             (-> (lib.metadata.calculation/metadata query stage-number aggregation)
                                 (assoc :lib/source :source/aggregations
-                                       ::aggregation-uuid (:lib/uuid (second aggregation))))))))))
+                                       :lib/source-uuid (:lib/uuid (second aggregation))))))))))
 
 (def ^:private OperatorWithColumns
   [:merge
@@ -250,10 +250,10 @@
   (:display-name (display-info)))
 
 (defmethod lib.metadata.calculation/display-info-method :mbql.aggregation/operator
-  [_query _stage-number {:keys [display-info requires-field?] short-name :short}]
+  [_query _stage-number {:keys [display-info requires-column?] short-name :short}]
   (assoc (display-info)
          :short short-name
-         :requires-field requires-field?))
+         :requires-column requires-column?))
 
 (mu/defn aggregation-operator-columns :- [:maybe [:sequential lib.metadata/ColumnMetadata]]
   "Returns the columns for which `aggregation-operator` is applicable."
@@ -271,9 +271,9 @@
    (let [db-features (or (:features (lib.metadata/database query)) #{})
          stage (lib.util/query-stage query stage-number)
          columns (lib.metadata.calculation/visible-columns query stage-number stage)
-         with-columns (fn [{:keys [requires-field? supported-field] :as operator}]
+         with-columns (fn [{:keys [requires-column? supported-field] :as operator}]
                         (cond
-                          (not requires-field?)
+                          (not requires-column?)
                           operator
 
                           (= supported-field :any)
@@ -299,7 +299,7 @@
   For aggregations requiring an argument `column` is mandatory, otherwise
   it is optional."
   ([aggregation-operator]
-   (if-not (:requires-field? aggregation-operator)
+   (if-not (:requires-column? aggregation-operator)
      {:lib/type :lib/external-op
       :operator (:short aggregation-operator)}
      (throw (ex-info (lib.util/format "aggregation operator %s requires an argument"
