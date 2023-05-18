@@ -13,7 +13,6 @@ import {
   quickFilterDrillQuestion,
   QuickFilterOperatorType,
 } from "metabase-lib/queries/drills/quick-filter-drill";
-import Filter from "metabase-lib/queries/structured/Filter";
 import { getColumnFilterDrillPopover } from "../common/ColumnFilterDrillPopover";
 import { TextIcon } from "./QuickFilterDrill.styled";
 
@@ -28,7 +27,7 @@ const DateButtonTitleMap: Record<DateQuickFilterOperatorType, string> = {
 
 const SPECIFIC_VALUE_TITLE_MAX_LENGTH = 20;
 
-const CUSTOM_BEHAVIOR_OPERATORS: QuickFilterOperatorType[] = [
+const OPERATORS_WITH_POPOVER: QuickFilterOperatorType[] = [
   "contains",
   "does-not-contain",
 ];
@@ -111,7 +110,7 @@ const QuickFilterDrill = ({
   return operators.map(operator => {
     const { name, filter, valueType } = operator;
 
-    if (CUSTOM_BEHAVIOR_OPERATORS.includes(name)) {
+    if (OPERATORS_WITH_POPOVER.includes(name)) {
       return {
         name,
         title: name,
@@ -119,7 +118,8 @@ const QuickFilterDrill = ({
         buttonType: "token-filter",
         popover: getColumnFilterDrillPopover({
           query,
-          initialFilter: new Filter(filter, 0, query),
+          initialFilter: filter,
+          addFilter: filter => quickFilterDrillQuestion(filter).card(),
         }),
         ...getOperatorOverrides(operator, value),
       };
@@ -130,7 +130,7 @@ const QuickFilterDrill = ({
       title: name,
       section: "filter",
       buttonType: "token-filter",
-      question: () => quickFilterDrillQuestion({ question, clicked, filter }),
+      question: () => quickFilterDrillQuestion(filter),
       extra: () => ({
         valueType,
       }),
