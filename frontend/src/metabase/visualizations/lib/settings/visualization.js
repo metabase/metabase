@@ -25,7 +25,7 @@ const COMMON_SETTINGS = {
     useRawSeries: true,
   },
   "card.hide_empty": {
-    title: t`Hide if there are no results`,
+    title: t`Hide this card if there are no results`,
     widget: "toggle",
     inline: true,
     dashboard: true,

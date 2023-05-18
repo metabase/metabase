@@ -648,7 +648,9 @@ describe("scenarios > dashboard", () => {
     });
 
     cy.findByRole("dialog").within(() => {
-      cy.findByRole("switch", { name: "Hide if there are no results" }).click();
+      cy.findByRole("switch", {
+        name: "Hide this card if there are no results",
+      }).click();
       cy.button("Done").click();
     });
 
