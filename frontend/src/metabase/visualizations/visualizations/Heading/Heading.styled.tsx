@@ -1,7 +1,11 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 
-export const InputContainer = styled.div`
+interface InputContainerProps {
+  isPreviewing: boolean;
+}
+
+export const InputContainer = styled.div<InputContainerProps>`
   display: flex;
   flex-direction: column;
   width: 100%;
@@ -46,7 +50,11 @@ export const HeadingContainer = styled.div`
   width: 100%;
 `;
 
-export const HeadingContent = styled.h2`
+interface HeadingContentProps {
+  hasNoContent?: boolean;
+}
+
+export const HeadingContent = styled.h2<HeadingContentProps>`
   max-height: 100%;
   max-width: 100%;
   overflow-x: hidden;

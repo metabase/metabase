@@ -1,6 +1,4 @@
-/* eslint-disable react/prop-types */
-// ! REMOVE ABOVE COMMENT AND CONVERT TO TYPESCRIPT
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, MouseEvent } from "react";
 
 import cx from "classnames";
 import { t } from "ttag";
@@ -12,27 +10,34 @@ import {
   TextInput,
 } from "./Heading.styled";
 
+interface HeadingProps {
+  isEditing: boolean;
+  onUpdateVisualizationSettings: (text: string) => void;
+  dashcard: { justAdded?: boolean };
+  settings: { text: string };
+}
+
 export function Heading({
   settings,
   isEditing,
   onUpdateVisualizationSettings,
   dashcard,
-}) {
+}: HeadingProps) {
   const justAdded = useMemo(() => dashcard?.justAdded || false, [dashcard]);
 
   const [isFocused, setIsFocused] = useState(justAdded);
   const [isHovering, setIsHovering] = useState(false);
   const isPreviewing = !isFocused && !isHovering;
 
-  const handleTextChange = text =>
-    onUpdateVisualizationSettings({ text: text });
-  const preventDragging = e => e.stopPropagation();
+  const handleTextChange = (text: string) =>
+    onUpdateVisualizationSettings({ text }); // ! FIX TYPESCRIPT ERROR?
+  const preventDragging = (e: MouseEvent<HTMLInputElement>) =>
+    e.stopPropagation();
 
   const content = settings.text;
   const hasNoContent = !content;
   const placeholder = t`Heading`;
 
-  // ! REMOVE ANY CLASSNAME STYLING IF POSSIBLE
   if (isEditing) {
     return (
       <InputContainer
@@ -49,7 +54,6 @@ export function Heading({
           </HeadingContent>
         ) : (
           <TextInput
-            className={cx("full flex-full flex flex-column bg-light bordered")}
             name="heading"
             placeholder={placeholder}
             value={content}
