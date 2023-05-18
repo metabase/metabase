@@ -591,8 +591,8 @@ export function loadIcon(name: string) {
     attrs: {
       className: "Icon Icon-" + name,
       viewBox: "0 0 16 16",
-      width: 20,
-      height: 20,
+      width: 16,
+      height: 16,
       fill: "currentcolor",
       role: "img",
       "aria-label": name + " icon",
