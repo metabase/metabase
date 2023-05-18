@@ -4,14 +4,21 @@
    [metabase.models.serialization :as serdes]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
+   [methodical.core :as methodical]
    [schema.core :as s]
    [toucan.hydrate :refer [hydrate]]
-   [toucan.models :as models]
    [toucan2.core :as t2]))
 
-(models/defmodel TimelineEvent :timeline_event)
+(def TimelineEvent
+  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], now it's a reference to the toucan2 model name.
+  We'll keep this till we replace all the symbols in our codebase."
+  :model/TimelineEvent)
+
+(methodical/defmethod t2/table-name :model/TimelineEvent  [_model] :timeline_event)
 
 (doto TimelineEvent
+  (derive :metabase/model)
+  (derive :hook/timestamped?)
   (derive ::mi/read-policy.full-perms-for-perms-set)
   (derive ::mi/write-policy.full-perms-for-perms-set))
 
@@ -24,7 +31,7 @@
 
 ;;;; permissions
 
-(defmethod mi/perms-objects-set TimelineEvent
+(defmethod mi/perms-objects-set :model/TimelineEvent
   [event read-or-write]
   (let [timeline (or (:timeline event)
                      (t2/select-one 'Timeline :id (:timeline_id event)))]
@@ -88,11 +95,7 @@
 
 ;;;; model
 
-(mi/define-methods
- TimelineEvent
- {:properties (constantly {::mi/timestamped? true})})
-
-(defmethod serdes/hash-fields TimelineEvent
+(defmethod serdes/hash-fields :model/TimelineEvent
   [_timeline-event]
   [:name :timestamp (serdes/hydrated-hash :timeline) :created_at])
 
