@@ -414,16 +414,16 @@
   (filter some? (mapcat result-attachment contents)))
 
 (defn- render-content
-  [timezone result]
+  [timezone content]
   (cond
-    (:card result)
-    (render/render-pulse-section timezone result)
+    (:card content)
+    (render/render-pulse-section timezone content)
 
-    (:text result)
-    {:content (markdown/process-markdown (:text result) :html)}
+    (:text content)
+    {:content (markdown/process-markdown (:text content) :html)}
 
-    (:tab-title result)
-    {:content (markdown/process-markdown (format "# %s\n---" (:tab-title result)) :html)}))
+    (:tab-title content)
+    {:content (markdown/process-markdown (format "# %s\n---" (:tab-title content)) :html)}))
 
 (defn- render-filters
   [notification dashboard]
