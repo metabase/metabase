@@ -16,6 +16,14 @@ export type CardMetadata = unknown & { _opaque: typeof CardMetadata };
 
 export type Limit = number | null;
 
+declare const AggregationClause: unique symbol;
+export type AggregationClause = unknown & { _opaque: typeof AggregationClause };
+
+declare const AggregationOperator: unique symbol;
+export type AggregationOperator = unknown & {
+  _opaque: typeof AggregationOperator;
+};
+
 declare const BreakoutClause: unique symbol;
 export type BreakoutClause = unknown & { _opaque: typeof BreakoutClause };
 
@@ -24,7 +32,7 @@ export type OrderByClause = unknown & { _opaque: typeof OrderByClause };
 
 export type OrderByDirection = "asc" | "desc";
 
-export type Clause = BreakoutClause | OrderByClause;
+export type Clause = AggregationClause | BreakoutClause | OrderByClause;
 
 declare const ColumnMetadata: unique symbol;
 export type ColumnMetadata = unknown & { _opaque: typeof ColumnMetadata };
@@ -63,10 +71,20 @@ export type ColumnDisplayInfo = {
   orderByPosition?: number;
 };
 
+export type AggregationOperatorDisplayInfo = {
+  columnName: string;
+  displayName: string;
+  description: string;
+  short: string;
+  requiresField: boolean;
+};
+
 export type ClauseDisplayInfo = Pick<
   ColumnDisplayInfo,
   "name" | "displayName" | "longDisplayName" | "table"
 >;
+
+export type AggregationClauseDisplayInfo = ClauseDisplayInfo;
 
 export type BreakoutClauseDisplayInfo = ClauseDisplayInfo;
 
