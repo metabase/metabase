@@ -15,6 +15,17 @@
 
 (models/defmodel ^:private FakedCard :report_card)
 
+(use-fixtures :each (fn [thunk]
+                      (with-redefs [metabase.models.revision.diff/model-str->i18n-str (fn [model-str]
+                                                                                        (case model-str
+                                                                                          "Dashboard" (deferred-tru "Dashboard")
+                                                                                          "Card"      (deferred-tru "Card")
+                                                                                          "Segment"   (deferred-tru "Segment")
+                                                                                          "Metric"    (deferred-tru "Metric")
+                                                                                          "NonExistModel" (deferred-tru "NonExistModel")
+                                                                                          "FakeCard"      (deferred-tru "FakeCard")))]
+                        (thunk))))
+
 (defmethod revision/serialize-instance FakedCard
   [_model _id obj]
   (into {} (assoc obj :serialized true)))
@@ -171,7 +182,6 @@
               :diff                 {:o1 {:name "Initial Name", :serialized true}
                                      :o2 {:name "Modified Name", :serialized true}}
               :has_multiple_changes false
-              :title                "BEFORE={:name \"Initial Name\", :serialized true},AFTER={:name \"Modified Name\", :serialized true}."
               :description          "BEFORE={:name \"Initial Name\", :serialized true},AFTER={:name \"Modified Name\", :serialized true}."}
              (let [revisions (revision/revisions FakedCard card-id)]
                (assert (= 2 (count revisions)))
@@ -191,7 +201,6 @@
                 :user                 {:id (mt/user->id :rasta), :common_name "Rasta Toucan", :first_name "Rasta", :last_name "Toucan"},
                 :diff                 {:o1 nil
                                        :o2 {:name "Tips Created by Day", :serialized true}}
-                :title                nil
                 :has_multiple_changes false
                 :description          nil})]
              (->> (revision/revisions+details FakedCard card-id)
@@ -211,8 +220,6 @@
                 :diff                 {:o1 {:name "Tips Created by Day", :serialized true}
                                        :o2 {:name "Spots Created by Day", :serialized true}}
                 :has_multiple_changes false
-                :title                (str "BEFORE={:name \"Tips Created by Day\", :serialized true},AFTER="
-                                           "{:name \"Spots Created by Day\", :serialized true}.")
                 :description          (str "BEFORE={:name \"Tips Created by Day\", :serialized true},AFTER="
                                            "{:name \"Spots Created by Day\", :serialized true}.")})
               (mi/instance
@@ -224,7 +231,6 @@
                 :diff                 {:o1 nil
                                        :o2 {:name "Tips Created by Day", :serialized true}}
                 :has_multiple_changes false
-                :title                nil
                 :description          nil})]
              (->> (revision/revisions+details FakedCard card-id)
                   (map #(dissoc % :timestamp :id :model_id))))))))
@@ -292,9 +298,8 @@
    (testing (format "revision for %s models" (if (nil? model) "generic" model))
      (testing "creation"
        (is (= {:has_multiple_changes false
-               :title                "created this."
                :description          "created this."}
-              (#'revision/revision-title+description model
+              (#'revision/revision-description-info model
                                                      nil
                                                      {:object       {:name "New Object"}
                                                       :is_reversion false
@@ -302,9 +307,8 @@
 
      (testing "reversion"
        (is (= {:has_multiple_changes false
-               :title                "reverted to an earlier version."
                :description          "reverted to an earlier version."}
-              (#'revision/revision-title+description model
+              (#'revision/revision-description-info model
                                                      {:object       {:name "New Object"}
                                                       :is_reversion false
                                                       :is_creation  false}
@@ -313,24 +317,22 @@
                                                       :is_creation  false}))))
 
      (testing "multiple changes"
-       (is (= {:title                (deferred-tru "edited this.")
-               :description          "changed the display from :table to :bar and turned this into a model."
-               :has_multiple_changes true}
-              (#'revision/revision-title+description model
-                                                     {:object       {:dataset false
-                                                                     :display :table}
-                                                      :is_reversion false
-                                                      :is_creation  false}
-                                                     {:object       {:dataset true
-                                                                     :display :bar}
-                                                      :is_reversion false
-                                                      :is_creation  false}))))
+       {:description          "changed the display from :table to :bar and turned this into a model."
+        :has_multiple_changes true}
+       (#'revision/revision-description-info model
+                                              {:object       {:dataset false
+                                                              :display :table}
+                                               :is_reversion false
+                                               :is_creation  false}
+                                              {:object       {:dataset true
+                                                              :display :bar}
+                                               :is_reversion false
+                                               :is_creation  false}))
 
      (testing "changes contains unspecified keys will not be mentioned"
        (is (= {:description          "turned this into a model."
-               :title                "turned this into a model."
                :has_multiple_changes false}
-              (#'revision/revision-title+description model
+              (#'revision/revision-description-info model
                                                      {:object       {:dataset     false
                                                                      :unknown_key false}
                                                       :is_reversion false

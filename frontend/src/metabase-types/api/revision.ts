@@ -1,6 +1,5 @@
 export interface Revision {
   id: number;
-  title: string;
   description: string;
   message: string | null;
   timestamp: string;

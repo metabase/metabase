@@ -91,21 +91,10 @@
     (:is_reversion revision) [(deferred-tru "reverted to an earlier version")]
     :else                    (diff-strings model (:object prev-revision) (:object revision))))
 
-(defn- revision-title+description
-  [model prev-revision {:keys [is_creation is_reversion] :as revision}]
+(defn- revision-description-info
+  [model prev-revision revision]
   (let [changes (revision-changes model prev-revision revision)]
     {:description          (build-sentence changes)
-     ;; If > 1 item's fields are changed in a single revision,
-     ;; the changes are batched into a single string like:
-     ;; "added a description, moved cards around and archived this"
-     ;; Batched messages can be long, so if the revision's diff contains > 1 field,
-     ;; we want to show the changelog in a description and set a title to just "User edited this"
-     ;; If only one field is changed, we just show everything in the title
-     ;; like "John added a description"
-     :title                (if (and (every? false? [is_creation is_reversion])
-                                    (> (count changes) 1))
-                             (deferred-tru "edited this.")
-                             (build-sentence changes))
      ;; this is used on FE
      :has_multiple_changes (> (count changes) 1)}))
 
@@ -114,7 +103,7 @@
   [model revision prev-revision]
   (-> revision
       (assoc :diff (diff-map model (:object prev-revision) (:object revision)))
-      (merge (revision-title+description model prev-revision revision))
+      (merge (revision-description-info model prev-revision revision))
       ;; add revision user details
       (hydrate :user)
       (update :user select-keys [:id :first_name :last_name :common_name])

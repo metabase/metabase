@@ -2019,7 +2019,6 @@
                                                 :description "something"
                                                 :cards       [{:series [8 9], :size_y 3, :size_x 5}]}}
                :has_multiple_changes true
-               :title                "edited this."
                :description          "added a description and renamed it from \"b\" to \"c\", rearranged the cards and added some series to card 123."}
               {:is_reversion         false
                :is_creation          true
@@ -2028,7 +2027,6 @@
                                          (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
                :diff                 nil
                :has_multiple_changes false
-               :title                "created this."
                :description          "created this."}]
              (doall (for [revision (mt/user-http-request :crowberto :get 200 (format "dashboard/%d/revisions" dashboard-id))]
                       (dissoc revision :timestamp :id))))))))
@@ -2067,7 +2065,6 @@
               :diff                 {:before {:name "b"}
                                      :after  {:name "a"}}
               :has_multiple_changes false
-              :title                "reverted to an earlier version."
               :description          "reverted to an earlier version."}
              (dissoc (mt/user-http-request :crowberto :post 200 (format "dashboard/%d/revert" dashboard-id)
                                            {:revision_id revision-id})
@@ -2081,7 +2078,6 @@
                :diff                 {:before {:name "b"}
                                       :after  {:name "a"}}
                :has_multiple_changes false
-               :title                "reverted to an earlier version."
                :description          "reverted to an earlier version."}
               {:is_reversion         false
                :is_creation          false
@@ -2091,7 +2087,6 @@
                :diff                 {:before {:name "a"}
                                       :after  {:name "b"}}
                :has_multiple_changes false
-               :title                "renamed this Dashboard from \"a\" to \"b\"."
                :description          "renamed this Dashboard from \"a\" to \"b\"."}
               {:is_reversion         false
                :is_creation          true
@@ -2100,7 +2095,6 @@
                                          (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
                :diff                 nil
                :has_multiple_changes false
-               :title                "created this."
                :description          "created this."}]
              (doall (for [revision (mt/user-http-request :crowberto :get 200 (format "dashboard/%d/revisions" dashboard-id))]
                       (dissoc revision :timestamp :id))))))))

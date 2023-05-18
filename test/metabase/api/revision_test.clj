@@ -52,7 +52,7 @@
 ;; case with no revisions (maintains backwards compatibility with old installs before revisions)
 (deftest no-revisions-test
   (testing "Loading revisions, where there are no revisions, should work"
-    (is (= [{:user {}, :diff nil, :description nil, :title nil, :has_multiple_changes false}]
+    (is (= [{:user {}, :diff nil, :description nil, :has_multiple_changes false}]
            (tt/with-temp Card [{:keys [id]}]
              (get-revisions :card id))))))
 
@@ -64,7 +64,6 @@
              :message              nil
              :user                 @rasta-revision-info
              :diff                 nil
-             :title                "created this."
              :has_multiple_changes false
              :description          "created this."}]
            (tt/with-temp Card [{:keys [id] :as card}]
@@ -82,7 +81,6 @@
                :diff                 {:before {:name "something else"}
                                       :after  {:name name}}
                :description          "reverted to an earlier version."
-               :title                "reverted to an earlier version."
                :has_multiple_changes false}
               {:is_reversion         false
                :is_creation          false
@@ -91,7 +89,6 @@
                :diff                 {:before {:name name}
                                       :after  {:name "something else"}}
                :description          (format "renamed this Card from \"%s\" to \"something else\"." name)
-               :title                (format "renamed this Card from \"%s\" to \"something else\"." name)
                :has_multiple_changes false}
               {:is_reversion         false
                :is_creation          true
@@ -99,7 +96,6 @@
                :user                 @rasta-revision-info
                :diff                 nil
                :description          "created this."
-               :title                "created this.",
                :has_multiple_changes false}]
              (do
                (create-card-revision (:id card) true :rasta)
@@ -153,7 +149,6 @@
                :diff                 {:before {:cards nil}
                                       :after  {:cards [{:size_x 4, :size_y 4, :row 0, :col 0, :card_id card-id, :series []}]}}
                :has_multiple_changes false
-               :title                "reverted to an earlier version."
                :description          "reverted to an earlier version."}
               {:is_reversion         false
                :is_creation          false
@@ -162,7 +157,6 @@
                :diff                 {:before {:cards [{:size_x 4, :size_y 4, :row 0, :col 0, :card_id card-id, :series []}]}
                                       :after  {:cards nil}}
                :has_multiple_changes false
-               :title                "removed a card."
                :description          "removed a card."}
               {:is_reversion         false
                :is_creation          false
@@ -171,7 +165,6 @@
                :diff                 {:before {:cards nil}
                                       :after  {:cards [{:size_x 4, :size_y 4, :row 0, :col 0, :card_id card-id, :series []}]}}
                :has_multiple_changes false
-               :title                "added a card."
                :description          "added a card."}
               {:is_reversion         false
                :is_creation          true
@@ -179,7 +172,6 @@
                :user                 @rasta-revision-info
                :diff                 nil
                :has_multiple_changes false
-               :title                "created this."
                :description          "created this."}]
              (->> (get-revisions :dashboard id)
                   (mapv (fn [rev]
@@ -258,30 +250,22 @@
         (revision/revert! :entity Dashboard :id dashboard-id :user-id (mt/user->id :crowberto) :revision-id earlier-revision-id))
 
       (is (= [{:description          "reverted to an earlier version."
-               :title                "reverted to an earlier version."
                :has_multiple_changes false}
               {:description          "moved this Dashboard to New Collection.",
-               :title                "moved this Dashboard to New Collection.",
                :has_multiple_changes false}
               {:description          "rearranged the cards."
-               :title                "rearranged the cards."
                :has_multiple_changes false}
               {:description          "removed a card."
-               :title                "removed a card."
                :has_multiple_changes false}
               {:description          "added 2 cards."
-               :title                "added 2 cards."
                :has_multiple_changes false}
               {:description          "added a description."
-               :title                "added a description."
                :has_multiple_changes false}
               {:description          "renamed this Dashboard from \"A dashboard\" to \"New name\"."
-               :title                "renamed this Dashboard from \"A dashboard\" to \"New name\"."
                :has_multiple_changes false}
               {:description          "created this."
-               :title                "created this."
                :has_multiple_changes false}]
-             (map #(select-keys % [:description :title :has_multiple_changes])
+             (map #(select-keys % [:description :has_multiple_changes])
                   (mt/user-http-request :crowberto :get 200 "revision" :entity "dashboard" :id dashboard-id)))))))
 
 
@@ -323,27 +307,20 @@
         (revision/revert! :entity Card :id card-id :user-id (mt/user->id :crowberto) :revision-id earlier-revision-id))
 
       (is (= [{:description          "reverted to an earlier version.",
-               :title                "reverted to an earlier version.",
                :has_multiple_changes false}
               {:description          "moved this Card to New Collection.",
-               :title                "moved this Card to New Collection.",
                :has_multiple_changes false}
               {:description          "added a description."
-               :title                "added a description."
                :has_multiple_changes false}
               {:description          "changed the display from :table to :scalar, modified the query and edited the metadata."
-               :title                "edited this."
                :has_multiple_changes true}
               {:description          "turned this into a model and edited the metadata."
-               :title                "edited this."
                :has_multiple_changes true}
               {:description          "renamed this Card from \"A card\" to \"New name\"."
-               :title                "renamed this Card from \"A card\" to \"New name\"."
                :has_multiple_changes false}
               {:description          "created this."
-               :title                "created this."
                :has_multiple_changes false}]
-             (map #(select-keys % [:description :title :has_multiple_changes])
+             (map #(select-keys % [:description :has_multiple_changes])
                   (mt/user-http-request :crowberto :get 200 "revision" :entity "card" :id card-id)))))))
 
 (deftest revision-descriptions-are-i18ned-test
@@ -376,14 +353,11 @@
             (revision/revert! :entity Card :id card-id :user-id (mt/user->id :crowberto) :revision-id earlier-revision-id))
 
           (is (= [{:description          "est revenu à une version antérieure."
-                   :title                "est revenu à une version antérieure."
                    :has_multiple_changes false}
                   {:description          "renommé ce Carte de A card à New name et ajouté une description."
-                   :title                "édité ceci."
                    :has_multiple_changes true}
                   {:description          "créé ceci."
-                   :title                "créé ceci."
                    :has_multiple_changes false}]
-                 (map #(select-keys % [:description :title :has_multiple_changes])
+                 (map #(select-keys % [:description :has_multiple_changes])
                       (mt/user-http-request :crowberto :get 200 "revision" :entity "card" :id card-id))))
           (t2/delete! :model/Card :id card-id))))))
