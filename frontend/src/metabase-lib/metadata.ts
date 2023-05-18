@@ -3,6 +3,10 @@ import * as ML_MetadataCalculation from "cljs/metabase.lib.metadata.calculation"
 import type { DatabaseId } from "metabase-types/api";
 import type Metadata from "./metadata/Metadata";
 import type {
+  AggregationClause,
+  AggregationClauseDisplayInfo,
+  AggregationOperator,
+  AggregationOperatorDisplayInfo,
   BreakoutClause,
   BreakoutClauseDisplayInfo,
   Bucket,
@@ -43,13 +47,23 @@ declare function DisplayInfoFn(
 declare function DisplayInfoFn(
   query: Query,
   stageIndex: number,
-  orderByClause: OrderByClause,
-): OrderByClauseDisplayInfo;
+  aggregationClause: AggregationClause,
+): AggregationClauseDisplayInfo;
+declare function DisplayInfoFn(
+  query: Query,
+  stageIndex: number,
+  aggregationOperator: AggregationOperator,
+): AggregationOperatorDisplayInfo;
 declare function DisplayInfoFn(
   query: Query,
   stageIndex: number,
   breakoutClause: BreakoutClause,
 ): BreakoutClauseDisplayInfo;
+declare function DisplayInfoFn(
+  query: Query,
+  stageIndex: number,
+  orderByClause: OrderByClause,
+): OrderByClauseDisplayInfo;
 declare function DisplayInfoFn(
   query: Query,
   stageIndex: number,
