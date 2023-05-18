@@ -54,8 +54,7 @@
 
 (defmethod diff-strings :default
   [model o1 o2]
-  (when-let [[before after] (data/diff o1 o2)]
-    (diff-strings* (name model) before after)))
+  (diff-strings* (name model) o1 o2))
 
 ;;; # Revision Entity
 

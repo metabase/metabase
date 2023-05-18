@@ -1,6 +1,7 @@
 (ns metabase.models.revision.diff
   (:require
    [clojure.core.match :refer [match]]
+   [clojure.data :as data]
    [metabase.util.i18n :refer [deferred-tru]]
    [toucan2.core :as t2]))
 
@@ -74,11 +75,12 @@
 (defn diff-strings*
   "Create a seq of string describing how `o1` is different from `o2`.
   The directionality of the statement should indicate that `o1` changed into `o2`."
-  [model before after]
-  (let [ks         (keys (or after before))
-        model-name (or (model-str->i18n-str model) model)]
-    (filter identity
-            (map-indexed (fn [i k]
-                           (diff-string k (k before) (k after)
+  [model o1 o2]
+  (when-let [[before after] (data/diff o1 o2)]
+    (let [ks         (keys (or after before))
+          model-name (or (model-str->i18n-str model) model)]
+      (filter identity
+              (map-indexed (fn [i k]
+                             (diff-string k (k before) (k after)
                                           (if (zero? i) (deferred-tru "this {0}" model-name) (deferred-tru "it"))))
-                         ks))))
+                           ks)))))
