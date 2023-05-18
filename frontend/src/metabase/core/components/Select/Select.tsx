@@ -210,7 +210,7 @@ class Select<TValue, TOption = SelectOption<TValue>> extends Component<
       return (
         <Icon
           name={icon}
-          size={(item as any).iconSize || 18}
+          size={(item as any).iconSize || 16}
           color={(item as any).iconColor || color("text-dark")}
           style={{ minWidth: MIN_ICON_WIDTH }}
         />
@@ -221,7 +221,6 @@ class Select<TValue, TOption = SelectOption<TValue>> extends Component<
       return (
         <Icon
           name="check"
-          size={14}
           color={color("text-dark")}
           style={{ minWidth: MIN_ICON_WIDTH }}
         />

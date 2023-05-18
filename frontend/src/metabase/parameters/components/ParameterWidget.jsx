@@ -123,7 +123,7 @@ export default class ParameterWidget extends Component {
           {dragHandle}
         </div>
         {parameter.name}
-        <Icon className="flex-align-right" name="gear" />
+        <Icon className="flex-align-right" name="gear" size={16} />
       </div>
     );
 

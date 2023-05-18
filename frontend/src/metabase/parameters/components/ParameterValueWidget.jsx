@@ -118,7 +118,7 @@ class ParameterValueWidget extends Component {
             <Icon
               name={parameterTypeIcon}
               className="flex-align-left mr1 flex-no-shrink"
-              size={14}
+              size={16}
             />
           )}
           <Widget
@@ -159,7 +159,7 @@ class ParameterValueWidget extends Component {
                 <Icon
                   name={parameterTypeIcon}
                   className="flex-align-left mr1 flex-no-shrink"
-                  size={14}
+                  size={16}
                 />
               )}
               <div className="mr1 text-nowrap">

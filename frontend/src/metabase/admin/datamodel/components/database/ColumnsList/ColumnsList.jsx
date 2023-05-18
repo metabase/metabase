@@ -180,7 +180,6 @@ class ColumnOrderDropdown extends Component {
             <Icon
               className="ml1"
               name="sort_arrows"
-              size={14}
               style={{ transform: "translateY(2px)" }}
             />
           </span>

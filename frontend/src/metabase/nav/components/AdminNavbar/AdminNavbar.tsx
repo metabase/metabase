@@ -80,11 +80,7 @@ const MobileNavbar = ({ adminPaths, currentPath }: AdminMobileNavbarProps) => {
 
   return (
     <AdminMobileNavbar>
-      <Icon
-        name="burger"
-        size={20}
-        onClick={() => setMobileNavOpen(prev => !prev)}
-      />
+      <Icon name="burger" onClick={() => setMobileNavOpen(prev => !prev)} />
       {mobileNavOpen && (
         <AdminMobileNavBarItems>
           {adminPaths.map(({ name, key, path }) => (
