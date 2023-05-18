@@ -410,10 +410,10 @@
          (stream-api-results-to-export-format :xlsx os result))
        (create-result-attachment-map "xlsx" card-name temp-file))]))
 
-(defn- result-attachments [results]
-  (filter some? (mapcat result-attachment results)))
+(defn- content-attachments [contents]
+  (filter some? (mapcat result-attachment contents)))
 
-(defn- render-result-card
+(defn- render-content
   [timezone result]
   (cond
     (:card result)
@@ -422,9 +422,8 @@
     (:text result)
     {:content (markdown/process-markdown (:text result) :html)}
 
-    ;; for content that is platform-specific
-    (:email result)
-    (recur timezone (:email result))))
+    (get-in result [:tab :title])
+    {:content (markdown/process-markdown (format "# %s\n---" (get-in result [:tab :title])) :html)}))
 
 (defn- render-filters
   [notification dashboard]
@@ -469,9 +468,9 @@
         [:tr {} row])])))
 
 (defn- render-message-body
-  [notification message-type message-context timezone dashboard results]
+  [notification message-type message-context timezone dashboard contents]
   (let [rendered-cards  (binding [render/*include-title* true]
-                          (mapv #(render-result-card timezone %) results))
+                          (mapv #(render-content timezone %) contents))
         icon-name       (case message-type
                           :alert :bell
                           :pulse :dashboard)
@@ -485,7 +484,7 @@
     (vec (concat [{:type "text/html; charset=utf-8" :content (stencil/render-file "metabase/email/pulse" message-body)}]
                  (map make-message-attachment attachments)
                  [icon-attachment]
-                 (result-attachments results)))))
+                 (content-attachments contents)))))
 
 (defn- assoc-attachment-booleans [pulse results]
   (for [{{result-card-id :id} :card :as result} results
@@ -496,13 +495,13 @@
 
 (defn render-pulse-email
   "Take a pulse object and list of results, returns an array of attachment objects for an email"
-  [timezone pulse dashboard results]
+  [timezone pulse dashboard contents]
   (render-message-body pulse
                        :pulse
                        (pulse-context pulse dashboard)
                        timezone
                        dashboard
-                       (assoc-attachment-booleans pulse results)))
+                       (assoc-attachment-booleans pulse contents)))
 
 (defn pulse->alert-condition-kwd
   "Given an `alert` return a keyword representing what kind of goal needs to be met."
