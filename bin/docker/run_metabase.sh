@@ -81,7 +81,7 @@ else
     id -u metabase > /dev/null 2>&1
     user_exists=$?
     if [[ $user_exists -ne 0 ]]; then
-        adduser --disabled-password -u $MUID --ingroup metabase metabase
+        adduser --disabled-password --gecos "" -u $MUID --ingroup metabase metabase
     fi
 
     db_file=${MB_DB_FILE:-/metabase.db}
