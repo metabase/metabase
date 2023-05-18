@@ -27,7 +27,7 @@
   [_model o1 o2]
   {:o1 (when o1 (into {} o1)), :o2 (when o2 (into {} o2))})
 
-(defmethod revision/diff-strs FakedCard
+(defmethod revision/diff-strings FakedCard
   [_model o1 o2]
   (when o1
     [(str "BEFORE=" (into {} o1) ",AFTER=" (into {} o2))]))
@@ -55,14 +55,14 @@
                 "changed")
     (is (= "renamed this Card from \"Tips by State\" to \"Spots by State\"."
            (build-sentence
-             ((get-method revision/diff-strs :default)
+             ((get-method revision/diff-strings :default)
               Card
               {:name "Tips by State", :private false}
               {:name "Spots by State", :private false}))))
 
     (is (= "made this Card private."
            (build-sentence
-             ((get-method revision/diff-strs :default)
+             ((get-method revision/diff-strings :default)
               Card
               {:name "Spots by State", :private false}
               {:name "Spots by State", :private true}))))))
@@ -71,7 +71,7 @@
   (testing "Check that 2 changes are handled nicely"
     (is (= "made this Card private and renamed it from \"Tips by State\" to \"Spots by State\"."
            (build-sentence
-             ((get-method revision/diff-strs :default)
+             ((get-method revision/diff-strings :default)
               Card
               {:name "Tips by State", :private false}
               {:name "Spots by State", :private true})))))
@@ -79,7 +79,7 @@
   (testing "Check that several changes are handled nicely"
     (is (= (str "turned this into a model, made it private and renamed it from \"Tips by State\" to \"Spots by State\".")
            (build-sentence
-             ((get-method revision/diff-strs :default)
+             ((get-method revision/diff-strings :default)
               Card
               {:name "Tips by State", :private false, :dataset false}
               {:name "Spots by State", :private true, :dataset true}))))))

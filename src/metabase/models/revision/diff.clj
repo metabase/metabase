@@ -4,7 +4,7 @@
    [metabase.util.i18n :refer [deferred-tru]]
    [toucan2.core :as t2]))
 
-(defn- diff-strings* [k v1 v2 identifier]
+(defn- diff-string [k v1 v2 identifier]
   (match [k v1 v2]
     [:name _ _]
     (deferred-tru "renamed {0} from \"{1}\" to \"{2}\"" identifier v1 v2)
@@ -71,7 +71,7 @@
    "Segment"   (deferred-tru "Segment")
    "Metric"    (deferred-tru "Metric")})
 
-(defn diff-strings
+(defn diff-strings*
   "Create a seq of string describing how `o1` is different from `o2`.
   The directionality of the statement should indicate that `o1` changed into `o2`."
   [model before after]
@@ -79,6 +79,6 @@
         model-name (or (model-str->i18n-str model) model)]
     (filter identity
             (map-indexed (fn [i k]
-                           (diff-strings* k (k before) (k after)
+                           (diff-string k (k before) (k after)
                                           (if (zero? i) (deferred-tru "this {0}" model-name) (deferred-tru "it"))))
                          ks))))

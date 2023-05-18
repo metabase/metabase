@@ -3,7 +3,7 @@
    [clojure.data :as data]
    [metabase.db.util :as mdb.u]
    [metabase.models.interface :as mi]
-   [metabase.models.revision.diff :refer [build-sentence diff-strings]]
+   [metabase.models.revision.diff :refer [build-sentence diff-strings*]]
    [metabase.models.user :refer [User]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
@@ -45,17 +45,17 @@
       {:before before
        :after  after})))
 
-(defmulti diff-strs
+(defmulti diff-strings
   "Return a seq of string describing the difference between `object-1` and `object-2`.
 
   Each string in the seq should be i18n-ed."
   {:arglists '([model object-1 object-2])}
   mi/dispatch-on-model)
 
-(defmethod diff-strs :default
+(defmethod diff-strings :default
   [model o1 o2]
   (when-let [[before after] (data/diff o1 o2)]
-    (diff-strings (name model) before after)))
+    (diff-strings* (name model) before after)))
 
 ;;; # Revision Entity
 
@@ -90,7 +90,7 @@
   (cond
     (:is_creation revision)  [(deferred-tru "created this")]
     (:is_reversion revision) [(deferred-tru "reverted to an earlier version")]
-    :else                    (diff-strs model (:object prev-revision) (:object revision))))
+    :else                    (diff-strings model (:object prev-revision) (:object revision))))
 
 (defn- revision-title+description
   [model prev-revision {:keys [is_creation is_reversion] :as revision}]

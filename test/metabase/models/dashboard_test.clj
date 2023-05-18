@@ -60,7 +60,7 @@
 (deftest diff-dashboards-str-test
   (is (= "added a description and renamed it from \"Diff Test\" to \"Diff Test Changed\"."
          (build-sentence
-           (revision/diff-strs
+           (revision/diff-strings
              Dashboard
              {:name        "Diff Test"
               :description nil
@@ -71,7 +71,7 @@
 
   (is (= "added a card."
          (build-sentence
-           (revision/diff-strs
+           (revision/diff-strings
              Dashboard
              {:name        "Diff Test"
               :description nil
@@ -88,7 +88,7 @@
 
   (is (= "set auto apply filters to false."
          (build-sentence
-           (revision/diff-strs
+           (revision/diff-strings
              Dashboard
              {:name               "Diff Test"
               :auto_apply_filters true}
@@ -97,7 +97,7 @@
 
   (is (= "changed the cache ttl from \"333\" to \"1,227\", rearranged the cards, modified the series on card 1 and added some series to card 2."
          (build-sentence
-           (revision/diff-strs
+           (revision/diff-strings
              Dashboard
              {:name        "Diff Test"
               :description nil
@@ -136,35 +136,35 @@
 
  (is (= "added a card."
         (build-sentence
-          (revision/diff-strs
+          (revision/diff-strings
             Dashboard
             {:cards [{:id 1} {:id 2}]}
             {:cards [{:id 1} {:id 2} {:id 3}]}))))
 
  (is (= "removed a card."
         (build-sentence
-          (revision/diff-strs
+          (revision/diff-strings
             Dashboard
             {:cards [{:id 1} {:id 2}]}
             {:cards [{:id 1}]}))))
 
  (is (= "rearranged the cards."
         (build-sentence
-          (revision/diff-strs
+          (revision/diff-strings
             Dashboard
             {:cards [{:id 1 :row 0} {:id 2 :row 1}]}
             {:cards [{:id 1 :row 1} {:id 2 :row 2}]}))))
 
  (is (= "modified the cards."
         (build-sentence
-          (revision/diff-strs
+          (revision/diff-strings
             Dashboard
             {:cards [{:id 1} {:id 2}]}
             {:cards [{:id 1} {:id 3}]}))))
 
  (is (= "renamed it from \"Apple\" to \"Next\" and modified the cards."
         (build-sentence
-          (revision/diff-strs
+          (revision/diff-strings
             Dashboard
             {:name "Apple"
              :cards [{:id 1} {:id 2}]}
@@ -174,7 +174,7 @@
    [Collection {coll-id :id} {:name "New collection"}]
    (is (= "moved this Dashboard to New collection."
           (build-sentence
-            (revision/diff-strs
+            (revision/diff-strings
               Dashboard
               {:name "Apple"}
               {:name          "Apple"
@@ -184,7 +184,7 @@
     Collection {coll-id-2 :id} {:name "New collection"}]
    (is (= "moved this Dashboard from Old collection to New collection."
           (build-sentence
-            (revision/diff-strs
+            (revision/diff-strings
               Dashboard
               {:name          "Apple"
                :collection_id coll-id-1}

@@ -214,7 +214,7 @@
 
   serialized-dashboard)
 
-(defmethod revision/diff-strs :model/Dashboard
+(defmethod revision/diff-strings :model/Dashboard
   [_model prev-dashboard dashboard]
   (let [[removals changes]  (diff prev-dashboard dashboard)
         check-series-change (fn [idx card-changes]
@@ -231,7 +231,7 @@
 
                                     :else
                                     (deferred-tru "modified the series on card {0}" (get-in prev-dashboard [:cards idx :card_id]))))))]
-    (-> [(when-let [default-description (build-sentence ((get-method revision/diff-strs :default) Dashboard prev-dashboard dashboard))]
+    (-> [(when-let [default-description (build-sentence ((get-method revision/diff-strings :default) Dashboard prev-dashboard dashboard))]
            (cond-> default-description
              (str/ends-with? default-description ".") (subs 0 (dec (count default-description)))))
          (when (:cache_ttl changes)
