@@ -199,26 +199,30 @@
   [s]
   (str/replace s currency-regex ""))
 
-(defn- parse-plain-number [s]
-  (case (get-number-separators)
-    ("." ".,") (. (NumberFormat/getInstance (Locale. "en" "US")) parse s)
-    ",." (. (NumberFormat/getInstance (Locale. "de" "DE")) parse s)
-    ", " (. (NumberFormat/getInstance (Locale. "fr" "FR")) parse (str/replace s \space \u00A0)) ; \u00A0 is a non-breaking space
-    ".’" (. (NumberFormat/getInstance (Locale. "de" "CH")) parse s)))
+(let [us (NumberFormat/getInstance (Locale. "en" "US"))
+      de (NumberFormat/getInstance (Locale. "de" "DE"))
+      fr (NumberFormat/getInstance (Locale. "fr" "FR"))
+      ch (NumberFormat/getInstance (Locale. "de" "CH"))]
+  (defn- parse-plain-number [number-separators s]
+    (case number-separators
+      ("." ".,") (. us parse s)
+      ",."       (. de parse s)
+      ", "       (. fr parse (str/replace s \space \u00A0)) ; \u00A0 is a non-breaking space
+      ".’"       (. ch parse s))))
 
 (defn- parse-number
-  [s]
-  (-> s
-      (str/trim)
-      (remove-currency-signs)
-      (parse-plain-number)))
+  [number-separators s]
+  (->> s
+       (str/trim)
+       (remove-currency-signs)
+       (parse-plain-number number-separators)))
 
 (defn- upload-type->parser [upload-type]
   (case upload-type
     ::varchar_255 identity
     ::text        identity
-    ::int         parse-number
-    ::float       parse-number
+    ::int         (partial parse-number (get-number-separators))
+    ::float       (partial parse-number (get-number-separators))
     ::boolean     #(parse-bool (str/trim %))
     ::date        #(parse-date (str/trim %))
     ::datetime    #(parse-datetime (str/trim %))))

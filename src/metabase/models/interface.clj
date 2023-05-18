@@ -405,6 +405,11 @@
   {:in  json-in
    :out json-out-with-keywordization})
 
+(def transform-json-no-keywordization
+  "Transform for json-no-keywordization"
+  {:in  json-in
+   :out json-out-without-keywordization})
+
 (def transform-encrypted-json
   "Transform for encrypted json."
   {:in  encrypted-json-in

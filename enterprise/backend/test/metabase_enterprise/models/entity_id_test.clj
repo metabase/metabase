@@ -34,19 +34,19 @@
   - exported as a child of something else (eg. timeline_event under timeline)
   so they don't need a generated entity_id."
   #{:metabase.db.data-migrations/DataMigrations
-    :metabase.models.action/HTTPAction
-    :metabase.models.action/ImplicitAction
-    :metabase.models.action/QueryAction
+    :model/HTTPAction
+    :model/ImplicitAction
+    :model/QueryAction
     :metabase.models.activity/Activity
     :metabase.models.application-permissions-revision/ApplicationPermissionsRevision
-    :metabase.models.bookmark/BookmarkOrdering
-    :metabase.models.bookmark/CardBookmark
-    :metabase.models.bookmark/CollectionBookmark
-    :metabase.models.bookmark/DashboardBookmark
+    :model/BookmarkOrdering
+    :model/CardBookmark
+    :model/CollectionBookmark
+    :model/DashboardBookmark
     :metabase.models.collection.root/RootCollection
     :metabase.models.collection-permission-graph-revision/CollectionPermissionGraphRevision
     :model/DashboardCardSeries
-    :metabase.models.field-values/FieldValues
+    :model/FieldValues
     :metabase.models.login-history/LoginHistory
     :metabase.models.metric-important-field/MetricImportantField
     :metabase.models.moderation-review/ModerationReview
@@ -67,7 +67,7 @@
     :metabase.models.secret/Secret
     :metabase.models.session/Session
     :metabase.models.task-history/TaskHistory
-    :metabase.models.timeline-event/TimelineEvent
+    :model/TimelineEvent
     :metabase.models.user/User
     :metabase.models.view-log/ViewLog
     :metabase-enterprise.sandbox.models.group-table-access-policy/GroupTableAccessPolicy})

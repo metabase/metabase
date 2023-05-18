@@ -1,10 +1,21 @@
 import React from "react";
 import { renderWithProviders, screen } from "__support__/ui";
-
-import { PRODUCTS, metadata } from "__support__/sample_database_fixture";
+import { createMockEntitiesState } from "__support__/store";
+import { getMetadata } from "metabase/selectors/metadata";
+import {
+  createSampleDatabase,
+  PRODUCTS,
+} from "metabase-types/api/mocks/presets";
+import { createMockState } from "metabase-types/store/mocks";
 import Dimension from "metabase-lib/Dimension";
-
 import FieldFingerprintInfo from "./FieldFingerprintInfo";
+
+const state = createMockState({
+  entities: createMockEntitiesState({
+    databases: [createSampleDatabase()],
+  }),
+});
+const metadata = getMetadata(state);
 
 function setup(field) {
   return renderWithProviders(
@@ -17,7 +28,7 @@ function setup(field) {
 describe("FieldFingerprintInfo", () => {
   describe("without fingerprint", () => {
     const field = Dimension.parseMBQL(
-      ["field", PRODUCTS.CREATED_AT.id, null],
+      ["field", PRODUCTS.CREATED_AT, null],
       metadata,
     )
       .field()
@@ -33,7 +44,7 @@ describe("FieldFingerprintInfo", () => {
 
   describe("Date field", () => {
     const dateField = Dimension.parseMBQL(
-      ["field", PRODUCTS.CREATED_AT.id, null],
+      ["field", PRODUCTS.CREATED_AT, null],
       metadata,
     )
       .field()
@@ -84,7 +95,7 @@ describe("FieldFingerprintInfo", () => {
 
   describe("Number field", () => {
     const numberField = Dimension.parseMBQL(
-      ["field", PRODUCTS.RATING.id, null],
+      ["field", PRODUCTS.RATING, null],
       metadata,
     ).field();
 
@@ -168,7 +179,7 @@ describe("FieldFingerprintInfo", () => {
 
   describe("Other field types", () => {
     const idField = Dimension.parseMBQL(
-      ["field", PRODUCTS.ID.id, null],
+      ["field", PRODUCTS.ID, null],
       metadata,
     ).field();
 

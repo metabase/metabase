@@ -1,6 +1,7 @@
 import React from "react";
 import userEvent from "@testing-library/user-event";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
+import { checkNotNull } from "metabase/core/utils/types";
 import { Card, ParameterValues } from "metabase-types/api";
 import {
   createMockCard,
@@ -9,6 +10,7 @@ import {
   createMockField,
   createMockParameterValues,
 } from "metabase-types/api/mocks";
+import { createMockMetadata } from "__support__/metadata";
 import {
   setupCardsEndpoints,
   setupCollectionsEndpoints,
@@ -19,12 +21,29 @@ import {
   setupUnauthorizedCollectionsEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import Field from "metabase-lib/metadata/Field";
 import { UiParameter } from "metabase-lib/parameters/types";
 import { createMockUiParameter } from "metabase-lib/parameters/mock";
 import ValuesSourceModal from "./ValuesSourceModal";
 
 describe("ValuesSourceModal", () => {
+  const metadata = createMockMetadata({
+    fields: [
+      createMockField({
+        id: 1,
+        base_type: "type/Text",
+        semantic_type: "type/Category",
+      }),
+      createMockField({
+        id: 2,
+        base_type: "type/Text",
+        semantic_type: "type/Category",
+      }),
+    ],
+  });
+
+  const field1 = checkNotNull(metadata.field(1));
+  const field2 = checkNotNull(metadata.field(2));
+
   describe("fields source", () => {
     it("should show a message about not connected fields", async () => {
       await setup();
@@ -37,7 +56,7 @@ describe("ValuesSourceModal", () => {
     it("should show a message about missing field values", async () => {
       await setup({
         parameter: createMockUiParameter({
-          fields: [new Field(createMockField({ id: 1 }))],
+          fields: [field1],
         }),
         parameterValues: createMockParameterValues({
           values: [],
@@ -52,10 +71,7 @@ describe("ValuesSourceModal", () => {
     it("should show field values", async () => {
       await setup({
         parameter: createMockUiParameter({
-          fields: [
-            new Field(createMockField({ id: 1 })),
-            new Field(createMockField({ id: 2 })),
-          ],
+          fields: [field1, field2],
         }),
         parameterValues: createMockParameterValues({
           values: [["A"], ["B"], ["C"]],
@@ -94,10 +110,7 @@ describe("ValuesSourceModal", () => {
     it("should copy field values when switching to custom list", async () => {
       await setup({
         parameter: createMockUiParameter({
-          fields: [
-            new Field(createMockField({ id: 1 })),
-            new Field(createMockField({ id: 2 })),
-          ],
+          fields: [field1, field2],
           values_source_config: {
             values: ["A", "B"],
           },
@@ -116,10 +129,7 @@ describe("ValuesSourceModal", () => {
     it("should not overwrite custom list values when field values are empty", async () => {
       await setup({
         parameter: createMockUiParameter({
-          fields: [
-            new Field(createMockField({ id: 1 })),
-            new Field(createMockField({ id: 2 })),
-          ],
+          fields: [field1, field2],
           values_source_config: {
             values: ["A", "B"],
           },

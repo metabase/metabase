@@ -1,9 +1,14 @@
 import React from "react";
 import userEvent from "@testing-library/user-event";
 import { render, screen, getIcon } from "__support__/ui";
-import { ORDERS } from "__support__/sample_database_fixture";
+import { checkNotNull } from "metabase/core/utils/types";
+import { ORDERS } from "metabase-types/api/mocks/presets";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
-import { createMockNotebookStep, DEFAULT_LEGACY_QUERY } from "../../test-utils";
+import {
+  createMockNotebookStep,
+  DEFAULT_LEGACY_QUERY,
+  metadata,
+} from "../../test-utils";
 import BreakoutStep from "./BreakoutStep";
 
 function setup(step = createMockNotebookStep()) {
@@ -36,7 +41,8 @@ describe("BreakoutStep", () => {
   });
 
   it("should render a breakout correctly", () => {
-    const query = DEFAULT_LEGACY_QUERY.breakout(ORDERS.CREATED_AT);
+    const createdAt = checkNotNull(metadata.field(ORDERS.CREATED_AT));
+    const query = DEFAULT_LEGACY_QUERY.breakout(createdAt);
     setup(createMockNotebookStep({ query }));
 
     expect(screen.getByText("Created At")).toBeInTheDocument();
@@ -53,7 +59,8 @@ describe("BreakoutStep", () => {
   });
 
   it("should change a breakout column", () => {
-    const query = DEFAULT_LEGACY_QUERY.breakout(ORDERS.CREATED_AT);
+    const createdAt = checkNotNull(metadata.field(ORDERS.CREATED_AT));
+    const query = DEFAULT_LEGACY_QUERY.breakout(createdAt);
     const { getNextQuery } = setup(createMockNotebookStep({ query }));
 
     userEvent.click(screen.getByText("Created At"));
@@ -65,7 +72,8 @@ describe("BreakoutStep", () => {
   });
 
   it("should remove a breakout", () => {
-    const query = DEFAULT_LEGACY_QUERY.breakout(ORDERS.CREATED_AT);
+    const createdAt = checkNotNull(metadata.field(ORDERS.CREATED_AT));
+    const query = DEFAULT_LEGACY_QUERY.breakout(createdAt);
     const { getNextQuery } = setup(createMockNotebookStep({ query }));
 
     userEvent.click(getIcon("close"));

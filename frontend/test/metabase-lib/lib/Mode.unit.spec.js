@@ -1,22 +1,27 @@
+import { createMockMetadata } from "__support__/metadata";
 import {
-  metadata,
-  SAMPLE_DATABASE,
+  createSampleDatabase,
   ORDERS,
+  ORDERS_ID,
   PRODUCTS,
   PEOPLE,
-} from "__support__/sample_database_fixture";
-
+  SAMPLE_DB_ID,
+} from "metabase-types/api/mocks/presets";
 import { getMode } from "metabase/modes/lib/modes";
 import Question from "metabase-lib/Question";
 
 describe("Mode", () => {
-  const rawDataQuestion = ORDERS.question();
+  const metadata = createMockMetadata({
+    databases: [createSampleDatabase()],
+  });
+
+  const ordersTable = metadata.table(ORDERS_ID);
+
+  const rawDataQuestion = ordersTable.question();
   const rawDataQuery = rawDataQuestion.query();
 
   describe("forQuestion(question)", () => {
     describe("with structured query question", () => {
-      // testbed for generative testing? see http://leebyron.com/testcheck-js
-
       it("returns `segment` mode with raw data", () => {
         const question = rawDataQuery.question();
         const mode = getMode(question);
@@ -32,7 +37,7 @@ describe("Mode", () => {
       it("returns `timeseries` mode with >=1 aggregations and date breakout", () => {
         const question = rawDataQuery
           .aggregate(["count"])
-          .breakout(["field", ORDERS.CREATED_AT.id, { "temporal-unit": "day" }])
+          .breakout(["field", ORDERS.CREATED_AT, { "temporal-unit": "day" }])
           .question();
         const mode = getMode(question);
         expect(mode && mode.name()).toEqual("timeseries");
@@ -40,11 +45,11 @@ describe("Mode", () => {
       it("returns `timeseries` mode with >=1 aggregations and date + category breakout", () => {
         const question = rawDataQuery
           .aggregate(["count"])
-          .breakout(["field", ORDERS.CREATED_AT.id, { "temporal-unit": "day" }])
+          .breakout(["field", ORDERS.CREATED_AT, { "temporal-unit": "day" }])
           .breakout([
             "field",
-            PRODUCTS.CATEGORY.id,
-            { "source-field": ORDERS.PRODUCT_ID.id },
+            PRODUCTS.CATEGORY,
+            { "source-field": ORDERS.PRODUCT_ID },
           ])
           .question();
         const mode = getMode(question);
@@ -54,11 +59,7 @@ describe("Mode", () => {
       it("returns `geo` mode with >=1 aggregations and an address breakout", () => {
         const question = rawDataQuery
           .aggregate(["count"])
-          .breakout([
-            "field",
-            PEOPLE.STATE.id,
-            { "source-field": ORDERS.USER_ID.id },
-          ])
+          .breakout(["field", PEOPLE.STATE, { "source-field": ORDERS.USER_ID }])
           .question();
         const mode = getMode(question);
         expect(mode && mode.name()).toEqual("geo");
@@ -69,14 +70,10 @@ describe("Mode", () => {
           .aggregate(["count"])
           .breakout([
             "field",
-            PRODUCTS.CATEGORY.id,
-            { "source-field": ORDERS.PRODUCT_ID.id },
+            PRODUCTS.CATEGORY,
+            { "source-field": ORDERS.PRODUCT_ID },
           ])
-          .breakout([
-            "field",
-            PEOPLE.STATE.id,
-            { "source-field": ORDERS.USER_ID.id },
-          ])
+          .breakout(["field", PEOPLE.STATE, { "source-field": ORDERS.USER_ID }])
           .question();
         const mode = getMode(question);
         expect(mode && mode.name()).toEqual("pivot");
@@ -84,7 +81,7 @@ describe("Mode", () => {
 
       it("returns `segment` mode with pk filter", () => {
         const question = rawDataQuery
-          .filter(["=", ["field", ORDERS.ID.id, null], 42])
+          .filter(["=", ["field", ORDERS.ID, null], 42])
           .question();
         const mode = getMode(question);
         expect(mode && mode.name()).toEqual("segment");
@@ -93,17 +90,13 @@ describe("Mode", () => {
       it("returns `default` mode with >=0 aggregations and >=3 breakouts", () => {
         const question = rawDataQuery
           .aggregate(["count"])
-          .breakout(["field", ORDERS.CREATED_AT.id, { "temporal-unit": "day" }])
+          .breakout(["field", ORDERS.CREATED_AT, { "temporal-unit": "day" }])
           .breakout([
             "field",
-            PRODUCTS.CATEGORY.id,
-            { "source-field": ORDERS.PRODUCT_ID.id },
+            PRODUCTS.CATEGORY,
+            { "source-field": ORDERS.PRODUCT_ID },
           ])
-          .breakout([
-            "field",
-            PEOPLE.STATE.id,
-            { "source-field": ORDERS.USER_ID.id },
-          ])
+          .breakout(["field", PEOPLE.STATE, { "source-field": ORDERS.USER_ID }])
           .question();
         const mode = getMode(question);
         expect(mode && mode.name()).toEqual("default");
@@ -116,8 +109,8 @@ describe("Mode", () => {
     // Action-specific tests would optimally be in their respective test files
     describe("for a question with an aggregation and a time breakout", () => {
       const question = Question.create({
-        databaseId: SAMPLE_DATABASE.id,
-        tableId: ORDERS.id,
+        databaseId: SAMPLE_DB_ID,
+        tableId: ORDERS_ID,
         metadata,
       })
         .query()

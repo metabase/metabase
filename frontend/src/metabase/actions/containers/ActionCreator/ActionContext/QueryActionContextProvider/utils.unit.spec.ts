@@ -1,45 +1,57 @@
+import { createMockMetadata } from "__support__/metadata";
 import {
   getDefaultFormSettings,
   getDefaultFieldSettings,
 } from "metabase/actions/utils";
-
 import type {
   NativeDatasetQuery,
   Parameter,
   TemplateTagType,
 } from "metabase-types/api";
-import { getUnsavedNativeQuestion } from "metabase-lib/mocks";
+import {
+  createAdHocNativeCard,
+  createSampleDatabase,
+  SAMPLE_DB_ID,
+} from "metabase-types/api/mocks/presets";
+import Question from "metabase-lib/Question";
 
 import {
   setParameterTypesFromFieldSettings,
   setTemplateTagTypesFromFieldSettings,
 } from "./utils";
 
+const metadata = createMockMetadata({
+  databases: [createSampleDatabase()],
+});
+
 const createQuestionWithTemplateTags = (tagType: TemplateTagType) =>
-  getUnsavedNativeQuestion({
-    dataset_query: {
-      type: "native",
-      database: 1,
-      native: {
-        query:
-          "INSERT INTO products (name, price) VALUES ({{name}}, {{price}});",
-        "template-tags": {
-          name: {
-            id: "aaa",
-            name: "name",
-            "display-name": "Name",
-            type: tagType,
-          },
-          price: {
-            id: "bbb",
-            name: "price",
-            "display-name": "Price",
-            type: tagType,
+  new Question(
+    createAdHocNativeCard({
+      dataset_query: {
+        type: "native",
+        database: SAMPLE_DB_ID,
+        native: {
+          query:
+            "INSERT INTO products (name, price) VALUES ({{name}}, {{price}});",
+          "template-tags": {
+            name: {
+              id: "aaa",
+              name: "name",
+              "display-name": "Name",
+              type: tagType,
+            },
+            price: {
+              id: "bbb",
+              name: "price",
+              "display-name": "Price",
+              type: tagType,
+            },
           },
         },
       },
-    },
-  });
+    }),
+    metadata,
+  );
 
 describe("actions > containers > ActionCreator > QueryActionContextProvider > utils", () => {
   describe("setParameterTypesFromFieldSettings", () => {
