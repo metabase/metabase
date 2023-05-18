@@ -48,13 +48,9 @@ function QueryColumnPicker({
       columnGroups.map(group => {
         const groupInfo = Lib.displayInfo(query, group);
 
-        const items = Lib.getColumnsFromColumnGroup(group).map(column => {
-          const displayInfo = Lib.displayInfo(query, column);
-          return {
-            ...displayInfo,
-            column,
-          };
-        });
+        const items = Lib.getColumnsFromColumnGroup(group).map(column =>
+          getColumnListItem(query, column, { hasBucketing }),
+        );
 
         return {
           name: getGroupName(groupInfo),
@@ -62,7 +58,7 @@ function QueryColumnPicker({
           items,
         };
       }),
-    [query, columnGroups],
+    [query, columnGroups, hasBucketing],
   );
 
   const handleSelect = useCallback(
@@ -75,7 +71,9 @@ function QueryColumnPicker({
 
   const handleSelectColumn = useCallback(
     (item: ColumnListItem) => {
-      if (isBucketReset(query, clause, item.column)) {
+      const isSameColumn =
+        clause && Lib.isClauseColumn(query, clause, item.column);
+      if (isSameColumn) {
         onClose?.();
       } else {
         handleSelect(item.column);
@@ -183,26 +181,37 @@ function getGroupIcon(groupInfo: Lib.ColumnDisplayInfo | Lib.TableDisplayInfo) {
   return;
 }
 
-function isBucketReset(
+function getColumnListItem(
   query: Lib.Query,
-  clause: Lib.Clause | undefined,
-  nextColumn: Lib.ColumnMetadata,
+  column: Lib.ColumnMetadata,
+  { hasBucketing = false } = {},
 ) {
-  if (!clause) {
-    return false;
+  const displayInfo = Lib.displayInfo(query, column);
+
+  const binningStrategies = Lib.availableBinningStrategies(query, column);
+  const temporalBuckets = Lib.availableTemporalBuckets(query, column);
+
+  if (hasBucketing && binningStrategies.length > 0) {
+    const defaultBucket = binningStrategies.find(
+      bucket => Lib.displayInfo(query, bucket).default,
+    );
+    const finalColumn = defaultBucket
+      ? Lib.withBinning(column, defaultBucket)
+      : column;
+    return { ...displayInfo, column: finalColumn };
   }
 
-  const isSameColumn = Lib.isClauseColumn(query, clause, nextColumn);
-  if (!isSameColumn) {
-    return false;
+  if (hasBucketing && temporalBuckets.length > 0) {
+    const defaultBucket = temporalBuckets.find(
+      bucket => Lib.displayInfo(query, bucket).default,
+    );
+    const finalColumn = defaultBucket
+      ? Lib.withTemporalBucket(column, defaultBucket)
+      : column;
+    return { ...displayInfo, column: finalColumn };
   }
 
-  const hasBucketOnCurrentClause =
-    Lib.temporalBucket(clause) || Lib.binning(clause);
-  const hasNoBucketOnNewColumn =
-    !Lib.temporalBucket(nextColumn) && !Lib.binning(nextColumn);
-
-  return hasBucketOnCurrentClause && hasNoBucketOnNewColumn;
+  return { ...displayInfo, column };
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage

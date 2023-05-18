@@ -120,7 +120,7 @@ describe("BreakoutStep", () => {
     userEvent.click(screen.getByText("Created At"));
 
     const breakout = getRecentBreakoutClause();
-    expect(breakout.displayName).toBe("Created At");
+    expect(breakout.displayName).toBe("Created At: Month");
   });
 
   it("should change a breakout column", () => {
@@ -133,7 +133,7 @@ describe("BreakoutStep", () => {
     userEvent.click(screen.getByText("Discount"));
 
     const breakout = getRecentBreakoutClause();
-    expect(breakout.displayName).toBe("Discount");
+    expect(breakout.displayName).toBe("Discount: Auto binned");
   });
 
   it("should remove a breakout", () => {
@@ -156,7 +156,7 @@ describe("BreakoutStep", () => {
       userEvent.click(screen.getByText("Total"));
 
       const breakout = getRecentBreakoutClause();
-      expect(breakout.displayName).toBe("Total");
+      expect(breakout.displayName).toBe("Total: Auto binned");
     });
 
     it("should apply selected binning strategy", async () => {
@@ -171,7 +171,6 @@ describe("BreakoutStep", () => {
       expect(breakout.displayName).toBe("Total: 10 bins");
     });
 
-    // failing because ML.displayInfo(query, ML.binning(clause)) fails
     it("should highlight selected binning strategy", async () => {
       const { query } = createQueryWithBinning();
       setup(createMockNotebookStep({ topLevelQuery: query }));
@@ -185,7 +184,6 @@ describe("BreakoutStep", () => {
       ).toHaveAttribute("aria-selected", "true");
     });
 
-    // failing because ML.displayInfo(query, ML.binning(clause)) fails
     it("shouldn't update a query when clicking a selected binned column", async () => {
       const { query } = createQueryWithBinning();
       const { updateQuery } = setup(
@@ -205,7 +203,7 @@ describe("BreakoutStep", () => {
       userEvent.click(screen.getByText("Created At"));
 
       const breakout = getRecentBreakoutClause();
-      expect(breakout.displayName).toBe("Created At");
+      expect(breakout.displayName).toBe("Created At: Month");
     });
 
     it("should apply selected temporal bucket", async () => {
