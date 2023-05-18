@@ -176,8 +176,8 @@
 
 (defn- tab->content
   [{:keys [name]}]
-  {:tab-title name
-   :type      :tab})
+  {:text name
+   :type :tab-title})
 
 (defn- execute-dashboard
   "Fetch all the dashcards in a dashboard for a Pulse, and execute non-text cards.
@@ -237,8 +237,7 @@
   (let [{ttype                                  :type
          {card-id :id card-name :name :as card} :card
          dashcard                               :dashcard
-         result                                 :result
-         tab-title                              :tab-title} content]
+         result                                 :result}  content]
     (case ttype
       :card
       {:title           (or (-> dashcard :visualization_settings :card.title)
@@ -252,8 +251,8 @@
       :text
       (text->markdown-block (:text content))
 
-      :tab
-      (text->markdown-block (format "# %s" tab-title)))))
+      :tab-title
+      (text->markdown-block (format "# %s" (:text content))))))
 
 (defn- create-slack-attachment-data
   "Returns a seq of slack attachment data structures, used in `create-and-upload-slack-attachments!`"

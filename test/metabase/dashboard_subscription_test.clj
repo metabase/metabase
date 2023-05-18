@@ -729,12 +729,12 @@
                                             :row                    1
                                             :visualization_settings {:text "Card 1 tab-2"}}]
     (testing "tabs are correctly rendered"
-      (is (= [{:tab-title "The first tab" :type :tab}
-              {:text "Card 1 tab-1" :type :text}
-              {:text "Card 2 tab-1" :type :text}
-              {:tab-title "The second tab" :type :tab}
-              {:text "Card 1 tab-2" :type :text}
-              {:text "Card 2 tab-2" :type :text}]
+      (is (= [{:text "The first tab", :type :tab-title}
+              {:text "Card 1 tab-1", :type :text}
+              {:text "Card 2 tab-1", :type :text}
+              {:text "The second tab", :type :tab-title}
+              {:text "Card 1 tab-2", :type :text}
+              {:text "Card 2 tab-2", :type :text}]
              (@#'metabase.pulse/execute-dashboard {:creator_id (mt/user->id :rasta)} dashboard))))))
 
 (deftest render-dashboard-with-tabs-test
