@@ -148,7 +148,7 @@ class Table {
   connectedTables(): Table[] {
     const fks = this.fks || [];
     return fks
-      .map(fk => this.metadata?.field(fk.origin_id)?.table)
+      .map(fk => fk.origin?.table)
       .filter(table => table != null) as Table[];
   }
 
