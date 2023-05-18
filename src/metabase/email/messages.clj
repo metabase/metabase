@@ -415,14 +415,14 @@
 
 (defn- render-content
   [timezone content]
-  (cond
-    (:card content)
+  (case (:type content)
+    :card
     (render/render-pulse-section timezone content)
 
-    (:text content)
+    :text
     {:content (markdown/process-markdown (:text content) :html)}
 
-    (:tab-title content)
+    :tab
     {:content (markdown/process-markdown (format "# %s\n---" (:tab-title content)) :html)}))
 
 (defn- render-filters

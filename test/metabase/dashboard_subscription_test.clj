@@ -233,7 +233,8 @@
         (is (= (count result) 2))
         (is (schema= [{:card     (s/pred map?)
                        :dashcard (s/pred map?)
-                       :result   (s/pred map?)}]
+                       :result   (s/pred map?)
+                       :type     (s/eq :card)}]
                      result)))))
   (testing "dashboard cards are ordered correctly -- by rows, and then by columns (#17419)"
     (mt/with-temp* [Card          [{card-id-1 :id}]
@@ -254,7 +255,7 @@
                     DashboardCard [_ {:dashboard_id dashboard-id
                                       :visualization_settings {:virtual_card {}, :text "test"}}]
                     User [{user-id :id}]]
-      (is (= [{:virtual_card {}, :text "test"}] (@#'metabase.pulse/execute-dashboard {:creator_id user-id} dashboard))))))
+      (is (= [{:virtual_card {}, :text "test" :type :text}] (@#'metabase.pulse/execute-dashboard {:creator_id user-id} dashboard))))))
 
 (deftest basic-table-test
   (tests {:pulse {:skip_if_empty false} :display :table}
@@ -627,7 +628,7 @@
                                                             :target       [:text-tag "foo"]}]
                                       :dashboard_id       dashboard-id
                                       :visualization_settings {:text "{{foo}}"}}]]
-      (is (= [{:text "Doohickey and Gizmo"}]
+      (is (= [{:text "Doohickey and Gizmo" :type :text}]
              (@#'metabase.pulse/execute-dashboard {:creator_id (mt/user->id :rasta)} dashboard))))))
 
 (deftest no-native-perms-test
@@ -664,8 +665,8 @@
        DashboardCard _                 {:dashboard_id           dashboard-id
                                         :visualization_settings {:virtual_card {:display "action"}}
                                         :row                    3}]
-      (is (= [{:text "Markdown"}
-              {:text "### [https://metabase.com](https://metabase.com)"}]
+      (is (=? [{:text "Markdown"}
+               {:text "### [https://metabase.com](https://metabase.com)"}]
              (@#'metabase.pulse/execute-dashboard {:creator_id (mt/user->id :rasta)} dashboard)))))
 
   (testing "Link cards are returned and info should be newly fetched"
@@ -728,12 +729,12 @@
                                             :row                    1
                                             :visualization_settings {:text "Card 1 tab-2"}}]
     (testing "tabs are correctly rendered"
-      (is (= [{:slack {:text "# The first tab"}, :email {:text "# The first tab\n---"}}
-              {:text "Card 1 tab-1"}
-              {:text "Card 2 tab-1"}
-              {:slack {:text "# The second tab"}, :email {:text "# The second tab\n---"}}
-              {:text "Card 1 tab-2"}
-              {:text "Card 2 tab-2"}]
+      (is (= [{:tab-title "The first tab" :type :tab}
+              {:text "Card 1 tab-1" :type :text}
+              {:text "Card 2 tab-1" :type :text}
+              {:tab-title "The second tab" :type :tab}
+              {:text "Card 1 tab-2" :type :text}
+              {:text "Card 2 tab-2" :type :text}]
              (@#'metabase.pulse/execute-dashboard {:creator_id (mt/user->id :rasta)} dashboard))))))
 
 (deftest render-dashboard-with-tabs-test

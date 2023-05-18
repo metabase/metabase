@@ -75,7 +75,8 @@
                                      info)))]
       {:card     card
        :dashcard dashcard
-       :result   result})
+       :result   result
+       :type     :card})
     (catch Throwable e
       (log/warn e (trs "Error running query for Card {0}" card-or-id)))))
 
@@ -113,7 +114,8 @@
                   (if url-link-card? url (:name entity))
                   (if url-link-card? url (link-card-entity->url entity)))
                 (when-let [description (if url-link-card? nil (:description entity))]
-                  (format "\n%s" description)))}))
+                  (format "\n%s" description)))
+     :type :text}))
 
 (defn- dashcard-link-card->content
   "Convert a dashcard that is a link card to pulse content.
@@ -161,7 +163,8 @@
     (let [parameters (merge-default-values (params/parameters pulse dashboard))]
       (-> dashcard
           (params/process-virtual-dashcard parameters)
-          :visualization_settings))))
+          :visualization_settings
+          (merge {:type :text})))))
 
 (defn- dashcards->content
   [dashcards pulse dashboard]
@@ -173,7 +176,8 @@
 
 (defn- tab->content
   [{:keys [name]}]
-  {:tab-title name})
+  {:tab-title name
+   :type      :tab})
 
 (defn- execute-dashboard
   "Fetch all the dashcards in a dashboard for a Pulse, and execute non-text cards.
@@ -230,12 +234,13 @@
 
 (defn- content->attachment-data
   [content channel-id]
-  (let [{{card-id :id card-name :name :as card} :card
+  (let [{ttype                                  :type
+         {card-id :id card-name :name :as card} :card
          dashcard                               :dashcard
          result                                 :result
          tab-title                              :tab-title} content]
-    (cond
-      (and card result)
+    (case ttype
+      :card
       {:title           (or (-> dashcard :visualization_settings :card.title)
                             card-name)
        :rendered-info   (render/render-pulse-card :inline (defaulted-timezone card) card dashcard result)
@@ -244,10 +249,10 @@
        :channel-id      channel-id
        :fallback        card-name}
 
-      (:text content)
+      :text
       (text->markdown-block (:text content))
 
-      (not (str/blank? tab-title))
+      :tab
       (text->markdown-block (format "# %s" tab-title)))))
 
 (defn- create-slack-attachment-data
@@ -484,7 +489,7 @@
                             ;; send the cards instead
                             (for [card  cards
                                   ;; Pulse ID may be `nil` if the Pulse isn't saved yet
-                                  :let  [content (pu/execute-card pulse (u/the-id card) :pulse-id pulse-id)]
+                                  :let  [content (assoc (pu/execute-card pulse (u/the-id card) :pulse-id pulse-id) :type :card)]
                                   ;; some cards may return empty content, e.g. if the card has been archived
                                   :when content]
                               content))))
