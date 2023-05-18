@@ -248,4 +248,7 @@
                                         {:id                     id
                                          :visualization_settings updated}))))
                             (t2/reducible-query {:select [:id :visualization_settings :result_metadata]
-                                                 :from   [:report_card]})))))
+                                                 :from   [:report_card]
+                                                 :where  [:and
+                                                          [:<> :result_metadata nil]
+                                                          [:<> :result_metadata "[]"]]})))))
