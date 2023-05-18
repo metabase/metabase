@@ -162,18 +162,18 @@
   box-shadow: 3px 3px 8px var(--color-shadow);
 }
 
-.TextCard .hasNoContent {
+.TextCard .has-no-content {
   border-radius: 8px;
   border: 1px solid var(--color-brand);
 }
 
-.TextCard.resizing .textEditContainer {
+.TextCard.resizing .text-edit-container {
   border-radius: 8px;
   border: 1px solid var(--color-brand);
 }
 
-.TextCard:hover .textEditContainer,
-.TextCard:focus-within .textEditContainer {
+.TextCard:hover .text-edit-container,
+.TextCard:focus-within .text-edit-container {
   border-radius: 8px;
   border: 1px solid var(--color-brand);
 }
