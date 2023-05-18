@@ -28,6 +28,10 @@
 (def datetime-type  :metabase.upload/datetime)
 (def text-type      :metabase.upload/text)
 
+(when (= driver/*driver* :mysql)
+  (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+              "set global local_infile = 1"))
+
 (deftest type-detection-and-parse-test
   (doseq [[string-value  expected-value expected-type seps]
           [["0.0"        0              float-type "."]
