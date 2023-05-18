@@ -353,7 +353,8 @@
                                                "this {0}" "ce {0}"
                                                "edited this." "édité ceci."
                                                "and" "et"
-                                               "reverted to an earlier version" "est revenu à une révision antérieure"}}}
+                                               "Card" "Carte"
+                                               "reverted to an earlier version" "est revenu à une version antérieure"}}}
     (mt/with-temporary-setting-values [site-locale "fr"]
       (testing "revisions description are translated"
         (t2.with-temp/with-temp
@@ -374,10 +375,10 @@
           (let [earlier-revision-id (t2/select-one-pk Revision :model "Card" :model_id card-id {:order-by [[:timestamp :desc]]})]
             (revision/revert! :entity Card :id card-id :user-id (mt/user->id :crowberto) :revision-id earlier-revision-id))
 
-          (is (= [{:description          "est revenu à une révision antérieure."
-                   :title                "est revenu à une révision antérieure."
+          (is (= [{:description          "est revenu à une version antérieure."
+                   :title                "est revenu à une version antérieure."
                    :has_multiple_changes false}
-                  {:description          "renommé ce Card de A card à New name et ajouté une description."
+                  {:description          "renommé ce Carte de A card à New name et ajouté une description."
                    :title                "édité ceci."
                    :has_multiple_changes true}
                   {:description          "créé ceci."
