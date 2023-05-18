@@ -14782,14 +14782,14 @@ databaseChangeLog:
                     primaryKey: true
                     nullable: false
               - column:
-                  name: database_id
+                  name: db_id
                   type: int
                   remarks: 'ID of the database this connection impersonation policy affects'
                   constraints:
                     nullable: false
                     referencedTableName: metabase_database
                     referencedColumnNames: id
-                    foreignKeyName: fk_conn_impersonation_database_id
+                    foreignKeyName: fk_conn_impersonation_db_id
                     deleteCascade: true
               - column:
                   name: group_id
