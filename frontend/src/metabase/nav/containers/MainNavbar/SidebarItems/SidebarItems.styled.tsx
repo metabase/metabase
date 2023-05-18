@@ -23,7 +23,7 @@ export const SidebarIcon = styled(Icon)<{
 `;
 
 SidebarIcon.defaultProps = {
-  size: 14,
+  size: 16,
 };
 
 export const ExpandToggleButton = styled(TreeNode.ExpandToggleButton)`
