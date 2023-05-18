@@ -168,8 +168,7 @@
                                     :where  [:= :id card-id]})
                      :visualization_settings
                      json/parse-string))))))))
-            
-            
+
 (deftest migrate-legacy-result-metadata-field-refs-test
   (testing "Migrations v47.00-027: update report_card.result_metadata legacy field refs"
     (impl/test-migrations ["v47.00-027"] [migrate!]

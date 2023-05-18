@@ -14614,7 +14614,7 @@ databaseChangeLog:
       changes:
         - customChange:
             class: "metabase.db.custom_migrations.MigrateLegacyColumnSettingsFieldRefs"
-            
+
   - changeSet:
       id: v47.00-027
       author: calherres
