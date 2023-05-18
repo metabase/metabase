@@ -8,7 +8,6 @@ import { State } from "metabase-types/store";
 import type {
   ConcreteTableId,
   DatasetData,
-  ForeignKey,
   VisualizationSettings,
 } from "metabase-types/api";
 
@@ -39,6 +38,7 @@ import { getUser } from "metabase/selectors/user";
 import { MetabaseApi } from "metabase/services";
 import { isVirtualCardId } from "metabase-lib/metadata/utils/saved-questions";
 import { isPK } from "metabase-lib/types/utils/isa";
+import ForeignKey from "metabase-lib/metadata/ForeignKey";
 import type {
   ObjectId,
   OnVisualizationClickType,
@@ -91,7 +91,7 @@ const mapStateToProps = (state: State, { data }: ObjectDetailProps) => {
     question: getQuestion(state)!,
     table,
     // FIXME: remove the type cast
-    tableForeignKeys: getTableForeignKeys(state) as ForeignKey[],
+    tableForeignKeys: getTableForeignKeys(state),
     tableForeignKeyReferences: getTableForeignKeyReferences(state),
     zoomedRowID,
     zoomedRow,

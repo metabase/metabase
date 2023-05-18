@@ -4,6 +4,7 @@ import type {
   Card,
   NormalizedDatabase,
   NormalizedField,
+  NormalizedForeignKey,
   NormalizedMetric,
   NormalizedSchema,
   NormalizedSegment,
@@ -17,6 +18,7 @@ import Database from "metabase-lib/metadata/Database";
 import Schema from "metabase-lib/metadata/Schema";
 import Table from "metabase-lib/metadata/Table";
 import Field from "metabase-lib/metadata/Field";
+import ForeignKey from "metabase-lib/metadata/ForeignKey";
 import Metric from "metabase-lib/metadata/Metric";
 import Segment from "metabase-lib/metadata/Segment";
 import { isVirtualCardId } from "metabase-lib/metadata/utils/saved-questions";
@@ -140,6 +142,7 @@ export const getMetadata: (
       table.db = hydrateTableDatabase(table, metadata);
       table.schema = hydrateTableSchema(table, metadata);
       table.fields = hydrateTableFields(table, metadata);
+      table.fks = hydrateTableForeignKeys(table, metadata);
       table.segments = hydrateTableSegments(table, metadata);
       table.metrics = hydrateTableMetrics(table, metadata);
     });
@@ -215,6 +218,15 @@ function createField(field: NormalizedField, metadata: Metadata): Field {
   // There are scenarios where we are failing to convert FieldDimensions back into Fields,
   // and as a safeguard we instantiate a new Field that is missing most of its properties.
   const instance = new Field({ ...field, _comesFromEndpoint: true });
+  instance.metadata = metadata;
+  return instance;
+}
+
+function createForeignKey(
+  foreignKey: NormalizedForeignKey,
+  metadata: Metadata,
+): ForeignKey {
+  const instance = new ForeignKey(foreignKey);
   instance.metadata = metadata;
   return instance;
 }
@@ -309,6 +321,20 @@ function hydrateTableSchema(
 function hydrateTableFields(table: Table, metadata: Metadata): Field[] {
   const fieldIds = table.getPlainObject().fields ?? [];
   return fieldIds.map(id => metadata.field(id)).filter(isNotNull);
+}
+
+function hydrateTableForeignKeys(
+  table: Table,
+  metadata: Metadata,
+): ForeignKey[] {
+  const fks = table.getPlainObject().fks ?? [];
+
+  return fks.map(fk => {
+    const instance = createForeignKey(fk, metadata);
+    instance.origin = metadata.field(fk.origin_id) ?? undefined;
+    instance.destination = metadata.field(fk.destination_id) ?? undefined;
+    return instance;
+  });
 }
 
 function hydrateTableSegments(table: Table, metadata: Metadata): Segment[] {
