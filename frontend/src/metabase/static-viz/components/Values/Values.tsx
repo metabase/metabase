@@ -56,6 +56,7 @@ interface MultiSeriesValue extends Value {
   yScale: PositionScale;
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default function Values({
   series: multipleSeries,
   formatter,

@@ -14,8 +14,8 @@ shared_specs: &shared_specs
 
 frontend_sources: &frontend_sources
   - *shared_sources
-  - "enterprise/frontend/**"
-  - "frontend/!(test)/**"
+  - "enterprise/frontend/!(test)**/**/{!(*.spec),}.{js,jsx,ts,tsx,css}"
+  - "frontend/!(test)**/**/{!(*.spec),}.{js,jsx,ts,tsx,css}"
   - "yarn.lock"
   - "**/tsconfig*.json"
   - "package.json"

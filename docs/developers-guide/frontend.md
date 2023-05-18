@@ -538,4 +538,3 @@ describe("Component", () => {
 Key points:
 - Create `scope` in `setup`
 - Call helpers from `__support__/server-mocks` to setup endpoints for your data
-- Call `nock.clearAll` to remove all mocks

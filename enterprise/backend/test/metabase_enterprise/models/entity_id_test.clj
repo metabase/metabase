@@ -22,9 +22,9 @@
 (def ^:private entities-external-name
   "Entities with external names, so they don't need a generated entity_id."
   #{;; Databases have external names based on their URLs; tables are nested under databases; fields under tables.
-    :metabase.models.database/Database
-    :metabase.models.table/Table
-    :metabase.models.field/Field
+    :model/Database
+    :model/Table
+    :model/Field
     ;; Settings have human-selected unique names.
     :model/Setting})
 
@@ -34,9 +34,9 @@
   - exported as a child of something else (eg. timeline_event under timeline)
   so they don't need a generated entity_id."
   #{:metabase.db.data-migrations/DataMigrations
-    :metabase.models.action/HTTPAction
-    :metabase.models.action/ImplicitAction
-    :metabase.models.action/QueryAction
+    :model/HTTPAction
+    :model/ImplicitAction
+    :model/QueryAction
     :metabase.models.activity/Activity
     :metabase.models.application-permissions-revision/ApplicationPermissionsRevision
     :metabase.models.bookmark/BookmarkOrdering
@@ -46,7 +46,7 @@
     :metabase.models.collection.root/RootCollection
     :metabase.models.collection-permission-graph-revision/CollectionPermissionGraphRevision
     :model/DashboardCardSeries
-    :metabase.models.field-values/FieldValues
+    :model/FieldValues
     :metabase.models.login-history/LoginHistory
     :metabase.models.metric-important-field/MetricImportantField
     :model/ModerationReview

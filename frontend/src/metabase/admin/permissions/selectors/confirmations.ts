@@ -140,7 +140,7 @@ export function getRevokingAccessToAllTablesWarningModal(
     getNativePermission(permissions, groupId, entityId) !== "none"
   ) {
     // allTableEntityIds contains tables from all schemas
-    const allTableEntityIds = database.tables.map(table => ({
+    const allTableEntityIds = database.getTables().map(table => ({
       databaseId: table.db_id,
       schemaName: table.schema_name || "",
       tableId: table.id as ConcreteTableId,

@@ -101,7 +101,7 @@
 (defn- substitute-one-field-filter [{field :field, {param-type :type, value :value} :value, :as field-filter}]
   ;; convert relative dates to approprate date range representations
   (cond
-    (params.dates/date-range-type? param-type)
+    (params.dates/not-single-date-type? param-type)
     (substitute-one-field-filter-date-range field-filter)
 
     ;; a `date/single` like `2020-01-10`

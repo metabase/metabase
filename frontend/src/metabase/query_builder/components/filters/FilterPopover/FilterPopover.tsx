@@ -51,6 +51,7 @@ type Props = {
   checkedColor?: string;
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default function FilterPopover({
   isNew: isNewProp,
   filter: filterProp,

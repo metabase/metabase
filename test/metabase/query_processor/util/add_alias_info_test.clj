@@ -570,6 +570,45 @@
                             add-alias-info
                             :query)))))))))
 
+(deftest query->expected-cols-test
+  (testing "field_refs in expected columns have the original join aliases (#30648)"
+    (mt/dataset sample-dataset
+      (binding [driver/*driver* ::custom-escape-spaces-to-underscores]
+        (let [query
+              (mt/mbql-query
+               products
+                {:joins
+                 [{:source-query
+                   {:source-table $$orders
+                    :joins
+                    [{:source-table $$people
+                      :alias "People"
+                      :condition [:= $orders.user_id &People.people.id]
+                      :fields [&People.people.address]
+                      :strategy :left-join}]
+                    :fields [$orders.id &People.people.address]}
+                   :alias "Question 54"
+                   :condition [:= $id [:field %orders.id {:join-alias "Question 54"}]]
+                   :fields [[:field %orders.id {:join-alias "Question 54"}]
+                            [:field %people.address {:join-alias "Question 54"}]]
+                   :strategy :left-join}]
+                 :fields
+                 [!default.created_at
+                  [:field %orders.id {:join-alias "Question 54"}]
+                  [:field %people.address {:join-alias "Question 54"}]]})]
+          (is (=? [{:name "CREATED_AT"
+                    :field_ref [:field (mt/id :products :created_at) {:temporal-unit :default}]
+                    :display_name "Created At"}
+                   {:name "ID"
+                    :field_ref [:field (mt/id :orders :id) {:join-alias "Question 54"}]
+                    :display_name "Question 54 → ID"
+                    :source_alias "Question 54"}
+                   {:name "ADDRESS"
+                    :field_ref [:field (mt/id :people :address) {:join-alias "Question 54"}]
+                    :display_name "Question 54 → Address"
+                    :source_alias "Question 54"}]
+                  (qp/query->expected-cols query))))))))
+
 (deftest use-source-unique-aliases-test
   (testing "Make sure uniquified aliases in the source query end up getting used for `::add/source-alias`"
     ;; keep track of the IDs so we don't accidentally fetch the wrong ones after we switch the name of `price`

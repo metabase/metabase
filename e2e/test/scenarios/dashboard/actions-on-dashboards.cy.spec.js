@@ -78,7 +78,10 @@ const MODEL_NAME = "Test Action Model";
           });
 
           cy.findByRole("tab", { name: "Actions" }).click();
-          cy.findByText("New action").click();
+
+          cy.findByTestId("model-actions-header")
+            .findByText("New action")
+            .click();
 
           cy.findByRole("dialog").within(() => {
             fillActionQuery(
@@ -97,7 +100,7 @@ const MODEL_NAME = "Test Action Model";
           });
 
           cy.findByPlaceholderText("My new fantastic action").type(ACTION_NAME);
-          cy.findByText("Create").click();
+          cy.findByTestId("create-action-form").button("Create").click();
 
           createDashboardWithActionButton({
             actionName: ACTION_NAME,

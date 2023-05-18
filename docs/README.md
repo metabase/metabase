@@ -148,6 +148,7 @@ Metabase's reference documentation.
 - [Collection permissions](./permissions/collections.md)
 - [Application permissions](./permissions/application.md)
 - [Data sandboxes](./permissions/data-sandboxes.md)
+- [Data sandbox examples](./permissions/data-sandbox-examples.md)
 - [SQL snippets folder permissions](./permissions/snippets.md)
 
 ### Embedding
@@ -198,6 +199,10 @@ Metabase's reference documentation.
 
 - [Developer guide](./developers-guide/start.md)
 
+### Paid features
+
+Some Metabase plans offer [additional features](./paid-features/start.md).
+
 ## Getting help
 
 ### Troubleshooting
@@ -215,10 +220,6 @@ Metabase's reference documentation.
 ### [Discussion](https://discourse.metabase.com)
 
 Share and connect with other Metabasers.
-
-### [Paid features](./paid-features/start.md)
-
-Some [Metabase plans](https://www.metabase.com/pricing) offer additional features.
 
 ### [Metabase Cloud](https://www.metabase.com/cloud/docs)
 

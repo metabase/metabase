@@ -56,6 +56,7 @@ class Dashboard extends Component {
 
     dashboard: PropTypes.object,
     dashboardId: PropTypes.number,
+    selectedTabId: PropTypes.number,
     parameters: PropTypes.array,
     parameterValues: PropTypes.object,
     draftParameterValues: PropTypes.object,
@@ -175,7 +176,11 @@ class Dashboard extends Component {
         this.setEditing(this.props.dashboard);
       }
       if (addCardOnLoad != null) {
-        addCardToDashboard({ dashId: dashboardId, cardId: addCardOnLoad });
+        addCardToDashboard({
+          dashId: dashboardId,
+          cardId: addCardOnLoad,
+          tabId: this.props.dashboard.ordered_tabs[0]?.id ?? null,
+        });
       }
     } catch (error) {
       if (error.status === 404) {
@@ -186,6 +191,22 @@ class Dashboard extends Component {
       }
     }
   }
+
+  getDashboardWithFilteredCards = () => {
+    if (!this.props.dashboard) {
+      return;
+    }
+
+    return {
+      ...this.props.dashboard,
+      ordered_cards: this.props.dashboard.ordered_cards.filter(
+        dc =>
+          !this.props.selectedTabId ||
+          dc.dashboard_tab_id === this.props.selectedTabId ||
+          dc.dashboard_tab_id === null,
+      ),
+    };
+  };
 
   setEditing = isEditing => {
     this.props.onRefreshPeriodChange(null);
@@ -238,7 +259,8 @@ class Dashboard extends Component {
     const { error, isParametersWidgetSticky } = this.state;
 
     const shouldRenderAsNightMode = isNightMode && isFullscreen;
-    const dashboardHasCards = dashboard => dashboard.ordered_cards.length > 0;
+    const dashboardHasCards =
+      this.getDashboardWithFilteredCards()?.ordered_cards.length > 0 ?? false;
     const visibleParameters = getVisibleParameters(parameters);
 
     const parametersWidget = (
@@ -325,9 +347,10 @@ class Dashboard extends Component {
                   addMarginTop={cardsContainerShouldHaveMarginTop}
                   id="Dashboard-Cards-Container"
                 >
-                  {dashboardHasCards(dashboard) ? (
+                  {dashboardHasCards ? (
                     <DashboardGrid
                       {...this.props}
+                      dashboard={this.getDashboardWithFilteredCards()}
                       isNightMode={shouldRenderAsNightMode}
                       onEditingChange={this.setEditing}
                     />

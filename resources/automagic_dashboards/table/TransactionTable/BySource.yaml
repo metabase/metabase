@@ -1,6 +1,6 @@
 title: "[[this]] per source"
-transient_title: Here''s a closer look at your [[this]] per source
-description: Where most of your traffic is coming from.
+transient_title: Here''s a closer look at [[this]] per source
+description: Where most traffic is coming from.
 applies_to: TransactionTable
 metrics:
 - TotalIncome:
