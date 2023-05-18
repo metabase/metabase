@@ -28,8 +28,6 @@ export function TextOptionsButton({
     setIsAddTextPopoverOpen(true);
   }, [setIsAddTextPopoverOpen]);
 
-  // TODO: replace the hacky spacer <span style={{ "margin-left": "0.25em" }} />
-  // * with something less hacky
   return (
     <span key="add-a-text-box">
       <TippyPopover
