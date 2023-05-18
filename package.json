@@ -6,7 +6,7 @@
   "repository": "https://github.com/metabase/metabase",
   "license": "private",
   "engines": {
-    "node": "^16",
+    "node": ">=16",
     "yarn": "^1.12.3"
   },
   "dependencies": {
