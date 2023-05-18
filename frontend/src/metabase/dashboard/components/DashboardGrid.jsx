@@ -335,7 +335,6 @@ class DashboardGrid extends Component {
     gridItemWidth,
     totalNumGridCols,
   }) => {
-    // TODO: change this?
     const { isEditing } = this.props;
     const isHeadingCard = dc.card.display === "heading";
     const isTextCard = dc.card.display === "text";
