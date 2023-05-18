@@ -6,6 +6,7 @@ export interface DashCardRootProps {
   isNightMode: boolean;
   isUsuallySlow: boolean;
   hasHiddenBackground: boolean;
+  shouldAutoPreviewInEditing: boolean;
 }
 
 const rootNightModeStyle = css`
@@ -23,6 +24,7 @@ const rootTransparentBackgroundStyle = css`
   box-shadow: none !important;
 `;
 
+// ! Do I need to account for night modes theme colors?
 const editingTransparentBackgroundStyle = css`
   background: ${color("bg-light")};
   box-shadow: none !important;
@@ -36,8 +38,8 @@ export const DashCardRoot = styled.div<DashCardRootProps>`
   ${({ hasHiddenBackground }) =>
     hasHiddenBackground && rootTransparentBackgroundStyle}
 
-  ${({ shouldAutoPreview }) =>
-    shouldAutoPreview && editingTransparentBackgroundStyle}
+  ${({ shouldAutoPreviewInEditing }) =>
+    shouldAutoPreviewInEditing && editingTransparentBackgroundStyle}
 `;
 
 export const DashboardCardActionsPanel = styled.div`
