@@ -57,7 +57,7 @@ export const HeadingContent = styled.h2`
   max-width: 100%;
   overflow-x: hidden;
   overflow-y: auto;
-  padding: 0.75em;
+  padding: 0 0.75em;
   margin: 0;
   pointer-events: all;
 
