@@ -1,3 +1,4 @@
+import userEvent from "@testing-library/user-event";
 import {
   createMockDatabase,
   createMockQueryAction,
@@ -16,8 +17,8 @@ import {
   renderWithProviders,
   waitForElementToBeRemoved,
   screen,
-  fireEvent,
 } from "__support__/ui";
+
 import { getRoutes as getModelRoutes } from "metabase/models/routes";
 import {
   Card,
@@ -52,21 +53,19 @@ async function setup({
   setupModelActionsEndpoints(actions, model.id);
   setupTableEndpoints(TEST_TABLE);
 
-  const { container } = renderWithProviders(getModelRoutes(), {
+  renderWithProviders(getModelRoutes(), {
     withRouter: true,
     initialRoute,
   });
 
   await waitForElementToBeRemoved(() => screen.queryAllByText(/Loading/i));
-
-  return { container };
 }
 
 describe("ModelActionDetails", () => {
   it("should not leave ActionCreatorModal when clicking outside modal", async () => {
-    const { container } = await setup({});
+    await setup({});
 
-    fireEvent.click(container.ownerDocument.body);
+    userEvent.click(document.body);
 
     expect(screen.getByTestId("mock-native-query-editor")).toBeInTheDocument();
   });

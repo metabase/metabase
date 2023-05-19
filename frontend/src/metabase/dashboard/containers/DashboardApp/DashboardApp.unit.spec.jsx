@@ -1,7 +1,6 @@
 import React from "react";
 import { Route } from "react-router";
 import userEvent from "@testing-library/user-event";
-import fetchMock from "fetch-mock";
 import {
   within,
   screen,
@@ -22,6 +21,8 @@ import {
 } from "metabase-types/api/mocks";
 import { createMockDashboardState } from "metabase-types/store/mocks";
 import {
+  setupActionsEndpoints,
+  setupBookmarksEndpoints,
   setupCardsEndpoints,
   setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
@@ -58,8 +59,8 @@ async function setup({ user = createMockUser() }) {
   setupCardsEndpoints([TEST_CARD]);
   setupTableEndpoints([TEST_TABLE]);
 
-  fetchMock.get("path:/api/bookmark", []);
-  fetchMock.get("path:/api/action", []);
+  setupBookmarksEndpoints([]);
+  setupActionsEndpoints([]);
 
   window.HTMLElement.prototype.scrollIntoView = function () {};
   const mockEventListener = jest.spyOn(window, "addEventListener");
