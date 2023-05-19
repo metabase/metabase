@@ -5,6 +5,7 @@
             [clojurewerkz.quartzite.scheduler :as qs]
             [malli.core :as mc]
             [malli.error :as me]
+            [metabase.driver :as driver]
             [metabase.models.card :refer [Card]]
             [metabase.models.model-index :as model-index :refer [ModelIndex
                                                                  ModelIndexValue]]
@@ -80,28 +81,30 @@
   (mt/test-drivers (mt/normal-drivers)
     (mt/dataset sample-dataset
       (doseq [[scenario query [field-refs]]
-              [[:mbql (mt/mbql-query products {:fields [$id $title]})]
-               [:native (mt/native-query
-                           (qp/compile
-                            (mt/mbql-query products {:fields [$id $title]})))]
-               [:join (mt/$ids
-                       {:type     :query,
-                        :query    {:source-table $$people,
-                                   :joins        [{:fields       :all,
-                                                   :source-table $$orders,
-                                                   :condition    [:=
-                                                                  [:field $people.id nil]
-                                                                  [:field $orders.user_id {:join-alias "Orders"}]],
-                                                   :alias        "Orders"}
-                                                  {:fields       :all,
-                                                   :source-table $$products,
-                                                   :condition    [:=
-                                                                  [:field $orders.product_id {:join-alias "Orders"}]
-                                                                  [:field $products.id {:join-alias "Products"}]],
-                                                   :alias        "Products"}]},
-                        :database (mt/id)})
-                [(mt/$ids [[:field $products.id {:join-alias "Products"}]
-                           [:field $products.title {:join-alias "Products"}]])]]]]
+              (remove nil?
+               [[:mbql (mt/mbql-query products {:fields [$id $title]})]
+                [:native (mt/native-query
+                          (qp/compile
+                           (mt/mbql-query products {:fields [$id $title]})))]
+                (when (driver/database-supports? (:engine (mt/db)) :left-join (mt/db))
+                  [:join (mt/$ids
+                          {:type     :query,
+                           :query    {:source-table $$people,
+                                      :joins        [{:fields       :all,
+                                                      :source-table $$orders,
+                                                      :condition    [:=
+                                                                     [:field $people.id nil]
+                                                                     [:field $orders.user_id {:join-alias "Orders"}]],
+                                                      :alias        "Orders"}
+                                                     {:fields       :all,
+                                                      :source-table $$products,
+                                                      :condition    [:=
+                                                                     [:field $orders.product_id {:join-alias "Orders"}]
+                                                                     [:field $products.id {:join-alias "Products"}]],
+                                                      :alias        "Products"}]},
+                           :database (mt/id)})
+                   [(mt/$ids [[:field $products.id {:join-alias "Products"}]
+                              [:field $products.title {:join-alias "Products"}]])]])])]
         (t2.with-temp/with-temp [Card model (mt/card-with-source-metadata-for-query
                                              query)]
           (let [[pk-ref value-ref] (or field-refs
