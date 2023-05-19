@@ -214,16 +214,11 @@
   (when-let [names (set names)]
     (filter #(names (:name %)) (:result_metadata card))))
 
-(defmulti series-are-compatible?
-  "Check if the `second-card` is compatible to be used as series of `card`."
-  (fn [card _second-card]
-   (:display card)))
-
 (defn- cols->kebab-case
   [cols]
   (map #(update-keys % u/->kebab-case-en) cols))
 
-(defn- area-bar-line-serie-are-compatible?
+(defn- area-bar-line-series-are-compatible?
   [first-card second-card]
   (and (#{:area :line :bar} (:display second-card))
        (let [initial-dimensions (cols->kebab-case
@@ -258,23 +253,28 @@
            (and (not= (lib.types.isa/numeric? (first initial-dimensions))
                       (lib.types.isa/numeric? (first new-dimensions)))
                 (not (and
-                       (lib.types.isa/date? (first initial-dimensions))
-                       (lib.types.isa/date? (first new-dimensions)))))
+                      (lib.types.isa/date? (first initial-dimensions))
+                      (lib.types.isa/date? (first new-dimensions)))))
            false
 
            :else true))))
 
+(defmulti series-are-compatible?
+  "Check if the `second-card` is compatible to be used as series of `card`."
+  (fn [card _second-card]
+   (:display card)))
+
 (defmethod series-are-compatible? :area
   [first-card second-card]
-  (area-bar-line-serie-are-compatible? first-card second-card))
+  (area-bar-line-series-are-compatible? first-card second-card))
 
 (defmethod series-are-compatible? :line
   [first-card second-card]
-  (area-bar-line-serie-are-compatible? first-card second-card))
+  (area-bar-line-series-are-compatible? first-card second-card))
 
 (defmethod series-are-compatible? :bar
   [first-card second-card]
-  (area-bar-line-serie-are-compatible? first-card second-card))
+  (area-bar-line-series-are-compatible? first-card second-card))
 
 (defmethod series-are-compatible? :scalar
   [first-card second-card]
