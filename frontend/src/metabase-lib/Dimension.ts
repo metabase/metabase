@@ -11,7 +11,6 @@ import {
   ExpressionReference,
   DatetimeUnit,
   VariableTarget,
-  DatasetColumn,
 } from "metabase-types/api";
 import * as Lib from "metabase-lib";
 import { infer, MONOTYPE } from "metabase-lib/expressions/typeinferencer";
@@ -366,7 +365,7 @@ export default class Dimension {
     return "";
   }
 
-  column(extra = {}): DatasetColumn {
+  column(extra = {}) {
     const field = this.baseDimension().field();
     return {
       id: field.id,
