@@ -22542,10 +22542,10 @@ xdg-basedir@^4.0.0:
   resolved "https://registry.yarnpkg.com/xdg-basedir/-/xdg-basedir-4.0.0.tgz#4bc8d9984403696225ef83a1573cbbcb4e79db13"
   integrity sha512-PSNhEJDejZYV7h50BohL09Er9VaIefr2LMAf3OEmpCkjOi34eYyQYAXUTjEQtZJTKcF0E2UKTh+osDLsgNim9Q==
 
-xlsx@0.18.3:
-  version "0.18.3"
-  resolved "https://registry.yarnpkg.com/xlsx/-/xlsx-0.18.3.tgz#03a95a1082b0ac436afa0fcbc50adb98ee4b288e"
-  integrity sha512-iNBdKSJO11bI59C/dJjYWfR2gglRUrbWtDK9YoKKvu+RA1dinyWU3XXc0BaZUoSYFkxvPrO/9dwBGu6mhVNVGQ==
+xlsx@^0.18.5:
+  version "0.18.5"
+  resolved "https://registry.yarnpkg.com/xlsx/-/xlsx-0.18.5.tgz#16711b9113c848076b8a177022799ad356eba7d0"
+  integrity sha512-dmg3LCjBPHZnQp5/F/+nnTa+miPJxUXB6vtk42YjBBKayDNagxGEeIdWApkYPOf3Z3pm3k62Knjzp7lMeTEtFQ==
   dependencies:
     adler-32 "~1.3.0"
     cfb "~1.2.1"

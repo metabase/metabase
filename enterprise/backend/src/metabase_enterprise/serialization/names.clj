@@ -21,7 +21,8 @@
    [metabase.util.schema :as su]
    [ring.util.codec :as codec]
    [schema.core :as s]
-   [toucan.db :as db]))
+   [toucan.db :as db]
+   [toucan2.protocols :as t2.protocols]))
 
 (set! *warn-on-reflection* true)
 
@@ -338,7 +339,7 @@
 
 (defn name-for-logging
   "Return a string representation of entity suitable for logs"
-  ([entity] (name-for-logging (name entity) entity))
+  ([entity] (name-for-logging (t2.protocols/model entity) entity))
   ([model {:keys [name id]}]
    (cond
      (and name id) (format "%s \"%s\" (ID %s)" model name id)

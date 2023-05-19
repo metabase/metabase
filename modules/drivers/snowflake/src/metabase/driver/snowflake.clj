@@ -14,6 +14,8 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.execute.legacy-impl :as sql-jdbc.legacy]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.driver.sql-jdbc.sync.common :as sql-jdbc.sync.common]
+   [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sql.util.unprepare :as unprepare]
@@ -32,7 +34,7 @@
   (:import
    (java.io File)
    (java.nio.charset StandardCharsets)
-   (java.sql ResultSet Types)
+   (java.sql Connection DatabaseMetaData ResultSet Types)
    (java.time OffsetDateTime ZonedDateTime)))
 
 (set! *warn-on-reflection* true)
@@ -421,9 +423,59 @@
            ;; find PKs and mark them
            (sql-jdbc.sync/add-table-pks driver conn (db-name database))))))
 
+(defn- escape-name-for-metadata [entity-name]
+  (when entity-name
+    (str/replace entity-name "_" "\\_")))
+
+(defmethod driver/escape-entity-name-for-metadata :snowflake
+  [_ entity-name]
+  (escape-name-for-metadata entity-name))
+
+;; The Snowflake JDBC driver is buggy: schema and table name are interpreted as patterns
+;; in getPrimaryKeys and getImportedKeys calls. When this bug gets fixed, the
+;; [[sql-jdbc.describe-table/get-table-pks]] method and the [[describe-table-fks*]] and
+;; [[describe-table-fks]] functions can be dropped and the call to [[describe-table-fks]]
+;; can be replaced with a call to [[sql-jdbc.sync/describe-table-fks]]. See #26054 for
+;; more context.
+(defmethod sql-jdbc.describe-table/get-table-pks :snowflake
+  [_driver ^Connection conn db-name-or-nil table]
+  (let [^DatabaseMetaData metadata (.getMetaData conn)]
+    (into #{} (sql-jdbc.sync.common/reducible-results
+               #(.getPrimaryKeys metadata db-name-or-nil
+                                 (-> table :schema escape-name-for-metadata)
+                                 (-> table :name escape-name-for-metadata))
+               (fn [^ResultSet rs] #(.getString rs "COLUMN_NAME"))))))
+
+(defn- describe-table-fks*
+  "Stolen from [[sql-jdbc.describe-table]].
+  The only change is that it escapes `schema` and `table-name`."
+  [_driver ^Connection conn {^String schema :schema, ^String table-name :name} & [^String db-name-or-nil]]
+  ;; Snowflake bug: schema and table name are interpreted as patterns
+  (let [schema (escape-name-for-metadata schema)
+        table-name (escape-name-for-metadata table-name)]
+    (into
+     #{}
+     (sql-jdbc.sync.common/reducible-results #(.getImportedKeys (.getMetaData conn) db-name-or-nil schema table-name)
+                                             (fn [^ResultSet rs]
+                                               (fn []
+                                                 {:fk-column-name   (.getString rs "FKCOLUMN_NAME")
+                                                  :dest-table       {:name   (.getString rs "PKTABLE_NAME")
+                                                                     :schema (.getString rs "PKTABLE_SCHEM")}
+                                                  :dest-column-name (.getString rs "PKCOLUMN_NAME")}))))))
+
+(defn- describe-table-fks
+  "Stolen from [[sql-jdbc.describe-table]].
+  The only change is that it calls the stolen function [[describe-table-fks*]]."
+  [driver db-or-id-or-spec-or-conn table & [db-name-or-nil]]
+  (if (instance? Connection db-or-id-or-spec-or-conn)
+    (describe-table-fks* driver db-or-id-or-spec-or-conn table db-name-or-nil)
+    (let [spec (sql-jdbc.conn/db->pooled-connection-spec db-or-id-or-spec-or-conn)]
+      (with-open [conn (jdbc/get-connection spec)]
+        (describe-table-fks* driver conn table db-name-or-nil)))))
+
 (defmethod driver/describe-table-fks :snowflake
   [driver database table]
-  (sql-jdbc.sync/describe-table-fks driver database table (db-name database)))
+  (describe-table-fks driver database table (db-name database)))
 
 (defmethod sql-jdbc.execute/set-timezone-sql :snowflake [_] "ALTER SESSION SET TIMEZONE = %s;")
 

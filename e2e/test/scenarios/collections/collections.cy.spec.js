@@ -11,6 +11,8 @@ import {
   closeNavigationSidebar,
   openCollectionMenu,
   visitCollection,
+  openUnpinnedItemMenu,
+  getPinnedSection,
 } from "e2e/support/helpers";
 import { USERS, USER_GROUPS } from "e2e/support/cypress_data";
 import { displaySidebarChildOf } from "./helpers/e2e-collections-sidebar.js";
@@ -415,7 +417,31 @@ describe("scenarios > collection defaults", () => {
     describe("bulk actions", () => {
       describe("selection", () => {
         it("should be possible to apply bulk selection to all items (metabase#14705)", () => {
-          bulkSelectDeselectWorkflow();
+          cy.visit("/collection/root");
+
+          // Pin one item
+          openUnpinnedItemMenu("Orders, Count");
+          popover().findByText("Pin this").click();
+          getPinnedSection().within(() => {
+            cy.findByText("18,760");
+          });
+
+          // Select one
+          selectItemUsingCheckbox("Orders");
+          cy.findByText("1 item selected").should("be.visible");
+          cy.icon("dash").should("exist");
+          cy.icon("check").should("exist");
+
+          // Select all
+          cy.findByLabelText("Select all items").click();
+          cy.icon("dash").should("not.exist");
+          cy.findByText("4 items selected");
+
+          // Deselect all
+          cy.findByLabelText("Select all items").click();
+
+          cy.icon("check").should("not.exist");
+          cy.findByText(/item(s)? selected/).should("not.be.visible");
         });
 
         it("should clean up selection when opening another collection (metabase#16491)", () => {
@@ -431,25 +457,6 @@ describe("scenarios > collection defaults", () => {
           cy.findByText("Our analytics").click();
           cy.findByTestId("bulk-action-bar").should("not.be.visible");
         });
-
-        function bulkSelectDeselectWorkflow() {
-          cy.visit("/collection/root");
-          selectItemUsingCheckbox("Orders");
-          cy.findByText("1 item selected").should("be.visible");
-
-          cy.findByTestId("bulk-action-bar").within(() => {
-            // Select all
-            cy.findByRole("checkbox");
-            cy.icon("dash").click({ force: true });
-            cy.icon("dash").should("not.exist");
-            cy.findByText("5 items selected");
-
-            // Deselect all
-            cy.icon("check").click({ force: true });
-          });
-          cy.icon("check").should("not.exist");
-          cy.findByTestId("bulk-action-bar").should("not.be.visible");
-        }
       });
 
       describe("archive", () => {

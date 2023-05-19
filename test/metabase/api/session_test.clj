@@ -82,8 +82,11 @@
                            "exception")
                     (s/one (s/eq "Authentication endpoint error")
                            "log message")]
-                   (first (mt/with-log-messages-for-level :error
-                            (mt/client :post 400 "session" {:email (:email user), :password "wooo"}))))))))
+                   (->> (mt/with-log-messages-for-level :error
+                          (mt/client :post 400 "session" {:email (:email user), :password "wooo"}))
+                        ;; geojson can throw errors and we want the authentication error
+                        (filter (fn [[_log-level _error message]] (= message "Authentication endpoint error")))
+                        first))))))
 
 (deftest login-validation-test
   (testing "POST /api/session"

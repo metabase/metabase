@@ -10,6 +10,7 @@ import Icon from "metabase/components/Icon";
 
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import { NoBreakoutError } from "metabase/visualizations/lib/errors";
+import { compactifyValue } from "metabase/visualizations/lib/scalar_utils";
 
 import ScalarValue, {
   ScalarWrapper,
@@ -17,6 +18,7 @@ import ScalarValue, {
 } from "metabase/visualizations/components/ScalarValue";
 import { isDate } from "metabase-lib/types/utils/isa";
 import { formatBucketing } from "metabase-lib/queries/utils/query-time";
+import { ScalarContainer } from "./Scalar.styled";
 
 import {
   PreviousValueContainer,
@@ -116,6 +118,15 @@ export default class Smart extends React.Component {
       return null;
     }
 
+    const lastValue = insight["last-value"];
+    const formatOptions = settings.column(column);
+
+    const { displayValue, fullScalarValue } = compactifyValue(
+      lastValue,
+      width,
+      formatOptions,
+    );
+
     const granularity = formatBucketing(insight["unit"]).toLowerCase();
 
     const lastChange = insight["last-change"];
@@ -164,23 +175,30 @@ export default class Smart extends React.Component {
         <div className="Card-title absolute top right p1 px2">
           {actionButtons}
         </div>
-        <span
-          onClick={
-            isClickable &&
-            (() =>
-              this._scalar &&
-              onVisualizationClick({ ...clicked, element: this._scalar }))
-          }
-          ref={scalar => (this._scalar = scalar)}
+        <ScalarContainer
+          className="fullscreen-normal-text fullscreen-night-text"
+          tooltip={fullScalarValue}
+          alwaysShowTooltip={fullScalarValue !== displayValue}
+          isClickable={isClickable}
         >
-          <ScalarValue
-            gridSize={gridSize}
-            width={width}
-            totalNumGridCols={totalNumGridCols}
-            fontFamily={fontFamily}
-            value={formatValue(insight["last-value"], settings.column(column))}
-          />
-        </span>
+          <span
+            onClick={
+              isClickable &&
+              (() =>
+                this._scalar &&
+                onVisualizationClick({ ...clicked, element: this._scalar }))
+            }
+            ref={scalar => (this._scalar = scalar)}
+          >
+            <ScalarValue
+              gridSize={gridSize}
+              width={width}
+              totalNumGridCols={totalNumGridCols}
+              fontFamily={fontFamily}
+              value={displayValue}
+            />
+          </span>
+        </ScalarContainer>
         {isDashboard && (
           <ScalarTitle
             title={settings["card.title"]}

@@ -34,7 +34,7 @@ If you don't have access to the Metabase Admin panel, you'll need to ask the per
 
     - If you're running Metabase Cloud, check that you've [whitelisted our IP addresses](https://www.metabase.com/cloud/docs/ip-addresses-to-whitelist).
 
-3. Make sure that Metabase is using a role with the necessary privileges to connect to your data warehouse. See [Granting database privileges](../databases/connecting.md#database-roles-users-and-privileges).
+3. Make sure that Metabase is using a role with the necessary privileges to connect to your data warehouse. See [Granting database privileges](../databases/users-roles-privileges.md).
 
 The steps above will help you detect whether the problem is occurring outside of Metabase. To _fix_ problems with your database server, you'll need to refer to the docs for your database or cloud service. Remember to [test your database connection](#testing-the-connection-status) after you make changes.
 
