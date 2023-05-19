@@ -11,18 +11,20 @@ interface SetupOpts {
 }
 
 const setup = ({ table = TEST_TABLE }: SetupOpts = {}) => {
-  const metadata = createMockMetadata({
-    tables: [table],
-  });
+  const metadata = createMockMetadata({ tables: [table] });
+  const instance = metadata.table(table.id)?.schema;
+  if (!instance) {
+    throw new TypeError();
+  }
 
-  return metadata.table(table.id)?.schema;
+  return instance;
 };
 
 describe("Schema", () => {
   describe("displayName", () => {
     it("should return a formatted `name` string", () => {
       const schema = setup();
-      expect(schema?.displayName()).toBe("Foo Bar");
+      expect(schema.displayName()).toBe("Foo Bar");
     });
   });
 });
