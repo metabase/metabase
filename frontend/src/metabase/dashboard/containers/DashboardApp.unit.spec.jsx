@@ -10,6 +10,7 @@ import {
   fireEvent,
 } from "__support__/ui";
 import DashboardApp from "metabase/dashboard/containers/DashboardApp";
+import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/hooks/use-before-unload";
 import {
   createMockCard,
   createMockCollection,
@@ -30,6 +31,7 @@ import {
   setupTableEndpoints,
 } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
+import { callMockEvent } from "__support__/events";
 
 const TEST_DASHBOARD = createMockDashboard();
 const TEST_COLLECTION = createMockCollection();
@@ -60,6 +62,7 @@ async function setup({ user = createMockUser() }) {
   fetchMock.get("path:/api/action", []);
 
   window.HTMLElement.prototype.scrollIntoView = function () {};
+  const mockEventListener = jest.spyOn(window, "addEventListener");
 
   const DashboardAppContainer = props => {
     return (
@@ -89,7 +92,7 @@ async function setup({ user = createMockUser() }) {
     screen.queryAllByTestId("loading-spinner"),
   );
 
-  return { container };
+  return { container, mockEventListener };
 }
 
 const navigateToDashboardActionsEditor = async () => {
@@ -117,6 +120,37 @@ const navigateToDashboardActionsEditor = async () => {
 describe("DashboardApp", function () {
   afterEach(() => {
     jest.clearAllMocks();
+  });
+
+  describe("beforeunload events", () => {
+    afterEach(() => {
+      jest.clearAllMocks();
+    });
+
+    it("should have a beforeunload event when the user tries to leave a dirty dashboard", async function () {
+      const { mockEventListener } = await setup({});
+
+      userEvent.click(screen.getByLabelText("Edit dashboard"));
+      userEvent.click(screen.getByTestId("dashboard-name-heading"));
+      userEvent.type(screen.getByTestId("dashboard-name-heading"), "a");
+      // need to click away from the input to trigger the isDirty flag
+      userEvent.tab();
+
+      const mockEvent = callMockEvent(mockEventListener, "beforeunload");
+
+      expect(mockEvent.preventDefault).toHaveBeenCalled();
+      expect(mockEvent.returnValue).toEqual(BEFORE_UNLOAD_UNSAVED_MESSAGE);
+    });
+
+    it("should not have a beforeunload event when the dashboard is unedited", async function () {
+      const { mockEventListener } = await setup({});
+
+      userEvent.click(screen.getByLabelText("Edit dashboard"));
+
+      const mockEvent = callMockEvent(mockEventListener, "beforeunload");
+      expect(mockEvent.preventDefault).not.toHaveBeenCalled();
+      expect(mockEvent.returnValue).toBe(undefined);
+    });
   });
 
   describe("ActionCreatorModal onClickOutside behavior", () => {
