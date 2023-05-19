@@ -100,10 +100,11 @@ describe("Database", () => {
         }),
       });
 
-      expect(database.tablesLookup()).toMatchObject({
-        1: expect.objectContaining({ id: 1 }),
-        2: expect.objectContaining({ id: 2 }),
-      });
+      const lookup = database.tablesLookup();
+      expect(lookup[1]).toBeDefined();
+      expect(lookup[2]).toBeDefined();
+      expect(lookup[1]).toBe(database.metadata?.table(1));
+      expect(lookup[2]).toBe(database.metadata?.table(2));
     });
   });
 
@@ -232,9 +233,9 @@ describe("Database", () => {
         ],
       });
 
-      expect(database?.savedQuestionsDatabase()).toMatchObject({
-        id: 2,
-      });
+      const savedQuestionsDatabase = database.savedQuestionsDatabase();
+      expect(savedQuestionsDatabase).toBeDefined();
+      expect(savedQuestionsDatabase).toBe(database.metadata?.database(2));
     });
   });
 

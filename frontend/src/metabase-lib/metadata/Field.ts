@@ -69,7 +69,7 @@ const LONG_TEXT_MIN = 80;
  */
 
 class FieldInner extends Base {
-  id: number | FieldReference;
+  id: FieldId | FieldReference;
   name: string;
   display_name: string;
   description: string | null;
