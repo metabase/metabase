@@ -106,7 +106,7 @@
     "database"   (urls/database-url id)
     "table"      (urls/table-url db_id id)))
 
-(defn- link-card->text
+(defn- link-card->text-part
   [{:keys [entity url] :as _link-card}]
   (let [url-link-card? (some? url)]
     {:text (str (format
@@ -126,7 +126,7 @@
   (let [link-card (get-in dashcard [:visualization_settings :link])]
     (cond
       (some? (:url link-card))
-      (link-card->text link-card)
+      (link-card->text-part link-card)
 
       ;; if link card link to an entity, update the setting because
       ;; the info in viz-settings might be out-of-date
@@ -136,7 +136,7 @@
                                  (serdes/link-card-model->toucan-model model)
                                  (dashboard-card/link-card-info-query-for-model model id))]
         (when (mi/can-read? instance)
-          (link-card->text (assoc link-card :entity instance)))))))
+          (link-card->text-part (assoc link-card :entity instance)))))))
 
 (defn- dashcard->part
   "Given a dashcard returns its part based on its type.
@@ -164,7 +164,7 @@
       (-> dashcard
           (params/process-virtual-dashcard parameters)
           :visualization_settings
-          (merge {:type :text})))))
+          (assoc :type :text)))))
 
 (defn- dashcards->part
   [dashcards pulse dashboard]
@@ -234,25 +234,23 @@
 
 (defn- part->attachment-data
   [part channel-id]
-  (let [{ttype                                  :type
-         {card-id :id card-name :name :as card} :card
-         dashcard                               :dashcard
-         result                                 :result}  part]
-    (case ttype
-      :card
-      {:title           (or (-> (:dashcard part) :visualization_settings :card.title)
+  (case (:type part)
+    :card
+    (let [{:keys [card dashcard result]}          part
+          {card-id :id card-name :name :as card} card]
+      {:title           (or (-> dashcard :visualization_settings :card.title)
                             card-name)
        :rendered-info   (render/render-pulse-card :inline (defaulted-timezone card) card dashcard result)
        :title_link      (urls/card-url card-id)
        :attachment-name "image.png"
        :channel-id      channel-id
-       :fallback        card-name}
+       :fallback        card-name})
 
-      :text
-      (text->markdown-block (:text part))
+    :text
+    (text->markdown-block (:text part))
 
-      :tab-title
-      (text->markdown-block (format "# %s" (:text part))))))
+    :tab-title
+    (text->markdown-block (format "# %s" (:text part)))))
 
 (defn- create-slack-attachment-data
   "Returns a seq of slack attachment data structures, used in `create-and-upload-slack-attachments!`"
@@ -346,7 +344,7 @@
     ;; Text cards have no result; treat as empty
     true))
 
-(defn- are-all-cards-empty?
+(defn- are-all-parts-empty?
   "Do none of the cards have any results?"
   [results]
   (every? is-card-empty? results))
@@ -384,7 +382,7 @@
   [{:keys [alert_condition] :as alert} parts]
   (cond
     (= "rows" alert_condition)
-    (not (are-all-cards-empty? parts))
+    (not (are-all-parts-empty? parts))
 
     (= "goal" alert_condition)
     (goal-met? alert parts)
@@ -396,12 +394,12 @@
 (defmethod should-send-notification? :pulse
   [pulse parts]
   (if (:skip_if_empty pulse)
-    (not (are-all-cards-empty? parts))
+    (not (are-all-parts-empty? parts))
     true))
 
 (defn- parts->cards-count
   [parts]
-  (count (filter #(some? (#{:text :card} %)) parts)))
+  (count (filter #(some? (#{:text :card} (:type %))) parts)))
 
 ;; 'notification' used below means a map that has information needed to send a Pulse/Alert, including results of
 ;; running the underlying query
@@ -417,8 +415,8 @@
   (log/debug (u/format-color 'cyan (trs "Sending Pulse ({0}: {1}) with {2} Cards via email"
                                         pulse-id (pr-str pulse-name) (parts->cards-count parts))))
   (let [email-recipients (filterv u/email? (map :email recipients))
-        query-part       (filter :card parts)
-        timezone         (-> query-part first :card defaulted-timezone)
+        card-part        (filter :card parts)
+        timezone         (-> card-part first :card defaulted-timezone)
         dashboard        (update (t2/select-one Dashboard :id dashboard-id) :description markdown/process-markdown :html)]
     {:subject      (subject pulse)
      :recipients   email-recipients
@@ -491,7 +489,6 @@
                                   ;; some cards may return empty part, e.g. if the card has been archived
                                   :when part]
                               part))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             Sending Notifications                                              |
