@@ -39,12 +39,6 @@ describe("scenarios > binning > correctness > time series", () => {
 
   Object.entries(TIME_OPTIONS).forEach(
     ([bucketSize, { selected, representativeValues }]) => {
-      // We are forced to ignore the case here because we construct titles like so:
-      // "Day of Month" (bucket) -> "Day of month" (title)
-      // This feels weird and is probably worth investigating further.
-      const titleRegex = new RegExp(`Count by Created At: ${bucketSize}`, "i");
-      const bucketRegex = new RegExp(bucketSize, "i");
-
       it(`should return correct values for ${bucketSize}`, () => {
         popover().within(() => {
           cy.findByText(bucketSize).click();
@@ -59,12 +53,12 @@ describe("scenarios > binning > correctness > time series", () => {
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Done").click();
 
-        getTitle(titleRegex);
+        getTitle(`Count by Created At: ${bucketSize}`);
 
         assertOnHeaderCells(bucketSize);
         assertOnTableValues(representativeValues);
 
-        assertOnTimeSeriesFooter(bucketRegex);
+        assertOnTimeSeriesFooter(bucketSize);
       });
     },
   );
@@ -81,10 +75,7 @@ function getTitle(title) {
 }
 
 function assertOnHeaderCells(bucketSize) {
-  const headerRegex = new RegExp(`Created At: ${bucketSize}`, "i");
-
-  cy.get(".cellData").eq(0).contains(headerRegex);
-
+  cy.get(".cellData").eq(0).contains(`Created At: ${bucketSize}`);
   cy.get(".cellData").eq(1).contains("Count");
 }
 
@@ -94,7 +85,7 @@ function assertOnTableValues(values) {
   });
 }
 
-function assertOnTimeSeriesFooter(regex) {
+function assertOnTimeSeriesFooter(str) {
   cy.findAllByTestId("select-button-content")
     .first()
     .invoke("text")
@@ -102,5 +93,5 @@ function assertOnTimeSeriesFooter(regex) {
   cy.findAllByTestId("select-button-content")
     .last()
     .invoke("text")
-    .should("match", regex);
+    .should("contain", str);
 }
