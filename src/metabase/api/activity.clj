@@ -85,8 +85,7 @@
                                 (or (existing-dataset? (:card_id dashcard))
                                     (existing-card? (:card_id dashcard))))))))))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/"
+(api/defendpoint GET "/"
   "Get recent activity."
   []
   (filter mi/can-read? (-> (t2/select Activity, {:order-by [[:timestamp :desc]], :limit 40})
@@ -209,6 +208,17 @@
              (:dataset model-object) (assoc :model "dataset")))
          (take 5))))
 
+(api/defendpoint GET "/most_recently_viewed_dashboard"
+  "Get the most recently viewed dashboard for the current user. Returns a 204 if the user has not viewed any dashboards
+   in the last 24 hours."
+  []
+  (if-let [dashboard-id (view-log/most-recently-viewed-dashboard)]
+    (let [dashboard (t2/select-one Dashboard :id dashboard-id)]
+      (if (mi/can-read? dashboard)
+        dashboard
+        api/generic-204-no-content))
+    api/generic-204-no-content))
+
 (defn- official?
   "Returns true if the item belongs to an official collection. False otherwise. Assumes that `:authority_level` exists
   if the item can be placed in a collection."
@@ -254,8 +264,7 @@
       (let [groups (group-by :model items)]
         (mapcat #(get groups %) model-precedence))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/popular_items"
+(api/defendpoint GET "/popular_items"
   "Get the list of 5 popular things for the current user. Query takes 8 and limits to 5 so that if it
   finds anything archived, deleted, etc it can hopefully still get 5."
   []

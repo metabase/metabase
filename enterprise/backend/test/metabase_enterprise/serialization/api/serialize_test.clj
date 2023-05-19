@@ -43,7 +43,7 @@
                  (path-files (apply u.files/get-path dir path-components)))]
          (is (= (map
                  #(.toString (u.files/get-path (System/getProperty "java.io.tmpdir") "serdes-dir" %))
-                 ["collections"])
+                 ["collections" "databases" "settings.yaml"])
                 (files)))
          (testing "subdirs"
            (testing "cards"

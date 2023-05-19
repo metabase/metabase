@@ -21,6 +21,7 @@
             [metabase.test.data.mongo :as tdm]
             [metabase.util.log :as log]
             [monger.collection :as mcoll]
+            [monger.core :as mg]
             [taoensso.nippy :as nippy]
             [toucan2.core :as t2])
   (:import org.bson.types.ObjectId))
@@ -488,3 +489,19 @@
                (mt/rows
                 (mt/run-mbql-query bird_species
                   {:filter [:contains $bird_species._ "nett"]}))))))))
+
+(deftest strange-versionArray-test
+  (mt/test-driver :mongo
+    (testing "Negative values in versionArray are ignored (#29678)"
+      (with-redefs [mg/command (constantly {"version" "4.0.28-23"
+                                            "versionArray" [4 0 29 -100]})]
+        (is (= {:version "4.0.28-23"
+                :semantic-version [4 0 29]}
+               (driver/dbms-version :mongo (mt/db))))))
+
+    (testing "Any values after rubbish in versionArray are ignored"
+      (with-redefs [mg/command (constantly {"version" "4.0.28-23"
+                                            "versionArray" [4 0 "NaN" 29]})]
+        (is (= {:version "4.0.28-23"
+                :semantic-version [4 0]}
+               (driver/dbms-version :mongo (mt/db))))))))

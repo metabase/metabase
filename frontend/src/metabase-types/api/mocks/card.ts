@@ -4,8 +4,13 @@ import {
   UnsavedCard,
   VisualizationSettings,
   SeriesOrderSetting,
+  StructuredDatasetQuery,
+  NativeDatasetQuery,
 } from "metabase-types/api";
-import { createMockStructuredDatasetQuery } from "./query";
+import {
+  createMockNativeDatasetQuery,
+  createMockStructuredDatasetQuery,
+} from "./query";
 
 export const createMockCard = (opts?: Partial<Card>): Card => ({
   id: 1,
@@ -23,6 +28,20 @@ export const createMockCard = (opts?: Partial<Card>): Card => ({
   last_query_start: null,
   archived: false,
   ...opts,
+});
+
+export const createMockStructuredCard = (
+  opts?: Partial<Card<StructuredDatasetQuery>>,
+): Card<StructuredDatasetQuery> => ({
+  ...createMockCard(opts),
+  dataset_query: createMockStructuredDatasetQuery(opts?.dataset_query),
+});
+
+export const createMockNativeCard = (
+  opts?: Partial<Card<NativeDatasetQuery>>,
+): Card<NativeDatasetQuery> => ({
+  ...createMockCard(opts),
+  dataset_query: createMockNativeDatasetQuery(opts?.dataset_query),
 });
 
 export const createMockUnsavedCard = (

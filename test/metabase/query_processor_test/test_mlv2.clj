@@ -35,10 +35,6 @@
   [legacy-query]
   (or
    *skip-conversion-tests*
-   ;; #29942: missing schema for `:cum-sum` and `:cum-count` aggregations
-   (mbql.u/match-one legacy-query
-     #{:cum-sum :cum-count}
-     "#29942")
    ;; #29946: nested arithmetic expressions wrapping a `:field` clause
    (mbql.u/match-one legacy-query
      #{:+ :- :*}

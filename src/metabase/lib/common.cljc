@@ -37,7 +37,9 @@
 
 (defmethod ->op-arg :lib/external-op
   [query stage-number {:keys [operator options args] :or {options {}}}]
-  (->op-arg query stage-number (lib.options/ensure-uuid (into [(keyword operator) options] args))))
+  (->op-arg query stage-number (lib.options/ensure-uuid (into [(keyword operator) options]
+                                                              (map #(->op-arg query stage-number %))
+                                                              args))))
 
 (defmethod ->op-arg :dispatch-type/fn
   [query stage-number f]

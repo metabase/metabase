@@ -17,12 +17,14 @@ export type DatabaseFeature =
   | "basic-aggregations"
   | "binning"
   | "case-sensitivity-string-filter-options"
+  | "dynamic-schema"
   | "expression-aggregations"
   | "expressions"
   | "foreign-keys"
   | "native-parameters"
   | "nested-queries"
   | "standard-deviation-aggregations"
+  | "percentile-aggregations"
   | "persist-models"
   | "persist-models-enabled"
   | "schemas"
@@ -94,4 +96,10 @@ export interface DatabaseListQuery {
 
 export interface DatabaseIdFieldListQuery {
   include_editable_data_model?: boolean;
+}
+
+export interface SavedQuestionDatabase {
+  id: -1337;
+  name: "Saved Questions";
+  is_saved_questions: true;
 }

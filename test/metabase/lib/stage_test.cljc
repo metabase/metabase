@@ -151,7 +151,7 @@
 (deftest ^:parallel metadata-with-fields-only-include-expressions-in-fields-test
   (testing "If query includes :fields, only return expressions that are in :fields"
     (let [query     (query-with-expressions)
-          id-plus-1 (first (lib/expressions query))]
+          id-plus-1 (first (lib/expressions-metadata query))]
       (is (=? {:lib/type     :metadata/field
                :base-type    :type/Integer
                :name         "ID + 1"
