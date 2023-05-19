@@ -10,7 +10,7 @@ import { PersistedModelsApi, UtilApi } from "metabase/services";
 import { PLUGIN_ADMIN_SETTINGS_UPDATES } from "metabase/plugins";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
-import DashboardSelector from "metabase/components/DashboardSelector";
+import { DashboardSelector } from "metabase/components/DashboardSelector";
 import { refreshCurrentUser } from "metabase/redux/user";
 
 import SettingCommaDelimitedInput from "./components/widgets/SettingCommaDelimitedInput";

@@ -173,7 +173,9 @@ describe("scenarios > home > custom homepage", () => {
     it("should give you the option to set a custom home page using home page CTA", () => {
       cy.visit("/");
       cy.get("main").findByText("Customize").click();
-      modal().findByText("Select a Dashboard").click();
+      modal()
+        .findByText(/Select a dashboard/i)
+        .click();
       popover().findByText("Orders in a dashboard").click();
       modal().findByText("Save").click();
       cy.location("pathname").should("equal", "/dashboard/1");
@@ -188,14 +190,14 @@ describe("scenarios > home > custom homepage", () => {
       cy.request("PUT", "/api/setting/custom-homepage-dashboard", { value: 1 });
     });
 
-    it("should not redirect you if you do not have permissions for set dashboard", () => {
+    it("should redirect you if you do not have permissions for set dashboard", () => {
       cy.signIn("nocollection");
       cy.visit("/");
 
       cy.location("pathname").should("equal", "/");
     });
 
-    it("should redirect you if you do have permissions for set dashboard", () => {
+    it("should not redirect you if you do have permissions for set dashboard", () => {
       cy.visit("/");
 
       cy.location("pathname").should("equal", "/dashboard/1");

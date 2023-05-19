@@ -1,1 +1,1 @@
-export { default } from "./DashboardSelector";
+export * from "./DashboardSelector";

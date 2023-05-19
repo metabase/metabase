@@ -6,7 +6,7 @@ import MetabotWidget from "metabase/metabot/components/MetabotWidget";
 import { State } from "metabase-types/store";
 import Tooltip from "metabase/core/components/Tooltip/Tooltip";
 import HomeGreeting from "../HomeGreeting";
-import CustomHomePageModal from "../Modals/CustomHomePageModal/CustomHomePageModal";
+import { CustomHomePageModal } from "../Modals/CustomHomePageModal/CustomHomePageModal";
 import {
   LayoutBody,
   LayoutEditButton,

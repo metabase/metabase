@@ -16,7 +16,7 @@ interface DashboardSelectorProps {
   collectionFilter?: (collection: Collection) => boolean;
 }
 
-const DashboardSelector = ({
+export const DashboardSelector = ({
   onChange,
   value,
   ...rest
@@ -52,5 +52,3 @@ const DashboardSelector = ({
     </LoadingAndErrorWrapper>
   );
 };
-
-export default DashboardSelector;

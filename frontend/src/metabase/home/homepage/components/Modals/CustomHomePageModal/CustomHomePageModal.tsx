@@ -7,7 +7,7 @@ import { refreshCurrentUser } from "metabase/redux/user";
 import Modal from "metabase/components/Modal";
 import ModalContent from "metabase/components/ModalContent";
 
-import DashboardSelector from "metabase/components/DashboardSelector/DashboardSelector";
+import { DashboardSelector } from "metabase/components/DashboardSelector/DashboardSelector";
 import Button from "metabase/core/components/Button/Button";
 import { Collection } from "metabase-types/api";
 
@@ -19,7 +19,10 @@ interface CustomHomePageModalProps {
   onClose: () => void;
 }
 
-const CustomHomePageModal = ({ isOpen, onClose }: CustomHomePageModalProps) => {
+export const CustomHomePageModal = ({
+  isOpen,
+  onClose,
+}: CustomHomePageModalProps) => {
   const [dashboard, setDashboard] = useState<number | undefined>();
   const dispatch = useDispatch();
 
@@ -70,5 +73,3 @@ const CustomHomePageModal = ({ isOpen, onClose }: CustomHomePageModalProps) => {
     </Modal>
   );
 };
-
-export default CustomHomePageModal;
