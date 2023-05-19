@@ -113,6 +113,16 @@
        (update :table update-keys u/->camelCaseEn)
        (clj->js :keyword-fn u/qualified-name))))
 
+(defn ^:export display-name
+  "Given an opaque Cljs object, return a plain JS object with a name useful for display.
+  See `:metabase.lib.metadata.calculation/display-name` ."
+  ([a-query x]
+   (display-name a-query -1 x))
+  ([a-query stage-number x]
+   (display-name a-query stage-number x "default"))
+  ([a-query stage-number x style]
+   (lib.core/display-name a-query stage-number x (keyword style))))
+
 (defn ^:export order-by-clause
   "Create an order-by clause independently of a query, e.g. for `replace` or whatever."
   ([a-query stage-number x]
