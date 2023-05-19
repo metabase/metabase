@@ -110,31 +110,31 @@ const QuickFilterDrill = ({
   return operators.map(operator => {
     const { name, filter, valueType } = operator;
 
-    if (OPERATORS_WITH_POPOVER.includes(name)) {
-      return {
-        name,
-        title: name,
-        section: "filter",
-        buttonType: "token-filter",
-        popover: getColumnFilterDrillPopover({
-          query,
-          initialFilter: filter,
-          addFilter: filter =>
-            quickFilterDrillQuestion({ clicked, filter }).card(),
-        }),
-        ...getOperatorOverrides(operator, value),
-      };
-    }
-
     return {
       name,
       title: name,
       section: "filter",
       buttonType: "token-filter",
-      question: () => quickFilterDrillQuestion({ clicked, filter }),
+
+      // show filter popover for special filters, question action for default ones
+      ...(OPERATORS_WITH_POPOVER.includes(name)
+        ? {
+            popover: getColumnFilterDrillPopover({
+              query,
+              initialFilter: filter,
+              addFilter: filter =>
+                quickFilterDrillQuestion({ clicked, filter }).card(),
+            }),
+          }
+        : {
+            question: () => quickFilterDrillQuestion({ clicked, filter }),
+          }),
+
       extra: () => ({
         valueType,
+        columnName: clicked.column?.display_name,
       }),
+
       ...getOperatorOverrides(operator, value),
     };
   });
