@@ -651,13 +651,13 @@
   (testing "Should be able to order by an aggregation (#30089)"
     (let [query             (-> (lib/query-for-table-name meta/metadata-provider "VENUES")
                                 (lib/aggregate (lib/avg (lib/+ (lib/field "VENUES" "PRICE") 1))))
-          {ag-uuid :metabase.lib.aggregation/aggregation-uuid} (first (lib/aggregations query))
+          {ag-uuid :lib/source-uuid} (first (lib/aggregations-metadata query))
           orderable-columns (lib/orderable-columns query)]
-      (is (=? [{:lib/type                                   :metadata/field
-                :base-type                                  :type/Float
-                :display-name                               "Average of Price + 1"
-                :lib/source                                 :source/aggregations
-                :metabase.lib.aggregation/aggregation-uuid  ag-uuid}]
+      (is (=? [{:lib/type         :metadata/field
+                :base-type        :type/Float
+                :display-name     "Average of Price + 1"
+                :lib/source       :source/aggregations
+                :lib/source-uuid  ag-uuid}]
               orderable-columns))
       (let [ag-ref (first orderable-columns)
             query' (lib/order-by query ag-ref)]

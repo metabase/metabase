@@ -11,6 +11,7 @@ import {
   closeNavigationSidebar,
   openCollectionMenu,
   visitCollection,
+  dragAndDrop,
   openUnpinnedItemMenu,
   getPinnedSection,
 } from "e2e/support/helpers";
@@ -660,14 +661,6 @@ function moveOpenedCollectionTo(newParent) {
   });
   // Make sure modal closed
   modal().should("not.exist");
-}
-
-function dragAndDrop(subjectAlias, targetAlias) {
-  const dataTransfer = new DataTransfer();
-
-  cy.get("@" + subjectAlias).trigger("dragstart", { dataTransfer });
-  cy.get("@" + targetAlias).trigger("drop", { dataTransfer });
-  cy.get("@" + subjectAlias).trigger("dragend");
 }
 
 function moveItemToCollection(itemName, collectionName) {

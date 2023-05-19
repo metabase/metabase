@@ -152,10 +152,11 @@
 (defmethod lib.metadata.calculation/metadata-method :field
   [query
    stage-number
-   [_tag {:keys [base-type binning effective-type join-alias source-field temporal-unit], :as opts} :as field-ref]]
+   [_tag {source-uuid :lib/uuid :keys [base-type binning effective-type join-alias source-field temporal-unit], :as opts} :as field-ref]]
   (let [field-metadata (resolve-field-metadata query stage-number field-ref)
         metadata       (merge
-                        {:lib/type :metadata/field}
+                        {:lib/type :metadata/field
+                         :lib/source-uuid source-uuid}
                         field-metadata
                         {:display-name (or (:display-name opts)
                                            (lib.metadata.calculation/display-name query stage-number field-ref))}

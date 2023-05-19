@@ -1,7 +1,11 @@
-import { createMetadata } from "__support__/sample_database_fixture";
-import { createMockTable } from "metabase-types/api/mocks";
-import { createProductsTitleField } from "metabase-types/api/mocks/presets";
-import { createQuery, columnFinder } from "./test-helpers";
+import { createMockMetadata } from "__support__/metadata";
+import { createMockCard } from "metabase-types/api/mocks";
+import {
+  createProductsTitleField,
+  createSampleDatabase,
+  SAMPLE_DB_ID,
+} from "metabase-types/api/mocks/presets";
+import { columnFinder, createQuery } from "./test-helpers";
 import * as ML from "./v2";
 
 describe("order by", () => {
@@ -54,25 +58,23 @@ describe("order by", () => {
     });
 
     it("returns metadata for columns in source question/model", () => {
-      const table_id = "card__1";
-      const field = createProductsTitleField({ table_id });
-      const table = createMockTable({
-        id: table_id,
+      const field = createProductsTitleField();
+      const card = createMockCard({
         name: "Product Model",
-        display_name: "Product Model",
-        fields: [field],
+        result_metadata: [field],
       });
-      const metadata = createMetadata(state =>
-        state.assocIn(["entities", "tables", table.id], table),
-      );
+      const metadata = createMockMetadata({
+        databases: [createSampleDatabase()],
+        questions: [card],
+      });
 
       const query = createQuery({
-        databaseId: table.db_id,
+        databaseId: SAMPLE_DB_ID,
         metadata,
         query: {
           type: "query",
-          database: table.db_id,
-          query: { "source-table": table_id },
+          database: SAMPLE_DB_ID,
+          query: { "source-table": `card__${card.id}` },
         },
       });
 

@@ -1,7 +1,11 @@
 import fetchMock from "fetch-mock";
 import _ from "underscore";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
+<<<<<<< HEAD
 import { Card, Collection, CollectionItem } from "metabase-types/api";
+=======
+import { Card, Collection, Dashboard } from "metabase-types/api";
+>>>>>>> origin/master
 import {
   convertSavedQuestionToVirtualTable,
   getCollectionVirtualSchemaName,
@@ -95,4 +99,58 @@ export function setupUnauthorizedCollectionsEndpoints(
   collections: Collection[],
 ) {
   collections.forEach(setupUnauthorizedCollectionEndpoints);
+}
+
+export function setupCollectionByIdEndpoint({
+  collections,
+  error,
+}: {
+  collections: Collection[];
+  error?: string;
+}) {
+  if (error) {
+    setupCollectionWithErrorById({ error });
+    return;
+  }
+
+  fetchMock.get(/api\/collection\/\d+/, url => {
+    const collectionIdParam = url.split("/")[5];
+    const collectionId = Number(collectionIdParam);
+
+    const collection = collections.find(
+      collection => collection.id === collectionId,
+    );
+
+    return collection;
+  });
+}
+
+function setupCollectionWithErrorById({
+  error,
+  status = 500,
+}: {
+  error: string;
+  status?: number;
+}) {
+  fetchMock.get(/api\/collection\/\d+|root/, {
+    body: error,
+    status,
+  });
+}
+
+export function setupCollectionItemsEndpoint(dashboards: Dashboard[]) {
+  fetchMock.get(/api\/collection\/(\d+|root)\/items/, url => {
+    const collectionIdParam = url.split("/")[5];
+    const collectionId =
+      collectionIdParam !== "root" ? Number(collectionIdParam) : null;
+
+    const dashboardsOfCollection = dashboards.filter(
+      dashboard => dashboard.collection_id === collectionId,
+    );
+
+    return {
+      total: dashboardsOfCollection.length,
+      data: dashboardsOfCollection,
+    };
+  });
 }

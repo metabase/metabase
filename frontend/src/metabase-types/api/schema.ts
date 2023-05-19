@@ -46,6 +46,7 @@ export interface NormalizedFieldDimension
 
 export interface NormalizedField
   extends Omit<Field, "target" | "table" | "name_field" | "dimensions"> {
+  uniqueId: string;
   target?: FieldId;
   table?: TableId;
   name_field?: FieldId;
