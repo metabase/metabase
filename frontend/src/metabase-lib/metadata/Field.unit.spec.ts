@@ -1,5 +1,6 @@
-import { Database, Field, Table } from "metabase-types/api";
+import { Database, Field, FieldId, Table } from "metabase-types/api";
 import {
+  createMockDateTimeFieldFingerprint,
   createMockField,
   createMockFieldDimension,
   createMockTable,
@@ -9,12 +10,18 @@ import { createMockMetadata } from "__support__/metadata";
 const FIELD_ID = 1;
 
 interface SetupOpts {
+  fieldId?: FieldId;
   databases?: Database[];
   tables?: Table[];
   fields?: Field[];
 }
 
-const setup = ({ databases = [], tables = [], fields = [] }: SetupOpts) => {
+const setup = ({
+  fieldId = FIELD_ID,
+  databases = [],
+  tables = [],
+  fields = [],
+}: SetupOpts) => {
   const metadata = createMockMetadata({
     databases,
     tables,
@@ -218,15 +225,16 @@ describe("Field", () => {
     });
 
     describe("includeSchema flag", () => {
-      let field;
-      beforeEach(() => {
-        field = new Field({
-          id: 1,
-          name: "field",
-        });
-      });
-
       it("won't do anything if enabled and includeTable is not enabled", () => {
+        const field = setup({
+          fields: [
+            createMockField({
+              id: FIELD_ID,
+              name: "field",
+            }),
+          ],
+        });
+
         expect(
           field.displayName({
             includeSchema: true,
@@ -235,12 +243,21 @@ describe("Field", () => {
       });
 
       it("should add a combined schema + table display name to the start of the field name", () => {
-        field.table = new Table({
-          display_name: "table",
-          schema: new Schema({
-            name: "schema",
-          }),
+        const field = setup({
+          tables: [
+            createMockTable({
+              name: "table",
+              schema: "schema",
+              fields: [
+                createMockField({
+                  id: FIELD_ID,
+                  name: "field",
+                }),
+              ],
+            }),
+          ],
         });
+
         expect(
           field.displayName({
             includeTable: true,
@@ -253,29 +270,45 @@ describe("Field", () => {
 
   describe("targetObjectName", () => {
     it("should return the display name of the field stripped of an appended id", () => {
-      const field = new Field({
-        name: "field id",
+      const field = setup({
+        fields: [
+          createMockField({
+            id: FIELD_ID,
+            name: "field id",
+          }),
+        ],
       });
+
       expect(field.targetObjectName()).toBe("field");
     });
   });
 
   describe("dimension", () => {
     it("should return the field's dimension when the id is an mbql field", () => {
-      const field = new Field({
-        id: ["field", 123, null],
+      const field = setup({
+        fields: [
+          createMockField({
+            id: ["field", 123, null],
+            name: "field id",
+          }),
+        ],
       });
+
       const dimension = field.dimension();
-      expect(dimension).toBeInstanceOf(Dimension);
       expect(dimension.fieldIdOrName()).toBe(123);
     });
 
     it("should return the field's dimension when the id is not an mbql field", () => {
-      const field = new Field({
-        id: 123,
+      const field = setup({
+        fields: [
+          createMockField({
+            id: FIELD_ID,
+            name: "field id",
+          }),
+        ],
       });
+
       const dimension = field.dimension();
-      expect(dimension).toBeInstanceOf(Dimension);
       expect(dimension.fieldIdOrName()).toBe(123);
     });
   });
@@ -283,13 +316,14 @@ describe("Field", () => {
   describe("getDefaultDateTimeUnit", () => {
     describe("when the field is of type `type/DateTime`", () => {
       it("should return 'day'", () => {
-        const field = new Field({
-          fingerprint: {
-            type: {
-              "type/Number": {},
-            },
-          },
+        const field = setup({
+          fields: [
+            createMockField({
+              id: FIELD_ID,
+            }),
+          ],
         });
+
         expect(field.getDefaultDateTimeUnit()).toBe("day");
       });
     });
@@ -297,57 +331,74 @@ describe("Field", () => {
 
   describe("when field is of type `type/DateTime`", () => {
     it("should return a time unit depending on the number of days in the 'fingerprint'", () => {
-      const field = new Field({
-        fingerprint: {
-          type: {
-            "type/DateTime": {
-              earliest: "2019-03-01T00:00:00Z",
-              latest: "2021-01-01T00:00:00Z",
+      const field = setup({
+        fields: [
+          createMockField({
+            id: FIELD_ID,
+            fingerprint: {
+              type: {
+                "type/DateTime": createMockDateTimeFieldFingerprint({
+                  earliest: "2019-03-01T00:00:00Z",
+                  latest: "2021-01-01T00:00:00Z",
+                }),
+              },
             },
-          },
-        },
+          }),
+        ],
       });
+
       expect(field.getDefaultDateTimeUnit()).toBe("month");
     });
   });
 
   describe("remappedField", () => {
     it("should return the 'human readable' field tied to the field's dimension", () => {
-      const field1 = new Field({
-        id: 1,
-      });
-      const field2 = new Field({
-        id: 2,
-      });
-      const metadata = new Metadata({
-        fields: {
-          1: field1,
-          2: field2,
-        },
-      });
-      const field = new Field({
-        id: 3,
-        dimensions: [
-          {
-            human_readable_field_id: 1,
-          },
+      const field = setup({
+        fields: [
+          createMockField({
+            id: FIELD_ID,
+            dimensions: [
+              createMockFieldDimension({
+                human_readable_field_id: 3,
+              }),
+            ],
+          }),
+          createMockField({
+            id: 2,
+          }),
         ],
       });
-      field.metadata = metadata;
-      expect(field.remappedField()).toBe(field1);
+
+      expect(field.remappedField()).toBeDefined();
+      expect(field.remappedField()).toBe(field.metadata?.field(2));
     });
 
     it("should return the field's name_field", () => {
-      const nameField = new Field();
-      const field = new Field({
-        id: 3,
-        name_field: nameField,
+      const field = setup({
+        fields: [
+          createMockField({
+            id: FIELD_ID,
+            name_field: createMockField({
+              id: 2,
+            }),
+          }),
+        ],
       });
-      expect(field.remappedField()).toBe(nameField);
+
+      expect(field.remappedField()).toBeDefined();
+      expect(field.remappedField()).toBe(field.metadata?.field(2));
     });
 
     it("should return null when the field has no name_field or no dimension with a 'human readable' field", () => {
-      expect(new Field().remappedField()).toBe(null);
+      const field = setup({
+        fields: [
+          createMockField({
+            id: FIELD_ID,
+          }),
+        ],
+      });
+
+      expect(field.remappedField()).toBe(null);
     });
   });
 

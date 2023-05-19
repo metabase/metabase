@@ -1,7 +1,8 @@
 import { RowValue } from "./dataset";
 import { Table, TableId } from "./table";
+import { FieldReference } from "./query";
 
-export type FieldId = number | string;
+export type FieldId = number | FieldReference;
 
 export interface FieldFingerprint {
   global?: FieldGlobalFingerprint;
@@ -55,6 +56,7 @@ export type FieldValuesType = "list" | "search" | "none";
 
 export type FieldDimension = {
   name: string;
+  human_readable_field_id?: FieldId;
   human_readable_field?: Field;
 };
 
@@ -91,6 +93,7 @@ export interface ConcreteField {
   dimensions?: FieldDimension[];
   default_dimension_option?: FieldDimensionOption;
   dimension_options?: FieldDimensionOption[];
+  name_field?: Field;
 
   max_value?: number;
   min_value?: number;
