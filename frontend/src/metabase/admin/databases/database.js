@@ -140,11 +140,7 @@ export const addSampleDatabase = createThunkAction(
       try {
         dispatch({ type: ADDING_SAMPLE_DATABASE });
         const sampleDatabase = await MetabaseApi.db_add_sample_database();
-        await dispatch(
-          Databases.actions.fetchList(query, {
-            reload: true,
-          }),
-        );
+        dispatch(Databases.actions.invalidateLists());
         MetabaseAnalytics.trackStructEvent("Databases", "Add Sample Data");
         return sampleDatabase;
       } catch (error) {
