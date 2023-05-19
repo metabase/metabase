@@ -22,6 +22,7 @@ import type {
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
+import useBeforeUnload from "metabase/hooks/use-before-unload";
 import Question from "metabase-lib/Question";
 import type Metadata from "metabase-lib/metadata/Metadata";
 
@@ -87,11 +88,14 @@ function ActionCreator({
     formSettings,
     isNew,
     canSave,
+    isDirty,
     ui: UIProps,
     handleActionChange,
     handleFormSettingsChange,
     renderEditorBody,
   } = useActionContext();
+
+  useBeforeUnload(isDirty);
 
   const [isSaveModalShown, setShowSaveModal] = useState(false);
 

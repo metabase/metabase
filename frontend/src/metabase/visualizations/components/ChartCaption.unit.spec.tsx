@@ -4,7 +4,11 @@ import userEvent from "@testing-library/user-event";
 import { render, screen, getIcon } from "__support__/ui";
 
 import { Card, Series } from "metabase-types/api";
-import { createMockCard, createMockColumn } from "metabase-types/api/mocks";
+import {
+  createMockCard,
+  createMockColumn,
+  createMockDataset,
+} from "metabase-types/api/mocks";
 import ChartCaption from "./ChartCaption";
 
 type Props = ComponentPropsWithoutRef<typeof ChartCaption>;
@@ -25,7 +29,13 @@ const getSeries = ({ card }: { card?: Card } = {}): Series => {
   const series: Series = [
     {
       card: card ?? createMockCard({ name: "" }),
-      data: { rows: [["foo", 1]], cols, rows_truncated: 0 },
+      ...createMockDataset({
+        data: {
+          rows: [["foo", 1]],
+          cols,
+          rows_truncated: 0,
+        },
+      }),
     },
   ];
 

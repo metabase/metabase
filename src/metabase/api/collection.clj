@@ -13,7 +13,6 @@
    [medley.core :as m]
    [metabase.api.card :as api.card]
    [metabase.api.common :as api]
-   [metabase.api.timeline :as api.timeline]
    [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
    [metabase.driver.common.parameters :as params]
@@ -33,6 +32,7 @@
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.schema :as su]
    [schema.core :as s]
    [toucan.hydrate :refer [hydrate]]
@@ -59,8 +59,7 @@
       (remove personal? collections)
       collections)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/"
+(api/defendpoint GET "/"
   "Fetch a list of all Collections that the current user has read permissions for (`:can_write` is returned as an
   additional property of each Collection so you can tell which of these you have write permissions for.)
 
@@ -70,40 +69,37 @@
   By default, admin users will see all collections. To hide other user's collections pass in
   `?exclude-other-user-collections=true`."
   [archived exclude-other-user-collections namespace]
-  {archived                       (s/maybe su/BooleanString)
-   exclude-other-user-collections (s/maybe su/BooleanString)
-   namespace (s/maybe su/NonBlankString)}
-  (let [archived? (Boolean/parseBoolean archived)
-        exclude-other-user-collections? (Boolean/parseBoolean exclude-other-user-collections)]
-    (as-> (t2/select Collection
-            {:where    [:and
-                        [:= :archived archived?]
-                        [:= :namespace namespace]
-                        (collection/visible-collection-ids->honeysql-filter-clause
-                         :id
-                         (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]
-             :order-by [[:%lower.name :asc]]}) collections
-          ;; Remove other users' personal collections
-          (if exclude-other-user-collections?
-            (remove-other-users-personal-collections api/*current-user-id* collections)
-            collections)
-          ;; include Root Collection at beginning or results if archived isn't `true`
-      (if archived?
-        collections
-        (let [root (root-collection namespace)]
-          (cond->> collections
-            (mi/can-read? root)
-            (cons root))))
-      (hydrate collections :can_write)
-      ;; remove the :metabase.models.collection.root/is-root? tag since FE doesn't need it
-      ;; and for personal collections we translate the name to user's locale
-      (for [collection collections]
-        (-> collection
-            (dissoc ::collection.root/is-root?)
-            collection/personal-collection-with-ui-details)))))
+  {archived                       [:maybe ms/BooleanValue]
+   exclude-other-user-collections [:maybe ms/BooleanValue]
+   namespace                      [:maybe ms/NonBlankString]}
+  (as-> (t2/select Collection
+                   {:where    [:and
+                               [:= :archived archived]
+                               [:= :namespace namespace]
+                               (collection/visible-collection-ids->honeysql-filter-clause
+                                :id
+                                (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]
+                    :order-by [[:%lower.name :asc]]}) collections
+    ;; Remove other users' personal collections
+    (if exclude-other-user-collections
+      (remove-other-users-personal-collections api/*current-user-id* collections)
+      collections)
+    ;; include Root Collection at beginning or results if archived isn't `true`
+    (if archived
+      collections
+      (let [root (root-collection namespace)]
+        (cond->> collections
+          (mi/can-read? root)
+          (cons root))))
+    (hydrate collections :can_write)
+    ;; remove the :metabase.models.collection.root/is-root? tag since FE doesn't need it
+    ;; and for personal collections we translate the name to user's locale
+    (for [collection collections]
+      (-> collection
+          (dissoc ::collection.root/is-root?)
+          collection/personal-collection-with-ui-details))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/tree"
+(api/defendpoint GET "/tree"
   "Similar to `GET /`, but returns Collections in a tree structure, e.g.
 
   ```
@@ -125,11 +121,11 @@
   The here and below keys indicate the types of items at this particular level of the tree (here) and in its
   subtree (below)."
   [exclude-archived exclude-other-user-collections namespace]
-  {exclude-archived (s/maybe su/BooleanString)
-   exclude-other-user-collections (s/maybe su/BooleanString)
-   namespace        (s/maybe su/NonBlankString)}
-  (let [exclude-archived? (Boolean/parseBoolean exclude-archived)
-        exclude-other-user-collections? (Boolean/parseBoolean exclude-other-user-collections)
+  {exclude-archived               [:maybe :boolean]
+   exclude-other-user-collections [:maybe :boolean]
+   namespace                      [:maybe ms/NonBlankString]}
+  (let [exclude-archived? exclude-archived
+        exclude-other-user-collections? exclude-other-user-collections
         coll-type-ids (reduce (fn [acc {:keys [collection_id dataset] :as _x}]
                                 (update acc (if dataset :dataset :card) conj collection_id))
                               {:dataset #{}
@@ -678,31 +674,28 @@
       collection/personal-collection-with-ui-details
       (hydrate :parent_id :effective_location [:effective_ancestors :can_write] :can_write)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/:id"
+(api/defendpoint GET "/:id"
   "Fetch a specific Collection with standard details added"
   [id]
+  {id ms/PositiveInt}
   (collection-detail (api/read-check Collection id)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/root/timelines"
+(api/defendpoint GET "/root/timelines"
   "Fetch the root Collection's timelines."
   [include archived]
-  {include  (s/maybe api.timeline/Include)
-   archived (s/maybe su/BooleanString)}
-  (let [archived? (Boolean/parseBoolean archived)]
-    (timeline/timelines-for-collection nil {:timeline/events?   (= include "events")
-                                            :timeline/archived? archived?})))
+  {include  [:maybe [:= "events"]]
+   archived [:maybe :boolean]}
+  (timeline/timelines-for-collection nil {:timeline/events?   (= include "events")
+                                          :timeline/archived? archived}))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/:id/timelines"
+(api/defendpoint GET "/:id/timelines"
   "Fetch a specific Collection's timelines."
   [id include archived]
-  {include  (s/maybe api.timeline/Include)
-   archived (s/maybe su/BooleanString)}
-  (let [archived? (Boolean/parseBoolean archived)]
-    (timeline/timelines-for-collection id {:timeline/events?   (= include "events")
-                                           :timeline/archived? archived?})))
+  {id       ms/PositiveInt
+   include  [:maybe [:= "events"]]
+   archived [:maybe :boolean]}
+  (timeline/timelines-for-collection id {:timeline/events?   (= include "events")
+                                         :timeline/archived? archived}))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (api/defendpoint-schema GET "/:id/items"
@@ -733,11 +726,10 @@
 (defn- root-collection [collection-namespace]
   (collection-detail (collection/root-collection-with-ui-details collection-namespace)))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/root"
+(api/defendpoint GET "/root"
   "Return the 'Root' Collection object with standard details added"
   [namespace]
-  {namespace (s/maybe su/NonBlankString)}
+  {namespace [:maybe ms/NonBlankString]}
   (-> (root-collection namespace)
       (api/read-check)
       (dissoc ::collection.root/is-root?)))
@@ -916,11 +908,10 @@
 
 ;;; ------------------------------------------------ GRAPH ENDPOINTS -------------------------------------------------
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/graph"
+(api/defendpoint GET "/graph"
   "Fetch a graph of all Collection Permissions."
   [namespace]
-  {namespace (s/maybe su/NonBlankString)}
+  {namespace [:maybe ms/NonBlankString]}
   (api/check-superuser)
   (graph/graph namespace))
 
@@ -956,15 +947,15 @@
   (mc/decoder PermissionsGraph (mtx/string-transformer)))
 
 (defn- decode-graph [permission-graph]
+  ;; TODO: should use a coercer for this?
   (graph-decoder permission-graph))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema PUT "/graph"
+(api/defendpoint PUT "/graph"
   "Do a batch update of Collections Permissions by passing in a modified graph.
   Will overwrite parts of the graph that are present in the request, and leave the rest unchanged."
   [:as {{:keys [namespace], :as body} :body}]
-  {body      su/Map
-   namespace (s/maybe su/NonBlankString)}
+  {body      :map
+   namespace [:maybe ms/NonBlankString]}
   (api/check-superuser)
   (->> (dissoc body :namespace)
        decode-graph

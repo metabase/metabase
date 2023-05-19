@@ -1,12 +1,22 @@
-import { PRODUCTS, ORDERS } from "__support__/sample_database_fixture";
-import { createMockUiParameter } from "metabase-lib/parameters/mock";
+import { createMockMetadata } from "__support__/metadata";
+import { checkNotNull } from "metabase/core/utils/types";
+import {
+  createSampleDatabase,
+  PRODUCTS,
+  ORDERS,
+} from "metabase-types/api/mocks/presets";
 
+import { createMockUiParameter } from "metabase-lib/parameters/mock";
 import Field from "metabase-lib/metadata/Field";
 import { formatParameterValue } from "./formatting";
 
-const numberField = ORDERS.TOTAL;
-const textField = PRODUCTS.TITLE;
-const categoryField = PRODUCTS.CATEGORY;
+const metadata = createMockMetadata({
+  databases: [createSampleDatabase()],
+});
+
+const numberField = checkNotNull(metadata.field(ORDERS.TOTAL));
+const textField = checkNotNull(metadata.field(PRODUCTS.TITLE));
+const categoryField = checkNotNull(metadata.field(PRODUCTS.CATEGORY));
 
 const remappedField = new Field({
   base_type: "type/Text",

@@ -1,12 +1,14 @@
-import React, { useEffect } from "react";
-import PropTypes from "prop-types";
+import React, { useEffect, useCallback, ReactNode } from "react";
 import _ from "underscore";
-import { connect } from "react-redux";
+import { Route } from "react-router";
 
 import Tables from "metabase/entities/tables";
 import Groups from "metabase/entities/groups";
 import Databases from "metabase/entities/databases";
 
+import { DatabaseId, Group } from "metabase-types/api";
+import { useDispatch, useSelector } from "metabase/lib/redux";
+import Database from "metabase-lib/metadata/Database";
 import { getIsDirty, getDiff } from "../../selectors/data-permissions/diff";
 import {
   saveDataPermissions,
@@ -17,51 +19,49 @@ import PermissionsPageLayout from "../../components/PermissionsPageLayout/Permis
 import { DataPermissionsHelp } from "../../components/DataPermissionsHelp";
 import ToolbarUpsell from "../../components/ToolbarUpsell";
 
+type DataPermissionsPageProps = {
+  children: ReactNode;
+  route: typeof Route;
+  params: {
+    databaseId: DatabaseId;
+  };
+  databases: Database[];
+  groups: Group[];
+};
+
 export const DATA_PERMISSIONS_TOOLBAR_CONTENT = [
   <ToolbarUpsell key="upsell" />,
 ];
 
-const mapDispatchToProps = {
-  loadPermissions: loadDataPermissions,
-  savePermissions: saveDataPermissions,
-  initialize: initializeDataPermissions,
-  fetchTables: dbId =>
-    Tables.actions.fetchList({
-      dbId,
-      include_hidden: true,
-    }),
-};
-
-const mapStateToProps = (state, props) => ({
-  isDirty: getIsDirty(state, props),
-  diff: getDiff(state, props),
-});
-
-const propTypes = {
-  children: PropTypes.node.isRequired,
-  isDirty: PropTypes.bool,
-  diff: PropTypes.object,
-  savePermissions: PropTypes.func.isRequired,
-  loadPermissions: PropTypes.func.isRequired,
-  initialize: PropTypes.func.isRequired,
-  route: PropTypes.object,
-  params: PropTypes.shape({
-    databaseId: PropTypes.string,
-  }),
-  fetchTables: PropTypes.func,
-};
-
 function DataPermissionsPage({
   children,
-  isDirty,
-  diff,
-  savePermissions,
-  loadPermissions,
   route,
   params,
-  initialize,
-  fetchTables,
-}) {
+  databases,
+  groups,
+}: DataPermissionsPageProps) {
+  const isDirty = useSelector(getIsDirty);
+  const diff = useSelector(state => getDiff(state, { databases, groups }));
+
+  const dispatch = useDispatch();
+
+  const loadPermissions = () => dispatch(loadDataPermissions());
+  const savePermissions = () => dispatch(saveDataPermissions());
+  const initialize = useCallback(
+    () => dispatch(initializeDataPermissions()),
+    [dispatch],
+  );
+  const fetchTables = useCallback(
+    (dbId: DatabaseId) =>
+      dispatch(
+        Tables.actions.fetchList({
+          dbId,
+          include_hidden: true,
+        }),
+      ),
+    [dispatch],
+  );
+
   useEffect(() => {
     initialize();
   }, [initialize]);
@@ -89,12 +89,10 @@ function DataPermissionsPage({
   );
 }
 
-DataPermissionsPage.propTypes = propTypes;
-
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   Groups.loadList(),
   Databases.loadList({
     selectorName: "getListUnfiltered",
   }),
-  connect(mapStateToProps, mapDispatchToProps),
 )(DataPermissionsPage);

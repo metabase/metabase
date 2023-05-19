@@ -56,6 +56,7 @@ export type FieldValuesType = "list" | "search" | "none";
 
 export type FieldDimension = {
   name: string;
+  human_readable_field_id?: FieldId;
   human_readable_field?: Field;
 };
 
@@ -87,11 +88,13 @@ export interface ConcreteField {
   fk_target_field_id: FieldId | null;
   target?: Field;
   values?: FieldValue[];
+  remappings?: FieldValue[];
   settings?: FieldFormattingSettings;
 
   dimensions?: FieldDimension[];
   default_dimension_option?: FieldDimensionOption;
   dimension_options?: FieldDimensionOption[];
+  name_field?: Field;
 
   max_value?: number;
   min_value?: number;

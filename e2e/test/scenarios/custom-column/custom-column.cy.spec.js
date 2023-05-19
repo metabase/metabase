@@ -94,7 +94,7 @@ describe("scenarios > question > custom column", () => {
       name: "Product Date",
     }).click();
 
-    popover().last().findByText("Month of Year").click();
+    popover().last().findByText("Month of year").click();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Product Date: Month of year").should("be.visible");

@@ -41,6 +41,7 @@ export const createMockNormalizedTable = ({
   db,
   schema,
   fields,
+  fks,
   segments,
   metrics,
   ...opts
@@ -49,6 +50,7 @@ export const createMockNormalizedTable = ({
   db,
   schema,
   fields,
+  fks,
   segments,
   metrics,
 });
@@ -62,6 +64,7 @@ export const createMockNormalizedFieldDimension = ({
 });
 
 export const createMockNormalizedField = ({
+  uniqueId = "1",
   target,
   table,
   name_field,
@@ -69,6 +72,7 @@ export const createMockNormalizedField = ({
   ...opts
 }: Partial<NormalizedField>): NormalizedField => ({
   ...createMockField(opts),
+  uniqueId,
   target,
   table,
   name_field,

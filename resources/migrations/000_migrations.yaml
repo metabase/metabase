@@ -14615,7 +14615,6 @@ databaseChangeLog:
         - customChange:
             class: "metabase.db.custom_migrations.MigrateLegacyColumnSettingsFieldRefs"
 
-
   - changeSet:
       id: v47.00-018
       author: dpsutton
@@ -14802,6 +14801,14 @@ databaseChangeLog:
             constraintName: fk_model_index_value_model_id
             nullable: false
             deleteCascade: true
+
+  - changeSet:
+      id: v47.00-027
+      author: calherres
+      comment: Added 0.47.0 - Migrate field_ref in report_card.result_metadata from legacy format
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.MigrateLegacyResultMetadataFieldRefs"
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

@@ -201,24 +201,14 @@
   (str "%" s "%"))
 
 (defn- search-string-clause
-  [model query searchable-columns]
+  [query searchable-columns]
   (when query
     (into [:or]
           (for [column searchable-columns
                 token (search-util/tokenize (search-util/normalize query))]
-            (cond
-              (and (= model "card")
-                   (= column (keyword (name (model->alias model)) "dataset_query")))
-              [:and
-               [:= (keyword (name (model->alias model)) "query_type") "native"]
-               [:like
-                [:lower column]
-                (wildcard-match token)]]
-
-              (and (= model "indexed-entity") (premium-features/segmented-user?))
+            (if (and (= model "indexed-entity") (premium-features/segmented-user?))
               [:= 0 1]
 
-              :else
               [:like
                [:lower column]
                (wildcard-match token)])))))
@@ -226,8 +216,7 @@
 (s/defn ^:private base-where-clause-for-model :- [(s/one (s/enum :and := :inline) "type") s/Any]
   [model :- SearchableModel, {:keys [search-string archived?]} :- SearchContext]
   (let [archived-clause (archived-where-clause model archived?)
-        search-clause   (search-string-clause model
-                                              search-string
+        search-clause   (search-string-clause search-string
                                               (map (let [model-alias (name (model->alias model))]
                                                      (fn [column]
                                                        (keyword (str (name model-alias) "." (name column)))))

@@ -13,7 +13,10 @@
   Metabase models. There is a plethora of CRUD functions for working with Pulses that IMO aren't really needed (e.g.
   functions for fetching a specific Pulse). At some point in the future, we can clean this namespace up and bring the
   code in line with the rest of the codebase, but for the time being, it probably makes sense to follow the existing
-  patterns in this namespace rather than further confuse things."
+  patterns in this namespace rather than further confuse things.
+
+  Legacy note: Currently Pulses are associated with a dashboard, but this is not always the case since there are legacy
+  pulses that are a collection of cards, not dashboard."
   (:require
    [clojure.string :as str]
    [medley.core :as m]

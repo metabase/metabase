@@ -1,6 +1,5 @@
 (ns metabase.search.config
   (:require
-   [cheshire.core :as json]
    [metabase.models
     :refer [Action Card Collection Dashboard Database Metric
             ModelIndexValue Segment Table]]
@@ -77,7 +76,6 @@
 (defmethod searchable-columns-for-model "card"
   [_]
   [:name
-   :dataset_query
    :description])
 
 (defmethod searchable-columns-for-model "dataset"
@@ -141,12 +139,11 @@
         [:model.collection_id        :collection_id]
         [:model.id                   :model_id]
         [:model.name                 :model_name]
-        [:query_action.database_id   :database_id]
-        [:query_action.dataset_query :dataset_query]))
+        [:query_action.database_id   :database_id]))
 
 (defmethod columns-for-model "card"
   [_]
-  (conj default-columns :collection_id :collection_position :dataset_query
+  (conj default-columns :collection_id :collection_position
         [:collection.name :collection_name]
         [:collection.authority_level :collection_authority_level]
         [{:select   [:status]
@@ -221,10 +218,3 @@
 (defmethod column->string :default
   [value _ _]
   value)
-
-(defmethod column->string [:card :dataset_query]
-  [value _ _]
-  (let [query (json/parse-string value true)]
-    (if (= "native" (:type query))
-      (-> query :native :query)
-      "")))

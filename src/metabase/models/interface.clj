@@ -228,10 +228,6 @@
     (blob->bytes v)
     v))
 
-(models/add-type! :secret-value
-  :in  (comp encryption/maybe-encrypt-bytes codecs/to-bytes)
-  :out (comp encryption/maybe-decrypt maybe-blob->bytes))
-
 (defn decompress
   "Decompress `compressed-bytes`."
   [compressed-bytes]
@@ -415,6 +411,11 @@
   {:in  json-in
    :out json-out-with-keywordization})
 
+(def transform-json-no-keywordization
+  "Transform for json-no-keywordization"
+  {:in  json-in
+   :out json-out-without-keywordization})
+
 (def transform-encrypted-json
   "Transform for encrypted json."
   {:in  encrypted-json-in
@@ -429,6 +430,16 @@
   "Transform for parameters list."
   {:in  (comp json-in normalize-parameters-list)
    :out (comp (catch-normalization-exceptions normalize-parameters-list) json-out-with-keywordization)})
+
+(def transform-secret-value
+  "Transform for secret value."
+  {:in  (comp encryption/maybe-encrypt-bytes codecs/to-bytes)
+   :out (comp encryption/maybe-decrypt maybe-blob->bytes)})
+
+(def transform-encrypted-text
+  "Transform for encrypted text."
+  {:in  encryption/maybe-encrypt
+   :out encryption/maybe-decrypt})
 
 (def transform-cron-string
   "Transform for encrypted json."
