@@ -1342,10 +1342,10 @@
   (if-let [source-query (-> inner-query :source-query)]
     (let [compiled (or (when-let [nq (:native source-query)]
                          (cond
-                           (string? nq)
+                           (string? (:query nq))
                            (-> source-query
                                (dissoc :native)
-                               (assoc :query (parse-query-string nq)))
+                               (assoc :query (parse-query-string (:query nq))))
 
                            :else
                            nq))

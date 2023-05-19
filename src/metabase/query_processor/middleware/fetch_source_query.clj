@@ -115,11 +115,17 @@
        (let [collection (:collection native-query)]
          (cond-> native-query
                  ;; MongoDB native  queries consist of a collection and a pipelne (query)
-                 collection (update :native (fn [pipeline] {:collection collection
-                                                            :query      pipeline}))
+                 collection
+                 (update :native (fn [pipeline] {:collection collection
+                                                 :query      pipeline}))
+
                  ;; trim trailing comments from SQL, but not other types of native queries
-                 (string? (:native native-query)) (update :native (partial trim-sql-query card-id))
-                 (empty? template-tags) (dissoc :template-tags))))
+                 (and (str/blank? collection)
+                      (string? (:native native-query)))
+                 (update :native (partial trim-sql-query card-id))
+
+                 (empty? template-tags)
+                 (dissoc :template-tags))))
      (throw (ex-info (tru "Missing source query in Card {0}" card-id)
                      {:card card})))))
 
