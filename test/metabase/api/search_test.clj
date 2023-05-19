@@ -489,16 +489,12 @@
                 (is (= #{}
                        (into #{} (comp relevant (map :name)) (search! "fort"))))))
 
-            (let [normalize (fn [x] (-> x
-                                        (update :dataset_query mbql.normalize/normalize)
-                                        (update :pk_ref mbql.normalize/normalize)))]
-              (is (=? {"Rome"   {:dataset_query query
-                                 :pk_ref        (mt/$ids $municipality.id)
+            (let [normalize (fn [x] (-> x (update :pk_ref mbql.normalize/normalize)))]
+              (is (=? {"Rome"   {:pk_ref        (mt/$ids $municipality.id)
                                  :name          "Rome"
                                  :model_id      (:id model)
                                  :model_name    (:name model)}
-                       "Tromsø" {:dataset_query query
-                                 :pk_ref        (mt/$ids $municipality.id)
+                       "Tromsø" {:pk_ref        (mt/$ids $municipality.id)
                                  :name          "Tromsø"
                                  :model_id      (:id model)
                                  :model_name    (:name model)}}

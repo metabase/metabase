@@ -96,8 +96,6 @@
    ;; returned for Action
    :model_id            :integer
    :model_name          :text
-   ;; returned for Card and Action
-   :dataset_query       :text
    ;; returned for indexed-entity
    :pk_ref              :text))
 
@@ -201,7 +199,7 @@
   (str "%" s "%"))
 
 (defn- search-string-clause
-  [query searchable-columns]
+  [model query searchable-columns]
   (when query
     (into [:or]
           (for [column searchable-columns
@@ -216,7 +214,7 @@
 (s/defn ^:private base-where-clause-for-model :- [(s/one (s/enum :and := :inline) "type") s/Any]
   [model :- SearchableModel, {:keys [search-string archived?]} :- SearchContext]
   (let [archived-clause (archived-where-clause model archived?)
-        search-clause   (search-string-clause search-string
+        search-clause   (search-string-clause model search-string
                                               (map (let [model-alias (name (model->alias model))]
                                                      (fn [column]
                                                        (keyword (str (name model-alias) "." (name column)))))
