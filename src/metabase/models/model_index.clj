@@ -42,6 +42,10 @@
 
 ;;;; indexing functions
 
+(defn valid-tuples?
+  "Filter function for valid tuples for indexing: an id and a value."
+  [[id v]] (and id v))
+
 (defn- fetch-values
   [model-index]
   (let [model (t2/select-one Card :id (:model_id model-index))]
@@ -53,7 +57,7 @@
                                 :order-by     [[:desc (:value_ref model-index)]]
                                 :limit        5001
                                 :breakout   [(:pk_ref model-index) (:value_ref model-index)]}})
-                   :data :rows)]
+                   :data :rows (filter valid-tuples?))]
          (catch Exception e
            (log/warn (trs "Error fetching indexed values for model {0}" (:id model)) e)
            [(ex-message e) []]))))
@@ -78,7 +82,7 @@
     ;; use upserts and delete ones with old generations
     (t2/query {:insert-into   [:model_index_value]
                :values        (into []
-                                    (comp (filter (fn [[id v]] (and id v)))
+                                    (comp (filter valid-tuples?)
                                           (map (fn [[id v]]
                                                  {:name           v
                                                   :model_pk       id
