@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.db.metadata-queries :as metadata-queries]
+   [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.bigquery-cloud-sdk :as bigquery]
    [metabase.driver.bigquery-cloud-sdk.common :as bigquery.common]
@@ -495,3 +496,12 @@
                   ["2021-01-10T00:00:00Z" 6]]
                  (mt/rows
                   (qp/process-query query)))))))))
+
+(deftest format-sql-test
+  (mt/test-driver :bigquery-cloud-sdk
+     (testing "native queries are compiled and formatted without whitespace errors (#30676)"
+       (is (= (str "SELECT\n  count(*) AS `count`\nFROM\n  `v3_test_data.venues`")
+              (-> (mt/mbql-query venues {:aggregation [:count]})
+                  qp/compile-and-splice-parameters
+                  :query
+                  (mdb.query/format-sql :bigquery-cloud-sdk)))))))
