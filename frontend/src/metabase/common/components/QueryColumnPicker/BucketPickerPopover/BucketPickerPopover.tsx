@@ -61,7 +61,13 @@ export function BucketPickerPopover({
   return (
     <PopoverWithTrigger
       renderTrigger={({ onClick }) => (
-        <TriggerButton aria-label={triggerLabel} onClick={onClick}>
+        <TriggerButton
+          aria-label={triggerLabel}
+          onClick={onClick}
+          // Compat with E2E tests around MLv1-based components
+          // Prefer using a11y role selectors
+          data-testid="dimension-list-item-binning"
+        >
           {renderTriggerContent(triggerContentBucketDisplayInfo)}
           <TriggerIcon name="chevronright" />
         </TriggerButton>
