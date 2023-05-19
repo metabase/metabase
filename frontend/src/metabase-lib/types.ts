@@ -76,7 +76,7 @@ export type AggregationOperatorDisplayInfo = {
   displayName: string;
   description: string;
   short: string;
-  requiresField: boolean;
+  requiresColumn: boolean;
 };
 
 export type ClauseDisplayInfo = Pick<
