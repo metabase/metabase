@@ -118,10 +118,12 @@ export const saveDashboardAndCards = createThunkAction(
           visualization_settings: dc.visualization_settings,
           parameter_mappings: dc.parameter_mappings,
         })),
-        ordered_tabs: (dashboard.ordered_tabs ?? []).map(({ id, name }) => ({
-          id,
-          name,
-        })),
+        ordered_tabs: (dashboard.ordered_tabs ?? [])
+          .filter(tab => !tab.isRemoved)
+          .map(({ id, name }) => ({
+            id,
+            name,
+          })),
       });
       dispatch(saveCardsAndTabs(updatedCardsAndTabs));
 

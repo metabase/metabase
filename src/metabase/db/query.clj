@@ -50,6 +50,7 @@
                                           :sparksql Dialect/SparkSql
                                           :sqlserver Dialect/TSql
                                           :oracle Dialect/PlSql
+                                          :bigquery-cloud-sdk Dialect/MySql
                                           Dialect/StandardSql))]
          (.format formatter sql))
        sql))))

@@ -29,7 +29,6 @@ title: DatetimeDiff
 - "hour"
 - "minute"
 - "second"
-- "millisecond"
 
 ## Calculating age
 

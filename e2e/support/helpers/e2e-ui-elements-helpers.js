@@ -111,3 +111,7 @@ export const dashboardParametersContainer = () => {
 export const undoToast = () => {
   return cy.findByTestId("toast-undo");
 };
+
+export function dashboardCards() {
+  return cy.get("#Dashboard-Cards-Container");
+}

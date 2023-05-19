@@ -168,6 +168,52 @@
   ([a-query stage-number x]
    (lib.core/breakout a-query stage-number (lib.core/ref x))))
 
+(defn ^:export binning
+  "Retrieve the current binning state of a `:field` clause, field metadata, etc. as an opaque object, or `nil` if it
+  does not have binning options set."
+  [x]
+  (lib.core/binning x))
+
+(defn ^:export with-binning
+  "Given `x` (a field reference) and a `binning` value, return a new `:field` clause with its `:binning` options set.
+
+  If `binning` is `nil`, removes any `:binning` options currently present.
+
+  `binning` can be one of the opaque values returned by [[available-binning-strategies]], or a literal
+  [[metabase.lib.schema.binning/binning]] value."
+  [x binning-option]
+  (lib.core/with-binning x binning-option))
+
+(defn ^:export available-binning-strategies
+  "Get a list of available binning strategies for `x` (a field reference, generally) in the context of `a-query` and
+  optionally `stage-number`. The returned list contains opaque objects which should be passed to [[display-info]]."
+  ([a-query x]
+   (-> (lib.core/available-binning-strategies a-query x)
+       to-array))
+  ([a-query stage-number x]
+   (-> (lib.core/available-binning-strategies a-query stage-number x)
+       to-array)))
+
+(defn ^:export temporal-bucket
+  "Get the current temporal bucketing options associated with something, if any."
+  [x]
+  (lib.core/temporal-bucket x))
+
+(defn ^:export with-temporal-bucket
+  "Add a temporal bucketing option to an MBQL clause (or something that can be converted to an MBQL clause)."
+  [x bucketing-option]
+  (lib.core/with-temporal-bucket x bucketing-option))
+
+(defn ^:export available-temporal-buckets
+  "Get a list of available temporal bucketing options for `x` (a field reference, generally) in the context of `a-query`
+  and optionally `stage-number`. The returned list contains opaque objects which should be passed to [[display-info]]."
+  ([a-query x]
+   (-> (lib.core/available-temporal-buckets a-query x)
+       to-array))
+  ([a-query stage-number x]
+   (-> (lib.core/available-temporal-buckets a-query stage-number x)
+       to-array)))
+
 (defn ^:export remove-clause
   "Removes the `target-clause` in the filter of the `query`."
   ([a-query clause]

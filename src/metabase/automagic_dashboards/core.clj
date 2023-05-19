@@ -165,9 +165,7 @@
 (defmethod ->root Table
   [table]
   {:entity       table
-   :full-name    (if (ga-table? table)
-                   (:display_name table)
-                   (tru "{0} table" (:display_name table)))
+   :full-name    (:display_name table)
    :short-name   (:display_name table)
    :source       table
    :database     (:db_id table)
@@ -1056,6 +1054,7 @@
         (apply-rule root (rules/get-rule rule)))
       (some
        (fn [rule]
+         (tap> rule)
          (apply-rule root rule))
        (matching-rules (rules/get-rules rules-prefix) root))
       (throw (ex-info (trs "Can''t create dashboard for {0}" (pr-str full-name))

@@ -1,8 +1,8 @@
 {
   "teams": [
     {
-      "name": "Question Masters",
-      "label": ".Team/QuestionMasters",
+      "name": "Team 42",
+      "label": ".Team/42 :milky_way:",
       "members": [
         "ranquild",
         "WiNloSt",
@@ -39,7 +39,8 @@
         "iethree",
         "npfitz",
         "EmmadUsmani",
-        "JesseSDevaney"
+        "JesseSDevaney",
+        "shaunlebron"
       ]
     }
   ]

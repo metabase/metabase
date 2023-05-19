@@ -82,7 +82,7 @@
    stage-number   :- :int
    unique-name-fn :- fn?]
   (not-empty
-   (for [ag (lib.aggregation/aggregations query stage-number)]
+   (for [ag (lib.aggregation/aggregations-metadata query stage-number)]
      (assoc ag
             :lib/source               :source/aggregations
             :lib/source-column-alias  (:name ag)
@@ -153,7 +153,7 @@
    stage-number    :- :int
    unique-name-fn  :- fn?]
   (not-empty
-   (for [expression (lib.expression/expressions query stage-number)]
+   (for [expression (lib.expression/expressions-metadata query stage-number)]
      (assoc expression
             :lib/source               :source/expressions
             :lib/source-column-alias  (:name expression)
@@ -232,7 +232,7 @@
         field-cols
         (do (doall field-cols)          ; force generation of unique names before join columns
             (into []
-                  (m/distinct-by #(dissoc % :source_alias :lib/source :lib/desired-column-alias))
+                  (m/distinct-by #(dissoc % :source_alias :lib/source :lib/source-uuid :lib/desired-column-alias))
                   (concat field-cols
                           (lib.join/all-joins-default-columns query stage-number unique-name-fn))))
 
