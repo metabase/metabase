@@ -1,5 +1,9 @@
 import _ from "underscore";
-import { ORDERS, REVIEWS } from "__support__/sample_database_fixture";
+import { REVIEWS_ID } from "metabase-types/api/mocks/presets";
+import {
+  ordersTable,
+  ordersTotalField,
+} from "../../../../../../test/metabase/lib/expressions/__support__/shared";
 import {
   aggregationOpts,
   expressionOpts,
@@ -7,12 +11,12 @@ import {
 import { suggest as suggest_, Suggestion } from "./suggest";
 
 type Config = { text: string; type: string };
-// custom metadata defined in __support__/sample_database_fixture
 const SEGMENTS_ORDERS: Config[] = [
   { text: "[Expensive Things]", type: "segments" },
 ];
 const FIELDS_ORDERS: Config[] = [
   { text: "[Created At] ", type: "fields" },
+  { text: "[Discount] ", type: "fields" },
   { text: "[ID] ", type: "fields" },
   { text: "[Product ID] ", type: "fields" },
   { text: "[Product → Category] ", type: "fields" },
@@ -23,6 +27,7 @@ const FIELDS_ORDERS: Config[] = [
   { text: "[Product → Rating] ", type: "fields" },
   { text: "[Product → Title] ", type: "fields" },
   { text: "[Product → Vendor] ", type: "fields" },
+  { text: "[Quantity] ", type: "fields" },
   { text: "[Subtotal] ", type: "fields" },
   { text: "[Tax] ", type: "fields" },
   { text: "[Total] ", type: "fields" },
@@ -96,7 +101,7 @@ describe("metabase/lib/expression/suggest", () => {
         expect(
           suggest({
             source: "User",
-            query: ORDERS.query(),
+            query: ordersTable.query(),
             startRule: "expression",
           }),
         ).toEqual([
@@ -121,9 +126,9 @@ describe("metabase/lib/expression/suggest", () => {
         expect(
           suggest({
             source: "Foo",
-            query: ORDERS.query().join({
+            query: ordersTable.query().join({
               alias: "Foo",
-              "source-table": REVIEWS.id,
+              "source-table": REVIEWS_ID,
             }),
             startRule: "expression",
           }),
@@ -141,9 +146,10 @@ describe("metabase/lib/expression/suggest", () => {
         expect(
           suggest({
             source: "T",
-            query: ORDERS.query()
+            query: ordersTable
+              .query()
               .aggregate(["count"])
-              .breakout(ORDERS.TOTAL)
+              .breakout(ordersTotalField)
               .nest(),
             startRule: "expression",
           }),
@@ -161,7 +167,7 @@ describe("metabase/lib/expression/suggest", () => {
         expect(
           helpText({
             source: "substring(",
-            query: ORDERS.query(),
+            query: ordersTable.query(),
             startRule: "expression",
           }),
         ).toMatchObject({
@@ -175,7 +181,7 @@ describe("metabase/lib/expression/suggest", () => {
         expect(
           helpText({
             source: "lower", // doesn't need to be "lower(" since it's a unique match
-            query: ORDERS.query(),
+            query: ordersTable.query(),
             startRule: "expression",
           }),
         ).toMatchObject({
@@ -189,7 +195,7 @@ describe("metabase/lib/expression/suggest", () => {
         expect(
           helpText({
             source: "trim(Total ",
-            query: ORDERS.query(),
+            query: ordersTable.query(),
             startRule: "expression",
           })?.name,
         ).toEqual("trim");
@@ -199,7 +205,7 @@ describe("metabase/lib/expression/suggest", () => {
         expect(
           helpText({
             source: "coalesce(Total ",
-            query: ORDERS.query(),
+            query: ordersTable.query(),
             startRule: "expression",
           })?.name,
         ).toEqual("coalesce");
@@ -255,7 +261,7 @@ describe("metabase/lib/expression/suggest", () => {
         expect(
           suggest({
             source: "to",
-            query: ORDERS.query(),
+            query: ordersTable.query(),
             startRule: "aggregation",
           }),
         ).toEqual([
@@ -268,7 +274,7 @@ describe("metabase/lib/expression/suggest", () => {
         expect(
           suggest({
             source: "cou",
-            query: ORDERS.query(),
+            query: ordersTable.query(),
             startRule: "aggregation",
           }),
         ).toEqual([
@@ -281,7 +287,7 @@ describe("metabase/lib/expression/suggest", () => {
         expect(
           helpText({
             source: "Sum(",
-            query: ORDERS.query(),
+            query: ordersTable.query(),
             startRule: "aggregation",
           }),
         ).toMatchObject({ name: "sum", example: "Sum([Subtotal])" });
@@ -291,7 +297,11 @@ describe("metabase/lib/expression/suggest", () => {
     describe("filter", () => {
       it("should show suggestions with matched 1-char prefix", () => {
         expect(
-          suggest({ source: "c", query: ORDERS.query(), startRule: "boolean" }),
+          suggest({
+            source: "c",
+            query: ordersTable.query(),
+            startRule: "boolean",
+          }),
         ).toEqual([
           { type: "fields", text: "[Created At] " },
           { type: "fields", text: "[Product → Category] " },
@@ -310,7 +320,7 @@ describe("metabase/lib/expression/suggest", () => {
         expect(
           suggest({
             source: "ca",
-            query: ORDERS.query(),
+            query: ordersTable.query(),
             startRule: "boolean",
           }),
         ).toEqual([
@@ -321,7 +331,11 @@ describe("metabase/lib/expression/suggest", () => {
 
       it("should show all fields when '[' appears", () => {
         expect(
-          suggest({ source: "[", query: ORDERS.query(), startRule: "boolean" }),
+          suggest({
+            source: "[",
+            query: ordersTable.query(),
+            startRule: "boolean",
+          }),
         ).toEqual([...FIELDS_ORDERS, ...SEGMENTS_ORDERS].sort(suggestionSort));
       });
 
@@ -329,7 +343,7 @@ describe("metabase/lib/expression/suggest", () => {
         expect(
           helpText({
             source: "Contains(Total ",
-            query: ORDERS.query(),
+            query: ordersTable.query(),
             startRule: "boolean",
           }),
         ).toMatchObject({

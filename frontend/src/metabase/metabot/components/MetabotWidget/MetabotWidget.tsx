@@ -8,8 +8,7 @@ import Databases from "metabase/entities/databases";
 import Questions from "metabase/entities/questions";
 import Search from "metabase/entities/search";
 import { getUser } from "metabase/selectors/user";
-import { getMetadata } from "metabase/selectors/metadata";
-import { Card, CollectionItem, DatabaseId, User } from "metabase-types/api";
+import { CollectionItem, DatabaseId, User } from "metabase-types/api";
 import { Dispatch, State } from "metabase-types/store";
 import { canUseMetabotOnDatabase } from "metabase/metabot/utils";
 import Question from "metabase-lib/Question";
@@ -28,12 +27,11 @@ interface SearchLoaderProps {
 }
 
 interface CardLoaderProps {
-  card?: Card;
+  model?: Question;
 }
 
 interface StateProps {
   user: User | null;
-  model: Question | null;
   databases: Database[];
 }
 
@@ -41,14 +39,16 @@ interface DispatchProps {
   onSubmitQuery: (databaseId: DatabaseId, query: string) => void;
 }
 
-type MetabotWidgetProps = StateProps & DispatchProps & DatabaseLoaderProps;
+type MetabotWidgetProps = StateProps &
+  DispatchProps &
+  CardLoaderProps &
+  DatabaseLoaderProps;
 
 const mapStateToProps = (
   state: State,
-  { card, databases }: CardLoaderProps & DatabaseLoaderProps,
+  { databases }: DatabaseLoaderProps,
 ): StateProps => ({
   user: getUser(state),
-  model: card ? new Question(card, getMetadata(state)) : null,
   databases: databases.filter(canUseMetabotOnDatabase),
 });
 
@@ -103,7 +103,7 @@ const getGreetingMessage = (user: User | null) => {
   }
 };
 
-const getPromptPlaceholder = (model: Question | null) => {
+const getPromptPlaceholder = (model: Question | undefined) => {
   if (model) {
     return t`Ask something like, how many ${model?.displayName()} have we had over time?`;
   } else {
@@ -122,7 +122,7 @@ export default _.compose(
   }),
   Questions.load({
     id: (state: State, { models }: SearchLoaderProps) => models[0]?.id,
-    entityAlias: "card",
+    entityAlias: "model",
   }),
   Databases.loadList(),
   connect(mapStateToProps, mapDispatchToProps),

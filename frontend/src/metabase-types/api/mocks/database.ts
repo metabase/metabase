@@ -1,4 +1,9 @@
-import { Database, DatabaseData, DatabaseFeature } from "metabase-types/api";
+import {
+  Database,
+  DatabaseData,
+  DatabaseFeature,
+  SavedQuestionDatabase,
+} from "metabase-types/api";
 
 export const COMMON_DATABASE_FEATURES: DatabaseFeature[] = [
   "actions",
@@ -12,6 +17,7 @@ export const COMMON_DATABASE_FEATURES: DatabaseFeature[] = [
   "nested-queries",
   "standard-deviation-aggregations",
   "persist-models",
+  "percentile-aggregations",
   "left-join",
   "right-join",
   "inner-join",
@@ -47,4 +53,10 @@ export const createMockDatabaseData = (
   is_full_sync: false,
   is_on_demand: false,
   ...opts,
+});
+
+export const createMockSavedQuestionsDatabase = (): SavedQuestionDatabase => ({
+  id: -1337,
+  name: "Saved Questions",
+  is_saved_questions: true,
 });

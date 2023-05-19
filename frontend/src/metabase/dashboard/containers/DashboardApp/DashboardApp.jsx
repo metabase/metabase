@@ -35,7 +35,6 @@ import Dashboards from "metabase/entities/dashboards";
 import { useDispatch } from "metabase/lib/redux";
 import { addUndo, dismissUndo } from "metabase/redux/undo";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
-import { getSelectedTabId } from "metabase/dashboard/components/DashboardTabs";
 import * as dashboardActions from "../../actions";
 import {
   getIsEditing,
@@ -61,6 +60,7 @@ import {
   getIsHeaderVisible,
   getIsAdditionalInfoVisible,
   getIsAutoApplyFilters,
+  getSelectedTabId,
 } from "../../selectors";
 import { DASHBOARD_SLOW_TIMEOUT } from "../../constants";
 

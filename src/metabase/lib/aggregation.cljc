@@ -19,8 +19,8 @@
   [metadata :- lib.metadata/ColumnMetadata]
   (let [options {:lib/uuid       (str (random-uuid))
                  :effective-type ((some-fn :effective-type :base-type) metadata)}
-        ag-uuid (::aggregation-uuid metadata)]
-    (assert ag-uuid "Metadata for an aggregation reference should include ::aggregation-uuid")
+        ag-uuid (:lib/source-uuid metadata)]
+    (assert ag-uuid "Metadata for an aggregation reference should include :lib/source-uuid")
     [:aggregation options ag-uuid]))
 
 (mu/defn resolve-aggregation :- ::lib.schema.aggregation/aggregation
@@ -51,7 +51,7 @@
     (merge
      (lib.metadata.calculation/metadata query stage-number aggregation)
      {:lib/source :source/aggregations
-      ::aggregation-uuid (:lib/uuid (second aggregation))}
+      :lib/source-uuid (:lib/uuid (second aggregation))}
      (when base-type
        {:base-type base-type})
      (when effective-type
@@ -214,10 +214,19 @@
   ([query stage-number an-aggregate-clause]
    (lib.util/add-summary-clause query stage-number :aggregation an-aggregate-clause)))
 
-(mu/defn aggregations :- [:maybe [:sequential lib.metadata/ColumnMetadata]]
-  "Get metadata about the aggregations in a given stage of a query."
+(mu/defn aggregations :- [:maybe [:sequential ::lib.schema.aggregation/aggregation]]
+  "Get the aggregations in a given stage of a query."
   ([query]
    (aggregations query -1))
+
+  ([query        :- ::lib.schema/query
+    stage-number :- :int]
+   (not-empty (:aggregation (lib.util/query-stage query stage-number)))))
+
+(mu/defn aggregations-metadata :- [:maybe [:sequential lib.metadata/ColumnMetadata]]
+  "Get metadata about the aggregations in a given stage of a query."
+  ([query]
+   (aggregations-metadata query -1))
 
   ([query        :- ::lib.schema/query
     stage-number :- :int]
@@ -225,4 +234,4 @@
             (into [] (map (fn [aggregation]
                             (-> (lib.metadata.calculation/metadata query stage-number aggregation)
                                 (assoc :lib/source :source/aggregations
-                                       ::aggregation-uuid (:lib/uuid (second aggregation))))))))))
+                                       :lib/source-uuid (:lib/uuid (second aggregation))))))))))

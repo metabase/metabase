@@ -7,7 +7,7 @@
   "license": "private",
   "engines": {
     "node": ">=16",
-    "yarn": ">=1.12.3"
+    "yarn": "^1.12.3"
   },
   "dependencies": {
     "@emotion/react": "^11.7.1",
@@ -268,7 +268,7 @@
     "webpack-cli": "^5.0.2",
     "webpack-dev-server": "^4.13.3",
     "webpack-notifier": "1.15.0",
-    "xlsx": "0.18.3",
+    "xlsx": "^0.18.5",
     "yaml-lint": "~1.6.0"
   },
   "resolutions": {

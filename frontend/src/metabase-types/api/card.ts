@@ -129,3 +129,23 @@ export interface ModerationReview {
 
 export type CardId = number;
 export type ModerationReviewStatus = "verified";
+
+export type CardFilterOption =
+  | "all"
+  | "mine"
+  | "bookmarked"
+  | "database"
+  | "table"
+  | "recent"
+  | "popular"
+  | "using_model"
+  | "archived";
+
+export interface CardQuery {
+  ignore_view?: boolean;
+}
+
+export interface CardListQuery {
+  f?: CardFilterOption;
+  model_id?: CardId;
+}

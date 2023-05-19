@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 
-import BaseTabRow from "metabase/core/components/TabRow";
+import { TabRow as BaseTabRow } from "metabase/core/components/TabRow";
 import BaseTabPanel from "metabase/core/components/TabPanel";
 
 export const TabRow = styled(BaseTabRow)`

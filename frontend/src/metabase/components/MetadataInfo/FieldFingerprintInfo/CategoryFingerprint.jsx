@@ -21,7 +21,7 @@ import {
 const propTypes = {
   className: PropTypes.string,
   field: PropTypes.instanceOf(Field).isRequired,
-  fieldValues: PropTypes.array.isRequired,
+  fieldValues: PropTypes.array,
   fetchFieldValues: PropTypes.func.isRequired,
   showAllFieldValues: PropTypes.bool,
 };

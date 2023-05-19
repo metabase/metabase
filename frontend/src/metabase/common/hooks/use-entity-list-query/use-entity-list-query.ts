@@ -7,11 +7,11 @@ export interface EntityFetchOptions {
   reload?: boolean;
 }
 
-export interface EntityQueryOptions<TQuery> {
+export interface EntityQueryOptions<TQuery = never> {
   entityQuery?: TQuery;
 }
 
-export interface UseEntityListOwnProps<TItem, TQuery> {
+export interface UseEntityListOwnProps<TItem, TQuery = never> {
   fetchList: (query?: TQuery, options?: EntityFetchOptions) => Action;
   getList: (
     state: State,
@@ -21,7 +21,7 @@ export interface UseEntityListOwnProps<TItem, TQuery> {
   getError: (state: State, options: EntityQueryOptions<TQuery>) => unknown;
 }
 
-export interface UseEntityListQueryProps<TQuery> {
+export interface UseEntityListQueryProps<TQuery = never> {
   query?: TQuery;
   reload?: boolean;
   enabled?: boolean;
@@ -33,7 +33,7 @@ export interface UseEntityListQueryResult<TItem> {
   error: unknown;
 }
 
-export const useEntityListQuery = <TItem, TQuery>(
+export const useEntityListQuery = <TItem, TQuery = never>(
   {
     query: entityQuery,
     reload = false,

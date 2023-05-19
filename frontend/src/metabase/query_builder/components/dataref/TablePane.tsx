@@ -44,7 +44,7 @@ const TablePane = ({ table, onItemClick, onBack, onClose }: TablePaneProps) => (
           )}
         </div>
         <div className="my2">
-          {table.fields.length ? (
+          {table.fields?.length ? (
             <>
               <FieldList
                 fields={table.fields}

@@ -1,43 +1,65 @@
-import { ORDERS, createMetadata } from "__support__/sample_database_fixture";
-
+import { createMockMetadata } from "__support__/metadata";
+import {
+  createOrdersTable,
+  createOrdersTotalField,
+  createSampleDatabase,
+  ORDERS,
+  ORDERS_ID,
+} from "metabase-types/api/mocks/presets";
 import SummarizeColumnByTimeDrill from "metabase/modes/components/drill/SummarizeColumnByTimeDrill";
 
 describe("SummarizeColumnByTimeDrill", () => {
+  const metadata = createMockMetadata({
+    databases: [createSampleDatabase()],
+  });
+
+  const ordersTable = metadata.table(ORDERS_ID);
+
   it("should not be valid for top level actions", () => {
     expect(
-      SummarizeColumnByTimeDrill({ question: ORDERS.question() }),
+      SummarizeColumnByTimeDrill({ question: ordersTable.question() }),
     ).toHaveLength(0);
   });
+
   it("should not be valid if there is no time field", () => {
-    const metadata = createMetadata(state =>
-      state.assocIn(
-        ["entities", "tables", ORDERS.id, "fields"],
-        [ORDERS.TOTAL.id],
-      ),
-    );
-    const ORDERS_NO_DATETIME = metadata.table(ORDERS.id);
+    const metadataNoDatetime = createMockMetadata({
+      databases: [
+        createSampleDatabase({
+          tables: [
+            createOrdersTable({
+              fields: [createOrdersTotalField()],
+            }),
+          ],
+        }),
+      ],
+    });
+
+    const table = metadataNoDatetime.table(ORDERS_ID);
+    const field = metadataNoDatetime.field(ORDERS.TOTAL);
+
     expect(
       SummarizeColumnByTimeDrill({
-        question: ORDERS_NO_DATETIME.question(),
+        question: table.question(),
         clicked: {
-          column: ORDERS_NO_DATETIME.TOTAL.column(),
+          column: field.column(),
         },
       }),
     ).toHaveLength(0);
   });
+
   it("should be return correct new card", () => {
     const actions = SummarizeColumnByTimeDrill({
-      question: ORDERS.question(),
+      question: ordersTable.question(),
       clicked: {
-        column: ORDERS.TOTAL.column(),
+        column: metadata.field(ORDERS.TOTAL).column(),
       },
     });
     expect(actions).toHaveLength(1);
     const newQuestion = actions[0].question();
     expect(newQuestion.datasetQuery().query).toEqual({
-      "source-table": ORDERS.id,
-      aggregation: [["sum", ["field", ORDERS.TOTAL.id, null]]],
-      breakout: [["field", ORDERS.CREATED_AT.id, { "temporal-unit": "day" }]],
+      "source-table": ORDERS_ID,
+      aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
+      breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }]],
     });
     expect(newQuestion.display()).toEqual("line");
   });
