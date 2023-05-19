@@ -70,7 +70,7 @@ jobs:
       MB_PREMIUM_EMBEDDING_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
       MB_SNOWPLOW_AVAILABLE: true
       MB_SNOWPLOW_URL: "http://localhost:9090" # Snowplow micro
-      ELECTRON_EXTRA_LAUNCH_ARGS: "--remote-debugging-port=40500" # deploysentinel
+      ELECTRON_EXTRA_LAUNCH_ARGS: "--remote-debugging-port=40500 --disable-gpu" # deploysentinel
       TZ: US/Pacific # to make node match the instance tz
     strategy:
       fail-fast: false
