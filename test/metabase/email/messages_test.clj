@@ -96,12 +96,13 @@
 (deftest render-pulse-email-test
   (testing "Email with few rows and columns can be rendered when tracing (#21166)"
     (mt/with-log-level [metabase.email :trace]
-      (let [result {:card   {:name "card-name"
-                             :visualization_settings
-                             {:table.column_formatting []}}
-                    :result {:data {:cols [{:name "x"} {:name "y"}]
-                                    :rows [[0 0]
-                                           [1 1]]}}}
-            emails (messages/render-pulse-email "America/Pacific" {} {} [result])]
+      (let [part {:card   {:name "card-name"
+                           :visualization_settings
+                           {:table.column_formatting []}}
+                  :result {:data {:cols [{:name "x"} {:name "y"}]
+                                  :rows [[0 0]
+                                         [1 1]]}}
+                  :type :card}
+            emails (messages/render-pulse-email "America/Pacific" {} {} [part])]
         (is (vector? emails))
         (is (map? (first emails)))))))
