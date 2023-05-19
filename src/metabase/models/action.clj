@@ -282,7 +282,19 @@
                                 (map #(dissoc % ::pk? ::field-id)))]
           (cond-> (assoc action :database_id (model-id->db-id (:model_id action)))
             (seq implicit-params)
-            (assoc :parameters implicit-params)))
+            (-> (assoc :parameters implicit-params)
+                (update-in [:visualization_settings :fields]
+                           (fn [fields]
+                             (let [param-ids (map :id implicit-params)]
+                               (let [fields (->> (update-keys (or fields {}) name) ; fields' keys are converted to keywords out of the database, but they should be strings
+                                                 (m/filter-keys (set param-ids)))] ; remove entries that don't match params
+                                 ;; add default entries for params that don't have them
+                                 (reduce (fn [acc param-id]
+                                           (if (get acc param-id)
+                                             acc
+                                             (assoc acc param-id {:id param-id, :hidden false})))
+                                         fields
+                                         param-ids))))))))
         action))))
 
 (defn select-action
