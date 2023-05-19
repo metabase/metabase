@@ -45,6 +45,8 @@ type TableInlineDisplayInfo = Pick<
 export type ColumnDisplayInfo = {
   name: string;
   displayName: string;
+  longDisplayName: string;
+
   fkReferenceName?: string;
   isCalculated: boolean;
   isFromJoin: boolean;
@@ -57,7 +59,7 @@ export type ColumnDisplayInfo = {
 
 export type ClauseDisplayInfo = Pick<
   ColumnDisplayInfo,
-  "name" | "displayName" | "table"
+  "name" | "displayName" | "longDisplayName" | "table"
 >;
 
 export type BreakoutClauseDisplayInfo = ClauseDisplayInfo;
