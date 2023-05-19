@@ -312,3 +312,19 @@
   (let [n    (if (string? n) (keyword n) n)
         unit (if (string? unit) (keyword unit) unit)]
       (lib.core/describe-relative-datetime n unit)))
+
+(defn ^:export available-aggregation-operators
+  "Get the available aggregation operators for the stage with `stage-number` of
+  the query `a-query`.
+  If `stage-number` is omitted, the last stage is used."
+  ([a-query]
+   (available-aggregation-operators a-query -1))
+  ([a-query stage-number]
+   (to-array (lib.core/available-aggregation-operators a-query stage-number))))
+
+(defn ^:export aggregation-operator-columns
+  "Get the columns `aggregation-operator` can be applied to.
+  The columns are valid for the stage of the query that was used in
+  [[available-binning-strategies]] to get `available-aggregation`."
+  [aggregation-operator]
+  (to-array (lib.core/aggregation-operator-columns aggregation-operator)))
