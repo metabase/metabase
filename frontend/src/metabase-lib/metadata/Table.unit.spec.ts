@@ -1,54 +1,95 @@
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-nocheck
-import { createMockMetadata } from "__support__/metadata";
 import {
-  createSampleDatabase,
-  PRODUCTS_ID,
-} from "metabase-types/api/mocks/presets";
-import Table from "./Table";
+  createMockField,
+  createMockForeignKey,
+  createMockTable,
+} from "metabase-types/api/mocks";
+import { createMockMetadata } from "__support__/metadata";
+
+const TABLE_ORIGIN_ID = 1;
+const TABLE_DESTINATION_ID = 2;
+const TABLE_EMPTY_ID = 3;
+const TABLE_VIRTUAL_ID = "card__1";
+
+const FIELD_ORIGIN = createMockField({
+  id: 1,
+  table_id: TABLE_ORIGIN_ID,
+});
+
+const FIELD_DESTINATION = createMockField({
+  id: 2,
+  table_id: TABLE_DESTINATION_ID,
+});
+
+const TABLE_ORIGIN = createMockTable({
+  id: TABLE_ORIGIN_ID,
+  fields: [FIELD_ORIGIN],
+});
+
+const TABLE_DESTINATION = createMockTable({
+  id: TABLE_DESTINATION_ID,
+  fields: [FIELD_DESTINATION],
+  fks: [
+    createMockForeignKey({
+      origin: FIELD_ORIGIN,
+      origin_id: FIELD_ORIGIN.id,
+      destination: FIELD_DESTINATION,
+      destination_id: FIELD_DESTINATION.id,
+    }),
+  ],
+});
+
+const TABLE_EMPTY = createMockTable({
+  id: TABLE_EMPTY_ID,
+});
+
+const TABLE_VIRTUAL = createMockTable({
+  id: TABLE_VIRTUAL_ID,
+});
+
+const setup = () => {
+  return createMockMetadata({
+    tables: [TABLE_ORIGIN, TABLE_DESTINATION, TABLE_EMPTY, TABLE_VIRTUAL],
+  });
+};
 
 describe("Table", () => {
-  const metadata = createMockMetadata({
-    databases: [createSampleDatabase()],
-  });
-
-  const productsTable = metadata.table(PRODUCTS_ID) as Table;
-
   describe("numFields", () => {
     it("should return the number of fields", () => {
-      expect(productsTable.numFields()).toBe(8);
+      const metadata = setup();
+      const table = metadata.table(TABLE_ORIGIN_ID);
+
+      expect(table?.numFields()).toBe(TABLE_ORIGIN.fields?.length);
     });
 
     it("should handle scenario where fields prop is missing", () => {
-      const table = new Table({});
-      expect(table.numFields()).toBe(0);
+      const metadata = setup();
+      const table = metadata.table(TABLE_EMPTY_ID);
+
+      expect(table?.numFields()).toBe(0);
     });
   });
 
   describe("connectedTables", () => {
     it("should return a list of table instances connected to it via fk", () => {
-      const table = new Table({
-        fks: [
-          {
-            origin: { table: productsTable },
-          },
-        ],
-      });
+      const metadata = setup();
+      const originTable = metadata.table(TABLE_ORIGIN_ID);
+      const destinationTable = metadata.table(TABLE_DESTINATION_ID);
 
-      expect(table.connectedTables()).toEqual([productsTable]);
+      expect(destinationTable?.connectedTables()).toEqual([originTable]);
     });
   });
 
   describe("isVirtualCard", () => {
     it("should return false when the Table is not a virtual card table", () => {
-      expect(productsTable.isVirtualCard()).toBe(false);
+      const metadata = setup();
+      const table = metadata.table(TABLE_ORIGIN_ID);
+      expect(table?.isVirtualCard()).toBe(false);
     });
 
     it("should return true when the Table is a virtual card table", () => {
-      const virtualCardTable = new Table({
-        id: "card__123",
-      });
-      expect(virtualCardTable.isVirtualCard()).toBe(true);
+      const metadata = setup();
+      const table = metadata.table(TABLE_VIRTUAL_ID);
+      expect(table?.isVirtualCard()).toBe(true);
     });
   });
 });
