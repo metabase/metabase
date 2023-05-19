@@ -140,7 +140,7 @@ class FieldInner extends Base {
 
   displayName({
     includeSchema = false,
-    includeTable,
+    includeTable = false,
     includePath = true,
   } = {}) {
     let displayName = "";

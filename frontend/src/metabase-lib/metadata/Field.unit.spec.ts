@@ -1,142 +1,174 @@
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-nocheck
-import Dimension from "../Dimension";
-import Field from "./Field";
-import Table from "./Table";
-import Schema from "./Schema";
-import Metadata from "./Metadata";
-import Base from "./Base";
-import { createMockConcreteField } from "./mocks";
+import { Database, Field, Table } from "metabase-types/api";
+import {
+  createMockField,
+  createMockFieldDimension,
+  createMockTable,
+} from "metabase-types/api/mocks";
+import { createMockMetadata } from "__support__/metadata";
+
+const FIELD_ID = 1;
+
+interface SetupOpts {
+  databases?: Database[];
+  tables?: Table[];
+  fields?: Field[];
+}
+
+const setup = ({ databases = [], tables = [], fields = [] }: SetupOpts) => {
+  const metadata = createMockMetadata({
+    databases,
+    tables,
+    fields,
+  });
+
+  const instance = metadata.field(FIELD_ID);
+  if (!instance) {
+    throw TypeError();
+  }
+
+  return instance;
+};
 
 describe("Field", () => {
   describe("instantiation", () => {
     it("should create an instance of Schema", () => {
-      expect(new Field()).toBeInstanceOf(Field);
-    });
+      const field = setup({
+        fields: [
+          createMockField({
+            id: FIELD_ID,
+          }),
+        ],
+      });
 
-    it("should add `object` props to the instance (because it extends Base)", () => {
-      expect(new Field()).toBeInstanceOf(Base);
-      expect(
-        new Field({
-          foo: "bar",
-        }),
-      ).toHaveProperty("foo", "bar");
+      expect(field).toBeDefined();
     });
   });
 
   describe("parent", () => {
     it("should return null when `metadata` does not exist on instance", () => {
-      expect(new Field().parent()).toBeNull();
+      const field = setup({
+        fields: [
+          createMockField({
+            id: FIELD_ID,
+          }),
+        ],
+      });
+
+      expect(field.parent()).toBeNull();
     });
 
     it("should return the field that matches the instance's `parent_id` when `metadata` exists on the instance", () => {
-      const parentField = new Field({
-        id: 1,
+      const field = setup({
+        fields: [
+          createMockField({
+            id: FIELD_ID,
+            parent_id: 2,
+          }),
+          createMockField({
+            id: 2,
+          }),
+        ],
       });
-      const metadata = new Metadata({
-        fields: {
-          1: parentField,
-        },
-      });
-      const field = new Field({
-        parent_id: 1,
-        id: 2,
-        metadata,
-      });
-      expect(field.parent()).toBe(parentField);
+
+      expect(field.parent()).toBeDefined();
+      expect(field.parent()).toBe(field.metadata?.field(2));
     });
   });
 
   describe("path", () => {
     it("should return list of fields starting with instance, ending with root parent", () => {
-      const rootField = new Field({
-        id: 1,
+      const field = setup({
+        fields: [
+          createMockField({
+            id: FIELD_ID,
+            parent_id: 2,
+          }),
+          createMockField({
+            id: 2,
+          }),
+          createMockField({
+            id: 3,
+          }),
+        ],
       });
-      const parentField = new Field({
-        id: 2,
-        parent_id: 1,
-      });
-      const metadata = new Metadata({
-        fields: {
-          1: rootField,
-          2: parentField,
-        },
-      });
-      parentField.metadata = metadata;
-      rootField.metadata = metadata;
-      const field = new Field({
-        parent_id: 2,
-        id: 3,
-        metadata,
-      });
-      expect(field.path()).toEqual([rootField, parentField, field]);
+
+      const metadata = field.metadata;
+      expect(field.path()).toEqual([
+        metadata?.field(1),
+        metadata?.field(2),
+        metadata?.field(3),
+      ]);
     });
   });
 
   describe("displayName", () => {
     it("should return a field's display name", () => {
-      expect(
-        new Field({
-          name: "foo",
-        }).displayName(),
-      ).toBe("foo");
+      const field = setup({
+        fields: [
+          createMockField({
+            id: FIELD_ID,
+            name: "foo",
+          }),
+        ],
+      });
+
+      expect(field.displayName()).toBe("foo");
     });
 
     it("should prioritize the `display_name` field over `name`", () => {
-      expect(
-        new Field({
-          display_name: "bar",
-          name: "foo",
-        }).displayName(),
-      ).toBe("bar");
+      const field = setup({
+        fields: [
+          createMockField({
+            id: FIELD_ID,
+            name: "foo",
+            display_name: "bar",
+          }),
+        ],
+      });
+
+      expect(field.displayName()).toBe("bar");
     });
 
     it("should prioritize the name in the field's `dimensions` property if it has one", () => {
-      const field = new Field({
-        dimensions: [
-          {
-            name: "dimensions",
-          },
+      const field = setup({
+        fields: [
+          createMockField({
+            id: FIELD_ID,
+            display_name: "display",
+            dimensions: [
+              createMockFieldDimension({
+                name: "dimensions",
+              }),
+            ],
+          }),
         ],
-        display_name: "display",
       });
+
       expect(field.displayName()).toBe("dimensions");
     });
 
     describe("includePath flag", () => {
-      let field;
-      beforeEach(() => {
-        const rootField = new Field({
-          id: 1,
-          name: "rootField",
-        });
-        const parentField = new Field({
-          id: 2,
-          parent_id: 1,
-          name: "parentField",
-        });
-        const metadata = new Metadata({
-          fields: {
-            1: rootField,
-            2: parentField,
-          },
-        });
-        parentField.metadata = metadata;
-        rootField.metadata = metadata;
-        field = new Field({
-          parent_id: 2,
-          id: 3,
-          metadata,
-          name: "field",
-        });
+      const field = setup({
+        fields: [
+          createMockField({
+            id: FIELD_ID,
+            parent_id: 2,
+          }),
+          createMockField({
+            id: 2,
+            name: "parentField",
+          }),
+          createMockField({
+            id: 3,
+            name: "rootField",
+          }),
+        ],
       });
 
       it("should add parent field display names to the field's display name when enabled", () => {
-        expect(
-          field.displayName({
-            includePath: true,
-          }),
-        ).toBe("rootField: parentField: field");
+        expect(field.displayName({ includePath: true })).toBe(
+          "rootField: parentField: field",
+        );
       });
 
       it("should be enabled by default", () => {
@@ -148,40 +180,40 @@ describe("Field", () => {
       });
 
       it("should exclude parent field display names when disabled", () => {
-        expect(
-          field.displayName({
-            includePath: false,
-          }),
-        ).toBe("field");
+        expect(field.displayName({ includePath: false })).toBe("field");
       });
     });
 
     describe("includeTable flag", () => {
-      let field;
-      beforeEach(() => {
-        field = new Field({
-          id: 1,
-          name: "field",
-        });
-      });
-
       it("should do nothing when there is no table on the field instance", () => {
-        expect(
-          field.displayName({
-            includeTable: true,
-          }),
-        ).toBe("field");
+        const field = setup({
+          fields: [
+            createMockField({
+              id: FIELD_ID,
+              name: "field",
+            }),
+          ],
+        });
+
+        expect(field.displayName({ includeTable: true })).toBe("field");
       });
 
       it("should add the table name to the start of the field name", () => {
-        field.table = new Table({
-          display_name: "table",
+        const field = setup({
+          tables: [
+            createMockTable({
+              name: "table",
+              fields: [
+                createMockField({
+                  id: FIELD_ID,
+                  name: "field",
+                }),
+              ],
+            }),
+          ],
         });
-        expect(
-          field.displayName({
-            includeTable: true,
-          }),
-        ).toBe("table → field");
+
+        expect(field.displayName({ includeTable: true })).toBe("table → field");
       });
     });
 
