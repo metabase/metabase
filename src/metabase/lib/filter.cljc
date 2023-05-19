@@ -5,17 +5,18 @@
   (:require
    [clojure.string :as str]
    [metabase.lib.common :as lib.common]
+   [metabase.lib.equality :as lib.equality]
    [metabase.lib.hierarchy :as lib.hierarchy]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
-   [metabase.lib.schema]
+   [metabase.lib.ref :as lib.ref]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as schema.common]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util.malli :as mu])
   #?(:cljs (:require-macros [metabase.lib.filter])))
-
-(comment metabase.lib.schema/keep-me)
 
 (doseq [tag [:and :or]]
   (lib.hierarchy/derive tag ::compound))
@@ -169,3 +170,39 @@
     stage-number :- [:maybe :int]]
    (some->> (clojure.core/not-empty (:filters (lib.util/query-stage query (clojure.core/or stage-number -1))))
             (mapv lib.common/external-op))))
+
+(mu/defn filterable-columns :- [:sequential lib.metadata/ColumnMetadata]
+  "Get column metadata for all the columns that can be filtered in
+  the stage number `stage-number` of the query `query`
+  If `stage-number` is omitted, the last stage is used.
+  The rules for determining which columns can be broken out by are as follows:
+
+  1. custom `:expressions` in this stage of the query
+
+  2. Fields 'exported' by the previous stage of the query, if there is one;
+     otherwise Fields from the current `:source-table`
+
+  3. Fields exported by explicit joins
+
+  4. Fields in Tables that are implicitly joinable."
+
+  ([query :- ::lib.schema/query]
+   (filterable-columns query -1))
+
+  ([query        :- ::lib.schema/query
+    stage-number :- :int]
+   (let [indexed-filters (map-indexed vector (filters query stage-number))
+         filter-pos (fn [x]
+                        (some (fn [[pos [_filter-op _filter-args existing-filter]]]
+                                (let [a-ref (lib.ref/ref x)]
+                                  (when (clojure.core/or (lib.equality/= a-ref existing-filter)
+                                                         (lib.equality/= a-ref (lib.util/with-default-effective-type existing-filter)))
+                                    pos)))
+                              indexed-filters))
+         stage (lib.util/query-stage query stage-number)
+         columns (lib.metadata.calculation/visible-columns query stage-number stage)]
+     (some->> (clojure.core/not-empty columns)
+              (into [] (map (fn [col]
+                              (let [pos (filter-pos col)]
+                                (cond-> col
+                                  pos (assoc :filter-position pos))))))))))
