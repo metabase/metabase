@@ -8,6 +8,8 @@ import { Select } from "@ui/input/Select";
 import { Menu } from "@ui/overlay/Menu";
 
 import { theme } from "@ui/theme";
+import { TreeNodeList } from "metabase/components/tree/TreeNodeList";
+import { TreeList } from "./tree/Tree";
 
 const data = [
   {
@@ -56,6 +58,9 @@ const fieldData = [
 ];
 
 export function Preview() {
+
+
+
   return (
     <MantineProvider theme={theme}>
       <Box ml="auto" mr="auto" style={{ width: 900 }}>
@@ -108,6 +113,10 @@ export function Preview() {
             <Tabs.Panel value="one">Tab 1 content</Tabs.Panel>
             <Tabs.Panel value="two">Tab 2 content</Tabs.Panel>
           </Tabs>
+        </Box>
+
+        <Box my="sm">
+
         </Box>
       </Box>
     </MantineProvider>
