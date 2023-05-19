@@ -14703,7 +14703,6 @@ databaseChangeLog:
       id: v47.00-019
       author: dpsutton
       comment: Indexed Entities values table
-      validCheckSum: ANY
       changes:
         - createTable:
             tableName: model_index_value
@@ -14769,7 +14768,6 @@ databaseChangeLog:
       id: v47.00-023
       author: dpsutton
       comment: Added 0.47.0 -- model_index index
-      validCheckSum: ANY
       changes:
         - createIndex:
             tableName: model_index
@@ -14782,7 +14780,6 @@ databaseChangeLog:
       id: v47.00-024
       author: dpsutton
       comment: Added 0.47.0 -- model_index foriegn key to report_card
-      validCheckSum: ANY
       changes:
         - addForeignKeyConstraint:
             baseTableName: model_index
