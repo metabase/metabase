@@ -23,7 +23,7 @@ function ActionSettingsButton({ dashcard, setEditingDashcardId }: Props) {
     if (dashcard.justAdded) {
       setEditingDashcardId(dashcard.id);
     }
-  }, [dashcard.id, dashcard.justAdded, setEditingDashcardId])
+  }, [dashcard.id, dashcard.justAdded, setEditingDashcardId]);
 
   return (
     <DashCardActionButton

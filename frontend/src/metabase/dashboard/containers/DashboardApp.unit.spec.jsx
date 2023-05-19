@@ -122,7 +122,6 @@ describe("DashboardApp", function () {
   describe("ActionCreatorModal onClickOutside behavior", () => {
     it("should not close ActionCreator modal when clicking outside modal", async () => {
       const { container } = await setup({});
-
       await navigateToDashboardActionsEditor();
 
       fireEvent.click(container.ownerDocument.body);
@@ -132,7 +131,6 @@ describe("DashboardApp", function () {
     });
     it("should close ActionCreator modal when clicking modal's 'Cancel' button", async () => {
       await setup({});
-
       await navigateToDashboardActionsEditor();
 
       userEvent.click(
