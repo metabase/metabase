@@ -32,16 +32,22 @@ describe("scenarios > visualizations > table", () => {
     selectFromDropdown("User ID");
     visualize();
 
+    function headerCells() {
+      return cy.findAllByTestId("header-cell");
+    }
+
     // Rename the first ID column, and make sure the second one is not updated
-    cy.findByText("ID").click();
-    cy.findByText("Filter by this column");
-    cy.get("div[role=tooltip]").find(".Icon-gear").click();
-    cy.get("input[value=ID]").type(" updated");
-    // This defocuses the input, which triggers the update
-    cy.findByText("Column title").click();
-    // This is just to click somewhere else to close the popover
-    cy.findByText("Subtotal").click();
-    cy.findAllByText("ID updated").should("have.length", 1);
+    headerCells().findByText("ID").click();
+    popover().within(() => {
+      cy.findByText("Filter by this column");
+      cy.icon("gear").click();
+      cy.findByTestId("column_title").type(" updated");
+      // This defocuses the input, which triggers the update
+      cy.get("#column_title").click();
+    });
+    // click somewhere else to close the popover
+    headerCells().last().click();
+    headerCells().findAllByText("ID updated").should("have.length", 1);
   });
 
   it("should allow to display any column as link with extrapolated url and text", () => {
