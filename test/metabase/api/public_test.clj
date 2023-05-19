@@ -136,7 +136,7 @@
 
       (with-temp-public-card [{uuid :public_uuid, card-id :id}]
         (testing "Happy path -- should be able to fetch the Card"
-          (is (= #{:dataset_query :description :display :id :name :visualization_settings :parameters  :param_values :param_fields}
+          (is (= #{:dataset_query :description :display :id :name :visualization_settings :parameters :param_values :param_fields}
                  (set (keys (client/client :get 200 (str "public/card/" uuid)))))))
 
         (testing "Check that we cannot fetch a public Card if public sharing is disabled"
@@ -857,19 +857,29 @@
         (testing "should return 404 if Action doesn't exist"
           (is (= "Not found."
                  (client/client :get 404 (str "public/action/" (UUID/randomUUID))))))
-        (let [action-opts (shared-obj)
+        (let [action-opts (assoc-in (shared-obj) [:visualization_settings :fields] {"id" {:id "id"
+                                                                                          :hidden true}
+                                                                                    "name" {:id "name"
+                                                                                            :hidden false}})
               uuid        (:public_uuid action-opts)]
           (testing "should return 404 if Action is archived"
             (mt/with-actions [{} (assoc action-opts :archived true)]
               (is (= "Not found."
                      (client/client :get 404 (str "public/action/" uuid))))))
           (mt/with-actions [{} action-opts]
-            (testing "Happy path -- should be able to fetch the Action"
-              (is (= #{:name
-                       :id
-                       :visualization_settings
-                       :parameters}
-                     (set (keys (client/client :get 200 (str "public/action/" uuid)))))))
+            (let [public-action (client/client :get 200 (str "public/action/" uuid))]
+              (testing "Happy path -- should be able to fetch the Action"
+                (is (= #{:name
+                         :id
+                         :visualization_settings
+                         :parameters}
+                       (set (keys public-action)))))
+              (testing "parameters should not contain hidden fields"
+                (is (= ["name"] ; "id" is hidden
+                       (map :id (get public-action :parameters)))))
+              (testing "visualization_settings.fields should not contain hidden fields"
+                (is (= [:name] ; these keys are keywordized by client/client
+                       (keys (get-in public-action [:visualization_settings :fields]))))))
             (testing "Check that we cannot fetch a public Action if public sharing is disabled"
               (mt/with-temporary-setting-values [enable-public-sharing false]
                 (is (= "An error occurred."

@@ -350,7 +350,18 @@
   (validation/check-public-sharing-enabled)
   (let [action (api/check-404 (action/select-action :public_uuid uuid :archived false))]
     (actions/check-actions-enabled! action)
-    (select-keys action action-public-keys)))
+    (let [hidden-parameter-ids (->> (get-in action [:visualization_settings :fields])
+                                    vals
+                                    (keep (fn [x]
+                                            (when (true? (:hidden x))
+                                              (:id x))))
+                                    set)]
+      (-> action
+          (update :parameters (fn [parameters]
+                                (remove #(contains? hidden-parameter-ids (:id %)) parameters)))
+          (update-in [:visualization_settings :fields] (fn [fields]
+                                                         (m/remove-keys hidden-parameter-ids fields)))
+          (select-keys action-public-keys)))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
