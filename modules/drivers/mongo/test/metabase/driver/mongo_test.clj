@@ -7,9 +7,11 @@
             [metabase.db.metadata-queries :as metadata-queries]
             [metabase.driver :as driver]
             [metabase.driver.mongo :as mongo]
+            [metabase.driver.mongo.query-processor :as mongo.qp]
             [metabase.driver.mongo.util :as mongo.util]
             [metabase.driver.util :as driver.u]
             [metabase.mbql.util :as mbql.u]
+            [metabase.models.card :refer [Card]]
             [metabase.models.database :refer [Database]]
             [metabase.models.field :refer [Field]]
             [metabase.models.table :as table :refer [Table]]
@@ -118,6 +120,55 @@
                                 :type     :native
                                 :database (mt/id)})
              (m/dissoc-in [:data :results_metadata] [:data :insights]))))))
+
+(deftest nested-native-query-test
+  (mt/test-driver :mongo
+    (testing "Mbql query with nested native source query _returns correct results_"
+        (mt/with-temp Card [{:keys [id]} {:dataset_query {:type     :native
+                                                          :native   {:collection    "venues"
+                                                                     :query         native-query}
+                                                          :database (mt/id)}}]
+          (let [query (mt/mbql-query nil
+                        {:source-table (str "card__" id)
+                         :limit        1})]
+            (is (partial=
+                 {:status :completed
+                  :data   {:native_form {:collection "venues"
+                                         :query      (conj (mongo.qp/parse-query-string native-query)
+                                                           {"$limit" 1})}
+                           :rows        [[1]]}}
+                 (qp/process-query query))))))
+    (testing "Mbql query with nested native source query _aggregates_ correctly"
+      (let [query-str (str "[{\"$project\":\n"
+                           "   {\"_id\": \"$_id\",\n"
+                           "    \"name\": \"$name\",\n"
+                           "    \"category_id\": \"$category_id\",\n"
+                           "    \"latitude\": \"$latitude\",\n"
+                           "    \"longitude\": \"$longitude\",\n"
+                           "    \"price\": \"$price\"}\n"
+                           "}]")]
+        (mt/with-temp Card [{:keys [id]} {:dataset_query {:type     :native
+                                                          :native   {:collection    "venues"
+                                                                     :query         query-str}
+                                                          :database (mt/id)}}]
+          (let [query (mt/mbql-query venues
+                        {:source-table (str "card__" id)
+                         :aggregation [:count]
+                         :breakout [*category_id/Integer]
+                         :order-by [[:desc [:aggregation 0]]]
+                         :limit 5})]
+            (is (partial=
+                 {:status :completed
+                  :data   {:native_form
+                           {:collection "venues"
+                            :query (conj (mongo.qp/parse-query-string query-str)
+                                         {"$group" {"_id" {"category_id" "$category_id"}, "count" {"$sum" 1}}}
+                                         {"$sort" {"_id" 1}}
+                                         {"$project" {"_id" false, "category_id" "$_id.category_id", "count" true}}
+                                         {"$sort" {"count" -1, "category_id" 1}}
+                                         {"$limit" 5})}
+                           :rows [[7 10] [50 10] [40 9] [2 8] [5 7]]}}
+                 (qp/process-query query)))))))))
 
 ;; ## Tests for individual syncing functions
 
