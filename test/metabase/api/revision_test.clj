@@ -363,7 +363,7 @@
           (t2/delete! :model/Card :id card-id))))))
 
 (deftest revert-does-not-create-new-revision
-  (testing "revert a dashboard that previously added cards should not create new revision(#30869)"
+  (testing "revert a dashboard that previously added cards should not recreate duplicate revisions(#30869)"
     (t2.with-temp/with-temp
       [Dashboard  {dashboard-id :id} {:name "A dashboard"}]
       ;; 0. create the dashboard
