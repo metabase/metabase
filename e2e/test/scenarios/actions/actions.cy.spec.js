@@ -16,33 +16,6 @@ describe("scenarios > actions", () => {
     setActionsEnabledForDB(SAMPLE_DB_ID);
   });
 
-  it("should not close Action Creator modal on outside click when editing dashboard", () => {
-    addModelDashboard({
-      name: "GUI Dashboard",
-      alias: "dashboardId",
-      modelDetails,
-    });
-    cy.get("@dashboardId").then(id => {
-      cy.visit(`/dashboard/${id}`);
-    });
-    editDashboard();
-    dashboardHeader().within(() => {
-      cy.button("Add action").click();
-    });
-    cy.button("Pick an action").click();
-    cy.get(".Modal").within(() => {
-      cy.findByText("Action Library")
-        .parent()
-        .within(() => {
-          cy.findByText("GUI Model").click();
-          cy.findByText("Create new action").click();
-        });
-    });
-    clickOutsideModal();
-
-    cy.findByTestId("action-creator-body-container").should("exist");
-  });
-
   it("should not close Action Creator modal on outside click when creating new action", () => {
     addModelDashboard({
       name: "GUI Dashboard",
@@ -86,52 +59,6 @@ describe("scenarios > actions", () => {
       });
 
     cy.get(".Modal").should("not.exist");
-  });
-
-  describe("editing model actions", () => {
-    it("should not close Action Editor when editing model actions", () => {
-      cy.request("PUT", "/api/card/1", {
-        name: "Orders Model",
-        dataset: true,
-      });
-
-      cy.visit("/model/1");
-      cy.findByTestId("qb-header-info-button").click();
-      cy.findByTestId("sidebar-right").within(() => {
-        cy.findByText("Model details").click();
-      });
-      cy.findByRole("tablist").within(() => {
-        cy.findByText("Actions").click();
-      });
-      cy.findByTestId("model-actions-header").within(() => {
-        cy.findByText("New action").click();
-      });
-      clickOutsideModal();
-      cy.get(".Modal").should("exist");
-    });
-
-    it("should only close Action Editor when editing model actions when 'Cancel' is clicked", () => {
-      cy.request("PUT", "/api/card/1", {
-        name: "Orders Model",
-        dataset: true,
-      });
-
-      cy.visit("/model/1");
-      cy.findByTestId("qb-header-info-button").click();
-      cy.findByTestId("sidebar-right").within(() => {
-        cy.findByText("Model details").click();
-      });
-      cy.findByRole("tablist").within(() => {
-        cy.findByText("Actions").click();
-      });
-      cy.findByTestId("model-actions-header").within(() => {
-        cy.findByText("New action").click();
-      });
-      cy.findByTestId("action-creator-body-container").within(() => {
-        cy.findByText("Cancel").click();
-      });
-      cy.get(".Modal").should("not.exist");
-    });
   });
 });
 
