@@ -78,9 +78,9 @@ export interface TableListQuery {
 }
 
 export interface ForeignKey {
-  origin: Field;
+  origin?: Field;
   origin_id: FieldId;
-  destination: Field;
+  destination?: Field;
   destination_id: FieldId;
   relationship: string; // enum?
 }

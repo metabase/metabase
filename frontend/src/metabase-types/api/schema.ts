@@ -8,7 +8,7 @@ import { Field, FieldDimension, FieldId } from "./field";
 import { Metric, MetricId } from "./metric";
 import { Segment, SegmentId } from "./segment";
 import { NativeQuerySnippet } from "./snippets";
-import { Schema, SchemaId, Table, TableId } from "./table";
+import { ForeignKey, Schema, SchemaId, Table, TableId } from "./table";
 import { Timeline, TimelineEventId } from "./timeline";
 import { User } from "./user";
 
@@ -31,12 +31,22 @@ export interface NormalizedSchema extends Omit<Schema, "database" | "tables"> {
 }
 
 export interface NormalizedTable
-  extends Omit<Table, "db" | "fields" | "segments" | "metrics" | "schema"> {
+  extends Omit<
+    Table,
+    "db" | "fields" | "fks" | "segments" | "metrics" | "schema"
+  > {
   db?: DatabaseId;
   fields?: FieldId[];
+  fks?: NormalizedForeignKey[];
   segments?: SegmentId[];
   metrics?: MetricId[];
   schema?: SchemaId;
+}
+
+export interface NormalizedForeignKey
+  extends Omit<ForeignKey, "origin" | "destination"> {
+  origin?: FieldId;
+  destination?: FieldId;
 }
 
 export interface NormalizedFieldDimension
