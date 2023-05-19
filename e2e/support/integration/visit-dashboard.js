@@ -1,8 +1,5 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  addModelDashboard,
-  addOrUpdateDashboardCard,
-} from "e2e/support/helpers";
+import { addOrUpdateDashboardCard } from "e2e/support/helpers";
 
 const { PEOPLE_ID, PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
@@ -58,11 +55,7 @@ export function setup() {
 
   addMarkdownDashboard("Dashboard with markdown text card", "markdownOnly");
 
-  addModelDashboard({
-    name: "Dashboard with a model",
-    alias: "modelDashboard",
-    modelDetails,
-  });
+  addModelDashboard("Dashboard with a model", "modelDashboard");
 
   addGuiDashboard("Dashboard with GUI question", "guiDashboard");
 
@@ -97,6 +90,17 @@ function addMarkdownDashboard(name, alias) {
 
     cy.wrap(dashboard_id).as(alias);
   });
+}
+
+function addModelDashboard(name, alias) {
+  return cy
+    .createQuestionAndDashboard({
+      questionDetails: modelDetails,
+      dashboardDetails: { name },
+    })
+    .then(({ body: { dashboard_id } }) => {
+      cy.wrap(dashboard_id).as(alias);
+    });
 }
 
 function addGuiDashboard(name, alias) {
