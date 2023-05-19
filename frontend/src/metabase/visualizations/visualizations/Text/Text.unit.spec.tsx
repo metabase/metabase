@@ -7,27 +7,50 @@ interface Settings {
   text: string | null;
 }
 
+const defaultProps = {
+  onUpdateVisualizationSettings: null,
+  className: null,
+  dashboard: {},
+  dashcard: {},
+  gridSize: Text.defaultSize,
+  settings: {},
+  isEditing: false,
+  parameterValues: {},
+};
+
 describe("Text", () => {
   it("should be able to render", () => {
     expect(() =>
-      render(<Text settings={getSettingsWithText(null)} />),
+      render(<Text {...defaultProps} settings={getSettingsWithText(null)} />),
     ).not.toThrow();
   });
 
   it("should render plain text", () => {
-    render(<Text settings={getSettingsWithText("Plain text")} />);
+    render(
+      <Text {...defaultProps} settings={getSettingsWithText("Plain text")} />,
+    );
 
     expect(screen.getByText("Plain text")).toBeInTheDocument();
   });
 
   it("should render simple markdown", () => {
-    render(<Text settings={getSettingsWithText("**Bold text**")} />);
+    render(
+      <Text
+        {...defaultProps}
+        settings={getSettingsWithText("**Bold text**")}
+      />,
+    );
 
     expect(screen.getByText("Bold text")).toHaveStyle("font-weight: bold");
   });
 
   it("should render an internal link", () => {
-    render(<Text settings={getSettingsWithText("[Internal link](/)")} />);
+    render(
+      <Text
+        {...defaultProps}
+        settings={getSettingsWithText("[Internal link](/)")}
+      />,
+    );
 
     expect(screen.getByText("Internal link")).toHaveAttribute("href", "/");
     expect(screen.getByText("Internal link")).not.toHaveAttribute(
@@ -43,6 +66,7 @@ describe("Text", () => {
   it("should render an external link", () => {
     render(
       <Text
+        {...defaultProps}
         settings={getSettingsWithText("[External link](https://example.com)")}
       />,
     );

@@ -84,7 +84,6 @@ export function Text({
   const hasNoContent = !content;
   const placeholder = t`You can use Markdown here, and include variables {{like_this}}`;
 
-  // ! REMOVE ANY CLASSNAME STYLING IF POSSIBLE
   if (isEditing) {
     return (
       <EditModeContainer
