@@ -12,6 +12,7 @@ export interface BucketPickerPopoverProps {
   query: Lib.Query;
   selectedBucket?: Lib.Bucket | null;
   buckets: Lib.Bucket[];
+  withDefaultBucket?: boolean;
   triggerLabel?: string;
   renderTriggerContent: (bucket?: Lib.BucketDisplayInfo) => void;
   onSelect: (item: Lib.Bucket) => void;
@@ -25,6 +26,7 @@ export function BucketPickerPopover({
   selectedBucket,
   query,
   buckets,
+  withDefaultBucket = true,
   triggerLabel,
   renderTriggerContent,
   onSelect,
@@ -45,15 +47,21 @@ export function BucketPickerPopover({
 
   const checkIsBucketSelected = useCallback(
     (item: ListItem) => {
-      if (!selectedBucket) {
+      if (!selectedBucket && withDefaultBucket) {
         return false;
       }
       return Lib.isSameBucket(query, item.bucket, selectedBucket);
     },
-    [query, selectedBucket],
+    [query, selectedBucket, withDefaultBucket],
   );
 
-  const triggerContentBucket = selectedBucket || defaultBucket?.bucket;
+  const triggerContentBucket = useMemo(() => {
+    if (selectedBucket) {
+      return selectedBucket;
+    }
+    return withDefaultBucket ? defaultBucket?.bucket : undefined;
+  }, [selectedBucket, withDefaultBucket, defaultBucket]);
+
   const triggerContentBucketDisplayInfo = triggerContentBucket
     ? Lib.displayInfo(query, triggerContentBucket)
     : undefined;
