@@ -64,7 +64,7 @@ class Database {
     return this.tablesLookup();
   }
 
-  hasFeature(feature: string | undefined) {
+  hasFeature(feature: string | null | undefined) {
     if (!feature) {
       return true;
     }
