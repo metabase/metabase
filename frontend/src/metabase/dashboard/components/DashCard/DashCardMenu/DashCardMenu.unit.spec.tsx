@@ -50,7 +50,10 @@ const TEST_CARD_UNAUTHORIZED = createMockCard({
 const TEST_RESULT = createMockDataset();
 
 const TEST_RESULT_ERROR = createMockDataset({
-  error: "An error occurred",
+  error: {
+    status: 500,
+    data: "An error occurred",
+  },
 });
 
 interface SetupOpts {

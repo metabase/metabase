@@ -27,6 +27,7 @@ export interface NativeDatasetQuery {
 
   // Database is null when missing data permissions to the database
   database: DatabaseId | null;
+  parameters?: unknown[];
 }
 
 export type DatasetQuery = StructuredDatasetQuery | NativeDatasetQuery;
