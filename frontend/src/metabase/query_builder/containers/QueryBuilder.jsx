@@ -35,6 +35,7 @@ import title from "metabase/hoc/Title";
 import titleWithLoadingTime from "metabase/hoc/TitleWithLoadingTime";
 import favicon from "metabase/hoc/Favicon";
 
+import useBeforeUnload from "metabase/hooks/use-before-unload";
 import View from "../components/view/View";
 
 import {
@@ -90,6 +91,7 @@ import {
   getIsAdditionalInfoVisible,
   getAutocompleteResultsFn,
   getCardAutocompleteResultsFn,
+  isResultsMetadataDirty,
 } from "../selectors";
 import * as actions from "../actions";
 import { VISUALIZATION_SLOW_TIMEOUT } from "../constants";
@@ -160,6 +162,7 @@ const mapStateToProps = (state, props) => {
 
     isRunnable: getIsRunnable(state),
     isResultDirty: getIsResultDirty(state),
+    isMetadataDirty: isResultsMetadataDirty(state),
 
     questionAlerts: getQuestionAlerts(state),
     visualizationSettings: getVisualizationSettings(state),
@@ -218,7 +221,10 @@ function QueryBuilder(props) {
     showTimelinesForCollection,
     card,
     isLoadingComplete,
+    isDirty: isModelQueryDirty,
+    isMetadataDirty,
     closeQB,
+    isNew,
   } = props;
 
   const forceUpdate = useForceUpdate();
@@ -299,6 +305,18 @@ function QueryBuilder(props) {
     window.addEventListener("resize", forceUpdateDebounced);
     return () => window.removeEventListener("resize", forceUpdateDebounced);
   }, []);
+
+  const isExistingModelDirty = useMemo(
+    () => isModelQueryDirty || isMetadataDirty,
+    [isMetadataDirty, isModelQueryDirty],
+  );
+
+  const isExistingSqlQueryDirty = useMemo(
+    () => isModelQueryDirty && isNativeEditorOpen,
+    [isModelQueryDirty, isNativeEditorOpen],
+  );
+
+  useBeforeUnload(!isNew && (isExistingModelDirty || isExistingSqlQueryDirty));
 
   useUnmount(() => {
     cancelQuery();
