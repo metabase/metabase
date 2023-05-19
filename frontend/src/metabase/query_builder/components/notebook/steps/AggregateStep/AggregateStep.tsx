@@ -3,8 +3,8 @@ import { t } from "ttag";
 import AggregationPopover from "metabase/query_builder/components/AggregationPopover";
 
 import type { Aggregation as IAggregation } from "metabase-types/api";
-import type { NotebookStepUiComponentProps } from "../types";
-import ClauseStep from "./ClauseStep";
+import type { NotebookStepUiComponentProps } from "../../types";
+import ClauseStep from "../ClauseStep";
 
 const aggTetherOptions = {
   attachment: "top left",
@@ -18,7 +18,7 @@ const aggTetherOptions = {
   ],
 };
 
-function AggregateStep({
+export function AggregateStep({
   color,
   query,
   updateQuery,
@@ -51,6 +51,3 @@ function AggregateStep({
     />
   );
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default AggregateStep;
