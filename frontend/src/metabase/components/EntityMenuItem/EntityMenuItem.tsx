@@ -91,11 +91,7 @@ const ActionMenuItem = ({
   children,
 }: ActionMenuItemProps) => (
   <Tooltip tooltip={tooltip} placement="right">
-    <div
-      onClick={disabled ? undefined : action}
-      data-metabase-event={event}
-      data-testid="action-menu-item"
-    >
+    <div onClick={disabled ? undefined : action} data-metabase-event={event}>
       {children}
     </div>
   </Tooltip>
