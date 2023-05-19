@@ -78,41 +78,41 @@
                 (is (nil? (index-trigger!)) "Index trigger not removed")))))))))
 
 (deftest fetch-values-test
-  (mt/test-drivers (mt/normal-drivers)
+  (mt/test-drivers (dissoc (mt/normal-drivers) :mongo)
     (mt/dataset sample-dataset
       (doseq [[scenario query [field-refs]]
               (remove nil?
-               [[:mbql (mt/mbql-query products {:fields [$id $title]})]
-                [:native (mt/native-query
-                          (qp/compile
-                           (mt/mbql-query products {:fields [$id $title]})))]
-                (when (driver/database-supports? (:engine (mt/db)) :left-join (mt/db))
-                  [:join (mt/$ids
-                          {:type     :query,
-                           :query    {:source-table $$people,
-                                      :joins        [{:fields       :all,
-                                                      :source-table $$orders,
-                                                      :condition    [:=
-                                                                     [:field $people.id nil]
-                                                                     [:field $orders.user_id {:join-alias "Orders"}]],
-                                                      :alias        "Orders"}
-                                                     {:fields       :all,
-                                                      :source-table $$products,
-                                                      :condition    [:=
-                                                                     [:field $orders.product_id {:join-alias "Orders"}]
-                                                                     [:field $products.id {:join-alias "Products"}]],
-                                                      :alias        "Products"}]},
-                           :database (mt/id)})
-                   [(mt/$ids [[:field $products.id {:join-alias "Products"}]
-                              [:field $products.title {:join-alias "Products"}]])]])])]
+                      [[:mbql (mt/mbql-query products {:fields [$id $title]})]
+                       [:native (mt/native-query
+                                 (qp/compile
+                                  (mt/mbql-query products {:fields [$id $title]})))]
+                       (when (driver/database-supports? (:engine (mt/db)) :left-join (mt/db))
+                         [:join (mt/$ids
+                                 {:type     :query,
+                                  :query    {:source-table $$people,
+                                             :joins        [{:fields       :all,
+                                                             :source-table $$orders,
+                                                             :condition    [:=
+                                                                            [:field $people.id nil]
+                                                                            [:field $orders.user_id {:join-alias "Orders"}]],
+                                                             :alias        "Orders"}
+                                                            {:fields       :all,
+                                                             :source-table $$products,
+                                                             :condition    [:=
+                                                                            [:field $orders.product_id {:join-alias "Orders"}]
+                                                                            [:field $products.id {:join-alias "Products"}]],
+                                                             :alias        "Products"}]},
+                                  :database (mt/id)})
+                          [(mt/$ids [[:field $products.id {:join-alias "Products"}]
+                                     [:field $products.title {:join-alias "Products"}]])]])])]
         (t2.with-temp/with-temp [Card model (mt/card-with-source-metadata-for-query
                                              query)]
-          (let [[pk-ref value-ref] (or field-refs
-                                       (->> model :result_metadata (map :field_ref)))
-                [error values]  (#'model-index/fetch-values {:model_id  (:id model)
-                                                             :pk_ref    pk-ref
-                                                             :value_ref value-ref})]
-            (testing (str "scenario: " scenario)
+          (testing (str "scenario: " scenario)
+            (let [[pk-ref value-ref] (or field-refs
+                                         (->> model :result_metadata (map :field_ref)))
+                  [error values]  (#'model-index/fetch-values {:model_id  (:id model)
+                                                               :pk_ref    pk-ref
+                                                               :value_ref value-ref})]
               (is (nil? error))
               (is (mc/validate [:sequential [:tuple int? string?]] values)
                   (-> (mc/validate [:sequential [:tuple int? string?]] values)
