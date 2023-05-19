@@ -45,11 +45,18 @@
 (methodical/defmethod t2/primary-keys :model/HTTPAction     [_model] [:action_id])
 (methodical/defmethod t2/primary-keys :model/ImplicitAction [_model] [:action_id])
 
+(def ^:private transform-action-visualization-settings
+  {:in  mi/json-in
+   :out (comp (fn [viz-settings]
+                ;; the keys of :fields should be strings, not keywords
+                (m/update-existing viz-settings :fields update-keys name))
+              mi/json-out-with-keywordization)})
+
 (t2/deftransforms :model/Action
   {:type                   mi/transform-keyword
    :parameter_mappings     mi/transform-parameters-list
    :parameters             mi/transform-parameters-list
-   :visualization_settings mi/transform-visualization-settings})
+   :visualization_settings transform-action-visualization-settings})
 
 (t2/deftransforms :model/QueryAction
   ;; shouldn't this be mi/transform-metabase-query?
@@ -286,9 +293,10 @@
                 (update-in [:visualization_settings :fields]
                            (fn [fields]
                              (let [param-ids (map :id implicit-params)]
-                               (let [fields (->> (update-keys (or fields {}) name) ; fields' keys are converted to keywords out of the database, but they should be strings
-                                                 (m/filter-keys (set param-ids)))] ; remove entries that don't match params
-                                 ;; add default entries for params that don't have them
+                               (let [fields (->> (or fields {})
+                                                 ;; remove entries that don't match params
+                                                 (m/filter-keys (set param-ids)))]
+                                 ;; add default entries for params that don't have an entry
                                  (reduce (fn [acc param-id]
                                            (if (get acc param-id)
                                              acc
