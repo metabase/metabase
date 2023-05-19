@@ -1,10 +1,11 @@
 import { t } from "ttag";
 
-import AggregationPopover from "metabase/query_builder/components/AggregationPopover";
+import * as Lib from "metabase-lib";
 
-import type { Aggregation as IAggregation } from "metabase-types/api";
 import type { NotebookStepUiComponentProps } from "../../types";
 import ClauseStep from "../ClauseStep";
+
+import { AggregationPicker } from "./AggregateStep.styled";
 
 const aggTetherOptions = {
   attachment: "top left",
@@ -19,35 +20,72 @@ const aggTetherOptions = {
 };
 
 export function AggregateStep({
+  topLevelQuery,
+  step,
   color,
-  query,
-  updateQuery,
   isLastOpened,
   readOnly,
+  updateQuery,
 }: NotebookStepUiComponentProps) {
+  const { stageIndex } = step;
+
+  const clauses = Lib.aggregations(topLevelQuery, stageIndex);
+  const operators = Lib.availableAggregationOperators(
+    topLevelQuery,
+    stageIndex,
+  );
+
+  const handleAddAggregation = (aggregation: Lib.AggregationClause) => {
+    const nextQuery = Lib.aggregate(topLevelQuery, stageIndex, aggregation);
+    updateQuery(nextQuery);
+  };
+
+  const handleUpdateAggregation = (
+    currentClause: Lib.AggregationClause,
+    nextClause: Lib.AggregationClause,
+  ) => {
+    const nextQuery = Lib.replaceClause(
+      topLevelQuery,
+      stageIndex,
+      currentClause,
+      nextClause,
+    );
+    updateQuery(nextQuery);
+  };
+
+  const handleRemoveAggregation = (aggregation: Lib.AggregationClause) => {
+    const nextQuery = Lib.removeClause(topLevelQuery, aggregation);
+    updateQuery(nextQuery);
+  };
+
+  const renderAggregationName = (aggregation: Lib.AggregationClause) =>
+    Lib.displayInfo(topLevelQuery, aggregation).displayName;
+
   return (
     <ClauseStep
-      data-testid="aggregate-step"
-      color={color}
+      items={clauses}
       initialAddText={t`Pick the metric you want to see`}
-      items={query.aggregations()}
-      renderName={item => item.displayName()}
-      tetherOptions={aggTetherOptions}
       readOnly={readOnly}
+      color={color}
+      isLastOpened={isLastOpened}
+      tetherOptions={aggTetherOptions}
+      renderName={renderAggregationName}
       renderPopover={aggregation => (
-        <AggregationPopover
-          query={query}
-          aggregation={aggregation}
-          onChangeAggregation={(newAggregation: IAggregation) =>
-            aggregation
-              ? updateQuery(aggregation.replace(newAggregation))
-              : updateQuery(query.aggregate(newAggregation))
-          }
+        <AggregationPicker
+          query={topLevelQuery}
+          operators={operators}
+          onSelect={newAggregation => {
+            const isUpdate = aggregation != null;
+            if (isUpdate) {
+              handleUpdateAggregation(aggregation, newAggregation);
+            } else {
+              handleAddAggregation(newAggregation);
+            }
+          }}
         />
       )}
-      isLastOpened={isLastOpened}
-      onRemove={aggregation => updateQuery(aggregation.remove())}
-      canRemove={aggregation => aggregation.canRemove()}
+      onRemove={handleRemoveAggregation}
+      data-testid="aggregate-step"
     />
   );
 }
