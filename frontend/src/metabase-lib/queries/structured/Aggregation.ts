@@ -251,7 +251,17 @@ export default class Aggregation extends MBQLClause {
    */
   dimension(): Dimension | null | undefined {
     if (this.isStandard() && this.length > 1) {
-      return this._query.parseFieldReference(this.getFieldReference());
+      const dimension = this._query.parseFieldReference(
+        this.getFieldReference(),
+      );
+      if (!dimension) {
+        return;
+      }
+      const field = dimension.field();
+      const isConcreteField = typeof field?.id === "number";
+      return isConcreteField
+        ? dimension.withoutOptions("base-type", "effective-type")
+        : dimension;
     }
   }
 
