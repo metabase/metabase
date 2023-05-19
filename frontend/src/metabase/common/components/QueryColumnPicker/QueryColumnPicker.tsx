@@ -146,6 +146,9 @@ function QueryColumnPicker({
       renderItemDescription={omitItemDescription}
       renderItemIcon={renderItemIcon}
       renderItemExtra={renderItemExtra}
+      // Compat with E2E tests around MLv1-based components
+      // Prefer using a11y role selectors
+      itemTestId="dimension-list-item"
     />
   );
 }
