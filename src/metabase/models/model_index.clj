@@ -9,15 +9,27 @@
    [metabase.util.cron :as u.cron]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
-   [toucan.models :as models]
+   [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; model lifecycle ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(models/defmodel ModelIndex :model_index)
-(models/defmodel ModelIndexValue :model_index_value)
+(def ModelIndex
+  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], not it's a reference to the toucan2 model name.
+  We'll keep this till we replace all the ModelIndex symbol in our codebase."
+  :model/ModelIndex)
 
-(derive ModelIndex :hook/created-at-timestamped?)
+(def ModelIndexValue
+  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], not it's a reference to the toucan2 model name.
+  We'll keep this till we replace all the ModelIndexValue symbol in our codebase."
+  :model/ModelIndexValue)
+
+(methodical/defmethod t2/table-name :model/ModelIndex [_model] :model_index)
+(methodical/defmethod t2/table-name :model/ModelIndexValue [_model] :model_index_value)
+(derive :model/ModelIndex :metabase/model)
+(derive :model/ModelIndexValue :metabase/model)
+
+(derive :model/ModelIndex :hook/created-at-timestamped?)
 
 (t2/deftransforms ModelIndex
   {:pk_ref    mi/transform-field-ref
