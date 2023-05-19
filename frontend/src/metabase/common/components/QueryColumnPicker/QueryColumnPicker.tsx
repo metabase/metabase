@@ -108,6 +108,7 @@ function QueryColumnPicker({
             query={query}
             selectedBucket={selectedBucket}
             buckets={binningStrategies}
+            withDefaultBucket={!clause}
             onSelect={nextBucket => {
               handleSelect(Lib.withBinning(item.column, nextBucket));
             }}
@@ -124,6 +125,7 @@ function QueryColumnPicker({
             query={query}
             selectedBucket={selectedBucket}
             buckets={temporalBuckets}
+            withDefaultBucket={!clause}
             onSelect={nextBucket => {
               handleSelect(Lib.withTemporalBucket(item.column, nextBucket));
             }}
@@ -201,20 +203,22 @@ function getColumnListItem(
     const defaultBucket = binningStrategies.find(
       bucket => Lib.displayInfo(query, bucket).default,
     );
-    const finalColumn = defaultBucket
-      ? Lib.withBinning(column, defaultBucket)
-      : column;
-    return { ...displayInfo, column: finalColumn };
+    return {
+      ...displayInfo,
+      column: defaultBucket ? Lib.withBinning(column, defaultBucket) : column,
+    };
   }
 
   if (hasBucketing && temporalBuckets.length > 0) {
     const defaultBucket = temporalBuckets.find(
       bucket => Lib.displayInfo(query, bucket).default,
     );
-    const finalColumn = defaultBucket
-      ? Lib.withTemporalBucket(column, defaultBucket)
-      : column;
-    return { ...displayInfo, column: finalColumn };
+    return {
+      ...displayInfo,
+      column: defaultBucket
+        ? Lib.withTemporalBucket(column, defaultBucket)
+        : column,
+    };
   }
 
   return { ...displayInfo, column };

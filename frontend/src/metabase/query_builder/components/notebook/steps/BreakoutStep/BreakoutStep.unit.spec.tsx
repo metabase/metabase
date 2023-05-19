@@ -21,14 +21,14 @@ function createQueryWithBreakout() {
   return { query, columnInfo: Lib.displayInfo(query, column) };
 }
 
-function createQueryWithBinning() {
+function createQueryWithBinning(bucketName = "10 bins") {
   const initialQuery = createQuery();
   const findColumn = columnFinder(
     initialQuery,
     Lib.breakoutableColumns(initialQuery),
   );
   const column = findColumn("ORDERS", "TAX");
-  const bucket = findBinningStrategy(initialQuery, column, "10 bins");
+  const bucket = findBinningStrategy(initialQuery, column, bucketName);
   const columnWithBinning = Lib.withBinning(column, bucket);
   const query = Lib.breakout(initialQuery, columnWithBinning);
   return { query, columnInfo: Lib.displayInfo(query, columnWithBinning) };
@@ -152,6 +152,10 @@ describe("BreakoutStep", () => {
       const { getRecentBreakoutClause } = setup();
 
       userEvent.click(screen.getByText("Pick a column to group by"));
+      const option = screen.getByRole("option", { name: "Total" });
+
+      expect(within(option).getByText("Auto bin")).toBeInTheDocument();
+
       userEvent.click(screen.getByText("Total"));
 
       const breakout = getRecentBreakoutClause();
@@ -193,6 +197,23 @@ describe("BreakoutStep", () => {
       userEvent.click(screen.getByText("Tax"));
 
       expect(updateQuery).not.toHaveBeenCalled();
+    });
+
+    it("should highlight the 'Do not bin' option when a column is not binned", async () => {
+      const { query, columnInfo } = createQueryWithBinning("Don't bin");
+      setup(createMockNotebookStep({ topLevelQuery: query }));
+
+      userEvent.click(screen.getByText(columnInfo.displayName));
+      const option = screen.getByRole("option", {
+        name: columnInfo.displayName,
+      });
+
+      expect(within(option).getByText("Unbinned")).toBeInTheDocument();
+
+      userEvent.click(within(option).getByLabelText("Binning strategy"));
+      expect(
+        await screen.findByRole("menuitem", { name: "Don't bin" }),
+      ).toHaveAttribute("aria-selected", "true");
     });
 
     it("should apply default temporal bucket", async () => {
