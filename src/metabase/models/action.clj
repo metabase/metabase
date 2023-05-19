@@ -265,10 +265,10 @@
                                                  [(:id card) (:database_id card)]))
         model-id->implicit-parameters (when (seq implicit-action-models)
                                         (implicit-action-parameters implicit-action-models))]
-    (for [{:keys [parameters] :as action} actions]
+    (for [action actions]
       (if (= (:type action) :implicit)
         (let [model-id        (:model_id action)
-              saved-params    (m/index-by :id parameters)
+              saved-params    (m/index-by :id (:parameters action))
               action-kind     (:kind action)
               implicit-params (cond->> (get model-id->implicit-parameters model-id)
                                 :always
