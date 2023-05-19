@@ -35,14 +35,23 @@
                       :model_id   (:id model)
                       :error      nil}]
                     (mt/user-http-request :rasta :get 200 "model-index"
-                                          :model_id (:id model)))))
+                                          :model_id (:id model))))
+            (testing "Checks model permissions"
+              (mt/with-non-admin-groups-no-root-collection-perms
+                (mt/user-http-request :rasta :get 403 "model-index"
+                                      :model_id (:id model)))))
           (testing "GET by model-index id"
             (is (=? {:generation 1
                      :state      "indexed"
                      :model_id   (:id model)
                      :error      nil}
                     (mt/user-http-request :rasta :get 200
-                                          (str "/model-index/" (:id model-index))))))
+                                          (str "/model-index/" (:id model-index)))))
+            (testing "Checks model permissions"
+              (mt/with-non-admin-groups-no-root-collection-perms
+                (mt/user-http-request :rasta :get 403
+                                      (str "/model-index/" (:id model-index))))))
+
           (testing "DELETE"
             (testing "Must have write access to the underlying model"
               (mt/with-non-admin-groups-no-root-collection-perms
