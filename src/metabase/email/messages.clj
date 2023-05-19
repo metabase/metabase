@@ -307,6 +307,9 @@
           :dashboardDescription      (:description dashboard)
           :creator                   (-> pulse :creator :common_name)
           :sectionStyle              (style/style (style/section-style))
+          :notificationText          (if (nil? non-user-email)
+                                       "Manage your subscriptions"
+                                       "Unsubscribe")
           :notificationManagementUrl (if (nil? non-user-email)
                                        (urls/notification-management-url)
                                        ;; TODO: change this to whatever FE URL we chooseg
