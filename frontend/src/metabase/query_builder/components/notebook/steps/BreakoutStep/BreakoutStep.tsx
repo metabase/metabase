@@ -70,7 +70,7 @@ function BreakoutStep({
   };
 
   const renderBreakoutName = (clause: Lib.BreakoutClause) =>
-    Lib.displayInfo(topLevelQuery, clause).displayName;
+    Lib.displayInfo(topLevelQuery, clause).longDisplayName;
 
   return (
     <ClauseStep
