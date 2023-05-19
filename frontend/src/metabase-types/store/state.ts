@@ -26,7 +26,7 @@ export interface State {
   upload: FileUploadState;
 }
 
-export type Dispatch<T = any> = (action: T) => void;
+export type Dispatch<T = any> = (action: T) => void | T;
 
 export type GetState = () => State;
 

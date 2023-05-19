@@ -4,13 +4,13 @@ import { Route } from "react-router";
 import { createMockDatabase } from "metabase-types/api/mocks";
 import { Database } from "metabase-types/api";
 import { renderWithProviders } from "__support__/ui";
-import RoleAccessWarning from "./RoleAccessWarning";
+import ImpersonationWarning from "./ImpersonationWarning";
 
 const setup = (database: Database) => {
   renderWithProviders(
     <Route
       path="*"
-      component={() => <RoleAccessWarning database={database} />}
+      component={() => <ImpersonationWarning database={database} />}
     />,
     {
       withRouter: true,
@@ -18,7 +18,7 @@ const setup = (database: Database) => {
   );
 };
 
-describe("RoleAccessWarning", () => {
+describe("ImpersonationWarning", () => {
   it("should render correctly for databases without a user", () => {
     setup(createMockDatabase());
     expect(

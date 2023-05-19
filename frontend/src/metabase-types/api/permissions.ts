@@ -83,7 +83,8 @@ export type GroupTableAccessPolicy = {
   permission_id: number | null;
 };
 
-export type RoleAttributeMapping = {
+export type Impersonation = {
+  db_id: DatabaseId;
+  group_id: GroupId;
   attribute: UserAttribute;
-  default_role: string;
 };
