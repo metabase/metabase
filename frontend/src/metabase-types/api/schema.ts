@@ -41,6 +41,7 @@ export interface NormalizedTable
   segments?: SegmentId[];
   metrics?: MetricId[];
   schema?: SchemaId;
+  schema_name?: string;
 }
 
 export interface NormalizedForeignKey

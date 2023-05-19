@@ -30,7 +30,6 @@ export interface Table {
   db_id: DatabaseId;
   db?: Database;
 
-  schema_name?: string;
   schema: string;
 
   fks?: ForeignKey[];
