@@ -618,10 +618,9 @@
 
 (defn- delete-dashcards! [{dashboard-id :id :as _dashboard} dashcard-ids]
   (when (seq dashcard-ids)
-    (dashboard-card/delete-dashboard-cards!
-      (t2/select DashboardCard :id [:in dashcard-ids])
-      dashboard-id
-      api/*current-user-id*)))
+    (let [dashboard-cards (t2/select DashboardCard :id [:in dashcard-ids])]
+      (dashboard-card/delete-dashboard-cards! dashcard-ids)
+      (events/publish-event! :dashboard-remove-cards {:id dashboard-id :actor_id api/*current-user-id* :dashcards dashboard-cards}))))
 
 (defn- do-update-dashcards!
   [dashboard current-cards new-cards]

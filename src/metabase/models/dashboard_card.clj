@@ -5,7 +5,6 @@
    [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
    [metabase.db.util :as mdb.u]
-   [metabase.events :as events]
    [metabase.models.card :refer [Card]]
    [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
    [metabase.models.interface :as mi]
@@ -231,14 +230,11 @@
 
 (defn delete-dashboard-cards!
   "Delete DashboardCards of a Dasbhoard."
-  [dashboard-cards dashboard-id actor-id]
-  {:pre [(coll? dashboard-cards)
-         (integer? actor-id)]}
-  (let [dashcard-ids (map :id dashboard-cards)]
-    (t2/with-transaction [_conn]
-      (t2/delete! PulseCard :dashboard_card_id [:in dashcard-ids])
-      (t2/delete! DashboardCard :id [:in dashcard-ids]))
-    (events/publish-event! :dashboard-remove-cards {:id dashboard-id :actor_id actor-id :dashcards dashboard-cards})))
+  [dashboard-card-ids]
+  {:pre [(coll? dashboard-card-ids)]}
+  (t2/with-transaction [_conn]
+    (t2/delete! PulseCard :dashboard_card_id [:in dashboard-card-ids])
+    (t2/delete! DashboardCard :id [:in dashboard-card-ids])))
 
 ;;; ----------------------------------------------- Link cards ----------------------------------------------------
 
