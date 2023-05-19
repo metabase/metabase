@@ -415,8 +415,7 @@
   (log/debug (u/format-color 'cyan (trs "Sending Pulse ({0}: {1}) with {2} Cards via email"
                                         pulse-id (pr-str pulse-name) (parts->cards-count parts))))
   (let [email-recipients (filterv u/email? (map :email recipients))
-        card-part        (filter :card parts)
-        timezone         (-> card-part first :card defaulted-timezone)
+        timezone         (-> parts (some :card) defaulted-timezone)
         dashboard        (update (t2/select-one Dashboard :id dashboard-id) :description markdown/process-markdown :html)]
     {:subject      (subject pulse)
      :recipients   email-recipients
@@ -444,8 +443,8 @@
                               (first-question-name pulse)
                               (alert-condition-type->description condition-kwd))
         email-recipients (filterv u/email? (map :email (:recipients channel)))
-        first-part       (first parts)
-        timezone         (-> first-part :card defaulted-timezone)]
+        first-part       (some :card parts)
+        timezone         (defaulted-timezone first-part)]
     {:subject      email-subject
      :recipients   email-recipients
      :message-type :attachments
