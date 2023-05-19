@@ -1,8 +1,7 @@
 import { RowValue } from "./dataset";
 import { Table, TableId } from "./table";
-import { FieldReference } from "./query";
 
-export type FieldId = number | FieldReference;
+export type FieldId = number | string;
 
 export interface FieldFingerprint {
   global?: FieldGlobalFingerprint;

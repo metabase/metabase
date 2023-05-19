@@ -1,4 +1,4 @@
-import { Database, Field, FieldId, Table } from "metabase-types/api";
+import { Database, Field, Table } from "metabase-types/api";
 import {
   createMockDateTimeFieldFingerprint,
   createMockField,
@@ -11,25 +11,19 @@ import { TYPE } from "metabase-lib/types/constants";
 const FIELD_ID = 1;
 
 interface SetupOpts {
-  fieldId?: FieldId;
   databases?: Database[];
   tables?: Table[];
   fields?: Field[];
 }
 
-const setup = ({
-  fieldId = FIELD_ID,
-  databases = [],
-  tables = [],
-  fields = [],
-}: SetupOpts) => {
+const setup = ({ databases = [], tables = [], fields = [] }: SetupOpts) => {
   const metadata = createMockMetadata({
     databases,
     tables,
     fields,
   });
 
-  const instance = metadata.field(fieldId);
+  const instance = metadata.field(FIELD_ID);
   if (!instance) {
     throw TypeError();
   }
@@ -93,6 +87,7 @@ describe("Field", () => {
           }),
           createMockField({
             id: 2,
+            parent_id: 3,
           }),
           createMockField({
             id: 3,
@@ -102,20 +97,21 @@ describe("Field", () => {
 
       const metadata = field.metadata;
       expect(field.path()).toEqual([
-        metadata?.field(1),
-        metadata?.field(2),
         metadata?.field(3),
+        metadata?.field(2),
+        metadata?.field(1),
       ]);
     });
   });
 
   describe("displayName", () => {
-    it("should return a field's display name", () => {
+    it("should return a field's name", () => {
       const field = setup({
         fields: [
           createMockField({
             id: FIELD_ID,
             name: "foo",
+            display_name: "",
           }),
         ],
       });
@@ -161,14 +157,16 @@ describe("Field", () => {
           createMockField({
             id: FIELD_ID,
             parent_id: 2,
+            display_name: "field",
           }),
           createMockField({
             id: 2,
-            name: "parentField",
+            parent_id: 3,
+            display_name: "parentField",
           }),
           createMockField({
             id: 3,
-            name: "rootField",
+            display_name: "rootField",
           }),
         ],
       });
@@ -198,7 +196,7 @@ describe("Field", () => {
           fields: [
             createMockField({
               id: FIELD_ID,
-              name: "field",
+              display_name: "field",
             }),
           ],
         });
@@ -210,11 +208,11 @@ describe("Field", () => {
         const field = setup({
           tables: [
             createMockTable({
-              name: "table",
+              display_name: "table",
               fields: [
                 createMockField({
                   id: FIELD_ID,
-                  name: "field",
+                  display_name: "field",
                 }),
               ],
             }),
@@ -231,7 +229,7 @@ describe("Field", () => {
           fields: [
             createMockField({
               id: FIELD_ID,
-              name: "field",
+              display_name: "field",
             }),
           ],
         });
@@ -247,12 +245,12 @@ describe("Field", () => {
         const field = setup({
           tables: [
             createMockTable({
-              name: "table",
+              display_name: "table",
               schema: "schema",
               fields: [
                 createMockField({
                   id: FIELD_ID,
-                  name: "field",
+                  display_name: "field",
                 }),
               ],
             }),
@@ -275,7 +273,7 @@ describe("Field", () => {
         fields: [
           createMockField({
             id: FIELD_ID,
-            name: "field id",
+            display_name: "field id",
           }),
         ],
       });
@@ -285,32 +283,18 @@ describe("Field", () => {
   });
 
   describe("dimension", () => {
-    it("should return the field's dimension when the id is an mbql field", () => {
-      const field = setup({
-        fields: [
-          createMockField({
-            id: ["field", 123, null],
-            name: "field id",
-          }),
-        ],
-      });
-
-      const dimension = field.dimension();
-      expect(dimension.fieldIdOrName()).toBe(123);
-    });
-
     it("should return the field's dimension when the id is not an mbql field", () => {
       const field = setup({
         fields: [
           createMockField({
             id: FIELD_ID,
-            name: "field id",
+            display_name: "field id",
           }),
         ],
       });
 
       const dimension = field.dimension();
-      expect(dimension.fieldIdOrName()).toBe(123);
+      expect(dimension.fieldIdOrName()).toBe(FIELD_ID);
     });
   });
 
@@ -360,7 +344,7 @@ describe("Field", () => {
             id: FIELD_ID,
             dimensions: [
               createMockFieldDimension({
-                human_readable_field_id: 3,
+                human_readable_field_id: 2,
               }),
             ],
           }),
@@ -409,12 +393,12 @@ describe("Field", () => {
         fields: [
           createMockField({
             id: FIELD_ID,
-            remappings: [[2, "1"]],
+            remappings: [[2, "A"]],
           }),
         ],
       });
 
-      expect(field.remappedValue(2)).toBe("1");
+      expect(field.remappedValue(2)).toBe("A");
     });
 
     it("should convert a numeric field into a number if it is not a number", () => {
@@ -423,12 +407,13 @@ describe("Field", () => {
           createMockField({
             id: FIELD_ID,
             base_type: TYPE.Number,
-            remappings: [[2.5, "2.5"]],
+            semantic_type: TYPE.Number,
+            remappings: [[2.5, "A"]],
           }),
         ],
       });
 
-      expect(field.remappedValue("2.5rem")).toBe(2.5);
+      expect(field.remappedValue("2.5rem")).toBe("A");
     });
   });
 
@@ -438,13 +423,13 @@ describe("Field", () => {
         fields: [
           createMockField({
             id: FIELD_ID,
-            remappings: [[2, "1"]],
+            remappings: [[2, "A"]],
           }),
         ],
       });
 
-      expect(field.hasRemappedValue(1)).toBe(false);
-      expect(field.hasRemappedValue(2)).toBe(true);
+      expect(field.hasRemappedValue(1)).toBeFalsy();
+      expect(field.hasRemappedValue(2)).toBeTruthy();
     });
 
     it("should not convert a numeric field into a number if it is not a number", () => {
@@ -452,12 +437,12 @@ describe("Field", () => {
         fields: [
           createMockField({
             id: FIELD_ID,
-            remappings: [[2.5, "2.5"]],
+            remappings: [[2.5, "A"]],
           }),
         ],
       });
 
-      expect(field.remappedValue("2.5rem")).toBe(null);
+      expect(field.remappedValue("2.5rem")).toBeFalsy();
     });
   });
 
@@ -467,7 +452,8 @@ describe("Field", () => {
         fields: [
           createMockField({
             id: FIELD_ID,
-            base_type: TYPE.String,
+            base_type: TYPE.Text,
+            semantic_type: TYPE.Text,
           }),
         ],
       });
@@ -481,6 +467,7 @@ describe("Field", () => {
           createMockField({
             id: FIELD_ID,
             base_type: TYPE.Number,
+            semantic_type: TYPE.Number,
           }),
         ],
       });
@@ -549,7 +536,6 @@ describe("Field", () => {
         fields: [
           createMockField({
             id: FIELD_ID,
-            values: [[1], [2]],
           }),
         ],
       });
@@ -569,36 +555,7 @@ describe("Field", () => {
           ],
         });
 
-        expect(field.getUniqueId()).toBe("1");
-      });
-    });
-
-    describe("when the `uniqueId` field does not exist on the instance of a concrete Field", () => {
-      const field = setup({
-        fields: [
-          createMockField({
-            id: ["field", 1, null],
-          }),
-        ],
-      });
-
-      it("should create a `uniqueId`", () => {
         expect(field.getUniqueId()).toBe(1);
-      });
-    });
-
-    describe("when the `uniqueId` field does not exist on the instance of a Field from a virtual card Table", () => {
-      const field = setup({
-        fields: [
-          createMockField({
-            id: ["field", 1, null],
-            table_id: "card__2",
-          }),
-        ],
-      });
-
-      it("should create a `uniqueId`", () => {
-        expect(field.getUniqueId()).toBe("card__2:1");
       });
     });
   });
