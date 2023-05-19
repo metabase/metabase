@@ -1,14 +1,18 @@
-import React from "react";
+import React, { useState } from "react";
 import { List, Stack } from "@mantine/core";
+import { Button } from "@ui/buttons/Button";
 
 export function TreeList({ form, selected, setSelected }) {
   return (
     <List listStyleType="none" withPadding>
-      <TreeNode
-        component={form}
-        selected={selected}
-        setSelected={setSelected}
-      />
+      {form.map((component, i) => (
+        <TreeNode
+          component={component}
+          key={i}
+          selected={selected}
+          setSelected={setSelected}
+        />
+      ))}
     </List>
   );
 }
@@ -19,25 +23,35 @@ function TreeNode({ component, selected, setSelected }) {
     setSelected(component);
   }
 
+  const [isOpened, setIsOpened] = useState(false);
+
   return (
     <List.Item onClick={onSelect}>
-      <Stack style={{ backgroundColor: component === selected && "#4dabf733" }}>
-        {component.name}
+      <Stack>
+        <Button
+          mr="sm"
+          variant={selected?.id === component?.id ? "light" : "subtle"}
+          onClick={() => setIsOpened(!isOpened)}
+          leftIcon={component.children?.length > 0 && isOpened ? "chevron-down" : "chevron-right"}
+        >
+          {component.name}
+        </Button>
       </Stack>
-      <List
-        listStyleType="none"
-        withPadding
-        style={{ borderLeft: "2px solid #ddd" }}
-      >
-        {component.children?.map((child, i) => (
-          <TreeNode
-            component={child}
-            key={i}
-            selected={selected}
-            setSelected={setSelected}
-          />
-        ))}
-      </List>
+      {isOpened && (
+        <List
+          listStyleType="none"
+          withPadding
+        >
+          {component.children?.map((child, i) => (
+            <TreeNode
+              component={child}
+              key={i}
+              selected={selected}
+              setSelected={setSelected}
+            />
+          ))}
+        </List>
+      )}
     </List.Item>
   );
 }

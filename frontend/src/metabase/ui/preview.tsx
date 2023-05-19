@@ -8,6 +8,7 @@ import { Select } from "@ui/input/Select";
 import { Menu } from "@ui/overlay/Menu";
 
 import { theme } from "@ui/theme";
+import { TreePreview } from "@ui/tree/Tree/preview";
 import { TreeNodeList } from "metabase/components/tree/TreeNodeList";
 import { TreeList } from "./tree/Tree";
 
@@ -115,8 +116,8 @@ export function Preview() {
           </Tabs>
         </Box>
 
-        <Box my="sm">
-
+        <Box my="sm" bg="white">
+          <TreePreview />
         </Box>
       </Box>
     </MantineProvider>
