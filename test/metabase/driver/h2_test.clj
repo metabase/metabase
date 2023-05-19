@@ -3,15 +3,16 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.db.connection :as mdb.connection]
    [metabase.db.spec :as mdb.spec]
    [metabase.driver :as driver]
    [metabase.driver.h2 :as h2]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.models :refer [Database]]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.util.honeysql-extensions :as hx]))
 
 (set! *warn-on-reflection* true)
@@ -281,3 +282,12 @@
       (mt/with-empty-db
         (is (= #{"PUBLIC"}
                (driver/syncable-schemas driver/*driver* (mt/id))))))))
+
+
+(deftest syncable-audit-db-test
+  (mt/test-driver :h2
+    (testing "spec obtained from application db has no connection string, and that works OK."
+      (is (= {:classname "org.h2.Driver" :subprotocol "h2" :subname "h2.db"}
+             (dissoc
+              (sql-jdbc.conn/connection-details->spec :h2 (metabase.driver.sql-jdbc.connection/db->pooled-connection-spec mdb.connection/*application-db*))
+              :datasource))))))
