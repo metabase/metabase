@@ -1,11 +1,12 @@
 import fetchMock from "fetch-mock";
 import _ from "underscore";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
-<<<<<<< HEAD
-import { Card, Collection, CollectionItem } from "metabase-types/api";
-=======
-import { Card, Collection, Dashboard } from "metabase-types/api";
->>>>>>> origin/master
+import {
+  Card,
+  Collection,
+  CollectionItem,
+  Dashboard,
+} from "metabase-types/api";
 import {
   convertSavedQuestionToVirtualTable,
   getCollectionVirtualSchemaName,
@@ -138,7 +139,7 @@ function setupCollectionWithErrorById({
   });
 }
 
-export function setupCollectionItemsEndpoint(dashboards: Dashboard[]) {
+export function setupDashboardCollectionItemsEndpoint(dashboards: Dashboard[]) {
   fetchMock.get(/api\/collection\/(\d+|root)\/items/, url => {
     const collectionIdParam = url.split("/")[5];
     const collectionId =
