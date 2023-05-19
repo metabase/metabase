@@ -3,31 +3,24 @@ import { Route } from "react-router";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import {
-  within,
   screen,
   renderWithProviders,
   waitForElementToBeRemoved,
-  fireEvent,
 } from "__support__/ui";
 import DashboardApp from "metabase/dashboard/containers/DashboardApp";
+import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/hooks/use-before-unload";
 import {
-  createMockCard,
   createMockCollection,
-  createMockCollectionItem,
   createMockDashboard,
-  createMockDatabase,
   createMockUser,
 } from "metabase-types/api/mocks";
 import { createMockDashboardState } from "metabase-types/store/mocks";
 import {
-  setupCardsEndpoints,
   setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
   setupDashboardEndpoints,
-  setupDatabasesEndpoints,
-  setupSearchEndpoints,
 } from "__support__/server-mocks";
-import { createMockEntitiesState } from "__support__/store";
+import { callMockEvent } from "__support__/events";
 
 const TEST_DASHBOARD = createMockDashboard({
   id: 1,
@@ -37,35 +30,15 @@ const TEST_DASHBOARD = createMockDashboard({
 const TEST_COLLECTION = createMockCollection({
   id: "root",
 });
-
-const TEST_DATABASE_WITH_ACTIONS = createMockDatabase({
-  id: 1,
-  name: "Test Database",
-  settings: { "database-enable-actions": true },
-});
-
-const TEST_COLLECTION_ITEM = createMockCollectionItem({
-  collection: TEST_COLLECTION,
-  id: 1,
-  name: "Test search response",
-  model: "dataset",
-});
-
-const TEST_CARD = createMockCard();
-
+ 
 async function setup({ user = createMockUser() }) {
-  setupDatabasesEndpoints([TEST_DATABASE_WITH_ACTIONS]);
   setupDashboardEndpoints(createMockDashboard(TEST_DASHBOARD));
   setupCollectionsEndpoints([]);
   setupCollectionItemsEndpoint(TEST_COLLECTION);
-  setupSearchEndpoints([TEST_COLLECTION_ITEM]);
-
-  setupCardsEndpoints([TEST_CARD]);
 
   fetchMock.get("path:/api/bookmark", []);
-  fetchMock.get("path:/api/action", []);
 
-  window.HTMLElement.prototype.scrollIntoView = function () {};
+  const mockEventListener = jest.spyOn(window, "addEventListener");
 
   const DashboardAppContainer = props => {
     return (
@@ -76,7 +49,7 @@ async function setup({ user = createMockUser() }) {
     );
   };
 
-  const { container } = renderWithProviders(
+  renderWithProviders(
     <Route path="/dashboard/:slug" component={DashboardAppContainer} />,
     {
       initialRoute: `/dashboard/${TEST_DASHBOARD.id}`,
@@ -84,9 +57,6 @@ async function setup({ user = createMockUser() }) {
       withRouter: true,
       storeInitialState: {
         dashboard: createMockDashboardState(),
-        entities: createMockEntitiesState({
-          databases: [TEST_DATABASE_WITH_ACTIONS],
-        }),
       },
     },
   );
@@ -95,57 +65,36 @@ async function setup({ user = createMockUser() }) {
     screen.queryAllByTestId("loading-spinner"),
   );
 
-  return { container };
+  return { mockEventListener };
 }
-
-const navigateToDashboardActionsEditor = async () => {
-  userEvent.click(screen.getByLabelText("Edit dashboard"));
-  userEvent.click(await screen.findByLabelText(/Add action/i));
-
-  const actionSidebarBody = await screen.findByTestId("action-sidebar-body");
-
-  userEvent.click(within(actionSidebarBody).getByText("Pick an action"));
-
-  await waitForElementToBeRemoved(() =>
-    screen.queryAllByTestId("loading-spinner"),
-  );
-
-  userEvent.click(
-    screen.getByRole("heading", { name: TEST_COLLECTION_ITEM.name }),
-  );
-  userEvent.click(screen.getByText("Create new action"));
-
-  await waitForElementToBeRemoved(() =>
-    screen.queryAllByTestId("loading-spinner"),
-  );
-};
 
 describe("DashboardApp", function () {
   afterEach(() => {
     jest.clearAllMocks();
   });
 
-  describe("ActionCreatorModal onClickOutside behavior", () => {
-    it("should not close ActionCreator modal when clicking outside modal", async () => {
-      const { container } = await setup({});
+  it("should have a beforeunload event when the user tries to leave a dirty dashboard", async function () {
+    const { mockEventListener } = await setup({});
 
-      await navigateToDashboardActionsEditor();
+    userEvent.click(screen.getByLabelText("Edit dashboard"));
+    userEvent.click(screen.getByTestId("dashboard-name-heading"));
+    userEvent.type(screen.getByTestId("dashboard-name-heading"), "a");
+    // need to click away from the input to trigger the isDirty flag
+    userEvent.tab();
 
-      fireEvent.click(container.ownerDocument.body);
-      expect(
-        screen.getByTestId("mock-native-query-editor"),
-      ).toBeInTheDocument();
-    });
-    it("should close ActionCreator modal when clicking modal's 'Cancel' button", async () => {
-      await setup({});
+    const mockEvent = callMockEvent(mockEventListener, "beforeunload");
 
-      await navigateToDashboardActionsEditor();
+    expect(mockEvent.preventDefault).toHaveBeenCalled();
+    expect(mockEvent.returnValue).toEqual(BEFORE_UNLOAD_UNSAVED_MESSAGE);
+  });
 
-      userEvent.click(screen.getByText("Cancel"));
+  it("should not have a beforeunload event when the dashboard is unedited", async function () {
+    const { mockEventListener } = await setup({});
 
-      expect(
-        screen.queryByTestId("mock-native-query-editor"),
-      ).not.toBeInTheDocument();
-    });
+    userEvent.click(screen.getByLabelText("Edit dashboard"));
+
+    const mockEvent = callMockEvent(mockEventListener, "beforeunload");
+    expect(mockEvent.preventDefault).not.toHaveBeenCalled();
+    expect(mockEvent.returnValue).toBe(undefined);
   });
 });
