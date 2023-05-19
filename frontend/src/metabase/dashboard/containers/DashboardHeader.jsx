@@ -253,8 +253,8 @@ class DashboardHeader extends Component {
             icon="add"
             isActive={activeSidebarName === SIDEBAR_NAME.addQuestion}
             onClick={() => toggleSidebar(SIDEBAR_NAME.addQuestion)}
+            aria-label={t`Add questions`}
             data-metabase-event="Dashboard;Add Card Sidebar"
-            aria-label="add questions"
           />
         </Tooltip>,
       );
@@ -265,6 +265,7 @@ class DashboardHeader extends Component {
           <a
             data-metabase-event="Dashboard;Add Text Box"
             key="add-text"
+            aria-label={t`Add a text box`}
             className="text-brand-hover cursor-pointer"
             onClick={() => this.onAddTextBox()}
           >

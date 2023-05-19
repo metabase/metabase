@@ -1,4 +1,5 @@
 import React, { useContext } from "react";
+
 import { TabContext } from "../Tab/TabContext";
 import { getTabButtonInputId } from "../Tab/utils";
 import { TabButtonMenuAction, TabButtonMenuItem } from "./TabButton";
@@ -10,8 +11,7 @@ interface TabButtonMenuProps<T> {
   closePopover: () => void;
 }
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default function TabButtonMenu<T>({
+export function TabButtonMenu<T>({
   menuItems,
   value,
   closePopover,
