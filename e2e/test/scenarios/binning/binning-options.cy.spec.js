@@ -71,14 +71,14 @@ const TIME_BUCKETS = [
   "Month",
   "Quarter",
   "Year",
-  "Minute of Hour",
-  "Hour of Day",
-  "Day of Week",
-  "Day of Month",
-  "Day of Year",
-  "Week of Year",
-  "Month of Year",
-  "Quarter of Year",
+  "Minute of hour",
+  "Hour of day",
+  "Day of week",
+  "Day of month",
+  "Day of year",
+  "Week of year",
+  "Month of year",
+  "Quarter of year",
 ];
 
 const LONGITUDE_BUCKETS = [
