@@ -58,6 +58,7 @@ describe("scenarios > admin > datamodel > editor", () => {
       });
     });
 
+    // QUESTION - can we check update in the admin instead?
     it("should allow changing the table description", () => {
       visitTableMetadata();
       setValueAndBlurInput(ORDERS_DESCRIPTION, "New description");
@@ -66,6 +67,7 @@ describe("scenarios > admin > datamodel > editor", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Updated Table description").should("be.visible");
 
+      // NEEDS REMOVAL OR UPDATE
       cy.visit(`/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}`);
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Orders").should("be.visible");
@@ -80,6 +82,7 @@ describe("scenarios > admin > datamodel > editor", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Updated Table description").should("be.visible");
 
+      // NEEDS REMOVAL OR UPDATE
       cy.visit(`/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}`);
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Orders").should("be.visible");
@@ -148,6 +151,7 @@ describe("scenarios > admin > datamodel > editor", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Updated Total").should("be.visible");
 
+      // NEEDS REMOVAL OR UPDATE
       cy.visit(
         `/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}/fields/${ORDERS.TOTAL}`,
       );
@@ -166,6 +170,7 @@ describe("scenarios > admin > datamodel > editor", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Updated Total").should("be.visible");
 
+      // NEEDS REMOVAL OR UPDATE
       cy.visit(
         `/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}/fields/${ORDERS.TOTAL}`,
       );

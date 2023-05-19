@@ -7,6 +7,7 @@ describe("issue 5276", () => {
     cy.intercept("PUT", "/api/field/*").as("updateField");
   });
 
+  // QUESTION - is this specific to the reference or does this behavior need checked another way?
   it("should allow removing the field type (metabase#5276)", () => {
     cy.visit("/reference/databases");
 

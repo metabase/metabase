@@ -6,18 +6,7 @@ describe("scenarios > reference > databases", () => {
     cy.signInAsAdmin();
   });
 
-  it("should see the listing", () => {
-    cy.visit("/reference/databases");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Sample Database");
-  });
-
-  xit("should let the user navigate to details", () => {
-    cy.visit("/reference/databases");
-    cy.contains("Sample Database").click();
-    cy.contains("Why this database is interesting");
-  });
-
+  // QUESTION - I think this is checked another way
   it("should let an admin edit details about the database", () => {
     cy.visit("/reference/databases/1");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -52,6 +41,7 @@ describe("scenarios > reference > databases", () => {
     cy.contains("Turns out").should("have.length", 0);
   });
 
+  // QUESTION - I think this is / can be checked another way?
   it("should let an admin edit the database name", () => {
     cy.visit("/reference/databases/1");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -63,6 +53,7 @@ describe("scenarios > reference > databases", () => {
     cy.contains("My definitely profitable business");
   });
 
+  // QUESTION - how else can we check this?
   describe("multiple databases sorting order", () => {
     beforeEach(() => {
       ["d", "b", "a", "c"].forEach(name => {

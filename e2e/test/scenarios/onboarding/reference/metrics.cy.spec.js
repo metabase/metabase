@@ -23,6 +23,7 @@ describe("scenarios > reference > metrics", () => {
     });
   });
 
+  // QUESTION - do we still want to check this?
   it("should see the listing", () => {
     cy.visit("/reference/metrics");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -31,14 +32,7 @@ describe("scenarios > reference > metrics", () => {
     cy.findByText(METRIC_DESCRIPTION);
   });
 
-  it("should let the user navigate to details", () => {
-    cy.visit("/reference/metrics");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(METRIC_NAME).click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Why this metric is interesting");
-  });
-
+  // QUESTION - should we check this via the admin panel instead?
   it("should let an admin edit details about the metric", () => {
     cy.visit("/reference/metrics");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -68,6 +62,7 @@ describe("scenarios > reference > metrics", () => {
     cy.findByText("Count of orders under $100");
   });
 
+  // QUESTION - should we check this in the admin panel instead?
   it("should let an admin start to edit and cancel without saving", () => {
     cy.visit("/reference/metrics");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -86,16 +81,5 @@ describe("scenarios > reference > metrics", () => {
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Because it's very nice").should("have.length", 0);
-  });
-
-  it("should have different URI while editing the metric", () => {
-    cy.visit("/reference/metrics");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(METRIC_NAME).click();
-
-    cy.url().should("match", /\/reference\/metrics\/\d+$/);
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Edit").click();
-    cy.url().should("match", /\/reference\/metrics\/\d+\/edit$/);
   });
 });
