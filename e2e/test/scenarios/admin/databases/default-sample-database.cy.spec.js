@@ -219,6 +219,69 @@ describe("scenarios > admin > databases > sample database", () => {
     );
   });
 
+  it("updates databases list in Database Browser after bringing sample database back", () => {
+    cy.intercept("GET", "/api/database").as("loadDatabases");
+    cy.intercept("POST", "/api/database/sample_database").as(
+      "restoreSampleDatabase",
+    );
+    cy.intercept("GET", "/api/database/*/usage_info").as(
+      "loadDatabaseUsageInfo",
+    );
+    cy.intercept("GET", "/api/database/*").as("loadDatabase");
+    cy.intercept("DELETE", "/api/database/*").as("deleteDatabase");
+
+    cy.visit("/admin/databases");
+    cy.wait("@loadDatabases");
+    cy.findByTestId("database-list").within(() => {
+      cy.findByText("Sample Database").click();
+    });
+    cy.wait("@loadDatabase");
+
+    cy.button("Remove this database").click();
+    cy.wait("@loadDatabaseUsageInfo");
+    modal().within(() => {
+      cy.findByLabelText(/Delete \d+ saved questions?/).click();
+      cy.findByTestId("database-name-confirmation-input").type(
+        "Sample Database",
+      );
+      cy.findByText("Delete this content and the DB connection").click();
+      cy.wait("@deleteDatabase");
+    });
+
+    cy.findByTestId("database-list").within(() => {
+      cy.findByText("Sample Database").should("not.exist");
+    });
+
+    cy.findByTestId("exit-admin").click();
+
+    cy.wait("@loadDatabases");
+    cy.findByTestId("main-navbar-root").within(() => {
+      cy.findByText("Browse data").should("not.exist");
+    });
+
+    cy.visit("/admin/databases");
+    cy.findByTestId("database-list").within(() => {
+      cy.findByText("Bring the sample database back").click();
+      cy.wait("@restoreSampleDatabase");
+    });
+
+    cy.findByTestId("database-list").within(() => {
+      cy.findByText("Sample Database").should("exist");
+    });
+
+    cy.findByTestId("exit-admin").click();
+
+    cy.wait("@loadDatabases");
+    cy.findByTestId("main-navbar-root").within(() => {
+      cy.findByText("Browse data").should("exist");
+      cy.findByText("Browse data").click();
+    });
+
+    cy.findByTestId("database-browser").within(() => {
+      cy.findByText("Sample Database").should("exist");
+    });
+  });
+
   describeEE("custom caching", () => {
     it("should set custom cache ttl", () => {
       cy.request("PUT", "api/setting/enable-query-caching", { value: true });
