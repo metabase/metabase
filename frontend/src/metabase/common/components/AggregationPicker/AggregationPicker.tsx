@@ -59,7 +59,7 @@ export function AggregationPicker({
 
   const handleOperatorSelect = useCallback(
     (item: OperatorListItem) => {
-      if (item.requiresField) {
+      if (item.requiresColumn) {
         setOperator(item.operator);
       } else {
         const clause = Lib.aggregationClause(item.operator);
