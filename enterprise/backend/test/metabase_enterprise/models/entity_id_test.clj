@@ -49,8 +49,8 @@
     :model/FieldValues
     :metabase.models.login-history/LoginHistory
     :metabase.models.metric-important-field/MetricImportantField
-    :metabase.models.model-index/ModelIndex
-    :metabase.models.model-index/ModelIndexValue
+    :model/ModelIndex
+    :model/ModelIndexValue
     :model/ModerationReview
     :metabase.models.parameter-card/ParameterCard
     :metabase.models.permissions/Permissions
