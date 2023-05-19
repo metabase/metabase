@@ -2,11 +2,15 @@ import {
   createMockDatabase,
   createMockQueryAction,
 } from "metabase-types/api/mocks";
-import { createStructuredModelCard } from "metabase-types/api/mocks/presets";
+import {
+  createOrdersTable,
+  createStructuredModelCard,
+} from "metabase-types/api/mocks/presets";
 import {
   setupCardsEndpoints,
   setupDatabasesEndpoints,
   setupModelActionsEndpoints,
+  setupTableEndpoints,
 } from "__support__/server-mocks";
 import {
   renderWithProviders,
@@ -24,6 +28,8 @@ const TEST_MODEL = createStructuredModelCard();
 
 const TEST_ACTION = createMockQueryAction({ model_id: TEST_MODEL.id });
 
+const TEST_TABLE = createOrdersTable();
+
 async function setup({
   model = TEST_MODEL,
   actions = [TEST_ACTION],
@@ -33,6 +39,7 @@ async function setup({
   setupDatabasesEndpoints(databases);
   setupCardsEndpoints([model]);
   setupModelActionsEndpoints(actions, model.id);
+  setupTableEndpoints(TEST_TABLE);
 
   const { container } = renderWithProviders(getModelRoutes(), {
     withRouter: true,
