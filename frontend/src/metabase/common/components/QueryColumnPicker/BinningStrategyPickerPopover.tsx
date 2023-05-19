@@ -7,16 +7,7 @@ import {
 } from "./BucketPickerPopover";
 
 function renderTriggerContent(bucket?: Lib.BucketDisplayInfo) {
-  if (!bucket) {
-    return null;
-  }
-  if (bucket.displayName === "Don''t bin") {
-    return t`Unbinned`;
-  }
-  if (bucket.displayName === "Auto bin") {
-    return t`Auto binned`;
-  }
-  return bucket.displayName;
+  return bucket ? bucket.displayName : t`Unbinned`;
 }
 
 export function BinningStrategyPickerPopover(
