@@ -167,10 +167,13 @@ export function isDashcardLoading(
   if (isVirtualDashCard(dashcard)) {
     return false;
   }
-  return (
-    dashcardsData[dashcard.id] == null ||
-    Object.values(dashcardsData[dashcard.id]).some(data => data == null)
-  );
+
+  if (dashcardsData[dashcard.id] == null) {
+    return true;
+  }
+
+  const cardData = Object.values(dashcardsData[dashcard.id]);
+  return cardData.length === 0 || cardData.some(data => data == null);
 }
 
 export function getDashcardResultsError(datasets: Dataset[]) {
