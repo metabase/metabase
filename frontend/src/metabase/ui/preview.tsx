@@ -37,6 +37,24 @@ const data = [
   },
 ];
 
+const fieldData = [
+  {
+    label: "Numeric",
+    value: "numeric",
+    group: "Numbers",
+  },
+  {
+    label: "Date",
+    value: "date",
+    group: "Dates",
+  },
+  {
+    label: "Timestamptz",
+    value: "timestamptz",
+    group: "Dates",
+  },
+];
+
 export function Preview() {
   return (
     <MantineProvider theme={theme}>
@@ -49,6 +67,12 @@ export function Preview() {
 
         <Box>
           <Select label="Select a theme" data={data} />
+          <Select
+            label="Select a field type"
+            data={fieldData}
+            placeholder=""
+            searchable
+          />
         </Box>
 
         <Box my="sm">
