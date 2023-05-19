@@ -64,6 +64,8 @@ export interface Dataset {
     status: number; // HTTP status code
     data?: string;
   };
+  context?: string;
+  status?: string;
 }
 
 export interface NativeQueryForm {

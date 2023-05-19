@@ -154,7 +154,8 @@ export async function fetchDataOrError<T>(dataPromise: Promise<T>) {
 }
 
 export function getDatasetQueryParams(
-  datasetQuery: Partial<StructuredDatasetQuery & NativeDatasetQuery>,
+  datasetQuery: Partial<StructuredDatasetQuery> &
+    Partial<NativeDatasetQuery> = {},
 ) {
   const { type, query, native, parameters = [] } = datasetQuery;
   return { type, query, native, parameters };
