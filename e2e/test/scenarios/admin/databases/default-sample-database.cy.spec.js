@@ -282,6 +282,11 @@ describe("scenarios > admin > databases > sample database", () => {
     cy.wait("@loadDatabases");
     cy.findByTestId("main-navbar-root").within(() => {
       cy.findByText("Browse data").should("exist");
+      cy.findByText("Browse data").click();
+    });
+
+    cy.findByTestId("database-browser").within(() => {
+      cy.findByText("Sample Database").should("exist");
     });
   });
 
