@@ -72,7 +72,7 @@ export default class DatabaseList extends Component {
     const error = deletionError || addSampleDatabaseError;
 
     return (
-      <div className="wrapper">
+      <div className="wrapper" data-testid="database-list">
         <section className="PageHeader px2 clearfix">
           {isAdmin && (
             <Link
