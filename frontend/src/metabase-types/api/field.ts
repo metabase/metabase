@@ -88,6 +88,7 @@ export interface ConcreteField {
   fk_target_field_id: FieldId | null;
   target?: Field;
   values?: FieldValue[];
+  remappings?: FieldValue[];
   settings?: FieldFormattingSettings;
 
   dimensions?: FieldDimension[];

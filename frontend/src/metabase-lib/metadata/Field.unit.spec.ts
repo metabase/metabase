@@ -6,6 +6,7 @@ import {
   createMockTable,
 } from "metabase-types/api/mocks";
 import { createMockMetadata } from "__support__/metadata";
+import { TYPE } from "metabase-lib/types/constants";
 
 const FIELD_ID = 1;
 
@@ -28,7 +29,7 @@ const setup = ({
     fields,
   });
 
-  const instance = metadata.field(FIELD_ID);
+  const instance = metadata.field(fieldId);
   if (!instance) {
     throw TypeError();
   }
@@ -404,151 +405,200 @@ describe("Field", () => {
 
   describe("remappedValue", () => {
     it("should call a given value using the instance's remapping property", () => {
-      const field = new Field({
-        remapping: {
-          get: () => 1,
-        },
+      const field = setup({
+        fields: [
+          createMockField({
+            id: FIELD_ID,
+            remappings: [[2, "1"]],
+          }),
+        ],
       });
-      expect(field.remappedValue(2)).toBe(1);
+
+      expect(field.remappedValue(2)).toBe("1");
     });
 
     it("should convert a numeric field into a number if it is not a number", () => {
-      const field = new Field({
-        isNumeric: () => true,
-        remapping: {
-          get: num => num,
-        },
+      const field = setup({
+        fields: [
+          createMockField({
+            id: FIELD_ID,
+            base_type: TYPE.Number,
+            remappings: [[2.5, "2.5"]],
+          }),
+        ],
       });
+
       expect(field.remappedValue("2.5rem")).toBe(2.5);
     });
   });
 
   describe("hasRemappedValue", () => {
     it("should call a given value using the instance's remapping property", () => {
-      const field = new Field({
-        remapping: {
-          has: () => true,
-        },
+      const field = setup({
+        fields: [
+          createMockField({
+            id: FIELD_ID,
+            remappings: [[2, "1"]],
+          }),
+        ],
       });
+
+      expect(field.hasRemappedValue(1)).toBe(false);
       expect(field.hasRemappedValue(2)).toBe(true);
     });
 
-    it("should convert a numeric field into a number if it is not a number", () => {
-      const field = new Field({
-        isNumeric: () => true,
-        remapping: {
-          has: num => typeof num === "number",
-        },
+    it("should not convert a numeric field into a number if it is not a number", () => {
+      const field = setup({
+        fields: [
+          createMockField({
+            id: FIELD_ID,
+            remappings: [[2.5, "2.5"]],
+          }),
+        ],
       });
-      expect(field.hasRemappedValue("2.5rem")).toBe(true);
+
+      expect(field.remappedValue("2.5rem")).toBe(null);
     });
   });
 
   describe("isSearchable", () => {
     it("should be true when the field is a string", () => {
-      const field = new Field({
-        isString: () => true,
+      const field = setup({
+        fields: [
+          createMockField({
+            id: FIELD_ID,
+            base_type: TYPE.String,
+          }),
+        ],
       });
+
       expect(field.isSearchable()).toBe(true);
     });
+
     it("should be false when the field is not a string", () => {
-      const field = new Field({
-        isString: () => false,
+      const field = setup({
+        fields: [
+          createMockField({
+            id: FIELD_ID,
+            base_type: TYPE.Number,
+          }),
+        ],
       });
+
       expect(field.isSearchable()).toBe(false);
     });
   });
 
   describe("fieldValues", () => {
     it("should return the values on a field instance", () => {
-      const values = [[1], [2]];
-      const field = new Field({
-        values,
+      const field = setup({
+        fields: [
+          createMockField({
+            id: FIELD_ID,
+            values: [[1], [2]],
+          }),
+        ],
       });
-      expect(field.fieldValues()).toEqual(values);
+
+      expect(field.fieldValues()).toEqual([[1], [2]]);
     });
 
     it("should wrap raw values in arrays to match the format of remapped values", () => {
-      const values = [1, 2];
-      const field = new Field({
-        values,
+      const field = setup({
+        fields: [
+          createMockField({
+            id: FIELD_ID,
+            values: [[1], [2]],
+          }),
+        ],
       });
+
       expect(field.fieldValues()).toEqual([[1], [2]]);
     });
   });
 
   describe("hasFieldValues", () => {
     it("should be true when a field has values", () => {
-      expect(
-        new Field({
-          values: [1],
-        }).hasFieldValues(),
-      ).toBe(true);
+      const field = setup({
+        fields: [
+          createMockField({
+            id: FIELD_ID,
+            values: [[1], [2]],
+          }),
+        ],
+      });
+
+      expect(field.hasFieldValues()).toBe(true);
+    });
+
+    it("should be false when a field has empty values", () => {
+      const field = setup({
+        fields: [
+          createMockField({
+            id: FIELD_ID,
+            values: [],
+          }),
+        ],
+      });
+
+      expect(field.hasFieldValues()).toBe(false);
     });
 
     it("should be false when a field has no values", () => {
-      expect(
-        new Field({
-          values: [],
-        }).hasFieldValues(),
-      ).toBe(false);
-      expect(
-        new Field({
-          values: undefined,
-        }).hasFieldValues(),
-      ).toBe(false);
+      const field = setup({
+        fields: [
+          createMockField({
+            id: FIELD_ID,
+            values: [[1], [2]],
+          }),
+        ],
+      });
+
+      expect(field.hasFieldValues()).toBe(false);
     });
   });
 
   describe("getUniqueId", () => {
     describe("when the `uniqueId` field exists on the instance", () => {
       it("should return the `uniqueId`", () => {
-        const field = new Field({
-          uniqueId: "foo",
+        const field = setup({
+          fields: [
+            createMockField({
+              id: FIELD_ID,
+            }),
+          ],
         });
-        expect(field.getUniqueId()).toBe("foo");
+
+        expect(field.getUniqueId()).toBe("1");
       });
     });
 
     describe("when the `uniqueId` field does not exist on the instance of a concrete Field", () => {
-      let field;
-      beforeEach(() => {
-        field = createMockConcreteField({
-          apiOpts: {
-            id: 1,
-            table_id: 2,
-          },
-        });
+      const field = setup({
+        fields: [
+          createMockField({
+            id: ["field", 1, null],
+          }),
+        ],
       });
 
       it("should create a `uniqueId`", () => {
         expect(field.getUniqueId()).toBe(1);
       });
-
-      it("should set the `uniqueId` on the Field instance", () => {
-        field.getUniqueId();
-        expect(field.uniqueId).toBe(1);
-      });
     });
 
     describe("when the `uniqueId` field does not exist on the instance of a Field from a virtual card Table", () => {
-      let field;
-      beforeEach(() => {
-        field = createMockConcreteField({
-          apiOpts: {
-            id: 1,
-            table_id: "card__123",
-          },
-        });
+      const field = setup({
+        fields: [
+          createMockField({
+            id: ["field", 1, null],
+            table_id: "card__2",
+          }),
+        ],
       });
 
       it("should create a `uniqueId`", () => {
-        expect(field.getUniqueId()).toBe("card__123:1");
-      });
-
-      it("should set the `uniqueId` on the Field instance", () => {
-        field.getUniqueId();
-        expect(field.uniqueId).toBe("card__123:1");
+        expect(field.getUniqueId()).toBe("card__2:1");
       });
     });
   });
