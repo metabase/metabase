@@ -119,7 +119,8 @@ const QuickFilterDrill = ({
         popover: getColumnFilterDrillPopover({
           query,
           initialFilter: filter,
-          addFilter: filter => quickFilterDrillQuestion(filter).card(),
+          addFilter: filter =>
+            quickFilterDrillQuestion({ clicked, filter }).card(),
         }),
         ...getOperatorOverrides(operator, value),
       };
@@ -130,7 +131,7 @@ const QuickFilterDrill = ({
       title: name,
       section: "filter",
       buttonType: "token-filter",
-      question: () => quickFilterDrillQuestion(filter),
+      question: () => quickFilterDrillQuestion({ clicked, filter }),
       extra: () => ({
         valueType,
       }),

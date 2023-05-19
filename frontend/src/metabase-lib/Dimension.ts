@@ -11,6 +11,7 @@ import {
   ExpressionReference,
   DatetimeUnit,
   VariableTarget,
+  DatasetColumn,
 } from "metabase-types/api";
 import * as Lib from "metabase-lib";
 import { infer, MONOTYPE } from "metabase-lib/expressions/typeinferencer";
@@ -228,7 +229,7 @@ export default class Dimension {
   }
 
   /**
-   * Is this dimension idential to another dimension or MBQL clause
+   * Is this dimension identical to another dimension or MBQL clause
    */
   isEqual(
     other: Dimension | null | undefined | ConcreteFieldReference,
@@ -365,7 +366,7 @@ export default class Dimension {
     return "";
   }
 
-  column(extra = {}) {
+  column(extra = {}): DatasetColumn {
     const field = this.baseDimension().field();
     return {
       id: field.id,

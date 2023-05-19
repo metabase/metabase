@@ -4,7 +4,7 @@ import type {
   FieldFilter,
   RowValue,
 } from "metabase-types/api";
-import { FieldReference } from "metabase-types/api";
+import { FieldLiteral, FieldReference } from "metabase-types/api";
 import {
   isa,
   isBoolean,
@@ -17,10 +17,12 @@ import {
 } from "metabase-lib/types/utils/isa";
 import { TYPE } from "metabase-lib/types/constants";
 import type Question from "metabase-lib/Question";
+import { isLocalField } from "metabase-lib/queries/utils";
+import { fieldRefForColumn } from "metabase-lib/queries/utils/dataset";
 import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import type { ClickObject } from "metabase-lib/queries/drills/types";
 import Filter from "metabase-lib/queries/structured/Filter";
-import type Dimension from "metabase-lib/Dimension";
+import Dimension from "metabase-lib/Dimension";
 
 const INVALID_TYPES = [TYPE.Structured];
 const isConcreteField = (
@@ -85,34 +87,42 @@ export function quickFilterDrill({
   }
 
   const columnDimension = query.dimensionForColumn(column);
-  if (!columnDimension) {
-    return null;
-  }
+  const isValidFilterDimension = query
+    .filterDimensionOptions()
+    .all()
+    .find(d => d.isEqual(columnDimension));
 
-  const filterDimensionQuery = columnDimension.query() || query;
-  const operators = getOperatorsForColumn(columnDimension, value, column);
+  const filterDimension = isValidFilterDimension ? columnDimension : null;
+  const filterDimensionQuery = filterDimension?.query() || query;
+
+  const operators = getOperatorsForColumn(column, value, filterDimension);
+
+  const mappedOperators = operators?.map(operator => ({
+    ...operator,
+    filter: new Filter(operator.filter, null, filterDimensionQuery),
+  }));
 
   return {
-    query: query,
-    operators: operators?.map(operator => ({
-      ...operator,
-      filter: new Filter(operator.filter, null, filterDimensionQuery),
-    })),
+    query: filterDimensionQuery,
+    operators: mappedOperators,
   };
 }
 
 function getOperatorsForColumn(
-  dimension: Dimension,
-  value: RowValue,
   column: DatasetColumn,
+  value: RowValue,
+  dimension?: Dimension | null,
 ): ColumnOperatorConfig[] | null {
-  if (
-    INVALID_TYPES.some(type => column.base_type && isa(column.base_type, type))
-  ) {
+  const { base_type: baseType } = column;
+
+  if (!baseType || INVALID_TYPES.some(type => isa(baseType, type))) {
     return null;
   }
 
-  const fieldRef = dimension.mbql();
+  const fieldRef = dimension
+    ? dimension.mbql()
+    : getColumnFieldRef(column, baseType);
+
   if (!fieldRef || !isConcreteField(fieldRef)) {
     return null;
   }
@@ -135,7 +145,9 @@ function getOperatorsForColumn(
       { name: "≠", valueType, filter: ["!=", fieldRef, typedValue] },
     ];
   }
-  if (isString(column) && isLongText(column)) {
+
+  // this filter requires a valid dimension
+  if (isString(column) && isLongText(column) && dimension) {
     const typedValue = value as string;
     const valueType = "text";
 
@@ -163,6 +175,45 @@ function getOperatorsForColumn(
   }
 }
 
-export function quickFilterDrillQuestion(filter: Filter) {
+function isLocalColumn(column: DatasetColumn) {
+  return isLocalField(column.field_ref);
+}
+
+function getColumnFieldRef(
+  column: DatasetColumn,
+  baseType: string,
+): FieldReference | null | undefined {
+  if (isLocalColumn(column)) {
+    return fieldRefForColumn(column);
+  } else {
+    const field: FieldLiteral = [
+      "field",
+      column.name,
+      { "base-type": baseType },
+    ];
+    return field;
+  }
+}
+
+export function quickFilterDrillQuestion({
+  clicked,
+  filter,
+}: {
+  clicked: ClickObject;
+  filter: Filter;
+}) {
+  const dimension = filter.dimension();
+  const query = filter.query();
+
+  if (
+    dimension &&
+    clicked.column &&
+    !isLocalColumn(clicked.column) &&
+    query.topLevelQuery() === query
+  ) {
+    // we have to nest a query in order to add a filter for aggregation or expression on top level query
+    return query.nest().filter(filter).question();
+  }
+
   return filter.add().rootQuery().question();
 }
