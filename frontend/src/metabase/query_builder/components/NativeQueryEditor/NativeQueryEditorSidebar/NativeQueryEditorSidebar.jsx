@@ -28,12 +28,12 @@ const propTypes = {
   runQuery: PropTypes.func,
   snippetCollections: PropTypes.array,
   snippets: PropTypes.array,
-  features: PropTypes.shape({
+  features: {
     dataReference: PropTypes.bool,
     variables: PropTypes.bool,
     snippets: PropTypes.bool,
     promptInput: PropTypes.bool,
-  }),
+  },
   onShowPromptInput: PropTypes.func,
 };
 
