@@ -17,7 +17,7 @@ export const getRoutes = () => (
         modalProps={{
           wide: true,
           enableTransition: false,
-          noOnClickOutsideWrapper: true,
+          closeOnClickOutside: true,
         }}
       />
       <ModalRoute
@@ -26,7 +26,7 @@ export const getRoutes = () => (
         modalProps={{
           wide: true,
           enableTransition: false,
-          noOnClickOutsideWrapper: true,
+          closeOnClickOutside: true,
         }}
       />
     </Route>

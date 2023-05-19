@@ -117,7 +117,7 @@ export function ActionSidebarFn({
           ref={actionSettingsModalRef}
           fit
           enableMouseEvents
-          noOnClickOutsideWrapper
+          closeOnClickOutside
           triggerElement={
             !dashcard.action ? (
               <Button primary={!dashcard.action} fullWidth>

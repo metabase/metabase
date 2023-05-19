@@ -30,7 +30,7 @@ export class WindowModal extends Component {
     isOpen: PropTypes.bool,
     enableMouseEvents: PropTypes.bool,
     enableTransition: PropTypes.bool,
-    noOnClickOutsideWrapper: PropTypes.bool,
+    closeOnClickOutside: PropTypes.bool,
   };
 
   static defaultProps = {
@@ -66,7 +66,7 @@ export class WindowModal extends Component {
     );
     return (
       <MaybeOnClickOutsideWrapper
-        noOnClickOutsideWrapper={this.props.noOnClickOutsideWrapper}
+        closeOnClickOutside={this.props.closeOnClickOutside}
         backdropElement={this._modalElement}
         handleDismissal={this.handleDismissal}
       >
@@ -198,7 +198,7 @@ export class FullPageModal extends Component {
               the OnClickOutsideWrapper popover stack.  Otherwise, clicks within
               this modal might be seen as clicks outside another popover. */}
               <MaybeOnClickOutsideWrapper
-                noOnClickOutsideWrapper={this.props.noOnClickOutsideWrapper}
+                closeOnClickOutside={this.props.closeOnClickOutside}
                 handleDismissal={this.handleDismissal}
               >
                 <div

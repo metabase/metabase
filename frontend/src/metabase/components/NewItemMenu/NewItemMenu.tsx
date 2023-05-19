@@ -164,7 +164,7 @@ const NewItemMenu = ({
               wide
               enableTransition={false}
               onClose={handleModalClose}
-              noOnClickOutsideWrapper
+              closeOnClickOutside
             >
               <ActionCreator
                 onSubmit={handleActionCreated}
