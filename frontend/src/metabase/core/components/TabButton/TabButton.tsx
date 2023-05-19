@@ -22,6 +22,7 @@ import {
   TabContext,
   TabContextType,
 } from "../Tab";
+import { TabButtonMenu } from "./TabButtonMenu";
 import {
   TabButtonInput,
   TabButtonRoot,
@@ -29,7 +30,8 @@ import {
   TabButtonInputWrapper,
   TabButtonInputResizer,
 } from "./TabButton.styled";
-import TabButtonMenu from "./TabButtonMenu";
+
+export const INPUT_WRAPPER_TEST_ID = "tab-button-input-wrapper";
 
 export type TabButtonMenuAction<T> = (
   context: TabContextType,
@@ -46,22 +48,24 @@ export interface TabButtonProps<T> extends HTMLAttributes<HTMLDivElement> {
   value: T;
   showMenu?: boolean;
   menuItems?: TabButtonMenuItem<T>[];
-  onEdit?: ChangeEventHandler<HTMLInputElement>;
-  onFinishEditing?: () => void;
-  isEditing?: boolean;
+  onRename?: ChangeEventHandler<HTMLInputElement>;
+  onFinishRenaming?: () => void;
+  isRenaming?: boolean;
+  onInputDoubleClick?: MouseEventHandler<HTMLSpanElement>;
   disabled?: boolean;
 }
 
-const TabButton = forwardRef(function TabButton<T>(
+const _TabButton = forwardRef(function TabButton<T>(
   {
     value,
     menuItems,
     label,
     onClick,
-    onEdit,
-    onFinishEditing,
+    onRename,
+    onFinishRenaming,
+    onInputDoubleClick,
     disabled = false,
-    isEditing = false,
+    isRenaming = false,
     showMenu: showMenuProp = true,
     ...props
   }: TabButtonProps<T>,
@@ -114,7 +118,10 @@ const TabButton = forwardRef(function TabButton<T>(
       aria-label={label}
       id={getTabId(idPrefix, value)}
     >
-      <TabButtonInputWrapper>
+      <TabButtonInputWrapper
+        onDoubleClick={onInputDoubleClick}
+        data-testid={INPUT_WRAPPER_TEST_ID}
+      >
         <TabButtonInputResizer aria-hidden="true">
           {label}
         </TabButtonInputResizer>
@@ -122,11 +129,11 @@ const TabButton = forwardRef(function TabButton<T>(
           type="text"
           value={label}
           isSelected={isSelected}
-          disabled={!isEditing}
-          onChange={onEdit}
+          disabled={!isRenaming}
+          onChange={onRename}
           onKeyPress={handleInputKeyPress}
           onFocus={e => e.currentTarget.select()}
-          onBlur={onFinishEditing}
+          onBlur={onFinishRenaming}
           aria-labelledby={getTabId(idPrefix, value)}
           id={getTabButtonInputId(idPrefix, value)}
           ref={inputRef}
@@ -162,10 +169,14 @@ const TabButton = forwardRef(function TabButton<T>(
 });
 
 export interface RenameableTabButtonProps<T>
-  extends Omit<TabButtonProps<T>, "onEdit" | "onFinishEditing" | "isEditing"> {
+  extends Omit<
+    TabButtonProps<T>,
+    "onRename" | "onFinishRenaming" | "isRenaming"
+  > {
   onRename: (newLabel: string) => void;
   renameMenuLabel?: string;
   renameMenuIndex?: number;
+  canRename?: boolean;
 }
 
 export function RenameableTabButton<T>({
@@ -174,11 +185,12 @@ export function RenameableTabButton<T>({
   onRename,
   renameMenuLabel = t`Rename`,
   renameMenuIndex = 0,
+  canRename = true,
   ...props
 }: RenameableTabButtonProps<T>) {
   const [label, setLabel] = useState(labelProp);
   const [prevLabel, setPrevLabel] = useState(label);
-  const [isEditing, setIsEditing] = useState(false);
+  const [isRenaming, setIsRenaming] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -186,10 +198,10 @@ export function RenameableTabButton<T>({
   }, [labelProp]);
 
   useEffect(() => {
-    if (isEditing) {
+    if (isRenaming) {
       inputRef.current?.focus();
     }
-  }, [isEditing]);
+  }, [isRenaming]);
 
   const onFinishEditing = () => {
     if (label.length === 0) {
@@ -198,13 +210,13 @@ export function RenameableTabButton<T>({
       setPrevLabel(label);
       onRename(label);
     }
-    setIsEditing(false);
+    setIsRenaming(false);
   };
 
   const renameItem = {
     label: renameMenuLabel,
     action: () => {
-      setIsEditing(true);
+      setIsRenaming(true);
     },
   };
   const menuItems = [
@@ -214,11 +226,12 @@ export function RenameableTabButton<T>({
   ];
 
   return (
-    <TabButton
+    <_TabButton
       label={label}
-      isEditing={isEditing}
-      onEdit={e => setLabel(e.target.value)}
-      onFinishEditing={onFinishEditing}
+      isRenaming={canRename && isRenaming}
+      onRename={e => setLabel(e.target.value)}
+      onFinishRenaming={onFinishEditing}
+      onInputDoubleClick={() => setIsRenaming(canRename)}
       menuItems={menuItems}
       ref={inputRef}
       {...props}
@@ -226,8 +239,7 @@ export function RenameableTabButton<T>({
   );
 }
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Object.assign(TabButton, {
+export const TabButton = Object.assign(_TabButton, {
   Root: TabButtonRoot,
   Renameable: RenameableTabButton,
 });

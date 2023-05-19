@@ -1,16 +1,20 @@
 import React from "react";
 import { Route } from "react-router";
 
+import userEvent from "@testing-library/user-event";
 import {
   renderWithProviders,
   screen,
   waitForElementToBeRemoved,
+  waitFor,
 } from "__support__/ui";
 import { setupEnterpriseTest } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
 
+import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/hooks/use-before-unload";
+import { callMockEvent } from "__support__/events";
 import DatabaseEditApp from "./DatabaseEditApp";
 
 const ENGINES_MOCK = {
@@ -39,6 +43,8 @@ jest.mock(
 );
 
 async function setup({ cachingEnabled = false } = {}) {
+  const mockEventListener = jest.spyOn(window, "addEventListener");
+
   const settings = mockSettings({
     engines: ENGINES_MOCK,
     "token-features": createMockTokenFeatures({ advanced_config: true }),
@@ -53,9 +59,38 @@ async function setup({ cachingEnabled = false } = {}) {
   });
 
   await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
+
+  return { mockEventListener };
 }
 
 describe("DatabaseEditApp", () => {
+  describe("Database connections", () => {
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it("should trigger beforeunload event when database connection is edited", async () => {
+      const { mockEventListener } = await setup();
+
+      const databaseForm = await screen.findByLabelText("Display name");
+
+      userEvent.type(databaseForm, "Test database");
+      const mockEvent = await waitFor(() => {
+        return callMockEvent(mockEventListener, "beforeunload");
+      });
+      expect(mockEvent.preventDefault).toHaveBeenCalled();
+      expect(mockEvent.returnValue).toBe(BEFORE_UNLOAD_UNSAVED_MESSAGE);
+    });
+
+    it("should not trigger beforeunload event when database connection is unchanged", async () => {
+      const { mockEventListener } = await setup();
+      const mockEvent = callMockEvent(mockEventListener, "beforeunload");
+
+      expect(mockEvent.preventDefault).not.toHaveBeenCalled();
+      expect(mockEvent.returnValue).toBe(undefined);
+    });
+  });
+
   describe("Cache TTL field", () => {
     describe("OSS", () => {
       it("is invisible", async () => {
