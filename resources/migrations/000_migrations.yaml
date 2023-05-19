@@ -14666,7 +14666,6 @@ databaseChangeLog:
                   remarks: 'The status of the index: initializing, indexed, error, overflow.'
                   constraints:
                     nullable: false
-
               - column:
                   name: state_change_at
                   type: ${timestamp_type}
@@ -14687,7 +14686,7 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
-                  remarks: ID of the user who created the event
+                  remarks: 'ID of the user who created the event'
                   name: creator_id
                   type: int
                   constraints:
