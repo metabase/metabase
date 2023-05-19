@@ -20,8 +20,8 @@
   (tt/with-temp* [Pulse      [pulse {:creator_id (test.users/user->id user-kw)}]
                   PulseCard  [_ {:pulse_id (:id pulse), :card_id (u/the-id card)}]]
     (with-redefs [pulse/send-notifications!    identity
-                  pulse/contents->notifications (fn [_ results]
-                                                  (vec results))]
+                  pulse/parts->notifications (fn [_ results]
+                                               (vec results))]
       (let [[{:keys [result]}] (pulse/send-pulse! pulse)]
         (qp.test/rows result)))))
 

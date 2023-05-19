@@ -117,8 +117,8 @@
                   (format "\n%s" description)))
      :type :text}))
 
-(defn- dashcard-link-card->content
-  "Convert a dashcard that is a link card to pulse content.
+(defn- dashcard-link-card->part
+  "Convert a dashcard that is a link card to pulse part.
 
   This function should be executed under pulse's creator permissions."
   [dashcard]
@@ -138,8 +138,8 @@
         (when (mi/can-read? instance)
           (link-card->text (assoc link-card :entity instance)))))))
 
-(defn- dashcard->content
-  "Given a dashcard returns its content based on its type.
+(defn- dashcard->part
+  "Given a dashcard returns its part based on its type.
 
   The result will follow the pulse's creator permissions."
   [dashcard pulse dashboard]
@@ -155,7 +155,7 @@
 
     ;; link cards
     (virtual-card-of-type? dashcard "link")
-    (dashcard-link-card->content dashcard)
+    (dashcard-link-card->part dashcard)
 
     ;; text cards have existed for a while and I'm not sure if all existing text cards
     ;; will have virtual_card.display = "text", so assume everything else is a text card
@@ -166,15 +166,15 @@
           :visualization_settings
           (merge {:type :text})))))
 
-(defn- dashcards->content
+(defn- dashcards->part
   [dashcards pulse dashboard]
   (let [ordered-dashcards (sort dashcard-comparator dashcards)]
     (doall (for [dashcard ordered-dashcards
-                 :let  [content (dashcard->content dashcard pulse dashboard)]
-                 :when (some? content)]
-             content))))
+                 :let  [part (dashcard->part dashcard pulse dashboard)]
+                 :when (some? part)]
+             part))))
 
-(defn- tab->content
+(defn- tab->part
   [{:keys [name]}]
   {:text name
    :type :tab-title})
@@ -182,15 +182,15 @@
 (defn- execute-dashboard
   "Fetch all the dashcards in a dashboard for a Pulse, and execute non-text cards.
 
-  The gerenerated contents will follow the pulse's creator permissions."
+  The gerenerated parts will follow the pulse's creator permissions."
   [{pulse-creator-id :creator_id, :as pulse} dashboard & {:as _options}]
   (let [dashboard-id      (u/the-id dashboard)]
     (mw.session/with-current-user pulse-creator-id
       (if (dashboard/has-tabs? dashboard)
         (let [ordered-tabs-with-cards (t2/hydrate (t2/select :model/DashboardTab :dashboard_id dashboard-id) :ordered-tab-cards)]
          (doall (flatten (for [{:keys [cards] :as tab} ordered-tabs-with-cards]
-                           (concat [(tab->content tab)] (dashcards->content cards pulse dashboard))))))
-        (dashcards->content (t2/select DashboardCard :dashboard_id dashboard-id) pulse dashboard)))))
+                           (concat [(tab->part tab)] (dashcards->part cards pulse dashboard))))))
+        (dashcards->part (t2/select DashboardCard :dashboard_id dashboard-id) pulse dashboard)))))
 
 (defn- database-id [card]
   (or (:database_id card)
@@ -232,15 +232,15 @@
                  :text {:type "mrkdwn"
                         :text (truncate-mrkdwn mrkdwn block-text-length-limit)}}]})))
 
-(defn- content->attachment-data
-  [content channel-id]
+(defn- part->attachment-data
+  [part channel-id]
   (let [{ttype                                  :type
          {card-id :id card-name :name :as card} :card
          dashcard                               :dashcard
-         result                                 :result}  content]
+         result                                 :result}  part]
     (case ttype
       :card
-      {:title           (or (-> dashcard :visualization_settings :card.title)
+      {:title           (or (-> (:dashcard part) :visualization_settings :card.title)
                             card-name)
        :rendered-info   (render/render-pulse-card :inline (defaulted-timezone card) card dashcard result)
        :title_link      (urls/card-url card-id)
@@ -249,18 +249,18 @@
        :fallback        card-name}
 
       :text
-      (text->markdown-block (:text content))
+      (text->markdown-block (:text part))
 
       :tab-title
-      (text->markdown-block (format "# %s" (:text content))))))
+      (text->markdown-block (format "# %s" (:text part))))))
 
 (defn- create-slack-attachment-data
   "Returns a seq of slack attachment data structures, used in `create-and-upload-slack-attachments!`"
-  [content-data]
+  [parts]
   (let [channel-id (slack/files-channel)]
-    (for [content content-data
-          :let    [attachment (content->attachment-data content channel-id)]
-          :when   attachment]
+    (for [part  parts
+          :let  [attachment (part->attachment-data part channel-id)]
+          :when attachment]
       attachment)))
 
 (defn- subject
@@ -309,12 +309,12 @@
                             "*Sent from " (public-settings/site-name) "*>")}]}]})
 
 (def slack-width
-  "Maximum width of the rendered PNG of HTML to be sent to Slack. Content that exceeds this width (e.g. a table with
+  "Maximum width of the rendered PNG of HTML to be sent to Slack. part that exceeds this width (e.g. a table with
   many columns) is truncated."
   1200)
 
 (defn create-and-upload-slack-attachments!
-  "Create an attachment in Slack for a given Card by rendering its result into an image and uploading
+  "Create an attachment in Slack for a given Card by rendering its part into an image and uploading
   it. Slack-attachment-uploader is a function which takes image-bytes and an attachment name, uploads the file, and
   returns an image url, defaulting to slack/upload-file!.
 
@@ -378,120 +378,120 @@
 
 (defmulti ^:private should-send-notification?
   "Returns true if given the pulse type and resultset a new notification (pulse or alert) should be sent"
-  (fn [pulse _contents] (alert-or-pulse pulse)))
+  (fn [pulse _parts] (alert-or-pulse pulse)))
 
 (defmethod should-send-notification? :alert
-  [{:keys [alert_condition] :as alert} contents]
+  [{:keys [alert_condition] :as alert} parts]
   (cond
     (= "rows" alert_condition)
-    (not (are-all-cards-empty? contents))
+    (not (are-all-cards-empty? parts))
 
     (= "goal" alert_condition)
-    (goal-met? alert contents)
+    (goal-met? alert parts)
 
     :else
     (let [^String error-text (tru "Unrecognized alert with condition ''{0}''" alert_condition)]
       (throw (IllegalArgumentException. error-text)))))
 
 (defmethod should-send-notification? :pulse
-  [pulse contents]
+  [pulse parts]
   (if (:skip_if_empty pulse)
-    (not (are-all-cards-empty? contents))
+    (not (are-all-cards-empty? parts))
     true))
+
+
+(defn- parts->cards-count
+  [parts]
+  (count (filter #(some? (#{:text :card} %)) parts)))
 
 ;; 'notification' used below means a map that has information needed to send a Pulse/Alert, including results of
 ;; running the underlying query
-
-(defn- contents->cards-count
-  [contents]
-  (count (filter #(some? (#{:text :card} %)) contents)))
-
 (defmulti ^:private notification
   "Polymorphoic function for creating notifications. This logic is different for pulse type (i.e. alert vs. pulse) and
   channel_type (i.e. email vs. slack)"
-  {:arglists '([alert-or-pulse contents channel])}
+  {:arglists '([alert-or-pulse parts channel])}
   (fn [pulse _ {:keys [channel_type]}]
     [(alert-or-pulse pulse) (keyword channel_type)]))
 
 (defmethod notification [:pulse :email]
-  [{pulse-id :id, pulse-name :name, dashboard-id :dashboard_id, :as pulse} contents {:keys [recipients]}]
+  [{pulse-id :id, pulse-name :name, dashboard-id :dashboard_id, :as pulse} parts {:keys [recipients]}]
   (log/debug (u/format-color 'cyan (trs "Sending Pulse ({0}: {1}) with {2} Cards via email"
-                                        pulse-id (pr-str pulse-name) (contents->cards-count contents))))
+                                        pulse-id (pr-str pulse-name) (parts->cards-count parts))))
   (let [email-recipients (filterv u/email? (map :email recipients))
-        query-content    (filter :card contents)
-        timezone         (-> query-content first :card defaulted-timezone)
+        query-part       (filter :card parts)
+        timezone         (-> query-part first :card defaulted-timezone)
         dashboard        (update (t2/select-one Dashboard :id dashboard-id) :description markdown/process-markdown :html)]
     {:subject      (subject pulse)
      :recipients   email-recipients
      :message-type :attachments
-     :message      (messages/render-pulse-email timezone pulse dashboard contents)}))
+     :message      (messages/render-pulse-email timezone pulse dashboard parts)}))
 
 (defmethod notification [:pulse :slack]
   [{pulse-id :id, pulse-name :name, dashboard-id :dashboard_id, :as pulse}
-   contents
+   parts
    {{channel-id :channel} :details}]
   (log/debug (u/format-color 'cyan (trs "Sending Pulse ({0}: {1}) with {2} Cards via Slack"
-                                        pulse-id (pr-str pulse-name) (contents->cards-count contents))))
+                                        pulse-id (pr-str pulse-name) (parts->cards-count parts))))
   (let [dashboard (t2/select-one Dashboard :id dashboard-id)]
     {:channel-id  channel-id
      :attachments (remove nil?
                           (flatten [(slack-dashboard-header pulse dashboard)
-                                    (create-slack-attachment-data contents)
+                                    (create-slack-attachment-data parts)
                                     (when dashboard (slack-dashboard-footer pulse dashboard))]))}))
 
 (defmethod notification [:alert :email]
-  [{:keys [id] :as pulse} contents channel]
+  [{:keys [id] :as pulse} parts channel]
   (log/debug (trs "Sending Alert ({0}: {1}) via email" id name))
   (let [condition-kwd    (messages/pulse->alert-condition-kwd pulse)
         email-subject    (trs "Alert: {0} has {1}"
                               (first-question-name pulse)
                               (alert-condition-type->description condition-kwd))
         email-recipients (filterv u/email? (map :email (:recipients channel)))
-        first-result     (first contents)
-        timezone         (-> first-result :card defaulted-timezone)]
+        first-part       (first parts)
+        timezone         (-> first-part :card defaulted-timezone)]
     {:subject      email-subject
      :recipients   email-recipients
      :message-type :attachments
-     :message      (messages/render-alert-email timezone pulse channel contents (ui-logic/find-goal-value first-result))}))
+     :message      (messages/render-alert-email timezone pulse channel parts (ui-logic/find-goal-value first-part))}))
 
 (defmethod notification [:alert :slack]
-  [pulse contents {{channel-id :channel} :details}]
+  [pulse parts {{channel-id :channel} :details}]
   (log/debug (u/format-color 'cyan (trs "Sending Alert ({0}: {1}) via Slack" (:id pulse) (:name pulse))))
   {:channel-id  channel-id
    :attachments (cons {:blocks [{:type "header"
                                  :text {:type "plain_text"
                                         :text (str "🔔 " (first-question-name pulse))
                                         :emoji true}}]}
-                      (create-slack-attachment-data contents))})
+                      (create-slack-attachment-data parts))})
 
 (defmethod notification :default
   [_ _ {:keys [channel_type]}]
   (throw (UnsupportedOperationException. (tru "Unrecognized channel type {0}" (pr-str channel_type)))))
 
-(defn- contents->notifications [{:keys [channels channel-ids], pulse-id :id, :as pulse} contents]
+(defn- parts->notifications [{:keys [channels channel-ids], pulse-id :id, :as pulse} parts]
   (let [channel-ids (or channel-ids (mapv :id channels))]
-    (when (should-send-notification? pulse contents)
+    (when (should-send-notification? pulse parts)
       (when (:alert_first_only pulse)
         (t2/delete! Pulse :id pulse-id))
       ;; `channel-ids` is the set of channels to send to now, so only send to those. Note the whole set of channels
       (for [channel channels
             :when   (contains? (set channel-ids) (:id channel))]
-        (notification pulse contents channel)))))
+        (notification pulse parts channel)))))
 
 (defn- pulse->notifications
-  "Execute the underlying queries for a sequence of Pulses and return the contents as 'notification' maps."
+  "Execute the underlying queries for a sequence of Pulses and return the parts as 'notification' maps."
   [{:keys [cards], pulse-id :id, :as pulse} dashboard]
-  (contents->notifications pulse
+  (parts->notifications pulse
                           (if dashboard
                             ;; send the dashboard
                             (execute-dashboard pulse dashboard)
                             ;; send the cards instead
                             (for [card  cards
                                   ;; Pulse ID may be `nil` if the Pulse isn't saved yet
-                                  :let  [content (assoc (pu/execute-card pulse (u/the-id card) :pulse-id pulse-id) :type :card)]
-                                  ;; some cards may return empty content, e.g. if the card has been archived
-                                  :when content]
-                              content))))
+                                  :let  [part (assoc (pu/execute-card pulse (u/the-id card) :pulse-id pulse-id) :type :card)]
+                                  ;; some cards may return empty part, e.g. if the card has been archived
+                                  :when part]
+                              part))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
