@@ -19,6 +19,12 @@ import {
   fireEvent,
 } from "__support__/ui";
 import { getRoutes as getModelRoutes } from "metabase/models/routes";
+import {
+  Card,
+  Database,
+  StructuredDatasetQuery,
+  WritebackQueryAction,
+} from "metabase-types/api";
 
 const TEST_DATABASE_WITH_ACTIONS = createMockDatabase({
   settings: { "database-enable-actions": true },
@@ -34,7 +40,12 @@ async function setup({
   model = TEST_MODEL,
   actions = [TEST_ACTION],
   databases = [TEST_DATABASE_WITH_ACTIONS],
-  initialRoute = `/model/${TEST_MODEL.id}/detail/actions`,
+  initialRoute = `/model/${TEST_MODEL.id}/detail/actions/${TEST_ACTION.id}`,
+}: {
+  model?: Card<StructuredDatasetQuery>;
+  actions?: WritebackQueryAction[];
+  databases?: Database[];
+  initialRoute?: string;
 }) {
   setupDatabasesEndpoints(databases);
   setupCardsEndpoints([model]);
@@ -53,9 +64,7 @@ async function setup({
 
 describe("ModelActionDetails", () => {
   it("should not leave ActionCreatorModal when clicking outside modal", async () => {
-    const { container } = await setup({
-      initialRoute: `/model/${TEST_MODEL.id}/detail/actions/${TEST_ACTION.id}`,
-    });
+    const { container } = await setup({});
 
     fireEvent.click(container.ownerDocument.body);
 
@@ -63,9 +72,7 @@ describe("ModelActionDetails", () => {
   });
 
   it("should leave ActionCreatorModal when clicking 'Cancel'", async () => {
-    await setup({
-      initialRoute: `/model/${TEST_MODEL.id}/detail/actions/${TEST_ACTION.id}`,
-    });
+    await setup({});
 
     screen.getByText("Cancel").click();
 
