@@ -209,24 +209,26 @@
           [{:metadata         (get-in temporal-bucketing-mock-metadata [:fields :date])
             :expected-options (-> lib.temporal-bucket/date-bucket-options
                                   (update 0 dissoc :default)
-                                  (assoc-in [2 :default] true))}
+                                  (assoc-in [2 :default] true)
+                                  (assoc-in [9 :selected] true))}
            {:metadata         (get-in temporal-bucketing-mock-metadata [:fields :datetime])
             :expected-options (-> lib.temporal-bucket/datetime-bucket-options
                                   (update 2 dissoc :default)
-                                  (assoc-in [4 :default] true))}
+                                  (assoc-in [4 :default] true)
+                                  (assoc-in [13 :selected] true))}
            {:metadata         (get-in temporal-bucketing-mock-metadata [:fields :time])
             :expected-options lib.temporal-bucket/time-bucket-options}]]
     (testing (str (:base-type metadata) " Field")
       (doseq [[what x] {"column metadata" metadata, "field ref" (lib/ref metadata)}]
         (testing (str what "\n\n" (u/pprint-to-str x))
-          (is (= expected-options
+          (is (= (map #(dissoc % :selected) expected-options)
                  (lib/available-temporal-buckets (:query temporal-bucketing-mock-metadata) x)))
           (testing "Bucketing with any of the options should work"
             (doseq [expected-option expected-options]
               (is (= {:lib/type :type/temporal-bucketing-option
                      :unit      (:unit expected-option)}
                      (lib/temporal-bucket (lib/with-temporal-bucket x expected-option))))))
-          (testing "Bucket it, should still return the same available units"
+          (testing "Bucket it, should still return the same available units, but with one :selected"
             (is (= expected-options
                    (lib/available-temporal-buckets (:query temporal-bucketing-mock-metadata)
                                                    (lib/with-temporal-bucket x :month-of-year))))))))))
@@ -305,11 +307,16 @@
         (testing (str what "\n\n" (u/pprint-to-str x))
           (is (= expected-options
                  (lib/available-binning-strategies query x)))
-          (testing "when binned, should still return the same available units"
+
+          (is (empty? (filter :selected expected-options))
+              "no options should be marked :selected with binning unset")
+
+          (testing "when binned, should still return the same available binning options"
             (let [binned (lib/with-binning x (second expected-options))]
               (is (= (-> expected-options second :mbql)
                      (-> binned lib/binning (dissoc :lib/type :metadata-fn))))
-              (is (= expected-options
+              (is (lib.binning/strategy= (second expected-options) (lib/binning binned)))
+              (is (= (assoc-in expected-options [1 :selected] true)
                      (lib/available-binning-strategies query binned))))))))))
 
 (deftest ^:parallel binning-display-info-test

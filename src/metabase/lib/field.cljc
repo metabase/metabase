@@ -101,6 +101,10 @@
      {:base-type base-type})
    (when-let [effective-type ((some-fn :effective-type :base-type) opts)]
      {:effective-type effective-type})
+   (when-let [binning (:binning opts)]
+     {::binning binning})
+   (when-let [temporal-unit (:temporal-unit opts)]
+     {::temporal-unit temporal-unit})
    ;; TODO -- some of the other stuff in `opts` probably ought to be merged in here as well. Also, if the Field is
    ;; temporally bucketed, the base-type/effective-type would probably be affected, right? We should probably be
    ;; taking that into consideration?
@@ -290,9 +294,7 @@
 
 (defmethod lib.temporal-bucket/with-temporal-bucket-method :metadata/field
   [metadata unit]
-  (if unit
-    (assoc metadata ::temporal-unit unit)
-    (dissoc metadata ::temporal-unit)))
+  (u/assoc-dissoc metadata ::temporal-unit unit))
 
 (defmethod lib.temporal-bucket/available-temporal-buckets-method :field
   [query stage-number field-ref]
@@ -310,12 +312,12 @@
             365 :week
             :month))))))
 
-(defn- mark-default-unit [options unit]
+(defn- mark-unit [options option-key unit]
   (cond->> options
     (some #(= (:unit %) unit) options)
     (mapv (fn [option]
-            (cond-> (dissoc option :default)
-              (= (:unit option) unit) (assoc :default true))))))
+            (cond-> (dissoc option option-key)
+              (= (:unit option) unit) (assoc option-key true))))))
 
 (defmethod lib.temporal-bucket/available-temporal-buckets-method :metadata/field
   [_query _stage-number field-metadata]
@@ -326,7 +328,8 @@
               (isa? effective-type :type/Date)     lib.temporal-bucket/date-bucket-options
               (isa? effective-type :type/Time)     lib.temporal-bucket/time-bucket-options
               :else                                [])
-      fingerprint-default (mark-default-unit fingerprint-default))))
+      fingerprint-default              (mark-unit :default fingerprint-default)
+      (::temporal-unit field-metadata) (mark-unit :selected (::temporal-unit field-metadata)))))
 
 ;;; ---------------------------------------- Binning ---------------------------------------------
 (defmethod lib.binning/binning-method :field
@@ -358,19 +361,22 @@
   (lib.binning/available-binning-strategies query stage-number (resolve-field-metadata query stage-number field-ref)))
 
 (defmethod lib.binning/available-binning-strategies-method :metadata/field
-  [query _stage-number {:keys [effective-type fingerprint semantic-type] :as _field-metadata}]
-  (let [binning?        (some-> query lib.metadata/database :features (contains? :binning))
-        {min-value :min max-value :max} (get-in fingerprint [:type :type/Number])]
-    (cond
-      ;; TODO: Include the time and date binning strategies too; see metabase.api.table/assoc-field-dimension-options.
-      (and binning? min-value max-value
-           (isa? semantic-type :type/Coordinate))
-      (lib.binning/coordinate-binning-strategies)
-
-      (and binning? min-value max-value
-           (isa? effective-type :type/Number)
-           (not (isa? semantic-type :Relation/*)))
-      (lib.binning/numeric-binning-strategies))))
+  [query _stage-number {:keys [effective-type fingerprint semantic-type] :as field-metadata}]
+  (let [binning?    (some-> query lib.metadata/database :features (contains? :binning))
+        fingerprint (get-in fingerprint [:type :type/Number])
+        existing    (lib.binning/binning field-metadata)
+        strategies  (cond
+                      ;; Abort if the database doesn't support binning, or this column does not have a defined range.
+                      (not (and binning?
+                                (:min fingerprint)
+                                (:max fingerprint)))               nil
+                      (isa? semantic-type :type/Coordinate)        (lib.binning/coordinate-binning-strategies)
+                      (and (isa? effective-type :type/Number)
+                           (not (isa? semantic-type :Relation/*))) (lib.binning/numeric-binning-strategies))]
+    ;; TODO: Include the time and date binning strategies too; see metabase.api.table/assoc-field-dimension-options.
+    (for [strat strategies]
+      (cond-> strat
+        (lib.binning/strategy= strat existing) (assoc :selected true)))))
 
 ;;; -------------------------------------- Join Alias --------------------------------------------
 (defmethod lib.join/current-join-alias-method :field
