@@ -101,13 +101,13 @@
     ;; use upserts and delete ones with old generations
     (t2/query {:insert-into             [:model_index_value]
                :values                  (into []
-                                    (comp (filter (fn [[id v]] (and id v)))
-                                          (map (fn [[id v]]
-                                                 {:name           v
-                                                  :model_pk       id
-                                                  :model_index_id (:id model-index)
-                                                  :generation     new-generation})))
-                                    values)
+                                              (comp (filter (fn [[id v]] (and id v)))
+                                                    (map (fn [[id v]]
+                                                           {:name           v
+                                                            :model_pk       id
+                                                            :model_index_id (:id model-index)
+                                                            :generation     new-generation})))
+                                              values)
                :on-duplicate-key-update {:generation new-generation}})
     (t2/delete! ModelIndexValue
                 :model_index_id (:id model-index)
@@ -116,17 +116,23 @@
 (defn add-values!
   "Add indexed values to the model_index_value table."
   [model-index]
-  (let [[error-message index-values] (fetch-values model-index)
-        generation'                  (inc (:generation model-index))]
+  (let [[error-message index-values] (fetch-values model-index)]
     (if-not (str/blank? error-message)
       (t2/update! ModelIndex (:id model-index) {:state           "error"
                                                 :error           error-message
                                                 :state_change_at :%now})
-      (do (add-values* model-index (filter (fn [[_id value]] (some? value)) index-values))
+      (try
+        (t2/with-transaction [_conn]
+          (add-values* model-index (filter (fn [[_id value]] (some? value)) index-values))
           (t2/update! ModelIndex (:id model-index)
-                      {:generation      generation'
+                      {:generation      (inc (:generation model-index))
                        :state_change_at :%now
-                       :state           (if (> (count index-values) 5000) "overflow" "indexed")})))))
+                       :state           (if (> (count index-values) 5000) "overflow" "indexed")}))
+        (catch Exception e
+          (t2/update! ModelIndex (:id model-index)
+                      {:state           "error"
+                       :error           (ex-message e)
+                       :state_change_at :%now}))))))
 
 
 ;;;; creation

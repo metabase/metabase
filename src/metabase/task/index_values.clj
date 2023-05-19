@@ -24,15 +24,18 @@
   "States of a model index that are refreshable."
   #{"indexed" "initial" "error" "overflow"})
 
-(defn should-deindex?
+(defn- should-deindex?
   "Whether to unindex the the model indexing job.
-  If the model does not exist, the model-index record, or if the model has reverted to a question."
+  Will deindex if the model or model_index do not exist, if the model is no longer a model, or if archived."
   [model model-index]
   (or (nil? model) (nil? model-index)
       (not (:dataset model))
       (:archived model)))
 
-(declare model-index-trigger-key)
+(defn- model-index-trigger-key
+  [model-index-id]
+  (triggers/key
+   (format "metabase.task.IndexValues.trigger.%d" model-index-id)))
 
 (defn- refresh-index!
   "Refresh the index on a model. Note, if the index should be removed (no longer a model, archived,
@@ -65,11 +68,6 @@
    (jobs/of-type ModelIndexRefresh)
    (jobs/with-identity (jobs/key refresh-model-index-key))
    (jobs/store-durably)))
-
-(defn- model-index-trigger-key
-  [model-index-id]
-  (triggers/key
-   (format "metabase.task.IndexValues.trigger.%d" model-index-id)))
 
 (defn- refresh-trigger ^org.quartz.CronTrigger [model-index]
   (triggers/build
