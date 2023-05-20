@@ -414,13 +414,21 @@
   [{pulse-id :id, pulse-name :name, dashboard-id :dashboard_id, :as pulse} parts {:keys [recipients]}]
   (log/debug (u/format-color 'cyan (trs "Sending Pulse ({0}: {1}) with {2} Cards via email"
                                         pulse-id (pr-str pulse-name) (parts->cards-count parts))))
-  (let [email-recipients (filterv u/email? (map :email recipients))
-        timezone         (->> parts (some :card) defaulted-timezone)
-        dashboard        (update (t2/select-one Dashboard :id dashboard-id) :description markdown/process-markdown :html)]
-    {:subject      (subject pulse)
-     :recipients   email-recipients
-     :message-type :attachments
-     :message      (messages/render-pulse-email timezone pulse dashboard parts)}))
+  (let [user-recipients     (filter (fn [recipient] (and (u/email? (:email recipient))
+                                                         (some? (:id recipient)))) recipients)
+        non-user-recipients (filter (fn [recipient] (and (u/email? (:email recipient))
+                                                         (nil? (:id recipient)))) recipients)
+        timezone            (->> parts (some :card) defaulted-timezone)
+        dashboard           (update (t2/select-one Dashboard :id dashboard-id) :description markdown/process-markdown :html)
+        email-to-users      [{:subject      (subject pulse)
+                              :recipients   (mapv :email user-recipients)
+                              :message-type :attachments
+                              :message      (messages/render-pulse-email timezone pulse dashboard parts nil)}]]
+    (concat email-to-users (for [email (map :email non-user-recipients)]
+                             {:subject      (subject pulse)
+                              :recipients   [email]
+                              :message-type :attachments
+                              :message      (messages/render-pulse-email timezone pulse dashboard parts email)}))))
 
 (defmethod notification [:pulse :slack]
   [{pulse-id :id, pulse-name :name, dashboard-id :dashboard_id, :as pulse}
@@ -510,15 +518,16 @@
           (throw e))))))
 
 (defmethod send-notification! :email
-  [{:keys [subject recipients message-type message]}]
-  (try
-    (email/send-message-or-throw! {:subject      subject
-                                   :recipients   recipients
-                                   :message-type message-type
-                                   :message      message})
-    (catch ExceptionInfo e
-      (when (not= :smtp-host-not-set (:cause (ex-data e)))
-        (throw e)))))
+  [emails]
+  (doseq [{:keys [subject recipients message-type message]} emails]
+    (try
+      (email/send-message-or-throw! {:subject      subject
+                                     :recipients   recipients
+                                     :message-type message-type
+                                     :message      message})
+      (catch ExceptionInfo e
+        (when (not= :smtp-host-not-set (:cause (ex-data e)))
+          (throw e))))))
 
 (declare ^:private reconfigure-retrying)
 
