@@ -78,7 +78,7 @@
                 (is (nil? (index-trigger!)) "Index trigger not removed")))))))))
 
 (deftest fetch-values-test
-  (mt/test-drivers (dissoc (mt/normal-drivers) :mongo)
+  (mt/test-drivers (disj (mt/normal-drivers) :mongo)
     (mt/dataset sample-dataset
       (doseq [[scenario query [field-refs]]
               (remove nil?
