@@ -2,12 +2,13 @@
   "Convenience functions for sending templated email messages.  Each function here should represent a single email.
    NOTE: we want to keep this about email formatting, so don't put heavy logic here RE: building data for emails."
   (:require
+   [buddy.core.codecs :as codecs]
+   [cheshire.core :as json]
    [clojure.core.cache :as cache]
    [clojure.java.io :as io]
    [hiccup.core :refer [html]]
    [java-time :as t]
    [medley.core :as m]
-   [metabase.api.session :as api.session]
    [metabase.config :as config]
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
@@ -33,6 +34,7 @@
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.encryption :as encryption]
    [metabase.util.i18n :as i18n :refer [trs tru]]
    [metabase.util.log :as log]
    [metabase.util.urls :as urls]
@@ -300,6 +302,15 @@
                               (some :dashboard_id cards))]
     {:pulseLink (urls/dashboard-url dashboard-id)}))
 
+(defn generate-pulse-unsubscribe-hash
+  "Generates hash to allow for non-users to unsubscribe from pulses/subscriptions."
+  [pulse-id email]
+  (codecs/bytes->hex
+   (encryption/validate-and-hash-secret-key
+    (json/generate-string {:salt public-settings/site-uuid-for-unsubscribing-url
+                           :email email
+                           :pulse-id pulse-id}))))
+
 (defn- pulse-context [pulse dashboard non-user-email]
   (let [dashboard-id (:id dashboard)]
    (merge (common-context)
@@ -317,7 +328,7 @@
            :notificationManagementUrl (if (nil? non-user-email)
                                         (urls/notification-management-url)
                                        ;; TODO: change this to whatever FE URL we chooseg
-                                        (str (urls/notification-management-url) "?hashdata=" (api.session/generate-hash (:id pulse) non-user-email)))}
+                                        (str (urls/notification-management-url) "?hashdata=" (generate-pulse-unsubscribe-hash (:id pulse) non-user-email)))}
           (pulse-link-context pulse))))
 
 (defn- create-temp-file
