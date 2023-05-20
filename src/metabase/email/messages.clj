@@ -7,6 +7,7 @@
    [hiccup.core :refer [html]]
    [java-time :as t]
    [medley.core :as m]
+   [metabase.api.session :as api.session]
    [metabase.config :as config]
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
