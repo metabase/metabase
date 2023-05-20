@@ -446,17 +446,25 @@
 (defmethod notification [:alert :email]
   [{:keys [id] :as pulse} parts channel]
   (log/debug (trs "Sending Alert ({0}: {1}) via email" id name))
-  (let [condition-kwd    (messages/pulse->alert-condition-kwd pulse)
-        email-subject    (trs "Alert: {0} has {1}"
-                              (first-question-name pulse)
-                              (alert-condition-type->description condition-kwd))
-        email-recipients (filterv u/email? (map :email (:recipients channel)))
-        first-part       (some :card parts)
-        timezone         (defaulted-timezone first-part)]
-    {:subject      email-subject
-     :recipients   email-recipients
-     :message-type :attachments
-     :message      (messages/render-alert-email timezone pulse channel parts (ui-logic/find-goal-value first-part))}))
+  (let [condition-kwd       (messages/pulse->alert-condition-kwd pulse)
+        email-subject       (trs "Alert: {0} has {1}"
+                                 (first-question-name pulse)
+                                 (alert-condition-type->description condition-kwd))
+        user-recipients     (filter (fn [recipient] (and (u/email? (:email recipient))
+                                                         (some? (:id recipient)))) (:recipients channel))
+        non-user-recipients (filter (fn [recipient] (and (u/email? (:email recipient))
+                                                         (nil? (:id recipient)))) (:recipients channel))
+        first-part          (some :card parts)
+        timezone            (defaulted-timezone first-part)
+        email-to-users      [{:subject      email-subject
+                              :recipients   (mapv :email user-recipients)
+                              :message-type :attachments
+                              :message      (messages/render-alert-email timezone pulse channel parts (ui-logic/find-goal-value first-part))}]]
+        (concat email-to-users (for [email (map :email non-user-recipients)]
+                                 {:subject      email-subject
+                                  :recipients   [email]
+                                  :message-type :attachments
+                                  :message      (messages/render-alert-email timezone pulse channel parts (ui-logic/find-goal-value first-part))}))))
 
 (defmethod notification [:alert :slack]
   [pulse parts {{channel-id :channel} :details}]
