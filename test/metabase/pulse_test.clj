@@ -868,10 +868,10 @@
     old))
 
 (def ^:private fake-email-notification
-  {:subject      "test-message"
+  [{:subject      "test-message"
    :recipients   ["whoever@example.com"]
    :message-type :text
-   :message      "test message body"})
+   :message      "test message body"}])
 
 (deftest email-notification-retry-test
   (testing "send email succeeds w/o retry"
@@ -879,7 +879,6 @@
       (mt/with-temporary-setting-values [email-smtp-host "fake_smtp_host"
                                          email-smtp-port 587]
         (mt/reset-inbox!)
-        (reset-retry)
         (#'metabase.pulse/send-notifications! [fake-email-notification])
         (is (= {:numberOfSuccessfulCallsWithoutRetryAttempt 1}
                (pos-metrics (reset-retry))))
