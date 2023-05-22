@@ -315,7 +315,6 @@ describe("QueryBuilder", () => {
         });
 
         const element = screen.getByTestId("question-row-count");
-        expect(element).toBeInTheDocument();
         expect(element).toBeVisible();
       });
     }
