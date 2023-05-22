@@ -6,7 +6,8 @@
     :refer [Card Dashboard DashboardCard Database Metric Revision Segment Table]]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (defn- card-properties
   "Some default properties for `Cards` for use in tests in this namespace."
@@ -48,7 +49,9 @@
    :description        nil
    :cache_ttl          nil
    :auto_apply_filters true
-   :name               (:name dashboard)})
+   :name               (:name dashboard)
+   :tabs               []
+   :cards              []})
 
 (deftest card-create-test
   (testing ":card-create"
@@ -126,7 +129,8 @@
       (is (= {:model        "Dashboard"
               :model_id     dashboard-id
               :user_id      (mt/user->id :rasta)
-              :object       (assoc (dashboard->revision-object dashboard) :cards [(assoc (select-keys dashcard [:id :card_id :size_x :size_y :row :col]) :series [])])
+              :object       (assoc (dashboard->revision-object dashboard)
+                                   :cards [(assoc (select-keys dashcard [:id :card_id :size_x :size_y :row :col :dashboard_tab_id]) :series [])])
               :is_reversion false
               :is_creation  false}
              (mt/derecordize
@@ -168,13 +172,90 @@
       (is (= {:model        "Dashboard"
               :model_id     dashboard-id
               :user_id      (mt/user->id :crowberto)
-              :object       (assoc (dashboard->revision-object dashboard) :cards [{:id      (:id dashcard)
-                                                                                   :card_id card-id
-                                                                                   :size_x  3
-                                                                                   :size_y  4
-                                                                                   :row     0
-                                                                                   :col     0
-                                                                                   :series  []}])
+              :object       (assoc (dashboard->revision-object dashboard) :cards [{:id               (:id dashcard)
+                                                                                   :card_id          card-id
+                                                                                   :size_x           3
+                                                                                   :size_y           4
+                                                                                   :row              0
+                                                                                   :col              0
+                                                                                   :series           []
+                                                                                   :dashboard_tab_id nil}])
+              :is_reversion false
+              :is_creation  false}
+             (mt/derecordize
+              (t2/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
+                :model    "Dashboard"
+                :model_id dashboard-id)))))))
+
+(deftest dashboard-add-tabs-test
+  (testing ":dashboard-add-tabs"
+    (t2.with-temp/with-temp
+      [:model/Dashboard     {dashboard-id :id, :as dashboard} {:name "A dashboard"}
+       :model/DashboardTab  {dashtab-id :id}                  {:name         "First tab"
+                                                               :position     0
+                                                               :dashboard_id dashboard-id}]
+      (revision/process-revision-event! {:topic :dashboard-add-tabs
+                                         :item  {:id        dashboard-id
+                                                 :actor_id  (mt/user->id :rasta)
+                                                 :tab_ids   [dashtab-id]}})
+      (is (= {:model        "Dashboard"
+              :model_id     dashboard-id
+              :user_id      (mt/user->id :rasta)
+              :object       (assoc (dashboard->revision-object dashboard)
+                                   :tabs [{:id           dashtab-id
+                                           :name         "First tab"
+                                           :position     0
+                                           :dashboard_id dashboard-id}])
+              :is_reversion false
+              :is_creation  false}
+             (mt/derecordize
+              (t2/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
+                :model    "Dashboard"
+                :model_id dashboard-id)))))))
+
+(deftest dashboard-update-tabs-test
+  (testing ":dashboard-update-tabs"
+    (t2.with-temp/with-temp
+      [:model/Dashboard     {dashboard-id :id, :as dashboard} {:name "A dashboard"}
+       :model/DashboardTab  {dashtab-id :id}                  {:name         "First tab"
+                                                               :position     0
+                                                               :dashboard_id dashboard-id}]
+      (t2/update! :model/DashboardTab dashtab-id {:name "New name"})
+      (revision/process-revision-event! {:topic :dashboard-update-tabs
+                                         :item  {:id        dashboard-id
+                                                 :actor_id  (mt/user->id :rasta)
+                                                 :tab_ids   [dashtab-id]}})
+      (is (= {:model        "Dashboard"
+              :model_id     dashboard-id
+              :user_id      (mt/user->id :rasta)
+              :object       (assoc (dashboard->revision-object dashboard)
+                                   :tabs [{:id           dashtab-id
+                                           :name         "New name"
+                                           :position     0
+                                           :dashboard_id dashboard-id}])
+              :is_reversion false
+              :is_creation  false}
+             (mt/derecordize
+              (t2/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
+                :model    "Dashboard"
+                :model_id dashboard-id)))))))
+
+(deftest dashboard-delete-tabs-test
+  (testing ":dashboard-delete-tabs"
+    (t2.with-temp/with-temp
+      [:model/Dashboard     {dashboard-id :id, :as dashboard} {:name "A dashboard"}
+       :model/DashboardTab  {dashtab-id :id}                  {:name         "First tab"
+                                                               :position     0
+                                                               :dashboard_id dashboard-id}]
+      (t2/delete! :model/DashboardTab dashtab-id)
+      (revision/process-revision-event! {:topic :dashboard-delete-tabs
+                                         :item  {:id        dashboard-id
+                                                 :actor_id  (mt/user->id :rasta)
+                                                 :tab_ids   [dashtab-id]}})
+      (is (= {:model        "Dashboard"
+              :model_id     dashboard-id
+              :user_id      (mt/user->id :rasta)
+              :object       (assoc (dashboard->revision-object dashboard) :tabs [])
               :is_reversion false
               :is_creation  false}
              (mt/derecordize

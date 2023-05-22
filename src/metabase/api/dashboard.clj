@@ -565,7 +565,7 @@
         _                                       (when (seq to-update)
                                                   (dashboard-tab/update-tabs! (:ordered_tabs dashboard) to-update))]
     {:temp->real-tab-ids temp-tab-id->tab-id
-     :created-tab-ids    to-create
+     :created-tab-ids    (map :id to-create)
      :updated-tab-ids    (map :id to-update)
      :deleted-tab-ids    to-delete-ids}))
 
@@ -687,8 +687,9 @@
                  :as update-tabs-stats}    (do-update-tabs! dashboard (:ordered_tabs dashboard) new-tabs)
                 current-cards              (cond->> (:ordered_cards dashboard)
                                              (seq deleted-tab-ids)
-                                             (remove (fn [card]
-                                                       (contains? deleted-tab-ids (:dashboard_tab_id card)))))
+                                             (let [deleted-tab-ids (set deleted-tab-ids)]
+                                               (remove (fn [card]
+                                                         (contains? deleted-tab-ids (:dashboard_tab_id card))))))
                 new-cards                  (cond->> cards
                                              ;; fixup the temporary tab ids with the real ones
                                              (seq temp->real-tab-ids)

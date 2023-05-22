@@ -142,37 +142,37 @@
                   (mt/user-http-request :rasta :post 200 "revision/revert" {:entity      :dashboard
                                                                             :id          id
                                                                             :revision_id previous-revision-id})))))
-      (is (= [{:is_reversion         true
-               :is_creation          false
-               :message              nil
-               :user                 @rasta-revision-info
-               :diff                 {:before {:cards nil}
-                                      :after  {:cards [{:size_x 4, :size_y 4, :row 0, :col 0, :card_id card-id, :series []}]}}
-               :has_multiple_changes false
-               :description          "reverted to an earlier version."}
-              {:is_reversion         false
-               :is_creation          false
-               :message              nil
-               :user                 @rasta-revision-info
-               :diff                 {:before {:cards [{:size_x 4, :size_y 4, :row 0, :col 0, :card_id card-id, :series []}]}
-                                      :after  {:cards nil}}
-               :has_multiple_changes false
-               :description          "removed a card."}
-              {:is_reversion         false
-               :is_creation          false
-               :message              nil
-               :user                 @rasta-revision-info
-               :diff                 {:before {:cards nil}
-                                      :after  {:cards [{:size_x 4, :size_y 4, :row 0, :col 0, :card_id card-id, :series []}]}}
-               :has_multiple_changes false
-               :description          "added a card."}
-              {:is_reversion         false
-               :is_creation          true
-               :message              nil
-               :user                 @rasta-revision-info
-               :diff                 nil
-               :has_multiple_changes false
-               :description          "created this."}]
+      (is (=? [{:is_reversion         true
+                :is_creation          false
+                :message              nil
+                :user                 @rasta-revision-info
+                :diff                 {:before {:cards nil}
+                                       :after  {:cards [{:size_x 4, :size_y 4, :row 0, :col 0, :card_id card-id, :series []}]}}
+                :has_multiple_changes false
+                :description          "reverted to an earlier version."}
+               {:is_reversion         false
+                :is_creation          false
+                :message              nil
+                :user                 @rasta-revision-info
+                :diff                 {:before {:cards [{:size_x 4, :size_y 4, :row 0, :col 0, :card_id card-id, :series []}]}
+                                       :after  {:cards nil}}
+                :has_multiple_changes false
+                :description          "removed a card."}
+               {:is_reversion         false
+                :is_creation          false
+                :message              nil
+                :user                 @rasta-revision-info
+                :diff                 {:before {:cards nil}
+                                       :after  {:cards [{:size_x 4, :size_y 4, :row 0, :col 0, :card_id card-id, :series []}]}}
+                :has_multiple_changes false
+                :description          "added a card."}
+               {:is_reversion         false
+                :is_creation          true
+                :message              nil
+                :user                 @rasta-revision-info
+                :diff                 nil
+                :has_multiple_changes false
+                :description          "created this."}]
              (->> (get-revisions :dashboard id)
                   (mapv (fn [rev]
                           (if-not (:diff rev)
