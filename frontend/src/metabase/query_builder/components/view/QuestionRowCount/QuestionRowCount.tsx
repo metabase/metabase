@@ -103,6 +103,7 @@ function QuestionRowCount({
       triggerElement={
         <RowCountLabel
           className={className}
+          data-testid="question-row-count"
           highlighted={limit != null}
           disabled={!canChangeLimit}
         >
