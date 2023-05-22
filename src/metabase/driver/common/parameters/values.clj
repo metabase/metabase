@@ -104,9 +104,9 @@
   (let [matching-params  (tag-params tag params)
         tag-opts         (:options tag)
         normalize-params (fn [params]
-                           ;; remove `:target` which is no longer needed after this point.
+                           ;; remove `:target` which is no longer needed after this point, and add any tag options
                            (let [params (map #(cond-> (dissoc % :target)
-                                                tag-opts (assoc :options tag-opts))
+                                                (seq tag-opts) (assoc :options tag-opts))
                                              params)]
                              (if (= (count params) 1)
                                (first params)
@@ -118,9 +118,9 @@
        (normalize-params matching-params))
      ;; otherwise, attempt to fall back to the default value specified as part of the template tag.
      (when-let [tag-default (:default tag)]
-       {:type    (:widget-type tag :dimension) ; widget-type is the actual type of the default value if set
-        :options tag-opts
-        :value   tag-default})
+       (cond-> {:type    (:widget-type tag :dimension) ; widget-type is the actual type of the default value if set
+                :value   tag-default}
+         tag-opts (assoc :options tag-opts)))
      ;; if that doesn't exist, see if the matching parameters specified default values This can be the case if the
      ;; parameters came from a Dashboard -- Dashboard parameter mappings can specify their own defaults -- but we want
      ;; the defaults specified in the template tag to take precedence if both are specified
