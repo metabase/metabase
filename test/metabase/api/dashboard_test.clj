@@ -1590,6 +1590,43 @@
                                                        :row     1})
                                       :ordered_tabs (dashboard/ordered-tabs dashboard-id)})))))))
 
+(deftest update-tabs-track-snowplow-test
+  (t2.with-temp/with-temp
+    [Dashboard               {dashboard-id :id}  {}
+     :model/DashboardTab     {dashtab-id-1 :id}  {:name "Tab 1" :dashboard_id dashboard-id :position 0}
+     :model/DashboardTab     {dashtab-id-2 :id}  {:name "Tab 2" :dashboard_id dashboard-id :position 1}
+     :model/DashboardTab     _                   {:name "Tab 3" :dashboard_id dashboard-id :position 2}]
+    (testing "create and delete tabs events are tracked"
+      (snowplow-test/with-fake-snowplow-collector
+        (mt/user-http-request :rasta :put 200 (format "dashboard/%d/cards" dashboard-id)
+                              {:ordered_tabs  [{:id   dashtab-id-1
+                                                :name "Tab 1 edited"}
+                                               {:id   dashtab-id-2
+                                                :name "Tab 2"}
+                                               {:id   -1
+                                                :name "New tab 1"}
+                                               {:id   -2
+                                                :name "New tab 2"}]
+                               :cards         []})
+        (is (= [{:data {"dashboard_id"   dashboard-id
+                        "num_tabs"       2
+                        "total_num_tabs" 4
+                        "event"          "dashboard_tabs_created"}
+                 :user-id (str (mt/user->id :rasta))}
+                {:data {"dashboard_id"   dashboard-id
+                        "num_tabs"       1
+                        "total_num_tabs" 4
+                        "event"          "dashboard_tabs_deleted"},
+                 :user-id (str (mt/user->id :rasta))}]
+               (take-last 2 (snowplow-test/pop-event-data-and-user-id!))))))
+
+    (testing "send nothing if tabs are unchanged"
+      (snowplow-test/with-fake-snowplow-collector
+        (mt/user-http-request :rasta :put 200 (format "dashboard/%d/cards" dashboard-id)
+                              {:ordered_tabs  (dashboard/ordered-tabs dashboard-id)
+                               :cards         []})
+        (is (= 0 (count (snowplow-test/pop-event-data-and-user-id!))))))))
+
 ;;; -------------------------------------- Create dashcards tests ---------------------------------------
 
 (deftest simple-creation-with-no-additional-series-test
@@ -2037,10 +2074,10 @@
 (deftest revert-dashboard-test
   (testing "POST /api/dashboard/:id/revert"
     (testing "parameter validation"
-      (is (= {:errors {:revision_id "value must be an integer greater than zero."}}
-             (mt/user-http-request :crowberto :post 400 "dashboard/1/revert" {})))
-      (is (= {:errors {:revision_id "value must be an integer greater than zero."}}
-             (mt/user-http-request :crowberto :post 400 "dashboard/1/revert" {:revision_id "foobar"}))))
+      (is (= {:revision_id "value must be an integer greater than zero."}
+             (:errors (mt/user-http-request :crowberto :post 400 "dashboard/1/revert" {}))))
+      (is (= {:revision_id "value must be an integer greater than zero."}
+             (:errors (mt/user-http-request :crowberto :post 400 "dashboard/1/revert" {:revision_id "foobar"})))))
     (mt/with-temp* [Dashboard [{dashboard-id :id}]
                     Revision  [{revision-id :id} {:model       "Dashboard"
                                                   :model_id    dashboard-id

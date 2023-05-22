@@ -138,5 +138,5 @@ export function addHeading(string, options = {}) {
 }
 
 export function openQuestionsSidebar() {
-  cy.findByLabelText("add questions").click();
+  cy.findByLabelText("Add questions").click();
 }

@@ -92,7 +92,7 @@
 
 (def ^Long HOURS-BEFORE-EXPIRED-THRESHOLD
   "Number of hours that elapse before a persisted schema is considered expired."
-  6)
+  1)
 
 (defn- classify-cache-schemas
   "Classifies the persistence cache schemas. Returns a map with where each value is a (possibly empty) sequence of

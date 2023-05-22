@@ -15,6 +15,7 @@ import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { getVisualizationRaw } from "metabase/visualizations";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { color } from "metabase/lib/colors";
+import { getVisibleCardIds } from "metabase/dashboard/utils";
 
 import {
   GRID_WIDTH,
@@ -41,9 +42,14 @@ class DashboardGrid extends Component {
   constructor(props, context) {
     super(props, context);
 
+    const visibleCardIds = getVisibleCardIds(
+      props.dashboard.ordered_cards,
+      props.dashcardData,
+    );
+
     this.state = {
-      layouts: this.getLayouts(props),
-      dashcards: this.getSortedDashcards(props),
+      visibleCardIds,
+      layouts: this.getLayouts(props.dashboard.ordered_cards),
       addSeriesModalDashCard: null,
       isDragging: false,
       isAnimationPaused: true,
@@ -90,25 +96,42 @@ class DashboardGrid extends Component {
   }
 
   UNSAFE_componentWillReceiveProps(nextProps) {
+    const { dashboard, dashcardData, isEditing } = nextProps;
+
+    const visibleCardIds = !isEditing
+      ? getVisibleCardIds(
+          dashboard.ordered_cards,
+          dashcardData,
+          this.state.visibleCardIds,
+        )
+      : new Set(dashboard.ordered_cards.map(card => card.id));
+
+    const cards = this.getVisibleCards(
+      dashboard.ordered_cards,
+      visibleCardIds,
+      isEditing,
+    );
+
     this.setState({
-      dashcards: this.getSortedDashcards(nextProps),
-      layouts: this.getLayouts(nextProps),
+      visibleCardIds,
+      layouts: this.getLayouts(cards),
     });
   }
 
   onLayoutChange = ({ layout, breakpoint }) => {
+    const { setMultipleDashCardAttributes, isEditing } = this.props;
+
     // We allow moving and resizing cards only on the desktop
     // Ensures onLayoutChange triggered by window resize,
     // won't break the main layout
-    if (breakpoint !== "desktop") {
+    if (!isEditing || breakpoint !== "desktop") {
       return;
     }
 
-    const { dashboard, setMultipleDashCardAttributes } = this.props;
     const changes = [];
 
     layout.forEach(layoutItem => {
-      const dashboardCard = dashboard.ordered_cards.find(
+      const dashboardCard = this.getVisibleCards().find(
         card => String(card.id) === layoutItem.i,
       );
 
@@ -137,27 +160,6 @@ class DashboardGrid extends Component {
     }
   };
 
-  getSortedDashcards(props) {
-    return (
-      props.dashboard &&
-      props.dashboard.ordered_cards.sort((a, b) => {
-        if (a.row < b.row) {
-          return -1;
-        }
-        if (a.row > b.row) {
-          return 1;
-        }
-        if (a.col < b.col) {
-          return -1;
-        }
-        if (a.col > b.col) {
-          return 1;
-        }
-        return 0;
-      })
-    );
-  }
-
   getLayoutForDashCard(dashcard) {
     const { visualization } = getVisualizationRaw([{ card: dashcard.card }]);
     const initialSize = DEFAULT_CARD_SIZE;
@@ -174,8 +176,18 @@ class DashboardGrid extends Component {
     };
   }
 
-  getLayouts({ dashboard }) {
-    const desktop = dashboard.ordered_cards.map(this.getLayoutForDashCard);
+  getVisibleCards = (
+    cards = this.props.dashboard.ordered_cards,
+    visibleCardIds = this.state.visibleCardIds,
+    isEditing = this.props.isEditing,
+  ) => {
+    return isEditing
+      ? cards
+      : cards.filter(card => visibleCardIds.has(card.id));
+  };
+
+  getLayouts(cards) {
+    const desktop = cards.map(this.getLayoutForDashCard);
     const mobile = generateMobileLayout({
       desktopLayout: desktop,
       defaultCardHeight: 6,
@@ -360,7 +372,7 @@ class DashboardGrid extends Component {
   };
 
   renderGrid() {
-    const { dashboard, width } = this.props;
+    const { width } = this.props;
     const { layouts } = this.state;
     const rowHeight = this.getRowHeight();
     return (
@@ -381,7 +393,7 @@ class DashboardGrid extends Component {
         onDragStop={this.onDragStop}
         isEditing={this.isEditingLayout}
         compactType="vertical"
-        items={dashboard.ordered_cards}
+        items={this.getVisibleCards()}
         itemRenderer={this.renderGridItem}
       />
     );

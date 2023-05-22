@@ -1,9 +1,16 @@
 import React from "react";
 import { render, fireEvent, screen } from "@testing-library/react";
-
-import { SAMPLE_DATABASE } from "__support__/sample_database_fixture";
-
+import { createMockMetadata } from "__support__/metadata";
+import {
+  createSampleDatabase,
+  SAMPLE_DB_ID,
+} from "metabase-types/api/mocks/presets";
 import ChartSettingsSidebar from "metabase/query_builder/components/view/sidebars/ChartSettingsSidebar";
+
+const metadata = createMockMetadata({
+  databases: [createSampleDatabase()],
+});
+const db = metadata.database(SAMPLE_DB_ID);
 
 describe("ChartSettingsSidebar", () => {
   const data = {
@@ -14,7 +21,7 @@ describe("ChartSettingsSidebar", () => {
   it("should hide the title when showSidebarTitle is false", () => {
     render(
       <ChartSettingsSidebar
-        question={SAMPLE_DATABASE.question().setDisplay("gauge")}
+        question={db.question().setDisplay("gauge")}
         result={{ data }}
         showSidebarTitle={false}
       />,
@@ -40,7 +47,7 @@ describe("ChartSettingsSidebar", () => {
   it("should not hide the title when showSidebarTitle is false", () => {
     render(
       <ChartSettingsSidebar
-        question={SAMPLE_DATABASE.question().setDisplay("scalar")}
+        question={db.question().setDisplay("scalar")}
         result={{ data }}
         showSidebarTitle={true}
       />,

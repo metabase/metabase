@@ -23,6 +23,22 @@ function generateTemporaryDashcardId() {
   return tempId--;
 }
 
+function getExistingDashCards(state, dashId, tabId) {
+  const { dashboards, dashcards } = state.dashboard;
+  const dashboard = dashboards[dashId];
+  return dashboard.ordered_cards
+    .map(id => dashcards[id])
+    .filter(dc => {
+      if (dc.isRemoved) {
+        return false;
+      }
+      if (tabId != null) {
+        return dc.dashboard_tab_id === tabId;
+      }
+      return true;
+    });
+}
+
 export const addCardToDashboard =
   ({ dashId, cardId, tabId }) =>
   async (dispatch, getState) => {
@@ -30,12 +46,6 @@ export const addCardToDashboard =
     const card = Questions.selectors
       .getObject(getState(), { entityId: cardId })
       .card();
-    const { dashboards, dashcards } = getState().dashboard;
-    const dashboard = dashboards[dashId];
-    const existingCards = dashboard.ordered_cards
-      .map(id => dashcards[id])
-      .filter(dc => !dc.isRemoved);
-
     const { visualization } = getVisualizationRaw([{ card }]);
     const createdCardSize = visualization.defaultSize || DEFAULT_CARD_SIZE;
 
@@ -47,7 +57,7 @@ export const addCardToDashboard =
       card: card,
       series: [],
       ...getPositionForNewDashCard(
-        existingCards,
+        getExistingDashCards(getState(), dashId, tabId),
         createdCardSize.width,
         createdCardSize.height,
       ),
@@ -66,12 +76,6 @@ export const addDashCardToDashboard = function ({
   tabId,
 }) {
   return function (dispatch, getState) {
-    const { dashboards, dashcards } = getState().dashboard;
-    const dashboard = dashboards[dashId];
-    const existingCards = dashboard.ordered_cards
-      .map(id => dashcards[id])
-      .filter(dc => !dc.isRemoved);
-
     const { visualization } = getVisualizationRaw([dashcardOverrides]);
     const createdCardSize = visualization.defaultSize || DEFAULT_CARD_SIZE;
 
@@ -83,7 +87,7 @@ export const addDashCardToDashboard = function ({
       dashboard_tab_id: tabId ?? null,
       series: [],
       ...getPositionForNewDashCard(
-        existingCards,
+        getExistingDashCards(getState(), dashId, tabId),
         createdCardSize.width,
         createdCardSize.height,
       ),

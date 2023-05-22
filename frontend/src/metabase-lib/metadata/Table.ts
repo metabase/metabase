@@ -9,6 +9,7 @@ import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import type Metadata from "./Metadata";
 import type Schema from "./Schema";
 import type Field from "./Field";
+import type ForeignKey from "./ForeignKey";
 import type Database from "./Database";
 import type Metric from "./Metric";
 import type Segment from "./Segment";
@@ -16,11 +17,12 @@ import type Segment from "./Segment";
 interface Table
   extends Omit<
     NormalizedTable,
-    "db" | "schema" | "fields" | "segments" | "metrics"
+    "db" | "schema" | "fields" | "fks" | "segments" | "metrics"
   > {
   db?: Database;
   schema?: Schema;
   fields?: Field[];
+  fks?: ForeignKey[];
   segments?: Segment[];
   metrics?: Metric[];
   metadata?: Metadata;
@@ -145,9 +147,9 @@ class Table {
 
   connectedTables(): Table[] {
     const fks = this.fks || [];
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
-    return fks.map(fk => new Table(fk.origin.table));
+    return fks
+      .map(fk => fk.origin?.table)
+      .filter(table => table != null) as Table[];
   }
 
   foreignTables(): Table[] {

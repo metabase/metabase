@@ -1,5 +1,8 @@
-import { metadata, PRODUCTS } from "__support__/sample_database_fixture";
-
+import { createMockMetadata } from "__support__/metadata";
+import {
+  createSampleDatabase,
+  PRODUCTS_ID,
+} from "metabase-types/api/mocks/presets";
 import StructuredQuery from "metabase-lib/queries/StructuredQuery";
 import Field from "metabase-lib/metadata/Field";
 import Table from "metabase-lib/metadata/Table";
@@ -7,7 +10,13 @@ import Table from "metabase-lib/metadata/Table";
 import { createVirtualField, createVirtualTable } from "./virtual-table";
 
 describe("metabase-lib/queries/utils/virtual-table", () => {
-  const query = PRODUCTS.newQuestion().query() as StructuredQuery;
+  const metadata = createMockMetadata({
+    databases: [createSampleDatabase()],
+  });
+
+  const productsTable = metadata.table(PRODUCTS_ID) as Table;
+
+  const query = productsTable.newQuestion().query() as StructuredQuery;
   const field = createVirtualField({
     id: 123,
     metadata,
@@ -31,7 +40,7 @@ describe("metabase-lib/queries/utils/virtual-table", () => {
   });
 
   describe("createVirtualTable", () => {
-    const query = PRODUCTS.newQuestion().query() as StructuredQuery;
+    const query = productsTable.newQuestion().query() as StructuredQuery;
     const field1 = createVirtualField({
       id: 1,
       metadata,
@@ -47,6 +56,8 @@ describe("metabase-lib/queries/utils/virtual-table", () => {
       id: 456,
       metadata,
       fields: [field1, field2],
+      name: "",
+      display_name: "",
     });
 
     it("should return a new Table instance", () => {
