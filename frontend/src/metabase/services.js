@@ -11,7 +11,6 @@ import { injectTableMetadata } from "metabase-lib/metadata/utils/tables";
 const embedBase = IS_EMBED_PREVIEW ? "/api/preview_embed" : "/api/embed";
 
 export const ActivityApi = {
-  list: GET("/api/activity"),
   recent_views: GET("/api/activity/recent_views"),
   most_recently_viewed_dashboard: GET(
     "/api/activity/most_recently_viewed_dashboard",
