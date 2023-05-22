@@ -12,6 +12,8 @@
    [metabase.util.date-2 :as u.date]
    [toucan2.core :as t2])
   (:import
+   (com.snowplowanalytics.snowplow.tracker.events SelfDescribing)
+   (com.snowplowanalytics.snowplow.tracker.payload SelfDescribingJson)
    (java.util LinkedHashMap)))
 
 (set! *warn-on-reflection* true)
@@ -30,15 +32,17 @@
 (defn- fake-track-event-impl!
   "A function that can be used in place of track-event-impl! which pulls and decodes the payload, context and subject ID
   from an event and adds it to the in-memory [[*snowplow-collector*]] queue."
-  [collector _ event]
-  (let [payload (-> event .getPayload .getMap normalize-map)
-        ;; Don't normalize keys in [[properties]] so that we can assert that they are snake-case strings in the test cases
-        properties (-> (or (:ue_pr payload)
-                           (u/decode-base64 (:ue_px payload)))
-                       json/parse-string)
-        subject (when-let [subject (.getSubject event)]
-                  (-> subject .getSubject normalize-map))
-        context (->> event .getContext first .getMap normalize-map)]
+  [collector _tracker ^SelfDescribing event]
+  (let [payload                            (-> event .getPayload .getMap normalize-map)
+        ;; Don't normalize keys in [[properties]] so that we can assert that they are snake-case strings in the test
+        ;; cases
+        properties                         (-> (or (:ue_pr payload)
+                                                   (u/decode-base64 (:ue_px payload)))
+                                               json/parse-string)
+        subject                            (when-let [subject (.getSubject event)]
+                                             (-> subject .getSubject normalize-map))
+        [^SelfDescribingJson context-json] (.getContext event)
+        context                            (normalize-map (.getMap context-json))]
     (swap! collector conj {:properties properties, :subject subject, :context context})))
 
 (defn do-with-fake-snowplow-collector
