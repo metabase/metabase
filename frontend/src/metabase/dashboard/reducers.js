@@ -3,6 +3,7 @@ import reduceReducers from "reduce-reducers";
 
 import { handleActions, combineReducers } from "metabase/lib/redux";
 import Dashboards from "metabase/entities/dashboards";
+import Questions from "metabase/entities/questions";
 
 import { NAVIGATE_TO_DASHBOARD } from "metabase/query_builder/actions";
 
@@ -269,6 +270,7 @@ const dashcardData = handleActions(
       next: (state, { payload: { cardId, dashcardId } }) =>
         assocIn(state, [dashcardId, cardId]),
     },
+    [Questions.actionTypes.UPDATE]: { next: () => ({}) },
     [RESET]: {
       next: (state, { payload: { isNavigatingWithinDashboard } }) =>
         isNavigatingWithinDashboard ? state : {},
