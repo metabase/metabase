@@ -20,15 +20,18 @@
   ([engine id]
    (if (t2/select-one Database :id id)
      (install-database! engine (inc id))
-     (t2/insert! Database {:is_audit         true
-                           :id               default-audit-db-id
-                           :name             "Audit Database"
-                           :description      "Internal Audit DB used to power metabase analytics."
-                           :engine           engine
-                           :is_full_sync     true
-                           :is_on_demand     false
-                           :creator_id       nil
-                           :auto_run_queries true}))))
+     (do
+       ;; guard against someone manually deletihng the audit-db entry, but not removing the audit-db permissions.
+       (t2/delete! :permissions {:where [:like :object (str "%/db/" id "/%")]})
+       (t2/insert! Database {:is_audit         true
+                             :id               default-audit-db-id
+                             :name             "Audit Database"
+                             :description      "Internal Audit DB used to power metabase analytics."
+                             :engine           engine
+                             :is_full_sync     true
+                             :is_on_demand     false
+                             :creator_id       nil
+                             :auto_run_queries true})))))
 
 (defn ensure-db-installed!
   "Called on app startup to ensure the existance of the audit db in enterprise apps.
