@@ -3,6 +3,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.config :as config]
    [metabase.db.connection :as mdb.connection]
    [metabase.db.spec :as mdb.spec]
    [metabase.driver :as driver]
@@ -13,7 +14,8 @@
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [metabase.util.honeysql-extensions :as hx]))
+   [metabase.util.honeysql-extensions :as hx]
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -288,8 +290,8 @@
   (mt/test-driver :h2
     (when config/ee-available?
       (testing "spec obtained from application db has no connection string, and that works OK."
-        (is (try (dissoc
-                  (sql-jdbc.conn/connection-details->spec :h2 (metabase.driver.sql-jdbc.connection/db->pooled-connection-spec mdb.connection/*application-db*))
-                  :datasource)
+        (is (try (log/fatal (str "ZZZZZZ\n" (dissoc
+                                             (sql-jdbc.conn/connection-details->spec :h2 (metabase.driver.sql-jdbc.connection/db->pooled-connection-spec mdb.connection/*application-db*))
+                                             :datasource)))
                  true
                  (catch Exception _ false)))))))
