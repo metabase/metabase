@@ -50,7 +50,7 @@ export default ComposedComponent =>
           setErrorPage,
           location,
           dashboardId,
-          isNavigatingToDashoard,
+          isNavigatingWithinDashboard,
         } = props;
 
         initialize();
@@ -59,7 +59,7 @@ export default ComposedComponent =>
           await fetchDashboard(dashboardId, location && location.query);
           await fetchDashboardCardData({
             reload: false,
-            clear: !isNavigatingToDashoard,
+            clear: !isNavigatingWithinDashboard,
           });
         } catch (error) {
           console.error(error);
