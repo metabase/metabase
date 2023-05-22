@@ -172,12 +172,25 @@
 (defn execute-action!
   "Execute the given action with the given parameters of shape `{<parameter-id> <value>}."
   [action request-parameters]
-  (case (:type action)
-    :implicit
-    (execute-implicit-action action request-parameters)
-    (:query :http)
-    (execute-custom-action action request-parameters)
-    (throw (ex-info (tru "Unknown action type {0}." (name (:type action))) action))))
+  (let [; add default values for missing parameters
+        all-param-ids          (set (map :id (:parameters action)))
+        provided-param-ids     (set (keys request-parameters))
+        missing-param-ids      (set/difference all-param-ids provided-param-ids)
+        missing-param-defaults (into {}
+                                     (keep (fn [param-id]
+                                             (when-let [default-value (get-in action [:visualization_settings
+                                                                                      :fields
+                                                                                      param-id
+                                                                                      :defaultValue])]
+                                               [param-id default-value])))
+                                     missing-param-ids)
+        request-parameters     (merge missing-param-defaults request-parameters)]
+    (case (:type action)
+      :implicit
+      (execute-implicit-action action request-parameters)
+      (:query :http)
+      (execute-custom-action action request-parameters)
+      (throw (ex-info (tru "Unknown action type {0}." (name (:type action))) action)))))
 
 (defn execute-dashcard!
   "Execute the given action in the dashboard/dashcard context with the given parameters
