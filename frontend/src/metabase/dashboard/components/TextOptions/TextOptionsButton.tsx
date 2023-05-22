@@ -29,7 +29,7 @@ export function TextOptionsButton({
   }, [setIsAddTextPopoverOpen]);
 
   return (
-    <span key="add-a-text-box">
+    <span key="add-a-heading-or-text-box">
       <TippyPopover
         placement="bottom-start"
         onClose={hideAddTextPopover}
@@ -47,7 +47,7 @@ export function TextOptionsButton({
             <DashboardHeaderButton
               key="add-text"
               onClick={showAddTextPopover}
-              data-metabase-event="Dashboard;Add Text Box"
+              data-metabase-event="Dashboard;Add Heading or Text Box"
             >
               <IconContainer>
                 <Icon name="string" size={18} />
