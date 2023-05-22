@@ -6,7 +6,6 @@ import {
   screen,
   renderWithProviders,
   waitForElementToBeRemoved,
-  fireEvent,
 } from "__support__/ui";
 import DashboardApp from "metabase/dashboard/containers/DashboardApp";
 import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/hooks/use-before-unload";
@@ -156,10 +155,10 @@ describe("DashboardApp", function () {
 
   describe("ActionCreatorModal onClickOutside behavior", () => {
     it("should not close ActionCreator modal when clicking outside modal", async () => {
-      const { container } = await setup({});
+      await setup({});
       await navigateToDashboardActionsEditor();
 
-      fireEvent.click(container.ownerDocument.body);
+      userEvent.click(document.body);
       expect(
         screen.getByTestId("mock-native-query-editor"),
       ).toBeInTheDocument();
