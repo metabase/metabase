@@ -105,7 +105,9 @@
         tag-opts         (:options tag)
         normalize-params (fn [params]
                            ;; remove `:target` which is no longer needed after this point.
-                           (let [params (map #(merge {:options tag-opts} (dissoc % :target)) params)]
+                           (let [params (map #(cond-> (dissoc % :target)
+                                                tag-opts (assoc :options tag-opts))
+                                             params)]
                              (if (= (count params) 1)
                                (first params)
                                params)))]
