@@ -258,7 +258,7 @@
 
 (api/defendpoint GET "/popular_items"
   "Get the list of 5 popular things for the current user. Query takes 8 and limits to 5 so that if it
-  finds anything archived, deleted, etc it can hopefully still get 5."
+  finds anything archived, deleted, etc it can usually still get 5."
   []
   ;; we can do a weighted score which incorporates:
   ;; total count -> higher = higher score

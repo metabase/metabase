@@ -25,6 +25,7 @@ _* indicates endpoints used for features available on [paid plans](https://www.m
 
 
 - [Action](api/action.md)
+- [Activity](api/activity.md)
 - [Advanced config logs*](api/ee/advanced-config-logs.md)
 - [Advanced permissions application*](api/ee/advanced-permissions-application.md)
 - [Alert](api/alert.md)
