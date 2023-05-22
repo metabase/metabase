@@ -218,7 +218,7 @@
 
 (def BooleanString
   "Schema for a string that is a valid representation of a boolean (either `true` or `false`).
-  Something that adheres to this schema is guaranteed to to work with `Boolean/parseBoolean`."
+   Defendpoint uses this to coerce the value for this schema to a boolean."
   (mu/with-api-error-message
     [:enum "true" "false"]
     (deferred-tru "value must be a valid boolean string (''true'' or ''false'').")))
@@ -246,6 +246,16 @@
 (def ^:private keyword-or-non-blank-str-malli
   (mc/schema
     [:or :keyword NonBlankString]))
+
+(def BooleanValue
+  "Schema for a valid representation of a boolean
+  (one of `\"true\"` or `true` or `\"false\"` or `false`.).
+  Used by [[metabase.api.common/defendpoint]] to coerce the value for this schema to a boolean.
+   Garanteed to evaluate to `true` or `false` when passed through a json decoder."
+  (-> [:enum {:decode/json (fn [b] (contains? #{"true" true} b))}
+       "true" "false" true false]
+      (mu/with-api-error-message
+        (deferred-tru "value must be a valid boolean string (''true'' or ''false'')."))))
 
 (def ValuesSourceConfig
   "Schema for valid source_options within a Parameter"

@@ -2,12 +2,13 @@ import React, { useState } from "react";
 import type { ComponentStory } from "@storybook/react";
 import { useArgs } from "@storybook/client-api";
 
-import TabButton, {
+import {
+  TabButton,
   TabButtonMenuItem,
   TabButtonMenuAction,
 } from "../TabButton";
 import TabLink from "../TabLink";
-import TabRow from "./TabRow";
+import { TabRow } from "./TabRow";
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default {

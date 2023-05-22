@@ -1,20 +1,18 @@
-import React, { useState } from "react";
-import PropTypes from "prop-types";
+import React, { ReactNode, useState } from "react";
 import _ from "underscore";
 import { t } from "ttag";
-import { connect } from "react-redux";
 import { push } from "react-router-redux";
-import { withRouter } from "react-router";
+import { Route, Router, withRouter } from "react-router";
 
+import { Location } from "history";
 import Button from "metabase/core/components/Button";
 import fitViewport from "metabase/hoc/FitViewPort";
 import Modal from "metabase/components/Modal";
 import ModalContent from "metabase/components/ModalContent";
 
-import { useLeaveConfirmation } from "../../hooks/use-leave-confirmation";
-import { clearSaveError } from "../../permissions";
-import { ToolbarButton } from "../ToolbarButton";
-import { PermissionsTabs } from "./PermissionsTabs";
+import { PermissionsGraph } from "metabase-types/api";
+import useBeforeUnload from "metabase/hooks/use-before-unload";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
   FullHeightContainer,
   TabsContainer,
@@ -23,38 +21,40 @@ import {
   PermissionPageSidebar,
   CloseSidebarButton,
   ToolbarButtonsContainer,
-} from "./PermissionsPageLayout.styled";
+} from "metabase/admin/permissions/components/PermissionsPageLayout/PermissionsPageLayout.styled";
+import { useLeaveConfirmation } from "../../hooks/use-leave-confirmation";
+import { clearSaveError as clearPermissionsSaveError } from "../../permissions";
+import { ToolbarButton } from "../ToolbarButton";
+import { PermissionsTabs } from "./PermissionsTabs";
+
 import { PermissionsEditBar } from "./PermissionsEditBar";
 
-const mapDispatchToProps = {
-  navigateToTab: tab => push(`/admin/permissions/${tab}`),
-  navigateToLocation: location => push(location.pathname, location.state),
-  clearSaveError,
+type PermissionsPageTab = "data" | "collections";
+type PermissionsPageLayoutProps = {
+  children: ReactNode;
+  tab: PermissionsPageTab;
+  confirmBar?: ReactNode;
+  diff?: PermissionsGraph;
+  isDirty: boolean;
+  onSave: () => void;
+  onLoad: () => void;
+  saveError?: string;
+  clearSaveError: () => void;
+  navigateToLocation: (location: string) => void;
+  router: typeof Router;
+  route: typeof Route;
+  navigateToTab: (tab: string) => void;
+  helpContent?: ReactNode;
+  toolbarRightContent?: ReactNode;
 };
 
-const mapStateToProps = (state, _props) => {
-  return {
-    saveError: state.admin.permissions.saveError,
-  };
-};
-
-const propTypes = {
-  children: PropTypes.node.isRequired,
-  tab: PropTypes.oneOf(["data", "collections"]).isRequired,
-  confirmBar: PropTypes.node,
-  diff: PropTypes.object,
-  isDirty: PropTypes.bool,
-  onSave: PropTypes.func.isRequired,
-  onLoad: PropTypes.func.isRequired,
-  saveError: PropTypes.string,
-  clearSaveError: PropTypes.func.isRequired,
-  navigateToLocation: PropTypes.func.isRequired,
-  router: PropTypes.object,
-  route: PropTypes.object,
-  navigateToTab: PropTypes.func.isRequired,
-  helpContent: PropTypes.node,
-  toolbarRightContent: PropTypes.node,
-};
+const CloseSidebarButtonWithDefault = ({
+  name = "close",
+  ...props
+}: {
+  name?: string;
+  [key: string]: unknown;
+}) => <CloseSidebarButton name={name} {...props} />;
 
 function PermissionsPageLayout({
   children,
@@ -63,22 +63,30 @@ function PermissionsPageLayout({
   isDirty,
   onSave,
   onLoad,
-  saveError,
-  clearSaveError,
   router,
   route,
-  navigateToLocation,
-  navigateToTab,
   toolbarRightContent,
   helpContent,
-}) {
+}: PermissionsPageLayoutProps) {
+  const saveError = useSelector(state => state.admin.permissions.saveError);
+
+  const dispatch = useDispatch();
+
+  const navigateToTab = (tab: PermissionsPageTab) =>
+    dispatch(push(`/admin/permissions/${tab}`));
+  const navigateToLocation = (location: Location) =>
+    dispatch(push(location.pathname));
+  const clearSaveError = () => dispatch(clearPermissionsSaveError());
+
   const [shouldShowHelp, setShouldShowHelp] = useState(false);
+
   const beforeLeaveConfirmation = useLeaveConfirmation({
     router,
     route,
     onConfirm: navigateToLocation,
     isEnabled: isDirty,
   });
+  useBeforeUnload(isDirty);
 
   return (
     <PermissionPageRoot>
@@ -126,7 +134,7 @@ function PermissionsPageLayout({
 
       {shouldShowHelp && (
         <PermissionPageSidebar>
-          <CloseSidebarButton
+          <CloseSidebarButtonWithDefault
             size={20}
             onClick={() => setShouldShowHelp(prev => !prev)}
           />
@@ -137,10 +145,5 @@ function PermissionsPageLayout({
   );
 }
 
-PermissionsPageLayout.propTypes = propTypes;
-
-export default _.compose(
-  connect(mapStateToProps, mapDispatchToProps),
-  fitViewport,
-  withRouter,
-)(PermissionsPageLayout);
+// eslint-disable-next-line import/no-default-export -- deprecated usage
+export default _.compose(fitViewport, withRouter)(PermissionsPageLayout);

@@ -141,8 +141,15 @@ describe("metabase-lib/queries/utils/structured-query-table", () => {
     it("should return a virtual table based on the nested query", () => {
       expect(table?.getPlainObject()).toEqual({
         id: PRODUCTS_ID,
-        display_name: "",
+        db_id: SAMPLE_DB_ID,
         name: "",
+        display_name: "",
+        schema: "",
+        description: null,
+        active: true,
+        visibility_type: null,
+        field_order: "database",
+        initial_sync_status: "complete",
       });
     });
 

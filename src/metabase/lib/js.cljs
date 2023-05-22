@@ -186,14 +186,32 @@
 
 (defn ^:export available-binning-strategies
   "Get a list of available binning strategies for `x` (a field reference, generally) in the context of `a-query` and
-  optionally `stage-number`. The returned list contains opaque objects which should be passed to [[display-info]].
-
-  Returns `nil` if none are available."
+  optionally `stage-number`. The returned list contains opaque objects which should be passed to [[display-info]]."
   ([a-query x]
    (-> (lib.core/available-binning-strategies a-query x)
        to-array))
   ([a-query stage-number x]
-   (-> (available-binning-strategies a-query stage-number x)
+   (-> (lib.core/available-binning-strategies a-query stage-number x)
+       to-array)))
+
+(defn ^:export temporal-bucket
+  "Get the current temporal bucketing options associated with something, if any."
+  [x]
+  (lib.core/temporal-bucket x))
+
+(defn ^:export with-temporal-bucket
+  "Add a temporal bucketing option to an MBQL clause (or something that can be converted to an MBQL clause)."
+  [x bucketing-option]
+  (lib.core/with-temporal-bucket x bucketing-option))
+
+(defn ^:export available-temporal-buckets
+  "Get a list of available temporal bucketing options for `x` (a field reference, generally) in the context of `a-query`
+  and optionally `stage-number`. The returned list contains opaque objects which should be passed to [[display-info]]."
+  ([a-query x]
+   (-> (lib.core/available-temporal-buckets a-query x)
+       to-array))
+  ([a-query stage-number x]
+   (-> (lib.core/available-temporal-buckets a-query stage-number x)
        to-array)))
 
 (defn ^:export remove-clause
@@ -294,3 +312,19 @@
   (let [n    (if (string? n) (keyword n) n)
         unit (if (string? unit) (keyword unit) unit)]
       (lib.core/describe-relative-datetime n unit)))
+
+(defn ^:export available-aggregation-operators
+  "Get the available aggregation operators for the stage with `stage-number` of
+  the query `a-query`.
+  If `stage-number` is omitted, the last stage is used."
+  ([a-query]
+   (available-aggregation-operators a-query -1))
+  ([a-query stage-number]
+   (to-array (lib.core/available-aggregation-operators a-query stage-number))))
+
+(defn ^:export aggregation-operator-columns
+  "Get the columns `aggregation-operator` can be applied to.
+  The columns are valid for the stage of the query that was used in
+  [[available-binning-strategies]] to get `available-aggregation`."
+  [aggregation-operator]
+  (to-array (lib.core/aggregation-operator-columns aggregation-operator)))

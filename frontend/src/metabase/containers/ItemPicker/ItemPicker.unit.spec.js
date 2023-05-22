@@ -2,7 +2,7 @@ import React from "react";
 import userEvent from "@testing-library/user-event";
 import {
   setupCollectionsEndpoints,
-  setupCollectionItemsEndpoint,
+  setupDashboardCollectionItemsEndpoint,
 } from "__support__/server-mocks";
 import {
   renderWithProviders,
@@ -93,7 +93,7 @@ async function setup({
   extraCollections = [],
   ...props
 } = {}) {
-  setupCollectionItemsEndpoint(Object.values(DASHBOARD));
+  setupDashboardCollectionItemsEndpoint(Object.values(DASHBOARD));
   setupCollectionsEndpoints(Object.values(COLLECTION).concat(extraCollections));
 
   const onChange = jest.fn();
