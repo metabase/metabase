@@ -8,7 +8,7 @@ interface Settings {
 }
 
 const defaultProps = {
-  onUpdateVisualizationSettings: (text: string) => {
+  onUpdateVisualizationSettings: ({ text }: { text: string }) => {
     return;
   },
   dashcard: {},
@@ -37,6 +37,6 @@ describe("Text", () => {
 
 function getSettingsWithText(text: string): Settings {
   return {
-    text: text,
+    text,
   };
 }
