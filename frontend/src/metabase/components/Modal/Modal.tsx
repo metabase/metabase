@@ -12,7 +12,7 @@ const Modal = ({
 }: {
   full?: boolean;
   isOpen?: boolean;
-} & (WindowModalProps | FullPageModalProps)) =>
+} & (WindowModalProps & FullPageModalProps)) =>
   full ? (
     props.isOpen ? (
       <RoutelessFullPageModal {...props} />
