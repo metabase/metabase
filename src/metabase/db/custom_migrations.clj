@@ -247,7 +247,8 @@
                                                           [:<> :result_metadata "[]"]]})))))
 
 (defn- remove-opts
-  "Removes the `join-alias`, `temporal-unit`, and `binning` options from the `field_ref` options map. If the map becomes empty, replace it with nil."
+  "Removes the `join-alias`, `temporal-unit`, and `binning` options from the `field_ref` options map.
+   If the map becomes empty, replace it with nil."
   [field_ref & opts-to-remove]
   (match field_ref
     ["field" id opts] ["field" id (not-empty (apply dissoc opts opts-to-remove))]
@@ -256,9 +257,9 @@
 (defn- add-join-alias-to-visualization-field-refs [{:keys [visualization_settings result_metadata]}]
   (let [result_metadata        (json/parse-string result_metadata)
         visualization_settings (json/parse-string visualization_settings)
-                               ;; Previously the FE removed the join-alias from result_metadata field_refs to match against the column_settings keys
-                               ;; Now we do it here to preserve the same behaviour
         column-key->metadata   (group-by #(-> (get % "field_ref")
+                                              ;; like the FE's `getColumnKey` function, remove "join-alias",
+                                              ;; "temporal-unit" and "binning" options from the field_ref
                                               (remove-opts "join-alias" "temporal-unit" "binning"))
                                          result_metadata)]
     (json/generate-string
@@ -269,6 +270,8 @@
                                (match (vec (json/parse-string k))
                                  ["ref" ["field" id opts]]
                                  (for [column-metadata (column-key->metadata ["field" id opts])
+                                       ;; remove "temporal-unit" and "binning" options from the matching field refs,
+                                       ;; but not "join-alias" as before.
                                        :let [field-ref (-> (get column-metadata "field_ref")
                                                            (remove-opts "temporal-unit" "binning"))]]
                                    [(json/generate-string ["ref" field-ref]) v])
