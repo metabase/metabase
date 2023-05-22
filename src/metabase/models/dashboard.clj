@@ -13,6 +13,7 @@
    [metabase.models.dashboard-card
     :as dashboard-card
     :refer [DashboardCard]]
+   [metabase.models.dashboard-tab :as dashboard-tab]
    [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
    [metabase.models.parameter-card :as parameter-card]
@@ -43,7 +44,6 @@
   :model/Dashboard)
 
 (methodical/defmethod t2/table-name :model/Dashboard [_model] :report_dashboard)
-
 
 (doto :model/Dashboard
   (derive :metabase/model)
@@ -183,36 +183,60 @@
   (-> dashboard
       (select-keys [:collection_id :description :name :cache_ttl :auto_apply_filters])
       (assoc :cards (vec (for [dashboard-card (ordered-cards dashboard)]
-                           (-> (select-keys dashboard-card [:size_x :size_y :row :col :id :card_id])
-                               (assoc :series (mapv :id (dashboard-card/series dashboard-card)))))))))
+                           (-> (select-keys dashboard-card [:dashboard_tab_id :size_x :size_y :row :col :id :card_id])
+                               (assoc :series (mapv :id (dashboard-card/series dashboard-card)))))))
+      (assoc :tabs (map #(select-keys % [:id :name :position :dashboard_id]) (ordered-tabs dashboard)))))
+
+(defn- revert-tabs
+  [dashboard-id serialized-tabs]
+  (let  [id->serialized-tab                 (zipmap (map :id serialized-tabs) serialized-tabs)
+         current-tabs                       (t2/select [:model/DashboardTab :id :name :position]
+                                                       :dashboard_id dashboard-id)
+         id->current-tab                    (zipmap (map :id current-tabs) current-tabs)
+         current-tab-ids                    (set (map :id current-tabs))
+         serialized-tab-ids                 (set (map :id serialized-tabs))
+         [delete-ids create-ids update-ids] (diff current-tab-ids serialized-tab-ids)
+         _                                  (when (seq delete-ids) (dashboard-tab/delete-tabs! (seq delete-ids)))
+         to-create-tabs                     (filter #(contains? create-ids (:id %)) serialized-tabs)
+         new-tab-ids                        (when (seq to-create-tabs)
+                                              (t2/insert-returning-pks! :model/DashboardTab to-create-tabs))]
+        (dashboard-tab/update-tabs! (map id->current-tab update-ids) (map id->serialized-tab update-ids))
+   {:old-id->new-id  (zipmap to-create-tabs new-tab-ids)
+    :deleted-tab-ids delete-ids}))
+
+(defn- revert-dashcards
+  [dashboard-id user-id serialized-cards]
+  (let  [id->serialized-card (zipmap (map :id serialized-cards) serialized-cards)
+         current-cards       (t2/select [DashboardCard :id :size_x :size_y :row :col :card_id :dashboard_id]
+                                        :dashboard_id dashboard-id)
+         id->current-card    (zipmap (map :id current-cards) current-cards)
+         current-card-ids    (set (map :id current-cards))
+         serialized-card-ids (set (map :id serialized-cards))
+         [delete-ids create-ids update-ids] (diff current-card-ids serialized-card-ids)]
+    (when (seq delete-ids)
+      (dashboard-card/delete-dashboard-cards! delete-ids))
+    (when (seq create-ids)
+      (dashboard-card/create-dashboard-cards! (->> (filter create-ids serialized-cards)
+                                                   (map #(merge % {:dashboard_id dashboard-id
+                                                                   :creator_id   user-id})))))
+    (when (seq update-ids)
+      (doseq [to-update-id update-ids]
+        (dashboard-card/update-dashboard-card! (id->serialized-card to-update-id) (id->current-card to-update-id))))))
 
 (defmethod revision/revert-to-revision! :model/Dashboard
   [_model dashboard-id user-id serialized-dashboard]
   ;; Update the dashboard description / name / permissions
-  (t2/update! :model/Dashboard dashboard-id, (dissoc serialized-dashboard :cards))
+  (t2/update! :model/Dashboard dashboard-id (dissoc serialized-dashboard :cards :tabs))
   ;; Now update the cards as needed
-  (let [serialized-cards    (:cards serialized-dashboard)
-        id->serialized-card (zipmap (map :id serialized-cards) serialized-cards)
-        current-cards       (t2/select [DashboardCard :size_x :size_y :row :col :id :card_id :dashboard_id]
-                                       :dashboard_id dashboard-id)
-        id->current-card    (zipmap (map :id current-cards) current-cards)
-        all-dashcard-ids    (concat (map :id serialized-cards)
-                                    (map :id current-cards))]
-    (doseq [dashcard-id all-dashcard-ids]
-      (let [serialized-card (id->serialized-card dashcard-id)
-            current-card    (id->current-card dashcard-id)]
-        (cond
-          ;; If card is in current-cards but not serialized-cards then we need to delete it
-          (not serialized-card) (dashboard-card/delete-dashboard-cards! [current-card] dashboard-id user-id)
-
-          ;; If card is in serialized-cards but not current-cards we need to add it
-          (not current-card) (dashboard-card/create-dashboard-cards! [(assoc serialized-card
-                                                                             :dashboard_id dashboard-id
-                                                                             :creator_id   user-id)])
-
-          ;; If card is in both we need to update it to match serialized-card as needed
-          :else (dashboard-card/update-dashboard-card! serialized-card current-card)))))
-
+  (let [serialized-cards         (:cards serialized-dashboard)
+        {:keys [old-id->new-id]} (revert-tabs dashboard-id (:tabs serialized-dashboard))
+        serialized-cards         (cond->> serialized-cards
+                                   (seq old-id->new-id)
+                                   (map (fn [card]
+                                          (if-let [new-tab-id (get old-id->new-id (:dashboard_tab_id card))]
+                                            (assoc card :dashboard_tab_id new-tab-id)
+                                            card))))]
+    (revert-dashcards dashboard-id user-id serialized-cards))
   serialized-dashboard)
 
 (defmethod revision/diff-strings :model/Dashboard
@@ -258,6 +282,27 @@
                     (= prev-card-ids new-card-ids))        (deferred-tru "rearranged the cards")
                :else                                       (deferred-tru "modified the cards"))))
 
+         (when (or (:tabs changes) (:tabs removals))
+           (let [prev-tabs     (:tabs prev-dashboard)
+                 new-tabs      (:tabs dashboard)
+                 prev-tab-ids  (set (map :id prev-tabs))
+                 num-prev-tabs (count prev-tab-ids)
+                 new-tab-ids   (set (map :id new-tabs))
+                 num-new-tabs  (count new-tab-ids)
+                 num-tabs-diff (abs (- num-prev-tabs num-new-tabs))]
+             (cond
+               (and
+                 (set/subset? prev-tab-ids new-tab-ids)
+                 (< num-prev-tabs num-new-tabs))                    (deferred-trun "added a tab" "added {0} tabs" num-tabs-diff)
+
+               (and
+                 (set/subset? new-tab-ids prev-tab-ids)
+                 (> num-prev-tabs num-new-tabs))                    (deferred-trun "removed a tab" "removed {0} tabs" num-tabs-diff)
+
+               (and (= num-prev-tabs num-new-tabs)
+                    (= prev-tab-ids new-tab-ids)
+                    (= (map :name prev-tabs) (map :name new-tabs))) (deferred-tru "rearranged the tabs")
+               :else                                                (deferred-tru "modified the tabs"))))
          (let [f (comp boolean :auto_apply_filters)]
            (when (not= (f prev-dashboard) (f dashboard))
              (deferred-tru "set auto apply filters to {0}" (str (f dashboard)))))]
