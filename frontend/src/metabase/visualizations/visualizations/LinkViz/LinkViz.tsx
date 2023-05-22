@@ -124,7 +124,12 @@ function LinkViz({
 
     return (
       <DisplayLinkCardWrapper>
-        <CardLink to={wrappedEntity.getUrl()} target={target} rel="noreferrer">
+        <CardLink
+          to={wrappedEntity.getUrl()}
+          target={target}
+          rel="noreferrer"
+          role="link"
+        >
           <EntityDisplay entity={wrappedEntity} showDescription />
         </CardLink>
       </DisplayLinkCardWrapper>
