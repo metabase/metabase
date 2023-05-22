@@ -114,7 +114,8 @@
                                                                :pk_ref    pk-ref
                                                                :value_ref value-ref})]
               (is (nil? error))
-              (is (mc/validate [:sequential [:tuple int? string?]] values)
+              ;; oracle returns BigDecimal ids so need `number?` rather than `int?`
+              (is (mc/validate [:sequential [:tuple number? string?]] values)
                   (-> (mc/validate [:sequential [:tuple int? string?]] values)
                       (me/humanize))))))))))
 
