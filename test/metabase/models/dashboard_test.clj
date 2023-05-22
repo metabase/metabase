@@ -4,7 +4,7 @@
    [metabase.api.common :as api]
    [metabase.automagic-dashboards.core :as magic]
    [metabase.models :refer [Card Collection Dashboard DashboardCard DashboardCardSeries
-                            Database Field Pulse PulseCard Table]]
+                            Database Field Pulse PulseCard Revision Table]]
    [metabase.models.collection :as collection]
    [metabase.models.dashboard :as dashboard]
    [metabase.models.dashboard-card :as dashboard-card]
@@ -18,6 +18,7 @@
    [metabase.test.data.users :as test.users]
    [metabase.test.util :as tu]
    [metabase.util :as u]
+   [schema.core :as s]
    [toucan.util.test :as tt]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
@@ -58,139 +59,153 @@
 
 
 (deftest diff-dashboards-str-test
-  (is (= "added a description and renamed it from \"Diff Test\" to \"Diff Test Changed\"."
-         (build-sentence
-           (revision/diff-strings
-             Dashboard
-             {:name        "Diff Test"
-              :description nil
-              :cards       []}
-             {:name        "Diff Test Changed"
-              :description "foobar"
-              :cards       []}))))
+  (testing "update general info ---"
+    (is (= "added a description and renamed it from \"Diff Test\" to \"Diff Test Changed\"."
+           (build-sentence
+             (revision/diff-strings
+               Dashboard
+               {:name        "Diff Test"
+                :description nil
+                :cards       []}
+               {:name        "Diff Test Changed"
+                :description "foobar"
+                :cards       []}))))
 
+    (is (= "renamed it from \"Apple\" to \"Next\" and modified the cards."
+           (build-sentence
+             (revision/diff-strings
+               Dashboard
+               {:name "Apple"
+                :cards [{:id 1} {:id 2}]}
+               {:name "Next"
+                :cards [{:id 1} {:id 3}]}))))
+
+    (is (= "set auto apply filters to false."
+           (build-sentence
+             (revision/diff-strings
+               Dashboard
+               {:name               "Diff Test"
+                :auto_apply_filters true}
+               {:name               "Diff Test"
+                :auto_apply_filters false}))))
+
+    ;; multiple changes
+    (is (= "changed the cache ttl from \"333\" to \"1,227\", rearranged the cards, modified the series on card 1 and added some series to card 2."
+           (build-sentence
+             (revision/diff-strings
+               Dashboard
+               {:name        "Diff Test"
+                :description nil
+                :cache_ttl   333
+                :cards       [{:size_x  4
+                               :size_y  4
+                               :row     0
+                               :col     0
+                               :id      1
+                               :card_id 1
+                               :series  [5 6]}
+                              {:size_x  4
+                               :size_y  4
+                               :row     0
+                               :col     0
+                               :id      2
+                               :card_id 2
+                               :series  []}]}
+               {:name        "Diff Test"
+                :description nil
+                :cache_ttl   1227
+                :cards       [{:size_x  4
+                               :size_y  4
+                               :row     0
+                               :col     0
+                               :id      1
+                               :card_id 1
+                               :series  [4 5]}
+                              {:size_x  4
+                               :size_y  4
+                               :row     2
+                               :col     0
+                               :id      2
+                               :card_id 2
+                               :series  [3 4 5]}]})))))
+
+ (testing "update cards ---"
   (is (= "added a card."
          (build-sentence
            (revision/diff-strings
              Dashboard
-             {:name        "Diff Test"
-              :description nil
-              :cards       []}
-             {:name        "Diff Test"
-              :description nil
-              :cards       [{:size_x  4
-                             :size_y  4
-                             :row     0
-                             :col     0
-                             :id      1
-                             :card_id 1
-                             :series  []}]}))))
+             {:cards [{:id 1} {:id 2}]}
+             {:cards [{:id 1} {:id 2} {:id 3}]}))))
 
-  (is (= "set auto apply filters to false."
+  (is (= "removed a card."
          (build-sentence
            (revision/diff-strings
              Dashboard
-             {:name               "Diff Test"
-              :auto_apply_filters true}
-             {:name               "Diff Test"
-              :auto_apply_filters false}))))
+             {:cards [{:id 1} {:id 2}]}
+             {:cards [{:id 1}]}))))
 
-  (is (= "changed the cache ttl from \"333\" to \"1,227\", rearranged the cards, modified the series on card 1 and added some series to card 2."
+  (is (= "rearranged the cards."
          (build-sentence
            (revision/diff-strings
              Dashboard
-             {:name        "Diff Test"
-              :description nil
-              :cache_ttl   333
-              :cards       [{:size_x  4
-                             :size_y  4
-                             :row     0
-                             :col     0
-                             :id      1
-                             :card_id 1
-                             :series  [5 6]}
-                            {:size_x  4
-                             :size_y  4
-                             :row     0
-                             :col     0
-                             :id      2
-                             :card_id 2
-                             :series  []}]}
-             {:name        "Diff Test"
-              :description nil
-              :cache_ttl   1227
-              :cards       [{:size_x  4
-                             :size_y  4
-                             :row     0
-                             :col     0
-                             :id      1
-                             :card_id 1
-                             :series  [4 5]}
-                            {:size_x  4
-                             :size_y  4
-                             :row     2
-                             :col     0
-                             :id      2
-                             :card_id 2
-                             :series  [3 4 5]}]}))))
+             {:cards [{:id 1 :row 0} {:id 2 :row 1}]}
+             {:cards [{:id 1 :row 1} {:id 2 :row 2}]}))))
 
- (is (= "added a card."
-        (build-sentence
-          (revision/diff-strings
-            Dashboard
-            {:cards [{:id 1} {:id 2}]}
-            {:cards [{:id 1} {:id 2} {:id 3}]}))))
+  (is (= "modified the cards."
+         (build-sentence
+           (revision/diff-strings
+             Dashboard
+             {:cards [{:id 1} {:id 2}]}
+             {:cards [{:id 1} {:id 3}]})))))
 
- (is (= "removed a card."
-        (build-sentence
-          (revision/diff-strings
-            Dashboard
-            {:cards [{:id 1} {:id 2}]}
-            {:cards [{:id 1}]}))))
+ (testing "update collection ---"
+  (t2.with-temp/with-temp
+    [Collection {coll-id :id} {:name "New collection"}]
+    (is (= "moved this Dashboard to New collection."
+           (build-sentence
+             (revision/diff-strings
+               Dashboard
+               {:name "Apple"}
+               {:name          "Apple"
+                :collection_id coll-id})))))
+  (t2.with-temp/with-temp
+    [Collection {coll-id-1 :id} {:name "Old collection"}
+     Collection {coll-id-2 :id} {:name "New collection"}]
+    (is (= "moved this Dashboard from Old collection to New collection."
+           (build-sentence
+             (revision/diff-strings
+               Dashboard
+               {:name          "Apple"
+                :collection_id coll-id-1}
+               {:name          "Apple"
+                :collection_id coll-id-2}))))))
 
- (is (= "rearranged the cards."
-        (build-sentence
-          (revision/diff-strings
-            Dashboard
-            {:cards [{:id 1 :row 0} {:id 2 :row 1}]}
-            {:cards [{:id 1 :row 1} {:id 2 :row 2}]}))))
-
- (is (= "modified the cards."
-        (build-sentence
-          (revision/diff-strings
-            Dashboard
-            {:cards [{:id 1} {:id 2}]}
-            {:cards [{:id 1} {:id 3}]}))))
-
- (is (= "renamed it from \"Apple\" to \"Next\" and modified the cards."
-        (build-sentence
-          (revision/diff-strings
-            Dashboard
-            {:name "Apple"
-             :cards [{:id 1} {:id 2}]}
-            {:name "Next"
-             :cards [{:id 1} {:id 3}]}))))
- (t2.with-temp/with-temp
-   [Collection {coll-id :id} {:name "New collection"}]
-   (is (= "moved this Dashboard to New collection."
+ (testing "update tabs"
+   (is (= "added a tab."
           (build-sentence
             (revision/diff-strings
               Dashboard
-              {:name "Apple"}
-              {:name          "Apple"
-               :collection_id coll-id})))))
- (t2.with-temp/with-temp
-   [Collection {coll-id-1 :id} {:name "Old collection"}
-    Collection {coll-id-2 :id} {:name "New collection"}]
-   (is (= "moved this Dashboard from Old collection to New collection."
+              {:tabs [{:id 0 :name "First tab" :position 0}]}
+              {:tabs [{:id 0 :name "First tab" :position 0}
+                      {:id 1 :name "Second tab" :position 1}]}))))
+
+   (is (= "removed 2 tabs."
           (build-sentence
             (revision/diff-strings
               Dashboard
-              {:name          "Apple"
-               :collection_id coll-id-1}
-              {:name          "Apple"
-               :collection_id coll-id-2}))))))
+              {:tabs [{:id 0 :name "First tab" :position 0}
+                      {:id 1 :name "Second tab" :position 1}
+                      {:id 2 :name "Third tab" :position 2}]}
+              {:tabs [{:id 0 :name "First tab" :position 0}]}))))
 
+   (is (= "rearranged the tabs."
+          (build-sentence
+            (revision/diff-strings
+              Dashboard
+              {:tabs [{:id 0 :name "First tab" :position 0}
+                      {:id 1 :name "Second tab" :position 1}]}
+              {:tabs [{:id 1 :name "First tab" :position 0}
+                      {:id 0 :name "Second tab" :position 1}]}))))))
 
 (deftest revert-dashboard!-test
   (tt/with-temp* [Dashboard           [{dashboard-id :id, :as dashboard}    {:name "Test Dashboard"}]
@@ -256,6 +271,213 @@
         (revision/revert-to-revision! Dashboard dashboard-id (test.users/user->id :crowberto) empty-dashboard)
         (is (= empty-dashboard
                (revision/serialize-instance Dashboard dashboard-id (t2/select-one Dashboard :id dashboard-id))))))))
+
+(defn- create-dashboard-revision!
+  "Fetch the latest version of a Dashboard and save a revision entry for it. Returns the fetched Dashboard."
+  [dash-id is-creation?]
+  (revision/push-revision!
+   :object       (t2/select-one Dashboard :id dash-id)
+   :entity       Dashboard
+   :id           dash-id
+   :user-id      (mt/user->id :crowberto)
+   :is-creation? is-creation?))
+
+(defn- revert-to-previous-revision
+  "Revert to a previous revision for a model.
+  `n` is the number of revisions to revert back to.
+  `n=1` means do nothing (i.e. revert to the current revision).
+
+  To revert 1 action, you should have n=2."
+  [model model-id n]
+  (assert (> n 1), "n = 1 means revert to the current revision, which is a no-op.")
+  (let [ids (t2/select-pks-vec Revision :model (name model) :model_id model-id {:order-by [[:timestamp :desc]]
+                                                                                :limit    n})]
+   (assert (= n (count ids)), "There are less revisions than required to revert")
+   (revision/revert! :entity model :id model-id :user-id (mt/user->id :crowberto) :revision-id (last ids))))
+
+(deftest revert-dashboard-with-tabs-basic-test
+  (testing "revert adding tabs"
+    (t2.with-temp/with-temp [:model/Dashboard {dashboard-id :id} {:name "A dashboard"}]
+      ;; 0. create a dashboard
+      (create-dashboard-revision! dashboard-id true)
+
+
+      ;; 1. add 2 tabs
+      (let [[tab-1-id tab-2-id] (t2/insert-returning-pks! :model/DashboardTab [{:name         "Tab 1"
+                                                                                :position     0
+                                                                                :dashboard_id dashboard-id}
+                                                                               {:name         "Tab 2"
+                                                                                :position     1
+                                                                                :dashboard_id dashboard-id}])
+            _                   (create-dashboard-revision! dashboard-id false)
+
+            ;; 2. add another tab for revision
+            tab-3-id            (first (t2/insert-returning-pks! :model/DashboardTab [{:name         "Tab 3"
+                                                                                       :position     2
+                                                                                       :dashboard_id dashboard-id}]))]
+        (create-dashboard-revision! dashboard-id false)
+
+        ;; check to make sure we have everything setup before testing
+        (is (=? [{:id tab-1-id :name "Tab 1" :position 0}
+                 {:id tab-2-id :name "Tab 2" :position 1}
+                 {:id tab-3-id :name "Tab 3" :position 2}]
+                (t2/select :model/DashboardTab :dashboard_id dashboard-id {:order-by [[:position :asc]]})))
+        ;; revert
+        (revert-to-previous-revision Dashboard dashboard-id 2)
+        (testing "should works"
+          (is (=? [{:id tab-1-id :name "Tab 1" :position 0}
+                   {:id tab-2-id :name "Tab 2" :position 1}]
+                  (t2/select :model/DashboardTab :dashboard_id dashboard-id {:order-by [[:position :asc]]})))))))
+
+  (testing "revert renaming tabs"
+    (t2.with-temp/with-temp [:model/Dashboard {dashboard-id :id} {:name "A dashboard"}]
+      ;; 0. create a dashboard
+      (create-dashboard-revision! dashboard-id true)
+
+
+      ;; 1. add 2 tabs
+      (let [[tab-1-id tab-2-id] (t2/insert-returning-pks! :model/DashboardTab [{:name         "Tab 1"
+                                                                                :position     0
+                                                                                :dashboard_id dashboard-id}
+                                                                               {:name         "Tab 2"
+                                                                                :position     1
+                                                                                :dashboard_id dashboard-id}])]
+        (create-dashboard-revision! dashboard-id false)
+
+        ;; 2. update a tab name
+        (t2/update! :model/DashboardTab tab-1-id {:name "Tab 1 with new name"})
+        (create-dashboard-revision! dashboard-id false)
+
+        ;; check to make sure we have everything setup before testing
+        (is (=? [{:id tab-1-id :name "Tab 1 with new name" :position 0}
+                 {:id tab-2-id :name "Tab 2" :position 1}]
+                (t2/select :model/DashboardTab :dashboard_id dashboard-id {:order-by [[:position :asc]]})))
+        ;; revert
+        (revert-to-previous-revision Dashboard dashboard-id 2)
+        (testing "should works"
+          (is (=? [{:id tab-1-id :name "Tab 1" :position 0}
+                   {:id tab-2-id :name "Tab 2" :position 1}]
+                  (t2/select :model/DashboardTab :dashboard_id dashboard-id {:order-by [[:position :asc]]})))))))
+
+ (testing "revert deleting tabs"
+   (t2.with-temp/with-temp [:model/Dashboard {dashboard-id :id} {:name "A dashboard"}]
+     ;; 0. create a dashboard
+     (create-dashboard-revision! dashboard-id true)
+
+
+     ;; 1. add 2 tabs
+     (let [[tab-1-id tab-2-id] (t2/insert-returning-pks! :model/DashboardTab [{:name         "Tab 1"
+                                                                               :position     0
+                                                                               :dashboard_id dashboard-id}
+                                                                              {:name         "Tab 2"
+                                                                               :position     1
+                                                                               :dashboard_id dashboard-id}])]
+       (create-dashboard-revision! dashboard-id false)
+
+       ;; 2. delete the 1st tab and re-position the second tab
+       (t2/delete! :model/DashboardTab tab-1-id)
+       (t2/update! :model/DashboardTab tab-2-id {:position 0})
+       (create-dashboard-revision! dashboard-id false)
+
+       ;; check to make sure we have everything setup before testing
+       (is (=? [{:id tab-2-id :name "Tab 2" :position 0}]
+               (t2/select :model/DashboardTab :dashboard_id dashboard-id {:order-by [[:position :asc]]})))
+       ;; revert
+       (revert-to-previous-revision Dashboard dashboard-id 2)
+       (testing "should works"
+         (is (=? [{:id #hawk/schema (s/pred pos-int?) :name "Tab 1" :position 0}
+                  {:id tab-2-id :name "Tab 2" :position 1}]
+                 (t2/select :model/DashboardTab :dashboard_id dashboard-id {:order-by [[:position :asc]]}))))))))
+
+(deftest revert-dashboard-with-tabs-advanced-test
+  (t2.with-temp/with-temp [:model/Dashboard {dashboard-id :id} {:name "A dashboard"}]
+    ;; 0. create a dashboard
+    (create-dashboard-revision! dashboard-id true)
+
+    ;; 1. add 2 tabs, each with 2 cards
+    (let [[tab-1-id tab-2-id] (t2/insert-returning-pks! :model/DashboardTab [{:name         "Tab 1"
+                                                                              :position     0
+                                                                              :dashboard_id dashboard-id}
+                                                                             {:name         "Tab 2"
+                                                                              :position     1
+                                                                              :dashboard_id dashboard-id}])
+          [card-1-tab-1 card-2-tab-1] (t2/insert-returning-pks! :model/DashboardCard
+                                                                [{:dashboard_id     dashboard-id
+                                                                  :dashboard_tab_id tab-1-id
+                                                                  :row              0
+                                                                  :col              0
+                                                                  :size_x           4
+                                                                  :size_y           4}
+                                                                 {:dashboard_id     dashboard-id
+                                                                  :dashboard_tab_id tab-1-id
+                                                                  :row              4
+                                                                  :col              4
+                                                                  :size_x           4
+                                                                  :size_y           4}
+                                                                 {:dashboard_id     dashboard-id
+                                                                  :dashboard_tab_id tab-2-id
+                                                                  :row              0
+                                                                  :col              0
+                                                                  :size_x           4
+                                                                  :size_y           4}
+                                                                 {:dashboard_id     dashboard-id
+                                                                  :dashboard_tab_id tab-2-id
+                                                                  :row              4
+                                                                  :col              4
+                                                                  :size_x           4
+                                                                  :size_y           4}])]
+      (create-dashboard-revision! dashboard-id false)
+
+      ;; 2.a: tab 1: delete the 2nd card, add 2 cards and update position of one card,
+      (t2/insert! :model/DashboardCard [{:dashboard_id     dashboard-id
+                                         :dashboard_tab_id tab-1-id
+                                         :row              0
+                                         :col              0
+                                         :size_x           4
+                                         :size_y           4}
+                                        {:dashboard_id     dashboard-id
+                                         :dashboard_tab_id tab-1-id
+                                         :row              0
+                                         :col              0
+                                         :size_x           4
+                                         :size_y           4}])
+      (t2/delete! :model/DashboardCard card-2-tab-1)
+      (t2/update! :model/DashboardCard card-1-tab-1 {:row 10 :col 10})
+
+      ;; 2.b: delete tab 2
+      (t2/delete! :model/DashboardTab tab-2-id)
+
+      ;; 2.c: create a new tab with 1 card
+      (let [new-tab-id (t2/insert-returning-pks! :model/DashboardTab {:name         "Tab 3"
+                                                                      :position     1
+                                                                      :dashboard_id dashboard-id})]
+        (t2/insert! :model/DashboardCard {:dashboard_id     dashboard-id
+                                          :dashboard_tab_id new-tab-id
+                                          :row              0
+                                          :col              0
+                                          :size_x           4
+                                          :size_y           4}))
+      (create-dashboard-revision! dashboard-id false)
+
+     ;; revert
+     (revert-to-previous-revision Dashboard dashboard-id 2)
+     (testing "should works"
+       (testing "tab 1 should have 2 cards"
+         (is (= 2 (t2/count :model/DashboardCard :dashboard_tab_id tab-1-id)))
+         (testing "and position of first card is (0,0)"
+           (is (=? {:row 0
+                    :col 0}
+                   (t2/select-one :model/DashboardCard card-1-tab-1)))))
+
+       (testing "tab \"Tab 2\" is restored"
+         (let [new-tab-2 (t2/select-one :model/DashboardTab :dashboard_id dashboard-id :name "Tab 2")]
+          (is (= 1 (:position new-tab-2)))
+
+          (testing "with its cards"
+            (is (= 2 (t2/count :model/DashboardCard :dashboard_id dashboard-id :dashboard_tab_id (:id new-tab-2)))))))
+
+       (testing "there are no \"Tab 3\""
+         (is (false? (t2/exists? :model/DashboardTab :dashboard_id dashboard-id :name "Tab 3"))))))))
 
 (deftest public-sharing-test
   (testing "test that a Dashboard's :public_uuid comes back if public sharing is enabled..."

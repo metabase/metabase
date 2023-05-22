@@ -696,7 +696,7 @@
                                                     (if-let [real-tab-id (get temp->real-tab-ids (:dashboard_tab_id card))]
                                                       (assoc card :dashboard_tab_id real-tab-id)
                                                       card))))
-                update-dashcards-stats      (do-update-dashcards! dashboard current-cards new-cards)]
+                update-dashcards-stats     (do-update-dashcards! dashboard current-cards new-cards)]
             (reset! update-stats
                     (merge
                       (select-keys update-tabs-stats [:created-tab-ids :updated-tab-ids :deleted-tab-ids])

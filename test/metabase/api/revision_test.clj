@@ -361,35 +361,3 @@
                  (map #(select-keys % [:description :has_multiple_changes])
                       (mt/user-http-request :crowberto :get 200 "revision" :entity "card" :id card-id))))
           (t2/delete! :model/Card :id card-id))))))
-
-(deftest revert-does-not-create-new-revision
-  (testing "revert a dashboard that previously added cards should not create new revision(#30869)"
-    (t2.with-temp/with-temp
-      [Dashboard  {dashboard-id :id} {:name "A dashboard"}]
-      ;; 0. create the dashboard
-      (create-dashboard-revision! dashboard-id true :crowberto)
-
-      ;; 1. add 2 cards
-      (let [dashcard-ids (t2/insert-returning-pks! DashboardCard [{:dashboard_id dashboard-id
-                                                                   :size_x       4
-                                                                   :size_y       4
-                                                                   :col          1
-                                                                   :row          1}
-                                                                  {:dashboard_id dashboard-id
-                                                                   :size_x       4
-                                                                   :size_y       4
-                                                                   :col          1
-                                                                   :row          1}])]
-        (create-dashboard-revision! dashboard-id false :crowberto))
-
-      (let [earlier-revision-id (t2/select-one-pk Revision :model "Dashboard" :model_id dashboard-id {:order-by [[:timestamp :desc]]})]
-        (revision/revert! :entity Dashboard :id dashboard-id :user-id (mt/user->id :crowberto) :revision-id earlier-revision-id))
-
-      (is (= [{:description          "reverted to an earlier version."
-               :has_multiple_changes false}
-              {:description          "added 2 cards."
-               :has_multiple_changes false}
-              {:description          "created this."
-               :has_multiple_changes false}]
-             (map #(select-keys % [:description :has_multiple_changes])
-                  (mt/user-http-request :crowberto :get 200 "revision" :entity "dashboard" :id dashboard-id)))))))

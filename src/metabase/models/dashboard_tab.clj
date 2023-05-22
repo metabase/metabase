@@ -78,8 +78,6 @@
 
 ;;; -------------------------------------------------- CRUD fns ------------------------------------------------------
 
-
-
 (mu/defn update-tabs! :- nil?
   "Updates tabs of a dashboard if changed."
   [current-tabs :- [:sequential [:map [:id ms/PositiveInt]]]
