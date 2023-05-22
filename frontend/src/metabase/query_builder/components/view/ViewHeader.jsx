@@ -5,7 +5,7 @@ import cx from "classnames";
 import { usePrevious, useMount } from "react-use";
 
 import * as Urls from "metabase/lib/urls";
-import { useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
 import MetabaseSettings from "metabase/lib/settings";
 import { useToggle } from "metabase/hooks/use-toggle";
@@ -15,6 +15,7 @@ import Tooltip from "metabase/core/components/Tooltip";
 import ViewButton from "metabase/query_builder/components/view/ViewButton";
 import SavedQuestionHeaderButton from "metabase/query_builder/components/SavedQuestionHeaderButton/SavedQuestionHeaderButton";
 
+import { navigateToDashboard } from "metabase/query_builder/actions";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import { getDashboard } from "metabase/query_builder/selectors";
 import RunButtonWithTooltip from "../RunButtonWithTooltip";
@@ -163,6 +164,12 @@ export function ViewTitleHeader(props) {
 
 function DashboardBackButton() {
   const dashboard = useSelector(getDashboard);
+  const dispatch = useDispatch();
+
+  const handleClick = () => {
+    dispatch(navigateToDashboard(dashboard.id));
+  };
+
   if (!dashboard) {
     return null;
   }
@@ -178,6 +185,7 @@ function DashboardBackButton() {
           round
           icon="arrow_left"
           aria-label={label}
+          onClick={handleClick}
         />
       </BackButtonContainer>
     </Tooltip>
