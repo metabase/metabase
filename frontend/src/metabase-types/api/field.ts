@@ -66,7 +66,7 @@ export type FieldDimensionOption = {
   type: string;
 };
 
-export interface ConcreteField {
+export interface Field {
   id: FieldId | FieldReference;
   table_id: TableId;
   table?: Table;
@@ -118,10 +118,6 @@ export interface FieldValues {
   values: FieldValue[];
   has_more_values: boolean;
 }
-
-export type Field = Omit<ConcreteField, "id"> & {
-  id?: FieldId | FieldReference;
-};
 
 export interface FieldFormattingSettings {
   currency?: string;
