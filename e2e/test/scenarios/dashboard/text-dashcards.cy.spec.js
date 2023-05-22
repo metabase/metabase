@@ -159,12 +159,11 @@ describe("scenarios > dashboard > text and headings", () => {
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Save").click();
 
-        cy.wait("@dashboardUpdated");
-
         // The test fails if there is no scroll bar
         cy.get(".text-card-markdown")
-          .should("haHighlights.visible")
-          .and("have.length", 2);
+          .should("have.css", "overflow-x", "hidden")
+          .should("have.css", "overflow-y", "auto")
+          .scrollTo("bottom");
       });
     });
 
