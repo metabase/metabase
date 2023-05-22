@@ -75,14 +75,32 @@ describe("scenarios > dashboard > text and headings", () => {
           });
       });
 
-      it("should auto-edit on hover/focus and auto-preview when not focused and not hovered", () => {
+      it("should auto-edit on focus", () => {
+        getDashboardCard(1)
+          .realHover()
+          .within(() => {
+            cy.get("textarea").click();
+          });
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.findByText("You're editing this dashboard.").realHover();
+
+        getDashboardCard(1).within(() => {
+          cy.get("textarea").should("have.value", "Text *text* __text__");
+        });
+      });
+
+      it("should auto-edit on hover", () => {
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.findByText("You're editing this dashboard.").realHover().click();
+
         getDashboardCard(1)
           .realHover()
           .within(() => {
             cy.get("textarea").should("have.value", "Text *text* __text__");
           });
+      });
 
-        // remove hover and focus from heading card
+      it("should auto-preview when not focused and not hovered", () => {
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("You're editing this dashboard.").realHover().click();
 
@@ -194,14 +212,31 @@ describe("scenarios > dashboard > text and headings", () => {
           });
       });
 
-      it("should auto-edit on hover/focus and auto-preview when not focused and not hovered", () => {
+      it("should auto-edit on focus", () => {
+        getDashboardCard(1)
+          .realHover()
+          .within(() => {
+            cy.get("input").click();
+          });
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.findByText("You're editing this dashboard.").realHover();
+
+        getDashboardCard(1).within(() => {
+          cy.get("input").should("have.value", "Example Heading");
+        });
+      });
+
+      it("should auto-edit on hover", () => {
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.findByText("You're editing this dashboard.").realHover().click();
         getDashboardCard(1)
           .realHover()
           .within(() => {
             cy.get("input").should("have.value", "Example Heading");
           });
+      });
 
-        // remove hover and focus from heading card
+      it("should auto-preview when not focused and not hovered", () => {
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("You're editing this dashboard.").realHover().click();
 
