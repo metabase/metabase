@@ -62,7 +62,7 @@ function Item({
       data-testid="item-picker-item"
     >
       <ItemContent>
-        <Icon size={22} {...iconProps} color={selected ? "white" : color} />
+        <Icon {...iconProps} />
         <ItemTitle>{name}</ItemTitle>
         {hasChildren && (
           <ExpandButton
