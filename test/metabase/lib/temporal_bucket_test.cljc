@@ -1,7 +1,10 @@
 (ns metabase.lib.temporal-bucket-test
   (:require
    [clojure.test :refer [are deftest is testing]]
-   [metabase.lib.temporal-bucket :as lib.temporal-bucket]))
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.temporal-bucket :as lib.temporal-bucket]
+   [metabase.lib.test-metadata :as meta]))
 
 (deftest ^:parallel describe-temporal-interval-test
   (doseq [unit [:day nil]]
@@ -127,3 +130,26 @@
                    (into #{} (map :unit) options)))
             (is (= (assoc-in expected-defaults [0 :unit] unit)
                    (filter :default options)))))))))
+
+(deftest ^:parallel temporal-bucketing-options-test
+  (let [query (-> (lib/query-for-table-name meta/metadata-provider "PRODUCTS")
+                  (lib/with-fields [(lib/field "PRODUCTS" "CREATED_AT")]))]
+    (is (= [{:unit :minute}
+            {:unit :hour}
+            {:unit :day}
+            {:unit :week}
+            {:unit :month, :default true}
+            {:unit :quarter}
+            {:unit :year}
+            {:unit :minute-of-hour}
+            {:unit :hour-of-day}
+            {:unit :day-of-week}
+            {:unit :day-of-month}
+            {:unit :day-of-year}
+            {:unit :week-of-year}
+            {:unit :month-of-year}
+            {:unit :quarter-of-year}]
+           (->> (lib.metadata.calculation/metadata query)
+                first
+                (lib/available-temporal-buckets query)
+                (mapv #(select-keys % [:unit :default])))))))

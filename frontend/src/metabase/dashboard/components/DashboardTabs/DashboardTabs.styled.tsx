@@ -1,7 +1,8 @@
 import React from "react";
 import styled from "@emotion/styled";
 
-import BaseTabButton, {
+import {
+  TabButton as BaseTabButton,
   RenameableTabButtonProps,
 } from "metabase/core/components/TabButton";
 import BaseButton from "metabase/core/components/Button";

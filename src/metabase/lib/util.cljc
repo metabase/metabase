@@ -34,7 +34,9 @@
    :cljs
    (def format "Exactly like [[clojure.core/format]] but ClojureScript-friendly." gstring/format))
 
-(defn- clause? [clause]
+(defn clause?
+  "Returns true if this is a clause."
+  [clause]
   (and (vector? clause)
        (> (count clause) 1)
        (keyword? (first clause))
@@ -56,11 +58,14 @@
   (m/update-existing-in
     stage
     location
-    #(->> (for [clause %]
-            (if (= (clause-uuid clause) (clause-uuid target-clause))
-              new-clause
-              clause))
-          vec)))
+    (fn [clause-or-clauses]
+      (if (= :expressions (first location))
+        new-clause
+        (->> (for [clause clause-or-clauses]
+               (if (= (clause-uuid clause) (clause-uuid target-clause))
+                 new-clause
+                 clause))
+             vec)))))
 
 (defn remove-clause
   "Remove the `target-clause` in `stage` `location`.
@@ -71,15 +76,23 @@
   {:pre [(clause? target-clause)]}
   (if-let [target (get-in stage location)]
     (let [target-uuid (clause-uuid target-clause)
-          result (into [] (remove (comp #{target-uuid} clause-uuid)) target)]
-      (if (seq result)
+          [first-loc last-loc] [(first location) (last location)]
+          result (if (= :expressions first-loc)
+                   nil
+                   (into [] (remove (comp #{target-uuid} clause-uuid)) target))]
+      (cond
+        (seq result)
         (assoc-in stage location result)
-        (if (= 1 (count location))
-          (dissoc stage (first location))
-          (case [(first location) (last location)]
-            [:joins :conditions] (throw (ex-info (i18n/tru "Cannot remove the final join condition")
-                                                 {:conditions (get-in stage location)}))
-            [:joins :fields] (update-in stage (pop location) dissoc (peek location))))))
+
+        (= [:joins :conditions] [first-loc last-loc])
+        (throw (ex-info (i18n/tru "Cannot remove the final join condition")
+                        {:conditions (get-in stage location)}))
+
+        (= [:joins :fields] [first-loc last-loc])
+        (update-in stage (pop location) dissoc last-loc)
+
+        :else
+        (m/dissoc-in stage location)))
     stage))
 
 ;;; TODO -- all of this `->pipeline` stuff should probably be merged into [[metabase.lib.convert]] at some point in

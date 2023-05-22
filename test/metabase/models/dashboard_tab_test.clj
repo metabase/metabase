@@ -87,3 +87,34 @@
       (is (=? {:ordered_tabs [{:id (:id dashtab-1) :position 0 :dashboard_id (:id dashboard)}
                               {:id (:id dashtab-2) :position 1 :dashboard_id (:id dashboard)}]}
               (t2/hydrate dashboard :ordered_tabs))))))
+
+(deftest hydrate-ordered-tabs-card-test
+  (t2.with-temp/with-temp
+    [:model/Dashboard    {dashboard-id :id}    {}
+     :model/DashboardTab {tab-2-id :id}        {:name         "Tab 2"
+                                                :dashboard_id dashboard-id
+                                                :position     1}
+     :model/DashboardTab {tab-1-id :id}        {:name         "Tab 1"
+                                                :dashboard_id dashboard-id
+                                                :position     0}
+     :model/DashboardCard {dash-2-tab1-id :id} {:dashboard_id     dashboard-id
+                                                :row             0
+                                                :col             1
+                                                :dashboard_tab_id tab-1-id}
+     :model/DashboardCard {dash-1-tab1-id :id} {:dashboard_id     dashboard-id
+                                                :row             0
+                                                :col             0
+                                                :dashboard_tab_id tab-1-id}
+     :model/DashboardCard {dash-2-tab2-id :id} {:dashboard_id     dashboard-id
+                                                :row             1
+                                                :dashboard_tab_id tab-2-id}
+     :model/DashboardCard {dash-1-tab2-id :id} {:dashboard_id     dashboard-id
+                                                :row             0
+                                                :dashboard_tab_id tab-2-id}]
+    (is (=? [{:id    tab-1-id
+              :cards [{:id dash-1-tab1-id}
+                      {:id dash-2-tab1-id}]}
+             {:id    tab-2-id
+              :cards [{:id dash-1-tab2-id}
+                      {:id dash-2-tab2-id}]}]
+            (t2/hydrate (t2/select :model/DashboardTab :dashboard_id dashboard-id) :ordered-tab-cards)))))

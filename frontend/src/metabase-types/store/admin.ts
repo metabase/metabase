@@ -21,6 +21,7 @@ export interface AdminState {
   permissions: {
     dataPermissions: GroupsPermissions;
     originalDataPermissions: GroupsPermissions;
+    saveError?: string;
   };
   settings: {
     settings: SettingDefinition[];

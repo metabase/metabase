@@ -216,7 +216,7 @@ describe("binning related reproductions", () => {
       });
     // // this step is maybe redundant since it fails to even find "by month"
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Hour of Day");
+    cy.findByText("Hour of day");
   });
 
   it("shouldn't duplicate the breakout field (metabase#22382)", () => {

@@ -226,7 +226,7 @@ export const getTableMetadata = createSelector(
 
 export const getTableForeignKeys = createSelector(
   [getTableMetadata],
-  table => table && table.fks,
+  table => table?.fks ?? [],
 );
 
 export const getSampleDatabaseId = createSelector(

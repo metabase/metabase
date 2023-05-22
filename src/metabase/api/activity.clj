@@ -85,8 +85,7 @@
                                 (or (existing-dataset? (:card_id dashcard))
                                     (existing-card? (:card_id dashcard))))))))))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/"
+(api/defendpoint GET "/"
   "Get recent activity."
   []
   (filter mi/can-read? (-> (t2/select Activity, {:order-by [[:timestamp :desc]], :limit 40})
@@ -265,8 +264,7 @@
       (let [groups (group-by :model items)]
         (mapcat #(get groups %) model-precedence))))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema GET "/popular_items"
+(api/defendpoint GET "/popular_items"
   "Get the list of 5 popular things for the current user. Query takes 8 and limits to 5 so that if it
   finds anything archived, deleted, etc it can hopefully still get 5."
   []
