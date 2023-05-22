@@ -102,9 +102,10 @@
   multiple values."
   [tag :- mbql.s/TemplateTag params :- (s/maybe [mbql.s/Parameter])]
   (let [matching-params  (tag-params tag params)
+        tag-opts         (:options tag)
         normalize-params (fn [params]
                            ;; remove `:target` which is no longer needed after this point.
-                           (let [params (map #(dissoc % :target) params)]
+                           (let [params (map #(merge {:options tag-opts} (dissoc % :target)) params)]
                              (if (= (count params) 1)
                                (first params)
                                params)))]
@@ -116,7 +117,7 @@
      ;; otherwise, attempt to fall back to the default value specified as part of the template tag.
      (when-let [tag-default (:default tag)]
        {:type    (:widget-type tag :dimension) ; widget-type is the actual type of the default value if set
-        :options (:options tag)
+        :options tag-opts
         :value   tag-default})
      ;; if that doesn't exist, see if the matching parameters specified default values This can be the case if the
      ;; parameters came from a Dashboard -- Dashboard parameter mappings can specify their own defaults -- but we want
