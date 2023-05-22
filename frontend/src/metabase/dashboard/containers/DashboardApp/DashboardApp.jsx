@@ -4,8 +4,8 @@ import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import _ from "underscore";
 import { useUnmount } from "react-use";
-
 import { t } from "ttag";
+import useBeforeUnload from "metabase/hooks/use-before-unload";
 
 import title from "metabase/hoc/Title";
 import favicon from "metabase/hoc/Favicon";
@@ -17,12 +17,12 @@ import { useLoadingTimer } from "metabase/hooks/use-loading-timer";
 import { useWebNotification } from "metabase/hooks/use-web-notification";
 
 import { fetchDatabaseMetadata } from "metabase/redux/metadata";
-import { getIsNavbarOpen, closeNavbar, setErrorPage } from "metabase/redux/app";
+import { closeNavbar, getIsNavbarOpen, setErrorPage } from "metabase/redux/app";
 
 import { getMetadata } from "metabase/selectors/metadata";
 import {
-  getUserIsAdmin,
   canManageSubscriptions,
+  getUserIsAdmin,
 } from "metabase/selectors/user";
 
 import { getEmbedOptions } from "metabase/selectors/embed";
@@ -37,28 +37,28 @@ import { addUndo, dismissUndo } from "metabase/redux/undo";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
 import * as dashboardActions from "../../actions";
 import {
-  getIsEditing,
-  getIsSharing,
-  getDashboardBeforeEditing,
-  getIsEditingParameter,
-  getIsDirty,
-  getDashboardComplete,
   getCardData,
-  getSlowCards,
+  getClickBehaviorSidebarDashcard,
+  getDashboardBeforeEditing,
+  getDashboardComplete,
+  getDocumentTitle,
   getEditingParameter,
+  getFavicon,
+  getIsAdditionalInfoVisible,
+  getIsAddParameterPopoverOpen,
+  getIsDirty,
+  getIsEditing,
+  getIsEditingParameter,
+  getIsHeaderVisible,
+  getIsLoadingComplete,
+  getIsRunning,
+  getIsSharing,
+  getLoadingStartTime,
   getParameters,
   getParameterValues,
   getDraftParameterValues,
-  getLoadingStartTime,
-  getClickBehaviorSidebarDashcard,
-  getIsAddParameterPopoverOpen,
   getSidebar,
-  getFavicon,
-  getDocumentTitle,
-  getIsRunning,
-  getIsLoadingComplete,
-  getIsHeaderVisible,
-  getIsAdditionalInfoVisible,
+  getSlowCards,
   getIsAutoApplyFilters,
   getSelectedTabId,
 } from "../../selectors";
@@ -119,7 +119,14 @@ const mapDispatchToProps = {
 
 // NOTE: should use DashboardControls and DashboardData HoCs here?
 const DashboardApp = props => {
-  const { isRunning, isLoadingComplete, dashboard, closeDashboard } = props;
+  const {
+    isRunning,
+    isLoadingComplete,
+    dashboard,
+    closeDashboard,
+    isEditing,
+    isDirty,
+  } = props;
 
   const options = parseHashOptions(window.location.hash);
   const editingOnLoad = options.edit;
@@ -132,6 +139,8 @@ const DashboardApp = props => {
   useUnmount(props.reset);
 
   const slowToastId = useUniqueId();
+  useBeforeUnload(isEditing && isDirty);
+
   useEffect(() => {
     if (isLoadingComplete) {
       if (

@@ -236,7 +236,7 @@ describe("scenarios > question > summarize sidebar", () => {
     });
     // this should be among the granular selection choices
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Hour of Day").click();
+    cy.findByText("Hour of day").click();
   });
 
   it.skip("should handle (removing) multiple metrics when one is sorted (metabase#12625)", () => {

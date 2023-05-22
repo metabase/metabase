@@ -56,6 +56,8 @@ describe("metabase-lib/queries/utils/virtual-table", () => {
       id: 456,
       metadata,
       fields: [field1, field2],
+      name: "",
+      display_name: "",
     });
 
     it("should return a new Table instance", () => {
