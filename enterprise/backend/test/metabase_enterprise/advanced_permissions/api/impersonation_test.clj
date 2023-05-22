@@ -8,7 +8,8 @@
     :as premium-features-test]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (deftest create-impersonation-policy-test
   (testing "/api/permissions/graph"
@@ -39,16 +40,14 @@
 
 (deftest fetch-impersonation-policy-test
   (testing "GET /api/ee/advanced-permissions/impersonation"
-    (mt/with-temp* [PermissionsGroup               [{group-id-1 :id}]
-                    PermissionsGroup               [{group-id-2 :id}]
-                    :model/ConnectionImpersonation [{impersonation-id-1 :id :as impersonation-1}
-                                                    {:group_id group-id-1
-                                                     :db_id    (mt/id)
-                                                     :attribute "Attribute Name 1"}]
-                    :model/ConnectionImpersonation [{impersonation-id-2 :id :as impersonation-2}
-                                                    {:group_id group-id-2
-                                                     :db_id    (mt/id)
-                                                     :attribute "Attribute Name 2"}]]
+    (t2.with-temp/with-temp [PermissionsGroup               {group-id-1 :id} {}
+                             PermissionsGroup               {group-id-2 :id} {}
+                             :model/ConnectionImpersonation {impersonation-id-1 :id :as impersonation-1} {:group_id group-id-1
+                                                                                                          :db_id    (mt/id)
+                                                                                                          :attribute "Attribute Name 1"}
+                             :model/ConnectionImpersonation {impersonation-id-2 :id :as impersonation-2} {:group_id group-id-2
+                                                                                                          :db_id    (mt/id)
+                                                                                                          :attribute "Attribute Name 2"}]
       (premium-features-test/with-premium-features #{:advanced-permissions}
         (testing "Test that we can fetch a list of all Connection Impersonations"
           (is (= [impersonation-1 impersonation-2]
