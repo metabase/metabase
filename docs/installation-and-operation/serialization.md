@@ -21,7 +21,7 @@ To help you out in situations like this, Metabase has a serialization feature wh
 
 Metabase only includes some artifacts its exports.
 
-- Collections (except for personal collections)
+- Collections (except for personal collections, unless specified by the `--user` flag)
 - Dashboards
 - Saved questions
 - Actions
@@ -178,4 +178,4 @@ If you're instead looking to do a one-time migration from the default H2 databas
 ## Further reading
 
 - [Serialization tutorial](https://www.metabase.com/learn/administration/serialization).
-- Need help, contact [support@metabase.com](mailto:support@metabase.com).
+- Need help? contact [support@metabase.com](mailto:support@metabase.com).
