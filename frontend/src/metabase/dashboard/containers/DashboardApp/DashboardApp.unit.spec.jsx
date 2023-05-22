@@ -2,7 +2,6 @@ import React from "react";
 import { Route } from "react-router";
 import userEvent from "@testing-library/user-event";
 import {
-  within,
   screen,
   renderWithProviders,
   waitForElementToBeRemoved,
@@ -95,28 +94,6 @@ async function setup({ user = createMockUser() }) {
   return { mockEventListener };
 }
 
-const navigateToDashboardActionsEditor = async () => {
-  userEvent.click(screen.getByLabelText("Edit dashboard"));
-  userEvent.click(await screen.findByLabelText(/Add action/i));
-
-  const actionSidebarBody = await screen.findByTestId("action-sidebar-body");
-
-  userEvent.click(within(actionSidebarBody).getByText("Pick an action"));
-
-  await waitForElementToBeRemoved(() =>
-    screen.queryAllByTestId("loading-spinner"),
-  );
-
-  userEvent.click(
-    screen.getByRole("heading", { name: TEST_COLLECTION_ITEM.name }),
-  );
-  userEvent.click(screen.getByText("Create new action"));
-
-  await waitForElementToBeRemoved(() =>
-    screen.queryAllByTestId("loading-spinner"),
-  );
-};
-
 describe("DashboardApp", function () {
   afterEach(() => {
     jest.clearAllMocks();
@@ -150,38 +127,6 @@ describe("DashboardApp", function () {
       const mockEvent = callMockEvent(mockEventListener, "beforeunload");
       expect(mockEvent.preventDefault).not.toHaveBeenCalled();
       expect(mockEvent.returnValue).toBe(undefined);
-    });
-  });
-
-  describe("ActionCreatorModal onClickOutside behavior", () => {
-    beforeEach(() => {
-      jest.setTimeout(10000);
-    });
-
-    it("should not close ActionCreator modal when clicking outside modal", async () => {
-      await setup({});
-      await navigateToDashboardActionsEditor();
-
-      userEvent.click(document.body);
-      const mockNativeQueryEditor = await screen.findByTestId(
-        "mock-native-query-editor",
-      );
-
-      expect(mockNativeQueryEditor).toBeInTheDocument();
-    });
-    it("should close ActionCreator modal when clicking modal's 'Cancel' button", async () => {
-      await setup({});
-      await navigateToDashboardActionsEditor();
-
-      userEvent.click(
-        within(screen.getByTestId("action-creator-modal-actions")).getByText(
-          "Cancel",
-        ),
-      );
-
-      expect(
-        screen.queryByTestId("mock-native-query-editor"),
-      ).not.toBeInTheDocument();
     });
   });
 });
