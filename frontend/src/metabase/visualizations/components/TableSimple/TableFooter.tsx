@@ -84,14 +84,14 @@ const TableFooter = React.forwardRef<HTMLDivElement, TableFooterProps>(
           onClick={handlePreviousPage}
           disabled={start === 0}
         >
-          <Icon name="triangle_left" size={10} />
+          <Icon name="chevronleft" />
         </PaginationButton>
         <PaginationButton
           direction="next"
           onClick={handleNextPage}
           disabled={end + 1 >= total}
         >
-          <Icon name="triangle_right" size={10} />
+          <Icon name="chevronright" />
         </PaginationButton>
       </TableFooterRoot>
     );

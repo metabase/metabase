@@ -42,7 +42,7 @@ describe("issue 18996", () => {
     });
 
     cy.findByText(/Rows \d+-\d+ of 10/).should("be.visible");
-    cy.icon("triangle_right").click();
+    cy.icon("chevronright").click();
     cy.findByText(/Rows \d+-\d+ of 10/).should("be.visible");
   });
 });
