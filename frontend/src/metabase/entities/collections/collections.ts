@@ -24,6 +24,32 @@ type EntityInCollection = {
   collection?: Collection;
 };
 
+// TODO FIXME DELETE THIS - mock for development only
+const addTypesToCollections = (collections: Collection[]) => {
+  const reservedNames = ["Instance analytics", "Audit", "Usage", "Performance"];
+
+  for (const col of collections) {
+    if (reservedNames.includes(col.name)) {
+      // @ts-expect-error need to update this puppy
+      col.type = "instance-analytics";
+    }
+
+    if (col.children) {
+      col.children = addTypesToCollections(col.children);
+    }
+  }
+
+  return collections;
+};
+
+const FAKE_ListCollections = async (params: any, ...args: any) => {
+  const fetchedCollections = await (params?.tree
+    ? listCollectionsTree(params, ...args)
+    : listCollections(params, ...args));
+
+  return addTypesToCollections(fetchedCollections);
+};
+
 const Collections = createEntity({
   name: "collections",
   path: "/api/collection",
@@ -35,8 +61,10 @@ const Collections = createEntity({
   api: {
     list: async (params: { tree?: boolean }, ...args: any) =>
       params?.tree
-        ? listCollectionsTree(params, ...args)
-        : listCollections(params, ...args),
+        ? FAKE_ListCollections(params, ...args)
+        : FAKE_ListCollections(params, ...args),
+    // ? listCollectionsTree(params, ...args)
+    // : listCollections(params, ...args),
   },
 
   objectActions: {
