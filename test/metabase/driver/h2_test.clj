@@ -292,9 +292,8 @@
 (deftest syncable-audit-db-test
   (mt/test-driver :h2
     (when config/ee-available?
-      (testing "spec obtained from application db has no connection string, and that works OK."
-        (is (try (log/fatal (str "ZZZZZZ\n" (dissoc
-                                             (sql-jdbc.conn/connection-details->spec :h2 (metabase.driver.sql-jdbc.connection/db->pooled-connection-spec mdb.connection/*application-db*))
-                                             :datasource)))
-                 true
-                 (catch Exception _ false)))))))
+      (testing "spec obtained from audit db has no connection string, and that works OK."
+        (is (= {:something "good"}
+               (->> (t2/select-one-fn :id 'Database :is_audit true)
+                    metabase.driver.sql-jdbc.connection/db->pooled-connection-spec
+                    (sql-jdbc.conn/connection-details->spec :h2))))))))
