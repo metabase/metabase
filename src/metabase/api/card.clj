@@ -151,10 +151,6 @@
 
 ;;; -------------------------------------------- Fetching a Card or Cards --------------------------------------------
 
-(def ^:private card-filter-options
-  "a valid card filter option."
-  (map name (keys (methods cards-for-filter-option*))))
-
 (api/defendpoint GET "/"
   "Get all the Cards. Option filter param `f` can be used to change the set of Cards that are returned; default is
   `all`, but other options include `mine`, `bookmarked`, `database`, `table`, `recent`, `popular`, :using_model
