@@ -14,6 +14,8 @@ import {
   getDashboardCardMenu,
   addOrUpdateDashboardCard,
   openQuestionsSidebar,
+  getDashboardCard,
+  queryBuilderHeader,
 } from "e2e/support/helpers";
 
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
@@ -681,6 +683,33 @@ describe("scenarios > dashboard", () => {
 
     cy.findByTestId("dashcard").within(() => {
       cy.findByText("There was a problem displaying this chart.");
+    });
+  });
+
+  it("should preserve card data when navigating between the dashboard and the query builder", () => {
+    cy.intercept("GET", `/api/dashboard/*`).as("dashboard");
+    cy.intercept("POST", `/api/card/*/query`).as("cardQuery");
+    cy.intercept("POST", `/api/dashboard/*/dashcard/*/card/*/query`).as(
+      "dashcardQuery",
+    );
+
+    visitDashboard(1);
+    cy.wait("@dashboard");
+    cy.wait("@dashcardQuery");
+
+    getDashboardCard().within(() => {
+      cy.findByText("Orders").click();
+      cy.wait("@cardQuery");
+    });
+
+    queryBuilderHeader().within(() => {
+      cy.findByLabelText("Back to Orders in a dashboard").click();
+      cy.wait("@dashboard");
+    });
+
+    getDashboardCard().within(() => {
+      cy.findByText("Orders").should("be.visible");
+      cy.get("@dashcardQuery.all").should("have.length", 1);
     });
   });
 });

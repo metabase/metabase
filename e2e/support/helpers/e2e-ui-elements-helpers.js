@@ -72,8 +72,12 @@ export const openQuestionActions = () => {
   });
 };
 
+export const queryBuilderHeader = () => {
+  return cy.findByTestId("qb-header");
+};
+
 export const closeQuestionActions = () => {
-  cy.findByTestId("qb-header").click();
+  queryBuilderHeader().click();
 };
 
 export const questionInfoButton = () => {
