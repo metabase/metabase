@@ -28,6 +28,14 @@ export interface User extends BaseUser {
   personal_collection_id: number;
 }
 
+export interface UserListResult {
+  id: UserId;
+  first_name: string | null;
+  last_name: string | null;
+  common_name: string;
+  email: string;
+}
+
 // Used when hydrating `creator` property
 export type UserInfo = Pick<
   BaseUser,

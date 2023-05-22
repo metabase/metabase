@@ -3,34 +3,24 @@ import _ from "underscore";
 import { t } from "ttag";
 import { getRelativeTime } from "metabase/lib/time";
 
+import type { RevisionOrModerationEvent } from "metabase/plugins";
 import type { Revision } from "metabase-types/api";
 import Button from "metabase/core/components/Button";
+import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/core/components/Tooltip";
 
+import { color } from "metabase/lib/colors";
 import {
   TimelineContainer,
   TimelineEvent,
   Border,
-  StyledIcon,
   EventBody,
   EventHeader,
   Timestamp,
 } from "./Timeline.styled";
 
-const ICON_SIZE = 16;
-const HALF_ICON_SIZE = ICON_SIZE / 2;
-
-type Icon = string | { name: string; color: string } | Record<string, never>;
-export type TimelineEvent = {
-  title: string;
-  timestamp: string;
-  icon: Icon;
-  description?: string;
-  revision?: Revision;
-};
-
 interface TimelineProps {
-  events: TimelineEvent[];
+  events: RevisionOrModerationEvent[];
   "data-testid": string;
   canWrite: boolean;
   revert: (revision: Revision) => void;
@@ -45,23 +35,15 @@ export function Timeline({
   className,
 }: TimelineProps) {
   return (
-    <TimelineContainer
-      leftShift={HALF_ICON_SIZE}
-      bottomShift={HALF_ICON_SIZE}
-      className={className}
-      data-testid={dataTestId}
-    >
+    <TimelineContainer className={className} data-testid={dataTestId}>
       {events.map((event, index) => {
         const { icon, title, description, timestamp, revision } = event;
         const isNotLastEvent = index !== events.length - 1;
         const isNotFirstEvent = index !== 0;
 
         return (
-          <TimelineEvent
-            key={revision?.id ?? `${title}-${timestamp}`}
-            leftShift={HALF_ICON_SIZE}
-          >
-            {isNotLastEvent && <Border borderShift={HALF_ICON_SIZE} />}
+          <TimelineEvent key={revision?.id ?? `${title}-${timestamp}`}>
+            {isNotLastEvent && <Border />}
             <EventIcon icon={icon} />
             <EventBody>
               <EventHeader>
@@ -91,17 +73,12 @@ export function Timeline({
   );
 }
 
-function EventIcon({ icon }: { icon: Icon }) {
+function EventIcon({ icon }: { icon: RevisionOrModerationEvent["icon"] }) {
   if (_.isObject(icon) && (!icon.name || !icon.color)) {
     return null;
   }
   if (_.isObject(icon)) {
-    return (
-      <StyledIcon
-        {...(icon as { name: string; color: string })}
-        size={ICON_SIZE}
-      />
-    );
+    return <Icon name={icon.name} color={color(icon.color)} size={16} />;
   }
-  return <StyledIcon name={icon} size={ICON_SIZE} />;
+  return <Icon name={icon} color={color("text-light")} size={16} />;
 }

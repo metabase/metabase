@@ -16,10 +16,11 @@ import type {
   Dataset,
   Group,
   GroupsPermissions,
+  Revision,
   User,
+  UserListResult,
 } from "metabase-types/api";
 import type { AdminPathKey, State } from "metabase-types/store";
-import type { TimelineEvent } from "metabase/components/Timeline";
 import type Question from "metabase-lib/Question";
 
 import { PluginGroupManagersType } from "./types";
@@ -142,6 +143,14 @@ export const PLUGIN_COLLECTION_COMPONENTS = {
     PluginPlaceholder as FormCollectionAuthorityLevelPicker,
 };
 
+export type RevisionOrModerationEvent = {
+  title: string;
+  timestamp: string;
+  icon: string | { name: string; color: string } | Record<string, never>;
+  description?: string;
+  revision?: Revision;
+};
+
 export const PLUGIN_MODERATION = {
   isEnabled: () => false,
   QuestionModerationIcon: PluginPlaceholder,
@@ -153,9 +162,9 @@ export const PLUGIN_MODERATION = {
     undefined,
   getModerationTimelineEvents: (
     reviews: any,
-    usersById: Record<string, User>,
+    usersById: Record<string, UserListResult>,
     currentUser: User | null,
-  ) => [] as TimelineEvent[],
+  ) => [] as RevisionOrModerationEvent[],
   getMenuItems: (
     question?: Question,
     isModerator?: boolean,

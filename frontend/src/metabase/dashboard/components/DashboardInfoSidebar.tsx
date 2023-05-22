@@ -1,17 +1,14 @@
 import React, { useCallback } from "react";
-import _ from "underscore";
 import { t } from "ttag";
 
 import { PLUGIN_CACHING } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
 
-import { Timeline } from "metabase/components/Timeline";
+import { Timeline } from "metabase/common/components/Timeline";
 import EditableText from "metabase/core/components/EditableText";
 
-import { Dashboard, Revision as RevisionType } from "metabase-types/api";
-import { State } from "metabase-types/store";
-import Revision from "metabase/entities/revisions";
+import { Dashboard } from "metabase-types/api";
 import { getUser } from "metabase/selectors/user";
 
 import { revertToRevision } from "metabase/dashboard/actions";
@@ -19,7 +16,8 @@ import { revertToRevision } from "metabase/dashboard/actions";
 import Toggle from "metabase/core/components/Toggle";
 import FormField from "metabase/core/components/FormField";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
-import { getTimelineEvents } from "metabase/components/Timeline/utils";
+import { getTimelineEvents } from "metabase/common/components/Timeline/utils";
+import { useRevisionListQuery } from "metabase/common/hooks/use-revision-list-query";
 import {
   DashboardInfoSidebarRoot,
   HistoryHeader,
@@ -33,26 +31,17 @@ interface DashboardInfoSidebarProps {
   dashboard: Dashboard;
   setDashboardAttribute: (name: string, value: DashboardAttributeType) => void;
   saveDashboardAndCards: (preserveParameters?: boolean) => void;
-  revisions: RevisionType[] | undefined;
 }
 
-export const DashboardInfoSidebar = _.compose(
-  Revision.loadList({
-    query: (state: State, props: DashboardInfoSidebarProps) => ({
-      model_type: "dashboard",
-      model_id: props.dashboard.id,
-    }),
-    wrapped: true,
-    loadingAndErrorWrapper: false,
-  }),
-)(_DashboardInfoSidebar);
-
-function _DashboardInfoSidebar({
+export function DashboardInfoSidebar({
   dashboard,
   setDashboardAttribute,
   saveDashboardAndCards,
-  revisions,
 }: DashboardInfoSidebarProps) {
+  const { data: revisions } = useRevisionListQuery({
+    query: { model_type: "dashboard", model_id: dashboard.id },
+  });
+
   const currentUser = useSelector(getUser);
   const dispatch = useDispatch();
 

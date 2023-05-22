@@ -2,19 +2,14 @@ import React, { useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import type {
-  Revision as RevisionType,
-  User as UserType,
-} from "metabase-types/api";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { revertToRevision } from "metabase/query_builder/actions";
 import { getUser } from "metabase/selectors/user";
 
-import Revision from "metabase/entities/revisions";
-import User from "metabase/entities/users";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { State } from "metabase-types/store";
-import { getTimelineEvents } from "metabase/components/Timeline/utils";
+import { getTimelineEvents } from "metabase/common/components/Timeline/utils";
+import { useRevisionListQuery } from "metabase/common/hooks/use-revision-list-query";
+import { useUserListQuery } from "metabase/common/hooks/use-user-list-query";
 import type Question from "metabase-lib/Question";
 import { Timeline, Header } from "./QuestionActivityTimeline.styled";
 
@@ -22,32 +17,20 @@ const { getModerationTimelineEvents } = PLUGIN_MODERATION;
 
 interface QuestionActivityTimelineProps {
   question: Question;
-  revisions: RevisionType[];
-  users: UserType[];
 }
 
-export const QuestionActivityTimeline = _.compose(
-  User.loadList({
-    loadingAndErrorWrapper: false,
-  }),
-  Revision.loadList({
-    query: (state: State, props: QuestionActivityTimelineProps) => ({
-      model_type: "card",
-      model_id: props.question.id(),
-    }),
-    wrapped: true,
-  }),
-)(_QuestionActivityTimeline);
-
-function _QuestionActivityTimeline({
+export function QuestionActivityTimeline({
   question,
-  revisions,
-  users,
 }: QuestionActivityTimelineProps) {
+  const { data: revisions } = useRevisionListQuery({
+    query: { model_type: "card", model_id: question.id() },
+  });
+  const { data: users } = useUserListQuery();
+
   const currentUser = useSelector(getUser);
   const dispatch = useDispatch();
 
-  const usersById = useMemo(() => _.indexBy(users, "id"), [users]);
+  const usersById = useMemo(() => _.indexBy(users ?? [], "id"), [users]);
   const moderationReviews = question.getModerationReviews();
 
   const events = useMemo(() => {
