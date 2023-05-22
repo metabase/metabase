@@ -43,47 +43,6 @@
     (mt/fetch-user user-kw)
     [:common_name :date_joined :email :first_name :is_qbnewb :is_superuser :last_login :last_name :locale])))
 
-;; NOTE: timestamp matching was being a real PITA so I cheated a bit.  ideally we'd fix that
-(deftest activity-list-test
-  (testing "GET /api/activity"
-    (mt/with-temp* [Activity [activity1 {:topic     "install"
-                                         :details   {}
-                                         :timestamp #t "2015-09-09T12:13:14.888Z[UTC]"}]
-                    Activity [activity2 {:topic     "dashboard-create"
-                                         :user_id   (mt/user->id :crowberto)
-                                         :model     "dashboard"
-                                         :model_id  1234
-                                         :details   {:description "Because I can!"
-                                                     :name        "Bwahahaha"}
-                                         :timestamp #t "2015-09-10T18:53:01.632Z[UTC]"}]
-                    Activity [activity3 {:topic     "user-joined"
-                                         :user_id   (mt/user->id :rasta)
-                                         :model     "user"
-                                         :details   {}
-                                         :timestamp #t "2015-09-10T05:33:43.641Z[UTC]"}]]
-      (letfn [(fetch-activity [activity]
-                (merge
-                 activity-defaults
-                 (t2/select-one [Activity :id :user_id :details :model :model_id] :id (u/the-id activity))))]
-        (is (= [(merge
-                 (fetch-activity activity2)
-                 {:topic "dashboard-create"
-                  :user  (activity-user-info :crowberto)})
-                (merge
-                 (fetch-activity activity3)
-                 {:topic "user-joined"
-                  :user  (activity-user-info :rasta)})
-                (merge
-                 (fetch-activity activity1)
-                 {:topic   "install"
-                  :user_id nil
-                  :user    nil})]
-               ;; remove other activities from the API response just in case -- we're not interested in those
-               (let [these-activity-ids (set (map u/the-id [activity1 activity2 activity3]))]
-                 (for [activity (mt/user-http-request :crowberto :get 200 "activity")
-                       :when    (contains? these-activity-ids (u/the-id activity))]
-                   (dissoc activity :timestamp)))))))))
-
 (deftest most-recently-viewed-dashboard-views-test
   (mt/with-temp* [Card      [card-1  {:name       "rand-name"
                                       :creator_id (mt/user->id :crowberto)
@@ -325,22 +284,3 @@
                                                    :details  {:dashcards [{:card_id card-id}
                                                                           {:card_id 0}
                                                                           {:card_id dataset-id}]}}])))))
-
-(deftest activity-visibility-test
-  (mt/with-temp Activity [activity {:topic     "user-joined"
-                                    :details   {}
-                                    :timestamp (java.time.ZonedDateTime/now)}]
-    (letfn [(activity-topics [user]
-              (into #{} (map :topic)
-                    (mt/user-http-request user :get 200 "activity")))]
-      (testing "Only admins should get to see user-joined activities"
-        (testing "admin should see `:user-joined` activities"
-          (testing "Sanity check: admin should be able to read the activity"
-            (mt/with-test-user :crowberto
-              (is (mi/can-read? activity))))
-          (is (contains? (activity-topics :crowberto) "user-joined")))
-        (testing "non-admin should *not* see `:user-joined` activities"
-          (testing "Sanity check: non-admin should *not* be able to read the activity"
-            (mt/with-test-user :rasta
-              (is (not (mi/can-read? activity)))))
-          (is (not (contains? (activity-topics :rasta) "user-joined"))))))))

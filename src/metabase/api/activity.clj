@@ -6,7 +6,6 @@
    [medley.core :as m]
    [metabase.api.common :as api :refer [*current-user-id* define-routes]]
    [metabase.events.view-log :as view-log]
-   [metabase.models.activity :refer [Activity]]
    [metabase.models.card :refer [Card]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.interface :as mi]
@@ -84,13 +83,6 @@
                          (assoc dashcard :exists
                                 (or (existing-dataset? (:card_id dashcard))
                                     (existing-card? (:card_id dashcard))))))))))))
-
-(api/defendpoint GET "/"
-  "Get recent activity."
-  []
-  (filter mi/can-read? (-> (t2/select Activity, {:order-by [[:timestamp :desc]], :limit 40})
-                           (hydrate :user :table :database)
-                           add-model-exists-info)))
 
 (defn- models-query
   [model ids]
