@@ -36,7 +36,7 @@ function DatabaseBrowser({ databases }) {
                   name="database"
                   color={color("accent2")}
                   mb={3}
-                  size={28}
+                  size={32}
                 />
                 <h3 className="text-wrap">{database.name}</h3>
               </Card>
