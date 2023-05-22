@@ -68,17 +68,7 @@
     (hydrate (t2/select-one Table :id table-id) :fields)))
 
 (defn- execute-custom-action [action request-parameters]
-  (let [{action-type :type}          action
-        destination-parameters-by-id (m/index-by :id (:parameters action))]
-    (doseq [[parameter-id _value] request-parameters]
-      (when-not (contains? destination-parameters-by-id parameter-id)
-        (throw (ex-info (tru "No destination parameter found for id {0}. Found: {1}"
-                             (pr-str parameter-id)
-                             (pr-str (set (keys destination-parameters-by-id))))
-                        {:status-code            400
-                         :type                   qp.error-type/invalid-parameter
-                         :parameters             request-parameters
-                         :destination-parameters (:parameters action)}))))
+  (let [{action-type :type} action]
     (actions/check-actions-enabled! action)
     (let [model (t2/select-one Card :id (:model_id action))]
       (when (and (= action-type :query) (not= (:database_id model) (:database_id action)))
@@ -172,16 +162,29 @@
 (defn execute-action!
   "Execute the given action with the given parameters of shape `{<parameter-id> <value>}."
   [action request-parameters]
-  (let [; add default values for missing parameters
+  (let [; if a value is supplied for a hidden parameter, it should raise an error
+        ; this is to prevent users from supplying a value for a hidden parameter
+        field-settings         (get-in action [:visualization_settings :fields])
+        hidden-param-ids       (->> (vals field-settings)
+                                    (filter :hidden)
+                                    (map :id))
+        destination-param-ids  (set/difference (set (map :id (:parameters action))) (set hidden-param-ids))
+        _ (doseq [[parameter-id _value] request-parameters]
+            (when-not (contains? destination-param-ids parameter-id)
+              (throw (ex-info (tru "No destination parameter found for id {0}. Found: {1}"
+                                   (pr-str parameter-id)
+                                   (pr-str destination-param-ids))
+                              {:status-code            400
+                               :type                   qp.error-type/invalid-parameter
+                               :parameters             request-parameters
+                               :destination-parameters (:parameters action)}))))
+        ; add default values for missing parameters (including hidden ones)
         all-param-ids          (set (map :id (:parameters action)))
         provided-param-ids     (set (keys request-parameters))
         missing-param-ids      (set/difference all-param-ids provided-param-ids)
         missing-param-defaults (into {}
                                      (keep (fn [param-id]
-                                             (when-let [default-value (get-in action [:visualization_settings
-                                                                                      :fields
-                                                                                      param-id
-                                                                                      :defaultValue])]
+                                             (when-let [default-value (get-in field-settings [param-id :defaultValue])]
                                                [param-id default-value])))
                                      missing-param-ids)
         request-parameters     (merge missing-param-defaults request-parameters)]

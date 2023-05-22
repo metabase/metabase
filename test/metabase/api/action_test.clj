@@ -559,7 +559,8 @@
     (mt/with-actions-enabled
       (mt/with-actions [_ {:dataset true :dataset_query (mt/mbql-query users)}
                         {action-id :action-id} {:type :implicit :kind "row/update"
-                                                :visualization_settings {:fields {"last_login" {:defaultValue "2023-04-01T00:00:00Z"}}}}]
+                                                :visualization_settings {:fields {"last_login" {:id           "last_login"
+                                                                                                :defaultValue "2023-04-01T00:00:00Z"}}}}]
         (testing "Missing parameters should be filled in with default values"
           (let [run-action! #(mt/user-http-request :crowberto
                                                    :post 200
@@ -584,3 +585,17 @@
                 (is (= "2014-04-01T00:00:00Z" last-login)))
               (finally
                 (run-action! {:name "Plato Yeshua" :last_login "2014-04-01T00:00:00Z"})))))))))
+
+(deftest hidden-parameter-test
+  (mt/with-actions-test-data-tables #{"users"}
+    (mt/with-actions-enabled
+      (mt/with-actions [_ {:dataset true :dataset_query (mt/mbql-query users)}
+                        {:keys [action-id]} {:type :implicit :kind "row/update"
+                                                      :visualization_settings {:fields {"name" {:id     "name"
+                                                                                                :hidden true}}}}]
+        (testing "Hidden parameter should fail gracefully"
+          (testing "GET /api/action/:id/execute"
+            (is (partial= {:message "No destination parameter found for id \"name\". Found: #{\"last_login\" \"id\"}"}
+                          (mt/user-http-request :crowberto :post 400 (format "action/%s/execute" action-id)
+                                                {:parameters {:name "Darth Vader"}}))))
+)))))

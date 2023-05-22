@@ -3217,6 +3217,24 @@
                               (mt/user-http-request :crowberto :post 400 execute-path
                                                     {:parameters {"name" "Birds"}})))))))))))
 
+(deftest dashcard-hidden-parameter-test
+  (mt/with-actions-test-data-tables #{"users"}
+    (mt/with-actions-enabled
+      (mt/with-actions [_ {:dataset true :dataset_query (mt/mbql-query users)}
+                        {:keys [action-id model-id]} {:type                   :implicit
+                                                      :visualization_settings {:fields {"name" {:id     "name"
+                                                                                                :hidden true}}}}]
+        (testing "Supplying a hidden parameter value should fail gracefully for GET /api/dashboard/:id/dashcard/:id/execute"
+          (mt/with-temp* [Dashboard [{dashboard-id :id}]
+                          DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id
+                                                            :action_id    action-id
+                                                            :card_id      model-id}]]
+            (is (partial= {:message "No destination parameter found for id \"name\". Found: #{\"last_login\" \"id\"}"}
+                          (mt/user-http-request :crowberto :post 400 (format "dashboard/%s/dashcard/%s/execute"
+                                                                             dashboard-id
+                                                                             dashcard-id)
+                                                {:parameters {:name "Darth Vader"}})))))))))
+
 (defn- custom-action-for-field [field-name]
   ;; It seems the :type of parameters or template-tag doesn't matter??
   ;; How to go from base-type (type/Integer) to param type (number)?
