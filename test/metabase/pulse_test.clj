@@ -796,8 +796,8 @@
                                        :details      {:channel "#general"}}]
           (pulse.test-util/slack-test-setup
            (let [pulse-data (metabase.pulse/send-pulse! (pulse/retrieve-pulse pulse-id))
-                 slack-data (m/find-first #(contains? % :channel-id) pulse-data)
-                 email-data (m/find-first #(contains? % :subject) pulse-data)]
+                 slack-data (m/find-first map? pulse-data)
+                 email-data (first (m/find-first seq? pulse-data))]
              (is (= {:channel-id  "#general"
                      :attachments [{:blocks
                                     [{:type "header", :text {:type "plain_text", :text "Pulse: Pulse Name", :emoji true}}
