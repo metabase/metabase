@@ -61,29 +61,6 @@
                        "segment"   (t2/select-pks-set 'Segment,   :id [:in ids], :archived false)
                        nil)])))) ; don't care about other models
 
-(defn- add-model-exists-info
-  "Add `:model_exists` keys to `activities`, and `:exists` keys to nested dashcards where appropriate."
-  [activities]
-  (let [existing-objects (-> activities activities->referenced-objects referenced-objects->existing-objects)
-        model-exists? (fn [model id] (contains? (get existing-objects model) id))
-        existing-dataset? (partial model-exists? "dataset")
-        existing-card? (partial model-exists? "card")]
-    (for [{:keys [model_id], :as activity} activities]
-      (let [model (if (and (= (:model activity) "card")
-                           (existing-dataset? (:model_id activity)))
-                    "dataset"
-                    (:model activity))]
-        (cond-> (assoc activity
-                       :model_exists (model-exists? model model_id)
-                       :model model)
-          (dashcard-activity? activity)
-          (update-in [:details :dashcards]
-                     (fn [dashcards]
-                       (for [dashcard dashcards]
-                         (assoc dashcard :exists
-                                (or (existing-dataset? (:card_id dashcard))
-                                    (existing-card? (:card_id dashcard))))))))))))
-
 (defn- models-query
   [model ids]
   (t2/select

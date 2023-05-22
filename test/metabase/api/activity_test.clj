@@ -5,10 +5,8 @@
    [java-time :as t]
    [metabase.api.activity :as api.activity]
    [metabase.events.view-log :as view-log]
-   [metabase.models.activity :refer [Activity]]
    [metabase.models.card :refer [Card]]
    [metabase.models.dashboard :refer [Dashboard]]
-   [metabase.models.interface :as mi]
    [metabase.models.query-execution :refer [QueryExecution]]
    [metabase.models.table :refer [Table]]
    [metabase.models.view-log :refer [ViewLog]]
@@ -21,27 +19,6 @@
 (set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db))
-
-;; GET /
-
-;; Things we are testing for:
-;;  1. ordered by timestamp DESC
-;;  2. :user and :model_exists are hydrated
-
-(def ^:private activity-defaults
-  {:model_exists false
-   :database_id  nil
-   :database     nil
-   :table_id     nil
-   :table        nil
-   :custom_id    nil})
-
-(defn- activity-user-info [user-kw]
-  (merge
-   {:id (mt/user->id user-kw)}
-   (select-keys
-    (mt/fetch-user user-kw)
-    [:common_name :date_joined :email :first_name :is_qbnewb :is_superuser :last_login :last_name :locale])))
 
 (deftest most-recently-viewed-dashboard-views-test
   (mt/with-temp* [Card      [card-1  {:name       "rand-name"
