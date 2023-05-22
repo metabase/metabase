@@ -48,4 +48,5 @@ const getDatabases = ({
   return databases.filter(d => !d.is_sample && d.creator_id === user?.id);
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default DatabaseStatus;

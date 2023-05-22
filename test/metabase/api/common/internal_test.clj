@@ -329,7 +329,9 @@
     ;; don't try to typify route that's already typified
     ["/:id/:crazy-id" :crazy-id "#[0-9]+"] ["/:id/:crazy-id" :crazy-id "#[0-9]+"]
     ;; Check :uuid args
-    "/:uuid/toucans"                       ["/:uuid/toucans" :uuid (str \# u/uuid-regex)]))
+    "/:uuid/toucans"                       ["/:uuid/toucans" :uuid (str \# u/uuid-regex)]
+    "/:id/:card-id"                        ["/:id/:card-id" :id "#[0-9]+" :card-id "#[0-9]+"]
+    "/:unlisted/:card-id"                  ["/:unlisted/:card-id" :card-id "#[0-9]+"]))
 
 (deftest add-route-param-regexes-test
   (no-route-regexes

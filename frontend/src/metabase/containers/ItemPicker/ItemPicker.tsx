@@ -12,7 +12,7 @@ import { entityListLoader } from "metabase/entities/containers/EntityListLoader"
 import { entityObjectLoader } from "metabase/entities/containers/EntityObjectLoader";
 import { isRootCollection } from "metabase/collections/utils";
 
-import type { Collection } from "metabase-types/api";
+import type { Collection, CollectionId } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 import type {
@@ -35,10 +35,11 @@ interface OwnProps {
   className?: string;
   style?: React.CSSProperties;
   onChange: (value: PickerValue) => void;
+  initialOpenCollectionId?: CollectionId;
 }
 
 interface StateProps {
-  collectionsById: Record<Collection["id"], Collection>;
+  collectionsById: Record<CollectionId, Collection>;
   getCollectionIcon: (collection: Collection) => IconProps;
 }
 
@@ -83,9 +84,11 @@ function ItemPicker({
   style,
   onChange,
   getCollectionIcon,
+  initialOpenCollectionId = "root",
 }: Props) {
-  const [openCollectionId, setOpenCollectionId] =
-    useState<Collection["id"]>("root");
+  const [openCollectionId, setOpenCollectionId] = useState<CollectionId>(
+    initialOpenCollectionId,
+  );
   const [searchString, setSearchString] = useState("");
 
   const isPickingNotCollection = models.some(model => model !== "collection");
@@ -225,11 +228,14 @@ function ItemPicker({
         checkHasWritePermissionForItem={checkHasWritePermissionForItem}
         getCollectionIcon={getCollectionIcon}
         style={style}
+        // personal is a fake collection for admins that contains all other user's collections
+        allowFetch={openCollectionId !== "personal"}
       />
     </ScrollAwareLoadingAndErrorWrapper>
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   entityObjectLoader({
     id: "root",

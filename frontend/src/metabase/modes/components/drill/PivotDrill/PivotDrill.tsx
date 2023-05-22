@@ -144,6 +144,4 @@ export const getPivotDrill =
     ];
   };
 
-const PivotDrill = getPivotDrill();
-
-export default PivotDrill;
+export const PivotDrill = getPivotDrill();

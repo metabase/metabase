@@ -14,10 +14,8 @@ import DataPicker, {
 import Questions from "metabase/entities/questions";
 import Collections from "metabase/entities/collections";
 import Tables from "metabase/entities/tables";
-import { getMetadata } from "metabase/selectors/metadata";
 import { coerceCollectionId } from "metabase/collections/utils";
 import {
-  Card,
   CardId,
   Collection,
   Parameter,
@@ -50,16 +48,12 @@ interface ModalOwnProps {
   onClose: () => void;
 }
 
-interface ModalCardProps {
-  card: Card | undefined;
+interface ModalQuestionProps {
+  question: Question | undefined;
 }
 
 interface ModalCollectionProps {
   collection: Collection | undefined;
-}
-
-interface ModalStateProps {
-  question: Question | undefined;
 }
 
 interface ModalDispatchProps {
@@ -68,9 +62,8 @@ interface ModalDispatchProps {
 }
 
 type ModalProps = ModalOwnProps &
-  ModalCardProps &
+  ModalQuestionProps &
   ModalCollectionProps &
-  ModalStateProps &
   ModalDispatchProps;
 
 const ValuesSourceCardModal = ({
@@ -181,29 +174,22 @@ const getCardIdFromValue = ({ tableIds }: DataPickerValue) => {
   }
 };
 
-const mapStateToProps = (
-  state: State,
-  { card }: ModalCardProps,
-): ModalStateProps => ({
-  question: card ? new Question(card, getMetadata(state)) : undefined,
-});
-
 const mapDispatchToProps: ModalDispatchProps = {
   onFetchCard: (cardId: CardId) => Questions.actions.fetch({ id: cardId }),
   onFetchMetadata: (cardId: CardId) =>
     Tables.actions.fetchMetadata({ id: getQuestionVirtualTableId(cardId) }),
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   Questions.load({
     id: (state: State, { sourceConfig: { card_id } }: ModalOwnProps) => card_id,
-    entityAlias: "card",
     LoadingAndErrorWrapper: ModalLoadingAndErrorWrapper,
   }),
   Collections.load({
-    id: (state: State, { card }: ModalCardProps) =>
-      card ? coerceCollectionId(card.collection_id) : undefined,
+    id: (state: State, { question }: ModalQuestionProps) =>
+      question ? coerceCollectionId(question?.collectionId()) : undefined,
     LoadingAndErrorWrapper: ModalLoadingAndErrorWrapper,
   }),
-  connect(mapStateToProps, mapDispatchToProps),
+  connect(null, mapDispatchToProps),
 )(ValuesSourceCardModal);

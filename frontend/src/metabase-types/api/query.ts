@@ -10,18 +10,24 @@ import type {
 export interface NativeQuery {
   query: string;
   "template-tags"?: TemplateTags;
+  collection?: string;
 }
 
 export interface StructuredDatasetQuery {
   type: "query";
-  database: DatabaseId;
   query: StructuredQuery;
+
+  // Database is null when missing data permissions to the database
+  database: DatabaseId | null;
 }
 
 export interface NativeDatasetQuery {
   type: "native";
-  database: DatabaseId;
   native: NativeQuery;
+
+  // Database is null when missing data permissions to the database
+  database: DatabaseId | null;
+  parameters?: unknown[];
 }
 
 export type DatasetQuery = StructuredDatasetQuery | NativeDatasetQuery;
@@ -242,7 +248,7 @@ export type JoinStrategy =
   | "inner-join"
   | "full-join";
 export type JoinAlias = string;
-export type JoinCondition = Filter;
+export type JoinCondition = ["=", FieldReference, FieldReference];
 export type JoinFields = "all" | "none" | JoinedFieldReference[];
 
 type JoinClause = Array<Join>;

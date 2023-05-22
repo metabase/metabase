@@ -7,6 +7,7 @@
    [metabase.models.user :refer [User]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [methodical.core :as methodical]
    [toucan.hydrate :refer [hydrate]]
    [toucan.models :as models]
    [toucan2.core :as t2]
@@ -55,31 +56,39 @@
   (when-let [[before after] (data/diff o1 o2)]
     (diff-string (name model) before after)))
 
-;;; # Revision Entity
+;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
-(models/defmodel Revision :revision)
+(def Revision
+  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], now it's a reference to the toucan2 model name.
+  We'll keep this till we replace all the symbols in our codebase."
+  :model/Revision)
 
-(defn- pre-insert [revision]
+(methodical/defmethod t2/table-name :model/Revision [_model] :revision)
+
+(doto :model/Revision
+  (derive :metabase/model))
+
+(t2/deftransforms :model/Revision
+  {:object mi/transform-json})
+
+(t2/define-before-insert :model/Revision
+  [revision]
   (assoc revision :timestamp :%now))
 
-(defn- do-post-select-for-object
-  "Call the appropriate `post-select` methods (including the type functions) on the `:object` this Revision recorded.
-  This is important for things like Card revisions, where the `:dataset_query` property needs to be normalized when
-  coming out of the DB."
-  [{:keys [model], :as revision}]
+(t2/define-before-update :model/Revision
+  [_revision]
+  (fn [& _] (throw (Exception. (tru "You cannot update a Revision!")))))
+
+(t2/define-after-select :model/Revision
+  ;; Call the appropriate `post-select` methods (including the type functions) on the `:object` this Revision recorded.
+  ;; This is important for things like Card revisions, where the `:dataset_query` property needs to be normalized when
+  ;; coming out of the DB.
+  [{:keys [model] :as revision}]
   ;; in some cases (such as tests) we have 'fake' models that cannot be resolved normally; don't fail entirely in
   ;; those cases
   (let [model (u/ignore-exceptions (t2.model/resolve-model (symbol model)))]
     (cond-> revision
       model (update :object (partial models/do-post-select model)))))
-
-(mi/define-methods
- Revision
- {:types       (constantly {:object :json})
-  :pre-insert  pre-insert
-  :pre-update  (fn [& _] (throw (Exception. (tru "You cannot update a Revision!"))))
-  :post-select do-post-select-for-object})
-
 
 ;;; # Functions
 

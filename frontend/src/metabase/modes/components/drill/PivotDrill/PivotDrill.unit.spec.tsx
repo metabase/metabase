@@ -1,16 +1,16 @@
 import React from "react";
-import { createMockState } from "metabase-types/store/mocks";
-import { createMockEntitiesState } from "__support__/store";
 import { render, screen } from "__support__/ui";
 import {
   createSampleDatabase,
+  PEOPLE,
+  PEOPLE_ID,
   PRODUCTS_ID,
 } from "metabase-types/api/mocks/presets";
-import { getMetadata } from "metabase/selectors/metadata";
 import { checkNotNull } from "metabase/core/utils/types";
-import { PEOPLE } from "__support__/sample_database_fixture";
-import { DatasetColumn } from "metabase-types/api";
-import PivotDrill from "./PivotDrill";
+import { createMockMetadata } from "__support__/metadata";
+import type { DatasetColumn } from "metabase-types/api";
+import type { ClickActionProps } from "metabase-lib/queries/drills/types";
+import { PivotDrill } from "./PivotDrill";
 
 describe("PivotDrill", () => {
   it("returns empty array for query without aggregations", () => {
@@ -37,23 +37,20 @@ describe("PivotDrill", () => {
   });
 });
 
-function setupUnaggregatedQuery() {
-  const state = createMockState({
-    entities: createMockEntitiesState({
-      databases: [createSampleDatabase()],
-    }),
+function setupUnaggregatedQuery(): ClickActionProps {
+  const metadata = createMockMetadata({
+    databases: [createSampleDatabase()],
   });
 
-  const metadata = getMetadata(state);
   const table = checkNotNull(metadata.table(PRODUCTS_ID));
   const question = checkNotNull(table.question());
 
   const clicked = {
-    column: table.fields[0].column(),
+    column: table.fields?.[0]?.column() as DatasetColumn,
     value: 42,
     dimensions: [
       {
-        column: table.fields[0].column(),
+        column: table.fields?.[0]?.column() as DatasetColumn,
         value: 42,
       },
     ],
@@ -62,19 +59,28 @@ function setupUnaggregatedQuery() {
   return { question, clicked };
 }
 
-function setupCategoryFieldQuery() {
-  const query = PEOPLE.query()
+function setupCategoryFieldQuery(): ClickActionProps {
+  const metadata = createMockMetadata({
+    databases: [createSampleDatabase()],
+  });
+
+  const peopleTable = checkNotNull(metadata.table(PEOPLE_ID));
+
+  const query = peopleTable
+    .query()
     .aggregate(["count"])
-    .breakout(["field", PEOPLE.STATE.id, null]);
+    .breakout(["field", PEOPLE.STATE, null]);
 
   const question = query.question();
 
   const clicked = {
-    column: query.aggregationDimensions()[0].column(),
+    column: query.aggregationDimensions()[0].column() as DatasetColumn,
     value: 194,
     dimensions: [
       {
-        column: PEOPLE.STATE.dimension().column() as DatasetColumn,
+        column: checkNotNull(metadata.field(PEOPLE.STATE))
+          .dimension()
+          .column() as DatasetColumn,
         value: "TX",
       },
     ],

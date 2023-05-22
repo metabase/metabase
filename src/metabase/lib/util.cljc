@@ -34,7 +34,9 @@
    :cljs
    (def format "Exactly like [[clojure.core/format]] but ClojureScript-friendly." gstring/format))
 
-(defn- clause? [clause]
+(defn clause?
+  "Returns true if this is a clause."
+  [clause]
   (and (vector? clause)
        (> (count clause) 1)
        (keyword? (first clause))
@@ -56,11 +58,14 @@
   (m/update-existing-in
     stage
     location
-    #(->> (for [clause %]
-            (if (= (clause-uuid clause) (clause-uuid target-clause))
-              new-clause
-              clause))
-          vec)))
+    (fn [clause-or-clauses]
+      (if (= :expressions (first location))
+        new-clause
+        (->> (for [clause clause-or-clauses]
+               (if (= (clause-uuid clause) (clause-uuid target-clause))
+                 new-clause
+                 clause))
+             vec)))))
 
 (defn remove-clause
   "Remove the `target-clause` in `stage` `location`.
@@ -71,16 +76,24 @@
   {:pre [(clause? target-clause)]}
   (if-let [target (get-in stage location)]
     (let [target-uuid (clause-uuid target-clause)
-          result (into [] (remove (comp #{target-uuid} clause-uuid)) target)]
-      (if (seq result)
+          [first-loc last-loc] [(first location) (last location)]
+          result (if (= :expressions first-loc)
+                   nil
+                   (into [] (remove (comp #{target-uuid} clause-uuid)) target))]
+      (cond
+        (seq result)
         (assoc-in stage location result)
-        (if (= 1 (count location))
-          (dissoc stage (first location))
-          (case [(first location) (last location)]
-            [:joins :conditions] (throw (ex-info (i18n/tru "Cannot remove the final join condition")
-                                                 {:conditions (get-in stage location)}))
-            [:joins :fields] (update-in stage (pop location) dissoc (peek location))))))
-            stage))
+
+        (= [:joins :conditions] [first-loc last-loc])
+        (throw (ex-info (i18n/tru "Cannot remove the final join condition")
+                        {:conditions (get-in stage location)}))
+
+        (= [:joins :fields] [first-loc last-loc])
+        (update-in stage (pop location) dissoc last-loc)
+
+        :else
+        (m/dissoc-in stage location)))
+    stage))
 
 ;;; TODO -- all of this `->pipeline` stuff should probably be merged into [[metabase.lib.convert]] at some point in
 ;;; the near future.
@@ -344,9 +357,9 @@
          (> cumulative-byte-count max-length-bytes) (subs s 0 (dec i))
          (>= i (count s))                           s
          :else                                      (recur (inc i)
-                                                           (+
-                                                            cumulative-byte-count
-                                                            (string-byte-count (string-character-at s i))))))
+                                                           (long (+
+                                                                  cumulative-byte-count
+                                                                  (string-byte-count (string-character-at s i)))))))
 
      :cljs
      (let [buf (js/Uint8Array. max-length-bytes)
@@ -465,3 +478,20 @@
           ;; subvec holds onto references, so create a new vector
           (update :stages (comp #(into [] %) subvec) 0 (inc (non-negative-stage-index stages stage-number))))
       new-query)))
+
+(defn with-default-effective-type
+  "Adds a default :effective-type property if it does not exist and
+  :base-type is known.
+
+  This is needed only because we have to convert queries to the Legacy
+  form.
+  The round trip conversion pMBQL -> legacy MBQL -> pMBQL loses the
+  :effective-type property, but it should be present for the frontend
+  to work. It defaults to the :base-type property."
+  [clause]
+  (let [options (lib.options/options clause)
+        default-effective-type (when-not (:effective-type options)
+                                 (:base-type options))]
+    (cond-> clause
+      default-effective-type
+      (lib.options/update-options assoc :effective-type default-effective-type))))

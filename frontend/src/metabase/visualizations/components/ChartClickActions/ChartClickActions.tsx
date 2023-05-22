@@ -183,4 +183,4 @@ class ChartClickActions extends Component<ChartClickActionsProps, State> {
   }
 }
 
-export default connect()(ChartClickActions);
+export const ConnectedChartClickActions = connect()(ChartClickActions);

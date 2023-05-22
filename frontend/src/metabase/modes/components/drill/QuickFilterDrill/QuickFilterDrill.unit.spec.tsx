@@ -1,13 +1,17 @@
 import React from "react";
 import userEvent from "@testing-library/user-event";
-import {
-  metadata,
-  ORDERS,
-  PEOPLE,
-  REVIEWS,
-  SAMPLE_DATABASE,
-} from "__support__/sample_database_fixture";
+import { createMockMetadata } from "__support__/metadata";
 import { createMockColumn } from "metabase-types/api/mocks";
+import {
+  createSampleDatabase,
+  ORDERS,
+  ORDERS_ID,
+  PEOPLE,
+  PEOPLE_ID,
+  SAMPLE_DB_ID,
+  REVIEWS,
+  REVIEWS_ID,
+} from "metabase-types/api/mocks/presets";
 import type {
   DatasetColumn,
   DimensionReference,
@@ -20,9 +24,17 @@ import {
   QuestionChangeClickAction,
 } from "metabase/modes/types";
 import { renderWithProviders, screen } from "__support__/ui";
+import { checkNotNull } from "metabase/core/utils/types";
 import Question from "metabase-lib/Question";
-import { getUnsavedNativeQuestion } from "metabase-lib/mocks";
-import QuickFilterDrill from "./QuickFilterDrill";
+import { QuickFilterDrill } from "./QuickFilterDrill";
+
+const metadata = createMockMetadata({
+  databases: [createSampleDatabase()],
+});
+
+const ordersTable = checkNotNull(metadata.table(ORDERS_ID));
+const peopleTable = checkNotNull(metadata.table(PEOPLE_ID));
+const reviewsTable = checkNotNull(metadata.table(REVIEWS_ID));
 
 const NUMBER_AND_DATE_FILTERS = [
   { name: "<", operator: "<", dateTitle: "Before" },
@@ -54,8 +66,8 @@ const DEFAULT_NUMERIC_CELL_VALUE = 42;
 
 const AGGREGATED_QUERY = {
   aggregation: [["count"]],
-  breakout: ["field", ORDERS.CREATED_AT.id, { "temporal-unit": "month" }],
-  "source-table": ORDERS.id,
+  breakout: ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+  "source-table": ORDERS_ID,
 };
 
 const AGGREGATED_QUESTION = {
@@ -63,7 +75,7 @@ const AGGREGATED_QUESTION = {
   dataset_query: {
     type: "query",
     query: AGGREGATED_QUERY,
-    database: SAMPLE_DATABASE.id,
+    database: SAMPLE_DB_ID,
   },
 };
 
@@ -75,12 +87,12 @@ const NESTED_QUESTION = {
     query: {
       "source-table": NESTED_QUESTION_SOURCE_TABLE_ID,
     },
-    database: SAMPLE_DATABASE.id,
+    database: SAMPLE_DB_ID,
   },
 };
 
 function setup({
-  question = ORDERS.question(),
+  question = ordersTable.question(),
   column,
   value = DEFAULT_NUMERIC_CELL_VALUE,
 }: {
@@ -118,13 +130,24 @@ const getActionQuestion = (
 
 describe("QuickFilterDrill", () => {
   it("should not be valid for top level actions", () => {
-    const actions = QuickFilterDrill({ question: ORDERS.question() });
+    const actions = QuickFilterDrill({ question: ordersTable.question() });
     expect(actions).toHaveLength(0);
   });
 
   it("should not be valid for native questions", () => {
     const actions = QuickFilterDrill({
-      question: getUnsavedNativeQuestion(),
+      question: new Question(
+        {
+          dataset_query: {
+            type: "native",
+            native: {
+              query: "SELECT * FROM ORDERS",
+            },
+            database: SAMPLE_DB_ID,
+          },
+        },
+        metadata,
+      ),
       clicked: {
         column: createMockColumn({
           name: "TOTAL",
@@ -144,9 +167,9 @@ describe("QuickFilterDrill", () => {
 
   it("should not be valid when clicked value is undefined", () => {
     const actions = QuickFilterDrill({
-      question: ORDERS.question(),
+      question: ordersTable.question(),
       clicked: {
-        column: ORDERS.TOTAL.column(),
+        column: metadata.field(ORDERS.TOTAL)?.column(),
         value: undefined,
       },
     });
@@ -154,12 +177,12 @@ describe("QuickFilterDrill", () => {
   });
 
   it("should not be valid for PK cells", () => {
-    const { actions } = setup({ column: ORDERS.ID.column() });
+    const { actions } = setup({ column: metadata.field(ORDERS.ID)?.column() });
     expect(actions).toHaveLength(0);
   });
 
   describe("numeric cells", () => {
-    const clickedField = ORDERS.TOTAL;
+    const clickedField = checkNotNull(metadata.field(ORDERS.TOTAL));
     const { actions } = setup({ column: clickedField.column() });
 
     it("should return correct filters", () => {
@@ -174,7 +197,7 @@ describe("QuickFilterDrill", () => {
       it(`should correctly apply "${operator}" filter`, () => {
         const { question, query } = getActionQuestion(action);
         expect(query).toEqual({
-          "source-table": ORDERS.id,
+          "source-table": ORDERS_ID,
           filter: [
             operator,
             clickedField.reference(),
@@ -187,9 +210,11 @@ describe("QuickFilterDrill", () => {
   });
 
   describe("joined numeric field cell", () => {
-    const joinedFieldRef = ["field", ORDERS.TOTAL.id, { "join-alias": "foo" }];
+    const joinedFieldRef = ["field", ORDERS.TOTAL, { "join-alias": "foo" }];
     const { actions, cellValue } = setup({
-      column: ORDERS.TOTAL.column({ field_ref: joinedFieldRef }),
+      column: metadata
+        .field(ORDERS.TOTAL)
+        ?.column({ field_ref: joinedFieldRef }),
     });
 
     it("should return correct filters", () => {
@@ -204,7 +229,7 @@ describe("QuickFilterDrill", () => {
       it(`should correctly apply "${operator}" filter`, () => {
         const { question, query } = getActionQuestion(action);
         expect(query).toEqual({
-          "source-table": ORDERS.id,
+          "source-table": ORDERS_ID,
           filter: [operator, joinedFieldRef, cellValue],
         });
         expect(question.display()).toBe("table");
@@ -289,7 +314,7 @@ describe("QuickFilterDrill", () => {
   });
 
   describe("numeric cells with null values", () => {
-    const clickedField = ORDERS.TOTAL;
+    const clickedField = checkNotNull(metadata.field(ORDERS.TOTAL));
     const { actions } = setup({ column: clickedField.column(), value: null });
 
     it("should return correct filters", () => {
@@ -304,7 +329,7 @@ describe("QuickFilterDrill", () => {
       it(`should correctly apply "${operator}" filter`, () => {
         const { question, query } = getActionQuestion(action);
         expect(query).toEqual({
-          "source-table": ORDERS.id,
+          "source-table": ORDERS_ID,
           filter: [operator, clickedField.reference()],
         });
         expect(question.display()).toBe("table");
@@ -315,7 +340,7 @@ describe("QuickFilterDrill", () => {
   describe("date-time cells", () => {
     const CELL_VALUE = new Date().toISOString();
     const { actions } = setup({
-      column: ORDERS.CREATED_AT.column(),
+      column: metadata.field(ORDERS.CREATED_AT)?.column(),
       value: CELL_VALUE,
     });
 
@@ -338,8 +363,12 @@ describe("QuickFilterDrill", () => {
       it(`should correctly apply "${operator}" filter`, () => {
         const { question, query } = getActionQuestion(action);
         expect(query).toEqual({
-          "source-table": ORDERS.id,
-          filter: [operator, ORDERS.CREATED_AT.reference(), CELL_VALUE],
+          "source-table": ORDERS_ID,
+          filter: [
+            operator,
+            metadata.field(ORDERS.CREATED_AT)?.reference(),
+            CELL_VALUE,
+          ],
         });
         expect(question.display()).toBe("table");
       });
@@ -349,8 +378,8 @@ describe("QuickFilterDrill", () => {
   describe("string cells", () => {
     const CELL_VALUE = "Joe";
     const { actions } = setup({
-      question: PEOPLE.question(),
-      column: PEOPLE.NAME.column(),
+      question: peopleTable.question(),
+      column: metadata.field(PEOPLE.NAME)?.column(),
       value: CELL_VALUE,
     });
 
@@ -375,8 +404,8 @@ describe("QuickFilterDrill", () => {
     it("should return title with value for long values (> 20 chars)", () => {
       const CELL_VALUE = "Some Long Text value longer than 20 chars";
       const { actions } = setup({
-        question: PEOPLE.question(),
-        column: PEOPLE.NAME.column(),
+        question: peopleTable.question(),
+        column: metadata.field(PEOPLE.NAME)?.column(),
         value: CELL_VALUE,
       });
 
@@ -395,8 +424,12 @@ describe("QuickFilterDrill", () => {
       it(`should correctly apply "${operator}" filter`, () => {
         const { question, query } = getActionQuestion(action);
         expect(query).toEqual({
-          "source-table": PEOPLE.id,
-          filter: [operator, PEOPLE.NAME.reference(), CELL_VALUE],
+          "source-table": PEOPLE_ID,
+          filter: [
+            operator,
+            metadata.field(PEOPLE.NAME)?.reference(),
+            CELL_VALUE,
+          ],
         });
         expect(question.display()).toBe("table");
       });
@@ -407,9 +440,9 @@ describe("QuickFilterDrill", () => {
     const CELL_VALUE =
       "Enim consequatur voluptas temporibus iusto optio. Nihil et ea iste autem est. Accusamus sint corporis ullam.";
     const actions = QuickFilterDrill({
-      question: REVIEWS.question(),
+      question: reviewsTable.question(),
       clicked: {
-        column: REVIEWS.BODY.column(),
+        column: metadata.field(REVIEWS.BODY)?.column(),
         value: CELL_VALUE,
       },
     }) as PopoverClickAction[];
@@ -456,10 +489,14 @@ describe("QuickFilterDrill", () => {
           expect.objectContaining({
             nextCard: expect.objectContaining({
               dataset_query: {
-                database: 1,
+                database: SAMPLE_DB_ID,
                 query: {
-                  filter: [action.name, ["field", 29, null], CELL_VALUE],
-                  "source-table": 4,
+                  filter: [
+                    action.name,
+                    ["field", REVIEWS.BODY, null],
+                    CELL_VALUE,
+                  ],
+                  "source-table": REVIEWS_ID,
                 },
                 type: "query",
               },
@@ -473,8 +510,8 @@ describe("QuickFilterDrill", () => {
 
   describe("numeric cells, but not semantically numbers", () => {
     const { actions, cellValue } = setup({
-      question: PEOPLE.question(),
-      column: PEOPLE.ZIP.column(),
+      question: peopleTable.question(),
+      column: metadata.field(PEOPLE.ZIP)?.column(),
     });
 
     it("should return correct filters", () => {
@@ -489,8 +526,12 @@ describe("QuickFilterDrill", () => {
       it(`should correctly apply "${operator}" filter`, () => {
         const { question, query } = getActionQuestion(action);
         expect(query).toEqual({
-          "source-table": PEOPLE.id,
-          filter: [operator, PEOPLE.ZIP.reference(), cellValue],
+          "source-table": PEOPLE_ID,
+          filter: [
+            operator,
+            metadata.field(PEOPLE.ZIP)?.reference(),
+            cellValue,
+          ],
         });
         expect(question.display()).toBe("table");
       });

@@ -1,280 +1,260 @@
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-nocheck
-import Question from "../Question";
-import Database from "./Database";
-import Schema from "./Schema";
-import Metadata from "./Metadata";
-import Table from "./Table";
-import Base from "./Base";
+import { Database } from "metabase-types/api";
+import { createMockMetadata } from "__support__/metadata";
+import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
+import NativeQuery from "metabase-lib/queries/NativeQuery";
+import StructuredQuery from "metabase-lib/queries/StructuredQuery";
+
+interface SetupOpts {
+  database?: Database;
+  otherDatabases?: Database[];
+}
+
+const setup = ({
+  database = createMockDatabase(),
+  otherDatabases = [],
+}: SetupOpts = {}) => {
+  const metadata = createMockMetadata({
+    databases: [database, ...otherDatabases],
+  });
+
+  const instance = metadata.database(database.id);
+  if (!instance) {
+    throw new TypeError();
+  }
+
+  return instance;
+};
+
 describe("Database", () => {
   describe("instantiation", () => {
-    it("should create an instance of Schema", () => {
-      expect(new Database()).toBeInstanceOf(Database);
-    });
-    it("should add `object` props to the instance (because it extends Base)", () => {
-      expect(new Database()).toBeInstanceOf(Base);
-      expect(
-        new Database({
-          foo: "bar",
-        }),
-      ).toHaveProperty("foo", "bar");
+    it("should create an instance of Database", () => {
+      const database = setup({
+        database: createMockDatabase({}),
+      });
+      expect(database).toBeDefined();
     });
   });
+
   describe("displayName", () => {
     it("should return the name prop", () => {
-      expect(
-        new Database({
+      const database = setup({
+        database: createMockDatabase({
           name: "foo",
-        }).displayName(),
-      ).toBe("foo");
+        }),
+      });
+
+      expect(database.displayName()).toBe("foo");
     });
   });
+
   describe("schema", () => {
-    let schema;
-    let database;
-    beforeEach(() => {
-      schema = new Schema({
-        id: "123:foo",
-      });
-      const metadata = new Metadata({
-        schemas: {
-          "123:foo": schema,
-        },
-      });
-      database = new Database({
-        id: 123,
-        metadata,
-      });
-    });
     it("should return the schema with the given name", () => {
-      expect(database.schema("foo")).toBe(schema);
-    });
-    it("should return null when the given schema name doesn not match a schema", () => {
+      const database = setup({
+        database: createMockDatabase({
+          tables: [
+            createMockTable({
+              schema: "public",
+            }),
+          ],
+        }),
+      });
+
+      expect(database.schema("public")).toBeDefined();
       expect(database.schema("bar")).toBe(null);
     });
   });
+
   describe("schemaNames", () => {
     it("should return a list of schemaNames", () => {
-      const database = new Database({
-        id: 123,
-        schemas: [
-          new Schema({
-            id: "123:foo",
-            name: "foo",
-          }),
-          new Schema({
-            id: "123:bar",
-            name: "bar",
-          }),
-        ],
+      const database = setup({
+        database: createMockDatabase({
+          tables: [
+            createMockTable({
+              id: 1,
+              schema: "foo",
+            }),
+            createMockTable({
+              id: 2,
+              schema: "bar",
+            }),
+          ],
+        }),
       });
+
       expect(database.schemaNames()).toEqual(["bar", "foo"]);
     });
   });
+
   describe("tablesLookup", () => {
     it("should return a map of tables keyed by id", () => {
-      const table1 = new Table({
-        id: 1,
+      const database = setup({
+        database: createMockDatabase({
+          tables: [
+            createMockTable({
+              id: 1,
+            }),
+            createMockTable({
+              id: 2,
+            }),
+          ],
+        }),
       });
-      const table2 = new Table({
-        id: 2,
-      });
-      expect(
-        new Database({
-          tables: [],
-        }).tablesLookup(),
-      ).toEqual({});
-      expect(
-        new Database({
-          tables: [table1, table2],
-        }).tablesLookup(),
-      ).toEqual({
-        1: table1,
-        2: table2,
-      });
+
+      const lookup = database.tablesLookup();
+      expect(lookup[1]).toBeDefined();
+      expect(lookup[2]).toBeDefined();
+      expect(lookup[1]).toBe(database.metadata?.table(1));
+      expect(lookup[2]).toBe(database.metadata?.table(2));
     });
   });
+
   describe("hasFeature", () => {
     it("returns true when given a falsy `feature`", () => {
-      expect(new Database({}).hasFeature(null)).toBe(true);
-      expect(new Database({}).hasFeature("")).toBe(true);
+      const database = setup({
+        database: createMockDatabase(),
+      });
+
+      expect(database.hasFeature(null)).toBe(true);
+      expect(database.hasFeature("")).toBe(true);
     });
+
     it("should return true when given `feature` is found within the `features` on the instance", () => {
-      expect(
-        new Database({
-          features: ["foo"],
-        }).hasFeature("foo"),
-      ).toBe(true);
+      const database = setup({
+        database: createMockDatabase({
+          features: ["inner-join"],
+        }),
+      });
+
+      expect(database.hasFeature("inner-join")).toBe(true);
     });
+
     it("should return false when given `feature` is not found within the `features` on the instance", () => {
-      expect(
-        new Database({
-          features: ["foo"],
-        }).hasFeature("bar"),
-      ).toBe(false);
+      const database = setup({
+        database: createMockDatabase({
+          features: ["inner-join"],
+        }),
+      });
+
+      expect(database.hasFeature("persist-models")).toBe(false);
     });
-    it("should return false for 'join' even when it exists in `features`", () => {
-      expect(
-        new Database({
-          features: ["join"],
-        }).hasFeature("join"),
-      ).toBe(false);
-    });
-    it("should return true for 'join' for a set of other values", () => {
-      ["left-join", "right-join", "inner-join", "full-join"].forEach(
-        feature => {
-          expect(
-            new Database({
-              features: [feature],
-            }).hasFeature("join"),
-          ).toBe(true);
-        },
-      );
-    });
+
+    it.each(["left-join", "right-join", "inner-join", "full-join"] as const)(
+      "should return true for 'join' for %s",
+      feature => {
+        const database = setup({
+          database: createMockDatabase({
+            features: [feature],
+          }),
+        });
+
+        expect(database.hasFeature("join")).toBe(true);
+      },
+    );
   });
+
   describe("supportsPivots", () => {
     it("returns true when `expressions` and `left-join` exist in `features`", () => {
-      expect(
-        new Database({
-          features: ["foo", "left-join"],
-        }).supportsPivots(),
-      ).toBe(false);
-      expect(
-        new Database({
-          features: ["expressions", "right-join"],
-        }).supportsPivots(),
-      ).toBe(false);
-      expect(
-        new Database({
+      const database = setup({
+        database: createMockDatabase({
           features: ["expressions", "left-join"],
-        }).supportsPivots(),
-      ).toBe(true);
+        }),
+      });
+
+      expect(database.supportsPivots()).toBe(true);
+    });
+
+    it("returns false when `expressions` and `left-join` not exist in `features`", () => {
+      const database = setup({
+        database: createMockDatabase({
+          features: ["schemas", "persist-models"],
+        }),
+      });
+
+      expect(database.supportsPivots()).toBe(false);
     });
   });
+
   describe("question", () => {
     it("should create a question using the `metadata` found on the Database instance", () => {
-      const metadata = new Metadata();
-      const database = new Database({
-        metadata,
-      });
+      const database = setup();
       const question = database.question();
-      expect(question.metadata()).toBe(metadata);
+
+      expect(question.query()).toBeInstanceOf(StructuredQuery);
+      expect(question.metadata()).toEqual(database.metadata);
     });
+
     it("should create a question using the given Database instance's id in the question's query", () => {
-      const database = new Database({
-        id: 123,
+      const table = createMockTable();
+      const database = setup({
+        database: createMockDatabase({ tables: [table] }),
       });
-      expect(database.question().datasetQuery()).toEqual({
-        database: 123,
-        query: {
-          "source-table": null,
-        },
-        type: "query",
+      const question = database.question({
+        "source-table": table.id,
       });
-      expect(
-        database
-          .question({
-            foo: "bar",
-          })
-          .datasetQuery(),
-      ).toEqual({
-        database: 123,
-        query: {
-          foo: "bar",
-        },
-        type: "query",
-      });
+
+      expect(question.databaseId()).toBe(database.id);
+      expect(question.tableId()).toBe(table.id);
     });
   });
+
   describe("nativeQuestion", () => {
     it("should create a native question using the `metadata` found on the Database instance", () => {
-      const metadata = new Metadata();
-      const database = new Database({
-        metadata,
-      });
+      const database = setup();
       const question = database.nativeQuestion();
-      expect(question.metadata()).toBe(metadata);
+
+      expect(question.query()).toBeInstanceOf(NativeQuery);
+      expect(question.metadata()).toBe(database.metadata);
     });
+
     it("should create a native question using the given Database instance's id in the question's query", () => {
-      const database = new Database({
-        id: 123,
-      });
-      expect(database.nativeQuestion().datasetQuery()).toEqual({
-        database: 123,
-        native: {
-          query: "",
-          "template-tags": {},
-        },
-        type: "native",
-      });
-      expect(
-        database
-          .nativeQuestion({
-            foo: "bar",
-          })
-          .datasetQuery(),
-      ).toEqual({
-        database: 123,
-        native: {
-          query: "",
-          "template-tags": {},
-          foo: "bar",
-        },
-        type: "native",
-      });
+      const database = setup();
+      const question = database.nativeQuestion({ query: "SELECT 1" });
+
+      const query = question.query() as NativeQuery;
+      expect(query.queryText()).toBe("SELECT 1");
     });
   });
+
   describe("newQuestion", () => {
     it("should return new question with defaulted query and display", () => {
-      const database = new Database({
-        id: 123,
-      });
-      Question.prototype.setDefaultQuery = jest.fn(function () {
-        return this;
-      });
-      Question.prototype.setDefaultDisplay = jest.fn(function () {
-        return this;
-      });
+      const database = setup();
       const question = database.newQuestion();
-      expect(question).toBeInstanceOf(Question);
-      expect(Question.prototype.setDefaultDisplay).toHaveBeenCalled();
-      expect(Question.prototype.setDefaultQuery).toHaveBeenCalled();
+
+      expect(question.display()).toBe("table");
     });
   });
+
   describe("savedQuestionsDatabase", () => {
     it("should return the 'fake' saved questions database", () => {
-      const database1 = new Database({
-        id: 1,
+      const database = setup({
+        database: createMockDatabase({ id: 1 }),
+        otherDatabases: [
+          createMockDatabase({ id: 2, is_saved_questions: true }),
+        ],
       });
-      const database2 = new Database({
-        id: 2,
-        is_saved_questions: true,
-      });
-      const metadata = new Metadata({
-        databases: {
-          1: database1,
-          2: database2,
-        },
-      });
-      database1.metadata = metadata;
-      expect(database1.savedQuestionsDatabase()).toBe(database2);
+
+      const savedQuestionsDatabase = database.savedQuestionsDatabase();
+      expect(savedQuestionsDatabase).toBeDefined();
+      expect(savedQuestionsDatabase).toBe(database.metadata?.database(2));
     });
   });
 
   describe("canWrite", () => {
     it("should be true for a db with write permissions", () => {
-      const database = new Database({
-        id: 1,
-        native_permissions: "write",
+      const database = setup({
+        database: createMockDatabase({
+          native_permissions: "write",
+        }),
       });
 
       expect(database.canWrite()).toBe(true);
     });
 
     it("should be false for a db without write permissions", () => {
-      const database = new Database({
-        id: 1,
-        native_permissions: "none",
+      const database = setup({
+        database: createMockDatabase({
+          native_permissions: "none",
+        }),
       });
 
       expect(database.canWrite()).toBe(false);

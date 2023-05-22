@@ -173,7 +173,7 @@
                      :set    {:json_unfolding true}
                      :where  [:in :metabase_field.id field-ids-to-update]}))))
 
-(defn- update-legacy-field-refs [viz-settings]
+(defn- update-legacy-field-refs-in-viz-settings [viz-settings]
   (let [old-to-new (fn [old]
                      (match old
                        ["ref" ref] ["ref" (match ref
@@ -205,9 +205,70 @@
                                  :set    {:visualization_settings visualization_settings}
                                  :where  [:= :id id]}))]
     (run! update! (eduction (keep (fn [{:keys [id visualization_settings]}]
-                                    (let [updated (update-legacy-field-refs visualization_settings)]
+                                    (let [updated (update-legacy-field-refs-in-viz-settings visualization_settings)]
                                       (when (not= visualization_settings updated)
                                         {:id                     id
                                          :visualization_settings updated}))))
                             (t2/reducible-query {:select [:id :visualization_settings]
                                                  :from   [:report_card]})))))
+
+(defn- update-legacy-field-refs-in-result-metadata [result-metadata]
+  (let [old-to-new (fn [ref]
+                     (match ref
+                       ["field-id" x] ["field" x nil]
+                       ["field-literal" x y] ["field" x {"base-type" y}]
+                       ["fk->" x y] (let [x (match x
+                                              [_x0 x1] x1
+                                              x x)
+                                          y (match y
+                                              [_y0 y1] y1
+                                              y y)]
+                                      ["field" y {:source-field x}])
+                       _ ref))]
+    (->> result-metadata
+         (json/parse-string)
+         (map #(m/update-existing % "field_ref" old-to-new))
+         (json/generate-string))))
+
+(define-migration MigrateLegacyResultMetadataFieldRefs
+  (let [update! (fn [{:keys [id result_metadata]}]
+                  (t2/query-one {:update :report_card
+                                 :set    {:result_metadata result_metadata}
+                                 :where  [:= :id id]}))]
+    (run! update! (eduction (keep (fn [{:keys [id result_metadata]}]
+                                    (let [updated (update-legacy-field-refs-in-result-metadata result_metadata)]
+                                      (when (not= result_metadata updated)
+                                        {:id                     id
+                                         :result_metadata updated}))))
+                            (t2/reducible-query {:select [:id :result_metadata]
+                                                 :from   [:report_card]
+                                                 :where  [:and
+                                                          [:<> :result_metadata nil]
+                                                          [:<> :result_metadata "[]"]]})))))
+
+(defn- update-card-row-on-downgrade-for-dashboard-tab
+  [dashboard-id]
+  (let [ordered-tab+cards (->> (t2/query {:select    [:report_dashboardcard.* [:dashboard_tab.position :tab_position]]
+                                          :from      [:report_dashboardcard]
+                                          :where     [:= :report_dashboardcard.dashboard_id dashboard-id]
+                                          :left-join [:dashboard_tab [:= :dashboard_tab.id :report_dashboardcard.dashboard_tab_id]]})
+                               (group-by :tab_position)
+                               ;; sort by tab position
+                               (sort-by first))
+        cards->max-height (fn [cards] (apply max (map #(+ (:row %) (:size_y %)) cards)))]
+    (loop [position+cards ordered-tab+cards
+           next-tab-row   0]
+      (when-let [[tab-pos cards] (first position+cards)]
+        (if (zero? tab-pos)
+          (recur (rest position+cards) (long (cards->max-height cards)))
+          (do
+            (t2/query {:update :report_dashboardcard
+                       :set    {:row [:+ :row next-tab-row]}
+                       :where  [:= :dashboard_tab_id (:dashboard_tab_id (first cards))]})
+            (recur (rest position+cards) (long (+ next-tab-row (cards->max-height cards))))))))))
+
+(define-reversible-migration DowngradeDashboardTab
+  (log/info "No forward migration for DowngradeDashboardTab")
+  (run! update-card-row-on-downgrade-for-dashboard-tab
+        (eduction (map :dashboard_id) (t2/reducible-query {:select-distinct [:dashboard_id]
+                                                           :from            [:dashboard_tab]}))))

@@ -1,10 +1,10 @@
 import SortDrill from "../drill/SortDrill";
 import ObjectDetailDrill from "../drill/ObjectDetailDrill";
-import QuickFilterDrill from "../drill/QuickFilterDrill";
+import { QuickFilterDrill } from "../drill/QuickFilterDrill";
 import ForeignKeyDrill from "../drill/ForeignKeyDrill";
-import ColumnFilterDrill from "../drill/ColumnFilterDrill";
+import { ColumnFilterDrill } from "../drill/ColumnFilterDrill";
 import UnderlyingRecordsDrill from "../drill/UnderlyingRecordsDrill";
-import AutomaticInsightsDrill from "../drill/AutomaticInsightsDrill";
+import { AutomaticInsightsDrill } from "../drill/AutomaticInsightsDrill";
 import ZoomDrill from "../drill/ZoomDrill";
 import FormatDrill from "../drill/FormatDrill";
 import DashboardClickDrill from "../drill/DashboardClickDrill";

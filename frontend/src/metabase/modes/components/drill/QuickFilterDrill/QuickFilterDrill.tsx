@@ -95,7 +95,7 @@ const getOperatorOverrides = (
   return null;
 };
 
-const QuickFilterDrill = ({
+export const QuickFilterDrill = ({
   question,
   clicked,
 }: ClickActionProps): Array<QuestionChangeClickAction | PopoverClickAction> => {
@@ -139,5 +139,3 @@ const QuickFilterDrill = ({
     };
   });
 };
-
-export default QuickFilterDrill;

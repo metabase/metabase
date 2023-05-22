@@ -2,11 +2,12 @@ import {
   Dataset,
   DatasetColumn,
   DatasetData,
+  ResultsMetadata,
   TemplateTag,
 } from "metabase-types/api/dataset";
 
 export const createMockColumn = (
-  data?: Partial<DatasetColumn>,
+  data: Partial<DatasetColumn> = {},
 ): DatasetColumn => {
   return {
     id: 1,
@@ -22,18 +23,20 @@ export const createMockColumn = (
   };
 };
 
-export const createMockDatasetData = (
-  opts?: Partial<DatasetData>,
-): DatasetData => ({
-  rows: [],
-  cols: [
+export const createMockDatasetData = ({
+  cols = [
     createMockColumn({
       display_name: "NAME",
       source: "native",
       name: "NAME",
     }),
   ],
+  ...opts
+}: Partial<DatasetData>): DatasetData => ({
+  rows: [],
+  cols,
   rows_truncated: 0,
+  results_metadata: createMockResultsMetadata(cols),
   ...opts,
 });
 
@@ -59,5 +62,13 @@ export const createMockTemplateTag = (
   name: "tag",
   "display-name": "Tag",
   type: "text",
+  ...opts,
+});
+
+export const createMockResultsMetadata = (
+  columns: DatasetColumn[] = [createMockColumn()],
+  opts?: Partial<ResultsMetadata>,
+): ResultsMetadata => ({
+  columns,
   ...opts,
 });

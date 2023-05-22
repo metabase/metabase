@@ -14,7 +14,7 @@ import {
   compareToRestDrillUrl,
 } from "metabase-lib/queries/drills/automatic-insights-drill";
 
-const AutomaticInsightsDrill = ({
+export const AutomaticInsightsDrill = ({
   question,
   clicked,
 }: ClickActionProps): PopoverClickAction[] => {
@@ -64,5 +64,3 @@ const AutomaticInsightsDrill = ({
     },
   ];
 };
-
-export default AutomaticInsightsDrill;

@@ -1,1 +1,1 @@
-export { default, getPivotDrill } from "./PivotDrill";
+export { PivotDrill, getPivotDrill } from "./PivotDrill";

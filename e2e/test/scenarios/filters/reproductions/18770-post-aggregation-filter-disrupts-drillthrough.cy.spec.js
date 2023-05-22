@@ -38,6 +38,7 @@ describe.skip("issue 18770", () => {
 
     visualize();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("4,784").click();
     popover()
       .should("contain", "See these Orders")

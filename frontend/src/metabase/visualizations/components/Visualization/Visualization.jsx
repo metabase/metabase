@@ -17,7 +17,7 @@ import {
 } from "metabase/visualizations";
 import ChartCaption from "metabase/visualizations/components/ChartCaption";
 import ChartTooltip from "metabase/visualizations/components/ChartTooltip";
-import ChartClickActions from "metabase/visualizations/components/ChartClickActions";
+import { ConnectedChartClickActions } from "metabase/visualizations/components/ChartClickActions";
 
 import { performDefaultAction } from "metabase/visualizations/lib/action";
 import {
@@ -517,7 +517,7 @@ class Visualization extends React.PureComponent {
           )}
           <ChartTooltip series={series} hovered={hovered} settings={settings} />
           {this.props.onChangeCardAndRun && (
-            <ChartClickActions
+            <ConnectedChartClickActions
               clicked={clicked}
               clickActions={regularClickActions}
               onChangeCardAndRun={this.handleOnChangeCardAndRun}

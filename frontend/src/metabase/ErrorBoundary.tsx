@@ -2,6 +2,7 @@ import React, { ErrorInfo, ComponentType } from "react";
 
 import { SmallGenericError } from "metabase/containers/ErrorPages";
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default class ErrorBoundary extends React.Component<
   {
     onError?: (errorInfo: ErrorInfo) => void;

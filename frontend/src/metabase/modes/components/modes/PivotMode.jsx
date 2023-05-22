@@ -1,4 +1,4 @@
-import PivotDrill from "../drill/PivotDrill";
+import { PivotDrill } from "../drill/PivotDrill";
 import DefaultMode from "./DefaultMode";
 
 const PivotMode = {

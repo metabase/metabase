@@ -90,6 +90,7 @@ type Props = {
   hideEmptinessOperators?: boolean;
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default function ExcludeDatePicker({
   className,
   onFilterChange,

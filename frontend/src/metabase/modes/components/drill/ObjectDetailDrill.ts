@@ -73,4 +73,5 @@ const ObjectDetailDrill: Drill = ({ question, clicked }) => {
   ];
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ObjectDetailDrill;

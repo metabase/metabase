@@ -32,10 +32,13 @@ describe("issue 13504", () => {
     cy.createQuestion(questionDetails, { visitQuestion: true });
 
     cy.get(".dot").eq(0).click({ force: true });
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/See these Orders/).click();
     cy.wait("@dataset");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Total is greater than 50").should("be.visible");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Created At is March, 2017").should("be.visible");
   });
 });

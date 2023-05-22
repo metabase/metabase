@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer [are deftest is testing]]
    [medley.core :as m]
+   [metabase.lib.binning :as lib.binning]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
@@ -130,19 +131,16 @@
 
 (deftest ^:parallel unresolved-lib-field-with-temporal-bucket-test
   (let [query (lib/query-for-table-name meta/metadata-provider "CHECKINS")
-        f (lib/with-temporal-bucket (lib/field (meta/id :checkins :date)) :year)]
+        f (lib/with-temporal-bucket (lib/field (meta/id :checkins :date)) :day-of-month)]
     (is (fn? f))
     (let [field (f query -1)]
-      (is (=? [:field {:temporal-unit :year} (meta/id :checkins :date)]
+      (is (=? [:field {:temporal-unit :day-of-month} (meta/id :checkins :date)]
               field))
-      (testing "(lib/temporal-bucket <column-metadata>)"
-        (is (= :year
-               (lib/temporal-bucket (lib.metadata.calculation/metadata query -1 field)))))
       (testing "(lib/temporal-bucket <field-ref>)"
         (is (= {:lib/type :type/temporal-bucketing-option
-                :unit :year}
-               (lib/temporal-bucket-option field))))
-      (is (= "Date (year)"
+                :unit :day-of-month}
+               (lib/temporal-bucket field))))
+      (is (= "Date: Day of month"
              (lib.metadata.calculation/display-name query -1 field))))))
 
 (def ^:private temporal-bucketing-mock-metadata
@@ -182,8 +180,9 @@
       (testing "should calculate correct effective type"
         (is (= effective-type
                (lib.metadata.calculation/type-of (:query temporal-bucketing-mock-metadata) x'))))
-      (testing "lib/temporal-bucket should return the unit"
-        (is (= unit
+      (testing "lib/temporal-bucket should return the option"
+        (is (= {:lib/type :type/temporal-bucketing-option
+                :unit     unit}
                (lib/temporal-bucket x')))
         (testing "should generate a :field ref with correct :temporal-unit"
           (is (=? [:field
@@ -196,7 +195,6 @@
       (testing "remove the temporal unit"
         (let [x'' (lib/with-temporal-bucket x' nil)]
           (is (nil? (lib/temporal-bucket x'')))
-          (is (nil? (lib/temporal-bucket-option x'')))
           (is (= x
                  x''))))
       (testing "change the temporal unit, THEN remove it"
@@ -209,9 +207,13 @@
 (deftest ^:parallel available-temporal-buckets-test
   (doseq [{:keys [metadata expected-options]}
           [{:metadata         (get-in temporal-bucketing-mock-metadata [:fields :date])
-            :expected-options lib.temporal-bucket/date-bucket-options}
+            :expected-options (-> lib.temporal-bucket/date-bucket-options
+                                  (update 0 dissoc :default)
+                                  (assoc-in [2 :default] true))}
            {:metadata         (get-in temporal-bucketing-mock-metadata [:fields :datetime])
-            :expected-options lib.temporal-bucket/datetime-bucket-options}
+            :expected-options (-> lib.temporal-bucket/datetime-bucket-options
+                                  (update 2 dissoc :default)
+                                  (assoc-in [4 :default] true))}
            {:metadata         (get-in temporal-bucketing-mock-metadata [:fields :time])
             :expected-options lib.temporal-bucket/time-bucket-options}]]
     (testing (str (:base-type metadata) " Field")
@@ -221,12 +223,126 @@
                  (lib/available-temporal-buckets (:query temporal-bucketing-mock-metadata) x)))
           (testing "Bucketing with any of the options should work"
             (doseq [expected-option expected-options]
-              (is (= (:unit expected-option)
+              (is (= {:lib/type :type/temporal-bucketing-option
+                     :unit      (:unit expected-option)}
                      (lib/temporal-bucket (lib/with-temporal-bucket x expected-option))))))
           (testing "Bucket it, should still return the same available units"
             (is (= expected-options
                    (lib/available-temporal-buckets (:query temporal-bucketing-mock-metadata)
                                                    (lib/with-temporal-bucket x :month-of-year))))))))))
+
+(deftest ^:parallel unresolved-lib-field-with-binning-test
+  (let [query         (lib/query-for-table-name meta/metadata-provider "ORDERS")
+        binning       {:strategy :num-bins
+                       :num-bins 10}
+        binning-typed (assoc binning
+                             :lib/type    ::lib.binning/binning
+                             :metadata-fn fn?)
+        f             (lib/with-binning (lib/field (meta/id :orders :subtotal)) binning)]
+    (is (fn? f))
+    (let [field (f query -1)]
+      (is (=? [:field {:binning binning} (meta/id :orders :subtotal)]
+              field))
+      (testing "(lib/binning <column-metadata>)"
+        (is (=? binning-typed
+                (lib/binning (lib.metadata.calculation/metadata query -1 field)))))
+      (testing "(lib/binning <field-ref>)"
+        (is (=? binning-typed
+                (lib/binning field))))
+      #?(:clj
+         ;; i18n/trun doesn't work in the CLJS tests, only in proper FE, so this test is JVM-only.
+         (is (= "Subtotal: 10 bins"
+                (lib.metadata.calculation/display-name query -1 field)))))))
+
+(deftest ^:parallel with-binning-test
+  (doseq [[binning1 binning2] (partition 2 1 [{:strategy :default}
+                                              {:strategy :num-bins  :num-bins  10}
+                                              {:strategy :bin-width :bin-width 1.0}
+                                              {:strategy :default}])
+          :let                  [field-metadata (lib.metadata/field meta/metadata-provider "PUBLIC" "ORDERS" "SUBTOTAL")]
+          [what x]              {"column metadata" field-metadata
+                                 "field ref"       (lib/ref field-metadata)}
+          :let                  [x' (lib/with-binning x binning1)]]
+    (testing (str what " strategy = " (:strategy binning2) "\n\n" (u/pprint-to-str x') "\n")
+      (testing "lib/binning should return the binning settings"
+        (is (=? (merge binning1
+                       {:lib/type    ::lib.binning/binning
+                        :metadata-fn fn?})
+                (lib/binning x'))))
+      (testing "should generate a :field ref with correct :binning"
+        (is (=? [:field
+                 {:lib/uuid string?
+                  :binning  binning1}
+                 integer?]
+                (lib/ref x'))))
+      (testing "remove the binning setting"
+        (let [x'' (lib/with-binning x' nil)]
+          (is (nil? (lib/binning x'')))
+          (is (= x
+                 x''))))
+      (testing "change the binning setting, THEN remove it"
+        (let [x''  (lib/with-binning x' binning2)
+              x''' (lib/with-binning x'' nil)]
+          (is (=? (merge binning2
+                         {:lib/type    ::lib.binning/binning
+                          :metadata-fn fn?})
+                  (lib/binning x'')))
+          (is (nil? (lib/binning x''')))
+          (is (= x
+                 x''')))))))
+
+(deftest ^:parallel available-binning-strategies-test
+  (doseq [{:keys [expected-options field-metadata query]}
+          [{:query            (lib/query-for-table-name meta/metadata-provider "ORDERS")
+            :field-metadata   (lib.metadata/field meta/metadata-provider "PUBLIC" "ORDERS" "SUBTOTAL")
+            :expected-options (lib.binning/numeric-binning-strategies)}
+           {:query            (lib/query-for-table-name meta/metadata-provider "PEOPLE")
+            :field-metadata   (lib.metadata/field meta/metadata-provider "PUBLIC" "PEOPLE" "LATITUDE")
+            :expected-options (lib.binning/coordinate-binning-strategies)}]]
+    (testing (str (:semantic-type field-metadata) " Field")
+      (doseq [[what x] [["column metadata" field-metadata]
+                        ["field ref"       (lib/ref field-metadata)]]]
+        (testing (str what "\n\n" (u/pprint-to-str x))
+          (is (= expected-options
+                 (lib/available-binning-strategies query x)))
+          (testing "when binned, should still return the same available units"
+            (let [binned (lib/with-binning x (second expected-options))]
+              (is (= (-> expected-options second :mbql)
+                     (-> binned lib/binning (dissoc :lib/type :metadata-fn))))
+              (is (= expected-options
+                     (lib/available-binning-strategies query binned))))))))))
+
+(deftest ^:parallel binning-display-info-test
+  (testing "numeric binning"
+    (let [query          (lib/query-for-table-name meta/metadata-provider "ORDERS")
+          field-metadata (lib.metadata/field meta/metadata-provider "PUBLIC" "ORDERS" "SUBTOTAL")
+          strategies     (lib.binning/numeric-binning-strategies)]
+      (doseq [[strat exp] (zipmap strategies [{:display-name "Auto binned" :default true}
+                                              {:display-name "10 bins"}
+                                              {:display-name "50 bins"}
+                                              {:display-name "100 bins"}
+                                              nil])]
+        (is (= exp
+               (some->> strat
+                        (lib.binning/with-binning field-metadata)
+                        lib.binning/binning
+                        (lib/display-info query)))))))
+
+  (testing "coordinate binning"
+    (let [query          (lib/query-for-table-name meta/metadata-provider "PEOPLE")
+          field-metadata (lib.metadata/field meta/metadata-provider "PUBLIC" "PEOPLE" "LATITUDE")
+          strategies     (lib.binning/coordinate-binning-strategies)]
+      (doseq [[strat exp] (zipmap strategies [{:display-name "Auto binned" :default true}
+                                              {:display-name "0.1°"}
+                                              {:display-name "1°"}
+                                              {:display-name "10°"}
+                                              {:display-name "20°"}
+                                              nil])]
+        (is (= exp
+               (some->> strat
+                        (lib.binning/with-binning field-metadata)
+                        lib.binning/binning
+                        (lib/display-info query))))))))
 
 (deftest ^:parallel joined-field-column-name-test
   (let [card  {:dataset-query {:database (meta/id)

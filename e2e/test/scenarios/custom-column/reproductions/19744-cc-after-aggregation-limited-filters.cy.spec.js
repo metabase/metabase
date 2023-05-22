@@ -49,7 +49,9 @@ describe.skip("issue 19744", () => {
     editDashboard();
     cy.icon("filter").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Time").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("All Options").click();
 
     cy.get(".DashCard").contains("Select…").click();

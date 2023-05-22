@@ -1,9 +1,16 @@
 import React from "react";
-import { PEOPLE } from "__support__/sample_database_fixture";
 import { renderWithProviders, screen } from "__support__/ui";
 import { DatasetColumn } from "metabase-types/api";
 import MetabaseSettings from "metabase/lib/settings";
-import AutomaticInsightsDrill from "./AutomaticInsightsDrill";
+import { createMockMetadata } from "__support__/metadata";
+import {
+  createSampleDatabase,
+  PEOPLE,
+  PEOPLE_ID,
+} from "metabase-types/api/mocks/presets";
+import { checkNotNull } from "metabase/core/utils/types";
+import type { ClickActionProps } from "metabase-lib/queries/drills/types";
+import { AutomaticInsightsDrill } from "./AutomaticInsightsDrill";
 
 describe("AutomaticInsightsDrill", () => {
   describe('"enable-xrays" feature is disabled', () => {
@@ -43,19 +50,28 @@ describe("AutomaticInsightsDrill", () => {
   });
 });
 
-function setupCategoryFieldQuery() {
-  const query = PEOPLE.query()
+function setupCategoryFieldQuery(): ClickActionProps {
+  const metadata = createMockMetadata({
+    databases: [createSampleDatabase()],
+  });
+
+  const peopleTable = checkNotNull(metadata.table(PEOPLE_ID));
+
+  const query = peopleTable
+    .query()
     .aggregate(["count"])
-    .breakout(["field", PEOPLE.STATE.id, null]);
+    .breakout(["field", PEOPLE.STATE, null]);
 
   const question = query.question();
 
   const clicked = {
-    column: query.aggregationDimensions()[0].column(),
+    column: query.aggregationDimensions()[0].column() as DatasetColumn,
     value: 194,
     dimensions: [
       {
-        column: PEOPLE.STATE.dimension().column() as DatasetColumn,
+        column: checkNotNull(metadata.field(PEOPLE.STATE))
+          .dimension()
+          .column() as DatasetColumn,
         value: "TX",
       },
     ],

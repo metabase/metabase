@@ -3,9 +3,12 @@ import { render, screen } from "__support__/ui";
 import DefaultMode from "metabase/modes/components/modes/DefaultMode";
 import { checkNotNull } from "metabase/core/utils/types";
 import type { RegularClickAction } from "metabase/modes/types";
-import { REVIEWS, SAMPLE_DATABASE } from "__support__/sample_database_fixture";
+import {
+  createSampleDatabase,
+  REVIEWS_ID,
+} from "metabase-types/api/mocks/presets";
+import { createMockMetadata } from "__support__/metadata";
 import Mode from "metabase-lib/Mode";
-import { getAdHocQuestion } from "metabase-lib/mocks";
 import { QueryMode } from "metabase-lib/queries/drills/types";
 import { ChartClickActionsView } from "./ChartClickActionsView";
 
@@ -76,23 +79,16 @@ function setup(
   value: string | number,
   queryMode: QueryMode = DefaultMode as QueryMode,
 ) {
-  const question = getAdHocQuestion({
-    dataset_query: {
-      type: "query",
-      database: SAMPLE_DATABASE?.id,
-      query: {
-        "source-table": REVIEWS.id,
-      },
-    },
+  const metadata = createMockMetadata({
+    databases: [createSampleDatabase()],
   });
+
+  const question = checkNotNull(metadata.table(REVIEWS_ID)?.newQuestion());
   const mode = new Mode(question, queryMode);
-
-  let table = question.table();
-  table = checkNotNull(table);
-
-  let column = table.fields.find(({ name }) => name === fieldName)?.column();
-
-  column = checkNotNull(column);
+  const table = checkNotNull(question.table());
+  const column = checkNotNull(
+    table.fields?.find(({ name }) => name === fieldName)?.column(),
+  );
 
   const clicked = {
     column: column,

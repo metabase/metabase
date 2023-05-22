@@ -14422,6 +14422,94 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
+      id: v47.00-006
+      author: qnkhuat
+      comment: Added 0.47.0 - Add dashboard_tab table
+      changes:
+        - createTable:
+            tableName: dashboard_tab
+            remarks: "Join table connecting dashboard to dashboardcards"
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: dashboard_id
+                  type: int
+                  remarks: The dashboard that a tab is on
+                  constraints:
+                    nullable: false
+                    referencedTableName: report_dashboard
+                    referencedColumnNames: id
+                    foreignKeyName: fk_dashboard_tab_ref_dashboard_id
+                    deleteCascade: true
+              - column:
+                  name: name
+                  remarks: Displayed name of the tab
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: position
+                  remarks: Position of the tab with respect to others tabs in dashboard
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: entity_id
+                  type: char(21)
+                  remarks: Random NanoID tag for unique identity.
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: created_at
+                  remarks: The timestamp at which the tab was created
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  remarks: The timestamp at which the tab was last updated
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v47.00-007
+      author: qnkhuat
+      comment: Added 0.47.0 -- add report_dashboardcard.dashboard_tab_id
+      changes:
+        - addColumn:
+            tableName: report_dashboardcard
+            columns:
+              - column:
+                  name: dashboard_tab_id
+                  type: int
+                  remarks: The referenced tab id that dashcard is on, it's nullable for dashboard with no tab
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v47.00-008
+      author: qnkhuat
+      comment: Added 0.47.0 -- add report_dashboardcard.dashboard_tab_id fk constraint
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: report_dashboardcard
+            baseColumnNames: dashboard_tab_id
+            referencedTableName: dashboard_tab
+            referencedColumnNames: id
+            constraintName: fk_report_dashboardcard_ref_dashboard_tab_id
+            deleteCascade: true
+
+  - changeSet:
       id: v47.00-009
       author: qwef
       comment: Added 0.47.0 - Replace user google_auth and ldap_auth columns with sso_source values
@@ -14504,6 +14592,22 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
+      id: v47.00-015
+      author: escherize
+      comment: added 0.47.0 - Add is_audit to metabase_database
+      changes:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: is_audit
+                  type: boolean
+                  defaultValueBoolean: false
+                  remarks: 'Only the app db, visible to admins via auditing should have this set true.'
+                  constraints:
+                    nullable: false
+
+  - changeSet:
       id: v47.00-016
       author: calherres
       comment: Added 0.47.0 - Migrate the report_card.visualization_settings.column_settings field refs from legacy format
@@ -14511,7 +14615,23 @@ databaseChangeLog:
         - customChange:
             class: "metabase.db.custom_migrations.MigrateLegacyColumnSettingsFieldRefs"
 
-# >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
+  - changeSet:
+      id: v47.00-027
+      author: calherres
+      comment: Added 0.47.0 - Migrate field_ref in report_card.result_metadata from legacy format
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.MigrateLegacyResultMetadataFieldRefs"
+
+  - changeSet:
+      id: v47.00-029
+      author: qnkhuat
+      comment: Added 0.47.0 - Stack cards vertically for dashboard with tabs on downgrade
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.DowngradeDashboardTab"
+
+  # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
 #

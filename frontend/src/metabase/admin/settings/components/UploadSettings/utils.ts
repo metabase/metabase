@@ -1,5 +1,5 @@
-import type { Schema } from "metabase-types/api";
 import Database from "metabase-lib/metadata/Database";
+import Schema from "metabase-lib/metadata/Schema";
 
 export const getDatabaseOptions = (databases: Database[]) =>
   databases
@@ -9,11 +9,7 @@ export const getDatabaseOptions = (databases: Database[]) =>
 export const getSchemaOptions = (schema: Schema[]) =>
   schema.map(s => ({ name: s.name, value: s.name }));
 
-// it would be nice if the API returned schema as a DB feature at a driver level,
-// but it doesn't do this yet
-const enginesWithSchema = ["postgres", "h2"];
-
-export const dbHasSchema = (databases: Database[], dbId: number) =>
-  enginesWithSchema.includes(
-    databases.find((db: Database) => db.id === dbId)?.engine ?? "",
-  );
+export const dbHasSchema = (databases: Database[], dbId: number): boolean =>
+  !!databases
+    .find((db: Database) => db.id === dbId)
+    ?.features.includes("schemas");

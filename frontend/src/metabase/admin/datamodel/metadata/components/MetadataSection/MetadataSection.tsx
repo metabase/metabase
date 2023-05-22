@@ -15,4 +15,5 @@ const MetadataSection = ({ first, last, children }: MetadataSectionProps) => (
   </section>
 );
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default MetadataSection;
