@@ -699,7 +699,7 @@ describe("scenarios > dashboard", () => {
     cy.wait("@dashcardQuery");
 
     getDashboardCard().within(() => {
-      // raw data
+      // table data
       cy.findByText("101.04").should("be.visible");
       cy.findByText("Orders").click();
       cy.wait("@cardQuery");
@@ -711,7 +711,7 @@ describe("scenarios > dashboard", () => {
     });
 
     getDashboardCard().within(() => {
-      // raw data
+      // cached data
       cy.findByText("101.04").should("be.visible");
       cy.get("@dashcardQuery.all").should("have.length", 1);
     });
@@ -734,7 +734,7 @@ describe("scenarios > dashboard", () => {
     cy.wait("@dashcardQuery");
 
     getDashboardCard().within(() => {
-      // raw data
+      // table data
       cy.findByText("101.04").should("be.visible");
       cy.findByText("Orders").click();
       cy.wait("@cardQuery");
