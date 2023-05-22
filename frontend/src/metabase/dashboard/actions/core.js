@@ -1,12 +1,12 @@
 import { createAction, createThunkAction } from "metabase/lib/redux";
-import { getIsNavigatingToDashboard } from "metabase/dashboard/selectors";
+import { getIsNavigatingWithinDashboard } from "metabase/dashboard/selectors";
 
 export const INITIALIZE = "metabase/dashboard/INITIALIZE";
 export const initialize = createThunkAction(
   INITIALIZE,
   () => (dispatch, getState) => {
     return {
-      isNavigatingWithinDashboard: getIsNavigatingToDashboard(getState()),
+      isNavigatingWithinDashboard: getIsNavigatingWithinDashboard(getState()),
     };
   },
 );
@@ -14,7 +14,7 @@ export const initialize = createThunkAction(
 export const RESET = "metabase/dashboard/RESET";
 export const reset = createThunkAction(RESET, () => (dispatch, getState) => {
   return {
-    isNavigatingWithinDashboard: getIsNavigatingToDashboard(getState()),
+    isNavigatingWithinDashboard: getIsNavigatingWithinDashboard(getState()),
   };
 });
 
