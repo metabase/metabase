@@ -1,20 +1,24 @@
 import React from "react";
 import { t } from "ttag";
 import { RowValue } from "metabase-types/api";
+import type {
+  ClickActionButtonType,
+  ClickActionProps,
+  PopoverClickAction,
+  QuestionChangeClickAction,
+} from "metabase/modes/types";
 import {
-  QuickFilterDataValueType,
   quickFilterDrill,
+  QuickFilterDrillOperator,
   quickFilterDrillQuestion,
   QuickFilterOperatorType,
 } from "metabase-lib/queries/drills/quick-filter-drill";
-import type {
-  ClickActionButtonType,
-  Drill,
-  QuestionChangeClickAction,
-} from "../../../types";
+import { getColumnFilterDrillPopover } from "../common/ColumnFilterDrillPopover";
 import { TextIcon } from "./QuickFilterDrill.styled";
 
-const DateButtonTitleMap: Record<QuickFilterOperatorType, string> = {
+export type DateQuickFilterOperatorType = "<" | ">" | "=" | "≠";
+
+const DateButtonTitleMap: Record<DateQuickFilterOperatorType, string> = {
   ["<"]: t`Before`,
   [">"]: t`After`,
   ["="]: t`On`,
@@ -22,6 +26,11 @@ const DateButtonTitleMap: Record<QuickFilterOperatorType, string> = {
 };
 
 const SPECIFIC_VALUE_TITLE_MAX_LENGTH = 20;
+
+const OPERATORS_WITH_POPOVER: QuickFilterOperatorType[] = [
+  "contains",
+  "does-not-contain",
+];
 
 const getTextValueTitle = (value: string): string => {
   if (value.length === 0) {
@@ -35,15 +44,10 @@ const getTextValueTitle = (value: string): string => {
   return value;
 };
 
-const getOperatorOverrides = ({
-  valueType,
-  name,
-  value,
-}: {
-  valueType: QuickFilterDataValueType;
-  name: QuickFilterOperatorType;
-  value: RowValue | undefined;
-}): {
+const getOperatorOverrides = (
+  { name, valueType }: QuickFilterDrillOperator,
+  value: RowValue | undefined,
+): {
   title?: string;
   icon?: React.ReactNode;
   buttonType?: ClickActionButtonType;
@@ -65,6 +69,20 @@ const getOperatorOverrides = ({
         buttonType: "horizontal",
       };
     }
+    if (name === "contains") {
+      return {
+        title: t`Contains…`,
+        icon: "filter",
+        buttonType: "horizontal",
+      };
+    }
+    if (name === "does-not-contain") {
+      return {
+        title: t`Does not contain…`,
+        icon: <TextIcon>≠</TextIcon>,
+        buttonType: "horizontal",
+      };
+    }
   }
 
   if (valueType === "date") {
@@ -77,29 +95,49 @@ const getOperatorOverrides = ({
   return null;
 };
 
-const QuickFilterDrill: Drill = ({
+const QuickFilterDrill = ({
   question,
   clicked,
-}): QuestionChangeClickAction[] => {
+}: ClickActionProps): Array<QuestionChangeClickAction | PopoverClickAction> => {
   const drill = quickFilterDrill({ question, clicked });
-  if (!drill || !clicked) {
+  if (!drill || !drill.operators || !clicked) {
     return [];
   }
 
   const { value } = clicked;
-  const { operators, valueType } = drill;
+  const { query, operators } = drill;
 
-  return operators.map(({ name, filter }) => ({
-    name,
-    title: name,
-    section: "filter",
-    buttonType: "token-filter",
-    question: () => quickFilterDrillQuestion({ question, clicked, filter }),
-    extra: () => ({
-      valueType,
-    }),
-    ...getOperatorOverrides({ valueType, name, value }),
-  }));
+  return operators.map(operator => {
+    const { name, filter, valueType } = operator;
+
+    if (OPERATORS_WITH_POPOVER.includes(name)) {
+      return {
+        name,
+        title: name,
+        section: "filter",
+        buttonType: "token-filter",
+        popover: getColumnFilterDrillPopover({
+          query,
+          initialFilter: filter,
+          addFilter: filter =>
+            quickFilterDrillQuestion({ clicked, filter }).card(),
+        }),
+        ...getOperatorOverrides(operator, value),
+      };
+    }
+
+    return {
+      name,
+      title: name,
+      section: "filter",
+      buttonType: "token-filter",
+      question: () => quickFilterDrillQuestion({ clicked, filter }),
+      extra: () => ({
+        valueType,
+      }),
+      ...getOperatorOverrides(operator, value),
+    };
+  });
 };
 
 export default QuickFilterDrill;

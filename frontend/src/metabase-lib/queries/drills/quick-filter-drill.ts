@@ -1,34 +1,64 @@
-import type { DatasetColumn, RowValue } from "metabase-types/api";
-import { FieldFilter } from "metabase-types/api";
+import type {
+  ConcreteFieldReference,
+  DatasetColumn,
+  FieldFilter,
+  RowValue,
+} from "metabase-types/api";
+import { FieldLiteral, FieldReference } from "metabase-types/api";
 import {
   isa,
   isBoolean,
   isDate,
+  isLongText,
   isNumeric,
+  isString,
   isTypeFK,
   isTypePK,
 } from "metabase-lib/types/utils/isa";
 import { TYPE } from "metabase-lib/types/constants";
+import type Question from "metabase-lib/Question";
 import { isLocalField } from "metabase-lib/queries/utils";
 import { fieldRefForColumn } from "metabase-lib/queries/utils/dataset";
-import type Question from "metabase-lib/Question";
-import StructuredQuery from "metabase-lib/queries/StructuredQuery";
-import { ClickObject } from "metabase-lib/queries/drills/types";
+import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
+import type { ClickObject } from "metabase-lib/queries/drills/types";
+import Filter from "metabase-lib/queries/structured/Filter";
+import Dimension from "metabase-lib/Dimension";
 
 const INVALID_TYPES = [TYPE.Structured];
+const isConcreteField = (
+  fieldRef: FieldReference,
+): fieldRef is ConcreteFieldReference => {
+  const [type] = fieldRef;
 
-export type QuickFilterOperatorType = "<" | ">" | "=" | "≠";
+  return type === "field" || type === "expression";
+};
 
-type QuickFilterDrillOperator = {
-  name: QuickFilterOperatorType;
+export type QuickFilterOperatorType =
+  | "<"
+  | ">"
+  | "="
+  | "≠"
+  | "contains"
+  | "does-not-contain";
+
+export type QuickFilterDrillOperator =
+  | { valueType: "null" | "boolean"; name: "=" | "≠" }
+  | {
+      valueType: "numeric" | "date";
+      name: "=" | "≠" | "<" | ">";
+    }
+  | {
+      valueType: "text";
+      name: "=" | "≠" | "contains" | "does-not-contain";
+    };
+
+type ColumnOperatorConfig = QuickFilterDrillOperator & {
   filter: FieldFilter;
 };
-export type QuickFilterDataValueType =
-  | "null"
-  | "date"
-  | "numeric"
-  | "boolean"
-  | "text";
+
+type DrillOperator = QuickFilterDrillOperator & {
+  filter: Filter;
+};
 
 export function quickFilterDrill({
   question,
@@ -36,8 +66,11 @@ export function quickFilterDrill({
 }: {
   question: Question;
   clicked: ClickObject | undefined;
-}) {
-  const query = question.query();
+}): {
+  query: StructuredQuery;
+  operators: DrillOperator[] | undefined;
+} | null {
+  const query = question.query() as StructuredQuery;
   if (
     !question.isStructured() ||
     !query.isEditable() ||
@@ -53,90 +86,92 @@ export function quickFilterDrill({
     return null;
   }
 
-  return getOperatorsForColumn(column, value);
-}
+  const columnDimension = query.dimensionForColumn(column);
+  const isValidFilterDimension = query
+    .filterDimensionOptions()
+    .all()
+    .find(d => d.isEqual(columnDimension));
 
-export function quickFilterDrillQuestion({
-  question,
-  clicked,
-  filter,
-}: {
-  question: Question;
-  clicked: ClickObject;
-  filter: FieldFilter;
-}) {
-  const { column } = clicked;
+  const filterDimension = isValidFilterDimension ? columnDimension : null;
+  const filterDimensionQuery = filterDimension?.query() || query;
 
-  const query = question.query() as StructuredQuery; // we check this in quickFilterDrill function
+  const operators = getOperatorsForColumn(column, value, filterDimension);
 
-  if (column && isLocalColumn(column)) {
-    return query.filter(filter).question();
-  } else {
-    /**
-     * For aggregated and custom columns
-     * with field refs like ["aggregation", 0],
-     * we need to nest the query as filters like ["=", ["aggregation", 0], value] won't work
-     *
-     * So the query like
-     * {
-     *   aggregations: [["count"]]
-     *   source-table: 2,
-     * }
-     *
-     * Becomes
-     * {
-     *   source-query: {
-     *      aggregations: [["count"]]
-     *     source-table: 2,
-     *   },
-     *   filter: ["=", [ "field", "count", {"base-type": "type/BigInteger"} ], value]
-     * }
-     */
-    return query.nest().filter(filter).question();
-  }
+  const mappedOperators = operators?.map(operator => ({
+    ...operator,
+    filter: new Filter(operator.filter, null, filterDimensionQuery),
+  }));
+
+  return {
+    query: filterDimensionQuery,
+    operators: mappedOperators,
+  };
 }
 
 function getOperatorsForColumn(
   column: DatasetColumn,
   value: RowValue,
-): {
-  operators: QuickFilterDrillOperator[];
-  valueType: QuickFilterDataValueType;
-} | null {
-  const fieldRef = getColumnFieldRef(column);
+  dimension?: Dimension | null,
+): ColumnOperatorConfig[] | null {
+  const { base_type: baseType } = column;
 
-  if (
-    INVALID_TYPES.some(type => column.base_type && isa(column.base_type, type))
-  ) {
+  if (!baseType || INVALID_TYPES.some(type => isa(baseType, type))) {
     return null;
-  } else if (value == null) {
-    return {
-      valueType: "null",
-      operators: [
-        { name: "=", filter: ["is-null", fieldRef] },
-        { name: "≠", filter: ["not-null", fieldRef] },
-      ],
-    };
+  }
+
+  const fieldRef = dimension
+    ? dimension.mbql()
+    : getColumnFieldRef(column, baseType);
+
+  if (!fieldRef || !isConcreteField(fieldRef)) {
+    return null;
+  }
+
+  if (value == null) {
+    const valueType = "null";
+
+    return [
+      { name: "=", valueType, filter: ["is-null", fieldRef] },
+      { name: "≠", valueType, filter: ["not-null", fieldRef] },
+    ];
   } else if (isNumeric(column) || isDate(column)) {
     const typedValue = value as string | number;
+    const valueType = isDate(column) ? "date" : "numeric";
 
-    return {
-      valueType: isDate(column) ? "date" : "numeric",
-      operators: [
-        { name: "<", filter: ["<", fieldRef, typedValue] },
-        { name: ">", filter: [">", fieldRef, typedValue] },
-        { name: "=", filter: ["=", fieldRef, typedValue] },
-        { name: "≠", filter: ["!=", fieldRef, typedValue] },
-      ],
-    };
+    return [
+      { name: "<", valueType, filter: ["<", fieldRef, typedValue] },
+      { name: ">", valueType, filter: [">", fieldRef, typedValue] },
+      { name: "=", valueType, filter: ["=", fieldRef, typedValue] },
+      { name: "≠", valueType, filter: ["!=", fieldRef, typedValue] },
+    ];
+  }
+
+  // this filter requires a valid dimension
+  if (isString(column) && isLongText(column) && dimension) {
+    const typedValue = value as string;
+    const valueType = "text";
+
+    return [
+      {
+        name: "contains",
+        valueType,
+
+        filter: ["contains", fieldRef, typedValue],
+      },
+      {
+        name: "does-not-contain",
+        valueType,
+
+        filter: ["does-not-contain", fieldRef, typedValue],
+      },
+    ];
   } else {
-    return {
-      valueType: isBoolean(column) ? "boolean" : "text",
-      operators: [
-        { name: "=", filter: ["=", fieldRef, value] },
-        { name: "≠", filter: ["!=", fieldRef, value] },
-      ],
-    };
+    const valueType = isBoolean(column) ? "boolean" : "text";
+
+    return [
+      { name: "=", valueType, filter: ["=", fieldRef, value] },
+      { name: "≠", valueType, filter: ["!=", fieldRef, value] },
+    ];
   }
 }
 
@@ -144,10 +179,41 @@ function isLocalColumn(column: DatasetColumn) {
   return isLocalField(column.field_ref);
 }
 
-function getColumnFieldRef(column: DatasetColumn) {
+function getColumnFieldRef(
+  column: DatasetColumn,
+  baseType: string,
+): FieldReference | null | undefined {
   if (isLocalColumn(column)) {
     return fieldRefForColumn(column);
   } else {
-    return ["field", column.name, { "base-type": column.base_type }];
+    const field: FieldLiteral = [
+      "field",
+      column.name,
+      { "base-type": baseType },
+    ];
+    return field;
   }
+}
+
+export function quickFilterDrillQuestion({
+  clicked,
+  filter,
+}: {
+  clicked: ClickObject;
+  filter: Filter;
+}) {
+  const dimension = filter.dimension();
+  const query = filter.query();
+
+  if (
+    dimension &&
+    clicked.column &&
+    !isLocalColumn(clicked.column) &&
+    query.topLevelQuery() === query
+  ) {
+    // we have to nest a query in order to add a filter for aggregation or expression on top level query
+    return query.nest().filter(filter).question();
+  }
+
+  return filter.add().rootQuery().question();
 }

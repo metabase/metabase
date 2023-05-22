@@ -228,7 +228,7 @@ export default class Dimension {
   }
 
   /**
-   * Is this dimension idential to another dimension or MBQL clause
+   * Is this dimension identical to another dimension or MBQL clause
    */
   isEqual(
     other: Dimension | null | undefined | ConcreteFieldReference,
