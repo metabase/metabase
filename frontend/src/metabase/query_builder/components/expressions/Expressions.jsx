@@ -51,7 +51,7 @@ export default class Expressions extends Component {
           onClick={() => onAddExpression()}
         >
           <IconBorder borderRadius="3px">
-            <Icon name="add" size={14} />
+            <Icon name="add" />
           </IconBorder>
           <span className="ml1">{t`Add a custom field`}</span>
         </a>

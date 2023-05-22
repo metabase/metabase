@@ -53,4 +53,5 @@ export const BookmarkButton = styled(Button)<BookmarkButtonProps>`
 
 BookmarkButton.defaultProps = {
   onlyIcon: true,
+  iconSize: 20,
 };

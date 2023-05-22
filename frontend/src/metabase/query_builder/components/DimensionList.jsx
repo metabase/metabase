@@ -135,7 +135,6 @@ export default class DimensionList extends Component {
           <Tooltip tooltip={t`Add grouping`}>
             <Icon
               name="add"
-              size={14}
               className="mx1 cursor-pointer hover-child faded fade-in-hover"
               onClick={e => {
                 e.stopPropagation();

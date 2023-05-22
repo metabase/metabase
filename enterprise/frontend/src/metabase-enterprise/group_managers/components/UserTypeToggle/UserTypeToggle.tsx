@@ -32,7 +32,7 @@ export const UserTypeToggle = ({
         data-testid="user-type-toggle"
         onClick={handleChangeType}
       >
-        <Icon name={icon} size={14} />
+        <Icon name={icon} />
       </UserTypeToggleRoot>
     </Tooltip>
   );

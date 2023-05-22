@@ -230,7 +230,7 @@ export default class SelectionModule extends Component {
           className="text-light no-decoration pr1 flex align-center"
           onClick={this.props.remove.bind(null, this.props.index)}
         >
-          <Icon name="close" size={14} />
+          <Icon name="close" />
         </a>
       );
     }

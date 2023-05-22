@@ -13,7 +13,7 @@ export default class AddClauseButton extends Component {
   renderAddIcon() {
     return (
       <IconBorder borderRadius="3px">
-        <Icon name="add" size={14} />
+        <Icon name="add" />
       </IconBorder>
     );
   }

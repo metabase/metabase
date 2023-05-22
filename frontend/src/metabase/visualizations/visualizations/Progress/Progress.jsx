@@ -218,7 +218,7 @@ export default class Progress extends Component {
             {barMessage && (
               <div className="flex align-center absolute spread text-white text-bold px2">
                 <IconBorder borderWidth={2}>
-                  <Icon name="check" size={14} />
+                  <Icon name="check" />
                 </IconBorder>
                 <div className="pl2">{barMessage}</div>
               </div>

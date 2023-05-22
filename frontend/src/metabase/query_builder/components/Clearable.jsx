@@ -12,7 +12,7 @@ const Clearable = ({ onClear, children, className }) => (
         className="text-light no-decoration pr1 flex align-center"
         onClick={onClear}
       >
-        <Icon name="close" size={14} />
+        <Icon name="close" />
       </a>
     )}
   </span>

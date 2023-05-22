@@ -39,7 +39,7 @@ export function PermissionsSelectOption({
     >
       <Tooltip tooltip={hint} isOpen={shouldShowTooltip}>
         <IconContainer color={iconColor}>
-          <Icon name={icon} size={14} />
+          <Icon name={icon} />
         </IconContainer>
       </Tooltip>
       <PermissionsSelectLabel>{label}</PermissionsSelectLabel>

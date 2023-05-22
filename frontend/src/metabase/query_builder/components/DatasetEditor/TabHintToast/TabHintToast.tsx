@@ -16,7 +16,7 @@ type Props = {
 export function TabHintToast({ className, onClose }: Props) {
   return (
     <ToastCard className={className}>
-      <TabIcon name="tab" size={14} />
+      <TabIcon name="tab" />
       <ToastMessage>{t`Use the tab key to navigate through settings and columns.`}</ToastMessage>
       <CloseIcon name="close" size={12} onClick={onClose} />
     </ToastCard>

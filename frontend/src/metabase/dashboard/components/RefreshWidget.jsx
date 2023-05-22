@@ -116,7 +116,7 @@ const RefreshOption = ({ name, period, selected, onClick }) => (
     isSelected={selected}
     onClick={onClick}
   >
-    <RefreshOptionIcon name="check" size={14} />
+    <RefreshOptionIcon name="check" />
     <span>{name.split(" ")[0]}</span>
     <span>{name.split(" ")[1]}</span>
   </RefreshOptionItem>

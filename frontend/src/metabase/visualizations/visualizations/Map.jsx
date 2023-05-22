@@ -365,7 +365,7 @@ const CustomMapFooter = connect(mapStateToProps)(function CustomMapFooter({
   const content = (
     <CustomMapContent>
       {t`Custom map`}
-      <Icon name="share" size={14} />
+      <Icon name="share" />
     </CustomMapContent>
   );
 

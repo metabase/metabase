@@ -104,10 +104,7 @@ function ModelActionListItem({
             )}
           </ActionSubtitle>
         </div>
-        <EntityMenu
-          items={menuItems}
-          trigger={<MenuIcon name="ellipsis" size={14} />}
-        />
+        <EntityMenu items={menuItems} trigger={<MenuIcon name="ellipsis" />} />
       </ActionHeader>
       <ActionCardContainer>
         {action.type === "query" ? (

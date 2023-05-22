@@ -21,7 +21,7 @@ export default function BrowseHeader({ crumbs }) {
             data-metabase-event="NavBar;Reference"
           >
             <div className="flex align-center text-medium text-brand-hover">
-              <Icon className="flex align-center" size={14} name="reference" />
+              <Icon className="flex align-center" name="reference" />
               <span className="ml1 flex align-center text-bold">
                 {t`Learn about our data`}
               </span>

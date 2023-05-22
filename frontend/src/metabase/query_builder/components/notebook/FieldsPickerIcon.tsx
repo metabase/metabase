@@ -30,7 +30,7 @@ export function FieldsPickerIcon({
       isEnabled={!isTriggeredComponentOpen}
     >
       <FieldPickerContentContainer data-testid="fields-picker">
-        <StyledIcon name="chevrondown" size={14} />
+        <StyledIcon name="chevrondown" />
       </FieldPickerContentContainer>
     </Tooltip>
   );

@@ -38,8 +38,8 @@ export const InfoLink = styled(ExternalLink)`
 `;
 
 export const StyledFieldTitleIcon = styled(Icon)`
-  width: 10px;
-  height: 10px;
+  width: 12px;
+  height: 12px;
 `;
 
 export const Footer = styled.div`
