@@ -131,8 +131,7 @@ const TableBrowserItemButtons = ({ tableId, dbId, xraysEnabled }) => {
           data-metabase-event={`${ANALYTICS_CONTEXT};Table Item;X-ray Click`}
         >
           <Icon
-            name="bolt"
-            size={20}
+            name="bolt_filled"
             tooltip={t`X-ray this table`}
             color={color("warning")}
           />
