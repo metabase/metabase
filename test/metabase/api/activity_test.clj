@@ -3,7 +3,6 @@
   (:require
    [clojure.test :refer :all]
    [java-time :as t]
-   [metabase.api.activity :as api.activity]
    [metabase.events.view-log :as view-log]
    [metabase.models.card :refer [Card]]
    [metabase.models.dashboard :refer [Dashboard]]
@@ -209,55 +208,3 @@
                        {:model "table"     :model_id (:id table1)}]
                       ;; all views are from :rasta, but :crowberto can still see popular items
                       (mt/user-http-request :crowberto :get 200 "activity/popular_items")))))))
-
-;;; activities->referenced-objects, referenced-objects->existing-objects, add-model-exists-info
-
-(def ^:private fake-activities
-  [{:model "dashboard", :model_id  43, :topic :dashboard-create,    :details {}}
-   {:model "dashboard", :model_id  42, :topic :dashboard-create,    :details {}}
-   {:model "card",      :model_id 114, :topic :card-create,         :details {}}
-   {:model "card",      :model_id 113, :topic :card-create,         :details {}}
-   {:model "card",      :model_id 112, :topic :card-create,         :details {}}
-   {:model "card",      :model_id 111, :topic :card-create,         :details {}}
-   {:model "dashboard", :model_id  41, :topic :dashboard-add-cards, :details {:dashcards [{:card_id 109}]}}
-   {:model "card",      :model_id 109, :topic :card-create,         :details {}}
-   {:model "dashboard", :model_id  41, :topic :dashboard-add-cards, :details {:dashcards [{:card_id 108}]}}
-   {:model "dashboard", :model_id  41, :topic :dashboard-create,    :details {}}
-   {:model "card",      :model_id 108, :topic :card-create,         :details {}}
-   {:model "user",      :model_id  90, :topic :user-joined,         :details {}}
-   {:model nil,         :model_id nil, :topic :install,             :details {}}])
-
-(deftest activities->referenced-objects-test
-  (is (= {"dashboard" #{41 43 42}
-          "card"      #{113 108 109 111 112 114}
-          "user"      #{90}}
-         (#'api.activity/activities->referenced-objects fake-activities))))
-
-(deftest referenced-objects->existing-objects-test
-  (mt/with-temp Dashboard [{dashboard-id :id}]
-    (is (= {"dashboard" #{dashboard-id}}
-           (#'api.activity/referenced-objects->existing-objects {"dashboard" #{dashboard-id 0}
-                                                                 "card"      #{0}})))))
-(deftest add-model-exists-info-test
-  (mt/with-temp* [Dashboard [{dashboard-id :id}]
-                  Card      [{card-id :id}]
-                  Card      [{dataset-id :id} {:dataset true}]]
-    (is (= [{:model "dashboard", :model_id dashboard-id, :model_exists true}
-            {:model "card", :model_id 0, :model_exists false}
-            {:model "dataset", :model_id dataset-id, :model_exists true}
-            {:model        "dashboard"
-             :model_id     0
-             :model_exists false
-             :topic        :dashboard-remove-cards
-             :details      {:dashcards [{:card_id card-id, :exists true}
-                                        {:card_id 0, :exists false}
-                                        {:card_id dataset-id, :exists true}]}}]
-           (#'api.activity/add-model-exists-info [{:model "dashboard", :model_id dashboard-id}
-                                                  {:model "card", :model_id 0}
-                                                  {:model "card", :model_id dataset-id}
-                                                  {:model    "dashboard"
-                                                   :model_id 0
-                                                   :topic    :dashboard-remove-cards
-                                                   :details  {:dashcards [{:card_id card-id}
-                                                                          {:card_id 0}
-                                                                          {:card_id dataset-id}]}}])))))

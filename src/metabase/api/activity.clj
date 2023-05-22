@@ -1,6 +1,5 @@
 (ns metabase.api.activity
   (:require
-   [clojure.set :as set]
    [clojure.string :as str]
    [compojure.core :refer [GET]]
    [medley.core :as m]
@@ -16,50 +15,6 @@
    [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]
    [toucan2.core :as t2]))
-
-(defn- dashcard-activity? [activity]
-  (#{:dashboard-add-cards :dashboard-remove-cards}
-   (:topic activity)))
-
-(defn- activities->referenced-objects
-  "Get a map of model name to a set of referenced IDs in these `activities`.
-
-     (activities->referenced-objects <some-activities>) -> {\"dashboard\" #{41 42 43}, \"card\" #{100 101}, ...}"
-  [activities]
-  (apply merge-with set/union (for [{:keys [model model_id], :as activity} activities
-                                    :when                                  model]
-                                (merge {model #{model_id}}
-                                       ;; pull the referenced card IDs out of the dashcards for dashboard activites
-                                       ;; that involve adding/removing cards
-                                       (when (dashcard-activity? activity)
-                                         {"card" (set (for [dashcard (get-in activity [:details :dashcards])]
-                                                        (:card_id dashcard)))})))))
-
-(defn- referenced-objects->existing-objects
-  "Given a map of existing objects like the one returned by `activities->referenced-objects`, return a similar map of
-   models to IDs of objects *that exist*.
-
-     (referenced-objects->existing-objects {\"dashboard\" #{41 42 43}, \"card\" #{100 101}, ...})
-     ;; -> {\"dashboard\" #{41 43}, \"card\" #{101}, ...}"
-  [referenced-objects]
-  (merge
-   (when-let [card-ids (get referenced-objects "card")]
-     (let [id->dataset?                       (t2/select-pk->fn :dataset Card
-                                                                   :id [:in card-ids])
-           {dataset-ids true card-ids' false} (group-by (comp boolean id->dataset?)
-                                                        ;; only existing ids go back
-                                                        (keys id->dataset?))]
-       (cond-> {}
-         (seq dataset-ids) (assoc "dataset" (set dataset-ids))
-         (seq card-ids')   (assoc "card" (set card-ids')))))
-   (into {} (for [[model ids] (dissoc referenced-objects "card")
-                  :when       (seq ids)]
-              [model (case model
-                       "dashboard" (t2/select-pks-set 'Dashboard, :id [:in ids])
-                       "metric"    (t2/select-pks-set 'Metric,    :id [:in ids], :archived false)
-                       "pulse"     (t2/select-pks-set 'Pulse,     :id [:in ids])
-                       "segment"   (t2/select-pks-set 'Segment,   :id [:in ids], :archived false)
-                       nil)])))) ; don't care about other models
 
 (defn- models-query
   [model ids]
