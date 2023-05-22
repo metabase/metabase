@@ -59,6 +59,14 @@ export function showDashboardCardActions(index = 0) {
   getDashboardCard(index).realHover();
 }
 
+export function showVisualizationOptions(index = 0) {
+  return getDashboardCard(index)
+    .realHover()
+    .within(() => {
+      cy.icon("palette").click();
+    });
+}
+
 export function editDashboard() {
   cy.icon("pencil").click();
   cy.findByText("You're editing this dashboard.");
@@ -93,12 +101,40 @@ export function setFilter(type, subType) {
   });
 }
 
+export function createEmptyTextBox() {
+  cy.icon("pencil").click();
+  cy.icon("string").click();
+  popover().within(() => {
+    cy.findByText("Text").click();
+  });
+}
+
 export function addTextBox(string, options = {}) {
   cy.icon("pencil").click();
   cy.icon("string").click();
+  popover().within(() => {
+    cy.findByText("Text").click();
+  });
   cy.findByPlaceholderText(
     "You can use Markdown here, and include variables {{like_this}}",
   ).type(string, options);
+}
+
+export function createEmptyHeading() {
+  cy.icon("pencil").click();
+  cy.icon("string").click();
+  popover().within(() => {
+    cy.findByText("Heading").click();
+  });
+}
+
+export function addHeading(string, options = {}) {
+  cy.icon("pencil").click();
+  cy.icon("string").click();
+  popover().within(() => {
+    cy.findByText("Heading").click();
+  });
+  cy.findByPlaceholderText("Heading").type(string, options);
 }
 
 export function openQuestionsSidebar() {
