@@ -49,7 +49,6 @@
     :metabase.models.field-values/FieldValues
     :model/LoginHistory
     :model/FieldValues
-    :model/LoginHistory
     :metabase.models.metric-important-field/MetricImportantField
     :model/ModerationReview
     :metabase.models.parameter-card/ParameterCard
