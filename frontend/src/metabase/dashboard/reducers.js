@@ -42,7 +42,6 @@ import {
   UNDO_REMOVE_CARD_FROM_DASH,
   SHOW_AUTO_APPLY_FILTERS_TOAST,
   tabsReducer,
-  NAVIGATE_TO_NEW_CARD,
 } from "./actions";
 import { isVirtualDashCard, syncParametersAndEmbeddingParams } from "./utils";
 import { INITIAL_DASHBOARD_STATE } from "./constants";
@@ -245,22 +244,19 @@ const isAddParameterPopoverOpen = handleActions(
   INITIAL_DASHBOARD_STATE.isAddParameterPopoverOpen,
 );
 
-const isNavigatingWithinDashboard = handleActions(
+const isNavigatingToDashboard = handleActions(
   {
-    [INITIALIZE]: () => false,
-    [NAVIGATE_TO_NEW_CARD]: () => true,
     [NAVIGATE_TO_DASHBOARD]: () => true,
     [RESET]: () => false,
   },
-  INITIAL_DASHBOARD_STATE.isNavigatingWithinDashboard,
+  INITIAL_DASHBOARD_STATE.isNavigatingToDashboard,
 );
 
 const dashcardData = handleActions(
   {
     // clear existing dashboard data when loading a dashboard
     [INITIALIZE]: {
-      next: (state, { payload: { isNavigatingWithinDashboard } }) =>
-        isNavigatingWithinDashboard ? state : {},
+      next: (state, { payload: { clear } }) => (clear ? {} : state),
     },
     [FETCH_CARD_DATA]: {
       next: (state, { payload: { dashcard_id, card_id, result } }) =>
@@ -271,10 +267,6 @@ const dashcardData = handleActions(
         assocIn(state, [dashcardId, cardId]),
     },
     [Questions.actionTypes.UPDATE]: { next: () => ({}) },
-    [RESET]: {
-      next: (state, { payload: { isNavigatingWithinDashboard } }) =>
-        isNavigatingWithinDashboard ? state : {},
-    },
   },
   INITIAL_DASHBOARD_STATE.dashcardData,
 );
@@ -471,7 +463,7 @@ export default reduceReducers(
     draftParameterValues,
     loadingDashCards,
     isAddParameterPopoverOpen,
-    isNavigatingWithinDashboard,
+    isNavigatingToDashboard,
     sidebar,
     missingActionParameters,
     autoApplyFilters,

@@ -13,7 +13,7 @@ import {
   getSlowCards,
   getParameters,
   getParameterValues,
-  getIsNavigatingWithinDashboard,
+  getisNavigatingToDashboard,
 } from "metabase/dashboard/selectors";
 
 import * as dashboardActions from "metabase/dashboard/actions";
@@ -25,7 +25,7 @@ const mapStateToProps = (state, props) => {
     slowCards: getSlowCards(state, props),
     parameters: getParameters(state, props),
     parameterValues: getParameterValues(state, props),
-    isNavigatingWithinDashboard: getIsNavigatingWithinDashboard(state),
+    isNavigatingToDashboard: getisNavigatingToDashboard(state),
   };
 };
 
@@ -50,16 +50,16 @@ export default ComposedComponent =>
           setErrorPage,
           location,
           dashboardId,
-          isNavigatingWithinDashboard,
+          isNavigatingToDashboard,
         } = props;
 
-        initialize();
+        initialize({ clear: !isNavigatingToDashboard });
 
         try {
           await fetchDashboard(dashboardId, location && location.query);
           await fetchDashboardCardData({
             reload: false,
-            clear: !isNavigatingWithinDashboard,
+            clear: !isNavigatingToDashboard,
           });
         } catch (error) {
           console.error(error);

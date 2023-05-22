@@ -53,6 +53,7 @@ class Dashboard extends Component {
     isNavbarOpen: PropTypes.bool.isRequired,
     isHeaderVisible: PropTypes.bool,
     isAdditionalInfoVisible: PropTypes.bool,
+    isNavigatingToDashboard: PropTypes.bool,
 
     dashboard: PropTypes.object,
     dashboardId: PropTypes.number,
@@ -164,9 +165,10 @@ class Dashboard extends Component {
       loadDashboardParams,
       location,
       setErrorPage,
+      isNavigatingToDashboard,
     } = this.props;
 
-    initialize();
+    initialize({ clear: !isNavigatingToDashboard });
 
     loadDashboardParams();
 
