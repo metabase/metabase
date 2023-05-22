@@ -53,7 +53,7 @@ export default ComposedComponent =>
           isNavigatingToDashoard,
         } = props;
 
-        initialize({ clear: !isNavigatingToDashoard });
+        initialize();
 
         try {
           await fetchDashboard(dashboardId, location && location.query);

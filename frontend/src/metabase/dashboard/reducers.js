@@ -41,6 +41,7 @@ import {
   UNDO_REMOVE_CARD_FROM_DASH,
   SHOW_AUTO_APPLY_FILTERS_TOAST,
   tabsReducer,
+  NAVIGATE_TO_NEW_CARD,
 } from "./actions";
 import { isVirtualDashCard, syncParametersAndEmbeddingParams } from "./utils";
 import { INITIAL_DASHBOARD_STATE } from "./constants";
@@ -246,7 +247,9 @@ const isAddParameterPopoverOpen = handleActions(
 const isNavigatingToDashboard = handleActions(
   {
     [INITIALIZE]: () => false,
+    [NAVIGATE_TO_NEW_CARD]: () => true,
     [NAVIGATE_TO_DASHBOARD]: () => true,
+    [RESET]: () => false,
   },
   INITIAL_DASHBOARD_STATE.isNavigatingToDashboard,
 );
@@ -255,7 +258,8 @@ const dashcardData = handleActions(
   {
     // clear existing dashboard data when loading a dashboard
     [INITIALIZE]: {
-      next: (state, { payload: { clear } }) => (clear ? {} : state),
+      next: (state, { payload: { isNavigatingToDashboard } }) =>
+        isNavigatingToDashboard ? state : {},
     },
     [FETCH_CARD_DATA]: {
       next: (state, { payload: { dashcard_id, card_id, result } }) =>
@@ -264,6 +268,10 @@ const dashcardData = handleActions(
     [CLEAR_CARD_DATA]: {
       next: (state, { payload: { cardId, dashcardId } }) =>
         assocIn(state, [dashcardId, cardId]),
+    },
+    [RESET]: {
+      next: (state, { payload: { isNavigatingToDashboard } }) =>
+        isNavigatingToDashboard ? state : {},
     },
   },
   INITIAL_DASHBOARD_STATE.dashcardData,
