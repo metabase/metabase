@@ -74,7 +74,7 @@ export function ActionSidebarFn({
       <SidebarHeader>
         <Heading>{t`Button properties`}</Heading>
       </SidebarHeader>
-      <SidebarBody data-testid="action-sidebar-body">
+      <SidebarBody>
         <FormProvider
           initialValues={{
             button_text:

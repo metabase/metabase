@@ -107,7 +107,7 @@ export default function ActionCreatorView({
             ].filter(isNotNull)}
           />
           <EditorContainer>{children}</EditorContainer>
-          <ModalActions data-testid="action-creator-modal-actions">
+          <ModalActions>
             <Button onClick={onCloseModal} borderless>
               {t`Cancel`}
             </Button>
