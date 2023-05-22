@@ -73,7 +73,7 @@ describe("ModelActionDetails", () => {
   it("should leave ActionCreatorModal when clicking 'Cancel'", async () => {
     await setup({});
 
-    screen.getByText("Cancel").click();
+    (await screen.findByText("Cancel")).click();
 
     expect(
       screen.queryByTestId("mock-native-query-editor"),

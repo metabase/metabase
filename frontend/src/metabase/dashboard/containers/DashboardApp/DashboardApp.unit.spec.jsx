@@ -73,7 +73,7 @@ async function setup({ user = createMockUser() }) {
     );
   };
 
-  const { container } = renderWithProviders(
+  renderWithProviders(
     <Route path="/dashboard/:slug" component={DashboardAppContainer} />,
     {
       initialRoute: `/dashboard/${TEST_DASHBOARD.id}`,
@@ -92,7 +92,7 @@ async function setup({ user = createMockUser() }) {
     screen.queryAllByTestId("loading-spinner"),
   );
 
-  return { container, mockEventListener };
+  return { mockEventListener };
 }
 
 const navigateToDashboardActionsEditor = async () => {
@@ -159,9 +159,11 @@ describe("DashboardApp", function () {
       await navigateToDashboardActionsEditor();
 
       userEvent.click(document.body);
-      expect(
-        screen.getByTestId("mock-native-query-editor"),
-      ).toBeInTheDocument();
+      const mockNativeQueryEditor = await screen.findByTestId(
+        "mock-native-query-editor",
+      );
+
+      expect(mockNativeQueryEditor).toBeInTheDocument();
     });
     it("should close ActionCreator modal when clicking modal's 'Cancel' button", async () => {
       await setup({});
