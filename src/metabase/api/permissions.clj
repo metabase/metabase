@@ -280,8 +280,7 @@
   (api/check-superuser)
   (perms/execution-perms-graph))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema PUT "/execution/graph"
+(api/defendpoint PUT "/execution/graph"
   "Do a batch update of execution permissions by passing in a modified graph. The modified graph of the same
   form as returned by the corresponding GET endpoint.
 
@@ -289,7 +288,7 @@
   modifies it before you can submit you revisions, the endpoint will instead make no changes and return a
   409 (Conflict) response. In this case, you should fetch the updated graph and make desired changes to that."
   [:as {body :body}]
-  {body su/Map}
+  {body [:map]}
   (api/check-superuser)
   ;; TODO remove api.permission-graph/converted-json->graph call
   (let [graph (api.permission-graph/converted-json->graph ::api.permission-graph/execution-permissions-graph body)]

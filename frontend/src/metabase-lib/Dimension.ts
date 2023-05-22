@@ -1717,49 +1717,49 @@ const DATETIME_SUBDIMENSIONS = [
     },
   },
   {
-    name: t`Minute of Hour`,
+    name: t`Minute of hour`,
     options: {
       "temporal-unit": "minute-of-hour",
     },
   },
   {
-    name: t`Hour of Day`,
+    name: t`Hour of day`,
     options: {
       "temporal-unit": "hour-of-day",
     },
   },
   {
-    name: t`Day of Week`,
+    name: t`Day of week`,
     options: {
       "temporal-unit": "day-of-week",
     },
   },
   {
-    name: t`Day of Month`,
+    name: t`Day of month`,
     options: {
       "temporal-unit": "day-of-month",
     },
   },
   {
-    name: t`Day of Year`,
+    name: t`Day of year`,
     options: {
       "temporal-unit": "day-of-year",
     },
   },
   {
-    name: t`Week of Year`,
+    name: t`Week of year`,
     options: {
       "temporal-unit": "week-of-year",
     },
   },
   {
-    name: t`Month of Year`,
+    name: t`Month of year`,
     options: {
       "temporal-unit": "month-of-year",
     },
   },
   {
-    name: t`Quarter of Year`,
+    name: t`Quarter of year`,
     options: {
       "temporal-unit": "quarter-of-year",
     },
