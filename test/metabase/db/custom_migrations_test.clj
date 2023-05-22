@@ -118,57 +118,6 @@
                      mi/normalize-visualization-settings
                      (#'mi/migrate-viz-settings)))))))))
 
-(deftest add-join-alias-to-visualization-settings-field-refs-test
-  (testing "Migrations v47.00-029: update visualization_settings.column_settings legacy field refs"
-    (impl/test-migrations ["v47.00-029"] [migrate!]
-      (let [result_metadata
-            [{:field_ref [:field 1 nil]}
-             {:field_ref [:field 1 {:join-alias "Self-joined Table"}]}
-             {:field_ref [:field 2 {:source-field 3}]}
-             {:field_ref [:field "column_name" {:base-type :type/Text}]}
-             {:field_ref [:name "column_name"]}]
-            visualization-settings
-            {"column_settings" (-> {["ref" ["field" 1 nil]]                                   {"column_title" "1"}
-                                    ["ref" ["field" 2 {"source-field" 3}]]                    {"column_title" "2"}
-                                    ["ref" ["field" "column_name" {"base-type" "type/Text"}]] {"column_title" "3"}
-                                    ["name" "column_name"]                                    {"column_title" "4"}}
-                                   (update-keys json/generate-string))}
-            expected
-            {"column_settings" (-> {["ref" ["field" 1 nil]]                                   {"column_title" "1"}
-                                    ["ref" ["field" 1 {"join-alias" "Self-joined Table"}]]    {"column_title" "1"}
-                                    ["ref" ["field" 2 {"source-field" 3}]]                    {"column_title" "2"}
-                                    ["ref" ["field" "column_name" {"base-type" "type/Text"}]] {"column_title" "3"}
-                                    ["name" "column_name"]                                    {"column_title" "4"}}
-                                   (update-keys json/generate-string))}
-            user-id     (t2/insert-returning-pks! User {:first_name  "Howard"
-                                                        :last_name   "Hughes"
-                                                        :email       "howard@aircraft.com"
-                                                        :password    "superstrong"
-                                                        :date_joined :%now})
-            database-id (t2/insert-returning-pks! Database {:name       "DB"
-                                                            :engine     "h2"
-                                                            :created_at :%now
-                                                            :updated_at :%now
-                                                            :details    "{}"})
-            card-id     (t2/insert-returning-pks! Card {:name                   "My Saved Question"
-                                                        :created_at             :%now
-                                                        :updated_at             :%now
-                                                        :creator_id             user-id
-                                                        :display                "table"
-                                                        :dataset_query          "{}"
-                                                        :result_metadata        (json/generate-string result_metadata)
-                                                        :visualization_settings (json/generate-string visualization-settings)
-                                                        :database_id            database-id
-                                                        :collection_id          nil})]
-        (migrate!)
-        (testing "column_settings field refs are updated"
-          (is (= expected
-                 (-> (t2/query-one {:select [:visualization_settings]
-                                    :from   [:report_card]
-                                    :where  [:= :id card-id]})
-                     :visualization_settings
-                     json/parse-string))))))))
-
 (deftest migrate-legacy-result-metadata-field-refs-test
   (testing "Migrations v47.00-027: update report_card.result_metadata legacy field refs"
     (impl/test-migrations ["v47.00-027"] [migrate!]
@@ -228,3 +177,61 @@
                        json/parse-string
                        ((:out mi/transform-result-metadata))
                        json/generate-string)))))))))
+
+(deftest add-join-alias-to-visualization-settings-field-refs-test
+  (testing "Migrations v47.00-029: update visualization_settings.column_settings legacy field refs"
+    (impl/test-migrations ["v47.00-029"] [migrate!]
+      (let [result_metadata
+            [{:field_ref [:field 1 nil]}
+             {:field_ref [:field 1 {:join-alias "Self-joined Table"}]}
+             {:field_ref [:field 2 {:source-field 3}]}
+             {:field_ref [:field 3 {:temporal-unit "default"}]}
+             {:field_ref [:field 4 {:join-alias "Self-joined Table"
+                                    :binning {:strategy "default"}}]}
+             {:field_ref [:field "column_name" {:base-type :type/Text}]}
+             {:field_ref [:name "column_name"]}]
+            visualization-settings
+            {"column_settings" (-> {["ref" ["field" 1 nil]]                                   {"column_title" "1"}
+                                    ["ref" ["field" 2 {"source-field" 3}]]                    {"column_title" "2"}
+                                    ["ref" ["field" 3 nil]]                                   {"column_title" "3"}
+                                    ["ref" ["field" 4 nil]]                                   {"column_title" "4"}
+                                    ["ref" ["field" "column_name" {"base-type" "type/Text"}]] {"column_title" "5"}
+                                    ["name" "column_name"]                                    {"column_title" "6"}}
+                                   (update-keys json/generate-string))}
+            expected
+            {"column_settings" (-> {["ref" ["field" 1 nil]]                                   {"column_title" "1"}
+                                    ["ref" ["field" 1 {"join-alias" "Self-joined Table"}]]    {"column_title" "1"}
+                                    ["ref" ["field" 2 {"source-field" 3}]]                    {"column_title" "2"}
+                                    ["ref" ["field" 3 nil]]                                   {"column_title" "3"}
+                                    ["ref" ["field" 4 {"join-alias" "Self-joined Table"}]]    {"column_title" "4"}
+                                    ["ref" ["field" "column_name" {"base-type" "type/Text"}]] {"column_title" "5"}
+                                    ["name" "column_name"]                                    {"column_title" "6"}}
+                                   (update-keys json/generate-string))}
+            user-id     (t2/insert-returning-pks! User {:first_name  "Howard"
+                                                        :last_name   "Hughes"
+                                                        :email       "howard@aircraft.com"
+                                                        :password    "superstrong"
+                                                        :date_joined :%now})
+            database-id (t2/insert-returning-pks! Database {:name       "DB"
+                                                            :engine     "h2"
+                                                            :created_at :%now
+                                                            :updated_at :%now
+                                                            :details    "{}"})
+            card-id     (t2/insert-returning-pks! Card {:name                   "My Saved Question"
+                                                        :created_at             :%now
+                                                        :updated_at             :%now
+                                                        :creator_id             user-id
+                                                        :display                "table"
+                                                        :dataset_query          "{}"
+                                                        :result_metadata        (json/generate-string result_metadata)
+                                                        :visualization_settings (json/generate-string visualization-settings)
+                                                        :database_id            database-id
+                                                        :collection_id          nil})]
+        (migrate!)
+        (testing "column_settings field refs are updated"
+          (is (= expected
+                 (-> (t2/query-one {:select [:visualization_settings]
+                                    :from   [:report_card]
+                                    :where  [:= :id card-id]})
+                     :visualization_settings
+                     json/parse-string))))))))

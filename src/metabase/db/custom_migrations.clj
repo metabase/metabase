@@ -246,11 +246,11 @@
                                                           [:<> :result_metadata nil]
                                                           [:<> :result_metadata "[]"]]})))))
 
-(defn- remove-join-alias
-  "Removes the join-alias key from the `field_ref` opts map. If the map becomes empty, replace it with nil."
-  [field_ref]
+(defn- remove-opts
+  "Removes the `join-alias`, `temporal-unit`, and `binning` options from the `field_ref` options map. If the map becomes empty, replace it with nil."
+  [field_ref & opts-to-remove]
   (match field_ref
-    ["field" id opts] ["field" id (not-empty (dissoc opts "join-alias"))]
+    ["field" id opts] ["field" id (not-empty (apply dissoc opts opts-to-remove))]
     _ field_ref))
 
 (defn- add-join-alias-to-visualization-field-refs [{:keys [visualization_settings result_metadata]}]
@@ -258,7 +258,9 @@
         visualization_settings (json/parse-string visualization_settings)
                                ;; Previously the FE removed the join-alias from result_metadata field_refs to match against the column_settings keys
                                ;; Now we do it here to preserve the same behaviour
-        column-key->metadata   (group-by (comp remove-join-alias #(get % "field_ref")) result_metadata)]
+        column-key->metadata   (group-by #(-> (get % "field_ref")
+                                              (remove-opts "join-alias" "temporal-unit" "binning"))
+                                         result_metadata)]
     (json/generate-string
      (update visualization_settings "column_settings"
              (fn [column_settings]
@@ -266,8 +268,10 @@
                      (mapcat (fn [[k v]]
                                (match (vec (json/parse-string k))
                                  ["ref" ["field" id opts]]
-                                 (for [column-metadata (column-key->metadata ["field" id opts])]
-                                   [(json/generate-string ["ref" (get column-metadata "field_ref")]) v])
+                                 (for [column-metadata (column-key->metadata ["field" id opts])
+                                       :let [field-ref (-> (get column-metadata "field_ref")
+                                                           (remove-opts "temporal-unit" "binning"))]]
+                                   [(json/generate-string ["ref" field-ref]) v])
                                  _ [[k v]]))
                              column_settings)))))))
 
