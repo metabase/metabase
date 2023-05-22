@@ -241,7 +241,7 @@
   ;; I tried to write this with Malli but couldn't figure out how to make it work. See
   ;; https://metaboat.slack.com/archives/CKZEMT1MJ/p1676076592468909
   [_fn [amount unit]]
-  {:pre [(int? amount)
+  {:pre [(number? amount)
          (#{:millisecond :second :minute :hour :day :week :month :year} unit)]}
   [(format "INTERVAL '%s %s'" (num amount) (name unit))])
 
