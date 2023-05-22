@@ -4,7 +4,6 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.config :as config]
-   [metabase.db.connection :as mdb.connection]
    [metabase.db.spec :as mdb.spec]
    [metabase.driver :as driver]
    [metabase.driver.h2 :as h2]
@@ -14,7 +13,7 @@
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [metabase.util.log :as log]))
+   [toucan2.core :as t2]))
 
 ;; TODO: remove hx from this test
 #_{:clj-kondo/ignore [:discouraged-namespace]}
