@@ -98,3 +98,17 @@ export const findTemporalBucket = (
   }
   return bucket;
 };
+
+export const findAggregationOperator = (
+  query: ML.Query,
+  operatorShortName: string,
+) => {
+  const operators = ML.availableAggregationOperators(query);
+  const operator = operators.find(
+    operator => ML.displayInfo(query, operator).short === operatorShortName,
+  );
+  if (!operator) {
+    throw new Error(`Could not find aggregation operator ${operatorShortName}`);
+  }
+  return operator;
+};
