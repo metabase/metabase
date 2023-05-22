@@ -14,7 +14,7 @@ export interface DatasetColumn {
   name: string;
   display_name: string;
   description: string | null;
-  source: string;
+  source?: string;
   coercion_strategy: string | null;
   visibility_type: FieldVisibilityType;
   table_id: TableId;
@@ -35,6 +35,10 @@ export interface DatasetColumn {
   fingerprint: FieldFingerprint | null;
 }
 
+export interface ResultsMetadata {
+  columns: DatasetColumn[];
+}
+
 export interface DatasetData {
   rows: RowValues[];
   cols: DatasetColumn[];
@@ -42,6 +46,7 @@ export interface DatasetData {
   requested_timezone?: string;
   results_timezone?: string;
   download_perms?: DownloadPermission;
+  results_metadata: ResultsMetadata;
 }
 
 export type JsonQuery = DatasetQuery & {
@@ -54,7 +59,13 @@ export interface Dataset {
   row_count: number;
   running_time: number;
   json_query?: JsonQuery;
-  error?: string;
+  error_type?: string;
+  error?: {
+    status: number; // HTTP status code
+    data?: string;
+  };
+  context?: string;
+  status?: string;
 }
 
 export interface NativeQueryForm {
@@ -63,13 +74,7 @@ export interface NativeQueryForm {
 
 export type SingleSeries = {
   card: Card;
-  data: DatasetData;
-  error_type?: string;
-  error?: {
-    status: number; // HTTP status code
-    data?: string;
-  };
-};
+} & Dataset;
 
 export type RawSeries = SingleSeries[];
 export type TransformedSeries = RawSeries & { _raw: Series };

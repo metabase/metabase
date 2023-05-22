@@ -11,8 +11,7 @@
    [metabase.models.setting :as setting]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.log :as log]
-   [metabase.util.schema :as su]))
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -90,11 +89,10 @@
               :when        (some? value)]
           [setting-name value])))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema PUT "/"
+(api/defendpoint PUT "/"
   "Update multiple email Settings. You must be a superuser or have `setting` permission to do this."
   [:as {settings :body}]
-  {settings su/Map}
+  {settings :map}
   (validation/check-has-application-permission :setting)
   (let [;; the frontend has access to an obfuscated version of the password. Watch for whether it sent us a new password or
         ;; the obfuscated version
@@ -126,16 +124,14 @@
       {:status 400
        :body   (humanize-error-messages response)})))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema DELETE "/"
+(api/defendpoint DELETE "/"
   "Clear all email related settings. You must be a superuser or have `setting` permission to do this."
   []
   (validation/check-has-application-permission :setting)
   (setting/set-many! (zipmap (keys mb-to-smtp-settings) (repeat nil)))
   api/generic-204-no-content)
 
-#_{:clj-kondo/ignore [:deprecated-var]}
-(api/defendpoint-schema POST "/test"
+(api/defendpoint POST "/test"
   "Send a test email using the SMTP Settings. You must be a superuser or have `setting` permission to do this.
   Returns `{:ok true}` if we were able to send the message successfully, otherwise a standard 400 error response."
   []

@@ -28,7 +28,7 @@ describe("issue 16918", () => {
     });
   });
 
-  it(`should load question binned by "Month of Year" or similar granularity (metabase#16918)`, () => {
+  it(`should load question binned by "Month of year" or similar granularity (metabase#16918)`, () => {
     cy.visit("/pulse/create");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

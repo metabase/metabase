@@ -140,7 +140,7 @@
 (def ^:private time-options
   [[minute-str "minute"]
    [hour-str "hour"]
-   [(deferred-tru "Minute of Hour") "minute-of-hour"]])
+   [(deferred-tru "Minute of hour") "minute-of-hour"]])
 
 (def ^:private datetime-options
   [[minute-str "minute"]
@@ -150,14 +150,14 @@
    [(deferred-tru "Month") "month"]
    [(deferred-tru "Quarter") "quarter"]
    [(deferred-tru "Year") "year"]
-   [(deferred-tru "Minute of Hour") "minute-of-hour"]
-   [(deferred-tru "Hour of Day") "hour-of-day"]
-   [(deferred-tru "Day of Week") "day-of-week"]
-   [(deferred-tru "Day of Month") "day-of-month"]
-   [(deferred-tru "Day of Year") "day-of-year"]
-   [(deferred-tru "Week of Year") "week-of-year"]
-   [(deferred-tru "Month of Year") "month-of-year"]
-   [(deferred-tru "Quarter of Year") "quarter-of-year"]])
+   [(deferred-tru "Minute of hour") "minute-of-hour"]
+   [(deferred-tru "Hour of day") "hour-of-day"]
+   [(deferred-tru "Day of week") "day-of-week"]
+   [(deferred-tru "Day of month") "day-of-month"]
+   [(deferred-tru "Day of year") "day-of-year"]
+   [(deferred-tru "Week of year") "week-of-year"]
+   [(deferred-tru "Month of year") "month-of-year"]
+   [(deferred-tru "Quarter of year") "quarter-of-year"]])
 
 (def ^:private date-options
   [[day-str "day"]
@@ -165,12 +165,12 @@
    [(deferred-tru "Month") "month"]
    [(deferred-tru "Quarter") "quarter"]
    [(deferred-tru "Year") "year"]
-   [(deferred-tru "Day of Week") "day-of-week"]
-   [(deferred-tru "Day of Month") "day-of-month"]
-   [(deferred-tru "Day of Year") "day-of-year"]
-   [(deferred-tru "Week of Year") "week-of-year"]
-   [(deferred-tru "Month of Year") "month-of-year"]
-   [(deferred-tru "Quarter of Year") "quarter-of-year"]])
+   [(deferred-tru "Day of week") "day-of-week"]
+   [(deferred-tru "Day of month") "day-of-month"]
+   [(deferred-tru "Day of year") "day-of-year"]
+   [(deferred-tru "Week of year") "week-of-year"]
+   [(deferred-tru "Month of year") "month-of-year"]
+   [(deferred-tru "Quarter of year") "quarter-of-year"]])
 
 (def ^:private dimension-options
   (let [default-entry [auto-bin-str ["default"]]]

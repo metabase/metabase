@@ -15,7 +15,7 @@ import { isSameField } from "metabase-lib/queries/utils/field-ref";
 import { isStructured } from "metabase-lib/queries/utils";
 
 type FieldMetadata = {
-  id?: number;
+  id?: number | string;
   name: string;
   display_name: string;
   description?: string | null;

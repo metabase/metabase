@@ -275,7 +275,10 @@
    ;; does this column occur in the breakout clause?
    [:is-breakout-column {:optional true} [:maybe :boolean]]
    ;; does this column occur in the order-by clause?
-   [:is-order-by-column {:optional true} [:maybe :boolean]]])
+   [:is-order-by-column {:optional true} [:maybe :boolean]]
+   ;; for aggregation operators
+   [:column-name {:optional true} :string]
+   [:description {:optional true} :string]])
 
 (mu/defn display-info :- ::display-info
   "Given some sort of Cljs object, return a map with the info you'd need to implement UI for it. This is mostly meant to

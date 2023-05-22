@@ -18,7 +18,10 @@ const TABLE_WITH_FKS = createMockTable({
   id: 1,
   fks: [
     createMockForeignKey({
+      origin_id: 1,
       origin: createMockField({
+        id: 1,
+        table_id: 2,
         table: createMockTable({
           id: 2,
           display_name: "Foo",
@@ -26,7 +29,10 @@ const TABLE_WITH_FKS = createMockTable({
       }),
     }),
     createMockForeignKey({
+      origin_id: 2,
       origin: createMockField({
+        id: 2,
+        table_id: 3,
         table: createMockTable({
           id: 3,
           display_name: "Bar",

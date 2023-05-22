@@ -2039,10 +2039,10 @@
 (deftest revert-dashboard-test
   (testing "POST /api/dashboard/:id/revert"
     (testing "parameter validation"
-      (is (= {:errors {:revision_id "value must be an integer greater than zero."}}
-             (mt/user-http-request :crowberto :post 400 "dashboard/1/revert" {})))
-      (is (= {:errors {:revision_id "value must be an integer greater than zero."}}
-             (mt/user-http-request :crowberto :post 400 "dashboard/1/revert" {:revision_id "foobar"}))))
+      (is (= {:revision_id "value must be an integer greater than zero."}
+             (:errors (mt/user-http-request :crowberto :post 400 "dashboard/1/revert" {}))))
+      (is (= {:revision_id "value must be an integer greater than zero."}
+             (:errors (mt/user-http-request :crowberto :post 400 "dashboard/1/revert" {:revision_id "foobar"})))))
     (mt/with-temp* [Dashboard [{dashboard-id :id}]
                     Revision  [{revision-id :id} {:model       "Dashboard"
                                                   :model_id    dashboard-id

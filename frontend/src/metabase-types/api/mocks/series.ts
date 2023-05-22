@@ -9,7 +9,7 @@ export const createMockSingleSeries = (
 ): SingleSeries => {
   return {
     card: createMockCard(cardOpts),
-    data: createMockDataset(dataOpts).data,
+    ...createMockDataset(dataOpts),
   };
 };
 

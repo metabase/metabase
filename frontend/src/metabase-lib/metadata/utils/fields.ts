@@ -1,3 +1,4 @@
+import { FieldId, FieldReference, TableId } from "metabase-types/api";
 import { isVirtualCardId } from "metabase-lib/metadata/utils/saved-questions";
 import {
   BOOLEAN,
@@ -11,7 +12,6 @@ import {
   TEMPORAL,
 } from "metabase-lib/types/constants";
 import { getFieldType } from "metabase-lib/types/utils/isa";
-import type Field from "../Field";
 
 const ICON_MAPPING: Record<string, string> = {
   [TEMPORAL]: "calendar",
@@ -33,11 +33,16 @@ export function getIconForField(fieldOrColumn: any) {
   return type && ICON_MAPPING[type] ? ICON_MAPPING[type] : "unknown";
 }
 
-export function getUniqueFieldId(
-  field: Pick<Field, "id" | "name" | "table_id">,
-): number | string {
-  const { table_id } = field;
-  const fieldIdentifier = getFieldIdentifier(field);
+export function getUniqueFieldId({
+  id,
+  name,
+  table_id,
+}: {
+  id: FieldId | FieldReference | string;
+  name?: string | undefined | null;
+  table_id?: TableId | undefined | null;
+}): number | string {
+  const fieldIdentifier = getFieldIdentifier({ id, name });
 
   if (isVirtualCardId(table_id)) {
     return `${table_id}:${fieldIdentifier}`;
@@ -46,13 +51,16 @@ export function getUniqueFieldId(
   return fieldIdentifier;
 }
 
-function getFieldIdentifier(
-  field: Pick<Field, "id" | "name">,
-): number | string {
-  const { id, name } = field;
+function getFieldIdentifier({
+  id,
+  name,
+}: {
+  id: FieldId | FieldReference | string;
+  name?: string | undefined | null;
+}): number | string {
   if (Array.isArray(id)) {
     return id[1];
   }
 
-  return id || name;
+  return id ?? name;
 }
