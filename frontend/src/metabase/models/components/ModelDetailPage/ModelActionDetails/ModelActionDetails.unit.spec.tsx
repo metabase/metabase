@@ -67,7 +67,11 @@ describe("ModelActionDetails", () => {
 
     userEvent.click(document.body);
 
-    expect(screen.getByTestId("mock-native-query-editor")).toBeInTheDocument();
+    const mockQueryEditor = await screen.findByTestId(
+      "mock-native-query-editor",
+    );
+
+    expect(mockQueryEditor).toBeInTheDocument();
   });
 
   it("should leave ActionCreatorModal when clicking 'Cancel'", async () => {
