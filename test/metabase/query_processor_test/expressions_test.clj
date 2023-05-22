@@ -7,11 +7,11 @@
    [metabase.driver :as driver]
    [metabase.models.field :refer [Field]]
    [metabase.query-processor :as qp]
+   [metabase.query-processor-test.test-mlv2 :as qp-test.mlv2]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
-   [toucan2.core :as t2]
-   [metabase.query-processor-test.test-mlv2 :as qp-test.mlv2]))
+   [toucan2.core :as t2]))
 
 (deftest basic-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
